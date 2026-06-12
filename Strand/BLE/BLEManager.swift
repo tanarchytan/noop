@@ -618,6 +618,8 @@ public final class BLEManager: NSObject, ObservableObject {
         state.rejectedFramesUnarchived = 0
         state.decodedChunksThisSession = 0
         state.consoleChunksThisSession = 0
+        state.r22FlagsAccepted = 0
+        state.deepPacketsThisSession = 0
         historicalAckLogCounter = 0
         // Payload MUST be [0x00], NOT empty: verified on-device that this strap serves type-47 only with
         // [0x00] (empty → 0 frames on a clean stable link with ~2k records pending); the Mac ground-truth
@@ -849,6 +851,32 @@ public final class BLEManager: NSObject, ObservableObject {
         send(.sendR10R11Realtime, payload: [0x00])
     }
 
+    /// EXPERIMENTAL R22 telemetry (#174): give the user (and us) live proof of what the strap is doing.
+    /// (1) Every `COMMAND_RESPONSE` (type 0x24) to a `SET_CONFIG` (0x78) is the strap ACKing one
+    ///     `enable_r22_*` flag — hardware-confirmed in sebastianwoo's capture. 15 ACKs = full acceptance.
+    /// (2) A type-0x2F record arriving OUTSIDE a history offload is the R22 deep biometric stream
+    ///     actually flowing in realtime — the prize. (During an offload, type-0x2F is just banked
+    ///     history, already handled by the Backfiller, so we only count the live ones.)
+    /// Frame layout (5/MG puffin envelope): packet_type @ byte 8, the responded-to cmd @ byte 10.
+    private func noteWhoop5R22Telemetry(_ frame: [UInt8], duringOffload: Bool) {
+        guard frame.count > 10 else { return }
+        if frame[8] == 0x24, frame[10] == WhoopCommand.setConfig.rawValue {
+            state.r22FlagsAccepted += 1
+            let total = Whoop5Config.enableR22Sequence.count
+            if state.r22FlagsAccepted == total {
+                log("Deep-data: strap ACCEPTED all \(total)/\(total) R22 flags ✓ — keep it on; watching for deep packets.")
+            }
+        }
+        if frame[8] == 0x2F, !duringOffload {
+            state.deepPacketsThisSession += 1
+            if state.deepPacketsThisSession == 1 {
+                log("Deep-data: 🎯 FIRST live deep (R22, type-0x2F) packet received — this is it. Please keep wearing it and share your strap log on #174.")
+            } else if state.deepPacketsThisSession.isMultiple(of: 50) {
+                log("Deep-data: \(state.deepPacketsThisSession) live deep (type-0x2F) packets this session.")
+            }
+        }
+    }
+
     /// EXPERIMENTAL (#174): write the official app's `enable_r22_*` SET_CONFIG sequence to a bonded
     /// WHOOP 5/MG, to switch on the deep biometric (type-0x2F "R22") streams the strap withholds from a
     /// fresh third-party connection. The exact 15-flag sequence + values are documented by judes.club
@@ -872,6 +900,7 @@ public final class BLEManager: NSObject, ObservableObject {
         guard state.worn else {
             log("Deep-data: the R22 stream is on-wrist only — put the strap ON, then try again."); return
         }
+        state.r22FlagsAccepted = 0   // fresh attempt — count this send's ACKs from zero
         let frames = Whoop5Config.enableR22Sequence
         log("Deep-data: sending the \(frames.count)-flag enable_r22 sequence (experimental, reversible)…")
         for (i, flag) in frames.enumerated() {
@@ -1219,6 +1248,8 @@ extension BLEManager: CBCentralManagerDelegate {
         state.rejectedFramesUnarchived = 0
         state.decodedChunksThisSession = 0
         state.consoleChunksThisSession = 0
+        state.r22FlagsAccepted = 0
+        state.deepPacketsThisSession = 0
         backfillTimeout?.cancel()
         backfillTimeout = nil
         backfillFrameQueue.removeAll()
@@ -1641,7 +1672,9 @@ extension BLEManager: CBPeripheralDelegate {
             // standard 0x2A37 / 0x2A19 profiles handled above.
             if BLEManager.whoop5NotifyChars.contains(characteristic.uuid) {
                 for frame in reassembler.feed(bytes) {
-                    if backfilling, BLEManager.isOffloadFrame(frame, family: .whoop5) {
+                    let isOffload = backfilling && BLEManager.isOffloadFrame(frame, family: .whoop5)
+                    noteWhoop5R22Telemetry(frame, duringOffload: isOffload)   // #174 deep-data telemetry
+                    if isOffload {
                         // Same policy as WHOOP4: historical offload frames are bulk sync traffic.
                         // Keep them out of the live UI parser during backfill and let Backfiller
                         // preserve/order/process them in the sliced drain.

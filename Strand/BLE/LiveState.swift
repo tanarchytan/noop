@@ -77,6 +77,15 @@ public final class LiveState: ObservableObject {
     @Published public var decodedChunksThisSession: Int = 0
     @Published public var consoleChunksThisSession: Int = 0
 
+    /// EXPERIMENTAL R22 telemetry (#174). How many of the 15 `enable_r22_*` SET_CONFIG flags the strap
+    /// has ACKed since the last "Send enable sequence" tap — 15 means the strap accepted the whole
+    /// sequence (hardware-confirmed: it returns a COMMAND_RESPONSE per flag). Reset on each new attempt.
+    @Published public var r22FlagsAccepted: Int = 0
+    /// Count of LIVE type-0x2F deep biometric records seen this session OUTSIDE a history offload — i.e.
+    /// the R22 deep stream actually flowing in realtime. 0 with flags accepted = enable taken but no deep
+    /// data yet (keep wearing it). Any non-zero = the prize: deep packets to decode. Reset per session.
+    @Published public var deepPacketsThisSession: Int = 0
+
     /// Optional hook invoked on every battery update (wired by LiveViewModel to the alert monitor).
     /// Kept as a closure so LiveState stays a plain observable snapshot with no alert dependency.
     public var onBatteryUpdate: ((Double) -> Void)?

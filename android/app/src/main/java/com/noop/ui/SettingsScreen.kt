@@ -717,6 +717,28 @@ fun SettingsScreen(vm: AppViewModel) {
                         style = NoopType.caption,
                         color = Palette.textTertiary,
                     )
+                    // Live R22 telemetry (#174): proof of what the strap is doing right now.
+                    if (live.r22FlagsAccepted > 0) {
+                        Text(
+                            if (live.r22FlagsAccepted >= 15) "✓ Strap accepted all 15 R22 flags"
+                            else "Strap accepted ${live.r22FlagsAccepted}/15 R22 flags…",
+                            style = NoopType.caption,
+                            color = if (live.r22FlagsAccepted >= 15) Palette.statusPositive else Palette.textSecondary,
+                        )
+                    }
+                    if (live.deepPacketsThisSession > 0) {
+                        Text(
+                            "🎯 Deep data is flowing — ${live.deepPacketsThisSession} R22 packet(s) this session. Please share your strap log!",
+                            style = NoopType.caption,
+                            color = Palette.statusPositive,
+                        )
+                    } else if (live.r22FlagsAccepted >= 15) {
+                        Text(
+                            "Flags accepted, but no deep packets yet — keep the strap on for a couple of minutes, then share your strap log on #174.",
+                            style = NoopType.caption,
+                            color = Palette.textTertiary,
+                        )
+                    }
                 }
 
                 Row(

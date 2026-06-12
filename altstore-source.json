@@ -18,6 +18,15 @@
       "screenshotURLs": [],
       "versions": [
         {
+          "version": "2.6.10",
+          "buildVersion": "41",
+          "date": "2026-06-12",
+          "localizedDescription": "5/MG deep-data: live R22 flag-accept + deep-packet confirmation.",
+          "downloadURL": "https://github.com/NoopApp/noop/releases/download/v2.6.10/NOOP-v2.6.10-ios.ipa",
+          "size": 5574022,
+          "minOSVersion": "17.0"
+        },
+        {
           "version": "2.6.9",
           "buildVersion": "40",
           "date": "2026-06-12",
@@ -91,12 +100,12 @@
           "NSHealthUpdateUsageDescription": "NOOP writes the metrics it computes from your strap back into Apple Health, on-device and only when you allow it."
         }
       },
-      "version": "2.6.9",
-      "buildVersion": "40",
+      "version": "2.6.10",
+      "buildVersion": "41",
       "versionDate": "2026-06-12",
-      "versionDescription": "What's New screen fits iPhone; Today's Synthesis cards align.",
-      "downloadURL": "https://github.com/NoopApp/noop/releases/download/v2.6.9/NOOP-v2.6.9-ios.ipa",
-      "size": 5570768,
+      "versionDescription": "5/MG deep-data: live R22 flag-accept + deep-packet confirmation.",
+      "downloadURL": "https://github.com/NoopApp/noop/releases/download/v2.6.10/NOOP-v2.6.10-ios.ipa",
+      "size": 5574022,
       "minOSVersion": "17.0"
     }
   ],

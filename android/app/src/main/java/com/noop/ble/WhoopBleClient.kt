@@ -124,6 +124,15 @@ data class LiveState(
      *  direct connect just re-fails. Carries an actionable forget+re-pair guide; cleared on the next
      *  successful connect. Parity with macOS LiveState.reconnectGuide (5/MG firmware reset, 2026-06). */
     val reconnectGuide: String? = null,
+    /** EXPERIMENTAL R22 telemetry (#174): how many of the 15 enable_r22 SET_CONFIG flags the strap has
+     *  ACKed since the last "Send enable sequence" tap. 15 = the strap accepted the whole sequence (it
+     *  returns a COMMAND_RESPONSE per flag — hardware-confirmed). Reset per attempt + per session.
+     *  Twin of macOS LiveState.r22FlagsAccepted. */
+    val r22FlagsAccepted: Int = 0,
+    /** Count of LIVE type-0x2F deep biometric records seen this session OUTSIDE a history offload — i.e.
+     *  the R22 deep stream actually flowing in realtime. 0 with flags accepted = enable taken but no deep
+     *  data yet. Twin of macOS LiveState.deepPacketsThisSession. (#174) */
+    val deepPacketsThisSession: Int = 0,
 )
 
 /**
@@ -759,7 +768,8 @@ class WhoopBleClient(
     fun prepareForModelSwitch() {
         disconnect()
         lastDevice = null   // don't auto-reconnect to the old strap; the next connect scans for the new model
-        _state.value = _state.value.copy(connected = false, bonded = false, encryptedBond = false)
+        _state.value = _state.value.copy(connected = false, bonded = false, encryptedBond = false,
+                                         r22FlagsAccepted = 0, deepPacketsThisSession = 0)   // #174 reset per session
     }
 
     /**
@@ -1270,6 +1280,7 @@ class WhoopBleClient(
                 // Reassemble (no-op for already-complete frames) then route each complete frame.
                 // Port of: for frame in reassembler.feed(bytes) { router.handle(frame:) }.
                 for (frame in reassembler.feed(bytes)) {
+                    noteWhoop5R22Telemetry(frame, backfilling && isOffloadFrame(frame, connectedFamily))  // #174
                     handleFrame(frame)              // UI (always) — port of router.handle(frame:)
 
                     // Capture the strap's newest stored record from a GET_DATA_RANGE reply, feeding
@@ -1308,6 +1319,29 @@ class WhoopBleClient(
                 }
             }
             else -> { /* ignore */ }
+        }
+    }
+
+    /**
+     * EXPERIMENTAL R22 telemetry (#174) — port of macOS BLEManager.noteWhoop5R22Telemetry.
+     * (1) A COMMAND_RESPONSE (type 0x24) to a SET_CONFIG (0x78) = the strap ACKing one enable_r22 flag.
+     * (2) A type-0x2F record OUTSIDE a history offload = the R22 deep biometric stream flowing live.
+     * 5/MG puffin layout: packet_type @ byte 8, the responded-to cmd @ byte 10.
+     */
+    private fun noteWhoop5R22Telemetry(frame: ByteArray, duringOffload: Boolean) {
+        if (frame.size <= 10) return
+        val type = frame[8].toInt() and 0xFF
+        if (type == 0x24 && (frame[10].toInt() and 0xFF) == CommandNumber.SET_CONFIG.rawValue) {
+            val n = _state.value.r22FlagsAccepted + 1
+            _state.value = _state.value.copy(r22FlagsAccepted = n)
+            val total = Whoop5Config.enableR22Sequence.size
+            if (n == total) log("Deep-data: strap ACCEPTED all $n/$total R22 flags ✓ — keep it on; watching for deep packets.")
+        }
+        if (type == 0x2F && !duringOffload) {
+            val n = _state.value.deepPacketsThisSession + 1
+            _state.value = _state.value.copy(deepPacketsThisSession = n)
+            if (n == 1) log("Deep-data: 🎯 FIRST live deep (R22, type-0x2F) packet received — please keep wearing it and share your strap log on #174.")
+            else if (n % 50 == 0) log("Deep-data: $n live deep (type-0x2F) packets this session.")
         }
     }
 
@@ -1693,6 +1727,7 @@ class WhoopBleClient(
         if (!s.worn) {
             log("Deep-data: the R22 stream is on-wrist only — put the strap ON, then try again."); return
         }
+        _state.value = _state.value.copy(r22FlagsAccepted = 0)   // fresh attempt
         val flags = Whoop5Config.enableR22Sequence
         log("Deep-data: sending the ${flags.size}-flag enable_r22 sequence (experimental, reversible)…")
         flags.forEachIndexed { i, flag ->

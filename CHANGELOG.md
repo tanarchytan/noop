@@ -17,6 +17,15 @@ approximate; downloads are on the [Releases](https://github.com/NoopApp/noop/rel
 
 ---
 
+## 2.6.10 — WHOOP 5/MG deep data: live confirmation it's working
+
+- **New (iPhone & Android, experimental):** the WHOOP 5/MG **deep-data (R22)** section now shows **live
+  confirmation** of what the strap is doing — "**strap accepted 15/15 R22 flags**" the moment you send
+  the enable sequence, plus a **count of deep packets** if the strap starts streaming them. You can see
+  whether it's working without reading a log. A real 5/MG accepting the full sequence is now
+  hardware-confirmed (#174); the remaining step is seeing the deep packets actually flow, and this makes
+  it obvious the instant it happens.
+
 ## 2.6.9 — iPhone polish: What's New fits, Today cards align
 
 - **Fixed (iPhone):** the **What's New** screen shown after an update was sized for a desktop window

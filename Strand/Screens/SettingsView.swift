@@ -408,6 +408,26 @@ struct SettingsView: View {
                     Text(live.bonded ? (live.worn ? "Wear the strap, tap once, then let it sync and share your strap log." : "Put the strap on first — the deep stream is on-wrist only.") : "Connect and bond a 5/MG strap first.")
                         .font(StrandFont.caption)
                         .foregroundStyle(StrandPalette.textTertiary)
+
+                    // Live R22 telemetry (#174): proof of what the strap is doing right now.
+                    if live.r22FlagsAccepted > 0 {
+                        Label(live.r22FlagsAccepted >= 15
+                              ? "Strap accepted all 15 R22 flags"
+                              : "Strap accepted \(live.r22FlagsAccepted)/15 R22 flags…",
+                              systemImage: live.r22FlagsAccepted >= 15 ? "checkmark.seal.fill" : "ellipsis")
+                            .font(StrandFont.caption)
+                            .foregroundStyle(live.r22FlagsAccepted >= 15 ? StrandPalette.statusPositive : StrandPalette.textSecondary)
+                    }
+                    if live.deepPacketsThisSession > 0 {
+                        Label("Deep data is flowing — \(live.deepPacketsThisSession) R22 packet\(live.deepPacketsThisSession == 1 ? "" : "s") this session. Please share your strap log!",
+                              systemImage: "waveform.path.ecg")
+                            .font(StrandFont.caption)
+                            .foregroundStyle(StrandPalette.statusPositive)
+                    } else if live.r22FlagsAccepted >= 15 {
+                        Text("Flags accepted, but no deep packets yet — keep the strap on for a couple of minutes, then share your strap log on #174.")
+                            .font(StrandFont.caption)
+                            .foregroundStyle(StrandPalette.textTertiary)
+                    }
                 }
 
                 Divider().overlay(StrandPalette.hairline)

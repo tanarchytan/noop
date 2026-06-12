@@ -7,7 +7,7 @@ enum AppChangelog {
 
     /// Bump this when you add a release below. The "What's New" sheet shows automatically when the
     /// stored last-seen version is behind this. (Decoupled from the bundle version on purpose.)
-    static let currentVersion = "2.6.9"
+    static let currentVersion = "2.6.10"
 
     struct Release: Identifiable {
         let version: String
@@ -19,6 +19,13 @@ enum AppChangelog {
 
     /// Newest first.
     static let releases: [Release] = [
+        Release(
+            version: "2.6.10",
+            title: "WHOOP 5/MG deep data: live confirmation it's working",
+            date: "June 2026",
+            items: [
+                "New (iPhone and Android, experimental): the WHOOP 5/MG deep-data (R22) section now shows live confirmation of what the strap is doing — \"strap accepted 15/15 R22 flags\" the moment you send the enable sequence, and a count of deep packets if the strap starts streaming them. So you can see whether it's working without reading a log. A real 5/MG accepting the full sequence is now hardware-confirmed (#174) — the remaining step is seeing the deep packets actually flow, and this makes that obvious the instant it happens.",
+            ]),
         Release(
             version: "2.6.9",
             title: "iPhone polish: What's New fits, Today cards align",
