@@ -17,6 +17,12 @@ approximate; downloads are on the [Releases](https://github.com/NoopApp/noop/rel
 
 ---
 
+## 2.17.1 — Charge shows "Calibrating" instead of "No data" for new straps
+
+- **Fixed:** a brand-new strap showed a bare "No data" on Charge while it was still learning your baseline. It now reads "Calibrating — 0 of 4 nights" so it's clearly building, not broken. (Charge needs a few nights of wear; Effort and Rest show right away.) Thanks @umarXBT (#335).
+
+---
+
 ## 2.17.0 — iPhone polish + accessibility
 
 - **iPhone:** the floating tab bar no longer hides the last card on scrolling screens. Thanks @vulnix0x4 (#333).

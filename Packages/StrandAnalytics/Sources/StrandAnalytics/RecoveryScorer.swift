@@ -122,7 +122,10 @@ public enum RecoveryScorer {
                                          cfg: MetricCfg = Baselines.hrvCfg) -> Int? {
         guard !hasRecovery else { return nil }
         let n = nightlyHrv.compactMap { $0 }.filter { $0 >= cfg.minVal && $0 <= cfg.maxVal }.count
-        return (1..<seed).contains(n) ? n : nil
+        // Include 0: a brand-new user (no banked nights yet) should read "Calibrating — 0 of N" on the
+        // Charge ring, not a bare "No data" that looks broken (#335). Past days are gated to nil by the
+        // caller; >= seed (recovery should exist) still returns nil.
+        return (0..<seed).contains(n) ? n : nil
     }
 
     // MARK: - Recovery score

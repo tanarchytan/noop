@@ -24,9 +24,11 @@ class RecoveryCalibrationTest {
     }
 
     @Test
-    fun nullWhenNoNightHasHrvYet() {
+    fun zeroWhenNoNightHasHrvYet() {
+        // Brand-new user (no valid HRV nights yet) → 0, so Charge reads "Calibrating — 0 of N"
+        // rather than a bare "No data" (#335).
         val days = listOf(day("2026-01-01", null), day("2026-01-02", null))
-        assertNull(recoveryCalibrationNights(days, hasRecovery = false))
+        assertEquals(0, recoveryCalibrationNights(days, hasRecovery = false))
     }
 
     @Test

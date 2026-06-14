@@ -13,8 +13,10 @@ final class RecoveryCalibrationTests: XCTestCase {
         XCTAssertNil(RecoveryScorer.calibrationNights(nightlyHrv: [55.0, 60.0], hasRecovery: true))
     }
 
-    func testNilWhenNoNightHasHrvYet() {
-        XCTAssertNil(RecoveryScorer.calibrationNights(nightlyHrv: [nil, nil], hasRecovery: false))
+    func testZeroWhenNoNightHasHrvYet() {
+        // Brand-new user (no valid HRV nights yet) → 0, so Charge reads "Calibrating — 0 of N"
+        // rather than a bare "No data" (#335).
+        XCTAssertEqual(RecoveryScorer.calibrationNights(nightlyHrv: [nil, nil], hasRecovery: false), 0)
     }
 
     func testCountsNightsCarryingHrvBelowSeed() {

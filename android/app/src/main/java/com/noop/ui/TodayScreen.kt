@@ -702,8 +702,10 @@ internal fun recoveryCalibrationNights(
     // recovery seed (nValid) for nights whose avgHrv is within the HRV config bounds, so an implausible
     // out-of-range night must NOT be counted here either — else the displayed N could over-state nValid.
     val cfg = Baselines.hrvCfg
+    // Include 0: a brand-new user (no banked nights) reads "Calibrating — 0 of N" on Charge, not a
+    // bare "No data" that looks broken (#335). Caller gates past days to null; >= seed → null.
     return days.count { val v = it.avgHrv; v != null && v in cfg.minVal..cfg.maxVal }
-        .takeIf { it in 1 until seed }
+        .takeIf { it in 0 until seed }
 }
 
 /**

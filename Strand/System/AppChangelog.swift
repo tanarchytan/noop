@@ -7,7 +7,7 @@ enum AppChangelog {
 
     /// Bump this when you add a release below. The "What's New" sheet shows automatically when the
     /// stored last-seen version is behind this. (Decoupled from the bundle version on purpose.)
-    static let currentVersion = "2.17.0"
+    static let currentVersion = "2.17.1"
 
     struct Release: Identifiable {
         let version: String
@@ -19,6 +19,13 @@ enum AppChangelog {
 
     /// Newest first.
     static let releases: [Release] = [
+        Release(
+            version: "2.17.1",
+            title: "Charge shows \"Calibrating\" instead of \"No data\" for new straps",
+            date: "June 2026",
+            items: [
+                "Charge no longer shows a bare \"No data\" while it is still learning your baseline. A brand-new strap now reads \"Calibrating — 0 of 4 nights\" so it is clearly building, not broken — Charge needs a few nights of wear before it can score recovery (Effort and Rest show right away). Thanks @umarXBT (#335).",
+            ]),
         Release(
             version: "2.17.0",
             title: "iPhone polish + accessibility",
