@@ -18,6 +18,15 @@
       "screenshotURLs": [],
       "versions": [
         {
+          "version": "4.2.0",
+          "buildVersion": "97",
+          "date": "2026-06-15",
+          "localizedDescription": "Workout detail view, Activity Cost insights, shareable trends-report PDF, and faster history sync.",
+          "downloadURL": "https://github.com/NoopApp/noop/releases/download/v4.2.0/NOOP-v4.2.0-ios.ipa",
+          "size": 8014246,
+          "minOSVersion": "17.0"
+        },
+        {
           "version": "4.1.0",
           "buildVersion": "97",
           "date": "2026-06-15",
@@ -514,12 +523,12 @@
           "NSHealthUpdateUsageDescription": "NOOP writes the metrics it computes from your strap back into Apple Health, on-device and only when you allow it."
         }
       },
-      "version": "4.1.0",
+      "version": "4.2.0",
       "buildVersion": "97",
       "versionDate": "2026-06-15",
-      "versionDescription": "Estimated steps for WHOOP 4.0 (calibrated to your phone), generic heart-rate straps now connect (#421), and the strap log no longer exposes your WHOOP serial or MAC (#445).",
-      "downloadURL": "https://github.com/NoopApp/noop/releases/download/v4.1.0/NOOP-v4.1.0-ios.ipa",
-      "size": 7855389,
+      "versionDescription": "Workout detail view, Activity Cost insights, shareable trends-report PDF, and faster history sync.",
+      "downloadURL": "https://github.com/NoopApp/noop/releases/download/v4.2.0/NOOP-v4.2.0-ios.ipa",
+      "size": 8014246,
       "minOSVersion": "17.0"
     }
   ],
