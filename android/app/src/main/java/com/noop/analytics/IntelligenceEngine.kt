@@ -254,11 +254,13 @@ object IntelligenceEngine {
             val grav = repo.gravitySamples(owner, from, to, STREAM_LIMIT)
             val steps = repo.stepSamples(owner, from, to, STREAM_LIMIT)
             val skin = repo.skinTempSamples(owner, from, to, STREAM_LIMIT)
-            // WRIST_OFF events in the night window for the off-wrist sleep backstop (#500). The HR-gap
-            // proxy in the stager is the primary guard; these explicit events are a bonus drop of any
-            // run that overlaps one. kind is the strap event label, e.g. "WRIST_OFF(10)".
-            val wristOff = repo.events(owner, from, to, STREAM_LIMIT)
-                .filter { it.kind.startsWith("WRIST_OFF") }.map { it.ts }
+            // Wrist-wear events in the night window, paired into off-wrist [start, end) intervals for the
+            // off-wrist sleep backstop (#500). The HR-gap proxy in the stager is the always-on guard;
+            // these explicit intervals sharpen it under the FRACTIONAL rule (#504) — a session is dropped
+            // only when its off-wrist coverage reaches maxOffWristSleepFraction, so a real night with a
+            // short off-wrist tail survives. Pairing needs WRIST_ON too (to bound each interval); a span
+            // still open at the window end closes at `to`. Empty when the strap emitted no wrist events.
+            val wristOff = AnalyticsEngine.offWristIntervals(repo.events(owner, from, to, STREAM_LIMIT), to)
 
             // Calendar-day window for the ADDITIVE daily totals (steps + calories). The night window
             // above is anchored to the current time-of-day and ends at dayStart+12h, so for a PAST

@@ -14,6 +14,29 @@ import WhoopProtocol
 
 public enum AnalyticsEngine {
 
+    /// Pair the strap's WRIST_OFF/WRIST_ON events into off-wrist `[start, end)` intervals for the sleep
+    /// detector's fractional wear filter (#500; design credited to j0b-dev's #504). Each WRIST_OFF opens
+    /// an interval that closes at the next WRIST_ON, or at `windowEnd` if the strap is still off at the
+    /// end of the read window. Events need not be pre-sorted; kinds are formatted "NAME(n)" (e.g.
+    /// "WRIST_OFF(10)"), matched by prefix. Repeated OFFs/ONs without a partner are coalesced.
+    public static func offWristIntervals(events: [WhoopEvent], windowEnd: Int) -> [(start: Int, end: Int)] {
+        let wear = events
+            .filter { $0.kind.hasPrefix("WRIST_OFF") || $0.kind.hasPrefix("WRIST_ON") }
+            .sorted { $0.ts < $1.ts }
+        var intervals: [(start: Int, end: Int)] = []
+        var offStart: Int? = nil
+        for e in wear {
+            if e.kind.hasPrefix("WRIST_OFF") {
+                if offStart == nil { offStart = e.ts }            // ignore repeated OFFs
+            } else {                                              // WRIST_ON closes an open off-wrist span
+                if let s = offStart, e.ts > s { intervals.append((start: s, end: e.ts)) }
+                offStart = nil
+            }
+        }
+        if let s = offStart, windowEnd > s { intervals.append((start: s, end: windowEnd)) }
+        return intervals
+    }
+
     /// Baselines passed in by the caller (built from prior nights via Baselines).
     public struct ProfileBaselines: Sendable {
         public let hrv: BaselineState?
@@ -172,12 +195,14 @@ public enum AnalyticsEngine {
                                   // false-sleep guard (#90). Default 0 keeps pure-function callers/tests
                                   // on UTC; IntelligenceEngine passes the device's real offset.
                                   tzOffsetSeconds: Int = 0,
-                                  // WRIST_OFF event timestamps (unix seconds) for the off-wrist sleep
-                                  // backstop (#500). The HR-gap proxy in detectSleep is the primary
-                                  // guard; these explicit events are a bonus drop. Default empty keeps
-                                  // pure-function callers/tests event-free; IntelligenceEngine passes
-                                  // the night window's WRIST_OFF events.
-                                  wristOff: [Int] = [],
+                                  // Off-wrist `[start, end)` intervals (unix seconds) for the off-wrist
+                                  // sleep backstop (#500), paired from WRIST_OFF/WRIST_ON events by
+                                  // `offWristIntervals`. The HR-gap proxy in detectSleep is the always-on
+                                  // guard; these explicit intervals sharpen it under the FRACTIONAL rule
+                                  // (#504) — a session is dropped only when its off-wrist coverage reaches
+                                  // maxOffWristSleepFraction. Default empty keeps pure-function callers/
+                                  // tests event-free; IntelligenceEngine passes the night window's intervals.
+                                  wristOff: [(start: Int, end: Int)] = [],
                                   // Rest composite (Charge/Effort/Rest) personalization. Both default to
                                   // their neutral form so pure-function callers/tests get a well-defined
                                   // Rest from a single night; IntelligenceEngine refines them from history.

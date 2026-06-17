@@ -3,17 +3,18 @@ package com.noop.analytics
 import com.noop.data.GravitySample
 import com.noop.data.HrSample
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * Tests SleepStager's off-wrist backstop (#500). A wrist-OFF stretch reads as perfectly still
- * gravity with no contrary motion, so the gravity spine classifies it as sleep — and because the
- * off-wrist epochs carry zero/missing HR the daytime guard treats them as "missing data" and lets
- * them through. The backstop rejects any candidate sleep run whose HR coverage has a contiguous gap
- * longer than offWristHRGapMin (20 min), and — when available — any run overlapping a WRIST_OFF
- * event. Faithful Kotlin mirror of the off-wrist cases in SleepStagerTests.swift.
+ * Tests SleepStager's off-wrist backstop (#500), FRACTIONAL rule (#504; design credited to j0b-dev).
+ * A wrist-OFF stretch reads as perfectly still gravity with no contrary motion, so the gravity spine
+ * classifies it as sleep — and because the off-wrist epochs carry zero/missing HR the daytime guard
+ * treats them as "missing data" and lets them through. The backstop measures off-wrist COVERAGE — the
+ * union of a run's long HR-coverage gaps (≥ offWristHRGapMin = 20 min) and any WRIST_OFF→WRIST_ON
+ * intervals — and drops the run only when that reaches maxOffWristSleepFraction (0.5) of its duration,
+ * so a real night that over-extends into a SHORT off-wrist tail survives. Faithful Kotlin mirror of the
+ * off-wrist cases in SleepStagerTests.swift.
  */
 class SleepStagerOffWristTest {
 
@@ -72,29 +73,100 @@ class SleepStagerOffWristTest {
     }
 
     @Test
-    fun wristOffEventDropsRun() {
-        // The explicit-event path (#500 bonus): a WRIST_OFF event inside an otherwise-valid window
-        // drops it, even though the HR here is dense and gap-free.
+    fun realNightWithShortOffWristTailIsKept_hrGapPath() {
+        // THE critical case j0b-dev's #504 designed (HR-gap path): a real overnight night whose detected
+        // still period over-extends into a SHORT off-wrist morning tail — the user takes the strap off
+        // shortly after waking, so the tail flatlines to no HR — is KEPT. The old binary guard dropped the
+        // WHOLE night on that one trailing gap; the fractional rule keeps it (the tail is < 50% of the
+        // period). Here: ~3.5 h worn (dense HR) + 30 min off-wrist tail (no HR) ⇒ ~12.5% off-wrist.
+        val start = startAtHour(1)
+        val wornDur = 210 * 60                  // 3.5 h worn, dense 1 Hz HR
+        val tailDur = 30 * 60                   // 30 min off-wrist tail: still gravity, NO HR
+        val grav = stillGravity(start, wornDur + tailDur)   // one continuous still run
+        val hr = hrStream(start, wornDur, 50)               // HR stops at the wake
+        val sessions = SleepStager.detectSleep(hr = hr, gravity = grav)
+        assertEquals(
+            "a real night with a short (<50%) off-wrist morning tail must be KEPT, not dropped",
+            1, sessions.size,
+        )
+    }
+
+    @Test
+    fun realNightWithShortOffWristTailIsKept_intervalPath() {
+        // FRACTIONAL rule (#504), explicit-interval variant: a real night whose detected period
+        // over-extends into a short off-wrist tail covered by an explicit WRIST_OFF→WRIST_ON interval
+        // (HR is dense the whole window, e.g. a 5/MG still streaming PPG-HR) is KEPT — < 50% coverage.
+        val start = startAtHour(1)
+        val dur = 240 * 60                      // 4 h, dense HR throughout
+        val grav = stillGravity(start, dur)
+        val hr = hrStream(start, dur, 50)
+        // Strap removed for the last 30 min (12.5% of the run) → tiny overlap, keep the night.
+        val sessions = SleepStager.detectSleep(
+            hr = hr, gravity = grav,
+            wristOff = listOf((start + dur - 30 * 60) to (start + dur)),
+        )
+        assertEquals("a real night with a short (<50%) explicit off-wrist tail must be KEPT", 1, sessions.size)
+    }
+
+    @Test
+    fun wristOffIntervalCoveringMostOfRunDropsIt() {
+        // The explicit-interval path (#500), FRACTIONAL rule (#504): a WRIST_OFF→WRIST_ON interval that
+        // covers most of an otherwise-valid overnight window drops it — coverage ≥ maxOffWristSleepFraction.
         val start = startAtHour(2)
         val dur = 90 * 60
         val grav = stillGravity(start, dur)
         val hr = hrStream(start, dur, 50)
         assertEquals(1, SleepStager.detectSleep(hr = hr, gravity = grav).size)
-        val withEvent = SleepStager.detectSleep(hr = hr, gravity = grav, wristOff = listOf(start + 30 * 60))
-        assertTrue("a WRIST_OFF event inside the run must drop it", withEvent.isEmpty())
+        val dropped = SleepStager.detectSleep(
+            hr = hr, gravity = grav,
+            wristOff = listOf((start + 5 * 60) to (start + dur)),
+        )
+        assertTrue("a WRIST_OFF interval covering ≥50% of the run must drop it", dropped.isEmpty())
     }
 
     @Test
-    fun hasOffWristHRGapBoundaries() {
+    fun briefWristOffBlipKeepsWornNight() {
+        // FRACTIONAL rule (#504): a single BRIEF WRIST_OFF blip (well under 50% of the run) must NOT drop
+        // a real, dense, worn night — the flaw the binary "any WRIST_OFF drops it" guard had. Here a
+        // 5-min off-wrist interval over a 90-min night is ~5.5% coverage, so the night is kept.
+        val start = startAtHour(2)
+        val dur = 90 * 60
+        val grav = stillGravity(start, dur)
+        val hr = hrStream(start, dur, 50)
+        val kept = SleepStager.detectSleep(
+            hr = hr, gravity = grav,
+            wristOff = listOf((start + 30 * 60) to (start + 35 * 60)),
+        )
+        assertEquals("a brief (<50%) WRIST_OFF blip must NOT drop a real worn night", 1, kept.size)
+    }
+
+    @Test
+    fun offWristFractionAndGapSpans() {
+        // The fractional helpers are precise about the threshold, edges, and the union.
         val p = SleepStager.Period(stage = "sleep", start = 0L, end = 3_600L)
-        // Dense coverage → no gap.
+        // Dense coverage → no gap span, zero fraction.
         val dense = (0..3_600).map { HrSample(deviceId = dev, ts = it.toLong(), bpm = 50) }
-        assertFalse(SleepStager.hasOffWristHRGap(p, dense))
-        // A single 21-min interior gap (> 20 min) → tripped.
+        assertTrue(SleepStager.offWristHRGapSpans(p, dense).isEmpty())
+        assertEquals(0.0, SleepStager.offWristFraction(p, dense, emptyList()), 1e-9)
+        // A single 21-min interior gap (≥ 20 min) → one span, fraction = 1260/3600.
         val gappy = (0..600).map { HrSample(deviceId = dev, ts = it.toLong(), bpm = 50) } +
             (1_860..3_600).map { HrSample(deviceId = dev, ts = it.toLong(), bpm = 50) } // gap 600→1860 = 1260 s
-        assertTrue(SleepStager.hasOffWristHRGap(p, gappy))
-        // No HR stream at all → false (can't assert off-wrist without HR; other guards handle it).
-        assertFalse(SleepStager.hasOffWristHRGap(p, emptyList()))
+        val spans = SleepStager.offWristHRGapSpans(p, gappy)
+        assertEquals(1, spans.size)
+        assertEquals(600L, spans[0].first); assertEquals(1_860L, spans[0].second)
+        assertEquals(1_260.0 / 3_600.0, SleepStager.offWristFraction(p, gappy, emptyList()), 1e-9)
+        // Union must not double-count: a wrist-off interval overlapping the gap doesn't inflate coverage.
+        assertEquals(
+            1_260.0 / 3_600.0,
+            SleepStager.offWristFraction(p, gappy, listOf(800L to 1_500L)), 1e-9,
+        )
+        // A disjoint wrist-off interval adds to coverage (union of 1260 s gap + 600 s event = 1860 s).
+        assertEquals(
+            1_860.0 / 3_600.0,
+            SleepStager.offWristFraction(p, gappy, listOf(2_400L to 3_000L)), 1e-9,
+        )
+        // No HR stream at all → no gap spans, zero fraction (can't assert off-wrist without HR).
+        assertTrue(SleepStager.offWristHRGapSpans(p, emptyList()).isEmpty())
+        assertEquals(0.0, SleepStager.offWristFraction(p, emptyList(), emptyList()), 1e-9)
     }
 }

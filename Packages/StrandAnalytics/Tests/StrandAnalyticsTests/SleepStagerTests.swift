@@ -271,32 +271,93 @@ final class SleepStagerTests: XCTestCase {
         XCTAssertEqual(sessions.count, 1, "a worn night with dense, gap-free HR must still register")
     }
 
-    /// The explicit-event path (#500 bonus): a WRIST_OFF event landing inside an otherwise-valid
-    /// overnight window drops it, even though the HR here is dense and gap-free.
-    func testWristOffEventDropsRun() {
+    /// THE critical case j0b-dev's #504 designed (HR-gap path): a real overnight night whose detected
+    /// still period over-extends into a SHORT off-wrist morning tail — the user takes the strap off
+    /// shortly after waking, so the tail flatlines to no HR — is KEPT. The old binary guard dropped the
+    /// WHOLE night on that one trailing gap; the fractional rule keeps it because the tail is < 50% of
+    /// the period. Here: ~3.5 h worn (dense HR) + 30 min off-wrist tail (no HR) ⇒ ~12.5% off-wrist.
+    func testRealNightWithShortOffWristTailIsKept_HRGapPath() {
+        let start = nightStart(01)
+        let wornDur = 210 * 60                 // 3.5 h worn, dense 1 Hz HR
+        let tailDur = 30 * 60                  // 30 min off-wrist tail: still gravity, NO HR
+        let grav = stillGravity(start: start, durationS: wornDur + tailDur)  // one continuous still run
+        let hr = hrStream(start: start, durationS: wornDur, bpm: 50)         // HR stops at the wake
+        let sessions = SleepStager.detectSleep(hr: hr, gravity: grav)
+        XCTAssertEqual(sessions.count, 1,
+                       "a real night with a short (<50%) off-wrist morning tail must be KEPT, not dropped")
+    }
+
+    /// FRACTIONAL rule (#504), explicit-interval variant: a real night whose detected period over-extends
+    /// into a short off-wrist tail covered by an explicit WRIST_OFF→WRIST_ON interval (HR is dense the
+    /// whole window, e.g. a 5/MG still streaming PPG-HR) is KEPT — the interval covers < 50% of the run.
+    func testRealNightWithShortOffWristTailIsKept_IntervalPath() {
+        let start = nightStart(01)
+        let dur = 240 * 60                     // 4 h, dense HR throughout
+        let grav = stillGravity(start: start, durationS: dur)
+        let hr = hrStream(start: start, durationS: dur, bpm: 50)
+        // Strap removed for the last 30 min (12.5% of the run) → tiny overlap, keep the night.
+        let sessions = SleepStager.detectSleep(hr: hr, gravity: grav,
+                                               wristOff: [(start: start + dur - 30 * 60, end: start + dur)])
+        XCTAssertEqual(sessions.count, 1,
+                       "a real night with a short (<50%) explicit off-wrist tail must be KEPT")
+    }
+
+    /// The explicit-interval path (#500), FRACTIONAL rule (#504): a WRIST_OFF→WRIST_ON interval that
+    /// covers most of an otherwise-valid overnight window drops it, even though the HR here is dense
+    /// and gap-free — its off-wrist coverage is ≥ maxOffWristSleepFraction.
+    func testWristOffIntervalCoveringMostOfRunDropsIt() {
         let start = nightStart(02)
         let dur = 90 * 60
         let grav = stillGravity(start: start, durationS: dur)
         let hr = hrStream(start: start, durationS: dur, bpm: 50)
-        // No event → registers (control); a WRIST_OFF mid-window → dropped.
+        // No interval → registers (control); a near-full off-wrist interval (≥50%) → dropped.
         XCTAssertEqual(SleepStager.detectSleep(hr: hr, gravity: grav).count, 1)
-        let withEvent = SleepStager.detectSleep(hr: hr, gravity: grav, wristOff: [start + 30 * 60])
-        XCTAssertTrue(withEvent.isEmpty, "a WRIST_OFF event inside the run must drop it")
+        let dropped = SleepStager.detectSleep(hr: hr, gravity: grav,
+                                              wristOff: [(start: start + 5 * 60, end: start + dur)])
+        XCTAssertTrue(dropped.isEmpty, "a WRIST_OFF interval covering ≥50% of the run must drop it")
     }
 
-    /// The HR-gap helper is precise about the threshold and edges: a gap at/under 20 min is fine, a
-    /// gap over it trips, and a run with NO HR at all leaves the gravity-only path to the other guards.
-    func testHasOffWristHRGapBoundaries() {
+    /// FRACTIONAL rule (#504): a single BRIEF WRIST_OFF blip (well under 50% of the run) must NOT drop a
+    /// real, dense, worn night — the flaw the binary "any WRIST_OFF drops it" guard had. Here a 5-min
+    /// off-wrist interval over a 90-min night is ~5.5% coverage, so the night is kept.
+    func testBriefWristOffBlipKeepsWornNight() {
+        let start = nightStart(02)
+        let dur = 90 * 60
+        let grav = stillGravity(start: start, durationS: dur)
+        let hr = hrStream(start: start, durationS: dur, bpm: 50)
+        let kept = SleepStager.detectSleep(hr: hr, gravity: grav,
+                                           wristOff: [(start: start + 30 * 60, end: start + 35 * 60)])
+        XCTAssertEqual(kept.count, 1, "a brief (<50%) WRIST_OFF blip must NOT drop a real worn night")
+    }
+
+    /// The fractional helpers are precise about the threshold, edges, and the union. `offWristHRGapSpans`
+    /// returns the ≥20-min gaps as concrete spans; `offWristFraction` divides their union (with the
+    /// wrist-off intervals) by duration; a run with NO HR at all leaves the gravity-only path alone.
+    func testOffWristFractionAndGapSpans() {
         let p = SleepStager.Period(stage: "sleep", start: 0, end: 3_600)
-        // Dense coverage → no gap.
+        // Dense coverage → no gap span, zero fraction.
         let dense = (0...3_600).map { HRSample(ts: $0, bpm: 50) }
-        XCTAssertFalse(SleepStager.hasOffWristHRGap(p, hr: dense))
-        // A single 21-min interior gap (> 20 min) → tripped.
+        XCTAssertTrue(SleepStager.offWristHRGapSpans(p, hr: dense).isEmpty)
+        XCTAssertEqual(SleepStager.offWristFraction(p, hr: dense, wristOff: []), 0.0, accuracy: 1e-9)
+        // A single 21-min interior gap (≥ 20 min) → one span, fraction = 1260/3600.
         let gappy = (0...600).map { HRSample(ts: $0, bpm: 50) }
-                  + (1_860...3_600).map { HRSample(ts: $0, bpm: 50) }   // gap 600→1860 = 1260 s > 1200
-        XCTAssertTrue(SleepStager.hasOffWristHRGap(p, hr: gappy))
-        // No HR stream at all → false (can't assert off-wrist without HR; other guards handle it).
-        XCTAssertFalse(SleepStager.hasOffWristHRGap(p, hr: []))
+                  + (1_860...3_600).map { HRSample(ts: $0, bpm: 50) }   // gap 600→1860 = 1260 s ≥ 1200
+        let spans = SleepStager.offWristHRGapSpans(p, hr: gappy)
+        XCTAssertEqual(spans.count, 1)
+        XCTAssertEqual(spans[0].start, 600); XCTAssertEqual(spans[0].end, 1_860)
+        XCTAssertEqual(SleepStager.offWristFraction(p, hr: gappy, wristOff: []),
+                       1_260.0 / 3_600.0, accuracy: 1e-9)
+        // Union must not double-count: a wrist-off interval overlapping the gap doesn't inflate coverage.
+        XCTAssertEqual(SleepStager.offWristFraction(p, hr: gappy,
+                                                    wristOff: [(start: 800, end: 1_500)]),
+                       1_260.0 / 3_600.0, accuracy: 1e-9)
+        // A disjoint wrist-off interval adds to coverage (union of 1260 s gap + 600 s event = 1860 s).
+        XCTAssertEqual(SleepStager.offWristFraction(p, hr: gappy,
+                                                    wristOff: [(start: 2_400, end: 3_000)]),
+                       1_860.0 / 3_600.0, accuracy: 1e-9)
+        // No HR stream at all → no gap spans, zero fraction (can't assert off-wrist without HR).
+        XCTAssertTrue(SleepStager.offWristHRGapSpans(p, hr: []).isEmpty)
+        XCTAssertEqual(SleepStager.offWristFraction(p, hr: [], wristOff: []), 0.0, accuracy: 1e-9)
     }
 
     // MARK: - Staging output integrity

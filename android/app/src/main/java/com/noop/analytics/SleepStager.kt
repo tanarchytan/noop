@@ -132,20 +132,35 @@ object SleepStager {
     // A wrist-OFF stretch reads as perfectly still gravity with no contrary motion, so the
     // gravity spine classifies it as sleep — and because the off-wrist epochs carry zero/missing
     // HR the daytime guard treats them as "missing data" and lets them through (a daytime desk-off
-    // strap logged a phantom sleep). The backstop is HR-COVERAGE: while worn the strap emits ~1 Hz
-    // HR, so a long CONTIGUOUS gap in the HR samples spanning a candidate sleep run is a strong
-    // off-wrist proxy that works even when explicit WRIST_OFF events are absent. A run with such a
-    // gap is NOT classified as sleep. Independent of the daytime band — off-wrist is rejected day OR
-    // night, and a night-tail continuation does NOT exempt it. Mirrors Swift.
+    // strap logged a phantom sleep). The backstop measures OFF-WRIST COVERAGE: while worn the strap
+    // emits ~1 Hz HR, so a long CONTIGUOUS gap in the HR samples spanning part of a candidate sleep
+    // run is a strong off-wrist proxy that works even when explicit WRIST_OFF events are absent;
+    // explicit WRIST_OFF→WRIST_ON intervals (when the store surfaces them) sharpen it. A run is dropped
+    // only when that coverage reaches maxOffWristSleepFraction of its duration (the FRACTIONAL rule from
+    // j0b-dev's #504), so a real night that over-extends into a SHORT off-wrist tail survives. Independent
+    // of the daytime band — off-wrist is off-wrist day OR night, and a night-tail continuation does NOT
+    // exempt it. Mirrors Swift.
 
     /**
-     * A contiguous HR-sample gap longer than this (minutes), anywhere inside a candidate sleep run,
-     * marks the run off-wrist and rejects it. Sized at maxGapMin so a real worn night (dense ~1 Hz
-     * HR, or PPG-derived HR on a 5/MG) never trips it, but a wrist-off stretch (HR flatlines to no
-     * samples) does. The edges of the run count too: a run that begins/ends far from its nearest HR
+     * A contiguous HR-sample gap of at least this many minutes contributes to a candidate run's
+     * off-wrist coverage. Sized at maxGapMin so a real worn night (dense ~1 Hz HR, or PPG-derived HR
+     * on a 5/MG) contributes ~no gap, but a wrist-off stretch (HR flatlines to no samples) contributes
+     * its whole span. The edges of the run count too: a run that begins/ends far from its nearest HR
      * sample is partially uncovered.
      */
     const val offWristHRGapMin: Int = 20
+
+    /**
+     * FRACTIONAL off-wrist rejection (#500), design credited to j0b-dev's #504 analysis. A candidate
+     * sleep run is dropped ONLY when its off-wrist coverage — the UNION of its long HR-gap spans and
+     * any WRIST_OFF→WRIST_ON intervals overlapping it — is at least this fraction of its duration. The
+     * earlier guard dropped the WHOLE run on ANY contiguous HR gap or ANY single WRIST_OFF blip, which
+     * nuked a real night that over-extended into a SHORT off-wrist morning tail (strap removed shortly
+     * after waking) or that contained one stray WRIST_OFF event. 0.5 keeps such a night (<50% off-wrist)
+     * while still dropping an all-day desk strap (≈100% gap) or a session genuinely spent off-wrist.
+     * Mirrors Swift.
+     */
+    const val maxOffWristSleepFraction: Double = 0.5
 
     // ── Sparse-gravity robustness (#308) ──────────────────────────────────────
     //
@@ -528,38 +543,66 @@ object SleepStager {
     }
 
     /**
-     * Off-wrist backstop (#500). True when the candidate run [p.start, p.end] has a contiguous gap in
-     * its HR coverage longer than [offWristHRGapMin] minutes — a strong wrist-OFF proxy. Worn, the
-     * strap streams ~1 Hz HR (or PPG-derived HR on a 5/MG), so a real night has no such gap; an
-     * off-wrist stretch flatlines to no HR samples and trips it. The gaps from [p.start] to the first
-     * in-run sample and from the last in-run sample to [p.end] are counted too, so a run mostly
-     * outside HR coverage is also caught. With NO HR data at all this returns false (the gravity-only
-     * path is left to the existing guards — we can't assert off-wrist without HR). Mirrors Swift.
+     * Off-wrist HR-gap spans (#500). The contiguous HR-coverage gaps of at least [offWristHRGapMin]
+     * minutes WITHIN [p.start, p.end], as concrete [start, end) sub-intervals — a strong wrist-OFF
+     * proxy. Worn, the strap streams ~1 Hz HR (or PPG-derived HR on a 5/MG), so a real night yields no
+     * long gap; an off-wrist stretch flatlines to no HR samples and yields a span. The leading edge
+     * ([p.start] → first in-run sample) and trailing edge (last in-run sample → [p.end]) count too,
+     * and a run with NO in-run HR at all is one full-period gap. With NO HR data at all this returns
+     * [] (the gravity-only path is left to the existing guards — we can't assert off-wrist without HR).
+     * These spans are UNIONed with the WRIST_OFF intervals by [offWristFraction]. Mirrors Swift.
      */
-    internal fun hasOffWristHRGap(p: Period, hr: List<HrSample>): Boolean {
-        if (hr.isEmpty()) return false
+    internal fun offWristHRGapSpans(p: Period, hr: List<HrSample>): List<Pair<Long, Long>> {
+        if (hr.isEmpty() || p.end <= p.start) return emptyList()
         val gapS = (offWristHRGapMin * 60).toLong()
         val seg = hr.filter { it.ts in p.start..p.end }.sortedBy { it.ts }
-        // No HR anywhere inside a run long enough to matter → fully uncovered → off-wrist.
-        if (seg.isEmpty()) return (p.end - p.start) > gapS
+        // No HR anywhere inside a run long enough to matter → the whole period is one gap.
+        if (seg.isEmpty()) return if ((p.end - p.start) >= gapS) listOf(p.start to p.end) else emptyList()
+        val spans = ArrayList<Pair<Long, Long>>()
         // Leading edge: run start to first sample.
-        if (seg[0].ts - p.start > gapS) return true
+        if (seg[0].ts - p.start >= gapS) spans.add(p.start to seg[0].ts)
         // Interior: any gap between consecutive in-run samples.
-        for (i in 1 until seg.size) if (seg[i].ts - seg[i - 1].ts > gapS) return true
+        for (i in 1 until seg.size) if (seg[i].ts - seg[i - 1].ts >= gapS) spans.add(seg[i - 1].ts to seg[i].ts)
         // Trailing edge: last sample to run end.
-        if (p.end - seg[seg.size - 1].ts > gapS) return true
-        return false
+        if (p.end - seg[seg.size - 1].ts >= gapS) spans.add(seg[seg.size - 1].ts to p.end)
+        return spans
     }
 
     /**
-     * Off-wrist backstop (#500), event path. True when any explicit WRIST_OFF event timestamp falls
-     * inside the candidate run [p.start, p.end]. A bonus to the HR-gap proxy: when the store surfaces
-     * WRIST_OFF events (kind='WRIST_OFF(10)') the call site passes their timestamps and a run
-     * overlapping one is dropped outright. Empty when no events are available (the default), so the
-     * pure function and its tests are unaffected. Mirrors Swift.
+     * Fractional off-wrist coverage of a candidate run [p.start, p.end] in [0, 1] (#500).
+     * Design credited to j0b-dev's #504 analysis: instead of a binary drop on ANY HR gap or ANY single
+     * WRIST_OFF blip, we measure how much of the run is off-wrist and let the caller drop it only past
+     * [maxOffWristSleepFraction]. Coverage = (length of the UNION of) the HR-gap spans ([offWristHRGapSpans])
+     * AND the supplied WRIST_OFF→WRIST_ON [wristOff] intervals, clipped to the run, divided by duration.
+     * Unioning avoids double-counting overlapping gap+event time. A real night with a small (<50%)
+     * off-wrist tail scores low and is kept; an all-day desk strap (HR-gap ≈100%, no events needed) or a
+     * session genuinely spent off the wrist scores high and is dropped. Mirrors Swift.
      */
-    internal fun overlapsWristOff(p: Period, wristOff: List<Long>): Boolean =
-        wristOff.any { it in p.start..p.end }
+    internal fun offWristFraction(p: Period, hr: List<HrSample>, wristOff: List<Pair<Long, Long>>): Double {
+        val dur = p.end - p.start
+        if (dur <= 0) return 0.0
+        // Collect every off-wrist span, clipped to the run: HR-gap proxy spans + explicit wrist-off events.
+        val spans = ArrayList(offWristHRGapSpans(p, hr))
+        for (w in wristOff) {
+            val s = maxOf(w.first, p.start); val e = minOf(w.second, p.end)
+            if (e > s) spans.add(s to e)
+        }
+        if (spans.isEmpty()) return 0.0
+        // Union the spans so overlapping gap+event time is counted once, then sum the covered length.
+        spans.sortBy { it.first }
+        var covered = 0L; var curStart = spans[0].first; var curEnd = spans[0].second
+        for (i in 1 until spans.size) {
+            val sp = spans[i]
+            if (sp.first <= curEnd) {
+                curEnd = maxOf(curEnd, sp.second)        // overlapping/adjacent → extend
+            } else {
+                covered += curEnd - curStart             // disjoint → bank the run
+                curStart = sp.first; curEnd = sp.second
+            }
+        }
+        covered += curEnd - curStart
+        return covered.toDouble() / dur.toDouble()
+    }
 
     // ── detectSleep (public) ──────────────────────────────────────────────────
 
@@ -572,10 +615,13 @@ object SleepStager {
      * guard (#90). It defaults to 0 so the pure function and its tests stay UTC; the live
      * call site (IntelligenceEngine) passes the device's real offset.
      *
-     * [wristOff] is an optional list of WRIST_OFF event timestamps (unix seconds). When the call
-     * site has them (IntelligenceEngine reads `repo.events` kind='WRIST_OFF(10)'), any candidate
-     * sleep run overlapping one is dropped — a bonus to the always-on HR-gap off-wrist backstop
-     * (#500). Defaults to empty so the pure function and its tests stay event-free.
+     * [wristOff] is an optional list of off-wrist [start, end) intervals (unix seconds), paired from
+     * the strap's WRIST_OFF/WRIST_ON events by `AnalyticsEngine.offWristIntervals`. When the call site
+     * has them (IntelligenceEngine reads `repo.events`), they sharpen the always-on HR-gap off-wrist
+     * backstop: a candidate run is dropped when its off-wrist coverage (HR-gap spans UNION these
+     * intervals) reaches [maxOffWristSleepFraction] of its duration — the FRACTIONAL rule from #504, so
+     * a real night with a short off-wrist tail survives (#500). Defaults to empty (HR-gap proxy only),
+     * so the pure function and its tests stay event-free.
      */
     fun detectSleep(
         hr: List<HrSample> = emptyList(),
@@ -583,7 +629,7 @@ object SleepStager {
         resp: List<RespSample> = emptyList(),
         gravity: List<GravitySample>,
         tzOffsetSeconds: Long = 0L,
-        wristOff: List<Long> = emptyList(),
+        wristOff: List<Pair<Long, Long>> = emptyList(),
     ): List<DetectedSleep> {
         val grav = gravity.sortedBy { it.ts }
         if (grav.size < 2) return emptyList()
@@ -623,13 +669,17 @@ object SleepStager {
             if (p.stage != "sleep") continue
             if ((p.end - p.start) <= minSleepS) continue
             if (!confirmSleepWithHR(p, hrS, baseline)) continue
-            // Off-wrist backstop (#500): a wrist-OFF stretch is still gravity with no HR, so it slips
-            // past both the gravity spine and the daytime guard's "missing data" path. Reject any run
-            // with a long contiguous HR-coverage gap (the must-have proxy), OR — when WRIST_OFF events
-            // are available — any run overlapping one. Checked BEFORE the night-tail exemption: an
-            // off-wrist stretch is off-wrist day or night, and it must NOT ride a continuation chain.
-            // It does NOT re-anchor the chain (the run is simply skipped).
-            if (hasOffWristHRGap(p, hrS) || overlapsWristOff(p, wristOff)) continue
+            // Off-wrist backstop (#500), FRACTIONAL rule (design credited to j0b-dev's #504 analysis):
+            // a wrist-OFF stretch is still gravity with no HR, so it slips past both the gravity spine
+            // and the daytime guard's "missing data" path. Measure off-wrist COVERAGE — the union of the
+            // run's long HR-coverage gaps (the must-have proxy) and any WRIST_OFF→WRIST_ON intervals
+            // overlapping it — and drop the run only when that reaches maxOffWristSleepFraction of its
+            // duration. This no longer nukes a real night that over-extends into a SHORT (<50%) off-wrist
+            // morning tail, or that holds a single stray WRIST_OFF blip, while an all-day desk strap
+            // (≈100% gap) is still dropped. Checked BEFORE the night-tail exemption: off-wrist time is
+            // off-wrist day or night and must NOT ride a continuation chain. It does NOT re-anchor the
+            // chain (the run is simply skipped).
+            if (offWristFraction(p, hrS, wristOff) >= maxOffWristSleepFraction) continue
             // Daytime false-sleep guard (#90): a window centered in the local daytime band
             // must clear a stricter bar (≥daytimeMinSleepMin AND a real resting-HR dip).
             // Overnight windows skip this entirely. restingHR is computed here (reused below).

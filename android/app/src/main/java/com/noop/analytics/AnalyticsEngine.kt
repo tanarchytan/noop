@@ -1,6 +1,7 @@
 package com.noop.analytics
 
 import com.noop.data.DailyMetric
+import com.noop.data.EventRow
 import com.noop.data.GravitySample
 import com.noop.data.HrSample
 import com.noop.data.SkinTempSample
@@ -34,6 +35,33 @@ import kotlin.math.roundToLong
  * uses Int seconds.
  */
 object AnalyticsEngine {
+
+    /**
+     * Pair the strap's WRIST_OFF/WRIST_ON events into off-wrist [start, end) intervals for the sleep
+     * detector's fractional wear filter (#500; design credited to j0b-dev's #504). Each WRIST_OFF opens
+     * an interval that closes at the next WRIST_ON, or at [windowEnd] if the strap is still off at the
+     * end of the read window. Events need not be pre-sorted; kinds are formatted "NAME(n)" (e.g.
+     * "WRIST_OFF(10)"), matched by prefix. Repeated OFFs/ONs without a partner are coalesced. Mirrors Swift.
+     */
+    fun offWristIntervals(events: List<EventRow>, windowEnd: Long): List<Pair<Long, Long>> {
+        val wear = events
+            .filter { it.kind.startsWith("WRIST_OFF") || it.kind.startsWith("WRIST_ON") }
+            .sortedBy { it.ts }
+        val intervals = ArrayList<Pair<Long, Long>>()
+        var offStart: Long? = null
+        for (e in wear) {
+            if (e.kind.startsWith("WRIST_OFF")) {
+                if (offStart == null) offStart = e.ts            // ignore repeated OFFs
+            } else {                                             // WRIST_ON closes an open off-wrist span
+                val s = offStart
+                if (s != null && e.ts > s) intervals.add(s to e.ts)
+                offStart = null
+            }
+        }
+        val s = offStart
+        if (s != null && windowEnd > s) intervals.add(s to windowEnd)
+        return intervals
+    }
 
     // ─────────────────────────────────────────────────────────────────────────
     // Day-string helper (UTC YYYY-MM-DD), mirrors Swift AnalyticsEngine.isoDay.
@@ -140,11 +168,12 @@ object AnalyticsEngine {
         // Default 0 keeps pure-function callers/tests on UTC; IntelligenceEngine passes the device's
         // real offset.
         tzOffsetSeconds: Long = 0L,
-        // WRIST_OFF event timestamps (unix seconds) for the off-wrist sleep backstop (#500). The
-        // HR-gap proxy in detectSleep is the primary guard; these explicit events are a bonus drop.
-        // Default empty keeps pure-function callers/tests event-free; IntelligenceEngine passes the
-        // night window's WRIST_OFF events.
-        wristOff: List<Long> = emptyList(),
+        // Off-wrist [start, end) intervals (unix seconds) for the off-wrist sleep backstop (#500),
+        // paired from WRIST_OFF/WRIST_ON events by [offWristIntervals]. The HR-gap proxy in detectSleep
+        // is the always-on guard; these explicit intervals sharpen it under the FRACTIONAL rule (#504) —
+        // a session is dropped only when its off-wrist coverage reaches maxOffWristSleepFraction. Default
+        // empty keeps pure-function callers/tests event-free; IntelligenceEngine passes the night window's intervals.
+        wristOff: List<Pair<Long, Long>> = emptyList(),
         // Personal sleep need (hours) for the Rest "duration vs need" component. null → 8 h default.
         // IntelligenceEngine refines it from the user's recent average asleep hours. (Charge/Effort/Rest)
         sleepNeedHours: Double? = null,

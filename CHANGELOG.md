@@ -17,6 +17,10 @@ approximate; downloads are on the [Releases](https://github.com/NoopApp/noop/rel
 
 ---
 
+## 4.5.1 — Sleep: keep real nights when the strap comes off (all platforms)
+
+- **Refinement to v4.5.0's off-wrist sleep guard (#500, #504).** v4.5.0 dropped a detected sleep block on *any* off-wrist signal (a >20-min HR gap or a single `WRIST_OFF` event inside it), which could discard a genuine night whose detection over-extended into a short off-wrist morning tail (strap removed shortly after waking). The guard is now **fractional**: a block is rejected only when its off-wrist coverage — the union of HR-gap spans (≥20 min) and `WRIST_OFF`→`WRIST_ON` intervals, clipped to the block and merged so overlaps count once — is **≥ 50%** of its duration. A real night with a small off-wrist tail (or a brief mid-night blip) is kept in full; an all-day desk strap (~100% off-wrist) is still ignored. Swift + Android, with tests covering the survives-short-tail case both via HR-gap and explicit-interval paths. Thanks to community contributor **j0b-dev** for the sharper fractional approach (PR #504); reimplemented here as project work.
+
 ## 4.5.0 — WHOOP 5/MG deep-sync decode + sleep & workout fixes (all platforms)
 
 - **WHOOP 5/MG historical decode — v20/v21 layouts + richer v18 fields (#344).** Newer 5/MG firmware banks some nights in record layouts NOOP didn't map yet (internally "v20" and "v21"); they were failing the unrecognised-layout path and surfacing as empty nights. Those now decode to timestamps + optical/motion channels, so more 5/MG history syncs through. We also extract additional fields from the existing v18 records (per-record index, higher-precision HR, step cadence, an auxiliary thermal channel, status/sleep-state bitfields) and corrected the skin-temperature scale from /128 to /100 (a worn strap now reads ~30.6 °C instead of an impossible ~22 °C). All offsets were validated against real captured frames and CRC32 integrity; the Swift WhoopProtocol suite is at 164 passing tests. Thanks to community contributor **j0b-dev** for the captured-frame analysis (reimplemented here as project work).
