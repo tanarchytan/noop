@@ -140,7 +140,10 @@ public actor WhoopStore {
 
     /// Total on-disk size of the database — the main file plus its `-wal`/`-shm` siblings — in bytes.
     /// Drives the iOS Storage diagnostics screen (#590). `nil` for an in-memory store (no path). Runs
-    /// on the actor's executor, off the main thread.
+    /// on the actor's executor, off the main thread. Note (#755): under the `DatabasePool` the `-wal`
+    /// component can stay non-zero while a reader connection holds an open snapshot, so a `checkpointWAL`
+    /// may not fully truncate it; this total stays correct (it always includes the sidecars) but can
+    /// read a little higher than the old single-connection `DatabaseQueue` did right after a checkpoint.
     public func databaseFileSizeBytes() async -> Int64? {
         let base = dbWriter.path
         guard base != ":memory:", !base.isEmpty else { return nil }

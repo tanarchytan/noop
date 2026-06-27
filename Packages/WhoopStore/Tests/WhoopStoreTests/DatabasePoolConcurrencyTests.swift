@@ -1,5 +1,6 @@
 import XCTest
 import GRDB
+import WhoopProtocol
 @testable import WhoopStore
 
 /// #755: `WhoopStore` opens its file-backed connection as a GRDB `DatabasePool` (WAL) so the
@@ -57,7 +58,7 @@ final class DatabasePoolConcurrencyTests: XCTestCase {
         var config = Configuration()
         config.busyMode = .timeout(5)
         let pool = try DatabasePool(path: path, configuration: config)
-        try pool.write { db in
+        try await pool.write { db in
             try db.execute(sql: "CREATE TABLE t (id INTEGER PRIMARY KEY, v INTEGER NOT NULL)")
             try db.execute(sql: "INSERT INTO t (id, v) VALUES (1, 100)")
         }
@@ -103,10 +104,37 @@ final class DatabasePoolConcurrencyTests: XCTestCase {
         // reads observe committed data, just without serializing behind the writer.
         releaseWrite.signal()
         try await writer.value
-        let committedValue = try pool.read { db in
+        let committedValue = try await pool.read { db in
             try Int.fetchOne(db, sql: "SELECT v FROM t WHERE id = 1") ?? -1
         }
         XCTAssertEqual(committedValue, 200, "after the writer commits, reads must see the new value")
+    }
+
+    /// #755 review finding-1: every OTHER store test uses `inMemory()` (a `DatabaseQueue`) or, above, a
+    /// bare `Configuration()`, so none drive the production `init(path:)` config. Its `prepareDatabase`
+    /// PRAGMA block (synchronous/cache_size/mmap_size/temp_store) must run on EVERY connection a Pool
+    /// opens, the writer AND each reader, not just once. This opens the REAL store and reads
+    /// `PRAGMA cache_size` + `journal_mode` back off a pooled reader connection: `-16000` and `wal`
+    /// prove `prepareDatabase` applied per-connection, closing the inMemory/Queue blind spot the
+    /// migration's read/write concurrency depends on (a writer-only pragma would be the classic footgun).
+    func testProductionPoolRunsPrepareDatabaseOnReaderConnections() async throws {
+        let path = tempPath()
+        defer { removeDB(path) }
+
+        let store = try await WhoopStore(path: path)
+        let pool = store.registryWriter   // the production-configured DatabasePool
+
+        // A `.read` runs on a pooled reader connection; cache_size reflects its prepareDatabase pragma.
+        let cacheSize = try await pool.read { db in
+            try Int.fetchOne(db, sql: "PRAGMA cache_size") ?? 0
+        }
+        XCTAssertEqual(cacheSize, -16000,
+                       "production prepareDatabase pragmas must apply on pooled reader connections, not just the writer")
+
+        let journalMode = try await pool.read { db in
+            try String.fetchOne(db, sql: "PRAGMA journal_mode") ?? ""
+        }
+        XCTAssertEqual(journalMode.lowercased(), "wal", "DatabasePool must put the file in WAL mode")
     }
 
     private enum ConcurrencyTimeout: Error { case readBlockedOnWriter }
