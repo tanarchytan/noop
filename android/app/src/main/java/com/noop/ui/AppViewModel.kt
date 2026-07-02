@@ -240,15 +240,19 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     /**
      * Point the WHOOP scan at a specific family, then present nearby straps WITHOUT auto-connecting (the
-     * Add-a-device wizard's WHOOP path). [prepareForModelSwitch] first idles the engine + clears any
-     * sticky bond/connection, then [WhoopBleClient.scanForWhoops] takes over the LE scanner in present-
-     * mode (it stops the connect scan and re-arms an accumulate-not-connect scan). Mirrors the macOS
-     * AppModel.presentWhoopScan. The persisted family selection is updated too so a later real connect to
-     * the chosen strap targets the right family.
+     * Add-a-device wizard's WHOOP path). [WhoopBleClient.prepareForPresentScan] KEEPS a live same-model
+     * connection (#74, the Android half of the v5.2.3 iOS fix: the old unconditional
+     * prepareForModelSwitch dropped a live strap mid-session, left it disconnected for good if the wizard
+     * was dismissed without picking, and on a 5/MG risked the insufficient-auth re-bond refusal loop) and
+     * only idles the engine on a genuine family switch. [WhoopBleClient.scanForWhoops] then takes over
+     * the LE scanner in present-mode (accumulate, don't connect) without disturbing the kept link.
+     * Mirrors the macOS AppModel.presentWhoopScan + BLEManager.prepareForPresentScan. The persisted
+     * family selection is updated too so a later real connect to the chosen strap targets the right
+     * family.
      */
     fun presentWhoopScan(model: WhoopModel) {
         _selectedModel.value = model
-        ble.prepareForModelSwitch()
+        ble.prepareForPresentScan(model)
         ble.scanForWhoops(model)
     }
 
@@ -488,12 +492,34 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         repository.recentDaysMergedFlow(deviceId)
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
+    /**
+     * #78 hole-4: the app-foreground hook for the bond-loop salvage probe. Every activity resume runs
+     * [WhoopBleClient.salvageProbeIfBondLoopPaused], which no-ops unless the #747 give-up pause is
+     * latched AND its 10-minute floor has passed - so this is one cheap StateFlow read per resume in the
+     * healthy case, and the self-heal path for a paused strap the user has since freed. Registered on the
+     * Application (no lifecycle-process dependency needed); unregistered in [onCleared]. The iOS twin
+     * observes didBecomeActive inside BLEManager itself.
+     */
+    private val salvageProbeLifecycleCallbacks = object : Application.ActivityLifecycleCallbacks {
+        override fun onActivityResumed(activity: android.app.Activity) {
+            ble.salvageProbeIfBondLoopPaused()
+        }
+        override fun onActivityCreated(activity: android.app.Activity, savedInstanceState: android.os.Bundle?) {}
+        override fun onActivityStarted(activity: android.app.Activity) {}
+        override fun onActivityPaused(activity: android.app.Activity) {}
+        override fun onActivityStopped(activity: android.app.Activity) {}
+        override fun onActivitySaveInstanceState(activity: android.app.Activity, outState: android.os.Bundle) {}
+        override fun onActivityDestroyed(activity: android.app.Activity) {}
+    }
+
     init {
         // Multi-source coordinator (Phase 1B): reconcile the live source against the registry's active
         // device ONCE at launch. DORMANT for a single-WHOOP install (the default) — it no-ops and the
         // existing WHOOP flow below runs unchanged; it only acts when a non-WHOOP strap is the active
         // device. The Devices screen (next task) calls onActiveDeviceChanged after a setActive.
         noopApp.sourceCoordinator.start()
+        // #78 hole-4: wire the app-foreground salvage probe (see salvageProbeLifecycleCallbacks above).
+        noopApp.registerActivityLifecycleCallbacks(salvageProbeLifecycleCallbacks)
         // Resolve the active band's name for the Live screen header (MW-6). Falls back to "WHOOP" in the
         // UI until this first read lands.
         refreshActiveDeviceName()
@@ -1955,6 +1981,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     override fun onCleared() {
         super.onCleared()
+        // #78 hole-4: drop the app-foreground salvage-probe hook with this ViewModel (the next Activity's
+        // ViewModel re-registers its own), so a cleared VM can never leak resume callbacks.
+        noopApp.unregisterActivityLifecycleCallbacks(salvageProbeLifecycleCallbacks)
         // The BLE client is process-owned (NoopApplication) and may be held up by
         // WhoopConnectionService, so we never shut it down here. Only drop the connection when the
         // user hasn't opted into background streaming — otherwise closing the UI would defeat the

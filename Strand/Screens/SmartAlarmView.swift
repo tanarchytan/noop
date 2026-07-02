@@ -133,7 +133,7 @@ struct SmartAlarmView: View {
                         Text("Wake me with a strap buzz")
                             .font(StrandFont.body)
                             .foregroundStyle(StrandPalette.textPrimary)
-                        Text("Arms the strap to buzz at your wake time, even if NOOP is closed. Still experimental on WHOOP 4.0, so keep a backup alarm until you've confirmed it wakes you.")
+                        Text("Arms the strap to buzz at your wake time, even if NOOP is closed. Sends the exact alarm command the official app sends, confirmed buzzing on a real WHOOP 4.0 (community wire capture + on-device test, #535). Keep a backup alarm for anything you truly can't miss.")
                             .font(StrandFont.footnote)
                             .foregroundStyle(StrandPalette.textTertiary)
                             .fixedSize(horizontal: false, vertical: true)
@@ -161,15 +161,17 @@ struct SmartAlarmView: View {
                     // BLEManager.armStrapAlarm, which logs "not armed" and returns otherwise). Without this
                     // branch the card claimed "Armed on the strap itself" to a 5/MG owner whose strap was
                     // NOT armed, an honest-data violation (reporter: 5/MG, Experimental off, never buzzed).
-                    // Mirrors the Android SmartAlarmScreen StrapAlarmCard wording exactly. The WHOOP 4.0
-                    // path (the else) is unchanged.
+                    // Mirrors the Android SmartAlarmScreen StrapAlarmCard wording exactly. The else copy
+                    // was truth-synced once a real 4.0 wake was confirmed (PR #535: official-app wire
+                    // capture + on-device buzz by the capture author); 5/MG remains unconfirmed, so this
+                    // gated branch keeps its honesty wording.
                     if model.whoop5Detected && !PuffinExperiment.isEnabled {
                         Text("Your WHOOP 5/MG won't arm this until Experimental mode is on (Settings, Experimental). Right now your wake time is saved but the strap is NOT armed. Even with Experimental on, a 5/MG strap-driven wake is still unconfirmed on our side, so keep a backup alarm.")
                             .font(StrandFont.footnote)
                             .foregroundStyle(StrandPalette.statusWarning)
                             .frame(maxWidth: .infinity, alignment: .leading)
                     } else {
-                        Text("Armed on the strap itself, so it can buzz at your wake time even if your phone is asleep or NOOP is closed. We send the same alarm command the official app sends, but a strap-driven wake-up hasn't been confirmed on our side yet, so please keep a backup alarm for now.")
+                        Text("Armed on the strap itself, so it can buzz at your wake time even if your phone is asleep or NOOP is closed. Sends the exact alarm command the official app sends, confirmed buzzing on a real WHOOP 4.0 (community wire capture + on-device test, #535). Keep a backup alarm for anything you truly can't miss.")
                             .font(StrandFont.footnote)
                             .foregroundStyle(StrandPalette.textTertiary)
                             .frame(maxWidth: .infinity, alignment: .leading)

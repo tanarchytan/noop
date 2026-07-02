@@ -211,9 +211,12 @@ private fun StrapAlarmCard(vm: AppViewModel) {
                     Text("Strap wake-alarm", style = NoopType.title2, color = Palette.textPrimary)
                 }
             }
+            // Truth-sync (#535): the WHOOP 4.0 alarm payload was captured from the official app and
+            // confirmed buzzing on a real 4.0 by the capture author, so the copy no longer calls the
+            // 4.0 path experimental. The 5/MG Experimental-gate branch below is deliberately untouched.
             ToggleRowLocal(
                 label = "Wake me with a strap buzz",
-                help = "Arms the strap to buzz at your wake time, even if NOOP is closed. Still experimental on WHOOP 4.0, so keep a backup alarm until you've confirmed it wakes you.",
+                help = "Arms the strap to buzz at your wake time, even if NOOP is closed. Sends the exact alarm command the official app sends, confirmed buzzing on a real WHOOP 4.0 (community wire capture + on-device test, #535). Keep a backup alarm for anything you truly can't miss.",
                 checked = smartAlarm,
                 onChange = { vm.setSmartAlarmEnabled(it) },
             )
@@ -251,9 +254,11 @@ private fun StrapAlarmCard(vm: AppViewModel) {
                 } else {
                     Text(
                         if (live.bonded)
-                            "Armed on the strap itself, so it can buzz at your wake time even if your phone is asleep or NOOP is closed. Still experimental, so we can't yet guarantee it fires; keep a backup alarm."
+                            // Truth-sync (#535): confirmed buzzing on a real WHOOP 4.0; byte-identical
+                            // wording to the Swift SmartAlarmView.
+                            "Armed on the strap itself, so it can buzz at your wake time even if your phone is asleep or NOOP is closed. Sends the exact alarm command the official app sends, confirmed buzzing on a real WHOOP 4.0 (community wire capture + on-device test, #535). Keep a backup alarm for anything you truly can't miss."
                         else
-                            "Connect your strap to arm this; it's set on the strap's own firmware alarm. Still experimental, so keep a backup alarm until you've confirmed it wakes you.",
+                            "Connect your strap to arm this; it's set on the strap's own firmware alarm. Confirmed working on WHOOP 4.0; still experimental on 5.0 and MG. Keep a backup alarm for anything you truly can't miss.",
                         style = NoopType.footnote, color = Palette.textTertiary,
                     )
                 }

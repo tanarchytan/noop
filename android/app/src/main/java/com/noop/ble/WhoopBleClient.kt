@@ -432,6 +432,36 @@ class WhoopBleClient(
         fun scanModeForReconnectAttempts(attempts: Int): Int =
             if (attempts >= SCAN_POWER_BACKOFF_THRESHOLD) ScanSettings.SCAN_MODE_BALANCED
             else ScanSettings.SCAN_MODE_LOW_LATENCY
+
+        /** Pure keep/teardown decision for [prepareForPresentScan] (#74), unit-testable without a BLE
+         *  stack (the [scanModeForReconnectAttempts] idiom). Keep the live link ONLY when one exists AND
+         *  the wizard is scanning the SAME model; Android [WhoopModel] has exactly two members (one per
+         *  family), so enum equality IS the family check - do not invent a deviceFamily accessor. */
+        fun shouldKeepLiveConnectionForPresentScan(
+            connected: Boolean,
+            selected: WhoopModel,
+            requested: WhoopModel,
+        ): Boolean = connected && selected == requested
+
+        /** Minimum time since the bond-loop pause tripped (or since the last probe) before another
+         *  salvage probe may fire (#78 hole-4). 10 minutes: long enough that a still-held strap sees a
+         *  handful of bounded attempts per day, short enough that a strap the user freed reconnects on
+         *  the next natural app open. Twin of iOS `BLEManager.bondLoopSalvageFloorSeconds`. */
+        const val BOND_LOOP_SALVAGE_FLOOR_MS = 10L * 60_000L
+
+        /** Pure gate for the one-shot bond-loop salvage probe (#78 hole-4): probe ONLY while the pause is
+         *  latched, with no live link, no user teardown in force, and at least
+         *  [BOND_LOOP_SALVAGE_FLOOR_MS] since the pause tripped (or since the previous probe re-stamped
+         *  it). null ms = no trip timestamp = never probe. Pure so the never-hammer contract is pinned by
+         *  unit tests. Twin of iOS `BLEManager.shouldSalvageProbe`. */
+        fun shouldSalvageProbe(
+            pausedForBondLoop: Boolean,
+            connected: Boolean,
+            intentionalDisconnect: Boolean,
+            msSincePauseTripped: Long?,
+        ): Boolean = pausedForBondLoop && !connected && !intentionalDisconnect &&
+            msSincePauseTripped != null && msSincePauseTripped >= BOND_LOOP_SALVAGE_FLOOR_MS
+
         /** Give up a scan after this long with no strap found, and tell the user why. */
         private const val SCAN_TIMEOUT_MS = 20_000L
         /** Rotate to the other WHOOP family after this long with no discovery, in case the persisted
@@ -1566,6 +1596,7 @@ class WhoopBleClient(
         // #747/#750: a clean teardown clears the bond-refusal give-up + un-pauses auto-reconnect.
         bondGiveUp.reset()
         autoReconnectPausedForBondLoop = false
+        bondLoopPausedAtMs = null
         // #711: a user-initiated teardown resolves the re-pair guide (no longer looping).
         _state.update { it.copy(scanning = false, statusNote = null, reconnectGuide = null) }
         // disconnect() can throw on a dead binder (radio off, #314). If it does, the OS won't deliver
@@ -1632,6 +1663,32 @@ class WhoopBleClient(
     }
 
     /**
+     * #78 hole-4: ONE bounded salvage attempt while the bond-loop pause is latched, fired on
+     * app-foreground (the AppViewModel wires it to onActivityResumed). This is what makes the give-up
+     * provably unable to strand a strap the user has since freed: a genuine bond on the probe fully
+     * resets the pause via [clearPairingHint], while a still-refusing strap costs one attempt per
+     * foreground per [BOND_LOOP_SALVAGE_FLOOR_MS] and NEVER re-enters the hammer loop (the give-up stays
+     * latched so no second epitaph, [noteBondRefusalForPairingHint] doesn't flap the paused hint, and the
+     * paused branch of handleDisconnect schedules nothing). Re-stamps [bondLoopPausedAtMs] so
+     * back-to-back foregrounds can't chain probes. Gate extracted as the pure [shouldSalvageProbe].
+     * Twin of iOS `BLEManager.salvageProbeIfBondLoopPaused` (which observes didBecomeActive itself).
+     */
+    fun salvageProbeIfBondLoopPaused() {
+        handler.post {
+            val since = bondLoopPausedAtMs?.let { System.currentTimeMillis() - it }
+            if (!shouldSalvageProbe(autoReconnectPausedForBondLoop, _state.value.connected,
+                                    intentionalDisconnect, since)) return@post
+            if (gatt != null || scanning) return@post   // an attempt is already in flight - never stack one
+            bondLoopPausedAtMs = System.currentTimeMillis()   // re-floor: max one probe per foreground AND per window
+            log("Bond-loop pause: one salvage probe (the strap may have been freed since the give-up) - the give-up stays latched")
+            intentionalDisconnect = false
+            val dev = lastDevice
+            if (dev != null && isPreferred(dev)) connectToDevice(dev, autoConnect = true)
+            else connect(selectedModel)
+        }
+    }
+
+    /**
      * Switch which strap we'll connect to next: drop the current strap and clear the **sticky** bond
      * state so a newly-picked model bonds fresh. Without this, `bonded` stayed true from the first strap,
      * which hid the strap picker and kept the scan pointed at the old family's service — so a user with
@@ -1642,6 +1699,27 @@ class WhoopBleClient(
         lastDevice = null   // don't auto-reconnect to the old strap; the next connect scans for the new model
         _state.update { it.copy(connected = false, bonded = false, encryptedBond = false,
                                 r22FlagsAccepted = 0, deepPacketsThisSession = 0) }   // #174 reset per session
+    }
+
+    /**
+     * Idle the engine before presenting an Add-a-WHOOP scan - but ONLY when we're not already connected
+     * to a strap of this same model. Opening the scan must NOT tear down a live, bonded same-model
+     * connection (#74, the Android half of the v5.2.3 iOS fix): [prepareForModelSwitch] dropped the live
+     * strap mid-session (killing live HR/haptics/offload), set [intentionalDisconnect] AND nulled
+     * [lastDevice], so a wizard dismissed without picking left the strap disconnected FOR GOOD - and a
+     * 5/MG re-bond after the teardown refuses with insufficient-auth and loops on "connecting". The
+     * keep-path touches NOTHING (not [gatt], not [lastDevice], not [intentionalDisconnect]):
+     * [scanForWhoops] only borrows the LE scanner and never disturbs the connection. A genuine model
+     * switch (live 4.0 while scanning 5/MG, or nothing connected) still idles via [prepareForModelSwitch]
+     * so the scan starts clean. Decision extracted as the pure [shouldKeepLiveConnectionForPresentScan].
+     * Kotlin twin of macOS `BLEManager.prepareForPresentScan`.
+     */
+    fun prepareForPresentScan(model: WhoopModel) {
+        if (shouldKeepLiveConnectionForPresentScan(_state.value.connected, selectedModel, model)) {
+            log("Add-a-WHOOP scan: keeping the live ${selectedModel.displayName} connection (#74) - presenting nearby straps without dropping it")
+            return
+        }
+        prepareForModelSwitch()
     }
 
     /**
@@ -1664,6 +1742,12 @@ class WhoopBleClient(
             preferredAddress = null          // back to "connect to the first WHOOP found" (single-WHOOP default)
             lastDevice = null                // don't fast-path reconnect to it (onBluetoothRadioOn / auto-reconnect)
             pinnedBondRefusals = 0
+            // #747/#750 invariant: releasing a strap fully resets the give-up + pause (like disconnect())
+            // so a paused state can never outlive the strap it belonged to and wedge a later re-add.
+            bondRefusalStreak = 0
+            bondGiveUp.reset()
+            autoReconnectPausedForBondLoop = false
+            bondLoopPausedAtMs = null
             // Drop the persisted last-device pin so a relaunch / radio-on doesn't auto-reconnect to it (#67).
             NoopPrefs.clearLastDevice(context)
             // Drop the live BLE link so the strap is free to enter pairing mode. disconnect() can throw on a
@@ -2194,6 +2278,13 @@ class WhoopBleClient(
         sendSetClockBothForms()
         send(CommandNumber.SET_ALARM_TIME, whoop4AlarmPayload(epochSec))
         log("Alarm: armed (epoch $epochSec)")
+        // Arm READBACK (#401 close-out): ask the strap what it now has armed (GET_ALARM_TIME, cmd 67) so
+        // the strap log carries armed + strap-reports + fired as one decidable sequence in any future
+        // "didn't buzz" report. WHOOP 4.0 ONLY (this branch): the 5/MG puffin readback semantics are
+        // unverified. Log-only: handleFrame parses the cmd-67 COMMAND_RESPONSE defensively
+        // ([whoop4ArmedAlarmEpoch]) and NEVER gates behaviour on it (the 4.0 response layout is
+        // undocumented; unparseable replies log raw hex). Twin of macOS armStrapAlarm.
+        send(CommandNumber.GET_ALARM_TIME, byteArrayOf(0x01))
     }
 
     /** Clear the strap's firmware alarm. Port of macOS `BLEManager.disableStrapAlarm`. */
@@ -2420,6 +2511,16 @@ class WhoopBleClient(
     @Volatile
     private var autoReconnectPausedForBondLoop = false
 
+    /** When the bond-loop pause last tripped (or last salvage-probed), epoch ms. Drives the #78 hole-4
+     *  salvage probe's floor ([BOND_LOOP_SALVAGE_FLOOR_MS] via [shouldSalvageProbe]): a paused strap the
+     *  user has since FREED self-heals on the next app-foreground instead of staying disconnected until a
+     *  manual Connect, while a still-held strap gets at most one bounded attempt per foreground per floor
+     *  window. Set wherever the pause trips (#747 give-up + the #617 bond-then-quick-timeout detector,
+     *  deliberately both: probing a #617-paused link costs one bounded cycle and self-heals the same
+     *  way); null whenever the pause clears. Never persisted. Twin of iOS `bondLoopPausedAt`. */
+    @Volatile
+    private var bondLoopPausedAtMs: Long? = null
+
     /** A genuine bond this run: [address] is a live working strap (re-adopt target), and a bond proves no
      *  stale pin is wedging us — so clear the refusal streak. Twin of iOS `noteGenuineBond`. */
     private fun noteGenuineBond(address: String?) {
@@ -2490,7 +2591,12 @@ class WhoopBleClient(
         if (didBond) return                                       // already bonded — not a pairing problem
         if (connectedFamily != DeviceFamily.WHOOP5) return        // WHOOP 4 bonds cleanly; hint is 5/MG-only
         bondRefusalStreak++
-        if (bondRefusalStreak >= BOND_REFUSAL_HINT_THRESHOLD) {
+        if (bondGiveUp.gaveUp) {
+            // #78 hole-4: a refusal during a paused-state salvage probe must not stomp the paused hint
+            // back to the pairing hint (or flap the banner per probe). The streak keeps counting
+            // silently; recordRefusal() below stays false (latched), so no epitaph spam either.
+            log("WHOOP 5/MG: bond still refused during a paused-state probe (streak $bondRefusalStreak) - the give-up stays latched")
+        } else if (bondRefusalStreak >= BOND_REFUSAL_HINT_THRESHOLD) {
             // Re-assert BOTH the canonical hint and the statusNote mirror on every over-threshold refusal.
             // STATE_CONNECTED clears statusNote on each reconnect, so a once-only set would leave the Live
             // status blank after a reconnect — re-asserting keeps the already-rendered surface in sync.
@@ -2505,6 +2611,7 @@ class WhoopBleClient(
         // the honest paused hint. A genuine bond or a manual reconnect re-arms it.
         if (bondGiveUp.recordRefusal()) {
             autoReconnectPausedForBondLoop = true
+            bondLoopPausedAtMs = System.currentTimeMillis()   // starts the #78 hole-4 salvage-probe floor
             val opaque = BondRefusalGiveUp.opaqueId(failedAddress ?: "device")
             log(BondRefusalGiveUp.epitaphLine(bondGiveUp.refusals, opaque))
             _state.update { it.copy(pairingHint = BondRefusalGiveUp.pausedHint()) }
@@ -2522,6 +2629,7 @@ class WhoopBleClient(
         // #747/#750: a genuine bond or a fresh user connect re-arms auto-reconnect and clears the give-up.
         bondGiveUp.reset()
         autoReconnectPausedForBondLoop = false
+        bondLoopPausedAtMs = null
         if (_state.value.pairingHint != null) {
             _state.update {
                 val clearedNote = if (it.statusNote == PAIRING_HINT_TEXT) null else it.statusNote
@@ -3176,6 +3284,22 @@ class WhoopBleClient(
                 // here is how the MG haptics rejection (#48) would have shown itself in-app.
                 if (result != null && !result.startsWith("SUCCESS")) {
                     log("Command response: ${respCmd ?: "?"} → $result")
+                }
+                // Arm-readback diagnostic (#401 close-out): armStrapAlarm follows every WHOOP 4.0 arm
+                // with GET_ALARM_TIME (67) so the log proves what the STRAP believes is armed, not just
+                // what we sent. LOG-ONLY, never gates behaviour: the 4.0 response layout is undocumented,
+                // so the decode is defensive ([whoop4ArmedAlarmEpoch]: SET-mirror form first, bare u32
+                // second, plausibility-gated) and an unrecognised payload still logs its raw hex - which
+                // is exactly as diagnostic. Labelled "strap reports", not "verified" (one firmware's
+                // answer format must never mislead a triage). Twin of macOS FrameRouter.
+                if (connectedFamily == DeviceFamily.WHOOP4 && respCmd?.startsWith("GET_ALARM_TIME") == true) {
+                    val epoch = whoop4ArmedAlarmEpoch(frame)
+                    if (epoch != null) {
+                        log("Alarm: strap reports armed for ${alarmReadbackLocalTime(epoch)} (epoch $epoch)")
+                    } else {
+                        val raw = whoop4AlarmReadbackPayloadHex(frame) ?: "empty"
+                        log("Alarm: strap answered the alarm readback with an unrecognised payload (raw $raw) - layout undocumented, log-only")
+                    }
                 }
             }
 
@@ -4513,6 +4637,7 @@ class WhoopBleClient(
             // touch the bond/parse path — the bond is real; the stale OS pairing is the problem. Mirrors the
             // Swift BLEManager #844 fix.
             autoReconnectPausedForBondLoop = true
+            bondLoopPausedAtMs = System.currentTimeMillis()   // the #78 hole-4 salvage probe covers this pause too (one bounded cycle)
             if (_state.value.reconnectGuide == null) {
                 _state.update { it.copy(
                     reconnectGuide = """
@@ -4605,7 +4730,8 @@ class WhoopBleClient(
                     ) }
                 }
                 handler.postDelayed({
-                    if (!intentionalDisconnect) connect(selectedModel)
+                    // #78 hole-3: a timer in flight when the give-up trips must not fire an extra attempt.
+                    if (!intentionalDisconnect && !autoReconnectPausedForBondLoop) connect(selectedModel)
                 }, RECONNECT_DELAY_MS)
                 return
             }
@@ -4626,13 +4752,15 @@ class WhoopBleClient(
                 val directDelay = nextReconnectDelayMs()
                 log("Disconnected (status=$status); reconnecting directly in ${directDelay / 1000}s (attempt $failedReconnectAttempts)")
                 handler.postDelayed({
-                    if (!intentionalDisconnect) connectToDevice(dev, autoConnect = true)
+                    // #78 hole-3: a timer in flight when the give-up trips must not fire an extra attempt.
+                    if (!intentionalDisconnect && !autoReconnectPausedForBondLoop) connectToDevice(dev, autoConnect = true)
                 }, directDelay)
             } else {
                 val rescanDelay = nextReconnectDelayMs()
                 log("Disconnected (status=$status); rescanning in ${rescanDelay / 1000}s (attempt $failedReconnectAttempts)")
                 handler.postDelayed({
-                    if (!intentionalDisconnect) connect(selectedModel)
+                    // #78 hole-3: a timer in flight when the give-up trips must not fire an extra attempt.
+                    if (!intentionalDisconnect && !autoReconnectPausedForBondLoop) connect(selectedModel)
                 }, rescanDelay)
             }
         } else {
@@ -4894,8 +5022,9 @@ private val PII_WHOOP_SERIAL_RE = Regex("WHOOP (\\d[0-9A-Za-z]{5,})")
  *
  * The earlier 7-byte form omitted the trailing two bytes; the strap ACKed it but never buzzed (#428).
  * @ujix's btsnoop capture of the official WHOOP app (#535) shows the official app always sends 9 bytes,
- * so we now match it. The buzz itself is still unconfirmed on our side — no WHOOP 4.0 owner has reported
- * a strap-driven wake firing yet — so the Automations UI keeps a "keep a backup alarm" caveat.
+ * so we now match it. The buzz is confirmed on-device by the capture author (PR #535, 2026-06-20): a
+ * real WHOOP 4.0 buzzes at the specified time with this 9-byte frame. That's one device/firmware, so
+ * the Automations UI keeps a "keep a backup alarm" caveat for anything critical.
  * Pinned byte-for-byte by `Whoop4AlarmPayloadTest`.
  */
 internal fun whoop4AlarmPayload(epochSec: Long): ByteArray {
@@ -4910,6 +5039,61 @@ internal fun whoop4AlarmPayload(epochSec: Long): ByteArray {
         0x00, 0x00, // haptic-mode field required to actually buzz (official-app wire capture, #535)
     )
 }
+
+/**
+ * The payload of a WHOOP 4.0 COMMAND_RESPONSE: the bytes after `[type,seq,cmd,origin_seq,result]`
+ * (payload starts at absolute offset 9) up to the crc32 trailer at `length` (u16 LE at frame[1..2],
+ * marking where the trailer starts - same envelope walk as the Swift `FrameRouter.advertisingName`).
+ * null when the frame is too short to carry any payload. File-scope so it unit-tests without
+ * constructing the Android-only BLE client (the [whoop4AlarmPayload] idiom).
+ */
+internal fun whoop4CommandResponsePayload(frame: ByteArray): ByteArray? {
+    if (frame.size < 3) return null
+    val length = (frame[1].toInt() and 0xFF) or ((frame[2].toInt() and 0xFF) shl 8)
+    val start = 9   // SOF(1) + len(2) + crc8(1) + type,seq,cmd,origin_seq,result(5)
+    if (length > frame.size || start >= length) return null
+    return frame.copyOfRange(start, length)
+}
+
+/** Space-separated lowercase hex of a COMMAND_RESPONSE payload, for the raw-hex diagnostic fallback
+ *  when a readback payload doesn't decode. null when the frame carries no payload. */
+internal fun whoop4AlarmReadbackPayloadHex(frame: ByteArray): String? =
+    whoop4CommandResponsePayload(frame)?.takeIf { it.isNotEmpty() }
+        ?.joinToString(" ") { "%02x".format(it) }
+
+/** Plausibility gate for a readback epoch: a real armed alarm is near-now, so anything outside
+ *  2017..2100 (1_500_000_000 to 4_102_444_800, inclusive) is garbage or a strap with no alarm armed -
+ *  the caller falls back to the raw-hex line rather than logging a misleading date. */
+internal fun isPlausibleAlarmEpoch(epoch: Long): Boolean = epoch in 1_500_000_000L..4_102_444_800L
+
+/**
+ * Extract the armed-alarm epoch from a GET_ALARM_TIME (cmd 67) COMMAND_RESPONSE, defensively (#401
+ * close-out). The WHOOP 4.0 response layout is UNDOCUMENTED, so this tries the two shapes the firmware
+ * could plausibly answer with - the SET_ALARM_TIME mirror (`[form 0x01][u32 LE epoch]…`, matching the
+ * 9-byte payload we arm with) first, then a bare leading u32 LE - and accepts a candidate only when it
+ * passes [isPlausibleAlarmEpoch]. Anything else returns null and the caller logs raw hex instead.
+ * Pinned by `AlarmReadbackDecodeTest`; twin of the Swift `FrameRouter.armedAlarmEpoch`.
+ */
+internal fun whoop4ArmedAlarmEpoch(frame: ByteArray): Long? {
+    val payload = whoop4CommandResponsePayload(frame) ?: return null
+    fun u32le(at: Int): Long? {
+        if (payload.size < at + 4) return null
+        return (payload[at].toLong() and 0xFFL) or
+            ((payload[at + 1].toLong() and 0xFFL) shl 8) or
+            ((payload[at + 2].toLong() and 0xFFL) shl 16) or
+            ((payload[at + 3].toLong() and 0xFFL) shl 24)
+    }
+    if (payload.isNotEmpty() && payload[0] == 0x01.toByte()) {
+        u32le(1)?.takeIf { isPlausibleAlarmEpoch(it) }?.let { return it }
+    }
+    return u32le(0)?.takeIf { isPlausibleAlarmEpoch(it) }
+}
+
+/** Local wall-clock render for the readback log line ("EEE HH:mm zzz", the armStrapAlarm idiom on the
+ *  Swift side) so the armed + strap-reports lines read as one sequence. */
+internal fun alarmReadbackLocalTime(epochSec: Long): String =
+    java.text.SimpleDateFormat("EEE HH:mm zzz", java.util.Locale.US)
+        .format(java.util.Date(epochSec * 1000L))
 
 /** Mask MAC addresses and WHOOP serials in a strap-log line before it's shown/exported.
  *  TOTAL — never throws: a redaction failure returns a safe placeholder rather than leaking the raw

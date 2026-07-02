@@ -1034,18 +1034,30 @@ final class AppModel: ObservableObject {
     /// having authorized notifications (no second prompt). Always removes the prior set first, so a re-arm
     /// replaces rather than stacks. `weekdays` empty = every day (single daily trigger); a non-empty set
     /// fans out to one weekday-pinned trigger per selected day. No-op on macOS.
-    static func scheduleSmartAlarmBackupNotification(minutes: Int, weekdays: Set<Int>) {
+    /// `log` (optional): strap-log sink for the two guard bails below (#401 close-out). The bails were
+    /// silent no-ops, so a user whose backup never fired (wrist-alerts master off, or notification
+    /// permission revoked after arming) had NOTHING in the log to explain the missed backup. The caller
+    /// wraps the sink in a main-actor hop (the auth check completes off-main). Diagnostic only - both
+    /// guards bail exactly as before.
+    static func scheduleSmartAlarmBackupNotification(minutes: Int, weekdays: Set<Int>,
+                                                     log: ((String) -> Void)? = nil) {
         #if os(iOS)
         let center = UNUserNotificationCenter.current()
         // Always clear BOTH the single and the per-day ids so switching modes (or editing the weekday set)
         // never leaves an orphaned trigger or double-fires.
         center.removePendingNotificationRequests(withIdentifiers: smartAlarmBackupIds)
-        guard UserDefaults.standard.bool(forKey: wristAlertsMasterKey) else { return }
+        guard UserDefaults.standard.bool(forKey: wristAlertsMasterKey) else {
+            log?("Smart alarm: backup notification NOT scheduled (wrist-alerts master is off)")
+            return
+        }
         let valid = weekdays.filter { (1...7).contains($0) }
         // A non-empty selection that filters to nothing (only out-of-range numbers) has no day to fire on.
         if !weekdays.isEmpty && valid.isEmpty { return }
         center.getNotificationSettings { settings in
-            guard settings.authorizationStatus == .authorized else { return }
+            guard settings.authorizationStatus == .authorized else {
+                log?("Smart alarm: backup notification NOT scheduled (notifications not authorized)")
+                return
+            }
             let content = UNMutableNotificationContent()
             content.title = String(localized: "Smart alarm")
             content.body = String(localized: "Backup wake: your smart alarm time is here.")
@@ -1103,8 +1115,13 @@ final class AppModel: ObservableObject {
         }
         ble.armStrapAlarm(at: next)
         // Replace (remove + re-add by stable identifier) on every re-arm so the backup never stacks.
+        // The log sink hops to the main actor because the auth check completes off-main and LiveState is
+        // @MainActor - the same Task hop the importTraceSink uses.
         Self.scheduleSmartAlarmBackupNotification(minutes: behavior.smartAlarmMinutes,
-                                                  weekdays: behavior.smartAlarmWeekdays)
+                                                  weekdays: behavior.smartAlarmWeekdays,
+                                                  log: { [weak self] line in
+                                                      Task { @MainActor in self?.live.append(log: line) }
+                                                  })
     }
 
     /// Compute the next fire date for the smart alarm, honouring the weekday selection.

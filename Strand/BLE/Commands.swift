@@ -129,10 +129,10 @@ public enum WhoopCommand: UInt8, CaseIterable {
     /// always sends 9 bytes — the two trailing zero bytes are the missing haptic-mode field. The byte
     /// layout is now pinned by SetAlarmPayloadTests against that capture.
     ///
-    /// ⚠️ STILL EXPERIMENTAL until a real WHOOP 4.0 owner confirms the strap actually buzzes with this
-    /// 9-byte frame. We send the bytes the official app sends, but no strap-driven wake has been
-    /// reported firing on our side yet, so the UI keeps a "keep a backup alarm" caveat (see
-    /// AutomationsView). Do NOT guess additional fields beyond the captured frame.
+    /// CONFIRMED WORKING on WHOOP 4.0: the capture author tested this 9-byte frame on a real strap and
+    /// the alarm buzzes at the specified time (PR #535, 2026-06-20) - wire capture plus on-device
+    /// verification. That's one device/firmware, so the UI keeps a "keep a backup alarm" caveat for
+    /// anything critical. Do NOT guess additional fields beyond the captured frame.
     public static func setAlarmPayload(epochSec: UInt32) -> [UInt8] {
         [0x01,
          UInt8(epochSec & 0xFF),
