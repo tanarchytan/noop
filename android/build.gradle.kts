@@ -2,7 +2,7 @@
 // Keep these versions aligned with the shared contract:
 //   Android Gradle Plugin 8.x · Kotlin 1.9.x · KSP matched to the Kotlin version · Room 2.6.x.
 plugins {
-    id("com.android.application") version "8.5.2" apply false
+    id("com.android.application") version "8.13.1" apply false   // bumped from 8.5.2: works on Windows w/ cached toolchain
     id("org.jetbrains.kotlin.android") version "1.9.24" apply false
     // KSP version is <kotlinVersion>-<kspVersion>; must track the Kotlin version exactly.
     id("com.google.devtools.ksp") version "1.9.24-1.0.20" apply false
