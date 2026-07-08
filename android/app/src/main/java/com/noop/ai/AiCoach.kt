@@ -72,9 +72,23 @@ class AiCoach(private val repo: WhoopRepository) {
         // Local (Custom) servers usually need no key; the cloud providers always do. The guarded read
         // returns the stored key ONLY if it belongs to THIS provider (or is a legacy cloud key), so a
         // key saved for one provider is never Bearer-sent to another provider's (or a Custom) endpoint.
-        val key = AiKeyStore.read(ctx, provider)
+        // CLOUD routes through the linked noop-cloud's coach endpoint: the CLOUD keeps ALL the AI parts
+        // (system prompt, provider config, model, LLM call) on the SERVER, so nothing local is used for
+        // the model call in cloud mode. The bearer is the pairing token; base is the paired cloud root.
+        val cloudBase = if (provider == AiProvider.CLOUD)
+            com.noop.cloud.CloudPrefs.baseUrl(ctx).trimEnd('/') else ""
+        // CLOUD bearer = a fresh short-lived access token (auto-rotated from the refresh token). Null if
+        // the link expired; the local providers still use their stored API key.
+        val key = if (provider == AiProvider.CLOUD)
+            com.noop.cloud.CloudSession.validAccessToken(ctx) else AiKeyStore.read(ctx, provider)
         if (key == null && provider != AiProvider.CUSTOM) {
-            throw Exception("No API key set. Add your ${provider.displayName} key to use the coach.")
+            val msg = if (provider == AiProvider.CLOUD)
+                "Link a cloud first (Settings → Cloud) to use cloud AI."
+            else "No API key set. Add your ${provider.displayName} key to use the coach."
+            throw Exception(msg)
+        }
+        if (provider == AiProvider.CLOUD) require(cloudBase.startsWith("http")) {
+            "Link a cloud first (Settings → Cloud)."
         }
         if (provider == AiProvider.CUSTOM) {
             require(customBaseUrl.isNotBlank()) { "Set your server URL first." }
@@ -124,6 +138,11 @@ class AiCoach(private val repo: WhoopRepository) {
                 callAnthropic(provider, model, key!!, grounded, systemPrompt)
             AiProvider.CUSTOM ->
                 callOpenAiCompatible(provider, customChatUrl(customBaseUrl), model, key, grounded, systemPrompt)
+            AiProvider.CLOUD ->
+                // The cloud owns the system prompt + provider + model + LLM call. We send only the
+                // grounded conversation (data context is already injected in-band above); NO local
+                // provider/prompt/LLM code runs. The local systemPrompt above is unused here by design.
+                cloudCoachChat(ctx, cloudBase, key!!, grounded)
         }
     }
 
@@ -182,6 +201,8 @@ class AiCoach(private val repo: WhoopRepository) {
                 builder.addHeader("anthropic-version", "2023-06-01")
             }
             AiProvider.CUSTOM -> if (!key.isNullOrBlank()) builder.addHeader("Authorization", "Bearer $key")
+            // CLOUD never reaches here (it early-returns above — the cloud picks its own model).
+            AiProvider.CLOUD -> {}
         }
 
         runCatching {
@@ -196,8 +217,9 @@ class AiCoach(private val repo: WhoopRepository) {
                 if (id.isEmpty()) continue
                 val keep = when (provider) {
                     AiProvider.OPENAI -> id.startsWith("gpt") || id.startsWith("o")
-                    // Anthropic + a local server name models freely → keep all.
-                    AiProvider.ANTHROPIC, AiProvider.CUSTOM -> true
+                    // Anthropic + a local server name models freely → keep all. CLOUD never reaches
+                    // here (it early-returns above; the cloud picks its own model).
+                    AiProvider.ANTHROPIC, AiProvider.CUSTOM, AiProvider.CLOUD -> true
                 }
                 if (keep) ids.add(id)
             }
@@ -413,6 +435,35 @@ class AiCoach(private val repo: WhoopRepository) {
         return if (truncated) content + TRUNCATION_NOTE else content
     }
 
+    // ---------------------------------------------------------------------------------------
+    // CLOUD, POST {base}/api/coach/chat  (bearer = pairing token)
+    //   The cloud OWNS the AI parts — system prompt, provider, model, LLM call. We send only the
+    //   grounded conversation; the cloud replies { "reply": "..." }. No local provider/prompt code.
+    // ---------------------------------------------------------------------------------------
+    private fun cloudCoachChat(
+        ctx: android.content.Context, base: String, token: String, history: List<ChatMsg>,
+    ): String {
+        com.noop.net.NetGuard.requireLanOrHttps(base)   // never send the token cleartext to a public host
+        val messages = JSONArray()
+        for (m in history) messages.put(JSONObject().put("role", m.role).put("content", m.text))
+        val body = JSONObject().put("messages", messages).toString()
+
+        val req = Request.Builder()
+            .url("$base/api/coach/chat")
+            .addHeader("Content-Type", "application/json")
+            .addHeader("Authorization", "Bearer $token")
+            .post(body.toRequestBody(JSON))
+            .build()
+
+        // Pin the cloud's self-signed cert for https bases (inert for http). Uses a per-call pinned
+        // client rather than the shared local-provider client.
+        val (code, text) = execute(req, com.noop.cloud.CloudTls.client(ctx, http))
+        if (code !in 200..299) throw httpError(AiProvider.CLOUD, code, text)
+        val reply = parse(text).optString("reply").trim()
+        if (reply.isEmpty()) throw Exception("The cloud returned an empty reply. Please try again.")
+        return reply
+    }
+
     /** Base for the Custom provider, the user's URL with any trailing slashes trimmed. */
     private fun customBase(url: String): String = url.trim().trimEnd('/')
 
@@ -435,67 +486,7 @@ class AiCoach(private val repo: WhoopRepository) {
      * cleartext rule to a CIDR), so THIS check is what actually keeps cleartext off the public
      * internet (#187). A public http:// host is rejected with a precise, actionable error.
      */
-    private fun guardCustomUrl(base: String) {
-        val uri = runCatching { java.net.URI(base) }.getOrNull()
-        val host = uri?.host
-        val scheme = uri?.scheme?.lowercase()
-        require(host != null && !scheme.isNullOrBlank()) {
-            "That server URL isn't valid. Use http://<host>:<port> for a local server, or https://… for a remote one."
-        }
-        if (scheme == "https") return
-        require(scheme == "http") {
-            "Unsupported URL scheme \"$scheme\". Use http:// for a local server or https:// for a remote one."
-        }
-        require(isPrivateLanOrLoopback(host)) {
-            "Plain http:// is only allowed to a local-network server (localhost, 10.x, 172.16-31.x, " +
-                "192.168.x, 169.254.x, or a .local name). Use https:// to reach \"$host\"."
-        }
-    }
-
-    /**
-     * True when [host] is on the device's own machine or its private LAN, so plain http:// to it
-     * never crosses the public internet: loopback (localhost / 127.0.0.0/8 / ::1), RFC1918
-     * (10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16), link-local (169.254.0.0/16 / fe80::/10), the
-     * emulator host alias 10.0.2.2, and any *.local mDNS name. Anything else is treated as public.
-     */
-    private fun isPrivateLanOrLoopback(host: String): Boolean {
-        val raw = host.trim()
-        val h = raw.trim('[', ']').lowercase()  // strip IPv6 brackets if present
-        if (h.isEmpty()) return false
-
-        // Is this an IPv6 LITERAL, not a DNS hostname? A URI gives a bracketed host for an IPv6
-        // literal ("[::1]"), and an IPv6 literal always contains a colon while a DNS host (the host
-        // component excludes the :port) never does. We must only apply the fc/fd/fe80 ULA/link-local
-        // classification to a real literal, otherwise a PUBLIC name like "fclient.evil.com" or
-        // "fdn.example.com" starts with "fc"/"fd" and would be wrongly allowed plain-HTTP cleartext.
-        val isIpv6Literal = raw.startsWith("[") || h.contains(':')
-        if (isIpv6Literal) {
-            if (h == "::1") return true                                   // loopback
-            // fc00::/7 unique-local, fe80::/10 link-local, literal-only.
-            if (h.startsWith("fc") || h.startsWith("fd") || h.startsWith("fe80:")) return true
-            return false                                                  // any other IPv6 literal = public
-        }
-
-        if (h == "localhost" || h.endsWith(".localhost")) return true
-        // mDNS / Bonjour LAN names: require a real label before ".local" (so the bare ".local" /
-        // "local" can't slip through), and only for an actual hostname (handled above for literals).
-        if (h.endsWith(".local") && h.length > ".local".length) return true
-
-        // IPv4 dotted-quad: validate and classify by RFC1918 / loopback / link-local.
-        val parts = h.split(".")
-        if (parts.size != 4) return false
-        val octets = parts.map { it.toIntOrNull() ?: -1 }
-        if (octets.any { it < 0 || it > 255 }) return false
-        val (a, b) = octets[0] to octets[1]
-        return when {
-            a == 127 -> true                              // 127.0.0.0/8 loopback
-            a == 10 -> true                               // 10.0.0.0/8
-            a == 172 && b in 16..31 -> true               // 172.16.0.0/12
-            a == 192 && b == 168 -> true                  // 192.168.0.0/16
-            a == 169 && b == 254 -> true                  // 169.254.0.0/16 link-local
-            else -> false
-        }
-    }
+    private fun guardCustomUrl(base: String) = com.noop.net.NetGuard.requireLanOrHttps(base)
 
     // ---------------------------------------------------------------------------------------
     // Anthropic, POST /v1/messages
@@ -547,10 +538,11 @@ class AiCoach(private val repo: WhoopRepository) {
     // HTTP / error plumbing
     // ---------------------------------------------------------------------------------------
 
-    /** Execute a request, mapping low-level network failures to a friendly [Exception]. */
-    private fun execute(request: Request): Pair<Int, String> {
+    /** Execute a request, mapping low-level network failures to a friendly [Exception].
+     *  [client] defaults to the shared client; the CLOUD path passes a cert-pinned one. */
+    private fun execute(request: Request, client: OkHttpClient = http): Pair<Int, String> {
         try {
-            http.newCall(request).execute().use { resp ->
+            client.newCall(request).execute().use { resp ->
                 val text = resp.body?.string().orEmpty()
                 return resp.code to text
             }

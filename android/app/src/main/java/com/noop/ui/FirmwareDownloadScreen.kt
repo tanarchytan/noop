@@ -137,7 +137,35 @@ fun FirmwareDownloadScreen(currentFirmware: String? = null) {
                 }
             },
             modifier = Modifier.fillMaxWidth(),
-        ) { Text(if (busy) "Checking…" else "Check for update") }
+        ) { Text(if (busy) "Checking…" else "Check for update (WHOOP login)") }
+
+        // No-login check: compare the band version against your linked noop-cloud's firmware-latest.json
+        // (scraped from WHOOP's public release notes). Needs Settings → Cloud linked.
+        Button(
+            enabled = !busy && currentVersion.isNotBlank(),
+            onClick = {
+                output = null; busy = true
+                scope.launch {
+                    try {
+                        val base = com.noop.cloud.CloudPrefs.baseUrl(context)
+                        if (base.isBlank()) { output = "Link a cloud first (Settings → Cloud)."; return@launch }
+                        val latest = com.noop.cloud.CloudClient().latestFirmware(base)
+                        // 4.0 = harvard, 5.0/MG = maverick; PUFFIN is a 5.0 variant → maverick track.
+                        val newest = if (hw == WhoopHardware.HARVARD) latest.harvard else latest.maverick
+                        output = if (newest == null) "Cloud has no version for ${hw.label}."
+                        else buildString {
+                            val cur = currentVersion.trim()
+                            appendLine(if (com.noop.cloud.firmwareIsNewer(newest, cur)) "UPDATE AVAILABLE" else "Up to date ✓")
+                            appendLine("current: $cur")
+                            appendLine("latest (cloud): $newest")
+                        }
+                    } catch (e: Exception) {
+                        output = "ERROR: ${e.message}"
+                    } finally { busy = false }
+                }
+            },
+            modifier = Modifier.fillMaxWidth(),
+        ) { Text(if (busy) "Checking…" else "Check for update (no login, via cloud)") }
 
         OutlinedTextField(
             value = targetVersion, onValueChange = { targetVersion = it },
