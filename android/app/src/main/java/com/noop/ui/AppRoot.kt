@@ -37,6 +37,7 @@ import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.CloudSync
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Explore
+import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.FitnessCenter
 import androidx.compose.material.icons.filled.HealthAndSafety
@@ -171,6 +172,8 @@ private enum class Destination(
     TestCentre("test_centre", R.string.nav_test_centre, Icons.Filled.BugReport),
     // Fork addition: Settings → Cloud (self-hosted noop-cloud link). Sub-screen, reached from Settings.
     CloudSettings("cloud_settings", R.string.nav_cloud, Icons.Filled.CloudSync),
+    // Fork addition: experimental cuffless blood-pressure estimate via the linked cloud (com.noop.bp).
+    BloodPressure("blood_pressure", R.string.nav_blood_pressure, Icons.Filled.Favorite),
 
     // The "More" tab: its own navigated page (mirroring the iOS More tab) that hosts the full
     // grouped destination list. It is NOT itself in any [DrawerGroup] — it's the door to them.
@@ -211,7 +214,7 @@ private val drawerGroups: List<DrawerGroup> = listOf(
     DrawerGroup("Body", R.string.more_group_body, listOf(
         Destination.Live, Destination.Workouts, Destination.Health, Destination.VitalSigns,
         Destination.LabBook, Destination.Stress, Destination.Breathe, Destination.Intervals,
-        Destination.Rhythm,
+        Destination.Rhythm, Destination.BloodPressure,
     ), defaultExpanded = true),
     DrawerGroup("Data", R.string.more_group_data, listOf(
         Destination.FusedRecord, Destination.AppleHealth, Destination.DataSources,
@@ -428,6 +431,7 @@ fun AppRoot(viewModel: AppViewModel = viewModel()) {
                     val live by viewModel.live.collectAsStateWithLifecycle()
                     FirmwareDownloadScreen(currentFirmware = live.strapFirmware)
                 }
+                composable(Destination.BloodPressure.route) { BpScreen() }
                 composable(Destination.DataSources.route) { DataSourcesScreen(viewModel) }
                 composable(Destination.BackupSync.route) { BackupSyncScreen() }
                 composable(Destination.Notifications.route) { NotificationsSettingsScreen(viewModel) }
