@@ -51,6 +51,7 @@ import androidx.compose.material.icons.filled.Sensors
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Spa
 import androidx.compose.material.icons.filled.Storage
+import androidx.compose.material.icons.filled.SystemUpdate
 import androidx.compose.material.icons.filled.Timeline
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.filled.WaterDrop
@@ -93,6 +94,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
@@ -159,6 +161,8 @@ private enum class Destination(
     // name fits. Route id stays "smart_alarm" (display string only).
     SmartAlarm("smart_alarm", R.string.nav_alarms, Icons.Filled.Alarm),
     Devices("devices", R.string.nav_devices, Icons.Filled.Sensors),
+    // Fork addition: download official WHOOP firmware images (download-only). See com.noop.firmware.
+    FirmwareDownload("firmware_download", R.string.nav_firmware_download, Icons.Filled.SystemUpdate),
     DataSources("data_sources", R.string.nav_data_sources, Icons.Filled.Storage),
     BackupSync("backup_sync", R.string.nav_backup_sync, Icons.Filled.CloudSync),
     FusedRecord("fused_record", R.string.nav_fused_record, Icons.AutoMirrored.Filled.CompareArrows),
@@ -209,7 +213,7 @@ private val drawerGroups: List<DrawerGroup> = listOf(
     ), defaultExpanded = true),
     DrawerGroup("Data", R.string.more_group_data, listOf(
         Destination.FusedRecord, Destination.AppleHealth, Destination.DataSources,
-        Destination.BackupSync, Destination.Devices,
+        Destination.BackupSync, Destination.Devices, Destination.FirmwareDownload,
     ), defaultExpanded = false),
     DrawerGroup("App", R.string.more_group_app, listOf(
         Destination.Automations, Destination.SmartAlarm, Destination.Notifications,
@@ -417,6 +421,10 @@ fun AppRoot(viewModel: AppViewModel = viewModel()) {
                         viewModel,
                         onUseFileImport = { nav.navigateTopLevel(Destination.DataSources.route) },
                     )
+                }
+                composable(Destination.FirmwareDownload.route) {
+                    val live by viewModel.live.collectAsStateWithLifecycle()
+                    FirmwareDownloadScreen(currentFirmware = live.strapFirmware)
                 }
                 composable(Destination.DataSources.route) { DataSourcesScreen(viewModel) }
                 composable(Destination.BackupSync.route) { BackupSyncScreen() }
