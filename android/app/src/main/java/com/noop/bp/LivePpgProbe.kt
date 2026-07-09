@@ -57,10 +57,10 @@ object LivePpgProbe {
         // Keep the first full-frame hex per record kind — the sample we RE the layout from.
         firstHex.putIfAbsent(hexKey, frame.joinToString("") { "%02x".format(it) })
         if (respInfo != null && responses.size < 24) responses.add(respInfo)
-        // v20 = R22-unlocked raw optical: 6 channels × 25 samples of 24-bit LE. Channel 0 (first clean
-        // segment) is the green PPG @ 25 Hz — feed it to the buffer so BP has real signal.
-        if (rawTypeByte == 47 && frame.size > 9 && (frame[9].toInt() and 0xFF) == 20) {
-            decodeV20Channel0(frame)?.let { PpgBuffer.record(it, 25); v20Fed += it.size }
+        // v21 channel A = the strap's own AC-coupled PPG @ 100 Hz (16-bit LE, offset 28, 100 samples).
+        // Cleaner + higher-rate than v20's raw optical, and robust to hr_ch_switching. This is the BP feed.
+        if (rawTypeByte == 47 && frame.size > 9 && (frame[9].toInt() and 0xFF) == 21) {
+            decodeV21ChanA(frame)?.let { PpgBuffer.record(it, 100); v20Fed += it.size }
         }
         if (rawTypeByte == 43) {
             lastRawType43Size = frame.size
@@ -71,6 +71,17 @@ object LivePpgProbe {
     }
 
     @Volatile var v20Fed = 0
+
+    /** v21 channel A: 100 samples of 16-bit LE AC-coupled PPG at fixed offset 28 (@100 Hz). */
+    private fun decodeV21ChanA(frame: ByteArray): List<Int>? {
+        val off = 28
+        if (frame.size < off + 200) return null
+        return (0 until 100).map { k ->
+            val o = off + k * 2
+            val v = (frame[o].toInt() and 0xFF) or ((frame[o + 1].toInt() and 0xFF) shl 8)
+            if (v >= 32768) v - 65536 else v
+        }
+    }
 
     /** First clean run of 24-bit LE samples (stride 4, 4th byte 0) — channel 0 (green PPG) of a v20. */
     private fun decodeV20Channel0(frame: ByteArray): List<Int>? {

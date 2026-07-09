@@ -61,6 +61,8 @@ fun BpScreen(
     // Experimental live-probe state (diagnostic readout, polled from LivePpgProbe while active).
     var probing by remember { mutableStateOf(false) }
     var probeReadout by remember { mutableStateOf("") }
+    // Auto-start the adb command server whenever this screen opens, so a reinstall needs no button tap.
+    LaunchedEffect(Unit) { onStartCommandServer() }
     LaunchedEffect(probing) {
         while (probing) {
             probeReadout = "frames: ${LivePpgProbe.typeSummary()}\n" +

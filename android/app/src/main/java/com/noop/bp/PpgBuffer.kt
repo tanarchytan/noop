@@ -7,8 +7,8 @@ package com.noop.bp
  * persistence, cleared on process death. Thread-safe (offload decode runs off the main thread).
  */
 object PpgBuffer {
-    /** ~30 s at 24 Hz is plenty for a BP window and keeps the footprint tiny. */
-    private const val CAPACITY = 24 * 30
+    /** ~30 s of headroom even at the 100 Hz v21 AC-PPG rate; still a tiny footprint. */
+    private const val CAPACITY = 100 * 30
 
     private val lock = Any()
     private val ring = ArrayDeque<Int>(CAPACITY)
