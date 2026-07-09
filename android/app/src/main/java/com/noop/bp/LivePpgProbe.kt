@@ -67,7 +67,7 @@ object LivePpgProbe {
             if (ver == 20) decodeV20FixedCh0(frame)?.let { s ->
                 PpgBuffer.record(s, 25); v20Fed += s.size; streamSink?.invoke(20, unix, s)
             }
-            if (ver == 21) decodeV21ChanA(frame)?.let { s -> streamSink?.invoke(21, unix, s) }
+            if (ver == 21) decodeV21All(frame)?.let { s -> streamSink?.invoke(21, unix, s) }
         }
         if (rawTypeByte == 43) {
             lastRawType43Size = frame.size
@@ -82,15 +82,19 @@ object LivePpgProbe {
     /** Live PC-stream sink: (version 20|21, recordUnix, samples). Set by the server's `stream` handler. */
     @Volatile var streamSink: ((Int, Long, List<Int>) -> Unit)? = null
 
-    /** v21 channel A: 100 samples of 16-bit LE AC-coupled PPG at fixed offset 28 (@100 Hz). */
-    private fun decodeV21ChanA(frame: ByteArray): List<Int>? {
-        val off = 28
-        if (frame.size < off + 200) return null
-        return (0 until 100).map { k ->
-            val o = off + k * 2
-            val v = (frame[o].toInt() and 0xFF) or ((frame[o + 1].toInt() and 0xFF) shl 8)
-            if (v >= 32768) v - 65536 else v
+    /** v21 all 3 AC-coupled optical channels @100 Hz (16-bit LE at offsets 28/228/428, 100 each) —
+     *  300 samples = [chA][chB][chC], so the PC can pick/fuse the strongest without another rebuild. */
+    private fun decodeV21All(frame: ByteArray): List<Int>? {
+        if (frame.size < 628) return null
+        val out = ArrayList<Int>(300)
+        for (off in intArrayOf(28, 228, 428)) {
+            for (k in 0 until 100) {
+                val o = off + k * 2
+                val v = (frame[o].toInt() and 0xFF) or ((frame[o + 1].toInt() and 0xFF) shl 8)
+                out.add(if (v >= 32768) v - 65536 else v)
+            }
         }
+        return out
     }
 
     /** v20 channel 0: 25 samples of 24-bit LE at the fixed sub-block offset 47 (green PPG @ 25 Hz). */
