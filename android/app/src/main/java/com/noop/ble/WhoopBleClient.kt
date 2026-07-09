@@ -4130,9 +4130,33 @@ class WhoopBleClient(
     /** Start the local command server (idempotent). Marks the probe active so inbound frames are tallied. */
     fun startCommandServer() {
         com.noop.bp.LivePpgProbe.start()
-        if (cmdServer == null) cmdServer = com.noop.bp.BpCommandServer { line -> handleServerCommand(line) }
+        if (cmdServer == null) {
+            cmdServer = com.noop.bp.BpCommandServer(
+                onCommand = { line -> handleServerCommand(line) },
+                onStream = { write, alive -> runLiveStream(write, alive) },
+            )
+        }
         cmdServer?.start()
         log("BP command server: listening on localabstract:${com.noop.bp.BpCommandServer.NAME}")
+    }
+
+    /** Streaming handler: push each decoded v20 PPG batch (unix + samples) to the PC as syncs deliver
+     *  them, and re-kick the offload every 12 s so banked data keeps flowing. Blocks until the client
+     *  disconnects (write fails) or the link drops. */
+    private fun runLiveStream(write: (String) -> Unit, alive: () -> Boolean) {
+        com.noop.bp.LivePpgProbe.streamSink = { unix, samples -> write("$unix,${samples.joinToString(",")}\n") }
+        write("# stream start — unix,25×ch0-samples per line\n")
+        try {
+            var i = 0
+            while (alive() && i < 200) {           // ~40 min cap
+                handler.post { runCatching { syncNow() } }
+                var slept = 0
+                while (alive() && slept < 12000) { Thread.sleep(300); slept += 300 }
+                i++
+            }
+        } finally {
+            com.noop.bp.LivePpgProbe.streamSink = null
+        }
     }
 
     fun stopCommandServer() { cmdServer?.stop(); com.noop.bp.LivePpgProbe.stop(); log("BP command server: stopped") }

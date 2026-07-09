@@ -17,7 +17,12 @@ import java.io.InputStreamReader
  * command; the reply is text, terminated by a line "<<<END". Commands are handled by [onCommand] (wired
  * to the BLE client). Read-only-ish: the client side blocks known-destructive opcodes.
  */
-class BpCommandServer(private val onCommand: (String) -> String) {
+class BpCommandServer(
+    private val onCommand: (String) -> String,
+    /** Streaming handler: given a line-writer + a liveness check, block pushing data until the client
+     *  disconnects. Invoked when the client sends the `stream` command. */
+    private val onStream: (write: (String) -> Unit, alive: () -> Boolean) -> Unit = { _, _ -> },
+) {
     companion object {
         const val NAME = "noop_bp_cmd"
         private const val TAG = "BpCmdServer"
@@ -60,6 +65,17 @@ class BpCommandServer(private val onCommand: (String) -> String) {
             val out = sock.outputStream
             while (running) {
                 val line = reader.readLine() ?: break
+                if (line.trim().equals("stream", ignoreCase = true)) {
+                    // Enter streaming mode: push lines until a write fails (client gone).
+                    val live = java.util.concurrent.atomic.AtomicBoolean(true)
+                    val write: (String) -> Unit = { s ->
+                        synchronized(out) {
+                            try { out.write(s.toByteArray()); out.flush() } catch (e: Throwable) { live.set(false) }
+                        }
+                    }
+                    onStream(write) { live.get() && running }
+                    break
+                }
                 val reply = runCatching { onCommand(line) }.getOrElse { "ERROR: ${it.message}" }
                 out.write(reply.toByteArray())
                 out.write("\n<<<END\n".toByteArray())

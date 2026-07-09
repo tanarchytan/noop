@@ -60,7 +60,14 @@ object LivePpgProbe {
         // v20 channel 0 (green PPG) at the FIXED sub-block offset 47: 25 samples of 24-bit LE @ 25 Hz.
         // Fixed offset (not a scan) so we always concatenate the SAME channel across records.
         if (rawTypeByte == 47 && frame.size > 9 && (frame[9].toInt() and 0xFF) == 20) {
-            decodeV20FixedCh0(frame)?.let { PpgBuffer.record(it, 25); v20Fed += it.size }
+            decodeV20FixedCh0(frame)?.let { s ->
+                PpgBuffer.record(s, 25); v20Fed += s.size
+                // Push to any live PC stream, tagged with the record's unix (bytes 15..18) so the PC
+                // dedups + orders records into one contiguous waveform even across re-offloads.
+                val unix = ((frame[15].toInt() and 0xFF) or ((frame[16].toInt() and 0xFF) shl 8) or
+                    ((frame[17].toInt() and 0xFF) shl 16) or ((frame[18].toInt() and 0xFF) shl 24)).toLong() and 0xFFFFFFFFL
+                streamSink?.invoke(unix, s)
+            }
         }
         if (rawTypeByte == 43) {
             lastRawType43Size = frame.size
@@ -71,6 +78,9 @@ object LivePpgProbe {
     }
 
     @Volatile var v20Fed = 0
+
+    /** Live PC-stream sink: (recordUnix, ch0 samples). Set by the command server's `stream` handler. */
+    @Volatile var streamSink: ((Long, List<Int>) -> Unit)? = null
 
     /** v20 channel 0: 25 samples of 24-bit LE at the fixed sub-block offset 47 (green PPG @ 25 Hz). */
     private fun decodeV20FixedCh0(frame: ByteArray): List<Int>? {
