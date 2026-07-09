@@ -4111,6 +4111,87 @@ class WhoopBleClient(
         com.noop.bp.LivePpgProbe.fullReport().lineSequence().forEach { if (it.isNotBlank()) log(it) }
     }
 
+    // ── EXPERIMENTAL adb command server (blood-pressure RE) ───────────────────────────────────────────
+    // Lets a PC drive the bonded strap over `adb forward localabstract:noop_bp_cmd` without rebuilding
+    // the app per experiment: send an arbitrary opcode, read back the strap's response + any frames it
+    // streams, analyse, repeat. Known-destructive opcodes are refused (this is a NEW band).
+    private var cmdServer: com.noop.bp.BpCommandServer? = null
+
+    /** Opcodes that can brick/erase/reset a strap — never sent by the raw command channel. Values from
+     *  the maverick firmware + the whoop-debug blocklist (reboot/power/trim/erase + all DFU). */
+    private val destructiveOpcodes = setOf(
+        10, 146, 147, // SET_CLOCK forms (would corrupt RTC/banking)
+        25,           // FORCE_TRIM
+        29,           // REBOOT
+        32,           // POWER_CYCLE
+        36, 37, 38, 45, 83, 142, 143, 144, // DFU / firmware-load family
+    )
+
+    /** Start the local command server (idempotent). Marks the probe active so inbound frames are tallied. */
+    fun startCommandServer() {
+        com.noop.bp.LivePpgProbe.start()
+        if (cmdServer == null) cmdServer = com.noop.bp.BpCommandServer { line -> handleServerCommand(line) }
+        cmdServer?.start()
+        log("BP command server: listening on localabstract:${com.noop.bp.BpCommandServer.NAME}")
+    }
+
+    fun stopCommandServer() { cmdServer?.stop(); com.noop.bp.LivePpgProbe.stop(); log("BP command server: stopped") }
+
+    /** Send an ARBITRARY GEN5 puffin command (bypasses the normal allow-list; server-driven RE only).
+     *  Refuses destructive opcodes. Returns false if not connected / blocked. */
+    fun rawPuffinSend(op: Int, payload: ByteArray): Boolean {
+        if (op in destructiveOpcodes) { log("raw send REFUSED — destructive opcode $op"); return false }
+        val ch = cmdCharacteristic
+        if (gatt == null || ch == null || connectedFamily != DeviceFamily.WHOOP5) {
+            log("raw send ignored — not a connected 5/MG"); return false
+        }
+        val s = seq.incrementAndGet() and 0xFF
+        val frame = Framing.puffinCommandFrame(cmd = op, seq = s, payload = payload)
+        enqueueWrite(PendingWrite(frame, true))
+        log("→ raw op=$op payload=${payload.toHex()} (puffin)")
+        return true
+    }
+
+    /** Parse + run one server command line, returning a text reply. Runs on the server thread. */
+    private fun handleServerCommand(line: String): String {
+        val parts = line.trim().split(Regex("\\s+")).filter { it.isNotEmpty() }
+        if (parts.isEmpty()) return "empty"
+        return when (parts[0].lowercase()) {
+            "status" -> {
+                val st = _state.value
+                "connected=${st.connected} bonded=${st.encryptedBond} worn=${st.worn} " +
+                    "family=$connectedFamily fw=${st.strapFirmware}"
+            }
+            // raw <opDecimal> [hexPayload] — send one opcode, wait for the response, return the report.
+            "raw" -> {
+                val op = parts.getOrNull(1)?.toIntOrNull() ?: return "usage: raw <opDec> [hex]"
+                val payload = parts.getOrNull(2)?.let { hexToBytes(it) } ?: ByteArray(0)
+                if (!rawPuffinSend(op, payload)) return "send failed/blocked for op=$op"
+                Thread.sleep(900)
+                com.noop.bp.LivePpgProbe.fullReport()
+            }
+            // r22 — write the deep-sensor (R22) feature-flag sequence.
+            "r22" -> { enableDeepStreamForProbe(); Thread.sleep(1600); com.noop.bp.LivePpgProbe.fullReport() }
+            // capture <secs> — reset the tally, collect frames for N seconds, return the report.
+            "capture" -> {
+                val secs = parts.getOrNull(1)?.toLongOrNull() ?: 10L
+                com.noop.bp.LivePpgProbe.start()
+                Thread.sleep(secs.coerceIn(1, 120) * 1000)
+                com.noop.bp.LivePpgProbe.fullReport()
+            }
+            "report" -> com.noop.bp.LivePpgProbe.fullReport()
+            "clear" -> { com.noop.bp.LivePpgProbe.start(); "cleared" }
+            "help" -> "commands: status | raw <opDec> [hex] | r22 | capture <secs> | report | clear"
+            else -> "unknown: ${parts[0]} (try: help)"
+        }
+    }
+
+    private fun hexToBytes(h: String): ByteArray {
+        val s = h.removePrefix("0x").filter { !it.isWhitespace() }
+        require(s.length % 2 == 0) { "odd hex length" }
+        return ByteArray(s.length / 2) { ((s[it * 2].digitToInt(16) shl 4) or s[it * 2 + 1].digitToInt(16)).toByte() }
+    }
+
     /**
      * SET_CLOCK(10) payload = the strap's 8-byte form: [seconds u32 LE][subseconds u32 LE].
      * Port of `BLEManager.setClockPayload`. The payload LENGTH is firmware-specific: newer WHOOP 4

@@ -47,6 +47,7 @@ fun BpScreen(
     onStopLiveProbe: () -> Unit = {},
     onUnlockDeepStream: () -> Unit = {},
     onSaveProbeReport: () -> Unit = {},
+    onStartCommandServer: () -> Unit = {},
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -151,6 +152,12 @@ fun BpScreen(
             onClick = onSaveProbeReport,
             modifier = Modifier.fillMaxWidth(),
         ) { Text("Save report to strap log (then Settings → Share strap log)") }
+
+        // Start the adb command server: PC drives the strap over `adb forward localabstract:noop_bp_cmd`.
+        OutlinedButton(
+            onClick = { onStartCommandServer(); probing = true },
+            modifier = Modifier.fillMaxWidth(),
+        ) { Text("Start adb command server") }
 
         if (probing || probeReadout.isNotEmpty()) {
             Card(Modifier.fillMaxWidth()) {
