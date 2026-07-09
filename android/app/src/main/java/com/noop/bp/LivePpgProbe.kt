@@ -57,24 +57,41 @@ object LivePpgProbe {
         // Keep the first full-frame hex per record kind — the sample we RE the layout from.
         firstHex.putIfAbsent(hexKey, frame.joinToString("") { "%02x".format(it) })
         if (respInfo != null && responses.size < 24) responses.add(respInfo)
+        // v20 = R22-unlocked raw optical: 6 channels × 25 samples of 24-bit LE. Channel 0 (first clean
+        // segment) is the green PPG @ 25 Hz — feed it to the buffer so BP has real signal.
+        if (rawTypeByte == 47 && frame.size > 9 && (frame[9].toInt() and 0xFF) == 20) {
+            decodeV20Channel0(frame)?.let { PpgBuffer.record(it, 25); v20Fed += it.size }
+        }
         if (rawTypeByte == 43) {
             lastRawType43Size = frame.size
             if (lastRawType43Hex.isEmpty()) {
                 lastRawType43Hex = frame.joinToString("") { "%02x".format(it) }.take(120)
             }
-            // Best-guess decode: try the WHOOP 5 v26 optical layout (24 i16 LE @ [27:75]). If the live
-            // frame uses a different layout this yields noise, but the sample count + hex head above let
-            // us correct the layout from a real capture. fs=24 matches PpgHr / PpgBuffer.
-            if (frame.size >= 75) {
-                val samples = IntArray(24) { i ->
-                    val lo = frame[27 + i * 2].toInt() and 0xFF
-                    val hi = frame[27 + i * 2 + 1].toInt()
-                    (hi shl 8) or lo
-                }
-                PpgBuffer.record(samples.toList(), 24)
-                samplesFed += samples.size
-            }
         }
+    }
+
+    @Volatile var v20Fed = 0
+
+    /** First clean run of 24-bit LE samples (stride 4, 4th byte 0) — channel 0 (green PPG) of a v20. */
+    private fun decodeV20Channel0(frame: ByteArray): List<Int>? {
+        var i = 21
+        while (i < frame.size - 8) {
+            val w0 = (frame[i].toInt() and 0xFF) or ((frame[i + 1].toInt() and 0xFF) shl 8) or
+                ((frame[i + 2].toInt() and 0xFF) shl 16)
+            if (frame[i + 3].toInt() == 0 && w0 != 0 && frame[i + 7].toInt() == 0) {
+                val out = ArrayList<Int>(25)
+                var j = i
+                while (j < frame.size - 4 && frame[j + 3].toInt() == 0 && out.size < 25) {
+                    val v = (frame[j].toInt() and 0xFF) or ((frame[j + 1].toInt() and 0xFF) shl 8) or
+                        ((frame[j + 2].toInt() and 0xFF) shl 16)
+                    if (v == 0) break
+                    out.add(v); j += 4
+                }
+                if (out.size >= 16) return out
+            }
+            i++
+        }
+        return null
     }
 
     /** One-line "type=count, …" tally for the BP screen readout. */
@@ -95,7 +112,11 @@ object LivePpgProbe {
         appendLine("=== BP LIVE-PPG PROBE REPORT ===")
         appendLine("frames: ${typeSummary()}")
         appendLine("responses: ${responseSummary()}")
-        appendLine("type-43: ${lastRawType43Size}B  PPG-fed: $samplesFed")
+        appendLine("type-43: ${lastRawType43Size}B  PPG-fed: $samplesFed  v20-fed: $v20Fed")
+        // Validate the v20 decode: recover HR from the buffered green PPG. A sane resting HR = real PPG.
+        val win = PpgBuffer.window(12)
+        val feat = win?.let { BpEngine.extractFeatures(it, PpgBuffer.sampleRateHz) }
+        appendLine("buffer=${win?.size ?: 0}@${PpgBuffer.sampleRateHz}Hz  HR=${feat?.hr?.let { "%.1f".format(it) } ?: "n/a"}  pulses=${feat?.pulses ?: 0}")
         firstHex.entries.sortedBy { it.key }.forEach { (k, hex) ->
             appendLine("sample[$k] ${hex.take(160)}")
         }
