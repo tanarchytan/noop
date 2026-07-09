@@ -42,7 +42,11 @@ import kotlinx.coroutines.launch
  * the BLE client) — a diagnostic to discover whether a WHOOP 5.0 exposes a realtime PPG waveform.
  */
 @Composable
-fun BpScreen(onStartLiveProbe: () -> Unit = {}, onStopLiveProbe: () -> Unit = {}) {
+fun BpScreen(
+    onStartLiveProbe: () -> Unit = {},
+    onStopLiveProbe: () -> Unit = {},
+    onUnlockDeepStream: () -> Unit = {},
+) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
@@ -132,6 +136,13 @@ fun BpScreen(onStartLiveProbe: () -> Unit = {}, onStopLiveProbe: () -> Unit = {}
             },
             modifier = Modifier.fillMaxWidth(),
         ) { Text(if (probing) "Stop live capture" else "Start live capture") }
+
+        // Deep-stream unlock: write the R22 feature flags (as the official app does), then wear + sync.
+        // Reversible config write on your own device; the target is raw PPG appearing in the offload.
+        OutlinedButton(
+            onClick = { onUnlockDeepStream(); probing = true },
+            modifier = Modifier.fillMaxWidth(),
+        ) { Text("Unlock deep sensor stream (R22), then wear + sync") }
 
         if (probing || probeReadout.isNotEmpty()) {
             Card(Modifier.fillMaxWidth()) {

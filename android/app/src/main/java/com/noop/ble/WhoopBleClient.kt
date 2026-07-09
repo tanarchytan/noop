@@ -2007,7 +2007,8 @@ class WhoopBleClient(
                 // they are reversible and safe; driven only by start/stopLiveOpticalProbe().
                 !((cmd == CommandNumber.SEND_R10_R11_REALTIME || cmd == CommandNumber.START_RAW_DATA ||
                     cmd == CommandNumber.STOP_RAW_DATA || cmd == CommandNumber.GET_AFE_PARAMETERS ||
-                    cmd == CommandNumber.ENABLE_OPTICAL_DATA || cmd == CommandNumber.TOGGLE_OPTICAL_MODE) &&
+                    cmd == CommandNumber.ENABLE_OPTICAL_DATA || cmd == CommandNumber.TOGGLE_OPTICAL_MODE ||
+                    cmd == CommandNumber.SET_CONFIG) &&
                     com.noop.bp.LivePpgProbe.active)) {
                 log("send(${cmd.name}) skipped — no WHOOP 5/MG framing for this command yet")
                 return
@@ -4058,6 +4059,38 @@ class WhoopBleClient(
             handler.postDelayed({ send(cmd, payload, withResponse = true) }, 1200L + 120L * i)
         }
         log("Live-PPG probe: armed realtime HR to spin up the AFE, then requesting optical R20 stream — watching frame types")
+    }
+
+    /**
+     * EXPERIMENTAL (blood-pressure work): write the deep-sensor feature flags (the R22 sequence the
+     * official app uses) so the strap starts banking its richer biometric stream — the most likely
+     * place the raw PPG waveform lives. These are BLE-settable feature flags (SET_CONFIG 0x78),
+     * reversible, on the owner's own device. After this: wear the strap so it banks new data, then sync
+     * — we're watching for raw-PPG (v26) records to start appearing in the offload. Marks the probe
+     * active so SET_CONFIG passes the allow-list; requires the full encrypted bond + on-wrist.
+     */
+    fun enableDeepStreamForProbe() {
+        if (connectedFamily != DeviceFamily.WHOOP5) { log("Deep-stream: needs a WHOOP 5.0/MG — ignored."); return }
+        val s = _state.value
+        if (!s.connected || !s.encryptedBond) {
+            log("Deep-stream: needs the full encrypted bond (close the official WHOOP app + bond to NOOP) — ignored."); return
+        }
+        if (!s.worn) { log("Deep-stream: on-wrist only — put the strap ON, then try again."); return }
+        com.noop.bp.LivePpgProbe.start()
+        val flags = Whoop5Config.enableR22Sequence
+        log("Deep-stream: writing the ${flags.size}-flag R22 sequence (reversible feature flags)…")
+        flags.forEachIndexed { i, flag ->
+            handler.postDelayed({
+                send(
+                    CommandNumber.SET_CONFIG,
+                    byteArrayOf(0x01) + Whoop5Config.payloadBody(flag.name, flag.value),
+                    withResponse = true,
+                )
+            }, 80L * i)
+        }
+        handler.postDelayed({
+            log("Deep-stream: flags written. Keep the strap ON, wear it a while, then Sync — watching for raw-PPG records to arrive.")
+        }, 80L * flags.size + 200L)
     }
 
     /** Stop the live raw-PPG probe: tell the strap to stop streaming, then clear the active flag. The
