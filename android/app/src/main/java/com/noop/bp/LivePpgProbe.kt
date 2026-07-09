@@ -82,6 +82,9 @@ object LivePpgProbe {
         typeCounts.entries.sortedByDescending { it.value }.joinToString(", ") { "${it.key}=${it.value}" }
             .ifEmpty { "none yet" }
 
+    /** Full untruncated first-frame hex for one record key (e.g. "hist_v20"), for offline layout RE. */
+    fun hexFor(key: String): String = firstHex[key] ?: "(no frame seen for $key)"
+
     /** Which enable opcodes the strap accepted/rejected (e.g. "ENABLE_OPTICAL_DATA=SUCCESS"). */
     fun responseSummary(): String =
         synchronized(responses) { responses.joinToString("; ") }.ifEmpty { "(no command responses yet)" }
