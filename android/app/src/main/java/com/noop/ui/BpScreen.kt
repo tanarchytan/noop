@@ -13,6 +13,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -20,11 +21,14 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import com.noop.bp.Bp
 import com.noop.bp.BpClient
+import com.noop.bp.BpStore
 import kotlinx.coroutines.launch
 
 /**
@@ -42,6 +46,7 @@ fun BpScreen() {
     var busy by remember { mutableStateOf(false) }
     var sys by remember { mutableStateOf("") }
     var dia by remember { mutableStateOf("") }
+    var native by remember { mutableStateOf(BpStore.mode(context) == BpStore.Mode.NATIVE) }
 
     fun msg(r: BpClient.Result): String = when (r) {
         is BpClient.Result.NotLinked -> "Link a cloud first (Settings → Cloud)."
@@ -59,9 +64,38 @@ fun BpScreen() {
             Text(
                 "⚠ Experimental wellness estimate from your strap's optical (PPG) signal — NOT a medical " +
                     "measurement and never a diagnosis. It tracks changes from your last cuff calibration " +
-                    "and drifts; recalibrate often. The estimate is computed on your linked noop-cloud.",
+                    "and drifts; recalibrate often.",
                 Modifier.padding(14.dp), style = MaterialTheme.typography.bodySmall,
             )
+        }
+
+        // --- Compute location: on-device (default) vs linked cloud ---
+        Card(Modifier.fillMaxWidth()) {
+            Row(
+                Modifier.fillMaxWidth().padding(14.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(Modifier.weight(1f)) {
+                    Text("Compute on device", style = MaterialTheme.typography.titleSmall)
+                    Text(
+                        if (native) {
+                            "Private + offline. The PPG never leaves your phone; calibration is stored locally."
+                        } else {
+                            "Estimated by your linked noop-cloud (Settings → Cloud). The PPG window is uploaded."
+                        },
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                }
+                Switch(
+                    checked = native,
+                    onCheckedChange = {
+                        native = it
+                        BpStore.setMode(context, if (it) BpStore.Mode.NATIVE else BpStore.Mode.CLOUD)
+                        estimate = null; status = null
+                    },
+                )
+            }
         }
 
         // --- Estimate ---
@@ -70,7 +104,7 @@ fun BpScreen() {
             onClick = {
                 busy = true; status = null
                 scope.launch {
-                    when (val r = BpClient.estimate(context)) {
+                    when (val r = Bp.estimate(context)) {
                         is BpClient.Result.Estimate -> {
                             estimate = "${r.systolic}/${r.diastolic} mmHg"
                             status = "confidence ${(r.confidence * 100).toInt()}%"
@@ -118,7 +152,7 @@ fun BpScreen() {
             onClick = {
                 busy = true; status = null
                 scope.launch {
-                    val r = BpClient.calibrate(context, sys.toInt(), dia.toInt())
+                    val r = Bp.calibrate(context, sys.toInt(), dia.toInt())
                     status = if (r is BpClient.Result.Calibrated) "Calibrated ✓ — you can Estimate now." else msg(r)
                     busy = false
                 }
