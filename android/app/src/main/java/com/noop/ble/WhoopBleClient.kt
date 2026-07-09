@@ -4144,8 +4144,8 @@ class WhoopBleClient(
      *  them, and re-kick the offload every 12 s so banked data keeps flowing. Blocks until the client
      *  disconnects (write fails) or the link drops. */
     private fun runLiveStream(write: (String) -> Unit, alive: () -> Boolean) {
-        com.noop.bp.LivePpgProbe.streamSink = { unix, samples -> write("$unix,${samples.joinToString(",")}\n") }
-        write("# stream start — unix,25×ch0-samples per line\n")
+        com.noop.bp.LivePpgProbe.streamSink = { ver, unix, samples -> write("$ver,$unix,${samples.joinToString(",")}\n") }
+        write("# stream start — ver,unix,samples per line (ver 20=25Hz, 21=100Hz)\n")
         try {
             var i = 0
             while (alive() && i < 200) {           // ~40 min cap

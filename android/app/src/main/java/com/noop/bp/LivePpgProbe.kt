@@ -57,16 +57,17 @@ object LivePpgProbe {
         // Keep the first full-frame hex per record kind — the sample we RE the layout from.
         firstHex.putIfAbsent(hexKey, frame.joinToString("") { "%02x".format(it) })
         if (respInfo != null && responses.size < 24) responses.add(respInfo)
-        // v21 channel A = the strap's own AC-coupled PPG at 100 Hz (16-bit LE, offset 28, 100 samples).
-        // With channel-switching off this is stationary, and 100 Hz resolves the upstroke + dicrotic
-        // notch that 25 Hz (v20) can't — the resolution BP morphology needs.
-        if (rawTypeByte == 47 && frame.size > 9 && (frame[9].toInt() and 0xFF) == 21) {
-            decodeV21ChanA(frame)?.let { s ->
-                PpgBuffer.record(s, 100); v20Fed += s.size
-                val unix = ((frame[15].toInt() and 0xFF) or ((frame[16].toInt() and 0xFF) shl 8) or
-                    ((frame[17].toInt() and 0xFF) shl 16) or ((frame[18].toInt() and 0xFF) shl 24)).toLong() and 0xFFFFFFFFL
-                streamSink?.invoke(unix, s)
+        // Fusion capture: stream BOTH the coarse v20 (25 Hz, robust beat detection) and the fine v21
+        // (100 Hz, morphology), tagged by version + record unix so the PC aligns + fuses them. v20 also
+        // feeds the app's PpgBuffer (the stable HR channel).
+        if (rawTypeByte == 47 && frame.size > 9) {
+            val ver = frame[9].toInt() and 0xFF
+            val unix = ((frame[15].toInt() and 0xFF) or ((frame[16].toInt() and 0xFF) shl 8) or
+                ((frame[17].toInt() and 0xFF) shl 16) or ((frame[18].toInt() and 0xFF) shl 24)).toLong() and 0xFFFFFFFFL
+            if (ver == 20) decodeV20FixedCh0(frame)?.let { s ->
+                PpgBuffer.record(s, 25); v20Fed += s.size; streamSink?.invoke(20, unix, s)
             }
+            if (ver == 21) decodeV21ChanA(frame)?.let { s -> streamSink?.invoke(21, unix, s) }
         }
         if (rawTypeByte == 43) {
             lastRawType43Size = frame.size
@@ -78,8 +79,8 @@ object LivePpgProbe {
 
     @Volatile var v20Fed = 0
 
-    /** Live PC-stream sink: (recordUnix, ch0 samples). Set by the command server's `stream` handler. */
-    @Volatile var streamSink: ((Long, List<Int>) -> Unit)? = null
+    /** Live PC-stream sink: (version 20|21, recordUnix, samples). Set by the server's `stream` handler. */
+    @Volatile var streamSink: ((Int, Long, List<Int>) -> Unit)? = null
 
     /** v21 channel A: 100 samples of 16-bit LE AC-coupled PPG at fixed offset 28 (@100 Hz). */
     private fun decodeV21ChanA(frame: ByteArray): List<Int>? {
@@ -89,6 +90,17 @@ object LivePpgProbe {
             val o = off + k * 2
             val v = (frame[o].toInt() and 0xFF) or ((frame[o + 1].toInt() and 0xFF) shl 8)
             if (v >= 32768) v - 65536 else v
+        }
+    }
+
+    /** v20 channel 0: 25 samples of 24-bit LE at the fixed sub-block offset 47 (green PPG @ 25 Hz). */
+    private fun decodeV20FixedCh0(frame: ByteArray): List<Int>? {
+        val off = 47
+        if (frame.size < off + 100) return null
+        return (0 until 25).map { k ->
+            val o = off + k * 4
+            (frame[o].toInt() and 0xFF) or ((frame[o + 1].toInt() and 0xFF) shl 8) or
+                ((frame[o + 2].toInt() and 0xFF) shl 16)
         }
     }
 
