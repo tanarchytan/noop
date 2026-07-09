@@ -4203,6 +4203,17 @@ class WhoopBleClient(
                 Thread.sleep(secs.coerceIn(1, 120) * 1000)
                 com.noop.bp.LivePpgProbe.fullReport()
             }
+            // bp — read back the stored BP calibration/baseline + last reading (persists across reinstall).
+            "bp" -> {
+                val cal = com.noop.bp.BpStore.calibration(context)
+                val r = com.noop.bp.BpStore.lastReading(context)
+                "calibration=" + (cal?.let {
+                    "${it.systolic}/${it.diastolic} calibrated=${it.calibrated} baseHR=${"%.0f".format(it.hr)} " +
+                        "upstrokeMs=${"%.0f".format(it.upstrokeMs)} amp=${"%.0f".format(it.amplitude)} widthMs=${"%.0f".format(it.widthMs)}"
+                } ?: "none") + "  |  lastReading=" + (r?.let {
+                    "${it.systolic}/${it.diastolic} conf=${"%.2f".format(it.confidence)}"
+                } ?: "none")
+            }
             "report" -> com.noop.bp.LivePpgProbe.fullReport()
             // dump <key> — full untruncated hex of the first frame of a record kind (e.g. dump hist_v20).
             "dump" -> com.noop.bp.LivePpgProbe.hexFor(parts.getOrNull(1) ?: "")
