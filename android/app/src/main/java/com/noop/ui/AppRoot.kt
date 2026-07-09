@@ -424,7 +424,12 @@ fun AppRoot(viewModel: AppViewModel = viewModel()) {
                         onUseFileImport = { nav.navigateTopLevel(Destination.DataSources.route) },
                     )
                 }
-                composable(Destination.BloodPressure.route) { BpScreen() }
+                composable(Destination.BloodPressure.route) {
+                    BpScreen(
+                        onStartLiveProbe = { viewModel.ble.startLiveOpticalProbe() },
+                        onStopLiveProbe = { viewModel.ble.stopLiveOpticalProbe() },
+                    )
+                }
                 composable(Destination.DataSources.route) { DataSourcesScreen(viewModel) }
                 composable(Destination.BackupSync.route) { BackupSyncScreen() }
                 composable(Destination.Notifications.route) { NotificationsSettingsScreen(viewModel) }

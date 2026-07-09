@@ -12,9 +12,11 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -26,15 +28,21 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.noop.bp.BpNative
 import com.noop.bp.BpResult
+import com.noop.bp.LivePpgProbe
+import com.noop.bp.PpgBuffer
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 /**
  * Blood pressure — an **experimental, opt-in wellness estimate** derived on-device from the strap's
  * optical PPG waveform. Not a medical measurement. Needs a one-time (and periodic) cuff calibration.
  * Everything runs locally: the PPG never leaves the phone.
+ *
+ * [onStartLiveProbe]/[onStopLiveProbe] drive the EXPERIMENTAL live raw-PPG probe (wired in AppRoot to
+ * the BLE client) — a diagnostic to discover whether a WHOOP 5.0 exposes a realtime PPG waveform.
  */
 @Composable
-fun BpScreen() {
+fun BpScreen(onStartLiveProbe: () -> Unit = {}, onStopLiveProbe: () -> Unit = {}) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
@@ -43,6 +51,19 @@ fun BpScreen() {
     var busy by remember { mutableStateOf(false) }
     var sys by remember { mutableStateOf("") }
     var dia by remember { mutableStateOf("") }
+
+    // Experimental live-probe state (diagnostic readout, polled from LivePpgProbe while active).
+    var probing by remember { mutableStateOf(false) }
+    var probeReadout by remember { mutableStateOf("") }
+    LaunchedEffect(probing) {
+        while (probing) {
+            probeReadout = "frames: ${LivePpgProbe.typeSummary()}\n" +
+                "type-43: ${LivePpgProbe.lastRawType43Size} B  •  PPG fed: ${LivePpgProbe.samplesFed}  •  " +
+                "buffer: ${PpgBuffer.window(30)?.size ?: 0}\n" +
+                (LivePpgProbe.lastRawType43Hex.ifEmpty { "(no type-43 frames seen)" })
+            delay(1000)
+        }
+    }
 
     fun msg(r: BpResult): String = when (r) {
         is BpResult.NoSignal -> "No PPG yet — wear the strap and sync, then try again."
@@ -90,6 +111,35 @@ fun BpScreen() {
                     Text(it, style = MaterialTheme.typography.headlineMedium)
                     status?.let { s -> Text(s, style = MaterialTheme.typography.bodySmall) }
                 }
+            }
+        }
+
+        // --- Live capture (EXPERIMENTAL diagnostic) ---
+        // The 5.0 does NOT put its raw PPG in the normal offload, so we probe the realtime stream to
+        // find out what the strap actually emits. Connect + wear the strap, then Start and watch the
+        // frame tally: a climbing "type-43" count with a sane size = raw data is reachable live.
+        Text("Live capture (experimental)", style = MaterialTheme.typography.titleMedium)
+        Text(
+            "Diagnostic: asks the strap to stream realtime raw data and reports what arrives. Wear the " +
+                "strap and be connected first. Battery-costly — stop when done.",
+            style = MaterialTheme.typography.bodySmall,
+        )
+        OutlinedButton(
+            onClick = {
+                if (!probing) { onStartLiveProbe(); probing = true }
+                else { onStopLiveProbe(); probing = false }
+            },
+            modifier = Modifier.fillMaxWidth(),
+        ) { Text(if (probing) "Stop live capture" else "Start live capture") }
+
+        if (probing || probeReadout.isNotEmpty()) {
+            Card(Modifier.fillMaxWidth()) {
+                Text(
+                    probeReadout.ifEmpty { "starting…" },
+                    Modifier.padding(14.dp),
+                    style = MaterialTheme.typography.bodySmall,
+                    fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                )
             }
         }
 

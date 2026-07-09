@@ -2001,7 +2001,12 @@ class WhoopBleClient(
                 !(cmd == CommandNumber.SET_CONFIG && puffinExperiment.isDeepDataEnabled) &&
                 // SET_DEVICE_CONFIG (the Broadcast-HR flag) is allowed ONLY while that opt-in is on.
                 // Reversible; driven only by setBroadcastHr(). (#181)
-                !(cmd == CommandNumber.SET_DEVICE_CONFIG && puffinExperiment.broadcastHr)) {
+                !(cmd == CommandNumber.SET_DEVICE_CONFIG && puffinExperiment.broadcastHr) &&
+                // EXPERIMENTAL live-PPG probe: allow the realtime-raw enable/stop opcodes ONLY while a
+                // probe is active. They toggle what the strap STREAMS (no persistent config write), so
+                // they are reversible and safe; driven only by start/stopLiveOpticalProbe().
+                !((cmd == CommandNumber.SEND_R10_R11_REALTIME || cmd == CommandNumber.START_RAW_DATA ||
+                    cmd == CommandNumber.STOP_RAW_DATA) && com.noop.bp.LivePpgProbe.active)) {
                 log("send(${cmd.name}) skipped — no WHOOP 5/MG framing for this command yet")
                 return
             }
@@ -3266,6 +3271,15 @@ class WhoopBleClient(
                     // live collector) instead of each re-parsing it — steady-state drops 2→1 parse per live
                     // frame. Family-aware, so it's correct for WHOOP4 and 5/MG alike.
                     val parsed = Framing.parseFrame(frame, connectedFamily)
+                    // EXPERIMENTAL live-PPG probe: while active, tally every realtime frame by type and
+                    // try to lift optical samples out of realtime-raw (type-43). Peek the type byte off
+                    // the wire (5/MG @8, WHOOP4 @4) so a frame is counted even if it failed to decode.
+                    if (com.noop.bp.LivePpgProbe.active) {
+                        val rawType = if (connectedFamily == DeviceFamily.WHOOP5)
+                            (frame.getOrNull(8)?.toInt()?.and(0xFF) ?: -1)
+                        else (frame.getOrNull(4)?.toInt()?.and(0xFF) ?: -1)
+                        com.noop.bp.LivePpgProbe.observe(frame, parsed.typeName, rawType)
+                    }
                     // A frame replayed as part of the historical offload (type 47/48/… during a backfill)
                     // must not drive LIVE-only state (the charging pill). Mirrors iOS, where the offload
                     // path skips the live router entirely. (PR #568 reimpl)
@@ -4009,6 +4023,30 @@ class WhoopBleClient(
         handler.postDelayed({
             log("Deep-data: sequence sent. Keep the strap on, let it sync, then share your strap log — we're looking for new deep records (type-0x2F) to start arriving. (#174)")
         }, 80L * flags.size + 200L)
+    }
+
+    /**
+     * EXPERIMENTAL (blood-pressure work): start a live raw-PPG probe. Marks [com.noop.bp.LivePpgProbe]
+     * active — which both lets the realtime-raw enable opcodes through the 5/MG allow-list AND makes the
+     * inbound loop tally realtime frames + attempt an optical decode — then asks the strap to stream its
+     * realtime raw data. We don't yet know which opcode a 5/MG honors, so we try the known candidates:
+     * SEND_R10_R11_REALTIME[0x01] (the inverse of the connect-time "stop the type-43 flood") and
+     * START_RAW_DATA[0x01]. Purely diagnostic and reversible — undo with [stopLiveOpticalProbe].
+     */
+    fun startLiveOpticalProbe() {
+        com.noop.bp.LivePpgProbe.start()
+        send(CommandNumber.SEND_R10_R11_REALTIME, byteArrayOf(1), withResponse = true)
+        send(CommandNumber.START_RAW_DATA, byteArrayOf(1), withResponse = true)
+        log("Live-PPG probe: requested realtime raw stream (R10/R11[1] + START_RAW_DATA[1]) — watching frame types")
+    }
+
+    /** Stop the live raw-PPG probe: tell the strap to stop streaming, then clear the active flag. The
+     *  stop opcodes are sent WHILE still active so they pass the allow-list. */
+    fun stopLiveOpticalProbe() {
+        send(CommandNumber.STOP_RAW_DATA, byteArrayOf(0), withResponse = true)
+        send(CommandNumber.SEND_R10_R11_REALTIME, byteArrayOf(0), withResponse = true)
+        com.noop.bp.LivePpgProbe.stop()
+        log("Live-PPG probe: stopped realtime raw stream")
     }
 
     /**
