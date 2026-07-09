@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
@@ -18,6 +19,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -28,57 +30,54 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.noop.bp.BpNative
 import com.noop.bp.BpResult
-import com.noop.bp.LivePpgProbe
-import com.noop.bp.PpgBuffer
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
+/** Seconds of still capture for a guided BP reading (matches how cuffless-BP apps sample). */
+private const val CAPTURE_SECS = 25
+
 /**
- * Blood pressure — an **experimental, opt-in wellness estimate** derived on-device from the strap's
- * optical PPG waveform. Not a medical measurement. Needs a one-time (and periodic) cuff calibration.
- * Everything runs locally: the PPG never leaves the phone.
+ * Blood pressure — an **experimental, opt-in wellness estimate** from the strap's optical (PPG) signal,
+ * computed entirely on-device. Not a medical measurement. A reading is a guided "hold still" capture;
+ * a one-time cuff calibration personalises it (a no-cuff population baseline is available meanwhile).
  *
- * [onStartLiveProbe]/[onStopLiveProbe] drive the EXPERIMENTAL live raw-PPG probe (wired in AppRoot to
- * the BLE client) — a diagnostic to discover whether a WHOOP 5.0 exposes a realtime PPG waveform.
+ * [onSync] kicks a strap offload to pull fresh PPG; [onEnsureFeed] makes sure the optical decode is
+ * feeding the buffer. Both wired in AppRoot to the BLE client.
  */
 @Composable
-fun BpScreen(
-    onStartLiveProbe: () -> Unit = {},
-    onStopLiveProbe: () -> Unit = {},
-    onUnlockDeepStream: () -> Unit = {},
-    onSaveProbeReport: () -> Unit = {},
-    onStartCommandServer: () -> Unit = {},
-) {
+fun BpScreen(onSync: () -> Unit = {}, onEnsureFeed: () -> Unit = {}) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
     var estimate by remember { mutableStateOf<String?>(null) }
     var status by remember { mutableStateOf<String?>(null) }
     var busy by remember { mutableStateOf(false) }
+    var measuring by remember { mutableStateOf(false) }
+    var countdown by remember { mutableIntStateOf(0) }
     var sys by remember { mutableStateOf("") }
     var dia by remember { mutableStateOf("") }
 
-    // Experimental live-probe state (diagnostic readout, polled from LivePpgProbe while active).
-    var probing by remember { mutableStateOf(false) }
-    var probeReadout by remember { mutableStateOf("") }
-    // Auto-start the adb command server whenever this screen opens, so a reinstall needs no button tap.
-    LaunchedEffect(Unit) { onStartCommandServer() }
-    LaunchedEffect(probing) {
-        while (probing) {
-            probeReadout = "frames: ${LivePpgProbe.typeSummary()}\n" +
-                "responses: ${LivePpgProbe.responseSummary()}\n" +
-                "type-43: ${LivePpgProbe.lastRawType43Size} B  •  PPG fed: ${LivePpgProbe.samplesFed}  •  " +
-                "buffer: ${PpgBuffer.window(30)?.size ?: 0}\n" +
-                (LivePpgProbe.lastRawType43Hex.ifEmpty { "(no type-43 frames seen)" })
-            delay(1000)
-        }
-    }
+    // Make sure the on-device PPG decode is running so a capture has signal.
+    LaunchedEffect(Unit) { onEnsureFeed() }
 
     fun msg(r: BpResult): String = when (r) {
-        is BpResult.NoSignal -> "No PPG yet — wear the strap and sync, then try again."
-        is BpResult.NotCalibrated -> "Not calibrated yet — enter a cuff reading below first."
+        is BpResult.NoSignal -> "No pulse signal — make sure the strap is snug and worn, then try again."
+        is BpResult.NotCalibrated -> "Set a baseline or calibrate with a cuff first."
         is BpResult.Error -> r.message
         else -> ""
+    }
+
+    /** Guided still capture: show the countdown, pull fresh PPG, then run [action] on the window. */
+    fun guidedCapture(action: suspend () -> BpResult, onDone: (BpResult) -> Unit) {
+        if (busy || measuring) return
+        measuring = true; status = null; countdown = CAPTURE_SECS
+        scope.launch {
+            onSync()
+            for (s in CAPTURE_SECS downTo 0) { countdown = s; delay(1000) }
+            measuring = false; busy = true
+            onDone(action())
+            busy = false
+        }
     }
 
     Column(
@@ -89,31 +88,28 @@ fun BpScreen(
         Card(Modifier.fillMaxWidth()) {
             Text(
                 "⚠ Experimental wellness estimate from your strap's optical (PPG) signal — NOT a medical " +
-                    "measurement and never a diagnosis. It tracks changes from your last cuff calibration " +
-                    "and drifts; recalibrate often. It is computed on your device; the PPG never leaves your phone.",
+                    "measurement and never a diagnosis. Computed on your device; the signal never leaves your phone.",
                 Modifier.padding(14.dp), style = MaterialTheme.typography.bodySmall,
             )
         }
 
-        // --- Estimate ---
+        // --- Measure ---
         Button(
-            enabled = !busy,
+            enabled = !busy && !measuring,
             onClick = {
-                busy = true; status = null
-                scope.launch {
-                    when (val r = BpNative.estimate(context)) {
+                guidedCapture(action = { BpNative.estimate(context) }) { r ->
+                    when (r) {
                         is BpResult.Estimate -> {
                             estimate = "${r.systolic}/${r.diastolic} mmHg"
                             status = "confidence ${(r.confidence * 100).toInt()}% · " +
-                                if (r.calibrated) "calibrated" else "uncalibrated base — add a cuff to personalize"
+                                if (r.calibrated) "calibrated" else "uncalibrated base — add a cuff to personalise"
                         }
                         else -> status = msg(r)
                     }
-                    busy = false
                 }
             },
             modifier = Modifier.fillMaxWidth(),
-        ) { Text(if (busy) "Reading…" else "Estimate now") }
+        ) { Text("Measure blood pressure") }
 
         estimate?.let {
             Card(Modifier.fillMaxWidth()) {
@@ -124,81 +120,28 @@ fun BpScreen(
             }
         }
 
-        // --- Live capture (EXPERIMENTAL diagnostic) ---
-        // The 5.0 does NOT put its raw PPG in the normal offload, so we probe the realtime stream to
-        // find out what the strap actually emits. Connect + wear the strap, then Start and watch the
-        // frame tally: a climbing "type-43" count with a sane size = raw data is reachable live.
-        Text("Live capture (experimental)", style = MaterialTheme.typography.titleMedium)
-        Text(
-            "Diagnostic: asks the strap to stream realtime raw data and reports what arrives. Wear the " +
-                "strap and be connected first. Battery-costly — stop when done.",
-            style = MaterialTheme.typography.bodySmall,
-        )
-        OutlinedButton(
-            onClick = {
-                if (!probing) { onStartLiveProbe(); probing = true }
-                else { onStopLiveProbe(); probing = false }
-            },
-            modifier = Modifier.fillMaxWidth(),
-        ) { Text(if (probing) "Stop live capture" else "Start live capture") }
-
-        // Deep-stream unlock: write the R22 feature flags (as the official app does), then wear + sync.
-        // Reversible config write on your own device; the target is raw PPG appearing in the offload.
-        OutlinedButton(
-            onClick = { onUnlockDeepStream(); probing = true },
-            modifier = Modifier.fillMaxWidth(),
-        ) { Text("Unlock deep sensor stream (R22), then wear + sync") }
-
-        // Dump the probe report (tally + per-record hex samples) into the strap log so it rides the
-        // existing Settings → "Share strap log" export — no cable needed.
-        OutlinedButton(
-            onClick = onSaveProbeReport,
-            modifier = Modifier.fillMaxWidth(),
-        ) { Text("Save report to strap log (then Settings → Share strap log)") }
-
-        // Start the adb command server: PC drives the strap over `adb forward localabstract:noop_bp_cmd`.
-        OutlinedButton(
-            onClick = { onStartCommandServer(); probing = true },
-            modifier = Modifier.fillMaxWidth(),
-        ) { Text("Start adb command server") }
-
-        if (probing || probeReadout.isNotEmpty()) {
-            Card(Modifier.fillMaxWidth()) {
-                Text(
-                    probeReadout.ifEmpty { "starting…" },
-                    Modifier.padding(14.dp),
-                    style = MaterialTheme.typography.bodySmall,
-                    fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
-                )
-            }
-        }
-
         // --- Baseline (no cuff) ---
         Text("Baseline", style = MaterialTheme.typography.titleMedium)
         Text(
-            "No cuff yet? Set an uncalibrated baseline while resting: it anchors your pulse to a population-" +
-                "normal (~120/80) so you get a rough estimate now and can track changes. Add a cuff later to " +
-                "personalize it. (Uncalibrated estimates are rough — not a medical reading.)",
+            "No cuff yet? Set a baseline while resting — it anchors your pulse to a population-normal " +
+                "(~120/80) so you get a rough estimate now and can track changes. Add a cuff later to personalise.",
             style = MaterialTheme.typography.bodySmall,
         )
-        Button(
-            enabled = !busy,
+        OutlinedButton(
+            enabled = !busy && !measuring,
             onClick = {
-                busy = true; status = null
-                scope.launch {
-                    val r = BpNative.setBaseline(context)
-                    status = if (r is BpResult.Calibrated) "Baseline set — Estimate now (uncalibrated)." else msg(r)
-                    busy = false
+                guidedCapture(action = { BpNative.setBaseline(context) }) { r ->
+                    status = if (r is BpResult.Calibrated) "Baseline set — Measure now (uncalibrated)." else msg(r)
                 }
             },
             modifier = Modifier.fillMaxWidth(),
         ) { Text("Set baseline (no cuff)") }
 
-        // --- Calibration (cuff) ---
+        // --- Calibrate with a cuff ---
         Text("Calibrate with a cuff", style = MaterialTheme.typography.titleMedium)
         Text(
-            "Take a reading with a real BP cuff, then enter it here while wearing the strap so the estimate " +
-                "is anchored to your body. This replaces the baseline and personalizes every estimate.",
+            "Take a reading with a real BP cuff and enter it here while wearing the strap. This replaces the " +
+                "baseline and personalises every estimate to your body.",
             style = MaterialTheme.typography.bodySmall,
         )
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -216,13 +159,11 @@ fun BpScreen(
             )
         }
         Button(
-            enabled = !busy && sys.toIntOrNull() != null && dia.toIntOrNull() != null,
+            enabled = !busy && !measuring && sys.toIntOrNull() != null && dia.toIntOrNull() != null,
             onClick = {
-                busy = true; status = null
-                scope.launch {
-                    val r = BpNative.calibrate(context, sys.toInt(), dia.toInt())
-                    status = if (r is BpResult.Calibrated) "Calibrated ✓ — you can Estimate now." else msg(r)
-                    busy = false
+                val s = sys.toInt(); val d = dia.toInt()
+                guidedCapture(action = { BpNative.calibrate(context, s, d) }) { r ->
+                    status = if (r is BpResult.Calibrated) "Calibrated ✓ — measurements are now personalised." else msg(r)
                 }
             },
             modifier = Modifier.fillMaxWidth(),
@@ -233,5 +174,20 @@ fun BpScreen(
                 Text(it, Modifier.padding(14.dp), style = MaterialTheme.typography.bodySmall)
             }
         }
+    }
+
+    // Guided "hold still" countdown dialog.
+    if (measuring) {
+        AlertDialog(
+            onDismissRequest = {},
+            confirmButton = {},
+            title = { Text("Hold still") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Rest your arm, keep your wrist steady, and breathe normally.")
+                    Text("$countdown s", style = MaterialTheme.typography.headlineLarge)
+                }
+            },
+        )
     }
 }

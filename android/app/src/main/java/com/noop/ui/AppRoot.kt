@@ -426,11 +426,8 @@ fun AppRoot(viewModel: AppViewModel = viewModel()) {
                 }
                 composable(Destination.BloodPressure.route) {
                     BpScreen(
-                        onStartLiveProbe = { viewModel.ble.startLiveOpticalProbe() },
-                        onStopLiveProbe = { viewModel.ble.stopLiveOpticalProbe() },
-                        onUnlockDeepStream = { viewModel.ble.enableDeepStreamForProbe() },
-                        onSaveProbeReport = { viewModel.ble.logLiveProbeReport() },
-                        onStartCommandServer = { viewModel.ble.startCommandServer() },
+                        onSync = { viewModel.ble.syncNow() },
+                        onEnsureFeed = { viewModel.ble.startCommandServer() },
                     )
                 }
                 composable(Destination.DataSources.route) { DataSourcesScreen(viewModel) }
