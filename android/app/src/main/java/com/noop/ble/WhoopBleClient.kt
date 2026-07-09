@@ -4181,7 +4181,16 @@ class WhoopBleClient(
             }
             "report" -> com.noop.bp.LivePpgProbe.fullReport()
             "clear" -> { com.noop.bp.LivePpgProbe.start(); "cleared" }
-            "help" -> "commands: status | raw <opDec> [hex] | r22 | capture <secs> | report | clear"
+            // sync [secs] — reset the tally, kick a historical offload, collect for N seconds (default 30),
+            // then report. This is how we pull banked (incl. any R22) records on demand.
+            "sync" -> {
+                val secs = parts.getOrNull(1)?.toLongOrNull() ?: 30L
+                com.noop.bp.LivePpgProbe.start()
+                handler.post { syncNow() }
+                Thread.sleep(secs.coerceIn(2, 120) * 1000)
+                com.noop.bp.LivePpgProbe.fullReport()
+            }
+            "help" -> "commands: status | raw <opDec> [hex] | r22 | sync [secs] | capture <secs> | report | clear"
             else -> "unknown: ${parts[0]} (try: help)"
         }
     }
