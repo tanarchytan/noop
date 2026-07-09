@@ -104,7 +104,8 @@ fun BpScreen(
                     when (val r = BpNative.estimate(context)) {
                         is BpResult.Estimate -> {
                             estimate = "${r.systolic}/${r.diastolic} mmHg"
-                            status = "confidence ${(r.confidence * 100).toInt()}%"
+                            status = "confidence ${(r.confidence * 100).toInt()}% · " +
+                                if (r.calibrated) "calibrated" else "uncalibrated base — add a cuff to personalize"
                         }
                         else -> status = msg(r)
                     }
@@ -172,11 +173,32 @@ fun BpScreen(
             }
         }
 
-        // --- Calibration ---
-        Text("Calibrate", style = MaterialTheme.typography.titleMedium)
+        // --- Baseline (no cuff) ---
+        Text("Baseline", style = MaterialTheme.typography.titleMedium)
+        Text(
+            "No cuff yet? Set an uncalibrated baseline while resting: it anchors your pulse to a population-" +
+                "normal (~120/80) so you get a rough estimate now and can track changes. Add a cuff later to " +
+                "personalize it. (Uncalibrated estimates are rough — not a medical reading.)",
+            style = MaterialTheme.typography.bodySmall,
+        )
+        Button(
+            enabled = !busy,
+            onClick = {
+                busy = true; status = null
+                scope.launch {
+                    val r = BpNative.setBaseline(context)
+                    status = if (r is BpResult.Calibrated) "Baseline set — Estimate now (uncalibrated)." else msg(r)
+                    busy = false
+                }
+            },
+            modifier = Modifier.fillMaxWidth(),
+        ) { Text("Set baseline (no cuff)") }
+
+        // --- Calibration (cuff) ---
+        Text("Calibrate with a cuff", style = MaterialTheme.typography.titleMedium)
         Text(
             "Take a reading with a real BP cuff, then enter it here while wearing the strap so the estimate " +
-                "is anchored to your body.",
+                "is anchored to your body. This replaces the baseline and personalizes every estimate.",
             style = MaterialTheme.typography.bodySmall,
         )
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {

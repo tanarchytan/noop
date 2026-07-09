@@ -19,6 +19,7 @@ object BpStore {
     private const val K_AMP = "cal_amp"
     private const val K_WID = "cal_wid"
     private const val K_CAL_AT = "cal_at"
+    private const val K_CAL_CALIBRATED = "cal_calibrated"  // true = real cuff anchor; false = population base
 
     // last reading
     private const val K_R_PRESENT = "r_present"
@@ -35,6 +36,8 @@ object BpStore {
         val amplitude: Double,
         val widthMs: Double,
         val calibratedAt: Long,
+        /** true = anchored to a real cuff reading; false = population-normal base (uncalibrated). */
+        val calibrated: Boolean = true,
     )
 
     data class Reading(val systolic: Int, val diastolic: Int, val confidence: Double, val at: Long)
@@ -50,6 +53,7 @@ object BpStore {
             p.getFloat(K_HR, 0f).toDouble(), p.getFloat(K_UP, 0f).toDouble(),
             p.getFloat(K_AMP, 0f).toDouble(), p.getFloat(K_WID, 0f).toDouble(),
             p.getLong(K_CAL_AT, 0L),
+            p.getBoolean(K_CAL_CALIBRATED, true),
         )
     }
 
@@ -59,6 +63,7 @@ object BpStore {
         .putFloat(K_HR, c.hr.toFloat()).putFloat(K_UP, c.upstrokeMs.toFloat())
         .putFloat(K_AMP, c.amplitude.toFloat()).putFloat(K_WID, c.widthMs.toFloat())
         .putLong(K_CAL_AT, c.calibratedAt)
+        .putBoolean(K_CAL_CALIBRATED, c.calibrated)
         .apply()
 
     fun lastReading(ctx: Context): Reading? {
