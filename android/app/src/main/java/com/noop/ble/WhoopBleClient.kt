@@ -4100,8 +4100,15 @@ class WhoopBleClient(
         send(CommandNumber.ENABLE_OPTICAL_DATA, byteArrayOf(0), withResponse = true)
         // Disarm the realtime HR we armed to spin up the AFE (noop re-arms it if a screen wants it).
         send(CommandNumber.TOGGLE_REALTIME_HR, byteArrayOf(0), withResponse = true)
+        logLiveProbeReport()
         com.noop.bp.LivePpgProbe.stop()
         log("Live-PPG probe: stopped realtime raw stream")
+    }
+
+    /** Dump the live-PPG probe's full report (tally + responses + per-record hex samples) into the
+     *  strap log, so it rides the existing "Share strap log" export — no cable, RE-ready. */
+    fun logLiveProbeReport() {
+        com.noop.bp.LivePpgProbe.fullReport().lineSequence().forEach { if (it.isNotBlank()) log(it) }
     }
 
     /**

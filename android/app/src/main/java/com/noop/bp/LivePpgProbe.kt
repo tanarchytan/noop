@@ -18,6 +18,9 @@ object LivePpgProbe {
 
     private val typeCounts = ConcurrentHashMap<String, Int>()
 
+    /** First frame hex seen per record key (type / hist_vNN) — the sample we RE record layouts from. */
+    private val firstHex = ConcurrentHashMap<String, String>()
+
     /** Distinct command-response outcomes seen, e.g. "ENABLE_OPTICAL_DATA=SUCCESS" — tells us which
      *  opcode the strap honors vs rejects. Insertion-ordered + deduped, capped so it stays readable. */
     private val responses = java.util.Collections.synchronizedSet(LinkedHashSet<String>())
@@ -27,7 +30,8 @@ object LivePpgProbe {
     @Volatile var samplesFed = 0
 
     fun start() {
-        typeCounts.clear(); responses.clear(); lastRawType43Size = 0; lastRawType43Hex = ""; samplesFed = 0
+        typeCounts.clear(); firstHex.clear(); responses.clear()
+        lastRawType43Size = 0; lastRawType43Hex = ""; samplesFed = 0
         active = true
     }
 
@@ -45,9 +49,13 @@ object LivePpgProbe {
         typeCounts.merge(key, 1) { a, b -> a + b }
         // Break HISTORICAL_DATA (47) down by layout version (@9 on 5/MG) — after the R22 unlock we're
         // watching for a NEW version to appear, which would be where the deeper (raw-PPG) records ride.
-        if (rawTypeByte == 47 && frame.size > 9) {
-            typeCounts.merge("hist_v${frame[9].toInt() and 0xFF}", 1) { a, b -> a + b }
-        }
+        val hexKey = if (rawTypeByte == 47 && frame.size > 9) {
+            val vk = "hist_v${frame[9].toInt() and 0xFF}"
+            typeCounts.merge(vk, 1) { a, b -> a + b }
+            vk
+        } else key
+        // Keep the first full-frame hex per record kind — the sample we RE the layout from.
+        firstHex.putIfAbsent(hexKey, frame.joinToString("") { "%02x".format(it) })
         if (respInfo != null && responses.size < 24) responses.add(respInfo)
         if (rawTypeByte == 43) {
             lastRawType43Size = frame.size
@@ -77,4 +85,17 @@ object LivePpgProbe {
     /** Which enable opcodes the strap accepted/rejected (e.g. "ENABLE_OPTICAL_DATA=SUCCESS"). */
     fun responseSummary(): String =
         synchronized(responses) { responses.joinToString("; ") }.ifEmpty { "(no command responses yet)" }
+
+    /** Full multi-line report for the strap log / "Share strap log": tally, responses, and a first-frame
+     *  hex sample of every record kind — everything needed to RE an unlocked record layout offline. */
+    fun fullReport(): String = buildString {
+        appendLine("=== BP LIVE-PPG PROBE REPORT ===")
+        appendLine("frames: ${typeSummary()}")
+        appendLine("responses: ${responseSummary()}")
+        appendLine("type-43: ${lastRawType43Size}B  PPG-fed: $samplesFed")
+        firstHex.entries.sortedBy { it.key }.forEach { (k, hex) ->
+            appendLine("sample[$k] ${hex.take(160)}")
+        }
+        appendLine("=== END PROBE REPORT ===")
+    }
 }

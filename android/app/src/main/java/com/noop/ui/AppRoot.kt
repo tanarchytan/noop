@@ -429,6 +429,7 @@ fun AppRoot(viewModel: AppViewModel = viewModel()) {
                         onStartLiveProbe = { viewModel.ble.startLiveOpticalProbe() },
                         onStopLiveProbe = { viewModel.ble.stopLiveOpticalProbe() },
                         onUnlockDeepStream = { viewModel.ble.enableDeepStreamForProbe() },
+                        onSaveProbeReport = { viewModel.ble.logLiveProbeReport() },
                     )
                 }
                 composable(Destination.DataSources.route) { DataSourcesScreen(viewModel) }

@@ -46,6 +46,7 @@ fun BpScreen(
     onStartLiveProbe: () -> Unit = {},
     onStopLiveProbe: () -> Unit = {},
     onUnlockDeepStream: () -> Unit = {},
+    onSaveProbeReport: () -> Unit = {},
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -143,6 +144,13 @@ fun BpScreen(
             onClick = { onUnlockDeepStream(); probing = true },
             modifier = Modifier.fillMaxWidth(),
         ) { Text("Unlock deep sensor stream (R22), then wear + sync") }
+
+        // Dump the probe report (tally + per-record hex samples) into the strap log so it rides the
+        // existing Settings → "Share strap log" export — no cable needed.
+        OutlinedButton(
+            onClick = onSaveProbeReport,
+            modifier = Modifier.fillMaxWidth(),
+        ) { Text("Save report to strap log (then Settings → Share strap log)") }
 
         if (probing || probeReadout.isNotEmpty()) {
             Card(Modifier.fillMaxWidth()) {
