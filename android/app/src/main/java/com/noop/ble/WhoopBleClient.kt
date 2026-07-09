@@ -4042,28 +4042,31 @@ class WhoopBleClient(
      */
     fun startLiveOpticalProbe() {
         com.noop.bp.LivePpgProbe.start()
-        // The maverick firmware's optical stream is R20, enabled with ENABLE_OPTICAL_DATA ("O 1"); this
-        // mirrors the whoop-debug APK's proven sequence (GET_AFE_PARAMETERS → ENABLE_OPTICAL → START_RAW).
-        // Space them ~80 ms so each command_response lands, and we can see which opcode the strap honors.
+        // The optical opcodes returned FAILURE because the AFE is idle ("Get AFE Param - AFE not
+        // operating"): WHOOP duty-cycles the PPG sensor. Arm realtime HR FIRST to force continuous PPG
+        // sampling so the AFE is operating, THEN (after it spins up) enable the optical R20 stream. The
+        // optical sequence mirrors the whoop-debug APK (GET_AFE_PARAMETERS → ENABLE_OPTICAL → START_RAW).
+        send(CommandNumber.TOGGLE_REALTIME_HR, byteArrayOf(1), withResponse = true)
         val seqCmds = listOf(
             CommandNumber.GET_AFE_PARAMETERS to byteArrayOf(),
             CommandNumber.ENABLE_OPTICAL_DATA to byteArrayOf(1),
             CommandNumber.TOGGLE_OPTICAL_MODE to byteArrayOf(1),
             CommandNumber.START_RAW_DATA to byteArrayOf(1),
-            CommandNumber.SEND_R10_R11_REALTIME to byteArrayOf(1),
         )
+        // Start ~1.2 s after arming HR so the AFE is running before we query/enable optical.
         seqCmds.forEachIndexed { i, (cmd, payload) ->
-            handler.postDelayed({ send(cmd, payload, withResponse = true) }, 80L * i)
+            handler.postDelayed({ send(cmd, payload, withResponse = true) }, 1200L + 120L * i)
         }
-        log("Live-PPG probe: requested optical stream (AFE→ENABLE_OPTICAL→TOGGLE→START_RAW→R10/R11) — watching frame types")
+        log("Live-PPG probe: armed realtime HR to spin up the AFE, then requesting optical R20 stream — watching frame types")
     }
 
     /** Stop the live raw-PPG probe: tell the strap to stop streaming, then clear the active flag. The
      *  stop opcodes are sent WHILE still active so they pass the allow-list. */
     fun stopLiveOpticalProbe() {
-        send(CommandNumber.ENABLE_OPTICAL_DATA, byteArrayOf(0), withResponse = true)
         send(CommandNumber.STOP_RAW_DATA, byteArrayOf(0), withResponse = true)
-        send(CommandNumber.SEND_R10_R11_REALTIME, byteArrayOf(0), withResponse = true)
+        send(CommandNumber.ENABLE_OPTICAL_DATA, byteArrayOf(0), withResponse = true)
+        // Disarm the realtime HR we armed to spin up the AFE (noop re-arms it if a screen wants it).
+        send(CommandNumber.TOGGLE_REALTIME_HR, byteArrayOf(0), withResponse = true)
         com.noop.bp.LivePpgProbe.stop()
         log("Live-PPG probe: stopped realtime raw stream")
     }
