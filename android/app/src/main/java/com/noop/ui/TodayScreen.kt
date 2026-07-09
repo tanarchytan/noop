@@ -240,6 +240,9 @@ fun TodayScreen(
     // The "workout in progress" indicator card routes to Live and re-opens the in-exercise overlay. Defaulted
     // to a no-op so the call site stays compiling; AppRoot binds it to openActiveWorkout() + nav.navigate(Live).
     onOpenActiveWorkout: () -> Unit = {},
+    // Experimental BP: opens the Blood pressure detail from the last-reading card. Defaulted to a no-op
+    // so the call site stays compiling; AppRoot binds it to nav.navigate(BloodPressure).
+    onOpenBloodPressure: () -> Unit = {},
     // The liquid header battery ring taps through to Devices (iOS parity: the battery ring → router.openDevices()).
     // Defaulted to fall back to Settings so the call site stays compiling; AppRoot binds it to the Devices route.
     onOpenDevices: () -> Unit = onOpenSettings,
@@ -1187,6 +1190,22 @@ fun TodayScreen(
         ) {
             HeartRateTrendCard(viewModel, days, selectedDay, todayDate, displayMetric, effortScale)
         }
+        }
+
+        // BLOOD PRESSURE (experimental, opt-in): a compact last-reading card, shown ONLY once a stored
+        // estimate exists (calibrated + at least one sync that carried PPG). Tap → the Blood pressure
+        // screen. Renders nothing otherwise, so it stays invisible for anyone not using the feature.
+        if (selectedDayOffset == 0) {
+            item {
+                val bpReading = remember { com.noop.bp.BpStore.lastReading(context) }
+                if (bpReading != null) {
+                    BpTodayCard(
+                        reading = bpReading,
+                        onOpen = onOpenBloodPressure,
+                        modifier = Modifier.fillMaxWidth().staggeredAppear(6),
+                    )
+                }
+            }
         }
 
         // YOUR CARDS, the user-customisable dashboard (WHOOP "My Dashboard"). Surfaces a persisted,

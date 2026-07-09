@@ -692,7 +692,12 @@ fun extractHistoricalStreams(
 
     // Retain the tail of the v26 waveform for the opt-in on-device blood-pressure estimate (the samples
     // are otherwise discarded). No-op unless the strap sent v26 records; the buffer is bounded + in-memory.
-    if (ppgSamples.isNotEmpty()) com.noop.bp.PpgBuffer.record(ppgSamples.map { it.value }, PpgHr.SAMPLE_RATE_HZ)
+    // Then piggyback a BP reading onto this sync (no-op unless the user has calibrated) so the last-BP
+    // card stays current on whatever cadence noop already offloads at — no extra strap traffic.
+    if (ppgSamples.isNotEmpty()) {
+        com.noop.bp.PpgBuffer.record(ppgSamples.map { it.value }, PpgHr.SAMPLE_RATE_HZ)
+        com.noop.bp.BpAutoMeasure.onSyncedPpg()
+    }
 
     return StreamBatch(
         hr = hr, rr = rr, events = events, battery = battery,

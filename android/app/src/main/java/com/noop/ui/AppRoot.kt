@@ -343,6 +343,9 @@ fun AppRoot(viewModel: AppViewModel = viewModel()) {
                         // The liquid header's strap battery ring taps through to Devices (iOS parity: the
                         // battery ring → router.openDevices()).
                         onOpenDevices = { nav.navigateTopLevel(Destination.Devices.route) },
+                        // Experimental BP: the last-reading card (shown only once a reading exists) pushes
+                        // the Blood pressure detail. A normal push so back returns to Today.
+                        onOpenBloodPressure = { nav.navigate(Destination.BloodPressure.route) },
                     )
                 }
                 composable(Destination.Live.route) {
