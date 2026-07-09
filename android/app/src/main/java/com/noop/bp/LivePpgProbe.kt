@@ -43,6 +43,11 @@ object LivePpgProbe {
         if (!active) return
         val key = typeName ?: "type-$rawTypeByte"
         typeCounts.merge(key, 1) { a, b -> a + b }
+        // Break HISTORICAL_DATA (47) down by layout version (@9 on 5/MG) — after the R22 unlock we're
+        // watching for a NEW version to appear, which would be where the deeper (raw-PPG) records ride.
+        if (rawTypeByte == 47 && frame.size > 9) {
+            typeCounts.merge("hist_v${frame[9].toInt() and 0xFF}", 1) { a, b -> a + b }
+        }
         if (respInfo != null && responses.size < 24) responses.add(respInfo)
         if (rawTypeByte == 43) {
             lastRawType43Size = frame.size
