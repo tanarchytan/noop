@@ -4182,6 +4182,9 @@ class WhoopBleClient(
             "report" -> com.noop.bp.LivePpgProbe.fullReport()
             // dump <key> — full untruncated hex of the first frame of a record kind (e.g. dump hist_v20).
             "dump" -> com.noop.bp.LivePpgProbe.hexFor(parts.getOrNull(1) ?: "")
+            // ppg — the concatenated PPG buffer as CSV (for PC-side waveform/contiguity analysis).
+            "ppg" -> (com.noop.bp.PpgBuffer.window(120)?.joinToString(",") ?: "empty") +
+                " @${com.noop.bp.PpgBuffer.sampleRateHz}Hz"
             "clear" -> { com.noop.bp.LivePpgProbe.start(); "cleared" }
             // sync [secs] — reset the tally, kick a historical offload, collect for N seconds (default 30),
             // then report. This is how we pull banked (incl. any R22) records on demand.
