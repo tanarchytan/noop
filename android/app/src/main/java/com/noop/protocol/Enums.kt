@@ -116,6 +116,13 @@ enum class CommandNumber(val rawValue: Int) {
     SET_DEVICE_CONFIG(119),
     START_RAW_DATA(81),
     STOP_RAW_DATA(82),
+    // GEN5 optical/AFE opcodes (from the maverick firmware debug menu + whoop_protocol.json). The 5.0
+    // enables its realtime optical (PPG) stream via ENABLE_OPTICAL_DATA ("O 1" = enable R20 optical
+    // packet generation); GET_AFE_PARAMETERS is a harmless read; TOGGLE_OPTICAL_MODE flips the mode.
+    // Used only by the experimental live-PPG probe. Stream toggles — reversible, no persistent config.
+    GET_AFE_PARAMETERS(62),
+    ENABLE_OPTICAL_DATA(107),
+    TOGGLE_OPTICAL_MODE(108),
     STOP_HAPTICS(122),
     SELECT_WRIST(123);
 

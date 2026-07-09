@@ -18,12 +18,16 @@ object LivePpgProbe {
 
     private val typeCounts = ConcurrentHashMap<String, Int>()
 
+    /** Distinct command-response outcomes seen, e.g. "ENABLE_OPTICAL_DATA=SUCCESS" — tells us which
+     *  opcode the strap honors vs rejects. Insertion-ordered + deduped, capped so it stays readable. */
+    private val responses = java.util.Collections.synchronizedSet(LinkedHashSet<String>())
+
     @Volatile var lastRawType43Size = 0
     @Volatile var lastRawType43Hex = ""
     @Volatile var samplesFed = 0
 
     fun start() {
-        typeCounts.clear(); lastRawType43Size = 0; lastRawType43Hex = ""; samplesFed = 0
+        typeCounts.clear(); responses.clear(); lastRawType43Size = 0; lastRawType43Hex = ""; samplesFed = 0
         active = true
     }
 
@@ -35,10 +39,11 @@ object LivePpgProbe {
      * frame is still counted even when it fails to decode. When it's a realtime-raw (43) frame we record
      * its size + a hex head and attempt to lift PPG samples into [PpgBuffer].
      */
-    fun observe(frame: ByteArray, typeName: String?, rawTypeByte: Int) {
+    fun observe(frame: ByteArray, typeName: String?, rawTypeByte: Int, respInfo: String? = null) {
         if (!active) return
         val key = typeName ?: "type-$rawTypeByte"
         typeCounts.merge(key, 1) { a, b -> a + b }
+        if (respInfo != null && responses.size < 24) responses.add(respInfo)
         if (rawTypeByte == 43) {
             lastRawType43Size = frame.size
             if (lastRawType43Hex.isEmpty()) {
@@ -63,4 +68,8 @@ object LivePpgProbe {
     fun typeSummary(): String =
         typeCounts.entries.sortedByDescending { it.value }.joinToString(", ") { "${it.key}=${it.value}" }
             .ifEmpty { "none yet" }
+
+    /** Which enable opcodes the strap accepted/rejected (e.g. "ENABLE_OPTICAL_DATA=SUCCESS"). */
+    fun responseSummary(): String =
+        synchronized(responses) { responses.joinToString("; ") }.ifEmpty { "(no command responses yet)" }
 }

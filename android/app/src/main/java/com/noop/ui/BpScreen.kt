@@ -58,6 +58,7 @@ fun BpScreen(onStartLiveProbe: () -> Unit = {}, onStopLiveProbe: () -> Unit = {}
     LaunchedEffect(probing) {
         while (probing) {
             probeReadout = "frames: ${LivePpgProbe.typeSummary()}\n" +
+                "responses: ${LivePpgProbe.responseSummary()}\n" +
                 "type-43: ${LivePpgProbe.lastRawType43Size} B  •  PPG fed: ${LivePpgProbe.samplesFed}  •  " +
                 "buffer: ${PpgBuffer.window(30)?.size ?: 0}\n" +
                 (LivePpgProbe.lastRawType43Hex.ifEmpty { "(no type-43 frames seen)" })

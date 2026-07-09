@@ -2006,7 +2006,9 @@ class WhoopBleClient(
                 // probe is active. They toggle what the strap STREAMS (no persistent config write), so
                 // they are reversible and safe; driven only by start/stopLiveOpticalProbe().
                 !((cmd == CommandNumber.SEND_R10_R11_REALTIME || cmd == CommandNumber.START_RAW_DATA ||
-                    cmd == CommandNumber.STOP_RAW_DATA) && com.noop.bp.LivePpgProbe.active)) {
+                    cmd == CommandNumber.STOP_RAW_DATA || cmd == CommandNumber.GET_AFE_PARAMETERS ||
+                    cmd == CommandNumber.ENABLE_OPTICAL_DATA || cmd == CommandNumber.TOGGLE_OPTICAL_MODE) &&
+                    com.noop.bp.LivePpgProbe.active)) {
                 log("send(${cmd.name}) skipped — no WHOOP 5/MG framing for this command yet")
                 return
             }
@@ -3278,7 +3280,12 @@ class WhoopBleClient(
                         val rawType = if (connectedFamily == DeviceFamily.WHOOP5)
                             (frame.getOrNull(8)?.toInt()?.and(0xFF) ?: -1)
                         else (frame.getOrNull(4)?.toInt()?.and(0xFF) ?: -1)
-                        com.noop.bp.LivePpgProbe.observe(frame, parsed.typeName, rawType)
+                        val respInfo = if (parsed.typeName == "COMMAND_RESPONSE") {
+                            val rc = parsed.parsed["resp_cmd"] as? String
+                            val res = parsed.parsed["result"] as? String
+                            if (rc != null || res != null) "$rc=$res" else null
+                        } else null
+                        com.noop.bp.LivePpgProbe.observe(frame, parsed.typeName, rawType, respInfo)
                     }
                     // A frame replayed as part of the historical offload (type 47/48/… during a backfill)
                     // must not drive LIVE-only state (the charging pill). Mirrors iOS, where the offload
@@ -4035,14 +4042,26 @@ class WhoopBleClient(
      */
     fun startLiveOpticalProbe() {
         com.noop.bp.LivePpgProbe.start()
-        send(CommandNumber.SEND_R10_R11_REALTIME, byteArrayOf(1), withResponse = true)
-        send(CommandNumber.START_RAW_DATA, byteArrayOf(1), withResponse = true)
-        log("Live-PPG probe: requested realtime raw stream (R10/R11[1] + START_RAW_DATA[1]) — watching frame types")
+        // The maverick firmware's optical stream is R20, enabled with ENABLE_OPTICAL_DATA ("O 1"); this
+        // mirrors the whoop-debug APK's proven sequence (GET_AFE_PARAMETERS → ENABLE_OPTICAL → START_RAW).
+        // Space them ~80 ms so each command_response lands, and we can see which opcode the strap honors.
+        val seqCmds = listOf(
+            CommandNumber.GET_AFE_PARAMETERS to byteArrayOf(),
+            CommandNumber.ENABLE_OPTICAL_DATA to byteArrayOf(1),
+            CommandNumber.TOGGLE_OPTICAL_MODE to byteArrayOf(1),
+            CommandNumber.START_RAW_DATA to byteArrayOf(1),
+            CommandNumber.SEND_R10_R11_REALTIME to byteArrayOf(1),
+        )
+        seqCmds.forEachIndexed { i, (cmd, payload) ->
+            handler.postDelayed({ send(cmd, payload, withResponse = true) }, 80L * i)
+        }
+        log("Live-PPG probe: requested optical stream (AFE→ENABLE_OPTICAL→TOGGLE→START_RAW→R10/R11) — watching frame types")
     }
 
     /** Stop the live raw-PPG probe: tell the strap to stop streaming, then clear the active flag. The
      *  stop opcodes are sent WHILE still active so they pass the allow-list. */
     fun stopLiveOpticalProbe() {
+        send(CommandNumber.ENABLE_OPTICAL_DATA, byteArrayOf(0), withResponse = true)
         send(CommandNumber.STOP_RAW_DATA, byteArrayOf(0), withResponse = true)
         send(CommandNumber.SEND_R10_R11_REALTIME, byteArrayOf(0), withResponse = true)
         com.noop.bp.LivePpgProbe.stop()
