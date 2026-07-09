@@ -690,6 +690,10 @@ fun extractHistoricalStreams(
     // unless the strap sent v26 records; falls back gracefully (no rows) on noise (#156).
     val ppgHr = PpgHr.estimate(ppgSamples).map { PpgHrRow(ts = it.ts, bpm = it.bpm, conf = it.conf) }
 
+    // Retain the tail of the v26 waveform for the opt-in on-device blood-pressure estimate (the samples
+    // are otherwise discarded). No-op unless the strap sent v26 records; the buffer is bounded + in-memory.
+    if (ppgSamples.isNotEmpty()) com.noop.bp.PpgBuffer.record(ppgSamples.map { it.value }, PpgHr.SAMPLE_RATE_HZ)
+
     return StreamBatch(
         hr = hr, rr = rr, events = events, battery = battery,
         spo2 = spo2, skinTemp = skinTemp, resp = resp, gravity = gravity, steps = steps,
