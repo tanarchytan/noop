@@ -3248,6 +3248,11 @@ class WhoopBleClient(
                 // notifications ever enable, so HR/battery/events stay empty (issue #12). The bond write
                 // is deferred to startSession(), which runs once every notification is on.
                 connectedFamily = DeviceFamily.WHOOP4
+                // Record the family on connect, not only in the scan path (persistSelectedModel is
+                // otherwise called only from onScanResult). A strap reached via the co-resident
+                // easy-connect route (getConnectedDevices / bondedDevices adopt, no scan) would never
+                // persist its model, leaving model-gated UI stale for a genuinely-connected strap.
+                persistSelectedModel(WhoopModel.WHOOP4)
                 cmdCharacteristic = whoop4.getCharacteristic(CMD_WRITE_CHAR)
                 whoop4.getCharacteristic(CMD_NOTIFY_CHAR)?.let { cccdQueue.add(it) }
                 whoop4.getCharacteristic(EVENT_NOTIFY_CHAR)?.let { cccdQueue.add(it) }
@@ -3256,6 +3261,11 @@ class WhoopBleClient(
                 // EXPERIMENTAL WHOOP 5.0/MG: opens with CLIENT_HELLO (sent in startSession, after the
                 // standard HR/battery notifications are enabled), not the WHOOP4 confirmed-write bond.
                 connectedFamily = DeviceFamily.WHOOP5
+                // Persist on connect too (see the WHOOP4 branch): otherwise an easy-connect 5/MG never
+                // records WHOOP5_MG, so the 5/MG-only controls (raw capture, broadcast HR, deep data)
+                // gated on noop.selectedWhoopModel stay hidden until the strap is live-detected that
+                // session — even when it is the active paired device. This makes the choice stick.
+                persistSelectedModel(WhoopModel.WHOOP5_MG)
                 log("WHOOP 5/MG detected — will send CLIENT_HELLO after subscribing (experimental).")
                 _state.update { it.copy(
                     whoop5Detected = true,
