@@ -76,4 +76,15 @@ enum PuffinExperiment {
     static let autoDetectWorkoutsKey = "noopAutoDetectWorkouts"
 
     static var autoDetectWorkoutsEnabled: Bool { UserDefaults.standard.bool(forKey: autoDetectWorkoutsKey) }
+
+    /// Turn OFF the 5/MG-only probes — protocol probes ([isEnabled]), the R22 deep-data strap write
+    /// ([deepDataEnabled]) and broadcast-HR ([broadcastHrEnabled]) — on a strap FAMILY switch
+    /// (WHOOP 4.0 ↔ 5/MG), so a 5/MG-only option can never linger enabled and get applied to a strap it
+    /// doesn't belong to. Leaves the model-agnostic toggles (continuous HRV, experimental sleep V2,
+    /// auto-detect workouts) alone. Mirrors the Android `PuffinExperiment.resetFiveMGGatedProbes`.
+    static func resetFiveMGGatedProbes() {
+        UserDefaults.standard.set(false, forKey: defaultsKey)
+        UserDefaults.standard.set(false, forKey: deepDataKey)
+        UserDefaults.standard.set(false, forKey: broadcastHrKey)
+    }
 }

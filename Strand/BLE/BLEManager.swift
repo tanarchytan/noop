@@ -2898,8 +2898,16 @@ extension BLEManager: @preconcurrency CBCentralManagerDelegate {
         }
         cancelScanFallback()
         // Persist the family that actually advertised so the next scan starts on the right service —
-        // this is what makes a one-time rotation stick after a stale-preference reconnect. (PR#195)
+        // this is what makes a one-time rotation stick after a stale-preference reconnect, and drives the
+        // Settings 5/MG-controls gate off the ACTUALLY-CONNECTED strap. (PR#195)
+        // On a genuine family switch (4.0 ↔ 5/MG) also untick the 5/MG-only probes so nothing carries
+        // over to the wrong, unsupported strap. Same-family reconnects don't reset (previous == new).
+        let previousSelectedModel = UserDefaults.standard.string(forKey: "selectedWhoopModel")
         UserDefaults.standard.set(selectedModel.rawValue, forKey: "selectedWhoopModel")
+        if let previousSelectedModel, previousSelectedModel != selectedModel.rawValue {
+            PuffinExperiment.resetFiveMGGatedProbes()
+            log("Strap family switched (\(previousSelectedModel) → \(selectedModel.rawValue)) — reset 5/MG-only experimental toggles to off.")
+        }
         log("Discovered \(name) (rssi \(RSSI)) — connecting")
         central.stopScan()
         preparePeripheral(peripheral)

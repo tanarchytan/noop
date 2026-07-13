@@ -2601,13 +2601,26 @@ class WhoopBleClient(
     // ====================================================================================
 
     /** Persist the WHOOP family that actually advertised so a later launch/scan starts on the right
-     *  service — what makes a one-time fallback rotation stick. Mirrors macOS
+     *  service — what makes a one-time fallback rotation stick, and drives the Settings 5/MG-controls
+     *  gate off the ACTUALLY-CONNECTED strap (not a stale device-list default). Mirrors macOS
      *  `UserDefaults.set(rawValue, forKey: "selectedWhoopModel")`. Self-contained in the shared
-     *  noop_prefs store; failures are non-fatal (the rotation still worked this session). (PR#195) */
+     *  noop_prefs store; failures are non-fatal (the rotation still worked this session). (PR#195)
+     *
+     *  On a genuine FAMILY switch (4.0 ↔ 5/MG) it also clears the 5/MG-only experimental toggles via
+     *  [PuffinExperiment.resetFiveMGGatedProbes], so a 5/MG-only probe (raw capture, R22 deep-data
+     *  write, broadcast-HR write) can't stay enabled across a switch and get applied to the wrong,
+     *  unsupported strap. Same-family reconnects don't reset (the previous == new guard). */
     private fun persistSelectedModel(model: WhoopModel) {
         try {
-            context.getSharedPreferences("noop_prefs", Context.MODE_PRIVATE)
-                .edit().putString("noop.selectedWhoopModel", model.name).apply()
+            val prefs = context.getSharedPreferences("noop_prefs", Context.MODE_PRIVATE)
+            val previous = prefs.getString("noop.selectedWhoopModel", null)
+            prefs.edit().putString("noop.selectedWhoopModel", model.name).apply()
+            if (previous != null && previous != model.name) {
+                // Family actually changed — untick the family-gated probes so nothing carries over.
+                PuffinExperiment.from(context).resetFiveMGGatedProbes()
+                log("Strap family switched ($previous → ${model.name}) — reset 5/MG-only experimental " +
+                    "toggles (protocol probes, raw capture, deep-data, broadcast HR) to off.")
+            }
         } catch (t: Throwable) {
             log("Couldn't persist selected model: ${t.message}")
         }
