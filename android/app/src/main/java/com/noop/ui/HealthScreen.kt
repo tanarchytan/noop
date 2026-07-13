@@ -1606,6 +1606,10 @@ private data class Vital(
     /** A non-numeric readout that replaces the value+unit line when set - e.g. the SpO₂ estimate's
      *  "Calibrating (2/3 nights)" gate before enough nights accrue. Default null keeps the numeric line. (SpO2) */
     val displayOverride: String? = null,
+    /** When set (banked, target), the tile is mid-calibration: it shows a segmented [PipBar] countdown
+     *  (banked of target nights) in place of the sparkline, gamifying the wait — the honest "info behind
+     *  a countdown gate". Empty pips never fabricate progress. Presentation-only. (SpO2) */
+    val calibrationProgress: Pair<Int, Int>? = null,
 ) {
     /** Value with its unit appended, or the [displayOverride] text, or null when no data. */
     val formattedValue: String? = displayOverride ?: value?.let { "${format(it)} $unit" }
@@ -1621,6 +1625,8 @@ private data class Vital(
     /** The in-range caption that stands in for a StatePill inside the fixed-height tile.
      *  The wording says which yardstick judged it: your baseline vs typical ranges. */
     val stateCaption: String = when {
+        // Mid-calibration: say "Calibrating", not "No data" — the countdown pips carry the progress. (SpO2)
+        calibrationProgress != null -> "Calibrating"
         // Raw SpO₂ is a device-dependent ADC, not a clinical value — never claim an in/out-of-range
         // judgment. Show a plain "uncalibrated" note when a value decoded, "No data" otherwise. (#93)
         key == "spo2raw" -> if (banding.band == VitalBands.Band.NO_DATA) "No data" else "Uncalibrated"
@@ -1743,9 +1749,12 @@ private fun vitalsFor(
     // value stays d?.spo2Pct (null on the default path → No Data), i.e. today's behaviour, untouched. (SpO2)
     val spo2Rolling = if (spo2Estimated) Spo2Estimate.rollingReading(days.mapNotNull { it.spo2Pct }) else null
     val spo2Value: Double? = if (spo2Estimated) spo2Rolling?.pct else d?.spo2Pct
-    val spo2Override: String? = spo2Rolling?.calibratingNights
+    // Mid-calibration: a gamified N-of-MIN_NIGHTS countdown. The tile shows a short "N / 3" value + a
+    // segmented PipBar (see VitalTile) rather than a long text line cramped into the big value slot. (SpO2)
+    val spo2Calibration: Pair<Int, Int>? = spo2Rolling?.calibratingNights
         ?.takeIf { it > 0 }
-        ?.let { "Calibrating ($it/${Spo2Estimate.MIN_NIGHTS} nights)" }
+        ?.let { it to Spo2Estimate.MIN_NIGHTS }
+    val spo2Override: String? = spo2Calibration?.let { "${it.first} / ${it.second}" }
     return listOf(
         Vital(
             key = "resp", label = "Resp Rate", unit = "rpm",
@@ -1778,8 +1787,10 @@ private fun vitalsFor(
             metricColor = Palette.metricCyan,
             sparkline = trail(d?.spo2Pct) { it.spo2Pct },
             experimentalUncalibrated = spo2Estimated,
-            // "Calibrating (N/3 nights)" until enough nights accrue; null once the smoothed pct shows. (SpO2)
+            // A short "N / 3" value; the segmented PipBar below carries the countdown. Null once the
+            // smoothed pct shows. (SpO2)
             displayOverride = spo2Override,
+            calibrationProgress = spo2Calibration,
         ),
         Vital(
             // Issue #93: WHOOP 4.0 raw SpO₂ PPG ADC mean (red+IR)/2 per night. NOT a calibrated
@@ -1859,9 +1870,21 @@ private fun VitalTile(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
-            // A metric-tinted sparkline trail with a glowing "now" end-cap, mirroring Today's tiles.
-            // Hidden below two points so a sparse vital shows the caption with no flat trail.
-            if (vital.sparkline.size > 1) {
+            // Mid-calibration (SpO₂ estimate): a segmented countdown to the target nights in place of the
+            // trail — the honest "info behind a countdown gate" (empty pips never fabricate progress).
+            // Otherwise the usual metric-tinted sparkline once there are ≥2 points.
+            val cal = vital.calibrationProgress
+            if (cal != null) {
+                PipBar(
+                    value = cal.first.toFloat(),
+                    range = 0f..cal.second.toFloat(),
+                    segments = cal.second,
+                    tint = vital.metricColor,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = Metrics.space4),
+                )
+            } else if (vital.sparkline.size > 1) {
                 TileSparkline(
                     values = vital.sparkline,
                     color = vital.metricColor,

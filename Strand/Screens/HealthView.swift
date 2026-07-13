@@ -1257,7 +1257,13 @@ private struct LiquidVitalTile: View {
                     Spacer(minLength: 0)
                 }
                 #if !os(watchOS)
-                if let sparkline = reading.sparkline, sparkline.count > 1 {
+                if let cal = reading.calibrationProgress {
+                    // Mid-calibration (SpO₂ estimate): a segmented countdown to the target nights in place of
+                    // the trail — the honest "info behind a countdown gate" (empty pips never fabricate). (SpO2)
+                    PipBar(value: Double(cal.0), range: 0...Double(cal.1), segments: cal.1, tint: reading.metricColor)
+                        .padding(.top, 6)
+                        .accessibilityHidden(true)
+                } else if let sparkline = reading.sparkline, sparkline.count > 1 {
                     Sparkline(values: sparkline, gradient: Gradient(colors: [reading.metricColor.opacity(0.5), reading.metricColor]))
                         .frame(height: 22).padding(.top, 6)
                         .accessibilityHidden(true)

@@ -26,6 +26,10 @@ struct BodyVitalReading: Identifiable {
     /// A non-numeric readout that replaces the value+unit line when set - e.g. the SpO₂ estimate's
     /// "Calibrating (2/3 nights)" gate before enough nights accrue. Default nil keeps the numeric line. (SpO2)
     var displayOverride: String? = nil
+    /// When set (banked, target), the tile is mid-calibration: it shows a segmented PipBar countdown
+    /// (banked of target nights) in place of the sparkline — the honest "info behind a countdown gate".
+    /// Empty pips never fabricate progress. Presentation-only. (SpO2)
+    var calibrationProgress: (Int, Int)? = nil
 
     var id: String { key }
 
@@ -64,6 +68,8 @@ struct BodyVitalReading: Identifiable {
     /// Which yardstick judged the value: your own baseline vs the typical adult range. String(localized:)
     /// — StatTile's caption is a plain String rendered via Text(String), which never consults the catalog.
     private var stateText: String {
+        // Mid-calibration: say "Calibrating", not "No data" — the countdown pips carry the progress. (SpO2)
+        if calibrationProgress != nil { return String(localized: "Calibrating") }
         // Raw SpO₂ is a device-dependent ADC, not a clinical value — never claim an in/out-of-range
         // judgment. Show a plain "uncalibrated" note when a value decoded, "No data" otherwise. (#93)
         if key == "spo2raw" {
@@ -183,10 +189,13 @@ enum BodyVitalSigns {
             ? Spo2Estimate.rollingReading(recentNightly: spo2Points.filter { $0.source == .noopComputed }.map(\.value))
             : nil
         let spo2Value: Double? = spo2IsEstimate ? spo2Rolling?.pct : spo2Row?.value
-        let spo2Override: String? = spo2Rolling.flatMap { r in
+        // Mid-calibration: a gamified N-of-minNights countdown. The tile shows a short "N / 3" value + a
+        // segmented PipBar (see the tile) rather than a long text line cramped into the big value slot. (SpO2)
+        let spo2Calibration: (Int, Int)? = spo2Rolling.flatMap { r -> (Int, Int)? in
             guard let n = r.calibratingNights, n > 0 else { return nil }
-            return String(localized: "Calibrating (\(n)/\(Spo2Estimate.minNights) nights)")
+            return (n, Spo2Estimate.minNights)
         }
+        let spo2Override: String? = spo2Calibration.map { "\($0.0) / \($0.1)" }
         let rhrRow = latest(rhrPoints)
         let hrvRow = latest(hrvPoints)
         let skinRow = latest(skinPoints)
@@ -266,8 +275,10 @@ enum BodyVitalSigns {
                 source: spo2Row?.source,
                 missingCaption: String(localized: "No SpO₂ import or Health value"),
                 sparkline: trail(spo2Points),
-                // "Calibrating (N/3 nights)" until enough nights accrue; nil once the smoothed pct shows. (SpO2)
-                displayOverride: spo2Override
+                // A short "N / 3" value; the segmented PipBar carries the countdown. nil once the smoothed
+                // pct shows. (SpO2)
+                displayOverride: spo2Override,
+                calibrationProgress: spo2Calibration
             ),
             BodyVitalReading(
                 key: "spo2raw",
