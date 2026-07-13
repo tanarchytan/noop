@@ -786,8 +786,16 @@ fun NoopRoot() {
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
+    // Dev convenience: debug + staging builds treat the first-run Terms + Onboarding gates as already
+    // satisfied. Because allowBackup=false a reinstall WIPES SharedPreferences — and an applicationId
+    // suffix change (com.noop.whoop.debug vs .staging) or a signing-key change forces an uninstall — so a
+    // fresh test build would otherwise drag you back through the whole wizard every time. A genuine
+    // production release (applicationId com.noop.whoop, no .debug/.staging suffix) keeps the full first
+    // run. To exercise onboarding in a dev build, clear the app's data. Personal-build only, never shipped.
+    val devSkipFirstRun = BuildConfig.DEBUG || BuildConfig.APPLICATION_ID.endsWith(".staging")
+
     var onboarded by remember {
-        mutableStateOf(prefs.getBoolean(NoopPrefs.KEY_ONBOARDED, false))
+        mutableStateOf(devSkipFirstRun || prefs.getBoolean(NoopPrefs.KEY_ONBOARDED, false))
     }
     var lastSeenChangelog by remember {
         mutableStateOf(prefs.getString(NoopPrefs.KEY_LAST_SEEN_CHANGELOG, "") ?: "")
@@ -803,7 +811,10 @@ fun NoopRoot() {
     // Terms acknowledgment gate, over EVERYTHING (before onboarding/pairing/Bluetooth) until the
     // current terms version is accepted; re-appears if the terms materially change. (clickwrap)
     var acceptedTerms by remember {
-        mutableStateOf(prefs.getString(NoopPrefs.KEY_ACCEPTED_TERMS_VERSION, "") ?: "")
+        mutableStateOf(
+            if (devSkipFirstRun) Terms.CURRENT_VERSION
+            else (prefs.getString(NoopPrefs.KEY_ACCEPTED_TERMS_VERSION, "") ?: ""),
+        )
     }
     if (acceptedTerms != Terms.CURRENT_VERSION) {
         TermsGateScreen(onAccept = {
