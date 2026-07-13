@@ -360,6 +360,9 @@ struct TodayView: View {
     // into the inbox (restorable) like the cards above, rather than nagging a returning user every day. Same
     // card id as Android ("calibratingBaseline") so a dismissed flag round-trips an export/import.
     @AppStorage(TodayCardDismissal.flagKey("calibratingBaseline")) private var calibratingDismissed = false
+    // The calibration-milestone countdown stack's dismissed flag; same card id as Android
+    // ("calibrationMilestones") so a dismissed flag round-trips an export/import.
+    @AppStorage(TodayCardDismissal.flagKey("calibrationMilestones")) private var milestonesDismissed = false
 
     // Memoized repo-derived values that are expensive (a full-history sort + per-call
     // `repo.days.map`) yet INDEPENDENT of the ~1 Hz live-HR ticks that re-evaluate `body`
@@ -941,6 +944,18 @@ struct TodayView: View {
         return "Learning your baseline, \(n) of \(Baselines.minNightsSeed) nights."
     }
 
+    /// The gamified calibration-milestone countdown (WHOOP-style timeline), today-only and only while at
+    /// least one milestone is unreached. Uses the UNCAPPED banked-night tally (unlike `recoveryCalibration`,
+    /// which nils past the 4-night seed) so the 4 → 7 → 14 → 30 cards keep counting after the first score.
+    /// Same analytics-layer source as the seed gate (`RecoveryScorer.bankedNights`), so the two can't
+    /// diverge. Presentation-only — the `Baselines` math is untouched. Mirrors Android `calibrationMilestones`.
+    private var calibrationMilestones: [CalibrationMilestones.Progress]? {
+        guard selectedDayOffset == 0 else { return nil }
+        let banked = RecoveryScorer.bankedNights(nightlyHrv: repo.days.map(\.avgHrv))
+        guard CalibrationMilestones.isCalibrating(nightsBanked: banked) else { return nil }
+        return CalibrationMilestones.progress(nightsBanked: banked)
+    }
+
     /// The iOS tab is already labelled "Today", and "Control Center" collides with the OS feature of
     /// that name (on both platforms). Match the tab on iOS; keep the established name on macOS.
     private var screenTitle: LocalizedStringKey {
@@ -1425,6 +1440,7 @@ struct TodayView: View {
         case "scoresBuilding":      scoresBuildingDismissed = false
         case "newHere":             newHereDismissed = false
         case "calibratingBaseline": calibratingDismissed = false
+        case "calibrationMilestones": milestonesDismissed = false
         default:                    break
         }
     }
@@ -1437,6 +1453,7 @@ struct TodayView: View {
         case "scoresBuilding":      scoresBuildingDismissed = true
         case "newHere":             newHereDismissed = true
         case "calibratingBaseline": calibratingDismissed = true
+        case "calibrationMilestones": milestonesDismissed = true
         default:                    break
         }
         updateStore.post(UpdateItem(
@@ -1697,6 +1714,23 @@ struct TodayView: View {
                     }
                     .transition(.opacity.combined(with: .scale(scale: 0.97)))
             }
+
+            // CALIBRATION MILESTONES (gamification): the WHOOP-style countdown stack under the rings, so a
+            // new user sees exactly how many nights until each milestone unlocks. Today only, only while
+            // unreached, and dismissible into the inbox. Presentation-only; the Baselines math is untouched.
+            if selectedDayOffset == 0, !milestonesDismissed, let milestones = calibrationMilestones {
+                calibrationMilestonesCard(progress: milestones)
+                    .overlay(alignment: .topTrailing) {
+                        todayCardDismissButton {
+                            dismissTodayCard(
+                                id: "calibrationMilestones",
+                                title: String(localized: "Calibration milestones"),
+                                message: String(localized: "Your countdown to personal Charge, Sleep and a full 30-day baseline.")
+                            )
+                        }
+                    }
+                    .transition(.opacity.combined(with: .scale(scale: 0.97)))
+            }
         }
     }
 
@@ -1770,6 +1804,112 @@ struct TodayView: View {
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Charge baseline calibrating. \(countdown), \(unlock). \(progress).")
+    }
+
+    /// The gamified calibration-milestone countdown stack (WHOOP-style "Calibration Timeline"). One row per
+    /// milestone: DONE reads as a compact "Unlocked" check, the single ACTIVE milestone is the live
+    /// countdown (a PipBar of nights + "N nights to go" + what it unlocks), and LOCKED milestones sit muted
+    /// below. `progress` is the pure, unit-tested `CalibrationMilestones.progress` output; this view is
+    /// presentation only. Design-system tokens only. Mirrors Android `CalibrationMilestonesCard`.
+    @ViewBuilder
+    private func calibrationMilestonesCard(progress: [CalibrationMilestones.Progress]) -> some View {
+        // Charge-tinted like every other Today card (and the sibling chargeCalibrationCountdown it sits
+        // beside) — the milestones ride the HRV/recovery baseline, so the Charge theme is apt. Android's
+        // note lane (ScoreStateNote) is neutral, so it stays neutral there; each platform matches its own
+        // Today-card convention (feature-level parity, not pixel-level).
+        NoopCard(padding: 14, tint: StrandPalette.chargeColor) {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack(spacing: 10) {
+                    Image(systemName: "slider.horizontal.3")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(StrandPalette.accent)
+                        .accessibilityHidden(true)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Calibration milestones")
+                            .font(StrandFont.headline)
+                            .foregroundStyle(StrandPalette.textPrimary)
+                        Text("Wear the strap overnight to unlock each one.")
+                            .font(StrandFont.subhead)
+                            .foregroundStyle(StrandPalette.textSecondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    Spacer(minLength: 0)
+                }
+                ForEach(progress, id: \.milestone.id) { p in
+                    calibrationMilestoneRow(p)
+                }
+            }
+        }
+    }
+
+    /// One milestone row inside `calibrationMilestonesCard`, drawn by its `CalibrationMilestones.State`.
+    @ViewBuilder
+    private func calibrationMilestoneRow(_ p: CalibrationMilestones.Progress) -> some View {
+        let m = p.milestone
+        let banked = max(0, m.nights - p.remaining)
+        let nightsWord = p.remaining == 1 ? String(localized: "night") : String(localized: "nights")
+        switch p.state {
+        case .done:
+            // A cleared milestone: a compact green check + "Unlocked", no bar (it's full by definition).
+            HStack(spacing: 8) {
+                Image(systemName: "checkmark.circle.fill")
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(StrandPalette.statusPositive)
+                Text(m.title)
+                    .font(StrandFont.subhead)
+                    .foregroundStyle(StrandPalette.textSecondary)
+                Spacer(minLength: 0)
+                Text("Unlocked")
+                    .font(StrandFont.footnote)
+                    .foregroundStyle(StrandPalette.statusPositive)
+            }
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("\(m.title) unlocked")
+        case .active:
+            // The live countdown: accent open-lock, "N nights to go", a nights PipBar, and what it unlocks.
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(spacing: 8) {
+                    Image(systemName: "lock.open.fill")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(StrandPalette.accent)
+                    Text(m.title)
+                        .font(StrandFont.headline)
+                        .foregroundStyle(StrandPalette.textPrimary)
+                    Spacer(minLength: 0)
+                    Text("\(p.remaining) \(nightsWord) to go")
+                        .font(StrandFont.footnote)
+                        .foregroundStyle(StrandPalette.accent)
+                }
+                PipBar(value: Double(banked), range: 0...Double(m.nights), segments: m.nights,
+                       tint: StrandPalette.accent)
+                Text("\(banked)/\(m.nights) nights · \(m.unlocks)")
+                    .font(StrandFont.footnote)
+                    .foregroundStyle(StrandPalette.textSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("\(m.title), \(banked) of \(m.nights) nights, \(p.remaining) \(nightsWord) to go. \(m.unlocks)")
+        case .locked:
+            // Still ahead: a muted closed-lock, dimmed bar, and the raw gap — no unlocks copy (keeps it quiet).
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(spacing: 8) {
+                    Image(systemName: "lock.fill")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(StrandPalette.textTertiary)
+                    Text(m.title)
+                        .font(StrandFont.subhead)
+                        .foregroundStyle(StrandPalette.textSecondary)
+                    Spacer(minLength: 0)
+                    Text("\(p.remaining) \(nightsWord) to go")
+                        .font(StrandFont.footnote)
+                        .foregroundStyle(StrandPalette.textTertiary)
+                }
+                PipBar(value: Double(banked), range: 0...Double(m.nights), segments: m.nights,
+                       tint: StrandPalette.textTertiary)
+            }
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("\(m.title), \(banked) of \(m.nights) nights, \(p.remaining) \(nightsWord) to go")
+        }
     }
 
     // MARK: A1/S4 Charge breakdown sheet (the Charge-ring tap target)

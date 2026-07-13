@@ -115,6 +115,21 @@ object RecoveryScorer {
     const val restingHRMinPlausibleBpm: Double = 25.0
 
     // ─────────────────────────────────────────────────────────────────────────
+    // Cold-start calibration progress
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /**
+     * The UNCAPPED count of nights carrying a usable nightly HRV — the signal that seeds every
+     * baseline. Uses the SAME validity predicate as [Baselines.update] (value within the metric config
+     * bounds), not just non-null, so an implausible out-of-range night is excluded and this can never
+     * over-state nValid. The recovery cold-start gate uses it capped to the seed window; the
+     * calibration-milestone countdown cards ([CalibrationMilestones]) count it all the way to 30. Pure +
+     * unit-tested. Mirrors Swift `RecoveryScorer.bankedNights`.
+     */
+    fun bankedNights(nightlyHrv: List<Double?>, cfg: MetricCfg = Baselines.hrvCfg): Int =
+        nightlyHrv.count { it != null && it in cfg.minVal..cfg.maxVal }
+
+    // ─────────────────────────────────────────────────────────────────────────
     // Resting HR
     // ─────────────────────────────────────────────────────────────────────────
 

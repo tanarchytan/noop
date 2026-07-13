@@ -157,11 +157,21 @@ public enum RecoveryScorer {
                                          seed: Int = Baselines.minNightsSeed,
                                          cfg: MetricCfg = Baselines.hrvCfg) -> Int? {
         guard !hasRecovery else { return nil }
-        let n = nightlyHrv.compactMap { $0 }.filter { $0 >= cfg.minVal && $0 <= cfg.maxVal }.count
+        let n = bankedNights(nightlyHrv: nightlyHrv, cfg: cfg)
         // Include 0: a brand-new user (no banked nights yet) should read "Calibrating — 0 of N" on the
         // Charge ring, not a bare "No data" that looks broken (#335). Past days are gated to nil by the
         // caller; >= seed (recovery should exist) still returns nil.
         return (0..<seed).contains(n) ? n : nil
+    }
+
+    /// The UNCAPPED count of nights carrying a usable nightly HRV — the signal that seeds every baseline.
+    /// Uses the SAME validity predicate as `Baselines.update` (value within the metric config bounds), not
+    /// just non-nil, so an implausible out-of-range night is excluded and this can never over-state nValid.
+    /// `calibrationNights` gates this to the cold-start seed window; the calibration-milestone countdown
+    /// cards count it all the way to 30. Mirrors Android `TodayScreen.bankedCalibrationNights`.
+    public static func bankedNights(nightlyHrv: [Double?],
+                                    cfg: MetricCfg = Baselines.hrvCfg) -> Int {
+        nightlyHrv.compactMap { $0 }.filter { $0 >= cfg.minVal && $0 <= cfg.maxVal }.count
     }
 
     // MARK: - Recovery score
