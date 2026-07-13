@@ -23,11 +23,15 @@ struct BodyVitalReading: Identifiable {
     /// the resolved value, banding and source are unchanged — this is just the trend for the trail.
     /// Defaulted so existing call sites (previews/tests) keep compiling unchanged.
     var sparkline: [Double]? = nil
+    /// A non-numeric readout that replaces the value+unit line when set - e.g. the SpO₂ estimate's
+    /// "Calibrating (2/3 nights)" gate before enough nights accrue. Default nil keeps the numeric line. (SpO2)
+    var displayOverride: String? = nil
 
     var id: String { key }
 
     var formattedValue: String? {
-        value.map { "\(format($0)) \(unit)" }
+        if let displayOverride { return displayOverride }
+        return value.map { "\(format($0)) \(unit)" }
     }
 
     /// Colour communicates state: in-range = the metric's category colour,
@@ -167,6 +171,22 @@ enum BodyVitalSigns {
         let respRow = latest(respPoints)
         let spo2Row = latest(spo2Points)
         let spo2rawRow = latest(spo2rawPoints)
+
+        // OPT-IN wellness-tier SpO₂ ESTIMATE, WHOOP-style: when the latest resolved SpO₂ is the NOOP-computed
+        // estimate (the only writer of `spo2Pct` on a computed row), show a 30-day-smoothed, soft-anchored
+        // guesstimate that only appears after a short calibration period, NOT a single raw night.
+        // `Spo2Estimate.rollingReading` over the computed nightly estimates (oldest→newest) returns either a
+        // whole-percent pct or a calibrating count until `minNights` accrue. A real import / Apple value keeps
+        // its raw latest reading — this only reshapes the uncalibrated estimate. (SpO2)
+        let spo2IsEstimate = spo2Row?.source == .noopComputed
+        let spo2Rolling: Spo2Estimate.RollingReading? = spo2IsEstimate
+            ? Spo2Estimate.rollingReading(recentNightly: spo2Points.filter { $0.source == .noopComputed }.map(\.value))
+            : nil
+        let spo2Value: Double? = spo2IsEstimate ? spo2Rolling?.pct : spo2Row?.value
+        let spo2Override: String? = spo2Rolling.flatMap { r in
+            guard let n = r.calibratingNights, n > 0 else { return nil }
+            return String(localized: "Calibrating (\(n)/\(Spo2Estimate.minNights) nights)")
+        }
         let rhrRow = latest(rhrPoints)
         let hrvRow = latest(hrvPoints)
         let skinRow = latest(skinPoints)
@@ -228,7 +248,7 @@ enum BodyVitalSigns {
                 key: "spo2",
                 label: String(localized: "Blood O₂"),
                 unit: "%",
-                value: spo2Row?.value,
+                value: spo2Value,
                 format: { String(format: "%.0f", $0) },
                 // Population-only on purpose: an absolute <95% floor is meaningful regardless of personal
                 // baseline (no "spo2" MetricCfg exists). But when the value is the OPT-IN wellness-tier
@@ -236,16 +256,18 @@ enum BodyVitalSigns {
                 // asserts an in/out-of-range clinical judgment on an uncalibrated number — `stateText` labels
                 // it experimental. A real import / Apple value keeps the honest 95…100 clinical floor. (SpO2)
                 banding: VitalBands.band(
-                    value: spo2Row?.value,
+                    value: spo2Value,
                     history: [],
-                    populationRange: spo2Row?.source == .noopComputed ? 0...100 : 95...100,
+                    populationRange: spo2IsEstimate ? 0...100 : 95...100,
                     cfg: nil
                 ),
                 metricColor: StrandPalette.metricCyan,
                 day: spo2Row?.day,
                 source: spo2Row?.source,
                 missingCaption: String(localized: "No SpO₂ import or Health value"),
-                sparkline: trail(spo2Points)
+                sparkline: trail(spo2Points),
+                // "Calibrating (N/3 nights)" until enough nights accrue; nil once the smoothed pct shows. (SpO2)
+                displayOverride: spo2Override
             ),
             BodyVitalReading(
                 key: "spo2raw",

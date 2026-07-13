@@ -44,6 +44,68 @@ public enum Spo2Estimate {
     public static let acPercentileLow = 0.05
     public static let acPercentileHigh = 0.95
 
+    // --- Rolling readout (WHOOP-style) --------------------------------------------------------------
+    // The per-night `compute` value is a single, noisy, UNCALIBRATED number. WHOOP never shows a raw
+    // night: it shows a smoothed baseline that only appears after a short calibration period. `rollingReading`
+    // reproduces that behaviour so the Blood O2 card stays plausible + directionally meaningful.
+
+    /// Bootstrap gate: below this many nights the readout stays "Calibrating" (WHOOP's "one recovery
+    /// moment" before a baseline is trusted).
+    public static let minNights = 3
+
+    /// Trailing window whose median sets the soft-anchor baseline - about a month of nights.
+    public static let window = 30
+
+    /// Recent window whose median is the reported direction of travel (the last week of nights).
+    public static let recent = 7
+
+    /// Plausible healthy median SpO2 the 30-day baseline is softly anchored to, so an uncalibrated
+    /// sensor's arbitrary DC offset is removed while the night-to-night SPREAD is preserved.
+    public static let anchor = 96.5
+
+    /// Display clamp for the rolling readout (never assert outside a believable band).
+    public static let rollingClampLow = 88.0
+    public static let rollingClampHigh = 100.0
+
+    /// Result of `rollingReading`: exactly one field is non-nil. `pct` is the whole-percent smoothed
+    /// readout once calibrated; while still calibrating `pct` is nil and `calibratingNights` carries how
+    /// many nights have accrued (of `minNights`). Byte-identical to the Kotlin twin's `RollingReading`.
+    public struct RollingReading: Equatable {
+        public let pct: Double?
+        public let calibratingNights: Int?
+        public init(pct: Double?, calibratingNights: Int?) {
+            self.pct = pct
+            self.calibratingNights = calibratingNights
+        }
+    }
+
+    /// WHOOP-style rolling Blood O2 readout from recent per-night `compute` estimates. `recentNightly` is
+    /// the non-nil nightly spo2Pct estimates OLDEST -> NEWEST. Uses up to the last `window` of them.
+    ///
+    ///  - fewer than `minNights` -> a CALIBRATING result carrying the count (pct nil).
+    ///  - else: soft-anchor the window so its 30-day MEDIAN reads ~`anchor` (offset = anchor - baseline,
+    ///    preserving spread), add that offset to the `recent`-night median, clamp to the display band, and
+    ///    round to a whole percent. Deterministic + dependency-free; the same median as `compute`.
+    public static func rollingReading(recentNightly: [Double]) -> RollingReading {
+        let windowVals = recentNightly.count > window
+            ? Array(recentNightly[(recentNightly.count - window)...])
+            : recentNightly
+        if windowVals.count < minNights {
+            return RollingReading(pct: nil, calibratingNights: windowVals.count)
+        }
+
+        let baseline = median(windowVals)
+        let offset = anchor - baseline
+        let recentCount = min(recent, windowVals.count)
+        let recentVals = Array(windowVals[(windowVals.count - recentCount)...])
+        let raw = median(recentVals) + offset
+        let clamped = min(max(raw, rollingClampLow), rollingClampHigh)
+        // Round-half-up via floor(x + 0.5): byte-identical across Swift/Kotlin (avoids Kotlin's
+        // round-half-to-even vs Swift's round-half-away-from-zero divergence). Values are always positive.
+        let rounded = (clamped + 0.5).rounded(.down)
+        return RollingReading(pct: rounded, calibratingNights: nil)
+    }
+
     /// Wellness-tier SpO2 (%) for the night from the sleep-window red/IR samples, or nil when no window
     /// survives (flat / too-sparse / absent signal - e.g. a 5.0/MG night with no red/IR). `red` and `ir`
     /// are the per-sample ADC values in timestamp order; parallel arrays (element i of each is one

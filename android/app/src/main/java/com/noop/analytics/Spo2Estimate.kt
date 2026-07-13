@@ -49,6 +49,62 @@ object Spo2Estimate {
     const val AC_PERCENTILE_LOW = 0.05
     const val AC_PERCENTILE_HIGH = 0.95
 
+    // --- Rolling readout (WHOOP-style) --------------------------------------------------------------
+    // The per-night [compute] value is a single, noisy, UNCALIBRATED number. WHOOP never shows a raw
+    // night: it shows a smoothed baseline that only appears after a short calibration period. [rollingReading]
+    // reproduces that behaviour so the Blood O2 card stays plausible + directionally meaningful.
+
+    /** Bootstrap gate: below this many nights the readout stays "Calibrating" (WHOOP's "one recovery
+     *  moment" before a baseline is trusted). */
+    const val MIN_NIGHTS = 3
+
+    /** Trailing window whose median sets the soft-anchor baseline - about a month of nights. */
+    const val WINDOW = 30
+
+    /** Recent window whose median is the reported direction of travel (the last week of nights). */
+    const val RECENT = 7
+
+    /** Plausible healthy median SpO2 the 30-day baseline is softly anchored to, so an uncalibrated
+     *  sensor's arbitrary DC offset is removed while the night-to-night SPREAD is preserved. */
+    const val ANCHOR = 96.5
+
+    /** Display clamp for the rolling readout (never assert outside a believable band). */
+    const val ROLLING_CLAMP_LOW = 88.0
+    const val ROLLING_CLAMP_HIGH = 100.0
+
+    /**
+     * Result of [rollingReading]: exactly one field is non-null. [pct] is the whole-percent smoothed
+     * readout once calibrated; while still calibrating [pct] is null and [calibratingNights] carries how
+     * many nights have accrued (of [MIN_NIGHTS]). Byte-identical to the Swift twin's `RollingReading`.
+     */
+    data class RollingReading(val pct: Double?, val calibratingNights: Int?)
+
+    /**
+     * WHOOP-style rolling Blood O2 readout from recent per-night [compute] estimates. [recentNightly] is
+     * the non-null nightly spo2Pct estimates OLDEST -> NEWEST. Uses up to the last [WINDOW] of them.
+     *
+     *  - fewer than [MIN_NIGHTS] -> a CALIBRATING result carrying the count (pct null).
+     *  - else: soft-anchor the window so its 30-day MEDIAN reads ~[ANCHOR] (offset = ANCHOR - baseline,
+     *    preserving spread), add that offset to the [RECENT]-night median, clamp to the display band, and
+     *    round to a whole percent. Deterministic + dependency-free; the same median as [compute].
+     */
+    fun rollingReading(recentNightly: List<Double>): RollingReading {
+        val window = if (recentNightly.size > WINDOW) recentNightly.subList(recentNightly.size - WINDOW, recentNightly.size)
+                     else recentNightly
+        if (window.size < MIN_NIGHTS) return RollingReading(pct = null, calibratingNights = window.size)
+
+        val baseline = median(window)
+        val offset = ANCHOR - baseline
+        val recentCount = minOf(RECENT, window.size)
+        val recent = median(window.subList(window.size - recentCount, window.size))
+        val raw = recent + offset
+        val clamped = minOf(maxOf(raw, ROLLING_CLAMP_LOW), ROLLING_CLAMP_HIGH)
+        // Round-half-up via floor(x + 0.5): byte-identical across Swift/Kotlin (avoids Kotlin's
+        // round-half-to-even vs Swift's round-half-away-from-zero divergence). Values are always positive.
+        val rounded = floor(clamped + 0.5)
+        return RollingReading(pct = rounded, calibratingNights = null)
+    }
+
     /**
      * Wellness-tier SpO2 (%) for the night from the sleep-window red/IR samples, or null when no window
      * survives (flat / too-sparse / absent signal - e.g. a 5.0/MG night with no red/IR). [red] and [ir]

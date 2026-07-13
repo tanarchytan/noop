@@ -68,6 +68,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.repeatOnLifecycle
 import com.noop.analytics.Baselines
+import com.noop.analytics.Spo2Estimate
 import com.noop.analytics.IllnessSignalEngine
 import com.noop.analytics.V5HealthSignals
 import com.noop.analytics.FitnessAgeEngine
@@ -1602,9 +1603,12 @@ private data class Vital(
      *  flag). Drives a plainly experimental / uncalibrated / non-clinical caption so it is never mistaken
      *  for a calibrated reading, and suppresses any in/out-of-range clinical judgment. Default false. (SpO2) */
     val experimentalUncalibrated: Boolean = false,
+    /** A non-numeric readout that replaces the value+unit line when set - e.g. the SpO₂ estimate's
+     *  "Calibrating (2/3 nights)" gate before enough nights accrue. Default null keeps the numeric line. (SpO2) */
+    val displayOverride: String? = null,
 ) {
-    /** Value with its unit appended, or null when no data. */
-    val formattedValue: String? = value?.let { "${format(it)} $unit" }
+    /** Value with its unit appended, or the [displayOverride] text, or null when no data. */
+    val formattedValue: String? = displayOverride ?: value?.let { "${format(it)} $unit" }
 
     /** Colour communicates state: in-range = the metric's category colour,
      *  out-of-range = warning amber, no data = tertiary. */
@@ -1732,6 +1736,16 @@ private fun vitalsFor(
     }
     val spo2rawRangeCaption =
         rangeCaption(days.mapNotNull(spo2RawMean), "ADC") { String.format(Locale.US, "%.0f", it) }
+    // OPT-IN wellness-tier SpO₂ ESTIMATE, WHOOP-style: when the flag is ON the Blood O₂ tile shows a
+    // 30-day-smoothed, soft-anchored guesstimate that only appears after a short calibration period, NOT a
+    // single raw night. [Spo2Estimate.rollingReading] over the non-nil nightly estimates (oldest→newest)
+    // returns either a whole-percent pct, or a calibrating count until MIN_NIGHTS accrue. Flag OFF → the
+    // value stays d?.spo2Pct (null on the default path → No Data), i.e. today's behaviour, untouched. (SpO2)
+    val spo2Rolling = if (spo2Estimated) Spo2Estimate.rollingReading(days.mapNotNull { it.spo2Pct }) else null
+    val spo2Value: Double? = if (spo2Estimated) spo2Rolling?.pct else d?.spo2Pct
+    val spo2Override: String? = spo2Rolling?.calibratingNights
+        ?.takeIf { it > 0 }
+        ?.let { "Calibrating ($it/${Spo2Estimate.MIN_NIGHTS} nights)" }
     return listOf(
         Vital(
             key = "resp", label = "Resp Rate", unit = "rpm",
@@ -1746,8 +1760,10 @@ private fun vitalsFor(
         ),
         Vital(
             key = "spo2", label = "Blood O₂", unit = "%",
-            value = d?.spo2Pct, format = { String.format("%.0f", it) },
-            deltaText = deltaText(d?.spo2Pct, previous { it.spo2Pct }, decimals = 0),
+            value = spo2Value, format = { String.format("%.0f", it) },
+            // No night-over-night delta for a 30-day-smoothed estimate; keep the raw-night delta only on
+            // the default (imported / non-estimate) path.
+            deltaText = if (spo2Estimated) null else deltaText(d?.spo2Pct, previous { it.spo2Pct }, decimals = 0),
             readingDay = todayKey,
             asOfLabel = asOfLabel(todayKey),
             rangeCaption = spo2RangeCaption,
@@ -1756,12 +1772,14 @@ private fun vitalsFor(
             // the full 0..100 span so it reads cyan and never asserts an in/out-of-range clinical judgment on
             // an uncalibrated number — the caption labels it experimental instead. (SpO2)
             banding = VitalBands.band(
-                d?.spo2Pct, emptyList(),
+                spo2Value, emptyList(),
                 if (spo2Estimated) 0.0..100.0 else 95.0..100.0, null,
             ),
             metricColor = Palette.metricCyan,
             sparkline = trail(d?.spo2Pct) { it.spo2Pct },
             experimentalUncalibrated = spo2Estimated,
+            // "Calibrating (N/3 nights)" until enough nights accrue; null once the smoothed pct shows. (SpO2)
+            displayOverride = spo2Override,
         ),
         Vital(
             // Issue #93: WHOOP 4.0 raw SpO₂ PPG ADC mean (red+IR)/2 per night. NOT a calibrated
