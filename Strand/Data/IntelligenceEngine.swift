@@ -631,6 +631,11 @@ final class IntelligenceEngine: ObservableObject {
                 // toggle is the honest escape until real 4.0 ground truth settles it (#271/#319). Matches the
                 // self-heal restage below, which reads the same toggle.
                 let useSleepStagerV2 = PuffinExperiment.experimentalSleepV2Enabled
+                // OPT-IN wellness-tier SpO2 estimate (Test Centre → Experimental algorithms). Read the flag
+                // here (off the detached executor, like useSleepStagerV2) and thread it into analyzeDay, which
+                // computes an uncalibrated blood-oxygen % from the sleep-window red/IR only when it is on.
+                // Default OFF is byte-identical to today (spo2Pct stays nil → the Blood O2 card shows No Data).
+                let useSpo2Estimate = PuffinExperiment.spo2EstimateEnabled
 
                 // Already OFF the main actor , score directly (the prior nested `Task.detached` here only
                 // existed to hop off the main actor; the whole loop now runs off it, so the score is computed
@@ -656,6 +661,8 @@ final class IntelligenceEngine: ObservableObject {
                                                      // #690: thread the V2 toggle into the NORMAL staging path so
                                                      // it affects detected nights, not just the self-heal restage.
                                                      useSleepStagerV2: useSleepStagerV2,
+                                                     // OPT-IN wellness-tier SpO2 estimate; nil-default when off.
+                                                     useSpo2Estimate: useSpo2Estimate,
                                                      traceSink: traceSink,
                                                      hrvTraceSink: hrvTraceSink,
                                                      // Per-window HRV detail ONLY for the most-recent night

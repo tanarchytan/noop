@@ -78,6 +78,7 @@ import com.noop.analytics.FitnessReadinessRole
 import com.noop.analytics.FitnessReadinessStatus
 import com.noop.analytics.VitalBands
 import com.noop.ble.LiveState
+import com.noop.ble.PuffinExperiment
 import com.noop.data.DailyMetric
 import java.time.Instant
 import java.time.LocalDate
@@ -170,7 +171,10 @@ fun HealthScreen(
                     title = "Vital Signs",
                     overline = "Latest readings",
                     trailing = null,
-                    vitals = latestVitals(days, UnitPrefs.temperature(LocalContext.current)),
+                    vitals = latestVitals(
+                        days, UnitPrefs.temperature(LocalContext.current),
+                        spo2Estimated = PuffinExperiment.from(context).spo2Estimate,
+                    ),
                     onVitalClick = onVitalClick,
                     captionMode = VitalCaptionMode.AS_OF,
                 )
@@ -1090,9 +1094,11 @@ fun VitalSignsScreen(vm: AppViewModel, onVitalClick: (String) -> Unit = {}) {
     val selectedDay = remember(selectedDayOffset) { LocalDate.now().minusDays(selectedDayOffset.toLong()) }
     val selectedDayKey = remember(selectedDay) { selectedDay.toString() }
     val selectedMetric = remember(days, selectedDayKey) { days.lastOrNull { it.day == selectedDayKey } }
-    val tempUnit = UnitPrefs.temperature(LocalContext.current)
-    val vitals = remember(selectedMetric, days, tempUnit) {
-        selectedMetric?.let { vitalsFor(it, days, tempUnit) }.orEmpty()
+    val context = LocalContext.current
+    val tempUnit = UnitPrefs.temperature(context)
+    val spo2Estimated = PuffinExperiment.from(context).spo2Estimate
+    val vitals = remember(selectedMetric, days, tempUnit, spo2Estimated) {
+        selectedMetric?.let { vitalsFor(it, days, tempUnit, spo2Estimated) }.orEmpty()
     }
 
     ScreenScaffold(
@@ -1592,6 +1598,10 @@ private data class Vital(
     /** Trailing values (oldest → newest) for the tile's metric-tinted sparkline trail, matching
      *  Today's Key-Metrics tiles. Presentation-only; defaulted so existing call sites compile. */
     val sparkline: List<Double> = emptyList(),
+    /** True when this value came from the OPT-IN wellness-tier SpO₂ ESTIMATE (Experimental algorithms
+     *  flag). Drives a plainly experimental / uncalibrated / non-clinical caption so it is never mistaken
+     *  for a calibrated reading, and suppresses any in/out-of-range clinical judgment. Default false. (SpO2) */
+    val experimentalUncalibrated: Boolean = false,
 ) {
     /** Value with its unit appended, or null when no data. */
     val formattedValue: String? = value?.let { "${format(it)} $unit" }
@@ -1610,6 +1620,10 @@ private data class Vital(
         // Raw SpO₂ is a device-dependent ADC, not a clinical value — never claim an in/out-of-range
         // judgment. Show a plain "uncalibrated" note when a value decoded, "No data" otherwise. (#93)
         key == "spo2raw" -> if (banding.band == VitalBands.Band.NO_DATA) "No data" else "Uncalibrated"
+        // OPT-IN wellness-tier SpO₂ estimate: label it plainly experimental / uncalibrated / non-clinical so
+        // it is never mistaken for a calibrated reading, and never assert an in/out-of-range judgment. (SpO2)
+        experimentalUncalibrated ->
+            if (banding.band == VitalBands.Band.NO_DATA) "No data" else "Experimental · uncalibrated · non-clinical"
         banding.band == VitalBands.Band.NO_DATA -> "No data"
         banding.basis == VitalBands.Basis.PERSONAL ->
             if (banding.band == VitalBands.Band.IN_RANGE) "In your range" else "Off your baseline"
@@ -1634,6 +1648,10 @@ private fun vitalsFor(
     d: DailyMetric?,
     days: List<DailyMetric>,
     tempUnit: TemperatureUnit = TemperatureUnit.CELSIUS,
+    // OPT-IN wellness-tier SpO₂ estimate flag (PuffinExperiment.spo2Estimate). When on, the Blood O₂ tile's
+    // value is the uncalibrated ESTIMATE, so it is banded neutrally (never a clinical amber) and captioned
+    // experimental. Default false = today's behaviour. Read by the Context-aware composable caller. (SpO2)
+    spo2Estimated: Boolean = false,
 ): List<Vital> {
     val todayKey = d?.day
     // History strictly before the displayed day, oldest→newest (recentDays is already
@@ -1733,11 +1751,17 @@ private fun vitalsFor(
             readingDay = todayKey,
             asOfLabel = asOfLabel(todayKey),
             rangeCaption = spo2RangeCaption,
-            // Population-only on purpose: an absolute <95% floor is meaningful regardless
-            // of personal baseline (no "spo2" MetricCfg exists).
-            banding = VitalBands.band(d?.spo2Pct, emptyList(), 95.0..100.0, null),
+            // Population-only on purpose: an absolute <95% floor is meaningful regardless of personal
+            // baseline (no "spo2" MetricCfg exists). But when the opt-in ESTIMATE drove the value, band over
+            // the full 0..100 span so it reads cyan and never asserts an in/out-of-range clinical judgment on
+            // an uncalibrated number — the caption labels it experimental instead. (SpO2)
+            banding = VitalBands.band(
+                d?.spo2Pct, emptyList(),
+                if (spo2Estimated) 0.0..100.0 else 95.0..100.0, null,
+            ),
             metricColor = Palette.metricCyan,
             sparkline = trail(d?.spo2Pct) { it.spo2Pct },
+            experimentalUncalibrated = spo2Estimated,
         ),
         Vital(
             // Issue #93: WHOOP 4.0 raw SpO₂ PPG ADC mean (red+IR)/2 per night. NOT a calibrated
@@ -2282,15 +2306,19 @@ private fun RecentDaySelectorBar(selectedOffset: Int, onSelect: (Int) -> Unit) {
     ThreeDaySelectorBar(selectedOffset = selectedOffset, onSelect = onSelect)
 }
 
-private fun latestVitals(days: List<DailyMetric>, tempUnit: TemperatureUnit): List<Vital> {
-    val emptyByKey = vitalsFor(null, days, tempUnit).associateBy { it.key }
+private fun latestVitals(
+    days: List<DailyMetric>,
+    tempUnit: TemperatureUnit,
+    spo2Estimated: Boolean = false,
+): List<Vital> {
+    val emptyByKey = vitalsFor(null, days, tempUnit, spo2Estimated).associateBy { it.key }
     return listOf(
-        latestVital("resp", days, tempUnit, emptyByKey) { it.respRateBpm != null },
-        latestVital("spo2", days, tempUnit, emptyByKey) { it.spo2Pct != null },
-        latestVital("spo2raw", days, tempUnit, emptyByKey) { it.spo2Red != null && it.spo2Ir != null },
-        latestVital("rhr", days, tempUnit, emptyByKey) { it.restingHr != null },
-        latestVital("hrv", days, tempUnit, emptyByKey) { it.avgHrv != null },
-        latestVital("skin", days, tempUnit, emptyByKey) { it.skinTempDevC != null },
+        latestVital("resp", days, tempUnit, emptyByKey, spo2Estimated) { it.respRateBpm != null },
+        latestVital("spo2", days, tempUnit, emptyByKey, spo2Estimated) { it.spo2Pct != null },
+        latestVital("spo2raw", days, tempUnit, emptyByKey, spo2Estimated) { it.spo2Red != null && it.spo2Ir != null },
+        latestVital("rhr", days, tempUnit, emptyByKey, spo2Estimated) { it.restingHr != null },
+        latestVital("hrv", days, tempUnit, emptyByKey, spo2Estimated) { it.avgHrv != null },
+        latestVital("skin", days, tempUnit, emptyByKey, spo2Estimated) { it.skinTempDevC != null },
     )
 }
 
@@ -2299,11 +2327,12 @@ private fun latestVital(
     days: List<DailyMetric>,
     tempUnit: TemperatureUnit,
     emptyByKey: Map<String, Vital>,
+    spo2Estimated: Boolean = false,
     hasValue: (DailyMetric) -> Boolean,
 ): Vital {
     val row = days.asReversed().firstOrNull(hasValue)
     return row
-        ?.let { latestRow -> vitalsFor(latestRow, days, tempUnit).firstOrNull { it.key == key } }
+        ?.let { latestRow -> vitalsFor(latestRow, days, tempUnit, spo2Estimated).firstOrNull { it.key == key } }
         ?.copy(asOfLabel = asOfLabel(row.day))
         ?: emptyByKey.getValue(key)
 }

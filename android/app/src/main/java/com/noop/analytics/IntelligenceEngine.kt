@@ -173,6 +173,12 @@ object IntelligenceEngine {
         // self-heal, which re-stages with SleepStagerV2 when true. Default false → V1 (the default, untouched
         // path), so existing callers / tests are unaffected. (V7 Pillar 3b)
         useExperimentalSleepV2: Boolean = false,
+        // Opt-in experimental WELLNESS-tier SpO2 estimate (Test Centre → Experimental algorithms). The analytics
+        // layer is Context-free, so the Context-aware caller (AppViewModel / WhoopBleClient) reads it off
+        // SharedPreferences (PuffinExperiment.spo2Estimate) and threads it into analyzeDay, which computes an
+        // uncalibrated blood-oxygen % from the sleep-window red/IR only when it is on. Default false keeps
+        // spo2Pct null (the Blood O2 card stays No Data), byte-identical to today. Mirrors Swift.
+        useSpo2Estimate: Boolean = false,
         // Sleep & Rest test-mode trace sink (Test Centre E5). The analytics layer is Context-free, so the
         // Context-aware caller (AppViewModel / WhoopBleClient) reads TestCentre.active(SLEEP) and passes a
         // non-null sink ONLY when the mode is on, routing each line to the .sleep-tagged strap log. null (the
@@ -220,8 +226,8 @@ object IntelligenceEngine {
         analyzeGate.withLock {
             val (out, healed) = analyzeRecentOnCpu(repo, profile, maxDays, importedDeviceId, maxHROverride,
                 nowSeconds, ownerSource, manualStepCoefficient, persistStepsCalibration, baselineEpoch,
-                recoveryEpoch, diag, useExperimentalSleepV2, sleepTraceSink, recoveryTraceSink, stepsTraceSink,
-                universalSink, workoutsTraceSink, hrvTraceSink, deepHrvWindow)
+                recoveryEpoch, diag, useExperimentalSleepV2, useSpo2Estimate, sleepTraceSink, recoveryTraceSink,
+                stepsTraceSink, universalSink, workoutsTraceSink, hrvTraceSink, deepHrvWindow)
             if (healed == 0) out
             // #899 heal re-pass: the pass above deleted overlapping duplicate sleep sessions AFTER its days
             // were scored, and the read-side dedup those days consumed had no bank-recency witness (the fresh
@@ -230,8 +236,8 @@ object IntelligenceEngine {
             // are gone), so this can never loop. Mirrors the Swift pendingForcedRescore re-arm.
             else analyzeRecentOnCpu(repo, profile, maxDays, importedDeviceId, maxHROverride,
                 nowSeconds, ownerSource, manualStepCoefficient, persistStepsCalibration, baselineEpoch,
-                recoveryEpoch, diag, useExperimentalSleepV2, sleepTraceSink, recoveryTraceSink, stepsTraceSink,
-                universalSink, workoutsTraceSink, hrvTraceSink, deepHrvWindow).first
+                recoveryEpoch, diag, useExperimentalSleepV2, useSpo2Estimate, sleepTraceSink, recoveryTraceSink,
+                stepsTraceSink, universalSink, workoutsTraceSink, hrvTraceSink, deepHrvWindow).first
         }
     }
 
@@ -292,6 +298,9 @@ object IntelligenceEngine {
         diag: (String) -> Unit = {},
         // Opt-in experimental staging (V2), threaded down to the sleep self-heal. Default false → V1. (3b)
         useExperimentalSleepV2: Boolean = false,
+        // Opt-in wellness-tier SpO2 estimate, threaded into analyzeDay per scored day. Default false keeps
+        // spo2Pct null (byte-identical to today). Mirrors Swift. (SpO2)
+        useSpo2Estimate: Boolean = false,
         // Sleep & Rest test-mode trace sink (Test Centre E5). null = byte-identical default; when non-null
         // each scored day threads it into AnalyticsEngine.analyzeDay so detectSleep's gate trace + the Rest
         // sub-score line forward line-by-line to the .sleep-tagged strap log. Mirrors Swift.
@@ -553,6 +562,10 @@ object IntelligenceEngine {
                 // badly UNDER-stage deep/REM (kavemang, #347) — so the toggle is the escape until real 4.0
                 // ground truth settles it (#271/#319). Matches the self-heal restage, which reads the toggle.
                 useSleepStagerV2 = useExperimentalSleepV2,
+                // OPT-IN wellness-tier SpO2 estimate (Test Centre → Experimental algorithms). The Context-aware
+                // caller (AppViewModel / WhoopBleClient) supplied it from PuffinExperiment.from(context).spo2Estimate;
+                // default false keeps spo2Pct null (the Blood O2 card stays No Data), byte-identical to today.
+                useSpo2Estimate = useSpo2Estimate,
                 // Sleep & Rest test mode (Test Centre E5): thread the trace sink straight through. null (the
                 // default) keeps analyzeDay's byte-identical untraced path; when the caller passed a non-null
                 // sink (mode on), detectSleep's gate trace + the Rest sub-score line route to the .sleep-tagged

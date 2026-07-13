@@ -469,6 +469,7 @@ private fun ExperimentalAlgorithmsCard(vm: AppViewModel) {
     val puffin = remember { PuffinExperiment.from(context) }
     var ppgHrSubLag by remember { mutableStateOf(puffin.ppgHrSubLagInterp) }
     var hrvReadiness by remember { mutableStateOf(puffin.hrvReadiness) }
+    var spo2Estimate by remember { mutableStateOf(puffin.spo2Estimate) }
     // The SAME nightly HRV series the recovery UI reads (repo-merged DailyMetric.avgHrv, oldest-first), fed
     // into the pure HRVReadiness engine ONLY to render the toggle's own reading inline below — the default
     // Charge ring / analyzeDay path is never touched, and this feeds no downstream gate.
@@ -500,6 +501,15 @@ private fun ExperimentalAlgorithmsCard(vm: AppViewModel) {
             // The toggle's OWN effect, shown in place: when on, the live Plews/Altini reading. Nothing renders
             // when off, so the flag off is zero behaviour change and feeds no downstream gate.
             if (hrvReadiness) HrvReadinessReadoutTC(recentDays)
+            ToggleRowTC(
+                title = "Blood O₂ estimate (uncalibrated, experimental)",
+                description = "Compute a WELLNESS-tier blood-oxygen % from the raw red/IR the strap banks over " +
+                    "your sleep window (ratio-of-ratios), and show it on the Health Blood O₂ card. It is " +
+                    "uncalibrated and non-clinical - NOT WHOOP's calibrated SpO₂ - and never a medical reading. " +
+                    "WHOOP 4.0 only (the 5.0/MG stores no red/IR, so the card stays No Data). Off by default.",
+                checked = spo2Estimate,
+                onCheckedChange = { spo2Estimate = it; puffin.spo2Estimate = it },
+            )
         }
     }
 }

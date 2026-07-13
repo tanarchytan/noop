@@ -86,6 +86,17 @@ enum PuffinExperiment {
     /// Test Centre view via @AppStorage on this key. Mirrors the Android `PuffinExperiment.KEY_HRV_READINESS`.
     static let hrvReadinessKey = "noopHrvReadiness"
 
+    /// Opt-in experimental "Blood O₂ estimate (uncalibrated)" (default off): a WELLNESS-tier, non-clinical
+    /// SpO₂ % computed by `Spo2Estimate` (ratio-of-ratios) from the raw red/IR PPG the strap already banks,
+    /// surfaced on the existing Health "Blood O₂" card behind a heavy "experimental / uncalibrated" label.
+    /// Pure OPT-IN: default OFF is byte-identical to today (`DailyMetric.spo2Pct` stays nil); IntelligenceEngine
+    /// reads this at the analyzeDay call site and threads it in. A WHOOP 5.0/MG v18 night banks no red/IR →
+    /// the estimate is nil → the card stays "No Data" (never a fabricated number). Mirrors the Android
+    /// `PuffinExperiment.KEY_SPO2_ESTIMATE`.
+    static let spo2EstimateKey = "noopSpo2Estimate"
+
+    static var spo2EstimateEnabled: Bool { UserDefaults.standard.bool(forKey: spo2EstimateKey) }
+
     /// Opt-in "Auto-detect workouts": after a sync / on Today appear, scan the last day or two of HR for a
     /// SUSTAINED-ELEVATED window (resting HR + 30 bpm held ≥ 12 min) that doesn't overlap a saved workout,
     /// and surface ONE dismissible Today card offering to save it as a manual-style workout. Pure read +

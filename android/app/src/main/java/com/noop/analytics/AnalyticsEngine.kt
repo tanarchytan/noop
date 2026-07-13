@@ -221,6 +221,12 @@ object AnalyticsEngine {
         // instead of V1. Default false keeps V1 the byte-identical default for pure-function callers/tests;
         // IntelligenceEngine threads PuffinExperiment.from(context).experimentalSleepV2. Mirrors Swift. (V7 / #690)
         useSleepStagerV2: Boolean = false,
+        // Opt-in experimental WELLNESS-tier SpO2 estimate. When true, an uncalibrated blood-oxygen % is
+        // computed by [Spo2Estimate] (ratio-of-ratios) over the matched sleep-window red/IR PPG samples and
+        // written to DailyMetric.spo2Pct. Default false keeps spo2Pct null — BYTE-IDENTICAL to today — for
+        // pure-function callers/tests; the Context-aware caller threads PuffinExperiment.from(context).spo2Estimate.
+        // A WHOOP 5.0/MG v18 night banks no red/IR, so the estimate is null and the card stays No Data. (SpO2)
+        useSpo2Estimate: Boolean = false,
         // Sleep & Rest test-mode trace sink (E11). null = byte-identical default. When non-null the gate
         // trace from detectSleep and the Rest sub-score line are forwarded line-by-line. Mirrors Swift.
         traceSink: ((String) -> Unit)? = null,
@@ -418,6 +424,21 @@ object AnalyticsEngine {
         // as-is for the Health "Raw SpO2" tile — NOT a calibrated blood-oxygen %. (#93)
         val nightlySpo2Raw = nightlySpo2RawMeans(matched, spo2)
 
+        // ── SpO2 estimate (OPT-IN, wellness-tier, uncalibrated) ───────────────
+        // When the experimental flag is on, compute a non-clinical blood-oxygen % from the SAME raw red/IR
+        // PPG banked over the detected sleep window (ratio-of-ratios). Default OFF → null → spo2Pct stays
+        // null, byte-identical to today. Only the samples inside a matched in-bed span feed it, ts-ordered
+        // so the windows are contiguous; a 5.0/MG v18 night has no red/IR → null → the card stays No Data.
+        val spo2EstimatePct: Double? = if (useSpo2Estimate) {
+            val inWindow = spo2
+                .filter { s -> matched.any { s.ts in it.start..it.end } }
+                .sortedBy { it.ts }
+            if (inWindow.isEmpty()) null
+            else Spo2Estimate.compute(inWindow.map { it.red.toDouble() }, inWindow.map { it.ir.toDouble() })
+        } else {
+            null
+        }
+
         // ── Rest (sleep_performance composite, 0–100) ─────────────────────────
         // Replaces the bare efficiency proxy: duration-vs-personal-need 0.50 + efficiency 0.20 +
         // restorative (deep+REM)/asleep 0.20 + consistency 0.10. Stored under the sleep_performance
@@ -587,7 +608,9 @@ object AnalyticsEngine {
             recovery = recovery,
             strain = strain,
             exerciseCount = workouts.size,
-            spo2Pct = null,
+            // OPT-IN wellness-tier estimate (null unless the experimental flag drove it); default path
+            // keeps this null, so today's behaviour is unchanged. NOT a calibrated / clinical value.
+            spo2Pct = spo2EstimatePct,
             skinTempDevC = skinTempDevC,
             respRateBpm = respRateDaily,
             steps = stepsTotal,

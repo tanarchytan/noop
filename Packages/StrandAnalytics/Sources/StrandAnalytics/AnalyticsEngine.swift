@@ -324,6 +324,14 @@ public enum AnalyticsEngine {
                                   // byte-identical default for pure-function callers/tests; IntelligenceEngine
                                   // threads `PuffinExperiment.experimentalSleepV2Enabled`. (V7 / #690)
                                   useSleepStagerV2: Bool = false,
+                                  // Opt-in experimental WELLNESS-tier SpO2 estimate. When true, an uncalibrated
+                                  // blood-oxygen % is computed by `Spo2Estimate` (ratio-of-ratios) over the
+                                  // matched sleep-window red/IR PPG samples and written to DailyMetric.spo2Pct.
+                                  // Default false keeps spo2Pct nil — BYTE-IDENTICAL to today — for pure-function
+                                  // callers/tests; IntelligenceEngine threads `PuffinExperiment.spo2EstimateEnabled`.
+                                  // A WHOOP 5.0/MG v18 night banks no red/IR, so the estimate is nil and the card
+                                  // stays No Data (never a fabricated number). (SpO2)
+                                  useSpo2Estimate: Bool = false,
                                   // Sleep PROVENANCE for the per-day sleep trace (CAPTURE-C / #799). The
                                   // measured BLE path is `.measured` (the default); the caller passes
                                   // `.imported(...)` when a previously-imported sleep row WON the daily merge,
@@ -585,6 +593,21 @@ public enum AnalyticsEngine {
         // as-is for the Health "Raw SpO₂" tile — NOT a calibrated blood-oxygen %. (#93)
         let nightlySpo2Raw = nightlySpo2RawMeans(matched, spo2: spo2)
 
+        // ── SpO2 estimate (OPT-IN, wellness-tier, uncalibrated) ───────────────
+        // When the experimental flag is on, compute a non-clinical blood-oxygen % from the SAME raw red/IR
+        // PPG banked over the detected sleep window (ratio-of-ratios). Default OFF → nil → spo2Pct stays nil,
+        // byte-identical to today. Only the samples inside a matched in-bed span feed it, ts-ordered so the
+        // windows are contiguous; a 5.0/MG v18 night has no red/IR → nil → the card stays No Data.
+        let spo2EstimatePct: Double? = {
+            guard useSpo2Estimate else { return nil }
+            let inWindow = spo2
+                .filter { s in matched.contains { s.ts >= $0.start && s.ts <= $0.end } }
+                .sorted { $0.ts < $1.ts }
+            if inWindow.isEmpty { return nil }
+            return Spo2Estimate.compute(red: inWindow.map { Double($0.red) },
+                                        ir: inWindow.map { Double($0.ir) })
+        }()
+
         // ── Recovery / "Charge" ───────────────────────────────────────────────
         var recovery: Double? = nil
         // Ordered "why is Charge what it is" rows, built from the SAME inputs as the score
@@ -705,7 +728,9 @@ public enum AnalyticsEngine {
             recovery: recovery,
             strain: strain,
             exerciseCount: workouts.count,
-            spo2Pct: nil,
+            // OPT-IN wellness-tier estimate (nil unless the experimental flag drove it); default path keeps
+            // this nil, so today's behaviour is unchanged. NOT a calibrated / clinical value.
+            spo2Pct: spo2EstimatePct,
             skinTempDevC: skinTempDevC,
             respRateBpm: respRateDaily,
             steps: stepsTotal,

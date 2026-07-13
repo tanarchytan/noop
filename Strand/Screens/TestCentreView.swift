@@ -40,6 +40,7 @@ struct TestCentreView: View {
     // both default OFF.
     @AppStorage(PuffinExperiment.ppgHrSubLagInterpKey) private var ppgHrSubLagInterpEnabled = false
     @AppStorage(PuffinExperiment.hrvReadinessKey) private var hrvReadinessEnabled = false
+    @AppStorage(PuffinExperiment.spo2EstimateKey) private var spo2EstimateEnabled = false
 
     /// True when the connected strap is a 5/MG, so the 5/MG experimental block shows. Mirrors the
     /// SettingsView gate (#22): a confident 4.0 owner never sees controls that cannot touch their strap.
@@ -263,6 +264,17 @@ struct TestCentreView: View {
                 // The toggle's OWN effect, shown in place: when on, the live Plews/Altini reading. Nothing
                 // renders when off, so the flag off is zero behaviour change and feeds no downstream gate.
                 if hrvReadinessEnabled { hrvReadinessReadout }
+
+                Divider().overlay(StrandPalette.hairline)
+
+                Toggle(isOn: $spo2EstimateEnabled) {
+                    Text("Blood O₂ estimate (uncalibrated, experimental)")
+                        .font(StrandFont.subhead).foregroundStyle(StrandPalette.textPrimary)
+                }
+                .toggleStyle(.switch).tint(StrandPalette.accent)
+                Text("Compute a WELLNESS-tier blood-oxygen % from the raw red/IR the strap banks over your sleep window (ratio-of-ratios), and show it on the Health Blood O₂ card. It is uncalibrated and non-clinical - NOT WHOOP's calibrated SpO₂ - and never a medical reading. WHOOP 4.0 only (the 5.0/MG stores no red/IR, so the card stays No Data). Off by default.")
+                    .font(StrandFont.caption).foregroundStyle(StrandPalette.textTertiary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
     }

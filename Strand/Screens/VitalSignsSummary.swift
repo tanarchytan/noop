@@ -66,6 +66,13 @@ struct BodyVitalReading: Identifiable {
             return banding.band == .noData ? String(localized: "No data")
                                            : String(localized: "Uncalibrated")
         }
+        // OPT-IN wellness-tier SpO₂ estimate: the value on the Blood O₂ card came from `Spo2Estimate`
+        // (the ONLY writer of `spo2Pct` on a NOOP-computed row — imports/Apple resolve to their own
+        // sources). Label it plainly experimental / uncalibrated / non-clinical so it is never mistaken
+        // for a calibrated reading, and never assert an in/out-of-range clinical judgment on it. (SpO2)
+        if key == "spo2", source == .noopComputed, banding.band != .noData {
+            return String(localized: "Experimental · uncalibrated · non-clinical")
+        }
         switch (banding.band, banding.basis) {
         case (.noData, _):               return String(localized: "No data")
         case (.inRange, .personal):      return String(localized: "In your range")
@@ -223,12 +230,15 @@ enum BodyVitalSigns {
                 unit: "%",
                 value: spo2Row?.value,
                 format: { String(format: "%.0f", $0) },
-                // Population-only on purpose: an absolute <95% floor is meaningful regardless of
-                // personal baseline (no "spo2" MetricCfg exists).
+                // Population-only on purpose: an absolute <95% floor is meaningful regardless of personal
+                // baseline (no "spo2" MetricCfg exists). But when the value is the OPT-IN wellness-tier
+                // ESTIMATE (a NOOP-computed row), band over the full 0…100 span so it reads cyan and never
+                // asserts an in/out-of-range clinical judgment on an uncalibrated number — `stateText` labels
+                // it experimental. A real import / Apple value keeps the honest 95…100 clinical floor. (SpO2)
                 banding: VitalBands.band(
                     value: spo2Row?.value,
                     history: [],
-                    populationRange: 95...100,
+                    populationRange: spo2Row?.source == .noopComputed ? 0...100 : 95...100,
                     cfg: nil
                 ),
                 metricColor: StrandPalette.metricCyan,

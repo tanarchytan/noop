@@ -80,6 +80,18 @@ class PuffinExperiment(private val prefs: SharedPreferences) {
         get() = prefs.getBoolean(KEY_HRV_READINESS, false)
         set(v) = prefs.edit().putBoolean(KEY_HRV_READINESS, v).apply()
 
+    /** True if the user opted in to the experimental "Blood O₂ estimate (uncalibrated)" (default false): a
+     *  WELLNESS-tier, non-clinical SpO₂ % computed by [com.noop.analytics.Spo2Estimate] (ratio-of-ratios)
+     *  from the raw red/IR PPG the strap already banks, surfaced on the existing Health "Blood O₂" card
+     *  behind a heavy "experimental / uncalibrated" label. Pure OPT-IN: default OFF is byte-identical to
+     *  today (`DailyMetric.spo2Pct` stays null); the analytics layer is Context-free, so the Context-aware
+     *  caller (AppViewModel / WhoopBleClient) reads this off SharedPreferences and threads it into
+     *  analyzeDay. A WHOOP 5.0/MG v18 night banks no red/IR → the estimate is null → the card stays "No
+     *  Data" (never a fabricated number). Mirrors the macOS `PuffinExperiment.spo2EstimateKey`. */
+    var spo2Estimate: Boolean
+        get() = prefs.getBoolean(KEY_SPO2_ESTIMATE, false)
+        set(v) = prefs.edit().putBoolean(KEY_SPO2_ESTIMATE, v).apply()
+
     companion object {
         /** Persisted preferences file. */
         private const val PREFS = "noop_experiments"
@@ -104,6 +116,9 @@ class PuffinExperiment(private val prefs: SharedPreferences) {
 
         /** "HRV readiness (Plews/Altini)" readout opt-in (mirrors macOS `PuffinExperiment.hrvReadinessKey`). */
         const val KEY_HRV_READINESS = "noopHrvReadiness"
+
+        /** "Blood O₂ estimate (uncalibrated)" opt-in (mirrors macOS `PuffinExperiment.spo2EstimateKey`). */
+        const val KEY_SPO2_ESTIMATE = "noopSpo2Estimate"
 
         fun from(context: Context): PuffinExperiment =
             PuffinExperiment(context.getSharedPreferences(PREFS, Context.MODE_PRIVATE))
