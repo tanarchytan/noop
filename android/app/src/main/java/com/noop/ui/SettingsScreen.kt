@@ -43,7 +43,6 @@ import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.IosShare
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.filled.Palette
@@ -98,7 +97,6 @@ import com.noop.analytics.Baselines
 import com.noop.analytics.Zones
 import com.noop.ble.PuffinExperiment
 import com.noop.ble.WhoopModel
-import com.noop.ingest.RawSensorExport
 import com.noop.update.UpdateCheck
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -431,7 +429,6 @@ fun SettingsScreen(
     // SharedPreferences isn't reactive, so the Switch drives a local mutableState that the store reads.
     val puffinExperiment = remember { PuffinExperiment.from(context) }
     var puffinExperiments by remember { mutableStateOf(puffinExperiment.isEnabled) }
-    var puffinCapture by remember { mutableStateOf(puffinExperiment.isCaptureEnabled) }
     var deepData by remember { mutableStateOf(puffinExperiment.isDeepDataEnabled) }
     var broadcastHr by remember { mutableStateOf(puffinExperiment.broadcastHr) }
 
@@ -1512,87 +1509,20 @@ fun SettingsScreen(
                         )
                     }
                 }
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(16.dp),
-                ) {
-                    Text(
-                        "Record 5/MG raw capture (research)",
-                        style = NoopType.subhead,
-                        color = Palette.textPrimary,
-                        modifier = Modifier.weight(1f),
-                    )
-                    Switch(
-                        checked = puffinCapture,
-                        onCheckedChange = {
-                            puffinCapture = it
-                            puffinExperiment.isCaptureEnabled = it
-                        },
-                        colors = SwitchDefaults.colors(
-                            checkedThumbColor = Palette.surfaceBase,
-                            checkedTrackColor = Palette.accent,
-                            uncheckedThumbColor = Palette.textSecondary,
-                            uncheckedTrackColor = Palette.surfaceInset,
-                            uncheckedBorderColor = Palette.hairline,
-                        ),
-                        modifier = Modifier.semantics {
-                            contentDescription = "Record 5/MG raw capture"
-                        },
-                    )
-                }
-                Text(
-                    "Records the raw frames of each 5/MG history sync to a file on this phone, so you can share them and help NOOP learn to decode 5/MG sleep, recovery and strain. The file contains raw biometric frames (heart rate, R-R, skin temperature, motion) and the strap's own diagnostic text. Nothing leaves the phone unless you share it. Off by default.",
-                    style = NoopType.caption,
-                    color = Palette.textTertiary,
-                )
-                NoopButton(
-                    text = "Share 5/MG capture (for the decode effort)",
-                    leadingIcon = Icons.Filled.Upload,
-                    kind = NoopButtonKind.Secondary,
-                    fullWidth = true,
-                    onClick = { LogExport.shareWhoop5Capture(context, live.whoop5Detected) },
-                )
-
-                // One-tap "matched pair" export (#510): hands a reporter BOTH the raw capture file and
-                // the strap log together (timestamped, same minute) so a protocol-mapping issue arrives
-                // with the frames AND the context that produced them.
-                NoopButton(
-                    text = "Export raw + log (matched pair)",
-                    leadingIcon = Icons.Filled.IosShare,
-                    kind = NoopButtonKind.Secondary,
-                    fullWidth = true,
-                    onClick = { scope.launch { LogExport.shareRawAndLog(context, vm.ble.exportLogText(), live.whoop5Detected) } },
-                )
+                // The 5/MG raw-frame capture + its share paths moved to the Test Centre "Diagnostic
+                // tools" card (#22 consolidation) so every diagnostic control lives in one place.
             }
         }
         } // end if (showFiveMGControls)
 
-        // --- Diagnostics (every model) --- the raw-sensor CSV export is split out of the 5/MG card so it
-        // stays available on a WHOOP 4.0 too (#22): a 4.0 owner still needs it to share decoded streams.
+        // --- Diagnostics (every model) --- the raw-sensor CSV export moved to the Test Centre
+        // "Diagnostic tools" card (#22 consolidation); the haptic clock stays here.
         SettingsSection(
             icon = Icons.Filled.Science,
             title = "Diagnostics",
-            blurb = "A read-only export of the decoded sensor streams NOOP already stores. Works on any strap. Nothing is written to your device, and nothing is uploaded.",
+            blurb = "Buzz the current time on your strap. Works on any strap. Nothing is written to your device, and nothing is uploaded.",
         ) {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                // Diagnostics: dump the decoded per-sample sensor streams (last 24h) to one long-format
-                // CSV so power users / external devs can prototype sleep/activity/VBT algorithms on real
-                // data without a BLE stream (#308/#276/#322). On-device only; plain text, no BLE hex.
-                NoopButton(
-                    text = "Export raw sensor data (CSV)",
-                    leadingIcon = Icons.Filled.Upload,
-                    kind = NoopButtonKind.Secondary,
-                    fullWidth = true,
-                    onClick = { scope.launch { RawSensorExport.export(context, vm.repo) } },
-                )
-                Text(
-                    "Saves the last 24h of decoded sensor samples (heart rate, R-R, motion, steps and any 5/MG deep streams you've unlocked) as one CSV you can share, for tinkering with your own data. Nothing leaves the phone unless you share it.",
-                    style = NoopType.caption,
-                    color = Palette.textTertiary,
-                )
-
                 // Haptic clock (#460): buzz the current time on the strap as a sequence of buzzes. No-ops
                 // safely when disconnected, so it stays enabled regardless of connection (matches the
                 // "Share strap log" row above, which also doesn't gate on a live strap). 12/24h follows the

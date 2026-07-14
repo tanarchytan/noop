@@ -14,6 +14,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Autorenew
 import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.IosShare
 import androidx.compose.material.icons.filled.Upload
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Switch
@@ -37,6 +38,7 @@ import com.noop.BuildConfig
 import com.noop.analytics.Baselines
 import com.noop.ble.PuffinExperiment
 import com.noop.ble.WhoopModel
+import com.noop.ingest.RawSensorExport
 import com.noop.testcentre.CaptureAccumulator
 import com.noop.testcentre.CaptureKind
 import com.noop.testcentre.DisplayPerformanceMonitor
@@ -52,11 +54,12 @@ import com.noop.testcentre.TestReportLink
 import kotlinx.coroutines.launch
 
 /**
- * Settings -> Test Centre (spec section 7), the Android twin of TestCentreView. Four sections: domain
- * test modes (rendered from the registry projection), diagnostic tools, export and auto-export, and
- * advanced/experimental. A NEW file because SettingsScreen.kt (132 KB) cannot grow. Section 1 renders
- * from TestCentreLayout.visibleModes; sections 2 to 4 re-host the same strap-log / recalibrate /
- * scheduled-export / experimental controls on the same bindings the Settings cards use. No em-dash.
+ * Settings -> Test Centre (spec section 7), the Android twin of TestCentreView. Two sections: domain
+ * test modes (rendered from the registry projection) and diagnostic tools. A NEW file because
+ * SettingsScreen.kt (132 KB) cannot grow. Section 1 renders from TestCentreLayout.visibleModes; the
+ * Diagnostic tools card now consolidates every diagnostic control in one place: the bug-report button,
+ * strap-log / recalibrate / debug-logging, the raw-sensor CSV export, and (on a 5/MG) the raw-frame
+ * capture + share, all on the same bindings the Settings cards used before the move. No em-dash.
  */
 @Composable
 fun TestCentreScreen(vm: AppViewModel) {
@@ -151,12 +154,10 @@ fun TestCentreScreen(vm: AppViewModel) {
             }
         }
 
-        // --- Section 2: Diagnostic tools ---
-        DiagnosticToolsCard(vm)
-
-        // --- Section 3: Export and auto-export ---
-        ExportCard(
-            vm = vm,
+        // --- Section 2: Diagnostic tools (now hosts the relocated bug-report + raw exports too) ---
+        DiagnosticToolsCard(
+            vm,
+            is5MG,
             onReport = {
                 // Launched (#1002): buildPending is now suspend (storage probe reads the store).
                 scope.launch { pendingReport = buildPending(context, MASTER_REPORT_MODE, vm.ble.exportLogText(), vm) }
@@ -309,18 +310,32 @@ private fun TestModeRow(
 }
 
 @Composable
-private fun DiagnosticToolsCard(vm: AppViewModel) {
+private fun DiagnosticToolsCard(vm: AppViewModel, is5MG: Boolean, onReport: () -> Unit) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var showRecalibrate by remember { mutableStateOf(false) }
     // "Debug logging" moved here from Settings: dev-only, mirrors the strap log to logcat over adb.
     var debugLogging by remember { mutableStateOf(NoopPrefs.debugLogging(context)) }
+    // Live strap state (for the 5/MG raw-capture share paths) + the 5/MG frame recorder toggle, both
+    // moved here from Settings (#22 consolidation) so every diagnostic tool lives in one card.
+    val live by vm.live.collectAsStateWithLifecycle()
+    val puffinExperiment = remember { PuffinExperiment.from(context) }
+    var puffinCapture by remember { mutableStateOf(puffinExperiment.isCaptureEnabled) }
     SettingsSectionTC(
         icon = Icons.Filled.Info,
         title = "Diagnostic tools",
-        blurb = "Your strap log, a Charge recalibrate, and the device environment. Nothing leaves the phone unless you share it.",
+        blurb = "Report a bug, share your strap log, recalibrate Charge, and export the raw sensor CSV (any strap) or the raw 5/MG capture. Nothing leaves the phone unless you share it.",
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            // The master bug-report action (relocated from the old Export card): assembles the redacted
+            // whole-app bundle and opens the review-before-share gate. The primary action, so it leads.
+            NoopButton(
+                text = "Report a bug with my log",
+                leadingIcon = Icons.Filled.BugReport,
+                kind = NoopButtonKind.Primary,
+                fullWidth = true,
+                onClick = onReport,
+            )
             // Strap log, the same exportLogText share the Settings Diagnostics button uses.
             NoopButton(
                 text = "Share strap log (for bug reports)",
@@ -358,6 +373,68 @@ private fun DiagnosticToolsCard(vm: AppViewModel) {
                     colors = settingsSwitchColors(),
                 )
             }
+            // Raw sensor CSV export (moved from Settings Diagnostics): the decoded per-sample streams
+            // NOOP already stores, last 24h, as one long-format CSV. UNGATED — a WHOOP 4.0 owner still
+            // needs it to prototype on their own data (#308/#276/#322).
+            NoopButton(
+                text = "Export raw sensor data (CSV)",
+                leadingIcon = Icons.Filled.Upload,
+                kind = NoopButtonKind.Secondary,
+                fullWidth = true,
+                onClick = { scope.launch { RawSensorExport.export(context, vm.repo) } },
+            )
+            Text(
+                "Saves the last 24h of decoded sensor samples (heart rate, R-R, motion, steps and any 5/MG deep streams you've unlocked) as one CSV you can share, for tinkering with your own data. Nothing leaves the phone unless you share it.",
+                style = NoopType.caption,
+                color = Palette.textTertiary,
+            )
+            if (is5MG) {
+                // 5/MG raw-frame capture (moved from the Settings Experimental card): record every frame
+                // of each history sync to a phone-local file, then share it (or the matched raw+log pair)
+                // for the puffin decode effort. Gated to a 5/MG strap; the 4.0 protocol is fully decoded.
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                ) {
+                    Text(
+                        "Record 5/MG raw capture (research)",
+                        style = NoopType.subhead,
+                        color = Palette.textPrimary,
+                        modifier = Modifier.weight(1f),
+                    )
+                    Switch(
+                        checked = puffinCapture,
+                        onCheckedChange = {
+                            puffinCapture = it
+                            puffinExperiment.isCaptureEnabled = it
+                        },
+                        colors = settingsSwitchColors(),
+                    )
+                }
+                Text(
+                    "Records the raw frames of each 5/MG history sync to a file on this phone, so you can share them and help NOOP learn to decode 5/MG sleep, recovery and strain. The file contains raw biometric frames (heart rate, R-R, skin temperature, motion) and the strap's own diagnostic text. Nothing leaves the phone unless you share it. Off by default.",
+                    style = NoopType.caption,
+                    color = Palette.textTertiary,
+                )
+                NoopButton(
+                    text = "Share 5/MG capture (for the decode effort)",
+                    leadingIcon = Icons.Filled.Upload,
+                    kind = NoopButtonKind.Secondary,
+                    fullWidth = true,
+                    onClick = { LogExport.shareWhoop5Capture(context, live.whoop5Detected) },
+                )
+                // One-tap "matched pair" export (#510): the raw capture file AND the strap log together,
+                // timestamped the same minute, so a protocol-mapping issue arrives with the frames AND the
+                // context that produced them.
+                NoopButton(
+                    text = "Export raw + log (matched pair)",
+                    leadingIcon = Icons.Filled.IosShare,
+                    kind = NoopButtonKind.Secondary,
+                    fullWidth = true,
+                    onClick = { scope.launch { LogExport.shareRawAndLog(context, vm.ble.exportLogText(), live.whoop5Detected) } },
+                )
+            }
         }
     }
     if (showRecalibrate) {
@@ -387,64 +464,6 @@ private fun DiagnosticToolsCard(vm: AppViewModel) {
                 }
             },
         )
-    }
-}
-
-@Composable
-private fun ExportCard(vm: AppViewModel, onReport: () -> Unit) {
-    val context = LocalContext.current
-    val settings = remember { DebugExportSettings.from(context) }
-    var enabled by remember { mutableStateOf(settings.enabled) }
-    var minutes by remember { mutableStateOf(settings.timeMinutes) }
-    SettingsSectionTC(
-        icon = Icons.Filled.Upload,
-        title = "Export",
-        blurb = "Report a bug with your log, or have NOOP drop a daily copy into its export folder.",
-    ) {
-        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            NoopButton(
-                text = "Report a bug with my log",
-                leadingIcon = Icons.Filled.BugReport,
-                kind = NoopButtonKind.Primary,
-                fullWidth = true,
-                onClick = onReport,
-            )
-            // Daily auto-export, the same DebugExportSettings writes the Settings card uses.
-            Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) {
-                    Text("Daily auto-export", style = NoopType.subhead, color = Palette.textPrimary)
-                    Text(
-                        "Android runs this via WorkManager (Doze may delay it).",
-                        style = NoopType.footnote, color = Palette.textTertiary,
-                    )
-                }
-                Switch(
-                    checked = enabled,
-                    onCheckedChange = {
-                        enabled = it
-                        settings.enabled = it
-                        DebugExportScheduler.reschedule(context)
-                    },
-                    colors = settingsSwitchColors(),
-                )
-            }
-            if (enabled) {
-                Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    Column(Modifier.weight(1f)) {
-                        Text("Export time", style = NoopType.subhead, color = Palette.textPrimary)
-                    }
-                    TimeChip(
-                        minutes = minutes,
-                        accessibilityLabel = "Daily export time",
-                        onPicked = {
-                            minutes = it
-                            settings.timeMinutes = it
-                            DebugExportScheduler.applyTimeChange(context)
-                        },
-                    )
-                }
-            }
-        }
     }
 }
 
