@@ -72,15 +72,12 @@ jobs:
           echo "Version: $CUR -> $NEW  (tag $TAG)"
 
           if [ "$NEW" != "$CUR" ]; then
-            # Bump BOTH platforms' version + build number in source, then commit to the branch so the
-            # built artifacts report $NEW (each build number is an independent monotonic counter).
+            # Bump the Android version + build number in source, then commit to the branch so the built
+            # APK reports $NEW (versionCode is a monotonic counter).
             ACODE=$(grep -m1 'versionCode = ' "$GRADLE" | sed -E 's/.*versionCode = ([0-9]+).*/\1/')
-            ICODE=$(grep -m1 'CURRENT_PROJECT_VERSION:' project.yml | sed -E 's/.*"([0-9]+)".*/\1/')
             sed -i -E "s/versionName = \"[^\"]+\"/versionName = \"$NEW\"/" "$GRADLE"
             sed -i -E "s/versionCode = [0-9]+/versionCode = $((ACODE+1))/" "$GRADLE"
-            sed -i -E "s/MARKETING_VERSION: \"[^\"]+\"/MARKETING_VERSION: \"$NEW\"/" project.yml
-            sed -i -E "s/CURRENT_PROJECT_VERSION: \"[0-9]+\"/CURRENT_PROJECT_VERSION: \"$((ICODE+1))\"/" project.yml
-            # In-app "What's New": generate the AppChangelog entry (both platforms) + bump its constant
+            # In-app "What's New": generate the AppChangelog.kt entry + bump its constant
             # from docs/releases/<TAG>.md's whatsnew: front-matter, so the in-app card ships in sync with
             # this version. Warn (don't fail) if the notes file / its front-matter is missing.
             if [ -f "docs/releases/${TAG}.md" ]; then

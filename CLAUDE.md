@@ -7,9 +7,11 @@
 >
 > - **Android is the only shipped/built target.** iOS, macOS, and the watch app are **out of scope**
 >   here — no CI compiles them, no release publishes them.
-> - **The Swift `Packages/` + `Strand*/` tree stays in place, dormant.** It is deliberately *not*
->   deleted so cherry-picks to/from `upstream/main` apply cleanly and the byte-identical parity
->   contract below still governs any analytics/storage change you intend to PR back upstream.
+> - **The iOS/macOS/Swift app has been removed** (`Strand*/`, `Packages/`, `NOOPWatch*/`, `StrandTests/`,
+>   `project.yml`, the Xcode project, `altstore-source.json`). Only `android/` remains. Cherry-picking a
+>   *cross-platform* upstream commit will conflict on the deleted Swift files — take its `android/**`
+>   hunks and drop the rest; a pure `android/**` commit still applies clean. The byte-identical parity
+>   contract below still governs any Kotlin change you PR back upstream (add its Swift twin there).
 > - **CI on this branch = `android.yml` only** (`assembleFullDebug` + `testFullDebugUnitTest`); the
 >   `fork-*` release/testing workflows publish the **APK only**. `swift-packages.yml` and
 >   `app-build.yml` were removed with the split.
@@ -26,8 +28,9 @@
 
 Guidance for anyone (human or AI agent) submitting a pull request. This is the high-signal map;
 [`docs/CONTRIBUTING.md`](docs/CONTRIBUTING.md) is the full guide (BLE safety contract, design-system
-rules, add-a-metric/screen/command recipes), [`docs/BUILD.md`](docs/BUILD.md) covers signing/pairing,
-and [`docs/IOS.md`](docs/IOS.md) covers the iOS target. Read this first; follow the links for depth.
+rules, add-a-metric/screen/command recipes) and [`docs/BUILD.md`](docs/BUILD.md) covers signing/pairing.
+Read this first; follow the links for depth. (Deep `docs/*` still describe the old cross-platform layout —
+Android-only sweep pending.)
 
 ## What NOOP is (and the hard scope limits)
 
@@ -115,11 +118,10 @@ On `noop-tan`, Android is the only CI-covered target:
 | `android.yml` | `assembleFullDebug` + `testFullDebugUnitTest`, on push/PR to `main` + `noop-tan` | ubuntu | **active** |
 | `fork-testing-build.yml` / `fork-release.yml` | Staging / release **APK** builds (Android only) | ubuntu | on dispatch |
 
-Removed with the split: `swift-packages.yml` (Swift package tests) and `app-build.yml` (macOS/iOS
-app-target compile). The Swift tree still exists but **nothing on this branch builds it** — if you edit
-`Packages/**` or `Strand*/**` here (e.g. to keep an upstream PR's Swift twin in sync), you MUST compile
-it yourself on a Mac (`xcodegen generate && xcodebuild … build`) before sending it to `ryanbr/noop`;
-`noop-tan` CI will not catch a Swift break.
+Removed here: `swift-packages.yml` + `app-build.yml` (with the split) and the entire Swift/iOS/macOS
+source tree (with the app removal). Only `android/` is left, so `android.yml` covers everything on this
+branch. When you PR a Kotlin change back to `ryanbr/noop`, add + compile its Swift twin there (on a Mac),
+since noop-tan no longer carries the Swift side to check it against.
 
 ### Local walls (things that will *not* build where you expect)
 - **On Linux:** only `WhoopProtocol` / `OuraProtocol` (pure) build & test. Every GRDB-linked package —

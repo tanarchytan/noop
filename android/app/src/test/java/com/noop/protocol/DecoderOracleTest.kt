@@ -90,34 +90,4 @@ class DecoderOracleTest {
             }
         }
     }
-
-    /**
-     * The Android and Swift copies of the oracle MUST be byte-identical, so neither platform can edit
-     * its fixture without the other. We can read the Android copy off the test classpath; the Swift
-     * copy lives in the source tree, located relative to the module dir via the `user.dir` the JVM
-     * test runner is launched from. Skips gracefully (passes) if the Swift tree isn't present.
-     */
-    @Test
-    fun oracleCopiesAreIdentical() {
-        val androidBytes = javaClass.classLoader!!
-            .getResourceAsStream("decoder_oracle.json")!!
-            .use { it.readBytes() }
-
-        // Gradle runs unit tests with the module dir (android/app) or repo root as user.dir; try both.
-        val userDir = java.io.File(System.getProperty("user.dir"))
-        val candidates = listOf(
-            java.io.File(userDir, "Packages/WhoopProtocol/Tests/WhoopProtocolTests/Resources/decoder_oracle.json"),
-            java.io.File(userDir, "../../Packages/WhoopProtocol/Tests/WhoopProtocolTests/Resources/decoder_oracle.json"),
-        )
-        val swiftFile = candidates.firstOrNull { it.exists() }
-        org.junit.Assume.assumeTrue(
-            "swift oracle copy not found from user.dir=$userDir , skipping cross-copy identity check",
-            swiftFile != null,
-        )
-        val swiftBytes = swiftFile!!.readBytes()
-        assertTrue(
-            "decoder_oracle.json copies differ , keep the Android and Swift copies in lockstep",
-            androidBytes.contentEquals(swiftBytes),
-        )
-    }
 }

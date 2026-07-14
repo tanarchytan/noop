@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-"""Generate the in-app "What's New" entry (AppChangelog) for BOTH platforms from a release file's
-front-matter, so the Kotlin and Swift entries stay byte-identical and the version bump is automatic.
+"""Generate the in-app "What's New" entry (AppChangelog.kt) for Android from a release file's
+front-matter, so the Kotlin entry + version bump are automatic. (noop-tan is Android-only.)
 
 A per-version notes file docs/releases/v<VER>.md may carry a YAML front-matter block:
 
@@ -31,7 +31,6 @@ except ImportError:
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 KT = ROOT / "android/app/src/main/java/com/noop/ui/AppChangelog.kt"
-SW = ROOT / "Strand/System/AppChangelog.swift"
 
 
 def frontmatter(md: pathlib.Path) -> dict:
@@ -48,10 +47,6 @@ def esc_kt(s: str) -> str:
     return s.replace("\\", "\\\\").replace('"', '\\"').replace("$", "\\$")
 
 
-def esc_sw(s: str) -> str:
-    return s.replace("\\", "\\\\").replace('"', '\\"')
-
-
 def kt_block(ver, wn):
     items = "\n".join(f'                "{esc_kt(i)}",' for i in wn["items"])
     return (
@@ -62,20 +57,6 @@ def kt_block(ver, wn):
         "            items = listOf(\n"
         f"{items}\n"
         "            ),\n"
-        "        ),\n"
-    )
-
-
-def sw_block(ver, wn):
-    items = "\n".join(f'                "{esc_sw(i)}",' for i in wn["items"])
-    return (
-        "        Release(\n"
-        f'            version: "{ver}",\n'
-        f'            title: "{esc_sw(wn["title"])}",\n'
-        f'            date: "{esc_sw(wn["date"])}",\n'
-        "            items: [\n"
-        f"{items}\n"
-        "            ]\n"
         "        ),\n"
     )
 
@@ -105,8 +86,6 @@ def main():
     print(f"appchangelog-gen: v{ver} — {wn['title']}")
     apply(KT, "val releases: List<Release> = listOf(\n", kt_block(ver, wn), ver,
           r'(const val CURRENT_VERSION = ")[^"]*(")', rf'\g<1>{ver}\g<2>')
-    apply(SW, "static let releases: [Release] = [\n", sw_block(ver, wn), ver,
-          r'(static let currentVersion = ")[^"]*(")', rf'\g<1>{ver}\g<2>')
     print("appchangelog-gen: done. Review the diff, then compile.")
 
 

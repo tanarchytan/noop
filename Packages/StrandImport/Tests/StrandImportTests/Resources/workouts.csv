@@ -1,3 +1,0 @@
-Cycle start time,Workout start time,Workout end time,Cycle timezone,Activity name,Activity Strain,Energy burned (cal),Max HR (bpm),Average HR (bpm),HR Zone 1 %,HR Zone 2 %,HR Zone 3 %,HR Zone 4 %,HR Zone 5 %
-2024-01-02 06:30:00,2024-01-02 17:00:00,2024-01-02 17:45:00,UTC+00:00,Running,11.2,540,182,158,5.0,20.0,40.0,30.0,5.0
-2024-01-03 06:29:00,2024-01-03 18:30:00,2024-01-03 19:15:00,UTC+00:00,Weightlifting,8.4,310,150,120,30.0,40.0,20.0,8.0,2.0

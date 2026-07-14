@@ -1,1 +1,0 @@
-{"hr": [{"ts": 1736365593, "bpm": 70}, {"ts": 1736365594, "bpm": 72}], "rr": [{"ts": 1736365593, "rr_ms": 857}, {"ts": 1736365594, "rr_ms": 833}], "spo2": [], "skin_temp": [], "resp": [], "gravity": [], "events": [{"ts": 1736365593, "kind": "RAW_DATA_COLLECTION_ON(46)", "payload": {}}], "battery": []}

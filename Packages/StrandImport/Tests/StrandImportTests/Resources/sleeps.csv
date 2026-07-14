@@ -1,3 +1,0 @@
-Cycle start time,Sleep onset,Wake onset,Cycle timezone,Nap,Sleep performance %,Respiratory rate (rpm),Asleep duration (min),In bed duration (min),Light sleep duration (min),Deep (SWS) duration (min),REM duration (min),Awake duration (min),Sleep efficiency %,Sleep consistency %,Sleep need (min),Sleep debt (min)
-2024-01-02 06:30:00,2024-01-01 23:15:00,2024-01-02 06:30:00,UTC+01:00,false,85,14.2,420,455,210,95,115,35,92.3,88.0,480,60
-2024-01-02 06:30:00,2024-01-02 14:00:00,2024-01-02 14:25:00,UTC+01:00,true,,,25,25,20,5,0,0,,,,
