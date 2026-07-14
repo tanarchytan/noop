@@ -439,9 +439,6 @@ fun SettingsScreen(
     var puffinCapture by remember { mutableStateOf(puffinExperiment.isCaptureEnabled) }
     var deepData by remember { mutableStateOf(puffinExperiment.isDeepDataEnabled) }
     var broadcastHr by remember { mutableStateOf(puffinExperiment.broadcastHr) }
-    // "Sleep staging (V2)" — V2 is the DEFAULT for every strap (WHOOP 4 and 5/MG); turn it OFF to fall back
-    // to V1. Model-agnostic, so it lives outside the 5/MG-only card. 4.0 is unvalidated either way (#319/#347).
-    var experimentalSleepV2 by remember { mutableStateOf(puffinExperiment.experimentalSleepV2) }
 
     // Whether to surface the WHOOP 5/MG-only probes (puffin / R22 / broadcast-HR / frame-capture). Gated
     // so a confident 4.0 owner never sees 5/MG controls that can't touch their strap (#22). The model
@@ -1657,46 +1654,6 @@ fun SettingsScreen(
             blurb = "A read-only export of the decoded sensor streams NOOP already stores. Works on any strap. Nothing is written to your device, and nothing is uploaded.",
         ) {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                // --- Sleep staging (V2) — the DEFAULT engine after the 44-subject benchmark; toggle off to
-                //     fall back to V1. Every model. (V7 Pillar 3b) ---
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(16.dp),
-                ) {
-                    Text(
-                        "Sleep staging (V2)",
-                        style = NoopType.subhead,
-                        color = Palette.textPrimary,
-                        modifier = Modifier.weight(1f),
-                    )
-                    Switch(
-                        checked = experimentalSleepV2,
-                        onCheckedChange = {
-                            experimentalSleepV2 = it
-                            puffinExperiment.experimentalSleepV2 = it
-                        },
-                        colors = SwitchDefaults.colors(
-                            checkedThumbColor = Palette.surfaceBase,
-                            checkedTrackColor = Palette.accent,
-                            uncheckedThumbColor = Palette.textSecondary,
-                            uncheckedTrackColor = Palette.surfaceInset,
-                            uncheckedBorderColor = Palette.hairline,
-                        ),
-                        modifier = Modifier.semantics {
-                            contentDescription = "Sleep staging V2"
-                        },
-                    )
-                }
-                Text(
-                    "A transparent cardiorespiratory recipe that recovers deep and REM better than the older " +
-                        "V1 staging, and is now the default. It only changes how already-detected nights are " +
-                        "split into stages (detection and scores are unchanged); turn it off to fall back to " +
-                        "V1. Takes effect on the next nights staged.",
-                    style = NoopType.caption,
-                    color = Palette.textTertiary,
-                )
-
                 // Diagnostics: dump the decoded per-sample sensor streams (last 24h) to one long-format
                 // CSV so power users / external devs can prototype sleep/activity/VBT algorithms on real
                 // data without a BLE stream (#308/#276/#322). On-device only; plain text, no BLE hex.
