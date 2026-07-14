@@ -45,7 +45,6 @@ import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.automirrored.filled.MenuBook
-import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.SaveAlt
 import androidx.compose.material.icons.filled.Science
@@ -414,9 +413,10 @@ fun SettingsScreen(
     // estimated-vs-phone table + a manual coefficient override. Full-screen Dialog like the guide above.
     var showStepsCalibration by remember { mutableStateOf(false) }
 
-    // Whether the "Advanced" disclosure (experimental probes, diagnostics, raw-sensor export, Trends
-    // report) is expanded. Default FALSE so a first-run user lands on the everyday sections instead of
-    // the full wall of cards (S3); nothing is removed, every section stays one tap away by expanding.
+    // Whether the "Advanced" disclosure (experimental 5/MG probes and the Trends report) is expanded;
+    // diagnostics and raw-sensor export now live in the Test Centre "Diagnostic tools" card. Default
+    // FALSE so a first-run user lands on the everyday sections instead of the full wall of cards (S3);
+    // nothing is removed, every section stays one tap away by expanding.
     // Persisted to the same key the iOS @AppStorage uses ("noop.settingsAdvancedOpen"); SharedPreferences
     // isn't reactive, so the Switch-style toggle drives a local state that writes straight through.
     var advancedOpen by remember {
@@ -1023,18 +1023,13 @@ fun SettingsScreen(
                     ),
                 )
             }
-        }
 
-        // --- App icon (v3 "Titanium & Gold") ---
-        // Two staged launcher icons — machined titanium (default) and blued/dark-blue titanium. The
-        // swap is done by enabling exactly one <activity-alias> (.IconDefault / .IconNavy) at runtime;
-        // the launcher may take a beat (or briefly disappear/redraw) while it re-reads the icon.
-        SettingsSection(
-            icon = Icons.Filled.Palette,
-            title = "App icon",
-            blurb = "Choose how NOOP looks on your home screen. The launcher may take a moment to refresh the icon after you change it.",
-        ) {
-            FormRow(label = "Icon") {
+            RowDivider()
+            // App icon (v3 "Titanium & Gold"): two staged launcher icons — machined titanium (default)
+            // and blued/dark-blue titanium. The swap enables exactly one <activity-alias>
+            // (.IconDefault / .IconNavy) at runtime; the launcher may take a beat (or briefly
+            // disappear/redraw) while it re-reads the icon.
+            FormRow(label = "App icon") {
                 SegmentedPillControl(
                     items = listOf(false, true),
                     selection = appIconNavy,
@@ -1333,13 +1328,176 @@ fun SettingsScreen(
             }
         }
 
+
+        // --- Health & wellness (v5 opt-in toggles) ---
+        SettingsSection(
+            icon = Icons.Filled.Science,
+            title = "Health & wellness",
+            blurb = "Optional, on-device wellness signals. Each is off by default, computed only on this phone from data you already have, and never a medical diagnosis.",
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                ToggleRow(
+                    title = "Illness heads-up",
+                    detail = "Watches your resting heart rate, HRV and skin temperature for the pattern that often shows up before you feel unwell, and surfaces a gentle heads-up. An observation about your own numbers, not a diagnosis.",
+                    checked = illnessWatch,
+                    onCheckedChange = {
+                        illnessWatch = it
+                        vm.setIllnessWatchEnabled(it)
+                    },
+                )
+                RowDivider()
+                // #801 — not offered on a male profile (it would just sit at "Learning your pattern"). Hidden
+                // when off for a male profile so it can't be enabled here; still shown when already on so it
+                // can be turned off — mirroring HealthScreen's cycle opt-in gate (cycleOptInApplies). The
+                // sister surfaces (Health opt-in, the card's off-control) were sex-gated in v7.3.2; this
+                // Settings toggle was the one surface that was missed, so a male profile could enable it here.
+                if (cycleTracking || cycleOptInApplies(profile.sex)) {
+                    ToggleRow(
+                        title = "Cycle awareness",
+                        detail = "Reads a coarse menstrual-cycle phase from your nightly skin-temperature shift, on this device only. Awareness only: not contraception, not a fertility predictor, not a medical service.",
+                        checked = cycleTracking,
+                        onCheckedChange = {
+                            cycleTracking = it
+                            vm.setCycleTrackingEnabled(it)
+                        },
+                    )
+                    RowDivider()
+                }
+                ToggleRow(
+                    title = "Hydration tracking",
+                    detail = "Adds a simple fluid log with a daily goal that adjusts to your effort. Tap to add a sip, cup or bottle and watch a progress ring fill. On this phone only. Nothing is synced.",
+                    checked = hydrationTracking,
+                    onCheckedChange = {
+                        hydrationTracking = it
+                        NoopPrefs.setHydrationTracking(context, it)
+                    },
+                )
+                RowDivider()
+                ToggleRow(
+                    title = "Auto-detect workouts",
+                    detail = "After a sync, NOOP looks over your recent heart rate for a sustained, raised stretch that looks like exercise and offers to save it. It only ever suggests. Nothing is saved until you tap Save, and you can dismiss any suggestion. Deliberately conservative, so the odd workout may be missed. On this phone only.",
+                    checked = autoDetectWorkouts,
+                    onCheckedChange = {
+                        autoDetectWorkouts = it
+                        NoopPrefs.setAutoDetectWorkouts(context, it)
+                    },
+                )
+                RowDivider()
+                ToggleRow(
+                    title = "Keep screen on during a workout",
+                    detail = "Holds the screen awake while you're recording a workout, so your live heart rate stays visible without the phone dimming. Only applies during a recording. The screen sleeps normally the rest of the time. Leaving it on does use a bit more battery, and means your unlocked screen stays visible for the whole workout, so flip it off if that's a concern.",
+                    checked = workoutKeepScreenOn,
+                    onCheckedChange = {
+                        workoutKeepScreenOn = it
+                        NoopPrefs.of(context).edit().putBoolean("workoutKeepScreenOn", it).apply()
+                    },
+                )
+                RowDivider()
+                // BETA + default ON (the one exception to this section's off-by-default rule): the flag
+                // gates the Today entry so anyone can wave the beta away here with one flip.
+                ToggleRow(
+                    title = "Live Sessions (beta)",
+                    detail = "Silence-first strap coaching during workouts.",
+                    checked = liveSessionsBeta,
+                    onCheckedChange = {
+                        liveSessionsBeta = it
+                        LiveSessionPrefs.setEnabled(context, it)
+                    },
+                )
+                RowDivider()
+                ToggleRow(
+                    title = "Stress check-ins (haptic)",
+                    detail = "Lets NOOP notice a fresh HRV dip while you're still and offer a minute to breathe. \"Stress\" here is an autonomic proxy from your own baseline, never a diagnosis. The strap gives one light confirming buzz; no push notification.",
+                    checked = stressCheckIn,
+                    onCheckedChange = {
+                        stressCheckIn = it
+                        BiofeedbackPrefs.setCheckInEnabled(context, it)
+                        // Turning the master off also disarms the auto-nudge sub-toggle so it can't fire.
+                        if (!it) { stressAutoNudge = false; BiofeedbackPrefs.setAutoNudge(context, false) }
+                    },
+                )
+                if (stressCheckIn) {
+                    ToggleRow(
+                        title = "Offer a breath automatically",
+                        detail = "When a dip is detected, surface the check-in card on its own (rate-limited, quiet-hours aware). Off keeps it manual.",
+                        checked = stressAutoNudge,
+                        onCheckedChange = {
+                            stressAutoNudge = it
+                            BiofeedbackPrefs.setAutoNudge(context, it)
+                        },
+                    )
+                }
+                RowDivider()
+                ToggleRow(
+                    title = "Share on-device signals with the Coach",
+                    detail = "When the opt-in Coach is set up with your own key, also include a short summary of your strongest on-device patterns and Lab Book markers in its context. Summary only; no raw data leaves your phone. Requires the Coach's own data consent first.",
+                    checked = coachSignals,
+                    onCheckedChange = {
+                        coachSignals = it
+                        NoopPrefs.setCoachSignals(context, it)
+                    },
+                )
+            }
+        }
+
+        // --- Charge (Recovery) advanced ---
+        // A manual reset for the personal Charge baseline. If a bad first week poisons it — worn while
+        // sick, or the first few nights read high (a common cold-start artefact) — the baseline anchors
+        // off and holds your Charge wrong for a couple of weeks while the rolling average catches up.
+        // Recalibrate re-learns it from tonight onward. Writes now-seconds to BOTH noop.hrvBaselineEpoch
+        // and noop.recoveryBaselineEpoch (so HRV plus resting HR / respiration / skin temp re-anchor);
+        // foldHistory drops every night before that epoch and re-seeds. Mirrors the iOS/Mac button.
+        SettingsSection(
+            icon = Icons.Filled.Favorite,
+            title = "Charge",
+            blurb = "Charge is NOOP's daily readiness score, learned from your own HRV, resting heart rate and more over time. Your history stays.",
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text("Recalibrate Charge baseline", style = NoopType.subhead, color = Palette.textPrimary)
+                    Text(
+                        "Restarts the roughly 4-night build-up for Charge and your HRV baseline from tonight. Use it if a bad first week set your baseline off. Your history stays.",
+                        style = NoopType.footnote,
+                        color = Palette.textTertiary,
+                    )
+                }
+                NoopButton(
+                    text = "Recalibrate Charge baseline",
+                    leadingIcon = Icons.Filled.Autorenew,
+                    kind = NoopButtonKind.Secondary,
+                    fullWidth = true,
+                    modifier = Modifier.semantics { contentDescription = "Recalibrate Charge baseline" },
+                    onClick = { showRecalibrateConfirm = true },
+                )
+            }
+        }
+
+        // --- Test Centre (the diagnostic home, #507/#509) ---
+        // A nav row into the Test Centre: the single home for the diagnostic, log and test controls (spec
+        // section 7). Test modes plus the Diagnostic tools card — strap log, bug report, raw/CSV exports,
+        // debug logging and buzz — live there, so this is a faster door to the full set without growing
+        // this screen.
+        SettingsSection(
+            icon = Icons.Filled.BugReport,
+            title = "Test Centre",
+            blurb = "Turn on a test for the thing that's wrong, wear the strap, then tap Report. Your strap log, bug report, raw and CSV exports, debug logging and buzz test all live here too.",
+        ) {
+            NoopButton(
+                text = "Open Test Centre",
+                leadingIcon = Icons.Filled.BugReport,
+                kind = NoopButtonKind.Secondary,
+                fullWidth = true,
+                onClick = onOpenTestCentre,
+            )
+        }
+
         // Lower-frequency sections collapse behind a single default-closed disclosure (S3) so the
         // screen opens at the everyday handful instead of the full wall of cards. Nothing is removed;
-        // the experimental probes, diagnostics, raw-capture export and Trends report all stay one tap
-        // away. Mirrors the iOS SettingsView "Advanced" disclosure and the Test Centre Advanced group.
+        // the experimental probes and Trends report stay one tap away. Mirrors the iOS SettingsView
+        // "Advanced" disclosure and the Test Centre Advanced group.
         SettingsDisclosure(
             title = "Advanced",
-            subtitle = "Experimental probes, diagnostics, raw-sensor export, and the Trends report. Tucked away to keep the everyday screen tidy.",
+            subtitle = "Experimental 5/MG probes and the shareable Trends report. Tucked away to keep the everyday screen tidy.",
             expanded = advancedOpen,
             onToggle = { advancedOpen = !advancedOpen; SettingsDisclosurePrefs.write(NoopPrefs.of(context), advancedOpen) },
         ) {
@@ -1497,8 +1655,8 @@ fun SettingsScreen(
                         )
                     }
                 }
-                // The 5/MG raw-frame capture + its share paths moved to the Test Centre "Diagnostic
-                // tools" card (#22 consolidation) so every diagnostic control lives in one place.
+                // The 5/MG raw-frame capture and its share paths now live in the Test Centre
+                // "Diagnostic tools" card (#22 consolidation), alongside every other diagnostic control.
             }
         }
         } // end if (showFiveMGControls)
@@ -1508,167 +1666,6 @@ fun SettingsScreen(
         TrendsReportExportSection(vm)
         } // end Advanced disclosure content Column
         } // end SettingsDisclosure("Advanced")
-
-        // --- Health & wellness (v5 opt-in toggles) ---
-        SettingsSection(
-            icon = Icons.Filled.Science,
-            title = "Health & wellness",
-            blurb = "Optional, on-device wellness signals. Each is off by default, computed only on this phone from data you already have, and never a medical diagnosis.",
-        ) {
-            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                ToggleRow(
-                    title = "Illness heads-up",
-                    detail = "Watches your resting heart rate, HRV and skin temperature for the pattern that often shows up before you feel unwell, and surfaces a gentle heads-up. An observation about your own numbers, not a diagnosis.",
-                    checked = illnessWatch,
-                    onCheckedChange = {
-                        illnessWatch = it
-                        vm.setIllnessWatchEnabled(it)
-                    },
-                )
-                RowDivider()
-                // #801 — not offered on a male profile (it would just sit at "Learning your pattern"). Hidden
-                // when off for a male profile so it can't be enabled here; still shown when already on so it
-                // can be turned off — mirroring HealthScreen's cycle opt-in gate (cycleOptInApplies). The
-                // sister surfaces (Health opt-in, the card's off-control) were sex-gated in v7.3.2; this
-                // Settings toggle was the one surface that was missed, so a male profile could enable it here.
-                if (cycleTracking || cycleOptInApplies(profile.sex)) {
-                    ToggleRow(
-                        title = "Cycle awareness",
-                        detail = "Reads a coarse menstrual-cycle phase from your nightly skin-temperature shift, on this device only. Awareness only: not contraception, not a fertility predictor, not a medical service.",
-                        checked = cycleTracking,
-                        onCheckedChange = {
-                            cycleTracking = it
-                            vm.setCycleTrackingEnabled(it)
-                        },
-                    )
-                    RowDivider()
-                }
-                ToggleRow(
-                    title = "Hydration tracking",
-                    detail = "Adds a simple fluid log with a daily goal that adjusts to your effort. Tap to add a sip, cup or bottle and watch a progress ring fill. On this phone only. Nothing is synced.",
-                    checked = hydrationTracking,
-                    onCheckedChange = {
-                        hydrationTracking = it
-                        NoopPrefs.setHydrationTracking(context, it)
-                    },
-                )
-                RowDivider()
-                ToggleRow(
-                    title = "Auto-detect workouts",
-                    detail = "After a sync, NOOP looks over your recent heart rate for a sustained, raised stretch that looks like exercise and offers to save it. It only ever suggests. Nothing is saved until you tap Save, and you can dismiss any suggestion. Deliberately conservative, so the odd workout may be missed. On this phone only.",
-                    checked = autoDetectWorkouts,
-                    onCheckedChange = {
-                        autoDetectWorkouts = it
-                        NoopPrefs.setAutoDetectWorkouts(context, it)
-                    },
-                )
-                RowDivider()
-                ToggleRow(
-                    title = "Keep screen on during a workout",
-                    detail = "Holds the screen awake while you're recording a workout, so your live heart rate stays visible without the phone dimming. Only applies during a recording. The screen sleeps normally the rest of the time. Leaving it on does use a bit more battery, and means your unlocked screen stays visible for the whole workout, so flip it off if that's a concern.",
-                    checked = workoutKeepScreenOn,
-                    onCheckedChange = {
-                        workoutKeepScreenOn = it
-                        NoopPrefs.of(context).edit().putBoolean("workoutKeepScreenOn", it).apply()
-                    },
-                )
-                RowDivider()
-                // BETA + default ON (the one exception to this section's off-by-default rule): the flag
-                // gates the Today entry so anyone can wave the beta away here with one flip.
-                ToggleRow(
-                    title = "Live Sessions (beta)",
-                    detail = "Silence-first strap coaching during workouts.",
-                    checked = liveSessionsBeta,
-                    onCheckedChange = {
-                        liveSessionsBeta = it
-                        LiveSessionPrefs.setEnabled(context, it)
-                    },
-                )
-                RowDivider()
-                ToggleRow(
-                    title = "Stress check-ins (haptic)",
-                    detail = "Lets NOOP notice a fresh HRV dip while you're still and offer a minute to breathe. \"Stress\" here is an autonomic proxy from your own baseline, never a diagnosis. The strap gives one light confirming buzz; no push notification.",
-                    checked = stressCheckIn,
-                    onCheckedChange = {
-                        stressCheckIn = it
-                        BiofeedbackPrefs.setCheckInEnabled(context, it)
-                        // Turning the master off also disarms the auto-nudge sub-toggle so it can't fire.
-                        if (!it) { stressAutoNudge = false; BiofeedbackPrefs.setAutoNudge(context, false) }
-                    },
-                )
-                if (stressCheckIn) {
-                    ToggleRow(
-                        title = "Offer a breath automatically",
-                        detail = "When a dip is detected, surface the check-in card on its own (rate-limited, quiet-hours aware). Off keeps it manual.",
-                        checked = stressAutoNudge,
-                        onCheckedChange = {
-                            stressAutoNudge = it
-                            BiofeedbackPrefs.setAutoNudge(context, it)
-                        },
-                    )
-                }
-                RowDivider()
-                ToggleRow(
-                    title = "Share on-device signals with the Coach",
-                    detail = "When the opt-in Coach is set up with your own key, also include a short summary of your strongest on-device patterns and Lab Book markers in its context. Summary only; no raw data leaves your phone. Requires the Coach's own data consent first.",
-                    checked = coachSignals,
-                    onCheckedChange = {
-                        coachSignals = it
-                        NoopPrefs.setCoachSignals(context, it)
-                    },
-                )
-            }
-        }
-
-        // --- Test Centre (the diagnostic home, #507/#509) ---
-        // A nav row into the Test Centre: the single home for the diagnostic, log and test controls (spec
-        // section 7). The strap log, recalibrate, scheduled export and experimental toggles also live there
-        // on the same bindings, so this is a faster door to the full set without growing this screen.
-        SettingsSection(
-            icon = Icons.Filled.BugReport,
-            title = "Test Centre",
-            blurb = "Turn on a test for the thing that's wrong, wear the strap, then tap Report. Your strap log, recalibrate, scheduled export and experimental probes all live here too.",
-        ) {
-            NoopButton(
-                text = "Open Test Centre",
-                leadingIcon = Icons.Filled.BugReport,
-                kind = NoopButtonKind.Secondary,
-                fullWidth = true,
-                onClick = onOpenTestCentre,
-            )
-        }
-
-        // --- Charge (Recovery) advanced ---
-        // A manual reset for the personal Charge baseline. If a bad first week poisons it — worn while
-        // sick, or the first few nights read high (a common cold-start artefact) — the baseline anchors
-        // off and holds your Charge wrong for a couple of weeks while the rolling average catches up.
-        // Recalibrate re-learns it from tonight onward. Writes now-seconds to BOTH noop.hrvBaselineEpoch
-        // and noop.recoveryBaselineEpoch (so HRV plus resting HR / respiration / skin temp re-anchor);
-        // foldHistory drops every night before that epoch and re-seeds. Mirrors the iOS/Mac button.
-        SettingsSection(
-            icon = Icons.Filled.Favorite,
-            title = "Charge",
-            blurb = "Charge is NOOP's daily readiness score, learned from your own HRV, resting heart rate and more over time. Your history stays.",
-        ) {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    Text("Recalibrate Charge baseline", style = NoopType.subhead, color = Palette.textPrimary)
-                    Text(
-                        "Restarts the roughly 4-night build-up for Charge and your HRV baseline from tonight. Use it if a bad first week set your baseline off. Your history stays.",
-                        style = NoopType.footnote,
-                        color = Palette.textTertiary,
-                    )
-                }
-                NoopButton(
-                    text = "Recalibrate Charge baseline",
-                    leadingIcon = Icons.Filled.Autorenew,
-                    kind = NoopButtonKind.Secondary,
-                    fullWidth = true,
-                    modifier = Modifier.semantics { contentDescription = "Recalibrate Charge baseline" },
-                    onClick = { showRecalibrateConfirm = true },
-                )
-            }
-        }
 
         if (showRecalibrateConfirm) {
             AlertDialog(
