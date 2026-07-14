@@ -377,6 +377,7 @@ fun SettingsScreen(
     vm: AppViewModel,
     onOpenTestCentre: () -> Unit = {},
     onOpenBackupSync: () -> Unit = {},
+    onOpenCloud: () -> Unit = {},
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -2093,6 +2094,23 @@ fun SettingsScreen(
                 kind = NoopButtonKind.Primary,
                 fullWidth = true,
                 onClick = onOpenBackupSync,
+            )
+        }
+
+        // --- Cloud (fork addition) — link to a self-hosted noop-cloud with a rotating code. ---
+        SettingsSection(
+            icon = Icons.Filled.CloudSync,
+            title = "Cloud",
+            blurb = "Link to your own self-hosted noop-cloud (firmware update check, backup, coach). " +
+                "Enter its URL, tap Link, then approve the shown code on the cloud with your admin PIN. " +
+                "Optional — noop stays local without it.",
+        ) {
+            NoopButton(
+                text = "Set up cloud link",
+                leadingIcon = Icons.Filled.CloudSync,
+                kind = NoopButtonKind.Primary,
+                fullWidth = true,
+                onClick = onOpenCloud,
             )
         }
 

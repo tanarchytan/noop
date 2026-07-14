@@ -52,6 +52,20 @@ enum class AiProvider(
     ),
 
     /**
+     * Route the coach through the user's linked noop-cloud (Settings → Cloud). The cloud holds the
+     * real provider key + base URL (ANY OpenAI-compatible provider) and proxies the chat, so no API
+     * key lives in the app. Base URL + bearer come from the pairing (CloudPrefs), not user-entered;
+     * the wire format is the same OpenAI /chat/completions the [CUSTOM] path uses.
+     */
+    CLOUD(
+        displayName = "Cloud (your noop-cloud)",
+        defaultModel = "",
+        models = emptyList(),
+        endpoint = "",
+        modelsEndpoint = "",
+    ),
+
+    /**
      * A generic OpenAI-compatible server the user points at — typically a LOCAL LLM such as
      * Ollama, LM Studio or llama.cpp (`http://localhost:11434/v1`), or any self-hosted gateway.
      * The endpoints here are placeholders: the real chat/models URLs are built at call time from

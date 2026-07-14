@@ -165,6 +165,8 @@ private enum class Destination(
     Notifications("notifications", R.string.nav_notifications, Icons.Filled.Notifications),
     Settings("settings", R.string.nav_settings, Icons.Filled.Settings),
     TestCentre("test_centre", R.string.nav_test_centre, Icons.Filled.BugReport),
+    // Fork addition: Settings → Cloud (self-hosted noop-cloud link). Sub-screen, reached from Settings.
+    CloudSettings("cloud_settings", R.string.nav_cloud, Icons.Filled.CloudSync),
 
     // The "More" tab: its own navigated page (mirroring the iOS More tab) that hosts the full
     // grouped destination list. It is NOT itself in any [DrawerGroup] — it's the door to them.
@@ -426,8 +428,10 @@ fun AppRoot(viewModel: AppViewModel = viewModel()) {
                         viewModel,
                         onOpenTestCentre = { nav.navigate(Destination.TestCentre.route) },
                         onOpenBackupSync = { nav.navigate(Destination.BackupSync.route) },
+                        onOpenCloud = { nav.navigate(Destination.CloudSettings.route) },
                     )
                 }
+                composable(Destination.CloudSettings.route) { CloudSettingsScreen() }
                 composable(Destination.TestCentre.route) { TestCentreScreen(viewModel) }
                 // The "More" page — the iOS More tab's twin: a navigated ScreenScaffold page hosting the
                 // full grouped destination list (was a pull-up sheet). A row navigates top-level.

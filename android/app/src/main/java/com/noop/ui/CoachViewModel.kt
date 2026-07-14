@@ -145,8 +145,12 @@ class CoachViewModel(app: Application) : AndroidViewModel(app) {
      * True once the coach can actually send: a stored key for the cloud providers, or, for the
      * Custom (local) provider, a committed base URL (a key is optional there). Gates setup vs. chat.
      */
-    fun isConfigured(ctx: Context): Boolean =
-        if (_provider.value == AiProvider.CUSTOM) _customConnected.value else hasKey(ctx)
+    fun isConfigured(ctx: Context): Boolean = when (_provider.value) {
+        AiProvider.CUSTOM -> _customConnected.value
+        // CLOUD needs no local key — just a linked noop-cloud (Settings → Cloud).
+        AiProvider.CLOUD -> com.noop.cloud.CloudPrefs.isLinked(ctx)
+        else -> hasKey(ctx)
+    }
 
     // MARK: - Selection mutators
 

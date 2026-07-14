@@ -72,9 +72,23 @@ class AiCoach(private val repo: WhoopRepository) {
         // Local (Custom) servers usually need no key; the cloud providers always do. The guarded read
         // returns the stored key ONLY if it belongs to THIS provider (or is a legacy cloud key), so a
         // key saved for one provider is never Bearer-sent to another provider's (or a Custom) endpoint.
-        val key = AiKeyStore.read(ctx, provider)
+        // CLOUD routes through the linked noop-cloud's coach endpoint: the CLOUD keeps ALL the AI parts
+        // (system prompt, provider config, model, LLM call) on the SERVER, so nothing local is used for
+        // the model call in cloud mode. The bearer is the pairing token; base is the paired cloud root.
+        val cloudBase = if (provider == AiProvider.CLOUD)
+            com.noop.cloud.CloudPrefs.baseUrl(ctx).trimEnd('/') else ""
+        // CLOUD bearer = a fresh short-lived access token (auto-rotated from the refresh token). Null if
+        // the link expired; the local providers still use their stored API key.
+        val key = if (provider == AiProvider.CLOUD)
+            com.noop.cloud.CloudSession.validAccessToken(ctx) else AiKeyStore.read(ctx, provider)
         if (key == null && provider != AiProvider.CUSTOM) {
-            throw Exception("No API key set. Add your ${provider.displayName} key to use the coach.")
+            val msg = if (provider == AiProvider.CLOUD)
+                "Link a cloud first (Settings → Cloud) to use cloud AI."
+            else "No API key set. Add your ${provider.displayName} key to use the coach."
+            throw Exception(msg)
+        }
+        if (provider == AiProvider.CLOUD) require(cloudBase.startsWith("http")) {
+            "Link a cloud first (Settings → Cloud)."
         }
         if (provider == AiProvider.CUSTOM) {
             require(customBaseUrl.isNotBlank()) { "Set your server URL first." }
@@ -124,6 +138,11 @@ class AiCoach(private val repo: WhoopRepository) {
                 callAnthropic(provider, model, key!!, grounded, systemPrompt)
             AiProvider.CUSTOM ->
                 callOpenAiCompatible(provider, customChatUrl(customBaseUrl), model, key, grounded, systemPrompt)
+            AiProvider.CLOUD ->
+                // The cloud owns the system prompt + provider + model + LLM call. We send only the
+                // grounded conversation (data context is already injected in-band above); NO local
+                // provider/prompt/LLM code runs. The local systemPrompt above is unused here by design.
+                cloudCoachChat(ctx, cloudBase, key!!, grounded)
         }
     }
 
@@ -182,6 +201,8 @@ class AiCoach(private val repo: WhoopRepository) {
                 builder.addHeader("anthropic-version", "2023-06-01")
             }
             AiProvider.CUSTOM -> if (!key.isNullOrBlank()) builder.addHeader("Authorization", "Bearer $key")
+            // CLOUD never reaches here (it early-returns above — the cloud picks its own model).
+            AiProvider.CLOUD -> {}
         }
 
         runCatching {
@@ -196,8 +217,9 @@ class AiCoach(private val repo: WhoopRepository) {
                 if (id.isEmpty()) continue
                 val keep = when (provider) {
                     AiProvider.OPENAI -> id.startsWith("gpt") || id.startsWith("o")
-                    // Anthropic + a local server name models freely → keep all.
-                    AiProvider.ANTHROPIC, AiProvider.CUSTOM -> true
+                    // Anthropic + a local server name models freely → keep all. CLOUD never reaches
+                    // here (it early-returns above; the cloud picks its own model).
+                    AiProvider.ANTHROPIC, AiProvider.CUSTOM, AiProvider.CLOUD -> true
                 }
                 if (keep) ids.add(id)
             }
@@ -413,6 +435,35 @@ class AiCoach(private val repo: WhoopRepository) {
         return if (truncated) content + TRUNCATION_NOTE else content
     }
 
+    // ---------------------------------------------------------------------------------------
+    // CLOUD, POST {base}/api/coach/chat  (bearer = pairing token)
+    //   The cloud OWNS the AI parts — system prompt, provider, model, LLM call. We send only the
+    //   grounded conversation; the cloud replies { "reply": "..." }. No local provider/prompt code.
+    // ---------------------------------------------------------------------------------------
+    private fun cloudCoachChat(
+        ctx: android.content.Context, base: String, token: String, history: List<ChatMsg>,
+    ): String {
+        com.noop.net.NetGuard.requireLanOrHttps(base)   // never send the token cleartext to a public host
+        val messages = JSONArray()
+        for (m in history) messages.put(JSONObject().put("role", m.role).put("content", m.text))
+        val body = JSONObject().put("messages", messages).toString()
+
+        val req = Request.Builder()
+            .url("$base/api/coach/chat")
+            .addHeader("Content-Type", "application/json")
+            .addHeader("Authorization", "Bearer $token")
+            .post(body.toRequestBody(JSON))
+            .build()
+
+        // Pin the cloud's self-signed cert for https bases (inert for http). Uses a per-call pinned
+        // client rather than the shared local-provider client.
+        val (code, text) = execute(req, com.noop.cloud.CloudTls.client(ctx, http))
+        if (code !in 200..299) throw httpError(AiProvider.CLOUD, code, text)
+        val reply = parse(text).optString("reply").trim()
+        if (reply.isEmpty()) throw Exception("The cloud returned an empty reply. Please try again.")
+        return reply
+    }
+
     /** Base for the Custom provider, the user's URL with any trailing slashes trimmed. */
     private fun customBase(url: String): String = url.trim().trimEnd('/')
 
@@ -451,7 +502,6 @@ class AiCoach(private val repo: WhoopRepository) {
                 "192.168.x, 169.254.x, or a .local name). Use https:// to reach \"$host\"."
         }
     }
-
 
     // ---------------------------------------------------------------------------------------
     // Anthropic, POST /v1/messages
@@ -503,10 +553,11 @@ class AiCoach(private val repo: WhoopRepository) {
     // HTTP / error plumbing
     // ---------------------------------------------------------------------------------------
 
-    /** Execute a request, mapping low-level network failures to a friendly [Exception]. */
-    private fun execute(request: Request): Pair<Int, String> {
+    /** Execute a request, mapping low-level network failures to a friendly [Exception].
+     *  [client] defaults to the shared client; the CLOUD path passes a cert-pinned one. */
+    private fun execute(request: Request, client: OkHttpClient = http): Pair<Int, String> {
         try {
-            http.newCall(request).execute().use { resp ->
+            client.newCall(request).execute().use { resp ->
                 val text = resp.body?.string().orEmpty()
                 return resp.code to text
             }
