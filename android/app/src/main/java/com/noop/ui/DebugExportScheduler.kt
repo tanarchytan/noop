@@ -3,12 +3,9 @@ package com.noop.ui
 import android.content.Context
 import android.content.SharedPreferences
 import androidx.work.CoroutineWorker
-import androidx.work.ExistingPeriodicWorkPolicy
-import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import java.util.Calendar
-import java.util.concurrent.TimeUnit
 
 /**
  * The DAILY scheduled debug export (#510, maddognik).
@@ -23,11 +20,17 @@ import java.util.concurrent.TimeUnit
  * because waking the user is safety-critical and must beat Doze to the exact second. A debug export is
  * the opposite: it's fine for it to slide a few minutes into a maintenance window, and it must survive
  * reboot/app-kill and never need the exact-alarm permission. That's exactly WorkManager's contract, so we
- * use a [PeriodicWorkRequestBuilder] with a one-day period and an initial delay computed to the next
+ * used a PeriodicWorkRequestBuilder with a one-day period and an initial delay computed to the next
  * occurrence of the chosen time. Enqueued as UNIQUE work (KEEP) so re-enabling or a reboot doesn't stack
  * duplicate daily exports.
  *
  * Everything is on-device; nothing is sent anywhere.
+ *
+ * DORMANT (noop-tan): the enable UI (the Test Centre "Export" card) was removed in the diagnostics
+ * consolidation, so [reschedule] now only reconciles any prior schedule to OFF (see its doc). The worker,
+ * [DebugExportSettings] (still read by the Test Centre bundle), and the [applyTimeChange]/[cancel] wrappers
+ * are kept as a re-add scaffold; a full teardown would also unpick [LogExport.writeScheduledExport] +
+ * [StrapLogBuffer], so it is left as a separate change.
  */
 object DebugExportScheduler {
 
@@ -35,23 +38,16 @@ object DebugExportScheduler {
     private const val WORK_NAME = "noop_debug_export_daily"
 
     /**
-     * (Re)schedule the daily export from the persisted [DebugExportSettings]. No-op + cancels any existing
-     * job when the feature is disabled, so toggling off in Settings stops the drops. Call this on settings
-     * change and from app start / boot so the schedule self-heals.
+     * Reconcile the daily export on app start / settings change. The daily-export UI (the Test Centre
+     * "Export" card) was removed, so there is no longer any way to ENABLE this feature — this now forces it
+     * OFF: it clears any persisted enable flag and cancels the unique work, so an install that had it
+     * enabled before this cleanup stops firing an export nobody can turn off. The worker + settings stay in
+     * the tree as a dormant scaffold; if the feature is ever re-added, restore the enqueue path here (a
+     * PeriodicWorkRequestBuilder + the [delayToNextOccurrenceMs] timing helper are kept for that). (noop-tan)
      */
     fun reschedule(context: Context, settings: DebugExportSettings = DebugExportSettings.from(context)) {
-        val wm = WorkManager.getInstance(context.applicationContext)
-        if (!settings.enabled) {
-            wm.cancelUniqueWork(WORK_NAME)
-            return
-        }
-        val initialDelayMs = delayToNextOccurrenceMs(settings.timeMinutes)
-        val request = PeriodicWorkRequestBuilder<DebugExportWorker>(1, TimeUnit.DAYS)
-            .setInitialDelay(initialDelayMs, TimeUnit.MILLISECONDS)
-            .build()
-        // KEEP: an already-scheduled daily export keeps its existing period anchor rather than being reset
-        // every app-start. A time-of-day CHANGE goes through [cancel]+[reschedule] in the Settings handler.
-        wm.enqueueUniquePeriodicWork(WORK_NAME, ExistingPeriodicWorkPolicy.KEEP, request)
+        if (settings.enabled) settings.enabled = false
+        WorkManager.getInstance(context.applicationContext).cancelUniqueWork(WORK_NAME)
     }
 
     /** Force a fresh schedule (cancel then enqueue) — used when the chosen time-of-day changes so the new
