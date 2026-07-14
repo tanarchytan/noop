@@ -3,16 +3,16 @@ package com.noop.testcentre
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
-/** Mirror of the Swift TestDomainTests: the id set, the import divergence, and the github labels MUST
- *  match the Swift TestDomain byte-for-byte (the cross-platform parity contract, spec section 10). */
+/** Pins the id set + github labels. On the Android-only noop-tan fork the four never-wired Phase-1
+ *  placeholders (notifications / sources / stress / longevity) were dropped — a deliberate divergence
+ *  from the Swift TestDomain, so this asserts the noop-tan set, not byte-for-byte upstream parity. */
 class TestDomainTest {
 
-    @Test fun fullIdSetMatchesSwift() {
+    @Test fun fullIdSet() {
         assertEquals(
             listOf(
                 "universal", "sleep", "connection", "workouts", "display", "import",
-                "steps", "notifications", "battery", "recovery", "hrv", "sources",
-                "stress", "longevity", "master",
+                "steps", "battery", "recovery", "hrv", "master",
             ),
             TestDomain.values().map { it.id },
         )

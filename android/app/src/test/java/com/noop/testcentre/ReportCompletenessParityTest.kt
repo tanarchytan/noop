@@ -28,9 +28,8 @@ class ReportCompletenessParityTest {
         assertEquals("charge score=", ReportCompleteness.killerTokens[TestDomain.RECOVERY])
         assertEquals("hrv rmssd=", ReportCompleteness.killerTokens[TestDomain.HRV])
         assertEquals(10, ReportCompleteness.killerTokens.size)
-        // No Phase-3 token claims (we never report MISSING for a trace we never promised to emit).
-        assertFalse(ReportCompleteness.killerTokens.containsKey(TestDomain.NOTIFICATIONS))
-        assertFalse(ReportCompleteness.killerTokens.containsKey(TestDomain.SOURCES))
+        // No token claim for the "log everything" domain (we never report MISSING for a trace we never
+        // promised to emit).
         assertFalse(ReportCompleteness.killerTokens.containsKey(TestDomain.MASTER))
     }
 

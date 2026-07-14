@@ -31,13 +31,13 @@ class TestCentreLayoutTest {
     @Test
     fun requires5MG_hiddenForNon5MG() {
         val sleep = TestModeRegistry.mode(TestDomain.SLEEP)!!
-        val gated = sleep.copy(domain = TestDomain.SOURCES, requires5MG = true)
+        val gated = sleep.copy(domain = TestDomain.HRV, requires5MG = true)
         assertEquals(
             listOf(TestDomain.SLEEP),
             TestCentreLayout.order(listOf(gated, sleep), is5MG = false).map { it.domain },
         )
         assertEquals(
-            listOf(TestDomain.SOURCES, TestDomain.SLEEP),
+            listOf(TestDomain.HRV, TestDomain.SLEEP),
             TestCentreLayout.order(listOf(gated, sleep), is5MG = true).map { it.domain },
         )
     }

@@ -35,7 +35,7 @@ class TestModeRegistryParityTest {
         assertEquals("Battery & Charging", TestModeRegistry.mode(TestDomain.BATTERY)?.title)
         assertEquals("Recovery (Charge)", TestModeRegistry.mode(TestDomain.RECOVERY)?.title)
         assertEquals("HRV & Autonomic", TestModeRegistry.mode(TestDomain.HRV)?.title)
-        assertNull(TestModeRegistry.mode(TestDomain.NOTIFICATIONS))
+        assertNull(TestModeRegistry.mode(TestDomain.UNIVERSAL))
     }
 
     @Test fun sleepCaptureSet() {

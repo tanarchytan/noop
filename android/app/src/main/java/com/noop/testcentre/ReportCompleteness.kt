@@ -28,8 +28,8 @@ object ReportCompleteness {
     /**
      * domain -> the distinctive leading substring of that domain's killer trace. Byte-identical to the
      * Swift twin's map. UNIVERSAL's `dayOwner day=` rides every export (checked always); the rest are
-     * checked only when their mode is active. NOTIFICATIONS / SOURCES / STRESS / LONGEVITY have no wired
-     * emitter yet (Phase 3), so they are intentionally absent from the map and never claimed present.
+     * checked only when their mode is active. MASTER is "log everything" and has no single killer trace,
+     * so it is intentionally absent from the map and never claimed present.
      */
     val killerTokens: Map<TestDomain, String> = linkedMapOf(
         TestDomain.UNIVERSAL to "dayOwner day=",
