@@ -37,6 +37,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.noop.data.DataBackup
+import com.noop.data.WhoopRepository
+import com.noop.ingest.WhoopCsvExporter
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.delay
@@ -58,7 +60,7 @@ import kotlinx.coroutines.withContext
  *     the live [DataBackup.importFrom] now also rejects a foreign-but-valid SQLite (Mac/GRDB or other-app DB).
  */
 @Composable
-fun BackupSyncScreen() {
+fun BackupSyncScreen(repo: WhoopRepository) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
@@ -135,6 +137,48 @@ fun BackupSyncScreen() {
     ) { uri ->
         if (uri == null) return@rememberLauncherForActivityResult
         pendingRestore = "the selected file" to uri
+    }
+
+    // Export a portable copy (moved here from Settings): a one-off .noopbak to any location, and the
+    // WHOOP-format CSV zip. The folder auto-backup above stays the primary path; these are for sharing /
+    // moving to another phone without configuring a folder.
+    val exportFileLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("application/zip"),
+    ) { uri ->
+        if (uri == null) { busy = false; return@rememberLauncherForActivityResult }
+        scope.launch {
+            val result = withContext(Dispatchers.IO) { runCatching { DataBackup.exportTo(context, uri) } }
+            busy = false
+            result.fold(
+                onSuccess = {
+                    Toast.makeText(
+                        context,
+                        "Backup exported. Copy it to another phone and use Restore there.",
+                        Toast.LENGTH_LONG,
+                    ).show()
+                },
+                onFailure = { e -> Toast.makeText(context, "Backup problem: ${e.message}", Toast.LENGTH_LONG).show() },
+            )
+        }
+    }
+    val csvExportLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("application/zip"),
+    ) { uri ->
+        if (uri == null) { busy = false; return@rememberLauncherForActivityResult }
+        scope.launch {
+            val result = withContext(Dispatchers.IO) { runCatching { WhoopCsvExporter.exportZip(context, uri, repo) } }
+            busy = false
+            result.fold(
+                onSuccess = { msg ->
+                    Toast.makeText(
+                        context,
+                        "$msg Re-import it via Data sources -> WHOOP import, on Android or Mac.",
+                        Toast.LENGTH_LONG,
+                    ).show()
+                },
+                onFailure = { e -> Toast.makeText(context, "CSV export problem: ${e.message}", Toast.LENGTH_LONG).show() },
+            )
+        }
     }
 
     LazyScreenScaffold(
@@ -342,6 +386,42 @@ fun BackupSyncScreen() {
                             }
                         },
                     )
+                }
+            }
+        }
+
+        // 4 · Export a copy (moved here from Settings) - a portable file to move to another phone or share.
+        item {
+            NoopCard(padding = 20.dp) {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text("Export a copy", style = NoopType.headline, color = Palette.textPrimary)
+                    Text(
+                        "Save a one-off file to move your data to another phone or share it. The .noopbak is the " +
+                            "lossless restore file; the CSV is a WHOOP-format zip that re-imports on Android or Mac.",
+                        style = NoopType.footnote, color = Palette.textTertiary,
+                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        NoopButton(
+                            text = if (busy) "Working…" else "Export backup file…",
+                            kind = NoopButtonKind.Secondary,
+                            enabled = !busy,
+                            modifier = Modifier.weight(1f),
+                            onClick = {
+                                busy = true
+                                exportFileLauncher.launch("noop-backup-${java.time.LocalDate.now()}.noopbak")
+                            },
+                        )
+                        NoopButton(
+                            text = "Export CSV…",
+                            kind = NoopButtonKind.Secondary,
+                            enabled = !busy,
+                            modifier = Modifier.weight(1f),
+                            onClick = {
+                                busy = true
+                                csvExportLauncher.launch("noop-export-${java.time.LocalDate.now()}.zip")
+                            },
+                        )
+                    }
                 }
             }
         }

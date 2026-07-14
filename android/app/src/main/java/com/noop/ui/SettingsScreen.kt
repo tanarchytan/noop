@@ -98,9 +98,7 @@ import com.noop.analytics.Baselines
 import com.noop.analytics.Zones
 import com.noop.ble.PuffinExperiment
 import com.noop.ble.WhoopModel
-import com.noop.data.DataBackup
 import com.noop.ingest.RawSensorExport
-import com.noop.ingest.WhoopCsvExporter
 import com.noop.update.UpdateCheck
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -376,7 +374,6 @@ class ProfileStore(private val prefs: SharedPreferences) {
 fun SettingsScreen(
     vm: AppViewModel,
     onOpenTestCentre: () -> Unit = {},
-    onOpenBackupSync: () -> Unit = {},
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -387,8 +384,6 @@ fun SettingsScreen(
     val profile = remember { ProfileStore.from(context) }
     var rev by remember { mutableStateOf(0) }
     fun mutate(block: () -> Unit) { block(); rev++ }
-
-    var backupBusy by remember { mutableStateOf(false) }
 
     // Re-scan must request the runtime Bluetooth permission before scanning — without this the
     // button calls connect() directly and silently no-ops on Android 12+ when the permission was
@@ -524,78 +519,6 @@ fun SettingsScreen(
     // Card-surface opacity (0f = clear, 1f = solid), for the "Card transparency" slider. Live-previews via
     // CardAppearance; saved on release.
     var cardOpacity by remember { mutableStateOf(NoopPrefs.cardOpacityPercent(context) / 100f) }
-
-    // SAF launchers — CreateDocument for export, OpenDocument for import.
-    val exportLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.CreateDocument("application/zip"),
-    ) { uri ->
-        if (uri == null) { backupBusy = false; return@rememberLauncherForActivityResult }
-        scope.launch {
-            val result = withContext(Dispatchers.IO) {
-                runCatching { DataBackup.exportTo(context, uri) }
-            }
-            backupBusy = false
-            result.fold(
-                onSuccess = {
-                    Toast.makeText(
-                        context,
-                        "Backup exported. Copy this file to your new phone and use Import there to restore everything.",
-                        Toast.LENGTH_LONG,
-                    ).show()
-                },
-                onFailure = { e ->
-                    Toast.makeText(context, "Backup problem: ${e.message}", Toast.LENGTH_LONG).show()
-                },
-            )
-        }
-    }
-
-    // CSV export — the 4-CSV WHOOP-format zip NOOP's own importers re-import (Android + Mac).
-    val csvExportLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.CreateDocument("application/zip"),
-    ) { uri ->
-        if (uri == null) { backupBusy = false; return@rememberLauncherForActivityResult }
-        scope.launch {
-            val result = withContext(Dispatchers.IO) {
-                runCatching { WhoopCsvExporter.exportZip(context, uri, vm.repo) }
-            }
-            backupBusy = false
-            result.fold(
-                onSuccess = { msg ->
-                    Toast.makeText(
-                        context,
-                        "$msg Re-import it via Data sources → WHOOP import, on Android or Mac.",
-                        Toast.LENGTH_LONG,
-                    ).show()
-                },
-                onFailure = { e ->
-                    Toast.makeText(context, "CSV export problem: ${e.message}", Toast.LENGTH_LONG).show()
-                },
-            )
-        }
-    }
-
-    val importLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.OpenDocument(),
-    ) { uri ->
-        if (uri == null) { backupBusy = false; return@rememberLauncherForActivityResult }
-        scope.launch {
-            val result = withContext(Dispatchers.IO) {
-                DataBackup.importFrom(context, uri)
-            }
-            backupBusy = false
-            when (result) {
-                is DataBackup.ImportResult.NeedsRestart -> Toast.makeText(
-                    context,
-                    "Backup imported. Fully close and reopen NOOP for it to take effect.",
-                    Toast.LENGTH_LONG,
-                ).show()
-                is DataBackup.ImportResult.Failed -> Toast.makeText(
-                    context, result.message, Toast.LENGTH_LONG,
-                ).show()
-            }
-        }
-    }
 
     // Modern Photo Picker for the optional profile photo (no READ_EXTERNAL_STORAGE permission needed).
     // Returns a single image Uri (or null if cancelled); we decode + downscale + persist off the main
@@ -1921,93 +1844,7 @@ fun SettingsScreen(
             )
         }
 
-        SettingsSection(
-            icon = Icons.Filled.Storage,
-            title = "Backup & restore",
-            blurb = "Move all your NOOP data to another phone. Export saves everything (history, sleeps, workouts, settings) to a single file you can copy across; import replaces this phone's data with a backup.",
-        ) {
-            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                // Three equal-width buttons share the row (each takes a third via weight) — mirrors the
-                // iOS Backup card's three fullWidth NoopButtonStyle buttons. The busy spinner sits BELOW
-                // the row (not inside it) so it never steals a button's share of the width.
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                ) {
-                    NoopButton(
-                        text = "Export…",
-                        kind = NoopButtonKind.Primary,
-                        enabled = !backupBusy,
-                        modifier = Modifier.weight(1f),
-                        onClick = {
-                            backupBusy = true
-                            exportLauncher.launch("noop-backup-${java.time.LocalDate.now()}.noopbak")
-                        },
-                    )
-
-                    NoopButton(
-                        text = "Import…",
-                        kind = NoopButtonKind.Secondary,
-                        enabled = !backupBusy,
-                        modifier = Modifier.weight(1f),
-                        onClick = {
-                            backupBusy = true
-                            importLauncher.launch(arrayOf("*/*"))
-                        },
-                    )
-
-                    NoopButton(
-                        text = "Export CSV…",
-                        kind = NoopButtonKind.Secondary,
-                        enabled = !backupBusy,
-                        modifier = Modifier.weight(1f),
-                        onClick = {
-                            backupBusy = true
-                            csvExportLauncher.launch("noop-export-${java.time.LocalDate.now()}.zip")
-                        },
-                    )
-                }
-
-                if (backupBusy) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        CircularProgressIndicator(
-                            color = Palette.accent,
-                            strokeWidth = 2.dp,
-                            modifier = Modifier.size(18.dp),
-                        )
-                        Text("Working…", style = NoopType.footnote, color = Palette.textSecondary)
-                    }
-                }
-
-                NoteRow(
-                    icon = Icons.Filled.Info,
-                    iconTint = Palette.textTertiary,
-                    text = "Importing overwrites everything currently on this phone. Your old data is kept in a side file just in case. NOOP needs a relaunch for an import to take effect. " +
-                        "Export CSV writes a WHOOP-format zip of your days, sleeps, workouts and journal that re-imports into NOOP on Android or Mac. On-device computed rows are marked APPROXIMATE in its Source column; the .noopbak backup stays the lossless restore path.",
-                )
-            }
-        }
-
-        // --- Automatic backups ---
-        // Discoverability signpost: the daily-backup toggle, folder picker and keep-count live on the
-        // separate Backup & Sync screen; surface an entry here, right under the one-off Backup & restore,
-        // since that's where a user looks for "turn on automatic backups".
-        SettingsSection(
-            icon = Icons.Filled.CloudSync,
-            title = "Automatic backups",
-            blurb = "Have NOOP save a dated backup to a folder every day (around 1am) and keep the last several - so if data ever corrupts, restore the newest. Point the folder at Drive/Dropbox for off-device copies. Off until you switch it on.",
-        ) {
-            NoopButton(
-                text = "Set up automatic backups",
-                leadingIcon = Icons.Filled.CloudSync,
-                kind = NoopButtonKind.Primary,
-                fullWidth = true,
-                onClick = onOpenBackupSync,
-            )
-        }
+        // Backup & restore + automatic backups moved to Data → Backup & Sync (single home, one system).
 
         // --- About ---
         SettingsSection(

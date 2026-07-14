@@ -419,13 +419,12 @@ fun AppRoot(viewModel: AppViewModel = viewModel()) {
                     )
                 }
                 composable(Destination.DataSources.route) { DataSourcesScreen(viewModel) }
-                composable(Destination.BackupSync.route) { BackupSyncScreen() }
+                composable(Destination.BackupSync.route) { BackupSyncScreen(viewModel.repo) }
                 composable(Destination.Notifications.route) { NotificationsSettingsScreen(viewModel) }
                 composable(Destination.Settings.route) {
                     SettingsScreen(
                         viewModel,
                         onOpenTestCentre = { nav.navigate(Destination.TestCentre.route) },
-                        onOpenBackupSync = { nav.navigate(Destination.BackupSync.route) },
                     )
                 }
                 composable(Destination.TestCentre.route) { TestCentreScreen(viewModel) }
