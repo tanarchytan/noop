@@ -38,12 +38,15 @@ import androidx.compose.material.icons.filled.Autorenew
 import androidx.compose.material.icons.automirrored.filled.BatteryUnknown
 import androidx.compose.material.icons.filled.Bedtime
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Functions
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.LockOpen
 import androidx.compose.material.icons.filled.MonitorHeart
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.TrackChanges
@@ -118,6 +121,7 @@ import com.noop.R
 import com.noop.analytics.BaselineState
 import com.noop.analytics.Baselines
 import com.noop.analytics.BatteryEstimator
+import com.noop.analytics.CalibrationMilestones
 import com.noop.analytics.ChargeDriver
 import com.noop.analytics.HydrationGoal
 import com.noop.analytics.HydrationStore
@@ -165,6 +169,11 @@ private const val CARD_NEW_HERE = "newHere"
 // the other Today info-cards, so a returning user who has read it once isn't nagged with it every day
 // through the multi-night calibration window. Same id on both platforms so it round-trips an export/import.
 private const val CARD_CALIBRATING = "calibratingBaseline"
+// The gamified calibration-milestone countdown stack (First Recovery → Sleep → Trusted → 30-day baseline).
+// Dismissible-into-the-inbox like the other Today info-cards so a returning user isn't nagged for the full
+// 30-night run; a "Restore to Today" tap brings it back. Same id on both platforms so it round-trips an
+// export/import. Presentation only — the targets never touch the Baselines math (CalibrationMilestones).
+private const val CARD_CALIBRATION_MILESTONES = "calibrationMilestones"
 // The "Latest sleep · <date>" / "Last night · <date>" carry-over note (ScoreState.CarriedLastNight). iOS
 // has nothing in this slot, so on Android it's dismissible-into-the-inbox like the other Today info-cards:
 // a small × tucks it into Updates (restorable), so it never sits permanently between the header and the
@@ -558,6 +567,10 @@ fun TodayScreen(
     var calibratingDismissed by remember {
         mutableStateOf(TodayCardDismissal.isDismissed(context, CARD_CALIBRATING))
     }
+    // The calibration-milestone countdown stack's dismissed flag, read once from the same shared store.
+    var milestonesDismissed by remember {
+        mutableStateOf(TodayCardDismissal.isDismissed(context, CARD_CALIBRATION_MILESTONES))
+    }
     // The carried "Latest sleep · <date>" note's dismissed flag (iOS has no such card; on Android it's
     // dismissible so it doesn't sit permanently above the hero and break the compact look). Read once.
     var carriedSleepDismissed by remember {
@@ -571,6 +584,7 @@ fun TodayScreen(
             CARD_SCORES_BUILDING -> scoresBuildingDismissed = true
             CARD_NEW_HERE -> newHereDismissed = true
             CARD_CALIBRATING -> calibratingDismissed = true
+            CARD_CALIBRATION_MILESTONES -> milestonesDismissed = true
             CARD_CARRIED_SLEEP -> carriedSleepDismissed = true
         }
         updateStore?.post(
@@ -592,6 +606,7 @@ fun TodayScreen(
                 CARD_SCORES_BUILDING -> scoresBuildingDismissed = false
                 CARD_NEW_HERE -> newHereDismissed = false
                 CARD_CALIBRATING -> calibratingDismissed = false
+                CARD_CALIBRATION_MILESTONES -> milestonesDismissed = false
                 CARD_CARRIED_SLEEP -> carriedSleepDismissed = false
             }
             updateStore.restoreRequest = null
@@ -802,6 +817,19 @@ fun TodayScreen(
     } else {
         null
     }
+
+    // Calibration-milestone gamification: the UNCAPPED banked-night tally (unlike recoveryCalibration,
+    // which nulls out past the 4-night seed) drives the WHOOP-style countdown cards (First Recovery 4 →
+    // Sleep 7 → Trusted 14 → 30-day baseline). Same analytics-layer source as the seed gate
+    // (RecoveryScorer.bankedNights), so the two can't diverge. Today only, and only while at least one
+    // milestone is still unreached; presentation-only — the targets never touch the Baselines math.
+    val calibrationMilestones: List<CalibrationMilestones.Progress>? =
+        if (selectedDayOffset == 0) {
+            val banked = RecoveryScorer.bankedNights(days.map { it.avgHrv })
+            if (CalibrationMilestones.isCalibrating(banked)) CalibrationMilestones.progress(banked) else null
+        } else {
+            null
+        }
 
     // The most recent fully-SCORED recovery day to carry over on TODAY while tonight's recovery hasn't
     // been scored yet (#543). Right after the logical-day rollover the new day has no recovery (the new
@@ -1182,6 +1210,30 @@ fun TodayScreen(
                 onChargeTap = { showChargeBreakdown = true },
             )
         }
+        }
+
+        // CALIBRATION MILESTONES (gamification): the WHOOP-style countdown stack, directly under the hero
+        // rings so a new user sees their (still-calibrating) score and then exactly how many nights until
+        // each milestone unlocks. Today only, only while unreached, and dismissible into the inbox so it
+        // never nags across the full 30-night run. Presentation-only; the Baselines math is untouched.
+        if (calibrationMilestones != null && !milestonesDismissed) {
+            item {
+                Box(modifier = Modifier.fillMaxWidth().staggeredAppear(3)) {
+                    CalibrationMilestonesCard(progress = calibrationMilestones)
+                    if (updateStore != null) {
+                        TodayCardDismissButton(
+                            modifier = Modifier.align(Alignment.TopEnd),
+                            onClick = {
+                                dismissTodayCard(
+                                    CARD_CALIBRATION_MILESTONES,
+                                    "Calibration milestones",
+                                    "Your countdown to personal Charge, Sleep and a full 30-day baseline.",
+                                )
+                            },
+                        )
+                    }
+                }
+            }
         }
 
         // LIVE SESSIONS (beta): the compact "Start session · BETA" entry, directly under the hero. Today
@@ -3720,14 +3772,11 @@ internal fun recoveryCalibrationNights(
     seed: Int = Baselines.minNightsSeed,
 ): Int? {
     if (hasRecovery) return null
-    // Match the baseline's validity predicate, not just non-null: Baselines.update only advances the
-    // recovery seed (nValid) for nights whose avgHrv is within the HRV config bounds, so an implausible
-    // out-of-range night must NOT be counted here either, else the displayed N could over-state nValid.
-    val cfg = Baselines.hrvCfg
     // Include 0: a brand-new user (no banked nights) reads "Calibrating, 0 of N" on Charge, not a
-    // bare "No data" that looks broken (#335). Caller gates past days to null; >= seed → null.
-    return days.count { val v = it.avgHrv; v != null && v in cfg.minVal..cfg.maxVal }
-        .takeIf { it in 0 until seed }
+    // bare "No data" that looks broken (#335). Caller gates past days to null; >= seed → null. The
+    // uncapped valid-HRV tally lives in the analytics layer (RecoveryScorer.bankedNights) so this seed
+    // gate and the calibration-milestone cards can't diverge; mirrors Swift RecoveryScorer.calibrationNights.
+    return RecoveryScorer.bankedNights(days.map { it.avgHrv }).takeIf { it in 0 until seed }
 }
 
 /**
@@ -3950,6 +3999,134 @@ internal fun scoreStateForToday(
     // "Latest sleep" so a weeks-old import is never passed off as "Last night".
     carriedDay != null -> ScoreState.CarriedLastNight(lastChargeDateLabel(carriedDay.day), isCarryStale(carriedDay.day, today))
     else -> ScoreState.NeedsStrap
+}
+
+/**
+ * The gamified calibration-milestone countdown stack (WHOOP-style "Calibration Timeline"). Renders one
+ * row per milestone: DONE milestones read as a compact "Unlocked" check, the single ACTIVE milestone is
+ * the live countdown with an accent liquid progress bar + "N nights to go" + what it unlocks, and LOCKED
+ * milestones sit muted below with their own dimmed bar. [progress] is the pure, unit-tested
+ * [CalibrationMilestones.progress] output; this composable is presentation only. Design-system tokens
+ * only (Palette / Metrics / NoopType). Mirrors the iOS CalibrationMilestonesCard.
+ */
+@Composable
+private fun CalibrationMilestonesCard(progress: List<CalibrationMilestones.Progress>) {
+    NoopCard {
+        Column(verticalArrangement = Arrangement.spacedBy(Metrics.space12)) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(Metrics.space10),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(
+                    Icons.Filled.Tune,
+                    contentDescription = null,
+                    tint = Palette.accent,
+                    modifier = Modifier.size(Metrics.iconSmall),
+                )
+                Column(verticalArrangement = Arrangement.spacedBy(Metrics.space2)) {
+                    Text("Calibration milestones", style = NoopType.headline, color = Palette.textPrimary)
+                    Text(
+                        "Wear the strap overnight to unlock each one.",
+                        style = NoopType.subhead,
+                        color = Palette.textSecondary,
+                    )
+                }
+            }
+            progress.forEach { p -> CalibrationMilestoneRow(p) }
+        }
+    }
+}
+
+/** One milestone row inside [CalibrationMilestonesCard], drawn by its [CalibrationMilestones.State]. */
+@Composable
+private fun CalibrationMilestoneRow(p: CalibrationMilestones.Progress) {
+    val m = p.milestone
+    val banked = (m.nights - p.remaining).coerceAtLeast(0)
+    val nightsWord = if (p.remaining == 1) "night" else "nights"
+    when (p.state) {
+        // A cleared milestone: a compact green check + "Unlocked", no progress bar (it's full by definition).
+        CalibrationMilestones.State.DONE -> Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .semantics { contentDescription = "${m.title} unlocked" },
+            horizontalArrangement = Arrangement.spacedBy(Metrics.space8),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(
+                Icons.Filled.CheckCircle,
+                contentDescription = null,
+                tint = Palette.statusPositive,
+                modifier = Modifier.size(Metrics.iconSmall),
+            )
+            Text(m.title, style = NoopType.subhead, color = Palette.textSecondary, modifier = Modifier.weight(1f))
+            Text("Unlocked", style = NoopType.footnote, color = Palette.statusPositive)
+        }
+
+        // The live countdown: accent open-lock, "N nights to go", an accent bar, and what it unlocks.
+        CalibrationMilestones.State.ACTIVE -> Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .semantics {
+                    contentDescription =
+                        "${m.title}, $banked of ${m.nights} nights, ${p.remaining} $nightsWord to go. ${m.unlocks}"
+                },
+            verticalArrangement = Arrangement.spacedBy(Metrics.space6),
+        ) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(Metrics.space8),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(
+                    Icons.Filled.LockOpen,
+                    contentDescription = null,
+                    tint = Palette.accent,
+                    modifier = Modifier.size(Metrics.iconSmall),
+                )
+                Text(m.title, style = NoopType.headline, color = Palette.textPrimary, modifier = Modifier.weight(1f))
+                Text("${p.remaining} $nightsWord to go", style = NoopType.footnote, color = Palette.accent)
+            }
+            // Status bar, not a hero surface — posed (animated=false) so it costs nothing per scroll frame.
+            LiquidTube(
+                frac = p.fraction,
+                tint = Palette.accent,
+                height = Metrics.progressHeight,
+                animated = false,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            Text("$banked/${m.nights} nights · ${m.unlocks}", style = NoopType.footnote, color = Palette.textSecondary)
+        }
+
+        // Still ahead: a muted closed-lock, dimmed bar, and the raw gap — no unlocks copy (keeps it quiet).
+        CalibrationMilestones.State.LOCKED -> Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .semantics {
+                    contentDescription = "${m.title}, $banked of ${m.nights} nights, ${p.remaining} $nightsWord to go"
+                },
+            verticalArrangement = Arrangement.spacedBy(Metrics.space6),
+        ) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(Metrics.space8),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(
+                    Icons.Filled.Lock,
+                    contentDescription = null,
+                    tint = Palette.textTertiary,
+                    modifier = Modifier.size(Metrics.iconSmall),
+                )
+                Text(m.title, style = NoopType.subhead, color = Palette.textSecondary, modifier = Modifier.weight(1f))
+                Text("${p.remaining} $nightsWord to go", style = NoopType.footnote, color = Palette.textTertiary)
+            }
+            LiquidTube(
+                frac = p.fraction,
+                tint = Palette.textTertiary,
+                height = Metrics.progressHeight,
+                animated = false,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
+    }
 }
 
 /** The honest score-state note shown in the Today flow when there is no own number to render, the
