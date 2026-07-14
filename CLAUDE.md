@@ -29,8 +29,10 @@
 Guidance for anyone (human or AI agent) submitting a pull request. This is the high-signal map;
 [`docs/CONTRIBUTING.md`](docs/CONTRIBUTING.md) is the full guide (BLE safety contract, design-system
 rules, add-a-metric/screen/command recipes) and [`docs/BUILD.md`](docs/BUILD.md) covers signing/pairing.
-Read this first; follow the links for depth. (Deep `docs/*` still describe the old cross-platform layout —
-Android-only sweep pending.)
+Read this first; follow the links for depth. **On `noop-tan` the only app that exists is `android/`** — the
+sections below that describe Swift packages, a macOS/iOS app, `project.yml`/XcodeGen, or `swift`/`xcodebuild`
+builds are kept as a reference for the **upstream (`ryanbr/noop`) cross-platform tree** you target when you PR a
+change back; none of it is present or buildable here. (Some deep `docs/*` still describe the old layout.)
 
 ## What NOOP is (and the hard scope limits)
 
@@ -38,7 +40,7 @@ NOOP is a **fully offline, on-device** companion app for WHOOP 4.0 and 5.0/MG st
 **experimental** Oura support in the tree — gated behind `ExperimentalBrand`, not a shipped supported
 strap). It pairs over Bluetooth, stores everything in on-device SQLite, and computes recovery / strain
 / HRV / sleep locally. There is **no server, no account, no cloud sync, no telemetry**, and the project stays
-**anonymous** (iOS/Android ship build-from-source / sideload, not via the App Store).
+**anonymous** (Android ships build-from-source / sideload, not via an app store; the fork is Android-only).
 
 These are hard constraints, not preferences. A PR is out of scope if it:
 - adds a server, account, cloud sync, or sends any data off-device;
@@ -51,9 +53,11 @@ Licensing: by opening a PR you agree your contribution is under the repo's
 
 ## Architecture at a glance
 
-Core logic lives in **cross-platform Swift packages**; each platform is a thin app layer over them.
-The **macOS app is the reference implementation**; **Android is a full shipped app**; **iOS is a
-build-from-source target** folded into the same repo.
+**On `noop-tan`, the app IS `android/`** — a self-contained Kotlin / Jetpack Compose / Room app; there is no
+Swift on this branch. The table below is the **upstream** (`ryanbr/noop`) layout, kept as the map for a PR
+back: upstream, core logic lives in cross-platform Swift packages with thin per-platform app layers (macOS =
+reference, iOS = build-from-source, Android = the full app this fork keeps). On this branch **only the Android
+row exists** — the `Packages/`, `Strand/`, `StrandiOS/`, `NOOPWatch*` trees were deleted with the split.
 
 | Layer | Path | What lives here |
 |---|---|---|
@@ -66,8 +70,9 @@ build-from-source target** folded into the same repo.
 | iOS-only app | `StrandiOS/` (scheme **NOOPiOS**, iOS 17+), `StrandiOSShared/`, `StrandiOSWidgets/`, `NOOPWatch*` | `StrandiOSApp` (@main), `RootTabView` (the iOS tab shell — no macOS analogue), iOS widgets, watch app. |
 | Android app | `android/` (Kotlin, Compose, Room; flavors `Full`/`Demo`) | `com.noop.{ble,collect,data,ingest,analytics,protocol,ui,widget,…}` — mirrors the Swift layering with its own reimplementations. |
 
-`project.yml` is the **XcodeGen source of truth**; `Strand.xcodeproj/` is generated — never hand-edit
-or commit it. Re-run `xcodegen generate` after adding/removing files or editing `project.yml`.
+*(Upstream only — not on `noop-tan`.)* Upstream, `project.yml` is the XcodeGen source of truth and
+`Strand.xcodeproj/` is generated from it. Both were removed here with the Swift app, so nothing on this
+branch reads, bumps, or generates them.
 
 **Where new code goes:** the more "wire-level" (bytes) or "math-level" a change is, the deeper into
 `Packages/` it belongs — and the more it must be covered by a `swift test` that runs with no app, no
@@ -100,14 +105,12 @@ Swift. So:
 
 ### Fast local loops
 ```bash
-# Swift packages (fastest; no Xcode, no strap):
-cd Packages/WhoopProtocol && swift build && swift test     # also OuraProtocol
-# Android JVM unit tests (run on Linux/macOS, no device):
+# Android JVM unit tests (no device):
 cd android && ./gradlew testFullDebugUnitTest              # add --tests "com.noop.…" to filter
 cd android && ./gradlew compileFullDebugKotlin             # compile the whole app module
-# macOS app (needs Xcode on macOS):
-xcodegen generate && xcodebuild -project Strand.xcodeproj -scheme Strand \
-  -destination 'platform=macOS' CODE_SIGNING_ALLOWED=NO build
+cd android && ./gradlew assembleFullDebug                  # build the debug APK
+# (Upstream ryanbr/noop also has Swift packages + a macOS/iOS app — `swift build` / `xcodebuild` — but
+#  that tree is NOT present on noop-tan; those commands don't apply here.)
 ```
 
 ### What each CI job covers — and the gaps
@@ -165,19 +168,19 @@ since noop-tan no longer carries the Swift side to check it against.
   must keep compiling for **both** — check the `Strand` (macOS) build too when you edit shared files.
 - **Android** is Compose + Room, flavors `Full` (real) and `Demo`. Profile/prefs live in
   SharedPreferences; the DB is Room. UI state uses a `mutate {}` recomposition-counter idiom in places.
-- iOS/macOS deployment targets: macOS 13.0, iOS 17.0 (see `project.yml`).
+- iOS/macOS deployment targets (**upstream only**): macOS 13.0, iOS 17.0. No Apple targets exist on `noop-tan`.
 
 ## PR & commit conventions
 
 - **One concern per PR.** Keep a protocol change, a schema migration, and a UI change separate.
 - **Show your verification.** BLE → what you tested on hardware. Analytics → the method + a test.
   UI → confirms design tokens only. App-target Swift → that you compiled the app (CI won't).
-- **Keep generated artifacts out of git** (`Strand.xcodeproj/`, `build/`, `.build/`, `*.app`,
-  DerivedData). Commit `project.yml`, not the generated project. `Package.resolved` is fine.
+- **Keep generated build artifacts out of git** (`android/**/build/`, `*.apk`). (Upstream also ignores the
+  Swift `Strand.xcodeproj/`, `.build/`, `*.app`, DerivedData — none of which exist on this branch.)
 - **Cross-platform:** if the change applies to both platforms, do both (or say why not).
-- **Versioning (SemVer):** bump `MARKETING_VERSION` in `project.yml` **and** `versionName` in
-  `android/app/build.gradle.kts` together; build numbers increment independently. The parts are
-  counters, not decimals (`2.0.10` follows `2.0.9`).
+- **Versioning (SemVer):** bump `versionName` (and `versionCode`) in `android/app/build.gradle.kts` —
+  the `fork-release.yml` workflow does this on a release. (Upstream also bumps `MARKETING_VERSION` in
+  `project.yml`, which isn't present here.) The parts are counters, not decimals (`2.0.10` follows `2.0.9`).
 - **Voice:** docs/comments are neutral, third-person, project-voice. Keep upstream credits intact.
 
 When in doubt, open an issue to coordinate first, and prefer the smallest change that's correct and

@@ -33,6 +33,20 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      # noop-tan is Android-only: the iOS/macOS/Swift app was removed with the platform split. Guard the
+      # invariant so a stray Swift file (e.g. from a careless cross-platform cherry-pick) fails CI here
+      # rather than silently re-introducing the tree the fork deliberately dropped.
+      - name: Assert Android-only (no Swift files tracked)
+        working-directory: ${{ github.workspace }}
+        run: |
+          n=$(git ls-files '*.swift' | wc -l)
+          if [ "$n" -ne 0 ]; then
+            echo "::error::noop-tan is Android-only but $n Swift file(s) are tracked:"
+            git ls-files '*.swift'
+            exit 1
+          fi
+          echo "Android-only invariant OK: 0 Swift files tracked."
+
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:

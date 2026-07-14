@@ -2,10 +2,9 @@
 # "Check for updates" — which reads GitHub `releases/latest`, and GitHub excludes prereleases —
 # points at this fork.
 #
-# The `bump` input (patch / minor / major / none) increments the version IN SOURCE — both
-# android/app/build.gradle.kts (versionName + versionCode) and project.yml (MARKETING_VERSION +
-# CURRENT_PROJECT_VERSION) — and commits that to the dispatched branch, so the built app actually
-# REPORTS the new version. Then it publishes a fixed, non-prerelease `v<VERSION>` release with the
+# The `bump` input (patch / minor / major / none) increments the version IN SOURCE in
+# android/app/build.gradle.kts (versionName + versionCode) and commits that to the dispatched branch,
+# so the built app actually REPORTS the new version. Then it publishes a fixed, non-prerelease `v<VERSION>` release with the
 # version-stamped artifacts. releases/latest returns it, so UpdateCheck finds it (isNewer strips the
 # `-staging` suffix, so an installed staging build compares clean).
 #
@@ -13,8 +12,8 @@
 # snapshot), which releases/latest deliberately ignores. THIS never touches testing-latest.
 #
 # noop-tan is ANDROID-ONLY: this workflow builds and publishes the Android APK only. The macOS/iOS
-# and AltStore jobs were removed with the platform split. The version bump still touches project.yml
-# so the tree stays parity-clean for cherry-picks to/from upstream ryanbr/noop.
+# and AltStore jobs — and the Swift `project.yml` version bump — were removed with the platform split,
+# so the bump now touches only android/app/build.gradle.kts.
 name: Release build (fork, Android)
 
 on:
