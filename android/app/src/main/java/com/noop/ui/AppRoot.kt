@@ -196,8 +196,12 @@ private data class DrawerGroup(
 // Notifications, Devices) are slotted into the matching iOS group.
 private val drawerGroups: List<DrawerGroup> = listOf(
     DrawerGroup("Insights", R.string.more_group_insights, listOf(
-        Destination.InsightsHub, Destination.Intelligence, Destination.Coach,
-        Destination.Insights, Destination.Explore, Destination.Compare,
+        Destination.Insights, Destination.Intelligence, Destination.Coach,
+    ), defaultExpanded = true),
+    // Metric-exploration tools (single-metric Explorer + multi-metric Compare/correlate) — trend drills,
+    // not behaviour insights, so they sit in their own Trends group rather than under Insights.
+    DrawerGroup("Trends", R.string.more_group_trends, listOf(
+        Destination.Explore, Destination.Compare,
     ), defaultExpanded = true),
     DrawerGroup("Body", R.string.more_group_body, listOf(
         Destination.Workouts, Destination.Health,
@@ -214,7 +218,7 @@ private val drawerGroups: List<DrawerGroup> = listOf(
 )
 
 /** The headers open by default at first run, derived from [drawerGroups.defaultExpanded] (Insights +
- *  Body), so the seed lives in one place and the persistence default can't drift from the UI default. */
+ *  Trends + Body), so the seed lives in one place and the persistence default can't drift from the UI default. */
 private fun defaultExpandedHeaders(): Set<String> =
     drawerGroups.filter { it.defaultExpanded }.map { it.header }.toSet()
 
@@ -369,7 +373,9 @@ fun AppRoot(viewModel: AppViewModel = viewModel()) {
                     )
                 }
                 composable(Destination.Trends.route) { TrendsScreen(viewModel) }
-                composable(Destination.Insights.route) { InsightsScreen(viewModel, onOpenInsightsHub = { nav.navigateTopLevel(Destination.InsightsHub.route) }) }
+                // "What Moves You" (InsightsHub) is folded into Insights: no longer a top-level More-page row,
+                // reached from the Insights screen's WhatMovesYouLink as a sub-page (push, back → Insights).
+                composable(Destination.Insights.route) { InsightsScreen(viewModel, onOpenInsightsHub = { nav.navigate(Destination.InsightsHub.route) }) }
                 composable(Destination.Compare.route) { CompareScreen(viewModel) }
                 composable(Destination.Health.route) {
                     HealthScreen(

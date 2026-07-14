@@ -10,7 +10,7 @@
          localized display labels for the Destination enum; the underlying route ids stay English and
          are never translated. -->
     <string name="nav_today">Today</string>
-    <string name="nav_intelligence">Intelligence</string>
+    <string name="nav_intelligence">Scores</string>
     <string name="nav_coupled_view">Coupled view</string>
     <string name="nav_intervals">Intervals</string>
     <string name="nav_sleep">Sleep</string>
@@ -42,6 +42,7 @@
     <!-- More-page section headers (DISPLAY only; the stored expand/collapse key stays the English
          literal in MoreSectionPrefs so persistence and iOS parity are unaffected). -->
     <string name="more_group_insights">Insights</string>
+    <string name="more_group_trends">Trends</string>
     <string name="more_group_body">Body</string>
     <string name="more_group_data">Data</string>
     <string name="more_group_app">App</string>
