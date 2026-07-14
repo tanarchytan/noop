@@ -467,7 +467,6 @@ fun SettingsScreen(
     var hydrationTracking by remember { mutableStateOf(NoopPrefs.hydrationTracking(context)) }
     var stressCheckIn by remember { mutableStateOf(BiofeedbackPrefs.checkInEnabled(context)) }
     var stressAutoNudge by remember { mutableStateOf(BiofeedbackPrefs.autoNudge(context)) }
-    var rhythmEnabled by remember { mutableStateOf(RhythmConsent.isEnabled(context)) }
     var coachSignals by remember { mutableStateOf(NoopPrefs.coachSignals(context)) }
     var autoDetectWorkouts by remember { mutableStateOf(NoopPrefs.autoDetectWorkouts(context)) }
     // Keep the screen on during a manual workout recording (#703), default OFF. The live-workout
@@ -1648,23 +1647,6 @@ fun SettingsScreen(
                         },
                     )
                 }
-                RowDivider()
-                ToggleRow(
-                    title = "Rhythm (experimental)",
-                    detail = "An experimental picture of your beat-to-beat timing: a Poincaré scatter and plain regularity stats from quiet resting windows. Not an ECG and not a diagnosis; you'll read a short disclaimer and accept before it turns on.",
-                    checked = rhythmEnabled,
-                    onCheckedChange = {
-                        // Enabling here just un-gates the experimental item; the screen itself still shows
-                        // its consent clickwrap on first open (and re-prompts on a version bump). Disabling
-                        // clears the flag so the screen returns to its gate.
-                        rhythmEnabled = it
-                        if (it) {
-                            NoopPrefs.of(context).edit().putBoolean(RhythmConsent.KEY_ENABLED, true).apply()
-                        } else {
-                            NoopPrefs.of(context).edit().putBoolean(RhythmConsent.KEY_ENABLED, false).apply()
-                        }
-                    },
-                )
                 RowDivider()
                 ToggleRow(
                     title = "Share on-device signals with the Coach",

@@ -25,7 +25,6 @@
     <string name="nav_health">Gesundheit</string>
     <string name="nav_hydration">Flüssigkeit</string>
     <string name="nav_vital_signs">Vitalwerte</string>
-    <string name="nav_rhythm">Rhythmus</string>
     <string name="nav_apple_health">Apple Health</string>
     <string name="nav_automations">Automationen</string>
     <string name="nav_alarms">Wecker</string>

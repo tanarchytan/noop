@@ -146,7 +146,6 @@ private enum class Destination(
     Health("health", R.string.nav_health, Icons.Filled.MonitorHeart),
     Hydration("hydration", R.string.nav_hydration, Icons.Filled.WaterDrop),
     VitalSignsDetail("vital_detail/{key}", R.string.nav_vital_signs, Icons.Filled.HealthAndSafety),
-    Rhythm("rhythm", R.string.nav_rhythm, Icons.Filled.MonitorHeart),
     AppleHealth("apple_health", R.string.nav_apple_health, Icons.Filled.HealthAndSafety),
 
     // Group: System
@@ -203,7 +202,6 @@ private val drawerGroups: List<DrawerGroup> = listOf(
     DrawerGroup("Body", R.string.more_group_body, listOf(
         Destination.Live, Destination.Workouts, Destination.Health,
         Destination.Stress, Destination.Breathe, Destination.Intervals,
-        Destination.Rhythm,
     ), defaultExpanded = true),
     DrawerGroup("Data", R.string.more_group_data, listOf(
         Destination.FusedRecord, Destination.DataSources,
@@ -394,12 +392,6 @@ fun AppRoot(viewModel: AppViewModel = viewModel()) {
                 }
                 // --- v5 pillar screens (Wave 3 wiring) ---
                 composable(Destination.InsightsHub.route) { InsightsHubScreen(viewModel) }
-                composable(Destination.Rhythm.route) {
-                    // EXPERIMENTAL: self-gates on its own consent clickwrap (default OFF). The night
-                    // summary + per-window Poincaré results land with the rhythm capture pipeline; until
-                    // then it renders its honest "no clear reading yet" empty state behind the gate.
-                    RhythmScreen(night = null, windows = emptyList())
-                }
                 composable(Destination.FusedRecord.route) { FusedRecordRoute(viewModel) }
                 composable(Destination.AppleHealth.route) { AppleHealthScreen(viewModel) }
                 composable(Destination.Devices.route) {
