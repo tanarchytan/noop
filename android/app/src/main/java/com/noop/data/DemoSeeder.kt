@@ -52,11 +52,11 @@ object DemoSeeder {
     }
 
     /**
-     * Demo-only: seed a SECOND paired device (a Polar H10) into the registry so the Devices screen shows
-     * the WHOOP (Active) alongside a paired generic strap out of the box — no real hardware needed. The
-     * WHOOP `pairedDevice` row itself is created by the v7→v8 migration; this only adds the demo strap, and
-     * only if the registry currently holds exactly the WHOOP (so it runs at most once and never clobbers a
-     * real pairing). Gated by the caller to `BuildConfig.ENABLE_DEMO`. Status `paired` (not active), so the
+     * Demo-only: seed a SECOND paired device (an Oura ring) into the registry so the Devices screen shows
+     * the WHOOP (Active) alongside a paired Oura ring out of the box — no real hardware needed. The WHOOP
+     * `pairedDevice` row itself is created by the v7→v8 migration; this only adds the demo ring, and only
+     * if the registry currently holds exactly the WHOOP (so it runs at most once and never clobbers a real
+     * pairing). Gated by the caller to `BuildConfig.ENABLE_DEMO`. Status `paired` (not active), so the
      * SourceCoordinator stays dormant on the WHOOP and the existing live flow is untouched.
      */
     suspend fun seedDemoDeviceIfNeeded(registry: DeviceRegistry) {
@@ -67,12 +67,12 @@ object DemoSeeder {
         val now = System.currentTimeMillis() / 1000
         registry.add(
             PairedDeviceRow(
-                id = "demo-polar-h10",
-                brand = "Polar",
-                model = "H10",
+                id = "demo-oura-ring",
+                brand = "Oura",
+                model = "Oura Ring 3",
                 nickname = null,
-                sourceKind = SourceKind.liveBLE.name,
-                capabilities = "hr,hrv",
+                sourceKind = SourceKind.oura.name,
+                capabilities = "hr,hrv,sleep,skinTemp",
                 status = DeviceStatus.paired.name,
                 addedAt = now,
                 // A plausible "Last seen 3h ago" so the card's last-seen line reads naturally in the demo.

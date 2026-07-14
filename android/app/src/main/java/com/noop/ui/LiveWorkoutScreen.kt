@@ -38,7 +38,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.noop.analytics.HrZones
-import com.noop.ble.StandardHrSource
 import kotlinx.coroutines.delay
 
 /**
@@ -60,13 +59,6 @@ fun LiveWorkoutScreen(vm: AppViewModel, onClose: () -> Unit) {
     val effortScale = UnitPrefs.effortScale(context)
     val bpm by vm.bpm.collectAsStateWithLifecycle()
     val activeWorkout by vm.activeWorkout.collectAsStateWithLifecycle()
-    // Additive: instantaneous speed/cadence/power from a connected standard fitness sensor (RSC/CSC/CPS),
-    // read ALONGSIDE HR by the SourceCoordinator's isolated StandardHrSource. Empty (all-null) when no such
-    // sensor is feeding, so the readout below hides entirely — a plain HR-only workout looks unchanged. HR
-    // / zone / effort above are untouched.
-    val sensor by remember(context) {
-        (context.applicationContext as com.noop.NoopApplication).sourceCoordinator.sensorMetrics
-    }.collectAsStateWithLifecycle()
 
     // Keep the live HR stream on for the duration of the workout screen (ref-counted with Live/Health).
     DisposableEffect(Unit) {
@@ -150,9 +142,6 @@ fun LiveWorkoutScreen(vm: AppViewModel, onClose: () -> Unit) {
                     accent = Palette.strainColor(w.liveStrain))
             }
 
-            // Additive sensor readout — only renders when a connected standard fitness sensor is feeding.
-            SensorRow(sensor)
-
             // #845: a fixed gap before End instead of a weighted Spacer. A weight needs a bounded height to
             // share out, but the column is now scrollable (unbounded), so a weighted Spacer can't size and
             // the End button would no longer be separated from the stats. A constant gap keeps the spacing
@@ -167,36 +156,6 @@ fun LiveWorkoutScreen(vm: AppViewModel, onClose: () -> Unit) {
                     containerColor = Palette.statusCritical, contentColor = Palette.surfaceBase,
                 ),
             ) { Text("End workout", style = NoopType.headline) }
-        }
-    }
-}
-
-/**
- * Additive readout for a connected standard fitness sensor (a footpod / bike speed-cadence sensor / power
- * meter) feeding RSC/CSC/CPS ALONGSIDE heart rate. Only the fields the sensor actually sent render — each
- * tile is dropped when its value is absent, and the whole row is hidden when nothing is present, so a plain
- * HR-only workout looks exactly as before. Honest units: speed km/h, cadence per-minute (steps for running
- * / rpm for cycling), power watts. Reuses the same metric tile as the HR stats grid; tinted with the Effort
- * world so it reads as part of the hero. Nothing here touches HR / zone / effort.
- */
-@Composable
-private fun SensorRow(sensor: StandardHrSource.SensorMetrics) {
-    val speed = StandardHrSource.formatSpeedKmh(sensor.speedKmh)
-    val cadence = StandardHrSource.formatCadence(sensor.cadence)
-    val power = StandardHrSource.formatPowerWatts(sensor.powerWatts)
-    if (speed == null && cadence == null && power == null) return
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Overline("Sensor")
-        Row(horizontalArrangement = Arrangement.spacedBy(Metrics.gap), modifier = Modifier.fillMaxWidth()) {
-            if (speed != null) {
-                StatTile(modifier = Modifier.weight(1f), label = "Speed", value = "$speed km/h", accent = Palette.effortColor)
-            }
-            if (cadence != null) {
-                StatTile(modifier = Modifier.weight(1f), label = "Cadence", value = "$cadence/min", accent = Palette.effortColor)
-            }
-            if (power != null) {
-                StatTile(modifier = Modifier.weight(1f), label = "Power", value = "$power W", accent = Palette.effortColor)
-            }
         }
     }
 }

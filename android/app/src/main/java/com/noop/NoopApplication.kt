@@ -65,8 +65,8 @@ class NoopApplication : Application() {
     /**
      * Multi-source coordinator (Phase 1B): runs exactly one device's live BLE at a time, driven by the
      * registry's active device id. DORMANT whenever the active device is the WHOOP (the default and every
-     * single-WHOOP install), so the existing WHOOP flow is untouched. Only when a non-WHOOP generic HR
-     * strap becomes active does it pause WHOOP and run the isolated [com.noop.ble.StandardHrSource].
+     * single-WHOOP install), so the existing WHOOP flow is untouched. Only when a non-WHOOP Oura ring
+     * becomes active does it pause WHOOP and run the isolated [com.noop.ble.OuraLiveSource].
      *
      * Wired to the EXISTING [ble] entry points via closures — it never touches [WhoopBleClient]
      * internals. Strap live HR is pushed into the same [ble] state flow the UI observes via

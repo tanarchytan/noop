@@ -56,8 +56,8 @@ class MainActivity : ComponentActivity() {
         if (BuildConfig.ENABLE_DEMO) {
             lifecycleScope.launch(Dispatchers.IO) {
                 runCatching { DemoSeeder.seedIfEmpty(WhoopRepository.from(applicationContext)) }
-                // Also seed a 2nd PAIRED device (Polar H10) so the Devices screen shows WHOOP (Active)
-                // + a paired strap out of the box. No-op once seeded / if a real pairing exists.
+                // Also seed a 2nd PAIRED device (an Oura ring) so the Devices screen shows WHOOP (Active)
+                // + a paired Oura ring out of the box. No-op once seeded / if a real pairing exists.
                 runCatching {
                     DemoSeeder.seedDemoDeviceIfNeeded((application as NoopApplication).deviceRegistry)
                 }

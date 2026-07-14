@@ -16,7 +16,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material.icons.automirrored.filled.DirectionsRun
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckBox
 import androidx.compose.material.icons.filled.CheckBoxOutlineBlank
@@ -24,7 +23,6 @@ import androidx.compose.material.icons.filled.Circle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.FileDownload
-import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.PhonelinkErase
 import androidx.compose.material.icons.filled.Science
 import androidx.compose.material.icons.filled.Warning
@@ -57,7 +55,6 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.noop.ble.ExperimentalBrand
 import com.noop.ble.OuraLiveSource
-import com.noop.ble.StandardHrSource
 import com.noop.ble.WhoopBleClient
 import com.noop.ble.WhoopModel
 import com.noop.data.DeviceStatus
@@ -74,11 +71,11 @@ import kotlinx.coroutines.launch
 //   • WHOOP 4.0 / WHOOP 5.0 (MG)  → the WHOOP present-scan ([AppViewModel.presentWhoopScan]) targeted at
 //     the chosen family. Lists nearby straps from [AppViewModel.discoveredWhoops] (a present-only mode
 //     that never auto-connects).
-//   • Heart-rate strap (Polar / Wahoo / Coospo / Garmin HRM / Amazfit Helio broadcast) → its OWN isolated
-//     [StandardHrSource] scanning the standard 0x180D HR service. Lists from its `discovered` flow.
+//   • Oura ring (EXPERIMENTAL) → its OWN factory-reset-and-adopt sub-flow over an isolated
+//     [OuraLiveSource]. Lists from its `discovered` flow.
 //
 // Registration goes through [AppViewModel.registerDevice] → DeviceRegistry; the SourceCoordinator reacts
-// to the active-device change and connects (pinning the WHOOP / starting the strap source). The wizard
+// to the active-device change and connects (pinning the WHOOP / starting the Oura source). The wizard
 // never touches the BLE client directly - only the AppViewModel pass-throughs. WHOOP-FIRST: WHOOP is the
 // primary band; the type list shows it first and a footer reiterates it. Renders cleanly with nothing
 // nearby (the type picker, every prep step, and the searching/empty pick state all need no hardware).
@@ -86,10 +83,10 @@ import kotlinx.coroutines.launch
 
 /** What the user is adding. Drives the prep copy AND which scan/register path runs. */
 private enum class DeviceType {
-    Whoop5MG, Whoop4, HrStrap, GymEquipment,
-    // EXPERIMENTAL tier - best-effort, clean-room, can't be hardware-verified here. Each fails to an
-    // honest message and never fabricates data.
-    Amazfit, MiBand, Garmin, Oura;
+    Whoop5MG, Whoop4,
+    // EXPERIMENTAL tier - best-effort, clean-room, can't be hardware-verified here. Fails to an honest
+    // message and never fabricates data.
+    Oura;
 
     val isWhoop: Boolean get() = this == Whoop4 || this == Whoop5MG
     val whoopModel: WhoopModel?
@@ -100,16 +97,13 @@ private enum class DeviceType {
         }
 
     /** True for the EXPERIMENTAL tier (shown under a clearly-labelled "Experimental" heading). */
-    val isExperimental: Boolean get() = this == Amazfit || this == MiBand || this == Garmin || this == Oura
+    val isExperimental: Boolean get() = this == Oura
 
     /** The experimental-tier brand this type registers as, or null for the non-experimental types
-     *  (WHOOP / generic strap / gym). Bridges the type picker to the [com.noop.data.DeviceBrandCatalog]
-     *  facts (stored brand string, sourceKind, id prefix) so those are no longer hardcoded per branch. */
+     *  (WHOOP). Bridges the type picker to the [com.noop.data.DeviceBrandCatalog] facts (stored brand
+     *  string, sourceKind, id prefix) so those are no longer hardcoded per branch. */
     val experimentalBrand: ExperimentalBrand?
         get() = when (this) {
-            Amazfit -> ExperimentalBrand.AMAZFIT
-            MiBand -> ExperimentalBrand.MI_BAND
-            Garmin -> ExperimentalBrand.GARMIN
             Oura -> ExperimentalBrand.OURA
             else -> null
         }
@@ -118,11 +112,6 @@ private enum class DeviceType {
         get() = when (this) {
             Whoop5MG -> "WHOOP 5.0 / MG"
             Whoop4 -> "WHOOP 4.0"
-            HrStrap -> "Heart-rate strap"
-            GymEquipment -> "Gym equipment"
-            Amazfit -> "Amazfit / Zepp"
-            MiBand -> "Xiaomi Mi Band"
-            Garmin -> "Garmin watch"
             Oura -> "Oura ring"
         }
 }
@@ -171,42 +160,24 @@ fun AddDeviceWizard(
     /** Final destructive-confirm alert before the key install. */
     var ouraConfirmAdopt by remember { mutableStateOf(false) }
 
-    // The chosen strap, in whichever shape its path produces.
+    // The chosen WHOOP strap (the Oura path carries its pick in [pickedOura] above).
     var pickedWhoop by remember { mutableStateOf<WhoopBleClient.DiscoveredWhoop?>(null) }
-    var pickedStrap by remember { mutableStateOf<StandardHrSource.DiscoveredStrap?>(null) }
-    var pickedMachine by remember { mutableStateOf<com.noop.ble.FtmsSource.DiscoveredMachine?>(null) }
-    var pickedHuami by remember { mutableStateOf<com.noop.ble.HuamiHrSource.DiscoveredDevice?>(null) }
 
     var nameDraft by remember { mutableStateOf("") }
     var askMakeActive by remember { mutableStateOf(false) }
 
-    // Discovery-only HR source for the strap path (also Garmin Broadcast HR). Never persists, never
-    // connects - we only read its `discovered` / `scanning` StateFlows while scanning. Created once.
-    val hrScanner = remember { viewModel.makeStrapScanner() }
-    // Discovery-only FTMS source for the gym-equipment path. Same throwaway contract.
-    val ftmsScanner = remember { viewModel.makeFtmsScanner() }
-    // Discovery-only EXPERIMENTAL Huami scanner (Amazfit / Zepp / Mi Band).
-    val huamiScanner = remember { viewModel.makeHuamiScanner() }
     // Discovery-only EXPERIMENTAL Oura scanner: a throwaway, isolated [OuraLiveSource] (its OWN scanner +
     // GATT, never the WHOOP client; no-op persist/live, null key). The wizard reads only its `discovered` /
     // `scanning` flows; the SourceCoordinator owns the real connect once the adopted ring becomes active.
     val ouraScanner = remember { viewModel.makeOuraScanner() }
 
     fun startScan(t: DeviceType) {
-        when {
-            t.isWhoop -> viewModel.presentWhoopScan(t.whoopModel ?: WhoopModel.WHOOP4)
-            t == DeviceType.GymEquipment -> ftmsScanner.scan()
-            t == DeviceType.Amazfit || t == DeviceType.MiBand -> huamiScanner.scan()
-            t == DeviceType.Oura -> ouraScanner.scan()
-            else -> hrScanner.scan()   // HrStrap AND Garmin (Broadcast HR is the standard 0x180D path)
-        }
+        // Only WHOOP types reach the generic Prep/Pick flow; Oura runs its own step machine (ouraScanner).
+        if (t.isWhoop) viewModel.presentWhoopScan(t.whoopModel ?: WhoopModel.WHOOP4)
     }
 
     fun stopAllScans() {
         viewModel.stopWhoopScan()
-        hrScanner.stopScan()
-        ftmsScanner.stopScan()
-        huamiScanner.stopScan()
         ouraScanner.stop()
     }
 
@@ -241,7 +212,7 @@ fun AddDeviceWizard(
             WizardStep.Confirm -> {
                 // Re-enter the pick step and restart its scan so the user can choose a different device.
                 type?.let { startScan(it) }
-                pickedWhoop = null; pickedStrap = null; pickedMachine = null; pickedHuami = null
+                pickedWhoop = null
                 step = WizardStep.Pick
             }
         }
@@ -249,104 +220,35 @@ fun AddDeviceWizard(
 
     val confirmAdvertisedName = run {
         pickedWhoop?.let { return@run it.name?.takeIf { n -> n.isNotBlank() } ?: (type?.title ?: "Device") }
-        pickedStrap?.let { return@run it.name }
-        pickedMachine?.let { return@run it.name }
-        pickedHuami?.let { return@run it.name }
         type?.title ?: "Device"
     }
     val confirmName = nameDraft.trim().ifEmpty { confirmAdvertisedName }
-    val confirmBrand = when {
-        type?.isWhoop == true -> "WHOOP"
-        type == DeviceType.GymEquipment -> "Gym equipment"
-        // Experimental non-Oura types (Amazfit / Mi Band / Garmin) take their stored brand string from the
-        // catalog via the type->brand bridge. Oura confirms with its detected generation label elsewhere.
-        type == DeviceType.Amazfit || type == DeviceType.MiBand || type == DeviceType.Garmin ->
-            type!!.experimentalBrand!!.displayBrand
-        pickedStrap != null -> brandGuess(pickedStrap!!.name)
-        else -> "Heart-rate strap"
-    }
-    val confirmRssi = pickedWhoop?.rssi ?: pickedStrap?.rssi ?: pickedMachine?.rssi ?: pickedHuami?.rssi ?: -70
+    // The generic Confirm step is only ever reached by a WHOOP type now (Oura confirms in its own flow).
+    val confirmBrand = if (type?.isWhoop == true) "WHOOP" else "Device"
+    val confirmRssi = pickedWhoop?.rssi ?: -70
 
     fun finishAdd(makeActive: Boolean) {
         stopAllScans()
         val now = System.currentTimeMillis() / 1000
         val pw = pickedWhoop
-        val ps = pickedStrap
-        val pm = pickedMachine
-        val ph = pickedHuami
-        val isGarmin = type == DeviceType.Garmin
-        val device: PairedDeviceRow? = when {
-            pw != null && type?.whoopModel != null -> {
-                // WHOOP: full capability set; id namespaced by address; model "4.0" / "5.0 MG".
-                val wm = type!!.whoopModel!!
-                val modelLabel = if (wm == WhoopModel.WHOOP4) "4.0" else "5.0 MG"
-                PairedDeviceRow(
-                    id = "whoop-${pw.address}",
-                    brand = "WHOOP",
-                    model = modelLabel,
-                    nickname = confirmName,
-                    peripheralId = pw.address,
-                    sourceKind = SourceKind.liveBLE.name,
-                    capabilities = "hr,hrv,spo2,skinTemp,sleep,strainLoad",
-                    status = DeviceStatus.paired.name,
-                    addedAt = now,
-                    lastSeenAt = now,
-                )
-            }
-            ps != null -> {
-                // Generic HR strap OR a Garmin broadcasting standard HR. Garmin's brand + id prefix come
-                // from the catalog (via the type->brand bridge); it still stores `liveBLE` (its live HR IS
-                // the standard 0x180D path). A non-Garmin strap keeps the advertised-name brand guess +
-                // "strap" prefix. Both are HR + HRV.
-                val garmin = if (isGarmin) ExperimentalBrand.GARMIN else null
-                PairedDeviceRow(
-                    id = "${garmin?.idPrefix ?: "strap"}-${ps.address}",
-                    brand = garmin?.displayBrand ?: brandGuess(ps.name),
-                    model = ps.name,
-                    nickname = if (confirmName == ps.name) null else confirmName,
-                    peripheralId = ps.address,
-                    sourceKind = SourceKind.liveBLE.name,
-                    capabilities = "hr,hrv",
-                    status = DeviceStatus.paired.name,
-                    addedAt = now,
-                    lastSeenAt = now,
-                )
-            }
-            ph != null -> {
-                // EXPERIMENTAL Amazfit / Zepp / Mi Band. Brand string, id prefix, and the "huami" routing
-                // all come from the catalog via the type->brand bridge (was: `if (MiBand) "Mi Band" else …`).
-                // HR only (the Huami custom characteristic carries no R-R).
-                val brand = type?.experimentalBrand ?: ExperimentalBrand.AMAZFIT
-                PairedDeviceRow(
-                    id = "${brand.idPrefix}-${ph.address}",
-                    brand = brand.displayBrand,
-                    model = ph.name,
-                    nickname = if (confirmName == ph.name) null else confirmName,
-                    peripheralId = ph.address,
-                    sourceKind = brand.sourceKind.name,
-                    capabilities = "hr",
-                    status = DeviceStatus.paired.name,
-                    addedAt = now,
-                    lastSeenAt = now,
-                )
-            }
-            pm != null -> {
-                // FTMS gym machine: a live machine + (when reported) HR session, recorded via the existing
-                // live-workout path. sourceKind "ftms" routes the SourceCoordinator to the FtmsSource.
-                PairedDeviceRow(
-                    id = "ftms-${pm.address}",
-                    brand = "Gym equipment",
-                    model = pm.name,
-                    nickname = if (confirmName == pm.name) null else confirmName,
-                    peripheralId = pm.address,
-                    sourceKind = SourceKind.ftms.name,
-                    capabilities = "hr",
-                    status = DeviceStatus.paired.name,
-                    addedAt = now,
-                    lastSeenAt = now,
-                )
-            }
-            else -> null
+        val device: PairedDeviceRow? = if (pw != null && type?.whoopModel != null) {
+            // WHOOP: full capability set; id namespaced by address; model "4.0" / "5.0 MG".
+            val wm = type!!.whoopModel!!
+            val modelLabel = if (wm == WhoopModel.WHOOP4) "4.0" else "5.0 MG"
+            PairedDeviceRow(
+                id = "whoop-${pw.address}",
+                brand = "WHOOP",
+                model = modelLabel,
+                nickname = confirmName,
+                peripheralId = pw.address,
+                sourceKind = SourceKind.liveBLE.name,
+                capabilities = "hr,hrv,spo2,skinTemp,sleep,strainLoad",
+                status = DeviceStatus.paired.name,
+                addedAt = now,
+                lastSeenAt = now,
+            )
+        } else {
+            null
         }
         if (device == null) { onClose(); return }
         scope.launch { viewModel.registerDevice(device, makeActive = makeActive) }
@@ -515,52 +417,17 @@ fun AddDeviceWizard(
                         PrepStep(t, onScan = { startScan(t); step = WizardStep.Pick })
                     }
                     WizardStep.Pick -> type?.let { t ->
-                        when {
-                            t.isWhoop -> WhoopPickStep(
-                                viewModel = viewModel,
-                                onSelect = { strap ->
-                                    pickedWhoop = strap; pickedStrap = null; pickedMachine = null; pickedHuami = null
-                                    nameDraft = strap.name?.takeIf { it.isNotBlank() } ?: t.title
-                                    viewModel.stopWhoopScan()
-                                    step = WizardStep.Confirm
-                                },
-                                onRescan = { viewModel.presentWhoopScan(t.whoopModel ?: WhoopModel.WHOOP4) },
-                            )
-                            t == DeviceType.GymEquipment -> FtmsPickStep(
-                                scanner = ftmsScanner,
-                                onSelect = { machine ->
-                                    pickedMachine = machine
-                                    pickedWhoop = null; pickedStrap = null; pickedHuami = null
-                                    nameDraft = machine.name
-                                    ftmsScanner.stopScan()
-                                    step = WizardStep.Confirm
-                                },
-                                onRescan = { ftmsScanner.scan() },
-                            )
-                            t == DeviceType.Amazfit || t == DeviceType.MiBand -> HuamiPickStep(
-                                scanner = huamiScanner,
-                                onSelect = { dev ->
-                                    pickedHuami = dev
-                                    pickedWhoop = null; pickedStrap = null; pickedMachine = null
-                                    nameDraft = dev.name
-                                    huamiScanner.stopScan()
-                                    step = WizardStep.Confirm
-                                },
-                                onRescan = { huamiScanner.scan() },
-                            )
-                            else -> HrPickStep(
-                                // Heart-rate strap AND Garmin (Broadcast HR is the standard 0x180D path).
-                                scanner = hrScanner,
-                                onSelect = { strap ->
-                                    pickedStrap = strap
-                                    pickedWhoop = null; pickedMachine = null; pickedHuami = null
-                                    nameDraft = strap.name
-                                    hrScanner.stopScan()
-                                    step = WizardStep.Confirm
-                                },
-                                onRescan = { hrScanner.scan() },
-                            )
-                        }
+                        // Only WHOOP types reach the generic Pick step (Oura runs its own flow above).
+                        WhoopPickStep(
+                            viewModel = viewModel,
+                            onSelect = { strap ->
+                                pickedWhoop = strap
+                                nameDraft = strap.name?.takeIf { it.isNotBlank() } ?: t.title
+                                viewModel.stopWhoopScan()
+                                step = WizardStep.Confirm
+                            },
+                            onRescan = { viewModel.presentWhoopScan(t.whoopModel ?: WhoopModel.WHOOP4) },
+                        )
                     }
                     WizardStep.Confirm -> ConfirmStep(
                         advertisedName = confirmAdvertisedName,
@@ -703,28 +570,13 @@ private fun TypeStep(onPick: (DeviceType) -> Unit) {
         TypeRow(Icons.Filled.Watch, DeviceType.Whoop4.title, "NOOP's primary, fully-supported band") {
             onPick(DeviceType.Whoop4)
         }
-        TypeRow(Icons.Filled.FavoriteBorder, DeviceType.HrStrap.title, "Polar, Wahoo, Coospo, Garmin HRM, Amazfit Helio broadcast") {
-            onPick(DeviceType.HrStrap)
-        }
-        TypeRow(Icons.AutoMirrored.Filled.DirectionsRun, DeviceType.GymEquipment.title, "Treadmill, indoor bike, rower or cross-trainer (Bluetooth FTMS)") {
-            onPick(DeviceType.GymEquipment)
-        }
 
-        // EXPERIMENTAL tier - clearly labelled, opt-in, best-effort. Each is honest about what it can
-        // actually read; none fabricates data.
+        // EXPERIMENTAL tier - clearly labelled, opt-in, best-effort. Honest about what it can actually
+        // read; never fabricates data.
         Overline("Experimental", modifier = Modifier.padding(top = 8.dp))
         ExperimentalTierNote()
         TypeRow(Icons.Filled.Circle, DeviceType.Oura.title, "Take over your ring locally. Beta. This replaces the Oura app.") {
             onPick(DeviceType.Oura)
-        }
-        TypeRow(Icons.Filled.GraphicEq, DeviceType.Amazfit.title, "Incl. Helio. Live heart rate where the band exposes it. Help us test.") {
-            onPick(DeviceType.Amazfit)
-        }
-        TypeRow(Icons.Filled.GraphicEq, DeviceType.MiBand.title, "Live heart rate on bands that don't need pairing. Help us test.") {
-            onPick(DeviceType.MiBand)
-        }
-        TypeRow(Icons.Filled.Watch, DeviceType.Garmin.title, "Uses the watch's Broadcast Heart Rate. We'll show you how.") {
-            onPick(DeviceType.Garmin)
         }
 
         WhoopFirstNote()
@@ -845,13 +697,9 @@ private fun PrepStep(type: DeviceType, onScan: () -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Row(horizontalArrangement = Arrangement.spacedBy(14.dp), verticalAlignment = Alignment.CenterVertically) {
             Icon(
-                when {
-                    type.isWhoop || type == DeviceType.Garmin -> Icons.Filled.Watch
-                    type == DeviceType.GymEquipment -> Icons.AutoMirrored.Filled.DirectionsRun
-                    type == DeviceType.Amazfit || type == DeviceType.MiBand -> Icons.Filled.GraphicEq
-                    type == DeviceType.Oura -> Icons.Filled.FileDownload
-                    else -> Icons.Filled.FavoriteBorder
-                },
+                // PrepStep is only ever reached by a WHOOP type (Oura runs its own flow); the band glyph
+                // applies. Oura is kept for completeness of the branch.
+                if (type == DeviceType.Oura) Icons.Filled.FileDownload else Icons.Filled.Watch,
                 contentDescription = null,
                 tint = Palette.accent,
                 modifier = Modifier.size(28.dp),
@@ -928,27 +776,6 @@ private fun prepInstructions(type: DeviceType): List<String> = when (type) {
         "Put the band into pairing mode, on your wrist and awake.",
         "NOOP will look for it nearby.",
     )
-    DeviceType.HrStrap -> listOf(
-        "Wake your strap. Put it on, or dampen the contacts.",
-        "Make sure it isn't connected to another app (a bike computer, the brand's own app…).",
-        "NOOP will look for it nearby.",
-    )
-    DeviceType.GymEquipment -> listOf(
-        "Wake the machine. Start pedalling, walking or rowing so it powers on its Bluetooth.",
-        "Make sure it isn't already connected to another app (Zwift, the gym's app, a bike computer…).",
-        "NOOP looks for machines that broadcast the standard Bluetooth Fitness Machine service.",
-    )
-    DeviceType.Amazfit -> listOf(
-        "Wake your Amazfit / Zepp band and make sure it isn't connected to the Zepp app right now.",
-        "NOOP reads live heart rate when the band exposes it. Some bands need a pairing we can't do yet. If so, we'll say so honestly.",
-        "Experimental: this is best-effort. If live doesn't work, you can export from Zepp and import the file.",
-    )
-    DeviceType.MiBand -> listOf(
-        "Wake your Mi Band and make sure it isn't connected to the Mi Fitness / Zepp Life app right now.",
-        "NOOP reads live heart rate on bands that don't require pairing. Newer bands need an auth handshake we can't do yet.",
-        "Experimental: if your band needs pairing, we'll tell you honestly rather than show a fake reading.",
-    )
-    DeviceType.Garmin -> com.noop.ble.GarminBroadcast.broadcastHint
     // Oura runs the factory-reset-and-adopt prep inside OuraFlow (ouraPrepInstructions), so this generic
     // branch is unreached for Oura; kept for the exhaustive when.
     DeviceType.Oura -> ouraPrepInstructions
@@ -980,66 +807,6 @@ private fun WhoopPickStep(
                 subtitle = "WHOOP",
                 rssi = strap.rssi,
                 onTap = { onSelect(strap) },
-            )
-        }
-    }
-}
-
-@Composable
-private fun HrPickStep(
-    scanner: StandardHrSource,
-    onSelect: (StandardHrSource.DiscoveredStrap) -> Unit,
-    onRescan: () -> Unit,
-) {
-    val discovered by scanner.discovered.collectAsStateWithLifecycle()
-    val scanning by scanner.scanning.collectAsStateWithLifecycle()
-    PickList(searching = scanning, isEmpty = discovered.isEmpty(), onRescan = onRescan) {
-        discovered.sortedByDescending { it.rssi }.forEach { strap ->
-            DiscoveredRow(
-                name = strap.name,
-                subtitle = brandGuess(strap.name),
-                rssi = strap.rssi,
-                onTap = { onSelect(strap) },
-            )
-        }
-    }
-}
-
-@Composable
-private fun FtmsPickStep(
-    scanner: com.noop.ble.FtmsSource,
-    onSelect: (com.noop.ble.FtmsSource.DiscoveredMachine) -> Unit,
-    onRescan: () -> Unit,
-) {
-    val discovered by scanner.discovered.collectAsStateWithLifecycle()
-    val scanning by scanner.scanning.collectAsStateWithLifecycle()
-    PickList(searching = scanning, isEmpty = discovered.isEmpty(), onRescan = onRescan) {
-        discovered.sortedByDescending { it.rssi }.forEach { machine ->
-            DiscoveredRow(
-                name = machine.name,
-                subtitle = "Gym equipment",
-                rssi = machine.rssi,
-                onTap = { onSelect(machine) },
-            )
-        }
-    }
-}
-
-@Composable
-private fun HuamiPickStep(
-    scanner: com.noop.ble.HuamiHrSource,
-    onSelect: (com.noop.ble.HuamiHrSource.DiscoveredDevice) -> Unit,
-    onRescan: () -> Unit,
-) {
-    val discovered by scanner.discovered.collectAsStateWithLifecycle()
-    val scanning by scanner.scanning.collectAsStateWithLifecycle()
-    PickList(searching = scanning, isEmpty = discovered.isEmpty(), onRescan = onRescan) {
-        discovered.sortedByDescending { it.rssi }.forEach { dev ->
-            DiscoveredRow(
-                name = dev.name,
-                subtitle = "Experimental",
-                rssi = dev.rssi,
-                onTap = { onSelect(dev) },
             )
         }
     }

@@ -18,7 +18,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.DirectionsRun
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.BugReport
@@ -27,7 +26,6 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.FavoriteBorder
-import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Sync
@@ -76,8 +74,8 @@ import kotlinx.coroutines.launch
 // MARK: - Devices
 //
 // Pair and manage the bands NOOP reads from. WHOOP-FIRST: the WHOOP is the primary, fully-supported
-// device; generic heart-rate straps (Polar / Wahoo / Coospo / Garmin HRM …) are an early, in-development
-// addition. The screen is a thin UI over [com.noop.data.DeviceRegistry] (the Phase 1A/1B data layer):
+// device; the experimental Oura ring is the only other pairable live source (gated behind
+// [com.noop.ble.ExperimentalBrand]). The screen is a thin UI over [com.noop.data.DeviceRegistry] (the Phase 1A/1B data layer):
 // every mutation goes through an [AppViewModel] registry op, and the [SourceCoordinator] (wired in
 // NoopApplication) reacts to the active-device change — so this view never touches the BLE client or the
 // WHOOP path directly. Faithful Kotlin twin of Strand/Screens/DevicesView.swift.
@@ -957,11 +955,8 @@ internal fun displayName(device: PairedDeviceRow): String {
     else "${device.brand} ${device.model}"
 }
 
-/** SF-Symbol-equivalent icon: WHOOP keeps the band glyph; an FTMS machine reads as gym equipment;
- *  generic straps read as a heart-rate strap. */
+/** SF-Symbol-equivalent icon: WHOOP keeps the band glyph; an Oura ring reads as a ring. */
 private fun deviceIcon(device: PairedDeviceRow): ImageVector = when {
-    device.sourceKind == SourceKind.ftms.name -> Icons.AutoMirrored.Filled.DirectionsRun
-    device.sourceKind == SourceKind.huami.name -> Icons.Filled.GraphicEq
     device.sourceKind == SourceKind.oura.name -> Icons.Filled.Circle
     SourceCoordinator.isWhoop(device) -> Icons.Filled.Watch
     else -> Icons.Filled.FavoriteBorder
@@ -982,28 +977,6 @@ private data class DeviceCapabilityProfile(
 )
 
 private fun deviceProfile(device: PairedDeviceRow): DeviceCapabilityProfile {
-    // FTMS gym machine: a live machine + (when reported) HR session, recorded via the existing
-    // live-workout path. Effort-scored only when the machine actually reports heart rate.
-    if (device.sourceKind == SourceKind.ftms.name) {
-        return DeviceCapabilityProfile(
-            displayModel = "Gym equipment (FTMS)",
-            captures = "Speed · Cadence · Power · Distance · Energy · Heart rate (if the machine sends it)",
-            powers = "Records a live machine workout, Effort-scored from HR when the machine reports it",
-            footnote = "Live machine data over Bluetooth FTMS. No sleep, recovery, skin temp or SpO₂. " +
-                "Effort needs the machine's heart rate; without it the session logs the machine metrics only.",
-        )
-    }
-    // EXPERIMENTAL Huami device (Amazfit / Zepp / Mi Band): best-effort live HR only, honest about it.
-    if (device.sourceKind == SourceKind.huami.name) {
-        return DeviceCapabilityProfile(
-            displayModel = "${device.brand} (experimental)",
-            captures = "Heart rate (live, best-effort)",
-            powers = "Powers the live console + Effort. No Charge, Rest or Sleep",
-            footnote = "Experimental: live heart rate where the band exposes it. Some bands need a pairing " +
-                "we can't do yet. NOOP will say so honestly and never show a made-up number. No sleep, " +
-                "recovery, skin temp, SpO₂ or steps.",
-        )
-    }
     // EXPERIMENTAL locally-adopted Oura ring (gen 3/4/5). The gen is carried on `model` ("Oura Ring
     // 3/4/5") and recovered with OuraRingGen.from(model). NOOP reads the ring's OWN raw signals + open
     // HRV/sleep-phase tags and computes its own Charge/Effort/Rest; it NEVER reads Oura's encrypted
@@ -1031,14 +1004,14 @@ private fun deviceProfile(device: PairedDeviceRow): DeviceCapabilityProfile {
                 "percentage comes off the ring (import an Oura file for those).",
         )
     }
-    // Generic heart-rate strap: live HR + R-R only; drives the live console + Effort, nothing nightly.
+    // A non-WHOOP, non-Oura source (an imported data source). It contributes whatever the import carried;
+    // it has no live BLE stream of its own.
     if (!SourceCoordinator.isWhoop(device)) {
         return DeviceCapabilityProfile(
-            displayModel = "Heart-rate strap",
-            captures = "Heart rate · HRV (live)* · Strain",
-            powers = "Powers the live console + Effort. No Charge, Rest or Sleep",
-            footnote = "Live HR + R-R only · no sleep, recovery, skin temp, SpO₂, steps or battery " +
-                "(those are WHOOP-only).",
+            displayModel = device.model.ifBlank { device.brand },
+            captures = "Imported data",
+            powers = "Contributes imported history. No live stream.",
+            footnote = "Imported source · sleep, recovery, HR and steps wherever the import carried them.",
         )
     }
     val whoopPowers = "Powers Charge, Effort, Rest, Sleep + Health Monitor"
@@ -1117,12 +1090,6 @@ private fun lastSeenLine(device: PairedDeviceRow, isLiveConnected: Boolean, bond
 
 internal fun historyLayoutLine(version: Int?): String? =
     version?.let { "v$it history" }
-
-/** Best-effort brand from the advertised name. Falls back to a neutral label. Mirrors Swift brandGuess.
- *  Delegates to the pure [com.noop.data.DeviceBrandCatalog] (single source of truth) so the token table
- *  lives once. */
-internal fun brandGuess(name: String): String =
-    com.noop.data.DeviceBrandCatalog.specForAdvertisedName(name)?.brand ?: "Heart-rate strap"
 
 // MARK: - Sync status + "Sync now" (#364) — moved here from Health: the strap-history sync control
 // belongs with the devices. Reads only LiveState (connection + backfill + last-sync). The button reaches

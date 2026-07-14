@@ -60,21 +60,17 @@ data class DayOwnershipRow(
 enum class DeviceStatus { active, paired, archived }
 
 /** How a device's data reaches the store. Stored as the enum name (Swift `SourceKind` rawValue).
- *  [ftms] = a live FTMS gym machine (treadmill / indoor bike / rower / cross-trainer).
- *  [huami] = an EXPERIMENTAL Huami-family live HR source (Amazfit / Zepp incl. Helio, Xiaomi Mi Band):
- *  standard 0x180D when exposed, else the documented Huami custom HR characteristic, else an honest
- *  "needs pairing" message. (Garmin uses [liveBLE] — its live HR is the standard broadcast-HR path.)
  *  [oura] = an EXPERIMENTAL Oura ring live BLE source. Owns its OWN scanner/GATT (never touches the
  *  WHOOP client); decodes the ring's own raw signals + open HRV/sleep-phase tags and runs NOOP's own
  *  scoring, and surfaces an honest "needs pairing" state when the install key is absent (never Oura's
  *  encrypted readiness/sleep scores). Carried on string rawValue "oura"; no DB migration (the column is
  *  free-text and existing rows never carry it).
- *  Additive: existing rows never carry [ftms]/[huami]/[oura]; only the respective wizard paths write them. */
+ *  Additive: existing rows never carry [oura]; only the Oura wizard path writes it. */
 // `activityFile` (#137): a GPX/TCX/FIT activity file under the `activity-file` device. Distinct from
 // `fileImport` (a whole-day WHOOP CSV export) so the day-owner resolver ranks it BELOW day-spanning
 // imports — a 90-minute ride must never displace a full-day source with HR for the same day. It owns a
 // day only when nothing else has data (a strap-less day). Additive: only the activity-file importer writes it.
-enum class SourceKind { liveBLE, historyBLE, cloudImport, fileImport, ftms, huami, oura, activityFile }
+enum class SourceKind { liveBLE, historyBLE, cloudImport, fileImport, oura, activityFile }
 
 /** A canonical metric a source can provide — drives capability-aware UI + the day-owner resolver.
  *  Stored as the enum name (Swift `Metric` rawValue) inside the comma-joined `capabilities` string. */

@@ -131,7 +131,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      *  device is a WHOOP, also RELEASE the BLE link so the band can enter pairing mode — archiving the
      *  registry row alone left NOOP re-grabbing it (the 3s reconnect timer + the persisted pin still
      *  pointed at it), so it stayed connected and couldn't show its blue pairing LEDs. iOS already does
-     *  this in forgetDevice; this brings Android to parity. A non-WHOOP source (FTMS/HR strap) is owned by
+     *  this in forgetDevice; this brings Android to parity. A non-WHOOP source (an Oura ring) is owned by
      *  the SourceCoordinator, not the WHOOP client, so it isn't touched here. */
     suspend fun archivePairedDevice(id: String) {
         val devices = runCatching { noopApp.deviceRegistry.all() }.getOrDefault(emptyList())
@@ -145,55 +145,6 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     /** Permanently delete all of a device's recorded data (its registry row is kept). */
     suspend fun deletePairedDeviceData(id: String) = noopApp.deviceRegistry.deleteDeviceData(id)
-
-    /**
-     * A DISCOVERY-ONLY [StandardHrSource] for the Add-a-strap wizard. It runs its OWN scan and never
-     * connects or persists here — the [SourceCoordinator] owns connection once a strap becomes active.
-     * Both closures are no-ops; the wizard only reads its `discovered` / `scanning` StateFlows. Mirrors
-     * the macOS AddDeviceSheet's throwaway StandardHRSource(persist: { _ in }).
-     */
-    fun makeStrapScanner(): com.noop.ble.StandardHrSource =
-        com.noop.ble.StandardHrSource(
-            context = appContext,
-            deviceId = "scan-preview",
-            liveSink = { _, _ -> },
-            persist = { _, _ -> },
-            // Route the throwaway scanner's diagnostics into the SAME exported strap log the active path
-            // uses (issue #421 parity), so a tester's wizard scan is captured. The source self-prefixes
-            // "HR-strap: "; [externalLog] redacts addresses. Privacy-safe: statuses / counts only.
-            log = { ble.externalLog(it) },
-        )
-
-    /**
-     * A DISCOVERY-ONLY [com.noop.ble.FtmsSource] for the Add-gym-equipment wizard. Runs its OWN scan and
-     * never connects here — the [SourceCoordinator] owns connection once an FTMS machine becomes active.
-     * The sinks are no-ops; the wizard only reads its `discovered` / `scanning` StateFlows. Mirrors the
-     * macOS AddDeviceWizard's throwaway FTMSSource(feedsLive: false).
-     */
-    fun makeFtmsScanner(): com.noop.ble.FtmsSource =
-        com.noop.ble.FtmsSource(
-            context = appContext,
-            liveSink = { },
-            // Wizard scan diagnostics → the SAME exported strap log the active path uses (issue #421).
-            // The source self-prefixes "FTMS: "; [externalLog] redacts addresses. Statuses / counts only.
-            log = { ble.externalLog(it) },
-        )
-
-    /**
-     * A DISCOVERY-ONLY EXPERIMENTAL [com.noop.ble.HuamiHrSource] for the Add-Amazfit/Mi-Band wizard. Runs
-     * its OWN scan and never connects/persists here — the [SourceCoordinator] owns connection once a Huami
-     * device becomes active. The sinks are no-ops; the wizard only reads its `discovered` / `scanning`
-     * StateFlows. Mirrors the macOS AddDeviceWizard's throwaway HuamiHRSource(feedsLive: false).
-     */
-    fun makeHuamiScanner(): com.noop.ble.HuamiHrSource =
-        com.noop.ble.HuamiHrSource(
-            context = appContext,
-            deviceId = "scan-preview",
-            liveSink = { },
-            // Wizard scan diagnostics → the SAME exported strap log the active path uses (issue #421).
-            // The source self-prefixes "Huami: "; [externalLog] redacts addresses. Statuses / counts only.
-            log = { ble.externalLog(it) },
-        )
 
     /**
      * A DISCOVERY-ONLY EXPERIMENTAL [com.noop.ble.OuraLiveSource] for the Add-Oura wizard. Runs its OWN

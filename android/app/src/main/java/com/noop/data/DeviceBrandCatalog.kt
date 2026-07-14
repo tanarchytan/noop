@@ -18,46 +18,24 @@ data class DeviceBrandSpec(
     /** Lowercased, diacritic-folded advertised-name substrings that identify this brand. Checked in [all]
      *  order (most specific first) so a Huami sub-brand like Mi Band wins over the broader Amazfit tokens. */
     val nameTokens: List<String>,
-    /** The routing kind stored on the device (drives `SourceCoordinator.makeSource`). [SourceKind.liveBLE]
-     *  for a brand whose live HR is the standard 0x180D broadcast (generic straps + Garmin); [SourceKind.huami]
-     *  / [SourceKind.oura] for the experimental custom-protocol sources. */
+    /** The routing kind stored on the device (drives `SourceCoordinator.makeSource`). [SourceKind.oura]
+     *  for the experimental Oura ring source. */
     val sourceKind: SourceKind,
-    /** The registry id prefix for a device of this brand ("huami", "oura", "garmin", "strap"). */
+    /** The registry id prefix for a device of this brand ("oura"). */
     val idPrefix: String,
     /** Whether this brand can stream LIVE heart rate at all in NOOP. false for Oura (no open live stream) —
-     *  the wizard routes those to import instead of pretending to connect. */
+     *  the wizard routes those to a locally-adopted key path instead of pretending to connect. */
     val canStreamLiveHR: Boolean,
-    /** True for the opt-in EXPERIMENTAL tier (Amazfit / Mi Band / Garmin / Oura); false for the shipped
-     *  generic HR straps (Polar / Wahoo / …). `ExperimentalBrand.recognise` returns only these. */
+    /** True for the opt-in EXPERIMENTAL tier (Oura). `ExperimentalBrand.recognise` returns only these. */
     val isExperimentalTier: Boolean,
 )
 
 object DeviceBrandCatalog {
-    /** The brand table, checked most-specific-first. Order matters ONLY where one name could match two rows:
-     *  Mi Band (a Huami sub-brand) precedes Amazfit so a "Mi Smart Band" is not mis-labelled Amazfit. Tokens
-     *  are otherwise disjoint across rows, so the remaining order is cosmetic. */
+    /** The brand table. Only the experimental Oura ring is recognised here; WHOOP is detected by its own
+     *  path (`SourceCoordinator.isWhoop`), not by advertised-name token. */
     val all: List<DeviceBrandSpec> = listOf(
-        // EXPERIMENTAL tier — custom-protocol or broadcast live sources, opt-in and best-effort.
-        DeviceBrandSpec("Mi Band", listOf("mi band", "miband", "smart band", "xiaomi"),
-            SourceKind.huami, "huami", canStreamLiveHR = true, isExperimentalTier = true),
-        DeviceBrandSpec("Amazfit", listOf("amazfit", "zepp", "helio", "huami"),
-            SourceKind.huami, "huami", canStreamLiveHR = true, isExperimentalTier = true),
-        DeviceBrandSpec("Garmin",
-            listOf("garmin", "forerunner", "fenix", "vivoactive", "venu", "instinct", "epix", "vivosmart", "hrm"),
-            SourceKind.liveBLE, "garmin", canStreamLiveHR = true, isExperimentalTier = true),
         DeviceBrandSpec("Oura", listOf("oura"),
             SourceKind.oura, "oura", canStreamLiveHR = false, isExperimentalTier = true),
-        // Shipped generic HR straps — standard 0x180D broadcast, labelled for display only.
-        DeviceBrandSpec("Polar", listOf("polar"),
-            SourceKind.liveBLE, "strap", canStreamLiveHR = true, isExperimentalTier = false),
-        DeviceBrandSpec("Wahoo", listOf("wahoo", "tickr"),
-            SourceKind.liveBLE, "strap", canStreamLiveHR = true, isExperimentalTier = false),
-        DeviceBrandSpec("Coospo", listOf("coospo"),
-            SourceKind.liveBLE, "strap", canStreamLiveHR = true, isExperimentalTier = false),
-        DeviceBrandSpec("Scosche", listOf("scosche", "rhythm"),
-            SourceKind.liveBLE, "strap", canStreamLiveHR = true, isExperimentalTier = false),
-        DeviceBrandSpec("Magene", listOf("magene"),
-            SourceKind.liveBLE, "strap", canStreamLiveHR = true, isExperimentalTier = false),
     )
 
     /** The brand whose advertised name matches, or null if unrecognised. Diacritic-folded (NFD + strip

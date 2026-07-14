@@ -26,20 +26,20 @@ import kotlinx.coroutines.sync.withLock
  * WHOOP-FIRST, ZERO REGRESSION
  * ----------------------------
  * This coordinator is a deliberate NO-OP whenever the active device is the WHOOP (id "my-whoop", any
- * `brand == "WHOOP"` row, OR an unknown id). That is the default state and EVERY state where no generic
- * strap is paired: WHOOP is active, the coordinator does nothing, and the existing WHOOP flow
+ * `brand == "WHOOP"` row, OR an unknown id). That is the default state and EVERY state where no Oura ring
+ * is paired: WHOOP is active, the coordinator does nothing, and the existing WHOOP flow
  * ([WhoopBleClient.connect] via [AppViewModel.connect]) runs exactly as it does today. It only ever
- * *acts* when the active device is a NON-WHOOP generic HR strap:
+ * *acts* when the active device is a NON-WHOOP Oura ring:
  *
- *   • switching TO a generic strap → [stopWhoop] (WHOOP's existing disconnect), then start the isolated
- *     [StandardHrSource] for that strap's deviceId.
- *   • switching BACK to WHOOP     → stop the [StandardHrSource], then [startWhoop] (WHOOP's existing scan
- *     entry) — but only if we had actually been on a strap, so a plain launch with WHOOP active does NOT
+ *   • switching TO an Oura ring → [stopWhoop] (WHOOP's existing disconnect), then start the isolated
+ *     [OuraLiveSource] for that ring's deviceId.
+ *   • switching BACK to WHOOP   → stop the [OuraLiveSource], then [startWhoop] (WHOOP's existing scan
+ *     entry) — but only if we had actually been on a ring, so a plain launch with WHOOP active does NOT
  *     re-trigger a redundant WHOOP scan.
  *
  * It never imports or references [WhoopBleClient] internals: the WHOOP start/stop are injected closures
- * from the composition root, so the two BLE flows stay fully decoupled (mirrors [StandardHrSource]'s
- * isolation). Live HR from a strap is pushed through [liveSink]; the app wires that to the SAME live
+ * from the composition root, so the two BLE flows stay fully decoupled (mirrors [OuraLiveSource]'s
+ * isolation). Live HR from a ring is pushed through [liveSink]; the app wires that to the SAME live
  * state the UI observes (e.g. `ble::publishExternalLiveHr`).
  *
  * On Android the registry exposes the active id as a one-shot suspend read (not a published flow like
@@ -84,31 +84,17 @@ class SourceCoordinator(
      *  closure to assert the wording. Inert on the single-WHOOP path (the message only fires on a
      *  registered-but-mismatched strap). */
     private val log: (String) -> Unit = { Log.i("SourceCoordinator", it) },
-    /** Diagnostic sink for the ISOLATED generic-HR source's connect lifecycle. Wired at the composition
-     *  root to [WhoopBleClient.externalLog] so generic-HR lines land in the SAME in-app strap log the user
-     *  exports (issue #421 — the Polar/Wahoo/Coospo/Garmin-HRM path was previously invisible). Passed into
-     *  [StandardHrSource] as its `log`; kept SEPARATE from [log] above (which defaults to logcat and only
-     *  carries the multi-WHOOP adoption notice). Default no-op keeps existing call sites compiling. */
+    /** Diagnostic sink for the ISOLATED Oura source's connect/auth/stream lifecycle. Wired at the
+     *  composition root to [WhoopBleClient.externalLog] so those lines land in the SAME in-app strap log the
+     *  user exports (issue #421). Passed into [OuraLiveSource] as its `log`; kept SEPARATE from [log] above
+     *  (which defaults to logcat and only carries the multi-WHOOP adoption notice). Default no-op keeps
+     *  existing call sites compiling. */
     private val straplog: (String) -> Unit = {},
-    /** Push a strap's battery percent into the live state (e.g. `ble::publishExternalBattery`), so a
-     *  generic strap / FTMS machine surfaces its charge where the WHOOP strap battery does. Default no-op
-     *  keeps existing call sites + JVM tests compiling unchanged. */
+    /** Push an Oura ring's battery percent into the live state (e.g. `ble::publishExternalBattery`), so it
+     *  surfaces its charge where the WHOOP strap battery does. Default no-op keeps existing call sites +
+     *  JVM tests compiling unchanged. */
     private val batterySink: (Int) -> Unit = {},
-    /** Push the latest instantaneous speed/cadence/power from a connected standard fitness sensor
-     *  (RSC/CSC/CPS), read ADDITIVELY alongside HR by [StandardHrSource], into the live state the in-workout
-     *  UI observes (wired at the composition root to `ble::publishExternalSensorMetrics`). PURE ADDITIVE — it
-     *  never touches HR/R-R/persistence/scoring, only the additive sensor readout. Forwarded only on the
-     *  generic-HR strap path (a footpod / bike sensor / power meter rides StandardHrSource). Default no-op
-     *  keeps existing call sites + JVM tests compiling unchanged. */
-    private val sensorSink: (StandardHrSource.SensorMetrics) -> Unit = {},
 ) {
-
-    /** Latest instantaneous speed/cadence/power from the active standard fitness sensor (RSC/CSC/CPS),
-     *  read ADDITIVELY alongside HR by [StandardHrSource]. The in-workout UI observes this to surface the
-     *  values beside heart rate. PURE ADDITIVE — fed only by the generic-HR strap path; reset to empty when
-     *  no strap source is live, so a stale readout can't outlive the link. Never carries HR / scoring. */
-    private val _sensorMetrics = MutableStateFlow(StandardHrSource.SensorMetrics())
-    val sensorMetrics: StateFlow<StandardHrSource.SensorMetrics> = _sensorMetrics.asStateFlow()
 
     /** The active Oura source's live adopt outcome, mirrored so the Add-Oura wizard can leave its Adopting
      *  step (success -> close, failed -> the honest Failed step). [AdoptPhase.Idle] whenever no Oura source
@@ -126,12 +112,12 @@ class SourceCoordinator(
      *  nulled on teardown so a forgotten ring never leaks a stale outcome. */
     private var ouraStateJob: kotlinx.coroutines.Job? = null
 
-    /** The single non-WHOOP source currently live — a generic HR strap, FTMS machine, Huami band, or Oura
-     *  ring — held behind the [LiveHrSource] interface. null while WHOOP is active or nothing else is
-     *  paired. Exactly one non-WHOOP source is ever live at a time, and the coordinator only ever connects /
-     *  scans / stops it. Built by [makeSource]; each source owns its OWN scanner/GATT and never touches the
-     *  WHOOP BLE client, so the WHOOP path cannot regress. (An Oura ring additionally surfaces only its OWN
-     *  raw signals + open event tags — NOOP computes its own Charge/Rest — never Oura's encrypted scores.) */
+    /** The single non-WHOOP source currently live — an Oura ring — held behind the [LiveHrSource]
+     *  interface. null while WHOOP is active or nothing else is paired. Exactly one non-WHOOP source is
+     *  ever live at a time, and the coordinator only ever connects / scans / stops it. Built by
+     *  [makeSource]; the source owns its OWN scanner/GATT and never touches the WHOOP BLE client, so the
+     *  WHOOP path cannot regress. (An Oura ring surfaces only its OWN raw signals + open event tags — NOOP
+     *  computes its own Charge/Rest — never Oura's encrypted scores.) */
     private var activeSource: LiveHrSource? = null
     /** The deviceId the active non-WHOOP source ([activeSource]) runs for. */
     private var activeStrapId: String? = null
@@ -259,7 +245,7 @@ class SourceCoordinator(
 
         when {
             onStrap -> {
-                // Coming back from a generic strap / FTMS machine: tear that source down first, then resume.
+                // Coming back from a non-WHOOP source (an Oura ring): tear that source down first, then resume.
                 tearDownNonWhoopSource()
                 activeStrapId = null
                 onStrap = false
@@ -305,20 +291,33 @@ class SourceCoordinator(
     }
 
     /**
-     * Active device is a generic strap. Pause WHOOP (once, on the WHOOP→strap edge) and run the isolated
-     * [StandardHrSource] for this strap's deviceId. Re-running for the SAME id is a no-op.
+     * Active device is a non-WHOOP live source (an Oura ring). Pause WHOOP (once, on the WHOOP→source edge)
+     * and run the isolated source for this device's id. Re-running for the SAME id is a no-op.
      */
     private fun switchToStrap(id: String, devices: List<PairedDeviceRow>) {
         if (activeStrapId == id) return   // already streaming this source → no churn
+
+        val row = devices.firstOrNull { it.id == id }
+
+        // GUARD before we touch the current link: the only non-WHOOP LIVE source is the Oura ring. Any other
+        // registered kind (an imported "Workout files" / GPX device, or a legacy non-Oura strap row persisted
+        // from before straps were removed) has no live BLE stream. Bail as a harmless no-op HERE. If we
+        // instead paused WHOOP / tore down the current source and only THEN discovered there was nothing to
+        // build (makeSource throws for a non-Oura kind), the live link would be stranded with no source until
+        // a manual reconnect — activating an import row must never brick WHOOP.
+        if (row?.sourceKind != SourceKind.oura.name) {
+            log("SourceCoordinator: device '$id' (kind=${row?.sourceKind}) has no live BLE source; " +
+                "only WHOOP and Oura stream live. Leaving the current source active.")
+            return
+        }
+
         if (!onStrap) stopWhoop()         // leaving WHOOP for the first non-WHOOP source → pause its BLE
         tearDownNonWhoopSource()          // source→source: stop the previous source first
 
-        val row = devices.firstOrNull { it.id == id }
-        val address = row?.peripheralId
+        val address = row.peripheralId
 
-        // Build the isolated source for this device's registered kind (the ONE place that maps a kind to a
-        // concrete driver), then bring it up. Adding a brand adds ONE arm in [makeSource] plus a conforming
-        // source; nothing else in the coordinator changes.
+        // Build the isolated Oura source (the ONE place that maps a kind to a concrete driver), then bring it
+        // up. Adding a brand adds ONE arm in [makeSource] plus a conforming source; nothing else changes.
         val source = makeSource(id, row)
         // CONNECT to the active strap's known BLE address, don't just scan. A bare scan discovers + lists
         // the strap but never connects — so a Polar H10 etc. showed up as "found" yet never streamed
@@ -332,65 +331,30 @@ class SourceCoordinator(
 
     /**
      * Build the isolated [LiveHrSource] for a device from its registered `sourceKind` — the ONE place that
-     * maps a kind to a concrete driver. An FTMS gym machine runs the FtmsSource; an EXPERIMENTAL Huami
-     * device (Amazfit / Zepp / Mi Band) runs the HuamiHrSource; an EXPERIMENTAL Oura ring runs the
-     * OuraLiveSource; everything else is a generic HR strap on StandardHrSource. Adding a brand adds ONE arm
-     * here (plus a conforming source); nothing else in the coordinator changes. Returns the source WITHOUT
-     * connecting — the caller ([switchToStrap]) does the connect-by-address-else-scan bring-up. Mirrors
-     * macOS `SourceCoordinator.makeSource(for:)`.
+     * maps a kind to a concrete driver. The only non-WHOOP live source NOOP supports is the EXPERIMENTAL
+     * Oura ring (OuraLiveSource); every other device kind (imports) has no live BLE stream, so this fails
+     * loudly for them (caught by [reconcile]'s guard, which keeps the previous source and logs it). Returns
+     * the source WITHOUT connecting — the caller ([switchToStrap]) does the connect-by-address-else-scan
+     * bring-up. Mirrors macOS `SourceCoordinator.makeSource(for:)`.
      */
     private fun makeSource(id: String, row: PairedDeviceRow?): LiveHrSource {
         // Non-null in production (set at the composition root); only the JVM-test paths that never reach a
-        // strap switch leave it null. Fail loudly rather than silently no-op if that invariant breaks.
-        val ctx = requireNotNull(context) { "SourceCoordinator.context is required to run a strap source" }
+        // source switch leave it null. Fail loudly rather than silently no-op if that invariant breaks.
+        val ctx = requireNotNull(context) { "SourceCoordinator.context is required to run a live source" }
         return when (row?.sourceKind) {
-            SourceKind.ftms.name -> FtmsSource(
-                context = ctx,
-                liveSink = { hr -> liveSink(hr, emptyList()) },  // machine HR → the existing live recorder
-                onBattery = batterySink,                          // machine battery → the same live state
-                log = straplog,
-            )
-            SourceKind.huami.name -> {
-                val repo = requireNotNull(repository) { "SourceCoordinator.repository is required to persist Huami samples" }
-                HuamiHrSource(
-                    context = ctx,
-                    deviceId = id,
-                    liveSink = { hr -> liveSink(hr, emptyList()) },   // Huami HR → the existing live recorder
-                    persist = { batch: StreamBatch, deviceId: String ->
-                        scope.launch { runCatching { repo.insert(batch, deviceId) } }
-                    },
-                    log = straplog,
-                    onBattery = batterySink,
-                )
-            }
             SourceKind.oura.name -> makeOuraSource(id, ctx, row)
-            else -> {
-                val repo = requireNotNull(repository) { "SourceCoordinator.repository is required to persist strap samples" }
-                StandardHrSource(
-                    context = ctx,
-                    deviceId = id,
-                    liveSink = liveSink,
-                    persist = { batch: StreamBatch, deviceId: String ->
-                        scope.launch { runCatching { repo.insert(batch, deviceId) } }
-                    },
-                    log = straplog,   // generic-HR lifecycle → the SAME exported strap log (issue #421)
-                    onBattery = batterySink,  // strap battery → the same live state the WHOOP strap battery uses
-                    sensorSink = { metrics ->
-                        // Additive speed/cadence/power → the coordinator's own flow the in-workout UI observes,
-                        // AND the optionally-injected sink (default no-op). Never HR / R-R / scoring.
-                        _sensorMetrics.value = metrics
-                        sensorSink(metrics)
-                    },
-                )
-            }
+            else -> error(
+                "SourceCoordinator: no live BLE source for device '$id' (kind=${row?.sourceKind}); " +
+                    "only WHOOP and Oura stream live.",
+            )
         }
     }
 
     /**
      * Build the EXPERIMENTAL Oura ring source (gen3 / gen4 / gen5) for [id]. Also wires the adopt-outcome
      * mirror ([ouraStateJob]) and consumes the one-shot adopt consent — side effects the coordinator owns,
-     * so they live here rather than in the plain FTMS / Huami / Standard arms of [makeSource]. Mirrors the
-     * Oura branch of macOS `makeOuraSource`.
+     * so they live here rather than in the plain [makeSource] dispatch. Mirrors the Oura branch of macOS
+     * `makeOuraSource`.
      */
     private fun makeOuraSource(id: String, ctx: Context, row: PairedDeviceRow?): OuraLiveSource {
         val repo = requireNotNull(repository) { "SourceCoordinator.repository is required to persist Oura samples" }
@@ -434,8 +398,8 @@ class SourceCoordinator(
         return source
     }
 
-    /** Stop the live non-WHOOP source (standard strap, FTMS machine, Huami device, or Oura ring) and drop
-     *  the reference. Idempotent — exactly one source is ever live. */
+    /** Stop the live non-WHOOP source (an Oura ring) and drop the reference. Idempotent — exactly one
+     *  source is ever live. */
     private fun tearDownNonWhoopSource() {
         activeSource?.stop()
         activeSource = null
@@ -444,10 +408,6 @@ class SourceCoordinator(
         ouraStateJob?.cancel(); ouraStateJob = null
         _ouraAdoptPhase.value = OuraLiveSource.AdoptPhase.Idle
         _ouraNeedsPairing.value = null
-        // A stale speed/cadence/power readout must not outlive the strap session (the source's own stop()
-        // already pushes an empty SensorMetrics, but reset here too so leaving for WHOOP / FTMS / Huami —
-        // none of which feed this flow — is clean and immediate).
-        _sensorMetrics.value = StandardHrSource.SensorMetrics()
     }
 
     companion object {
