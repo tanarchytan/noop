@@ -2070,6 +2070,9 @@ class WhoopBleClient(
                 cmd != CommandNumber.SET_CLOCK && cmd != CommandNumber.GET_CLOCK &&
                 cmd != CommandNumber.GET_DATA_RANGE &&
                 cmd != CommandNumber.SET_ALARM_TIME && cmd != CommandNumber.DISABLE_ALARM &&
+                // GET_ALARM_TIME (67): the log-only arm-readback armStrapAlarm sends right after a 5/MG arm
+                // (a READ; the 4.0 path already used it). Without this it would be dropped here. (noop-tan)
+                cmd != CommandNumber.GET_ALARM_TIME &&
                 // REBOOT_STRAP (29) over puffin: opcode shared with 4.0, framing is the puffin form built
                 // below. NOT hardware-confirmed on 5/MG — rebootStrap() logs the COMMAND_RESPONSE so a strap
                 // log confirms whether the frame is accepted. User-initiated + confirmation-gated only.
@@ -2564,6 +2567,12 @@ class WhoopBleClient(
             recordAlarmArm(epochSec)
             log(if (_state.value.connected) "Alarm: armed 5/MG rev4 EXPERIMENTAL (epoch $epochSec)"
                 else "Alarm: queued 5/MG rev4 EXPERIMENTAL (epoch $epochSec) — strap not connected")
+            // Arm READBACK (noop-tan diagnostic): mirror the 4.0 GET_ALARM_TIME probe onto 5/MG so a
+            // "didn't buzz" export can decide H2 (arm sent, strap kept nothing) vs H3 (strap NAKed the
+            // rev-4 arm) instead of guessing. GET_ALARM_TIME is a READ (non-destructive); the 5/MG
+            // response layout is unverified, so handleFrame logs the RAW readback frame (never a decode)
+            // and nothing gates on it. Needs GET_ALARM_TIME on the 5/MG send allow-list (see send()).
+            send(CommandNumber.GET_ALARM_TIME, byteArrayOf(0x01))
             return
         }
         sendSetClockBothForms()
@@ -3781,6 +3790,14 @@ class WhoopBleClient(
                         log("Alarm: strap answered the alarm readback with an unrecognised payload (raw $raw) - layout undocumented, log-only")
                     }
                 }
+                // 5/MG arm-readback (noop-tan diagnostic): the puffin GET_ALARM_TIME response layout is
+                // UNVERIFIED, so do NOT reuse the 4.0 epoch decode — log the raw response frame so a future
+                // capture can decode what the 5/MG strap reports as armed. Log-only; the 5/MG alarm path
+                // stays the Experimental one and nothing gates on this.
+                if (connectedFamily == DeviceFamily.WHOOP5 && respCmd?.startsWith("GET_ALARM_TIME") == true) {
+                    val raw = frame.joinToString(" ") { "%02x".format(it) }
+                    log("Alarm: 5/MG strap answered the alarm readback (raw $raw) — layout unverified, log-only")
+                }
                 // #34 (issue comment 2026-07-12): the strap's OWN answer to the arm we just sent — the
                 // accept/reject datum previously thrown away. armStrapAlarm logs "armed" the instant the SET
                 // goes out, which only proves NOOP transmitted the frame; if the firmware drops it the
@@ -3796,6 +3813,13 @@ class WhoopBleClient(
                     val r = frame.getOrNull(8)?.toInt()?.and(0xFF)
                     val rhex = if (r != null) "0x%02x".format(r) else "none"
                     log("Alarm: strap answered the arm (SET_ALARM_TIME) with result=$rhex — log-only, 4.0 result-code meaning unverified")
+                }
+                // 5/MG arm-response (noop-tan diagnostic): the 5/MG result sits at a different offset than
+                // 4.0's frame[8]; it's already decoded into `result` above. Surface it for a SET_ALARM_TIME
+                // (including SUCCESS, which the non-SUCCESS-only line further up skips) so an export shows
+                // whether the strap accepted the rev-4 arm. Log-only; rev-4 alarm remains unconfirmed on HW.
+                if (connectedFamily == DeviceFamily.WHOOP5 && respCmd?.startsWith("SET_ALARM_TIME") == true) {
+                    log("Alarm: 5/MG strap answered the arm (SET_ALARM_TIME) with result=${result ?: "none"} — log-only, rev-4 alarm unconfirmed")
                 }
             }
 
