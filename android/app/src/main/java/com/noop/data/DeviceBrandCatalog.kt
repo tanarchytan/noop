@@ -8,15 +8,15 @@ import java.text.Normalizer
  * + capability facts are byte-parity-critical and must be asserted headlessly on both platforms. Faithful
  * twin of Packages/WhoopStore/Sources/WhoopStore/DeviceBrandCatalog.swift.
  *
- * Adding a recognised brand is ONE row in [all]: the wizard's brand labelling ([brandGuess]), the
- * experimental-tier gate ([com.noop.ble.ExperimentalBrand]), and the source routing all derive from here
- * instead of re-listing the advertised-name tokens per call site.
+ * A recognised brand is ONE row in [all]: the experimental-tier gate ([com.noop.ble.ExperimentalBrand])
+ * and the source routing both derive from here instead of re-listing the advertised-name tokens per call
+ * site. On noop-tan only the experimental Oura ring is catalogued; WHOOP is detected by its own path.
  */
 data class DeviceBrandSpec(
-    /** Display + stored `PairedDeviceRow.brand` string ("Polar", "Amazfit", "Oura", …). */
+    /** Display + stored `PairedDeviceRow.brand` string (e.g. "Oura"). */
     val brand: String,
-    /** Lowercased, diacritic-folded advertised-name substrings that identify this brand. Checked in [all]
-     *  order (most specific first) so a Huami sub-brand like Mi Band wins over the broader Amazfit tokens. */
+    /** Lowercased, diacritic-folded advertised-name substrings that identify this brand, checked in [all]
+     *  order (most specific first). */
     val nameTokens: List<String>,
     /** The routing kind stored on the device (drives `SourceCoordinator.makeSource`). [SourceKind.oura]
      *  for the experimental Oura ring source. */

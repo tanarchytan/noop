@@ -57,8 +57,8 @@ import java.util.concurrent.ConcurrentHashMap
  * All BLE specifics live here; all protocol specifics live in the JVM-pure [OuraDriver] (which holds
  * NO BluetoothGatt). This class owns the transport and feeds the driver only bytes + transition events.
  *
- * WHOOP-FIRST ISOLATION (identical to [StandardHrSource] / [HuamiHrSource]): this class runs its OWN
- * scan + [BluetoothGatt] and never imports, calls, or shares state with the WHOOP BLE client. The
+ * WHOOP-FIRST ISOLATION: this class runs its OWN scan + [BluetoothGatt] and never imports, calls, or
+ * shares state with the WHOOP BLE client. The
  * WHOOP path cannot regress because of anything here. The only shared surfaces are injected closures:
  *   - [liveSink]  pushes the ring's live HR (bpm) + R-R (ms) into whatever the UI observes (the
  *                 [SourceCoordinator] wires it to the same live state a WHOOP/strap reading uses).
@@ -66,7 +66,7 @@ import java.util.concurrent.ConcurrentHashMap
  *   - [log]       the SAME exportable strap log (issue #421); every line is prefixed "Oura: ".
  *   - [onBattery] surfaces the ring's battery percent the same place a strap's does.
  *
- * HONEST FALLBACK (Huami precedent): when no install key is available ([authKey] returns null) or the
+ * HONEST FALLBACK: when no install key is available ([authKey] returns null) or the
  * ring reports it is in factory reset, the ring needs a pairing/provisioning handshake the live flow
  * does not silently perform. This source then publishes an HONEST message via [needsPairing] and stays
  * disconnected from data - it NEVER fabricates a reading and never displays Oura's own scores.
@@ -83,8 +83,8 @@ class OuraLiveSource(
     /** The ring generation (selected by the user in the wizard, recovered from the row model). Drives
      *  the MTU clamp, discovered-characteristic set, and the live-HR enable command set. */
     private val ringGen: OuraRingGen,
-    /** Push live HR (bpm) + R-R (ms) into whatever the UI observes. Called on the main looper. Mirrors
-     *  [StandardHrSource.liveSink] so the [SourceCoordinator] wires both the same way. */
+    /** Push live HR (bpm) + R-R (ms) into whatever the UI observes. Called on the main looper. The
+     *  [SourceCoordinator] wires this into the same live state a WHOOP reading feeds. */
     private val liveSink: (hr: Int, rr: List<Int>) -> Unit,
     /** Returns the 16-byte application auth key (unsigned bytes 0..255) for this ring, or null when none
      *  has been provisioned. INJECTED, never hardcoded (the key lives in [OuraInstallKeyStore], backed by

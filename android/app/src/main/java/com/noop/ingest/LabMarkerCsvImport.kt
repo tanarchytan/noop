@@ -49,7 +49,7 @@ object LabMarkerCsvImport {
      *  hostile file without ever touching a real one. */
     const val MAX_ROWS = 50_000
 
-    /** The strap device id Lab Book rows live under (matches LabBookScreen). */
+    /** The strap device id Lab Book rows live under. */
     private const val LAB_STRAP_DEVICE_ID = "my-whoop"
 
     private const val SOURCE_LABEL = "Lab Book CSV"
@@ -411,9 +411,10 @@ object LabMarkerCsvImport {
     }
 
     /**
-     * The `custom_<slug>` key for an unrecognised marker name. MUST stay byte-identical
-     * to the manual editor's MarkerUnits.slug (ui/MarkerEditorScreen.kt) so a CSV custom
-     * marker folds onto a hand-added one. Returns "" for a name with no usable characters.
+     * The `custom_<slug>` key for an unrecognised marker name. MUST stay byte-identical to the slug the
+     * Swift lab-marker editor produces — the manual marker-editor UI was removed from the Android app in
+     * the Lab Book UI cleanup, but the on-disk `custom_<slug>` keys and that Swift parity contract are
+     * unchanged, so a CSV custom marker still folds onto an existing one. "" for a name with no usable chars.
      */
     internal fun customKey(name: String): String {
         val lowered = name.trim().lowercase()
