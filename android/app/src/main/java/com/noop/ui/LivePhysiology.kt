@@ -23,11 +23,11 @@ import kotlin.math.sqrt
 import com.noop.ble.LiveState
 
 /**
- * Live/Health fold (stages 3-4): the standalone Live screen was folded into the Health screen and its
- * top-level nav entry removed. What remains here are the live-physiology composables Health now reuses
- * ([PhysiologyStack] + its R-R thread/RMSSD helpers, and [MaxHrZoneCard]) — exposed `internal` so
- * HealthScreen can compose them — plus the pure [relativeAgo] helper still used by DevicesScreen,
- * UpdatesInboxScreen and RelativeAgoTest. The file is intentionally kept (not deleted) for those callers.
+ * Live-HR physiology composables folded into the Health screen by the Live/Health merge (stages 3-4):
+ * [MaxHrZoneCard] and [PhysiologyStack] (with its R-R liquid thread, rolling RMSSD and R-R / Event proof
+ * tiles). Exposed `internal` so HealthScreen composes them directly beneath the merged heart-rate hero.
+ * Split out of the old LiveScreen.kt when the standalone Live screen was removed (the unrelated
+ * `relativeAgo` helper moved to RelativeAgo.kt).
  */
 
 /**
@@ -201,19 +201,4 @@ private fun rollingRMSSD(rrRecent: List<Int>): Double? {
     val diffs = values.zipWithNext { a, b -> (b - a).toDouble() }
     val meanSquare = diffs.sumOf { it * it } / diffs.size
     return sqrt(meanSquare)
-}
-
-/**
- * Coarse relative-time label for the "History synced N ago" sync-status line. Pure + unit-tested
- * (RelativeAgoTest); [nowSec] is injectable for determinism. Buckets to just-now / min / h / d. (PR #85)
- * Shared by DevicesScreen and UpdatesInboxScreen — this is why the file is kept after the Live/Health fold.
- */
-internal fun relativeAgo(epochSec: Long, nowSec: Long = System.currentTimeMillis() / 1000L): String {
-    val d = (nowSec - epochSec).coerceAtLeast(0)
-    return when {
-        d < 60L -> "just now"
-        d < 3600L -> "${d / 60L} min ago"
-        d < 86_400L -> "${d / 3600L} h ago"
-        else -> "${d / 86_400L} d ago"
-    }
 }
