@@ -209,17 +209,13 @@ fun LiveScreen(viewModel: AppViewModel, onManageDevices: () -> Unit = {}) {
         topBackground = if (showDayCycleBackground) { { LiquidScreenSky() } } else null,
     ) {
 
-        // Active band row (MW-6) — names the band the console is reading, with a "Manage devices"
-        // affordance that opens the Devices screen. Additive; the connect/disconnect controls below are
-        // untouched. Mirrors the iOS Live screen's active-band header + Manage-devices link.
+        // Connection status — deliberately just connected/disconnected, nothing more (the active-band row
+        // and the verbose connection-mode header were dropped in the Live/Health merge cleanup).
         item {
-        ActiveBandRow(name = activeDeviceName ?: "WHOOP", onManageDevices = onManageDevices)
-        }
-
-        // Console header — the pill + a connection-mode badge (+ a live SYNCING badge during a history
-        // offload), with battery / worn / last-sync stats. Mirrors the macOS consoleHeader.
-        item {
-        ConsoleHeader(live = live, activeConnection = activeConnection)
+        StatePill(
+            if (live.connected) "Connected" else "Disconnected",
+            tone = if (live.connected) StrandTone.Positive else StrandTone.Critical,
+        )
         }
 
         // Primary Connect affordance, surfaced ABOVE the fold whenever there's no link — the real
@@ -471,128 +467,9 @@ fun LiveScreen(viewModel: AppViewModel, onManageDevices: () -> Unit = {}) {
         }
         }
 
-        // Strap picker — choose the model before scanning so we look for exactly one device family.
-        // Shown whenever we're not actively streaming, so a user with both a WHOOP 4 and a 5/MG can
-        // switch between them (it used to hide once `bonded`, which stuck after the first pairing).
-        if (!(live.connected && live.bonded)) {
-            // Two siblings (picker Row + optional 5/MG guidance) that the eager column spaced by 20dp —
-            // an inner `Column(spacedBy(20.dp))` reproduces that gap inside the single lazy item.
-            item {
-            Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(20.dp)) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(Metrics.gap),
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Text("Strap", style = NoopType.footnote, color = Palette.textSecondary)
-                SegmentedPillControl(
-                    items = WhoopModel.entries.toList(),
-                    selection = selectedModel,
-                    label = { it.displayName },
-                    onSelect = { viewModel.setSelectedModel(it) },
-                )
-            }
-            // Proactive 5/MG guidance (#130): the strap bonds to one host at a time, so a scan finds
-            // nothing while it's still paired in the official WHOOP app. Shown the moment 5/MG is picked.
-            if (selectedModel == WhoopModel.WHOOP5_MG) {
-                Text(
-                    "WHOOP 5.0/MG pairs with one app at a time. If a scan finds nothing, unpair it in " +
-                        "the official WHOOP app and fully close that app, then Connect again.",
-                    style = NoopType.footnote,
-                    color = Palette.textSecondary,
-                    modifier = Modifier.fillMaxWidth().padding(top = 6.dp),
-                )
-            }
-            }
-            }
-        }
-
-        // Controls.
-        item {
-        Row(horizontalArrangement = Arrangement.spacedBy(Metrics.gap), modifier = Modifier.fillMaxWidth()) {
-            // Compact, single-line labels: with three weight(1f) buttons in a row, the default
-            // body style + icon could wrap "Re-scan"/"Searching…" to two lines on narrow phones,
-            // making one button taller than the others. captionNumber + maxLines=1 keeps the row
-            // even. Connect disables while a scan is in flight so it can't be re-tapped mid-search.
-            Button(
-                onClick = { requestConnect() },
-                modifier = Modifier.weight(1f),
-                enabled = !live.scanning,
-                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 8.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Palette.accent,
-                    contentColor = Palette.surfaceBase,
-                ),
-            ) {
-                Icon(
-                    Icons.Filled.Bluetooth,
-                    contentDescription = null,
-                    modifier = Modifier
-                        .size(18.dp)
-                        .padding(end = 4.dp),
-                )
-                Text(
-                    when {
-                        live.scanning -> "Searching…"
-                        live.connected -> "Re-scan"
-                        else -> "Connect"
-                    },
-                    style = NoopType.captionNumber,
-                    maxLines = 1,
-                    softWrap = false,
-                    overflow = TextOverflow.Clip,
-                )
-            }
-
-            OutlinedButton(
-                // #921: the confirmed one-shot sequence (pattern + RUN_ALARM where the family gate
-                // allows it, acked). A bare pattern write here matched the iOS silent no-buzz path.
-                onClick = { viewModel.buzzStrapOnce() },
-                modifier = Modifier.weight(1f),
-                enabled = live.bonded,
-                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 8.dp),
-                colors = ButtonDefaults.outlinedButtonColors(contentColor = Palette.accent),
-            ) {
-                Icon(
-                    Icons.Filled.GraphicEq,
-                    contentDescription = null,
-                    modifier = Modifier
-                        .size(18.dp)
-                        .padding(end = 4.dp),
-                )
-                Text(
-                    "Buzz",
-                    style = NoopType.captionNumber,
-                    maxLines = 1,
-                    softWrap = false,
-                    overflow = TextOverflow.Clip,
-                )
-            }
-
-            OutlinedButton(
-                onClick = { viewModel.disconnect() },
-                modifier = Modifier.weight(1f),
-                enabled = live.connected,
-                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 8.dp),
-                colors = ButtonDefaults.outlinedButtonColors(contentColor = Palette.statusCritical),
-            ) {
-                Icon(
-                    Icons.Filled.Close,
-                    contentDescription = null,
-                    modifier = Modifier
-                        .size(18.dp)
-                        .padding(end = 4.dp),
-                )
-                Text(
-                    "End",
-                    style = NoopType.captionNumber,
-                    maxLines = 1,
-                    softWrap = false,
-                    overflow = TextOverflow.Clip,
-                )
-            }
-        }
-        }
+        // Strap picker + the Connect/Buzz/End test controls were removed in the Live/Health merge cleanup:
+        // the family is auto-detected, and connect/disconnect live in the Devices menu. The offline
+        // Connect callout above still covers connecting when there's no link.
 
         // Manual "Sync now" — kick a historical offload on demand instead of waiting for the 15-min
         // periodic timer (#93). Only meaningful once bonded (the offload needs the command channel), and
