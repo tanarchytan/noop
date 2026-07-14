@@ -20,7 +20,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.CompareArrows
 import androidx.compose.material.icons.filled.ChevronRight
-import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Sync
 import android.widget.Toast
@@ -104,7 +103,6 @@ import kotlinx.coroutines.delay
 fun HealthScreen(
     vm: AppViewModel,
     onVitalClick: (String) -> Unit = {},
-    onOpenLabBook: () -> Unit = {},
     onOpenFusedRecord: () -> Unit = {},
 ) {
     val context = LocalContext.current
@@ -199,7 +197,6 @@ fun HealthScreen(
             item { Spacer(Modifier.height(Metrics.selectorTopUp)) }
             item {
                 RecordsAndSourcesSection(
-                    onOpenLabBook = onOpenLabBook,
                     onOpenFusedRecord = onOpenFusedRecord,
                 )
             }
@@ -219,18 +216,10 @@ fun HealthScreen(
 
 @Composable
 private fun RecordsAndSourcesSection(
-    onOpenLabBook: () -> Unit,
     onOpenFusedRecord: () -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(Metrics.gap)) {
         SectionHeader("Records & sources", overline = "On this phone")
-        RecordRow(
-            icon = Icons.AutoMirrored.Filled.MenuBook,
-            tint = Palette.metricCyan,
-            title = "Lab Book",
-            subtitle = "Your bloods, BP and body numbers. Kept private here.",
-            onClick = onOpenLabBook,
-        )
         RecordRow(
             icon = Icons.AutoMirrored.Filled.CompareArrows,
             tint = Palette.accent,
@@ -973,42 +962,6 @@ private fun ReadinessRow(item: FitnessReadinessItem) {
 }
 
 private fun yearWord(years: Int): String = if (kotlin.math.abs(years) == 1) "year" else "years"
-
-@Composable
-fun VitalSignsScreen(vm: AppViewModel, onVitalClick: (String) -> Unit = {}) {
-    val days by vm.recentDays.collectAsStateWithLifecycle()
-    var selectedDayOffset by remember { mutableIntStateOf(0) }
-    val selectedDay = remember(selectedDayOffset) { LocalDate.now().minusDays(selectedDayOffset.toLong()) }
-    val selectedDayKey = remember(selectedDay) { selectedDay.toString() }
-    val selectedMetric = remember(days, selectedDayKey) { days.lastOrNull { it.day == selectedDayKey } }
-    val tempUnit = UnitPrefs.temperature(LocalContext.current)
-    val vitals = remember(selectedMetric, days, tempUnit) {
-        selectedMetric?.let { vitalsFor(it, days, tempUnit) }.orEmpty()
-    }
-
-    ScreenScaffold(
-        title = "Vital Signs",
-        subtitle = "Historical vitals from your cached daily metrics.",
-    ) {
-        RecentDaySelectorBar(selectedOffset = selectedDayOffset, onSelect = { selectedDayOffset = it })
-        if (selectedMetric == null || vitals.all { it.value == null }) {
-            DataPendingNote(
-                title = missingVitalsTitle(selectedDayOffset),
-                body = "Try Yesterday or 2 days ago from the bar above if the strap or import did not produce a daily vitals snapshot yet.",
-            )
-        } else {
-            VitalsSection(
-                title = "Vital Signs",
-                overline = selectedDayLabel(selectedDayOffset),
-                trailing = "as of ${selectedMetric.day}",
-                vitals = vitals,
-                onVitalClick = onVitalClick,
-                footer = false,
-                captionMode = VitalCaptionMode.RANGE,
-            )
-        }
-    }
-}
 
 // MARK: - Derived live HR
 //
@@ -2168,11 +2121,6 @@ private fun VitalReadingsTable(rows: List<VitalReadingRow>) {
     }
 }
 
-@Composable
-private fun RecentDaySelectorBar(selectedOffset: Int, onSelect: (Int) -> Unit) {
-    ThreeDaySelectorBar(selectedOffset = selectedOffset, onSelect = onSelect)
-}
-
 private fun latestVitals(days: List<DailyMetric>, tempUnit: TemperatureUnit): List<Vital> {
     val emptyByKey = vitalsFor(null, days, tempUnit).associateBy { it.key }
     return listOf(
@@ -2197,18 +2145,6 @@ private fun latestVital(
         ?.let { latestRow -> vitalsFor(latestRow, days, tempUnit).firstOrNull { it.key == key } }
         ?.copy(asOfLabel = asOfLabel(row.day))
         ?: emptyByKey.getValue(key)
-}
-
-private fun selectedDayLabel(offset: Int): String = when (offset) {
-    0 -> "Today"
-    1 -> "Yesterday"
-    else -> "2 days ago"
-}
-
-private fun missingVitalsTitle(offset: Int): String = when (offset) {
-    0 -> "We didn't get today's data"
-    1 -> "We didn't get yesterday's data"
-    else -> "We didn't get data from 2 days ago"
 }
 
 private fun asOfLabel(day: String?): String? {

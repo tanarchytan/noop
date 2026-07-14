@@ -145,9 +145,7 @@ private enum class Destination(
     // Group: Health
     Health("health", R.string.nav_health, Icons.Filled.MonitorHeart),
     Hydration("hydration", R.string.nav_hydration, Icons.Filled.WaterDrop),
-    VitalSigns("vital_signs", R.string.nav_vital_signs, Icons.Filled.HealthAndSafety),
     VitalSignsDetail("vital_detail/{key}", R.string.nav_vital_signs, Icons.Filled.HealthAndSafety),
-    LabBook("lab_book", R.string.nav_lab_book, Icons.Filled.HealthAndSafety),
     Rhythm("rhythm", R.string.nav_rhythm, Icons.Filled.MonitorHeart),
     AppleHealth("apple_health", R.string.nav_apple_health, Icons.Filled.HealthAndSafety),
 
@@ -203,12 +201,12 @@ private val drawerGroups: List<DrawerGroup> = listOf(
         Destination.Insights, Destination.Explore, Destination.Compare,
     ), defaultExpanded = true),
     DrawerGroup("Body", R.string.more_group_body, listOf(
-        Destination.Live, Destination.Workouts, Destination.Health, Destination.VitalSigns,
-        Destination.LabBook, Destination.Stress, Destination.Breathe, Destination.Intervals,
+        Destination.Live, Destination.Workouts, Destination.Health,
+        Destination.Stress, Destination.Breathe, Destination.Intervals,
         Destination.Rhythm,
     ), defaultExpanded = true),
     DrawerGroup("Data", R.string.more_group_data, listOf(
-        Destination.FusedRecord, Destination.AppleHealth, Destination.DataSources,
+        Destination.FusedRecord, Destination.DataSources,
         Destination.BackupSync, Destination.Devices,
     ), defaultExpanded = false),
     DrawerGroup("App", R.string.more_group_app, listOf(
@@ -384,17 +382,10 @@ fun AppRoot(viewModel: AppViewModel = viewModel()) {
                     HealthScreen(
                         vm = viewModel,
                         onVitalClick = { nav.navigate("vital_detail/$it") },
-                        onOpenLabBook = { nav.navigateTopLevel(Destination.LabBook.route) },
                         onOpenFusedRecord = { nav.navigateTopLevel(Destination.FusedRecord.route) },
                     )
                 }
                 composable(Destination.Hydration.route) { HydrationScreen(viewModel) }
-                composable(Destination.VitalSigns.route) {
-                    VitalSignsScreen(
-                        vm = viewModel,
-                        onVitalClick = { nav.navigate("vital_detail/$it") },
-                    )
-                }
                 composable(Destination.VitalSignsDetail.route) { backStackEntry ->
                     VitalDetailScreen(
                         vm = viewModel,
@@ -403,7 +394,6 @@ fun AppRoot(viewModel: AppViewModel = viewModel()) {
                 }
                 // --- v5 pillar screens (Wave 3 wiring) ---
                 composable(Destination.InsightsHub.route) { InsightsHubScreen(viewModel) }
-                composable(Destination.LabBook.route) { LabBookScreen(viewModel) }
                 composable(Destination.Rhythm.route) {
                     // EXPERIMENTAL: self-gates on its own consent clickwrap (default OFF). The night
                     // summary + per-window Poincaré results land with the rhythm capture pipeline; until
@@ -418,7 +408,12 @@ fun AppRoot(viewModel: AppViewModel = viewModel()) {
                         onUseFileImport = { nav.navigateTopLevel(Destination.DataSources.route) },
                     )
                 }
-                composable(Destination.DataSources.route) { DataSourcesScreen(viewModel) }
+                composable(Destination.DataSources.route) {
+                    DataSourcesScreen(
+                        viewModel,
+                        onOpenAppleHealth = { nav.navigate(Destination.AppleHealth.route) },
+                    )
+                }
                 composable(Destination.BackupSync.route) { BackupSyncScreen(viewModel.repo) }
                 composable(Destination.Notifications.route) { NotificationsSettingsScreen(viewModel) }
                 composable(Destination.Settings.route) {

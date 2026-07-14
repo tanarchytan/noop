@@ -103,7 +103,7 @@ import kotlinx.coroutines.withContext
  *                     wired to ActivityResult document launchers.
  */
 @Composable
-fun DataSourcesScreen(vm: AppViewModel) {
+fun DataSourcesScreen(vm: AppViewModel, onOpenAppleHealth: () -> Unit = {}) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val live by vm.live.collectAsStateWithLifecycle()
@@ -399,6 +399,16 @@ fun DataSourcesScreen(vm: AppViewModel) {
                 tint = Palette.metricCyan,
                 modifier = Modifier.fillMaxWidth(),
             ) { appleImportLauncher.launch(arrayOf("*/*")) }
+            // Apple Health lost its top-level nav entry; its full view (charts + import detail) is reached
+            // HERE now — this button drills into AppleHealthScreen. Always shown so the view is openable
+            // even before the first import.
+            BackupButton(
+                label = "View Apple Health data",
+                icon = Icons.Filled.MonitorHeart,
+                enabled = true,
+                tint = Palette.metricCyan,
+                modifier = Modifier.fillMaxWidth(),
+            ) { onOpenAppleHealth() }
             // ah-delete (#616): a destructive "Remove imported data" action wired to
             // DeviceRegistry.deleteDeviceData("apple-health") (via vm.deletePairedDeviceData), mirroring
             // the Swift card. Shown only once there's something to remove; a confirm dialog gates it.
