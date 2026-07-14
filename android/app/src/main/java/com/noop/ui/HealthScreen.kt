@@ -8,6 +8,7 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -20,12 +21,15 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.CompareArrows
 import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.MonitorHeart
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Sync
 import android.widget.Toast
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -62,11 +66,14 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.repeatOnLifecycle
 import com.noop.analytics.Baselines
+import com.noop.analytics.HrZones
 import com.noop.analytics.IllnessSignalEngine
 import com.noop.analytics.V5HealthSignals
 import com.noop.analytics.FitnessAgeEngine
@@ -75,8 +82,10 @@ import com.noop.analytics.FitnessAgeReadiness
 import com.noop.analytics.FitnessReadinessItem
 import com.noop.analytics.FitnessReadinessRole
 import com.noop.analytics.FitnessReadinessStatus
+import com.noop.analytics.SpotHrvReading
 import com.noop.analytics.VitalBands
 import com.noop.ble.LiveState
+import com.noop.ble.WhoopModel
 import com.noop.data.DailyMetric
 import java.time.Instant
 import java.time.LocalDate
@@ -143,6 +152,18 @@ fun HealthScreen(
     // surface canvas instead.
     val showDayCycleBackground = remember { NoopPrefs.showDayCycleBackground(context) }
 
+    // --- Live/Health fold (stages 3-4): live physiology + HRV snapshot state moved from the removed Live
+    // screen. A bonded connection unlocks the R-R proof tiles, the HRV snapshot and the top-zone read.
+    // Derived so the ~1Hz live ticks don't recompose the whole screen — it only flips on connect/disconnect.
+    val activeConnection by remember { derivedStateOf { live.connected && live.bonded } }
+    // HR-zone model for the top-zone (Zone 5) threshold read-out; coaching state is shown read-only here.
+    val zoneSet = remember(profile.hrMax) { HrZones.zones(maxHR = profile.hrMax.toDouble()) }
+    val zone5Bpm = zoneSet.zones.firstOrNull { it.number == 5 }?.lower?.roundToInt() ?: 0
+    val zoneCoaching by vm.zoneCoaching.collectAsStateWithLifecycle()
+    // Picked strap model → the HRV snapshot's honesty caveat (optical PPG on 5/MG vs electrical R-R on 4).
+    val selectedModel by vm.selectedModel.collectAsStateWithLifecycle()
+    var showHrvSnapshot by remember { mutableStateOf(false) }
+
     LazyScreenScaffold(
         title = "Health Monitor",
         subtitle = "Live vitals, streamed from the strap.",
@@ -153,6 +174,15 @@ fun HealthScreen(
         } else {
             // "Sync now" moved to the Devices menu (it belongs with the strap). The live HR hero leads here.
             item { HeartRateSection(vm = vm, hrMax = hrMax) }
+            item { Spacer(Modifier.height(Metrics.selectorTopUp)) }
+            // --- Live physiology, folded in from the removed Live screen (Live/Health fold) ---
+            // The beat-by-beat R-R liquid thread + rolling RMSSD + R-R/Event proof tiles (PhysiologyStack),
+            // the read-only Max HR + top-zone card, and the seated HRV-snapshot affordance.
+            item { PhysiologyStack(live = live, activeConnection = activeConnection) }
+            item { Spacer(Modifier.height(Metrics.selectorTopUp)) }
+            item { MaxHrZoneCard(hrMax = hrMax, zone5Bpm = zone5Bpm, coachingOn = zoneCoaching) }
+            item { Spacer(Modifier.height(Metrics.selectorTopUp)) }
+            item { HrvSnapshotButton(enabled = activeConnection, onClick = { showHrvSnapshot = true }) }
             item { Spacer(Modifier.height(Metrics.selectorTopUp)) }
             item {
                 VitalsSection(
@@ -201,6 +231,53 @@ fun HealthScreen(
                 )
             }
         }
+    }
+
+    // Manual HRV snapshot (#127) — folded in from Live: a still, seated 60s R-R reading in a full-screen
+    // Dialog so it floats over Health. Gated on a bonded connection (the reading needs the live R-R stream);
+    // the honesty caveat is driven off the picked strap model (optical PPG on 5/MG vs electrical R-R on 4).
+    if (showHrvSnapshot) {
+        Dialog(
+            onDismissRequest = { showHrvSnapshot = false },
+            properties = DialogProperties(usePlatformDefaultWidth = false),
+        ) {
+            val hrvSource = when (selectedModel) {
+                WhoopModel.WHOOP5_MG -> SpotHrvReading.Source.OPTICAL_PPG
+                WhoopModel.WHOOP4 -> SpotHrvReading.Source.CHEST_STRAP
+            }
+            HrvSnapshotScreen(
+                viewModel = vm,
+                source = hrvSource,
+                onClose = { showHrvSnapshot = false },
+            )
+        }
+    }
+}
+
+/** The "Take an HRV reading" affordance folded in from Live (#127): opens the seated 60s R-R snapshot
+ *  dialog. Gated on a bonded connection (the reading needs the live R-R stream), matching the old Live
+ *  screen. Full-width outlined button in the rest-world accent, mirroring the original control. */
+@Composable
+private fun HrvSnapshotButton(enabled: Boolean, onClick: () -> Unit) {
+    OutlinedButton(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth(),
+        enabled = enabled,
+        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 8.dp),
+        colors = ButtonDefaults.outlinedButtonColors(contentColor = Palette.restBright),
+    ) {
+        Icon(
+            Icons.Filled.MonitorHeart,
+            contentDescription = null,
+            modifier = Modifier.size(18.dp).padding(end = 4.dp),
+        )
+        Text(
+            "Take an HRV reading",
+            style = NoopType.captionNumber,
+            maxLines = 1,
+            softWrap = false,
+            overflow = TextOverflow.Clip,
+        )
     }
 }
 
@@ -1099,16 +1176,11 @@ private fun HeartRateSection(vm: AppViewModel, hrMax: Int) {
             trailing = if (derived) "from R-R" else null,
         )
 
-        // The live HR hero is Apple-flat — a plain card tinted rose (heart-rate's metric accent) over a
-        // SUBTLE time-of-day backdrop, NOT a scenic starfield/bloom. Mirrors HealthView.swift's reset:
-        // "No scenic starfield / bloom: fill contrast carries the edge (Apple-flat)."
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(Metrics.cardRadius))
-                .timeOfDayBackground(),
-        ) {
-            NoopCard(padding = Metrics.space18, tint = Palette.metricRose) {
+        // The merged live-HR hero (Live/Health fold, OPTION 2 = wrapper-only): the SAME trend chart + footer
+        // as before, now wrapped in Health's liquid frosted hero card so it floats over the day-of-sky like
+        // the Fitness Age / Vitality heroes. No circular bpm vessel gauge is added — trend + data unchanged;
+        // LiquidHeroCard supplies the translucent near-black fill, radius, hairline and card padding.
+        LiquidHeroCard {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 // Card header: title + subtitle on the left, live bpm read-out right.
                 Row(
@@ -1196,7 +1268,6 @@ private fun HeartRateSection(vm: AppViewModel, hrMax: Int) {
                     maxHr = "$hrMax",
                     state = if (hasLiveHr) "STREAMING" else "IDLE",
                 )
-            }
             }
         }
     }

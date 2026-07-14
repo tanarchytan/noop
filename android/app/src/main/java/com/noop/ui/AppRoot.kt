@@ -122,8 +122,8 @@ private enum class Destination(
     // Today dashboard "Coupled view" card tap-through, so it is deliberately NOT in any [DrawerGroup].
     CoupledView("coupled_view", R.string.nav_coupled_view, Icons.Filled.Hexagon),
 
-    // Group: Live
-    Live("live", R.string.nav_live, Icons.Filled.FavoriteBorder),
+    // Group: Intervals (the standalone Live entry was removed in the Live/Health fold — its live HR /
+    // physiology folded into Health, its workout controls into Workouts).
     Intervals("intervals", R.string.nav_intervals, Icons.Filled.Timeline),
 
     // Group: Recovery
@@ -200,7 +200,7 @@ private val drawerGroups: List<DrawerGroup> = listOf(
         Destination.Insights, Destination.Explore, Destination.Compare,
     ), defaultExpanded = true),
     DrawerGroup("Body", R.string.more_group_body, listOf(
-        Destination.Live, Destination.Workouts, Destination.Health,
+        Destination.Workouts, Destination.Health,
         Destination.Stress, Destination.Breathe, Destination.Intervals,
     ), defaultExpanded = true),
     DrawerGroup("Data", R.string.more_group_data, listOf(
@@ -327,21 +327,16 @@ fun AppRoot(viewModel: AppViewModel = viewModel()) {
                         onOpenSleep = { nav.navigateTopLevel(Destination.Sleep.route) },
                         // Optional Coupled view card (task #43): a normal push so back returns to Today.
                         onOpenCoupled = { nav.navigate(Destination.CoupledView.route) },
-                        // The "workout in progress" indicator: raise the one-shot the Live screen consumes to
-                        // re-open the in-exercise overlay, then route to Live. One tap from Today (iOS parity).
+                        // The "workout in progress" indicator: raise the one-shot that WorkoutStartSection
+                        // consumes to re-open the in-exercise overlay, then route to Workouts (the Live/Health
+                        // fold moved the workout controls there). One tap from Today (iOS parity).
                         onOpenActiveWorkout = {
                             viewModel.openActiveWorkout()
-                            nav.navigate(Destination.Live.route)
+                            nav.navigateTopLevel(Destination.Workouts.route)
                         },
                         // The liquid header's strap battery ring taps through to Devices (iOS parity: the
                         // battery ring → router.openDevices()).
                         onOpenDevices = { nav.navigateTopLevel(Destination.Devices.route) },
-                    )
-                }
-                composable(Destination.Live.route) {
-                    LiveScreen(
-                        viewModel = viewModel,
-                        onManageDevices = { nav.navigateTopLevel(Destination.Devices.route) },
                     )
                 }
                 composable(Destination.Sleep.route) {
@@ -788,10 +783,10 @@ private fun BarSlot(
 /** A centre-FAB quick action: a display title, an icon and the destination route it opens. */
 private data class QuickAction(@StringRes val titleRes: Int, val icon: ImageVector, val route: String)
 
-/** The quick actions on the gold centre FAB, each routing to an existing destination. Live HR leads
- *  — it moved off the bottom bar (so the FAB no longer overlaps a tab) but stays one tap away here. */
+/** The quick actions on the gold centre FAB, each routing to an existing destination. Live HR leads —
+ *  after the Live/Health fold it opens Health (which now hosts the live HR hero + physiology). */
 private val quickActions: List<QuickAction> = listOf(
-    QuickAction(R.string.action_live_hr, Destination.Live.icon, Destination.Live.route),
+    QuickAction(R.string.action_live_hr, Icons.Filled.FavoriteBorder, Destination.Health.route),
     QuickAction(R.string.action_start_workout, Icons.Filled.FitnessCenter, Destination.Workouts.route),
     QuickAction(R.string.action_log_journal, Icons.Filled.Edit, Destination.Insights.route),
     QuickAction(R.string.action_breathe, Icons.Filled.Air, Destination.Breathe.route),

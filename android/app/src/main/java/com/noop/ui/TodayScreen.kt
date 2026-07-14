@@ -251,8 +251,9 @@ fun TodayScreen(
     // Optional Coupled view card (task #43): a tap-through to the WHOOP-style day screen. Defaulted to a
     // no-op so the call site stays compiling; AppRoot binds it to nav.navigate(CoupledView).
     onOpenCoupled: () -> Unit = {},
-    // The "workout in progress" indicator card routes to Live and re-opens the in-exercise overlay. Defaulted
-    // to a no-op so the call site stays compiling; AppRoot binds it to openActiveWorkout() + nav.navigate(Live).
+    // The "workout in progress" indicator card routes to Workouts and re-opens the in-exercise overlay
+    // (Live/Health fold). Defaulted to a no-op so the call site stays compiling; AppRoot binds it to
+    // openActiveWorkout() + nav.navigateTopLevel(Workouts).
     onOpenActiveWorkout: () -> Unit = {},
     // The liquid header battery ring taps through to Devices (iOS parity: the battery ring → router.openDevices()).
     // Defaulted to fall back to Settings so the call site stays compiling; AppRoot binds it to the Devices route.
