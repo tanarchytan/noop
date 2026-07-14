@@ -11,7 +11,11 @@
 #
 # Contrast with fork-testing-build.yml: THAT publishes the rolling `testing-latest` PRERELEASE (a
 # snapshot), which releases/latest deliberately ignores. THIS never touches testing-latest.
-name: Release build (fork)
+#
+# noop-tan is ANDROID-ONLY: this workflow builds and publishes the Android APK only. The macOS/iOS
+# and AltStore jobs were removed with the platform split. The version bump still touches project.yml
+# so the tree stays parity-clean for cherry-picks to/from upstream ryanbr/noop.
+name: Release build (fork, Android)
 
 on:
   workflow_dispatch:
@@ -40,7 +44,6 @@ jobs:
       ver: ${{ steps.b.outputs.ver }}
       tag: ${{ steps.b.outputs.tag }}
       sha: ${{ steps.b.outputs.sha }}
-      buildVersion: ${{ steps.b.outputs.buildVersion }}
     steps:
       - uses: actions/checkout@v4
       - id: b
@@ -93,9 +96,6 @@ jobs:
             git push origin "HEAD:${GITHUB_REF_NAME}"
           fi
           echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
-          # The iOS build number (CURRENT_PROJECT_VERSION as it now stands in project.yml, bumped or not),
-          # for the AltStore manifest's buildVersion.
-          echo "buildVersion=$(grep -m1 'CURRENT_PROJECT_VERSION:' project.yml | sed -E 's/.*\"([0-9]+)\".*/\1/')" >> "$GITHUB_OUTPUT"
 
           # Immutable, NON-prerelease release at the (possibly bumped) commit so releases/latest returns it.
           # Create only if missing (a re-run refreshes assets rather than clobbering the release/notes).
@@ -138,8 +138,6 @@ jobs:
             {
               printf '\n---\n\n**Downloads** — NOOP Staging identity, installs **beside** the official app (separate data):\n'
               printf -- '- **Android** — `NOOP-android-v%s.apk` (`com.noop.whoop.staging`)\n' "$NEW"
-              printf -- '- **macOS** — `NOOP-macos-v%s.zip` (unzip, then right-click → Open)\n' "$NEW"
-              printf -- '- **iOS** — `NOOP-ios-unsigned-v%s.ipa` (AltStore / Sideloadly)\n' "$NEW"
             } >> "$BODY"
             gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --target "$(git rev-parse HEAD)" \
               --title "NOOP ${NEW}" --notes-file "$BODY"
@@ -174,149 +172,3 @@ jobs:
           cp app/build/outputs/apk/full/release/*.apk "NOOP-android-v${VER}.apk"
           gh release upload "${{ needs.bump.outputs.tag }}" "NOOP-android-v${VER}.apk" \
             --repo "$GITHUB_REPOSITORY" --clobber
-
-  macos:
-    needs: bump
-    runs-on: macos-15
-    timeout-minutes: 40
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ needs.bump.outputs.sha }}
-      - name: Install XcodeGen
-        run: brew install xcodegen
-      - name: Generate Xcode project
-        run: xcodegen generate
-      - name: Build NOOP.app (macOS, unsigned, universal)
-        # #51: 'platform=macOS' on an Apple-Silicon runner resolves to the host arch and thins the binary to
-        # arm64-only (project.yml's ONLY_ACTIVE_ARCH: NO is set only under configs.Release, so the Debug build
-        # inherits the default YES). That shipped an arm64-only app that won't launch on Intel Macs. Force a
-        # true universal build with the generic destination + explicit ARCHS/ONLY_ACTIVE_ARCH; these
-        # command-line settings override the config, so it stays Debug (unchanged shipping behaviour).
-        run: >-
-          xcodebuild -scheme Strand -configuration Debug
-          -destination 'generic/platform=macOS' ARCHS="x86_64 arm64" ONLY_ACTIVE_ARCH=NO
-          -derivedDataPath build/dd
-          CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY=""
-          build
-      - name: Verify universal binary
-        run: |
-          APP=$(find build/dd/Build/Products -maxdepth 3 -name '*.app' -type d | head -1)
-          EXE=$(find "$APP/Contents/MacOS" -maxdepth 1 -type f ! -name '*.dylib' | head -1)
-          echo "archs: $(lipo -archs "$EXE")"
-          { lipo -archs "$EXE" | grep -qw x86_64 && lipo -archs "$EXE" | grep -qw arm64; } \
-            || { echo "::error::macOS binary is not universal (expected x86_64 + arm64)"; exit 1; }
-      - name: Package + attach
-        env:
-          GH_TOKEN: ${{ github.token }}
-          VER: ${{ needs.bump.outputs.ver }}
-        run: |
-          APP=$(find build/dd/Build/Products -maxdepth 3 -name '*.app' -type d | head -1)
-          test -n "$APP" || { echo ".app not found"; exit 1; }
-          ditto -c -k --keepParent "$APP" "NOOP-macos-v${VER}.zip"
-          gh release upload "${{ needs.bump.outputs.tag }}" "NOOP-macos-v${VER}.zip" --repo "$GITHUB_REPOSITORY" --clobber
-
-  ios:
-    needs: bump
-    # iOS 26 Liquid Glass (glassEffect) needs the iOS 26 SDK → Xcode 26 → macos-26.
-    runs-on: macos-26
-    timeout-minutes: 40
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ needs.bump.outputs.sha }}
-      - name: Install XcodeGen
-        run: brew install xcodegen
-      - name: Generate Xcode project
-        run: xcodegen generate
-      - name: Build NOOPiOS for device (unsigned, Release)
-        # #53: build RELEASE, not Debug. A Debug build carries get-task-allow + debug artifacts that make a
-        # re-signed sideload fail "integrity could not be verified" on modern iOS; Release (the correct config
-        # for a distributed app) installs clean — confirmed by the reporter's own Release build.
-        run: >-
-          xcodebuild -scheme NOOPiOS -configuration Release -destination 'generic/platform=iOS'
-          -derivedDataPath build/dd
-          CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY=""
-          build
-      - name: Package unsigned .ipa (strip the embedded watch app + widget extension) + attach
-        env:
-          GH_TOKEN: ${{ github.token }}
-          VER: ${{ needs.bump.outputs.ver }}
-        run: |
-          APP=$(find build/dd/Build/Products/Release-iphoneos -maxdepth 1 -name '*.app' -type d | head -1)
-          test -n "$APP" || { echo ".app (iphoneos) not found"; exit 1; }
-          rm -rf "$APP/Watch"
-          # Also drop the widget extension (NOOPWidgets.appex). On a re-signed sideload it forces a free
-          # Apple ID to register a SECOND app id (com.noopapp.noop.widgets) plus the app group, and free
-          # accounts get only 10 app ids / 7 days — so repeated AltStore attempts exhaust the quota and
-          # return a generic "failed". The main app installs + runs fine without it (the home-screen widget
-          # is the only thing lost), same rationale as the watch-app strip above.
-          rm -rf "$APP/PlugIns"
-          rm -rf Payload && mkdir Payload && cp -R "$APP" Payload/
-          zip -qr "NOOP-ios-unsigned-v${VER}.ipa" Payload
-          gh release upload "${{ needs.bump.outputs.tag }}" "NOOP-ios-unsigned-v${VER}.ipa" --repo "$GITHUB_REPOSITORY" --clobber
-
-  # Prepend this release to the AltStore / SideStore source manifest — the one AltStore reads from
-  # raw.githubusercontent.com/<repo>/main/altstore-source.json (docs/IOS.md) — so a sideload user is
-  # offered this version automatically. Replaces the manual per-release altstore-source.json PR (#19).
-  # Best-effort: a missing manifest / IPA asset / push conflict WARNS and skips, never failing the release.
-  altstore:
-    needs: [bump, ios]
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: main   # AltStore reads the manifest from main, so commit there regardless of the release branch.
-      - name: Add this release to the AltStore source
-        env:
-          GH_TOKEN: ${{ github.token }}
-          VER: ${{ needs.bump.outputs.ver }}
-          TAG: ${{ needs.bump.outputs.tag }}
-          BUILD: ${{ needs.bump.outputs.buildVersion }}
-        run: |
-          set -euo pipefail
-          if [ ! -f altstore-source.json ]; then
-            echo "::warning::no altstore-source.json on main — skipping AltStore update."; exit 0
-          fi
-          IPA="NOOP-ios-unsigned-v${VER}.ipa"
-          # The freshly-uploaded IPA's byte size, straight off the release asset (the `ios` job just pushed it).
-          SIZE=$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json assets \
-            --jq '.assets[] | select(.name=="'"$IPA"'") | .size' || true)
-          if [ -z "${SIZE:-}" ]; then
-            echo "::warning::IPA asset $IPA not found on release $TAG — skipping AltStore update."; exit 0
-          fi
-          [ -n "${BUILD:-}" ] || BUILD=$(grep -m1 'CURRENT_PROJECT_VERSION:' project.yml | sed -E 's/.*"([0-9]+)".*/\1/')
-          DATE=$(date -u +%Y-%m-%d)
-          URL="https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG}/${IPA}"
-          DESC="NOOP ${VER}. See the release notes for what changed."
-          MINOS=$(jq -r '.apps[0].minOSVersion // "17.0"' altstore-source.json)
-
-          # Prepend to versions[] (dedup this version so a re-run is idempotent) AND mirror into the
-          # app-level legacy fields older AltStore clients read, so both source shapes point at this release.
-          tmp=$(mktemp)
-          jq \
-            --arg v "$VER" --arg b "$BUILD" --arg d "$DATE" --arg desc "$DESC" \
-            --arg url "$URL" --argjson size "$SIZE" --arg min "$MINOS" \
-            '
-            .apps[0].versions |= ([{
-                version: $v, buildVersion: $b, date: $d,
-                localizedDescription: $desc, downloadURL: $url, size: $size, minOSVersion: $min
-              }] + (map(select(.version != $v))))
-            | .apps[0].version            = $v
-            | .apps[0].buildVersion       = $b
-            | .apps[0].versionDate        = $d
-            | .apps[0].versionDescription = $desc
-            | .apps[0].downloadURL        = $url
-            | .apps[0].size               = $size
-            ' altstore-source.json > "$tmp" && mv "$tmp" altstore-source.json
-
-          if git diff --quiet altstore-source.json; then
-            echo "altstore-source.json already current for ${VER}."; exit 0
-          fi
-          git config user.name 'ryanbr'
-          git config user.email 'mp3geek@gmail.com'
-          git add altstore-source.json
-          git commit -m "Release ${VER}: add to AltStore source"
-          git push origin HEAD:main || {
-            echo "::warning::couldn't push altstore-source.json (main moved?); add the ${VER} entry manually."; exit 0
-          }

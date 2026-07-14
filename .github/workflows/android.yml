@@ -8,12 +8,12 @@ name: Android CI
 
 on:
   pull_request:
-    branches: [main]
+    branches: [main, noop-tan]
     paths:
       - 'android/**'
       - '.github/workflows/android.yml'
   push:
-    branches: [main]
+    branches: [main, noop-tan]
     paths:
       - 'android/**'
       - '.github/workflows/android.yml'

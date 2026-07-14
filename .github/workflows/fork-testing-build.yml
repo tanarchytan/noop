@@ -1,11 +1,10 @@
-# Fork-only: ONE on-demand testing build that publishes ALL platforms into ONE release.
+# Fork-only (noop-tan, ANDROID-ONLY): ONE on-demand testing build that publishes the Android APKs.
 #
-# A `meta` job creates a single dated prerelease, then the android / macOS / iOS jobs each attach
-# their artifact to that SAME tag — so every release has NOOP-android + NOOP-android-debug (Android)
-# + NOOP-macos.zip + NOOP-ios-unsigned.ipa together, each stamped with the base app version.
-# Replaces the older split fork-testing-apk.yml + fork-testing-apple.yml.
+# A `meta` job creates a single dated prerelease, then the android job attaches its artifacts to that
+# SAME tag — so every release carries NOOP-android + NOOP-android-debug, each stamped with the base app
+# version. The macOS/iOS jobs were removed with the platform split.
 # Unsigned/debug-keyed, no secrets. Trigger from the Actions tab. (Built from noop-staging via --ref.)
-name: Testing build (fork)
+name: Testing build (fork, Android)
 
 on:
   workflow_dispatch:
@@ -44,8 +43,6 @@ jobs:
 
           - **Android (release)** — \`NOOP-android-v${VER}.apk\` — optimized, non-debuggable build; installs beside the official app. \`com.noop.whoop.staging\`.
           - **Android (debug)** — \`NOOP-android-debug-v${VER}.apk\` — debuggable build. \`com.noop.whoop.debug\`.
-          - **macOS** — \`NOOP-macos-v${VER}.zip\` — unzip, then **right-click → Open** (unsigned; Gatekeeper warns once).
-          - **iOS** — \`NOOP-ios-unsigned-v${VER}.ipa\` — sideload via **AltStore / Sideloadly** (re-signs on-device); embedded watch app + widget extension stripped for free-account install reliability.
 
           Base app version ${VER} · built ${DATE} · \`${SHA}\`."
 
@@ -81,77 +78,3 @@ jobs:
           gh release upload "${{ needs.meta.outputs.tag }}" \
             "NOOP-android-v${VER}.apk" "NOOP-android-debug-v${VER}.apk" \
             --repo "$GITHUB_REPOSITORY" --clobber
-
-  macos:
-    needs: meta
-    runs-on: macos-15
-    timeout-minutes: 40
-    steps:
-      - uses: actions/checkout@v4
-      - name: Install XcodeGen
-        run: brew install xcodegen
-      - name: Generate Xcode project
-        run: xcodegen generate
-      - name: Build NOOP.app (macOS, unsigned, universal)
-        # #51: force a true universal (x86_64 + arm64) build — 'platform=macOS' on an Apple-Silicon runner
-        # thins to arm64-only. Mirrors the release workflow so testing builds match what ships.
-        run: >-
-          xcodebuild -scheme Strand -configuration Debug
-          -destination 'generic/platform=macOS' ARCHS="x86_64 arm64" ONLY_ACTIVE_ARCH=NO
-          -derivedDataPath build/dd
-          CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY=""
-          build
-      - name: Verify universal binary
-        run: |
-          APP=$(find build/dd/Build/Products -maxdepth 3 -name '*.app' -type d | head -1)
-          EXE=$(find "$APP/Contents/MacOS" -maxdepth 1 -type f ! -name '*.dylib' | head -1)
-          echo "archs: $(lipo -archs "$EXE")"
-          { lipo -archs "$EXE" | grep -qw x86_64 && lipo -archs "$EXE" | grep -qw arm64; } \
-            || { echo "::error::macOS binary is not universal (expected x86_64 + arm64)"; exit 1; }
-      - name: Package + attach
-        env:
-          GH_TOKEN: ${{ github.token }}
-          VER: ${{ needs.meta.outputs.ver }}
-        run: |
-          APP=$(find build/dd/Build/Products -maxdepth 3 -name '*.app' -type d | head -1)
-          test -n "$APP" || { echo ".app not found"; exit 1; }
-          ditto -c -k --keepParent "$APP" "NOOP-macos-v${VER}.zip"
-          gh release upload "${{ needs.meta.outputs.tag }}" "NOOP-macos-v${VER}.zip" --repo "$GITHUB_REPOSITORY" --clobber
-
-  ios:
-    needs: meta
-    # iOS 26 Liquid Glass (glassEffect) needs the iOS 26 SDK → Xcode 26 → macos-26.
-    runs-on: macos-26
-    timeout-minutes: 40
-    steps:
-      - uses: actions/checkout@v4
-      - name: Install XcodeGen
-        run: brew install xcodegen
-      - name: Generate Xcode project
-        run: xcodegen generate
-      - name: Build NOOPiOS for device (unsigned, Release)
-        # #53: build RELEASE, not Debug. A Debug build carries get-task-allow + debug artifacts that make a
-        # re-signed sideload fail "integrity could not be verified" on modern iOS; Release (the correct config
-        # for a distributed app) installs clean — confirmed by the reporter's own Release build.
-        run: >-
-          xcodebuild -scheme NOOPiOS -configuration Release -destination 'generic/platform=iOS'
-          -derivedDataPath build/dd
-          CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY=""
-          build
-      - name: Package unsigned .ipa (strip the embedded watch app + widget extension) + attach
-        env:
-          GH_TOKEN: ${{ github.token }}
-          VER: ${{ needs.meta.outputs.ver }}
-        run: |
-          APP=$(find build/dd/Build/Products/Release-iphoneos -maxdepth 1 -name '*.app' -type d | head -1)
-          test -n "$APP" || { echo ".app (iphoneos) not found"; exit 1; }
-          rm -rf "$APP/Watch"
-          # Also drop the widget extension (NOOPWidgets.appex). On a re-signed sideload it forces a free
-          # Apple ID to register a SECOND app id (com.noopapp.noop.widgets) plus the app group, and free
-          # accounts get only 10 app ids / 7 days — so repeated AltStore attempts exhaust the quota and
-          # return a generic "failed". The main app installs + runs fine without it (the home-screen widget
-          # is the only thing lost), same rationale as the watch-app strip above.
-          rm -rf "$APP/PlugIns"
-          rm -rf Payload && mkdir Payload && cp -R "$APP" Payload/
-          zip -qr "NOOP-ios-unsigned-v${VER}.ipa" Payload
-          gh release upload "${{ needs.meta.outputs.tag }}" "NOOP-ios-unsigned-v${VER}.ipa" --repo "$GITHUB_REPOSITORY" --clobber

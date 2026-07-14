@@ -1,5 +1,29 @@
 # CLAUDE.md — working on NOOP
 
+> ## ⚠ Fork notice — `noop-tan` (Android-only)
+>
+> This branch is **`noop-tan`**, the Android-only line of **tanarchytan/noop**, split off from
+> **ryanbr/noop** (`main`). On this line:
+>
+> - **Android is the only shipped/built target.** iOS, macOS, and the watch app are **out of scope**
+>   here — no CI compiles them, no release publishes them.
+> - **The Swift `Packages/` + `Strand*/` tree stays in place, dormant.** It is deliberately *not*
+>   deleted so cherry-picks to/from `upstream/main` apply cleanly and the byte-identical parity
+>   contract below still governs any analytics/storage change you intend to PR back upstream.
+> - **CI on this branch = `android.yml` only** (`assembleFullDebug` + `testFullDebugUnitTest`); the
+>   `fork-*` release/testing workflows publish the **APK only**. `swift-packages.yml` and
+>   `app-build.yml` were removed with the split.
+> - **Upstream flow is CHERRY-PICK ONLY.** noop-tan is deliberately divergent. **Never** `git merge` or
+>   `git rebase upstream/main` into it, and **never** click GitHub's *"Sync fork"* on the noop-tan branch —
+>   both would bulk-drag ryanbr's tree back in. Take upstream changes one reviewed commit at a time:
+>   `git fetch upstream && git cherry-pick -x <sha>`. Helper: `whoop/tools/upstream-cherry.sh` lists what's
+>   in `upstream/main` but not yet in noop-tan (patch-id aware, so a picked commit drops off next run).
+>   (noop-tan tracks no remote, so a stray `git pull` on it is already a no-op.)
+> - **Send fixes back:** clean, independent fixes/features → `ryanbr/noop` PRs when they help everyone;
+>   keep those PR branches cross-platform-correct (do the Swift twin) so the maintainer can take them.
+>
+> Everything below is the upstream cross-platform guide, kept intact as reference for parity + PRs.
+
 Guidance for anyone (human or AI agent) submitting a pull request. This is the high-signal map;
 [`docs/CONTRIBUTING.md`](docs/CONTRIBUTING.md) is the full guide (BLE safety contract, design-system
 rules, add-a-metric/screen/command recipes), [`docs/BUILD.md`](docs/BUILD.md) covers signing/pairing,
@@ -84,19 +108,18 @@ xcodegen generate && xcodebuild -project Strand.xcodeproj -scheme Strand \
 ```
 
 ### What each CI job covers — and the gaps
+On `noop-tan`, Android is the only CI-covered target:
+
 | Workflow | Covers | Runner | Default state |
 |---|---|---|---|
-| `swift-packages.yml` | `swift test` for **`Packages/**` only** (WhoopProtocol, WhoopStore, StrandAnalytics, StrandImport, StrandDesign, NoopLocalAccess) | macos-15 | **active** |
-| `app-build.yml` | **Compile-only** of the **app targets** (`Strand` macOS + `NOOPiOS` iOS). iOS leg needs **macos-26** (iOS 26 SDK / `glassEffect`). | macos-15 / macos-26 | **disabled** (on-demand) |
-| `android.yml` | `assembleFullDebug` + `testFullDebugUnitTest` | ubuntu | **disabled** (compile Android locally) |
-| `fork-testing-build.yml` / `fork-release.yml` | Staging / release builds (apk + mac + ios) | — | on dispatch |
+| `android.yml` | `assembleFullDebug` + `testFullDebugUnitTest`, on push/PR to `main` + `noop-tan` | ubuntu | **active** |
+| `fork-testing-build.yml` / `fork-release.yml` | Staging / release **APK** builds (Android only) | ubuntu | on dispatch |
 
-**The trap:** `swift-packages` does **NOT** compile the app targets. So if you touch **app-target
-Swift** — anything under `Strand/`, `StrandiOS/`, `StrandiOSShared/`, `StrandiOSWidgets/` (Views,
-`AppModel`, `BLEManager`, `Repository`, `RootTabView`, widget publish, …) — **no default CI validates
-it**, because `app-build.yml` is disabled. A compile error there (e.g. `'self' used before all stored
-properties are initialized`) will pass every green check and still be broken. If you change app-target
-Swift, you MUST build the app yourself: `xcodebuild … build` locally, or run `app-build.yml` on demand.
+Removed with the split: `swift-packages.yml` (Swift package tests) and `app-build.yml` (macOS/iOS
+app-target compile). The Swift tree still exists but **nothing on this branch builds it** — if you edit
+`Packages/**` or `Strand*/**` here (e.g. to keep an upstream PR's Swift twin in sync), you MUST compile
+it yourself on a Mac (`xcodegen generate && xcodebuild … build`) before sending it to `ryanbr/noop`;
+`noop-tan` CI will not catch a Swift break.
 
 ### Local walls (things that will *not* build where you expect)
 - **On Linux:** only `WhoopProtocol` / `OuraProtocol` (pure) build & test. Every GRDB-linked package —
