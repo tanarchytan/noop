@@ -151,18 +151,9 @@ fun HealthScreen(
         topBackground = if (showDayCycleBackground) { { LiquidScreenSky() } } else null,
     ) {
         if (today == null && !hasLiveHr) {
-            // Even with no history yet, a freshly-connected strap can be told to sync now (#364) — the
-            // manual "Sync now" + honest status sits above the empty state so it's always reachable.
-            item { SyncStatusSection(vm = vm, onSyncNow = { vm.syncNow() }) }
-            item { Spacer(Modifier.height(Metrics.selectorTopUp)) }
             item { HealthEmptyState() }
         } else {
-            // Manual "Sync now" + honest sync status (#364) — the first section so the strap-history
-            // control is reachable above the live hero. Mirrors HealthView.swift's top Sync section.
-            item { SyncStatusSection(vm = vm, onSyncNow = { vm.syncNow() }) }
-            item { Spacer(Modifier.height(Metrics.selectorTopUp)) }
-            // ScreenScaffold applies a 20dp arrangement gap between its direct children;
-            // a small top-up reaches the section gap (28dp) used between macOS sections.
+            // "Sync now" moved to the Devices menu (it belongs with the strap). The live HR hero leads here.
             item { HeartRateSection(vm = vm, hrMax = hrMax) }
             item { Spacer(Modifier.height(Metrics.selectorTopUp)) }
             item {
@@ -216,107 +207,7 @@ fun HealthScreen(
     }
 }
 
-// MARK: - Sync status + "Sync now" (#364)
-//
-// Manual "Sync now" control + honest sync status, mirroring HealthView.swift's SyncStatusSection (which
-// itself mirrors this screen's Android Sync-now button). Reads only LiveState (connection + backfill +
-// last-sync), so the ~1Hz HR hero doesn't drag it through re-renders. The button reaches the BLE engine's
-// gated entry point (vm.syncNow → WhoopBleClient.syncNow) — a no-op when no strap is connected or a sync
-// is already running, so it's safe regardless of state. The status line explains itself when no strap is
-// connected; while a sync runs it shows the shared in-progress note + live chunk count; otherwise it
-// shows when history last synced.
-
-@Composable
-private fun SyncStatusSection(vm: AppViewModel, onSyncNow: () -> Unit) {
-    // PERF (#scroll-jank): collect the BLE live state HERE, inside the leaf, instead of receiving it
-    // from the screen body. The live object identity changes ~1Hz with each HR tick; reading it at body
-    // scope recomposed the whole Health screen. Scoping the collection to this section confines that
-    // ~1Hz churn to the (cheap) sync card alone. The fields read below are slow-changing; only this
-    // leaf re-runs per tick. Appearance + behaviour identical.
-    val live by vm.live.collectAsStateWithLifecycle()
-    // The strap link is usable for a manual offload kick (matches WhoopBleClient.syncNow's own gate).
-    val canSync = live.connected && live.bonded && !live.backfilling
-    Column(verticalArrangement = Arrangement.spacedBy(Metrics.gap)) {
-        SectionHeader(
-            "Sync",
-            overline = "Strap history",
-            trailing = if (live.connected) (if (live.bonded) "Connected" else "Pairing…") else "Offline",
-        )
-
-        NoopCard(tint = Palette.chargeColor) {
-            Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                // Status line: an in-progress note while syncing (with the live chunk count), an honest
-                // "not connected" pill, a last-synced read-out, else a "ready to sync"/"pairing" pill.
-                when {
-                    live.backfilling -> SyncingHistoryNote(chunks = live.syncChunksThisSession)
-                    !live.connected -> StatePill(
-                        title = "No strap connected",
-                        tone = StrandTone.Neutral,
-                        showsDot = false,
-                    )
-                    live.lastSyncAt != null -> Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(Metrics.space8),
-                    ) {
-                        StatePill(title = "History synced", tone = StrandTone.Positive)
-                        Text(
-                            relativeAgo(live.lastSyncAt!!),
-                            style = NoopType.footnote,
-                            color = Palette.textSecondary,
-                        )
-                    }
-                    else -> StatePill(
-                        title = if (live.bonded) "Ready to sync" else "Pairing…",
-                        tone = StrandTone.Accent,
-                        showsDot = true,
-                        pulsing = !live.bonded,
-                    )
-                }
-
-                // "Sync now" — routed through the unified NoopButton (Secondary, full-width) so the label
-                // sits centred at the standard control height like every other primary control, matching
-                // HealthView.swift's `NoopButton(..., kind: .secondary, fullWidth: true)`. Disabled unless
-                // connected+bonded and not already syncing; the gated BLE entry point is a safe no-op
-                // otherwise. (Total pending records are unknowable from the protocol, so no progress %.)
-                NoopButton(
-                    text = if (live.backfilling) "Syncing…" else "Sync now",
-                    leadingIcon = Icons.Filled.Sync,
-                    kind = NoopButtonKind.Secondary,
-                    fullWidth = true,
-                    enabled = canSync,
-                    modifier = Modifier.semantics {
-                        contentDescription = if (canSync) {
-                            "Sync now. Pulls your strap's stored history immediately, without waiting " +
-                                "for the next automatic sync."
-                        } else if (live.backfilling) {
-                            "Sync now. A sync is already in progress."
-                        } else {
-                            "Sync now. Connect your strap first."
-                        }
-                    },
-                    onClick = onSyncNow,
-                )
-
-                Text(
-                    syncHelperText(live),
-                    style = NoopType.footnote,
-                    color = Palette.textTertiary,
-                )
-            }
-        }
-    }
-}
-
-/** The helper line below the Sync-now button: explains the current state (syncing / offline / pairing /
- *  ready), copy-matched to HealthView.swift's SyncStatusSection.helperText. */
-private fun syncHelperText(live: LiveState): String = when {
-    live.backfilling -> "Pulling your strap's stored history. This drains oldest-first; a deep backlog " +
-        "now continues automatically across passes instead of waiting between syncs."
-    !live.connected -> "Connect your strap to sync its stored history. Until then, only imported data " +
-        "shows here."
-    !live.bonded -> "Finishing the pairing handshake. Sync now becomes available once the strap is paired."
-    else -> "Syncs your strap's stored history right away, instead of waiting for the next automatic sync."
-}
+// (Sync status + "Sync now" moved to DevicesScreen.kt — the strap-history control belongs with the devices.)
 
 // MARK: - Records & sources (Swift parity) — discoverable deep-links into the on-device records
 //

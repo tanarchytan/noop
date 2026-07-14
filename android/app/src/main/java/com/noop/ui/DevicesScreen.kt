@@ -30,6 +30,7 @@ import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.RemoveCircleOutline
 import androidx.compose.material.icons.filled.Watch
@@ -62,6 +63,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.noop.ble.LiveState
 import com.noop.ble.SourceCoordinator
 import com.noop.data.DeviceStatus
 import com.noop.data.PairedDeviceRow
@@ -157,6 +159,9 @@ fun DevicesScreen(
             }
             return@LazyScreenScaffold
         }
+
+        // Sync now — the strap-history sync control (moved out of Health; it belongs with the devices).
+        item { SyncStatusSection(vm = viewModel, onSyncNow = { viewModel.syncNow() }) }
 
         items(activeDevices) { device ->
             DeviceCard(
@@ -1109,3 +1114,88 @@ private fun lastSeenLine(device: PairedDeviceRow, isLiveConnected: Boolean, bond
  *  lives once. */
 internal fun brandGuess(name: String): String =
     com.noop.data.DeviceBrandCatalog.specForAdvertisedName(name)?.brand ?: "Heart-rate strap"
+
+// MARK: - Sync status + "Sync now" (#364) — moved here from Health: the strap-history sync control
+// belongs with the devices. Reads only LiveState (connection + backfill + last-sync). The button reaches
+// the BLE engine's gated entry point (vm.syncNow → WhoopBleClient.syncNow), a no-op when no strap is
+// connected or a sync is already running, so it's safe regardless of state.
+
+@Composable
+private fun SyncStatusSection(vm: AppViewModel, onSyncNow: () -> Unit) {
+    val live by vm.live.collectAsStateWithLifecycle()
+    // The strap link is usable for a manual offload kick (matches WhoopBleClient.syncNow's own gate).
+    val canSync = live.connected && live.bonded && !live.backfilling
+    Column(verticalArrangement = Arrangement.spacedBy(Metrics.gap)) {
+        SectionHeader(
+            "Sync",
+            overline = "Strap history",
+            trailing = if (live.connected) (if (live.bonded) "Connected" else "Pairing…") else "Offline",
+        )
+
+        NoopCard(tint = Palette.chargeColor) {
+            Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                when {
+                    live.backfilling -> SyncingHistoryNote(chunks = live.syncChunksThisSession)
+                    !live.connected -> StatePill(
+                        title = "No strap connected",
+                        tone = StrandTone.Neutral,
+                        showsDot = false,
+                    )
+                    live.lastSyncAt != null -> Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(Metrics.space8),
+                    ) {
+                        StatePill(title = "History synced", tone = StrandTone.Positive)
+                        Text(
+                            relativeAgo(live.lastSyncAt!!),
+                            style = NoopType.footnote,
+                            color = Palette.textSecondary,
+                        )
+                    }
+                    else -> StatePill(
+                        title = if (live.bonded) "Ready to sync" else "Pairing…",
+                        tone = StrandTone.Accent,
+                        showsDot = true,
+                        pulsing = !live.bonded,
+                    )
+                }
+
+                NoopButton(
+                    text = if (live.backfilling) "Syncing…" else "Sync now",
+                    leadingIcon = Icons.Filled.Sync,
+                    kind = NoopButtonKind.Secondary,
+                    fullWidth = true,
+                    enabled = canSync,
+                    modifier = Modifier.semantics {
+                        contentDescription = if (canSync) {
+                            "Sync now. Pulls your strap's stored history immediately, without waiting " +
+                                "for the next automatic sync."
+                        } else if (live.backfilling) {
+                            "Sync now. A sync is already in progress."
+                        } else {
+                            "Sync now. Connect your strap first."
+                        }
+                    },
+                    onClick = onSyncNow,
+                )
+
+                Text(
+                    syncHelperText(live),
+                    style = NoopType.footnote,
+                    color = Palette.textTertiary,
+                )
+            }
+        }
+    }
+}
+
+/** The helper line below the Sync-now button: explains the current state (syncing / offline / pairing /
+ *  ready). */
+private fun syncHelperText(live: LiveState): String = when {
+    live.backfilling -> "Pulling your strap's stored history. This drains oldest-first; a deep backlog " +
+        "now continues automatically across passes instead of waiting between syncs."
+    !live.connected -> "Connect your strap to sync its stored history. Until then, only imported data " +
+        "shows here."
+    !live.bonded -> "Finishing the pairing handshake. Sync now becomes available once the strap is paired."
+    else -> "Syncs your strap's stored history right away, instead of waiting for the next automatic sync."
+}
