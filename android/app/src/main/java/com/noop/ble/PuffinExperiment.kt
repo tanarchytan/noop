@@ -75,6 +75,17 @@ class PuffinExperiment(private val prefs: SharedPreferences) {
         get() = prefs.getBoolean(KEY_HRV_READINESS, false)
         set(v) = prefs.edit().putBoolean(KEY_HRV_READINESS, v).apply()
 
+    /** Motion-aware wake refinement (#364 "Proposal 2") always runs: a post-pass
+     *  ([com.noop.analytics.WakeMotionRefinement]) over the already-staged hypnogram that reclassifies a
+     *  scored WAKE segment to `light` when its per-minute step-tick cadence shows no locomotion AND its
+     *  per-minute gravity posture stays stable (isolated "turn-over" burst minutes are kept as wake). It
+     *  self-gates on the OBSERVED gravity + step density (never on strap family): a WHOOP 4.0 night (sparse
+     *  gravity, no step stream) fails the gate untouched; a 5.0/MG night is the beneficiary. Pure analysis
+     *  switch — only ever SHRINKS an already-scored wake segment, never invents wake; detection + V2 staging
+     *  untouched. noop-tan hardwires it on (no experimental toggle); it complements the kept #348 tune by
+     *  paring back its HR-led over-awake on dense 5/MG nights. */
+    val motionAwareWake: Boolean get() = true
+
     companion object {
         /** Persisted preferences file. */
         private const val PREFS = "noop_experiments"
