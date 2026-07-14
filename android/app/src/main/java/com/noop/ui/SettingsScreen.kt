@@ -53,8 +53,6 @@ import androidx.compose.material.icons.filled.Sensors
 import androidx.compose.material.icons.filled.Straighten
 import androidx.compose.material.icons.filled.CloudSync
 import androidx.compose.material.icons.filled.Storage
-import androidx.compose.material.icons.filled.Upload
-import androidx.compose.material.icons.filled.Vibration
 import androidx.compose.material.icons.outlined.AccountCircle
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material3.AlertDialog
@@ -1292,15 +1290,6 @@ fun SettingsScreen(
                     color = Palette.textTertiary,
                 )
 
-                // Diagnostics: export the strap connection log so people can attach it to a bug report.
-                NoopButton(
-                    text = "Share strap log (for bug reports)",
-                    leadingIcon = Icons.Filled.Upload,
-                    kind = NoopButtonKind.Secondary,
-                    fullWidth = true,
-                    onClick = { scope.launch { LogExport.shareStrapLog(context, vm.ble.exportLogText()) } },
-                )
-
                 // "WHOOP 4.0 vs 5.0/MG — what each can read and why" (FI-2 / #490). Shown to BOTH model
                 // owners, so a 4.0 user understands their strap is fully supported (and why the firmware
                 // broadcast-out is 5/MG-only while NOOP's own re-broadcast in Data Sources works on a 4.0).
@@ -1513,35 +1502,6 @@ fun SettingsScreen(
             }
         }
         } // end if (showFiveMGControls)
-
-        // --- Diagnostics (every model) --- the raw-sensor CSV export moved to the Test Centre
-        // "Diagnostic tools" card (#22 consolidation); the haptic clock stays here.
-        SettingsSection(
-            icon = Icons.Filled.Science,
-            title = "Diagnostics",
-            blurb = "Buzz the current time on your strap. Works on any strap. Nothing is written to your device, and nothing is uploaded.",
-        ) {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                // Haptic clock (#460): buzz the current time on the strap as a sequence of buzzes. No-ops
-                // safely when disconnected, so it stays enabled regardless of connection (matches the
-                // "Share strap log" row above, which also doesn't gate on a live strap). 12/24h follows the
-                // phone's own clock setting.
-                NoopButton(
-                    text = "Buzz the time on your strap",
-                    leadingIcon = Icons.Filled.Vibration,
-                    kind = NoopButtonKind.Secondary,
-                    fullWidth = true,
-                    onClick = {
-                        vm.ble.buzzTimeNow(is24h = android.text.format.DateFormat.is24HourFormat(context))
-                    },
-                )
-                Text(
-                    "Feel the current time as a sequence of buzzes (#460). Does nothing unless your strap is connected.",
-                    style = NoopType.caption,
-                    color = Palette.textTertiary,
-                )
-            }
-        }
 
         // --- Trends report (#436) — shareable offline PDF over a date range. Self-contained
         // card (its own NoopCard + range picker + CTA), so it drops in without a SettingsSection wrapper.

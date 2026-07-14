@@ -11,11 +11,11 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Autorenew
 import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.IosShare
 import androidx.compose.material.icons.filled.Upload
+import androidx.compose.material.icons.filled.Vibration
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
@@ -35,7 +35,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.noop.BuildConfig
-import com.noop.analytics.Baselines
 import com.noop.ble.PuffinExperiment
 import com.noop.ble.WhoopModel
 import com.noop.ingest.RawSensorExport
@@ -313,7 +312,6 @@ private fun TestModeRow(
 private fun DiagnosticToolsCard(vm: AppViewModel, is5MG: Boolean, onReport: () -> Unit) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    var showRecalibrate by remember { mutableStateOf(false) }
     // "Debug logging" moved here from Settings: dev-only, mirrors the strap log to logcat over adb.
     var debugLogging by remember { mutableStateOf(NoopPrefs.debugLogging(context)) }
     // Live strap state (for the 5/MG raw-capture share paths) + the 5/MG frame recorder toggle, both
@@ -324,7 +322,7 @@ private fun DiagnosticToolsCard(vm: AppViewModel, is5MG: Boolean, onReport: () -
     SettingsSectionTC(
         icon = Icons.Filled.Info,
         title = "Diagnostic tools",
-        blurb = "Report a bug, share your strap log, recalibrate Charge, and export the raw sensor CSV (any strap) or the raw 5/MG capture. Nothing leaves the phone unless you share it.",
+        blurb = "Report a bug, share your strap log, buzz the time on your strap, and export the raw sensor CSV (any strap) or the raw 5/MG capture. Nothing leaves the phone unless you share it.",
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             // The master bug-report action (relocated from the old Export card): assembles the redacted
@@ -343,14 +341,6 @@ private fun DiagnosticToolsCard(vm: AppViewModel, is5MG: Boolean, onReport: () -
                 kind = NoopButtonKind.Secondary,
                 fullWidth = true,
                 onClick = { scope.launch { LogExport.shareStrapLog(context, vm.ble.exportLogText()) } },
-            )
-            // Recalibrate Charge baseline, the same Baselines.recalibrateRecoveryBaselines call.
-            NoopButton(
-                text = "Recalibrate Charge baseline",
-                leadingIcon = Icons.Filled.Autorenew,
-                kind = NoopButtonKind.Secondary,
-                fullWidth = true,
-                onClick = { showRecalibrate = true },
             )
             // Debug logging (moved here from Settings): mirror the strap log to logcat for adb
             // development. Dev-only, off by default; the in-app log and "Share strap log" above work either way.
@@ -385,6 +375,21 @@ private fun DiagnosticToolsCard(vm: AppViewModel, is5MG: Boolean, onReport: () -
             )
             Text(
                 "Saves the last 24h of decoded sensor samples (heart rate, R-R, motion, steps and any 5/MG deep streams you've unlocked) as one CSV you can share, for tinkering with your own data. Nothing leaves the phone unless you share it.",
+                style = NoopType.caption,
+                color = Palette.textTertiary,
+            )
+            // Haptic clock (#460, moved here from Settings): buzz the current time on the strap as a
+            // sequence of buzzes. Works on any strap; no-ops safely when disconnected. 12/24h follows the
+            // phone's own clock setting.
+            NoopButton(
+                text = "Buzz the time on your strap",
+                leadingIcon = Icons.Filled.Vibration,
+                kind = NoopButtonKind.Secondary,
+                fullWidth = true,
+                onClick = { vm.ble.buzzTimeNow(is24h = android.text.format.DateFormat.is24HourFormat(context)) },
+            )
+            Text(
+                "Feel the current time as a sequence of buzzes (#460). Does nothing unless your strap is connected.",
                 style = NoopType.caption,
                 color = Palette.textTertiary,
             )
@@ -436,34 +441,6 @@ private fun DiagnosticToolsCard(vm: AppViewModel, is5MG: Boolean, onReport: () -
                 )
             }
         }
-    }
-    if (showRecalibrate) {
-        AlertDialog(
-            onDismissRequest = { showRecalibrate = false },
-            containerColor = Palette.surfaceOverlay,
-            title = { Text("Recalibrate your Charge baseline?", style = NoopType.title2, color = Palette.textPrimary) },
-            text = {
-                Text(
-                    "This restarts the roughly 4-night build-up for Charge and your HRV baseline. Your history stays.",
-                    style = NoopType.subhead, color = Palette.textSecondary,
-                )
-            },
-            confirmButton = {
-                TextButton(onClick = {
-                    val nowSeconds = System.currentTimeMillis() / 1000L
-                    val editor = NoopPrefs.of(context).edit()
-                    Baselines.recalibrateRecoveryBaselines(editor, nowSeconds)
-                    editor.apply()
-                    showRecalibrate = false
-                    vm.syncNow()
-                }) { Text("Recalibrate", style = NoopType.body, color = Palette.accent) }
-            },
-            dismissButton = {
-                TextButton(onClick = { showRecalibrate = false }) {
-                    Text("Cancel", style = NoopType.body, color = Palette.textSecondary)
-                }
-            },
-        )
     }
 }
 
