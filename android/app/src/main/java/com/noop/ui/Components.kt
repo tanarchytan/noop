@@ -393,12 +393,7 @@ fun StatePill(
 @Composable
 fun SourceBadge(text: String, tint: Color = Palette.accent, modifier: Modifier = Modifier) {
     val shape = RoundedCornerShape(50)
-    Text(
-        text = text.uppercase(),
-        style = NoopType.overline.copy(fontSize = 10.sp, letterSpacing = 0.5.sp),
-        color = tint,
-        maxLines = 1,                          // #74: e.g. "ON-DEVICE" stays on one line, never wraps the hero
-        overflow = TextOverflow.Ellipsis,
+    Box(
         modifier = modifier
             // Preserve the canonical compact height at the default font scale, but grow instead of clipping
             // when Android's font scaling makes the single-line label taller.
@@ -407,7 +402,19 @@ fun SourceBadge(text: String, tint: Color = Palette.accent, modifier: Modifier =
             .background(tint.copy(alpha = 0.14f))
             .border(1.dp, tint.copy(alpha = 0.30f), shape)
             .padding(horizontal = Metrics.space8),
-    )
+        // Centre the label in the pill both ways — the height floor above can make the pill taller than the
+        // single text line, which otherwise rides the top edge.
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = text.uppercase(),
+            style = NoopType.overline.copy(fontSize = 10.sp, letterSpacing = 0.5.sp),
+            color = tint,
+            maxLines = 1,                          // #74: e.g. "ON-DEVICE" stays on one line, never wraps the hero
+            overflow = TextOverflow.Ellipsis,
+            textAlign = TextAlign.Center,
+        )
+    }
 }
 
 // MARK: - TrendChip — a small tinted delta pill with a direction arrow.

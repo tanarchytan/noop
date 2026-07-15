@@ -21,7 +21,6 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -2304,9 +2303,15 @@ private fun ScoreHeroRow(
     // gate. A carried Charge counts as data (its dimmed vessel should slosh like the Rest one).
     val animated = recovery != null || strain != null || restScore != null || lastScoredCharge != null
 
-    Box(
+    // The hero column owns the vertical padding so the source label (below) sits INSIDE the card's
+    // breathing room, centred under the circles, in normal flow — the pre-#409 placement, no longer an
+    // overlay straddling the top border over the vessels.
+    Column(
         modifier = Modifier
-            .fillMaxWidth(),
+            .fillMaxWidth()
+            .padding(vertical = Metrics.space16),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(Metrics.space8),
     ) {
         // iOS parity: the hero rings float DIRECTLY on the SCREEN-level day-cycle scene (the scaffold's
         // topBackground), not on any per-hero atmosphere or the old scenic indigo gradient, matching
@@ -2315,7 +2320,7 @@ private fun ScoreHeroRow(
         BoxWithConstraints(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = Metrics.gap, vertical = Metrics.space16),
+                .padding(horizontal = Metrics.gap),
         ) {
             // iOS parity (TodayView.scoreHeroRow): three EQUAL rings in CHARGE · EFFORT · REST order, no
             // enlarged centre, filling the width as one balanced row. Ring stroke 0.10 (WHOOP weight).
@@ -2381,51 +2386,46 @@ private fun ScoreHeroRow(
                         if (strain == null) RingNoData()
                     }
                 }
-                // REST, sleep composite 0–100. Its fixed-width box also anchors the card-level source badge:
-                // the badge may grow leftward, but its trailing edge always matches the Rest vessel.
-                Box(modifier = Modifier.width(ring)) {
-                    HeroRingColumn(
-                        domain = DomainTheme.Rest,
-                        onInfo = { onScoreInfo(ScoreSection.REST) },
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            HeroScoreVessel(
-                                fraction = (restScore ?: 0.0) / 100.0,
-                                value = restScore ?: 0.0,
-                                tint = Palette.recoveryColor(restScore ?: 0.0),
-                                diameter = ring,
-                                animated = animated,
-                                showsValue = restScore != null,
-                            )
-                            // #898: an aggregate-import user (a daily HRV/RHR import, no in-bed session) gets a
-                            // Charge from WatchRecovery but NO sleep_performance, so Rest used to read a bare
-                            // "No Data" next to a lit Charge , reading as broken. When a Charge IS present for the
-                            // day but Rest is absent, say WHY honestly ("Needs a tracked night") instead. We do
-                            // NOT fabricate a Rest number , an aggregate genuinely has no scored night. A day with
-                            // no Charge either (truly empty) keeps the plain "No Data". Mirrors iOS restRing.
-                            if (restScore == null) {
-                                if (recovery != null) RingNeedsTrackedNight() else RingNoData()
-                            }
-                        }
-                    }
-                    if (heroSourceLabel != null) {
-                        SourceBadge(
-                            text = heroSourceLabel,
-                            tint = Palette.onDarkSecondary,
-                            modifier = Modifier
-                                .align(Alignment.TopEnd)
-                                // Let the full label overflow left when it's wider than the Rest vessel,
-                                // keeping its trailing edge aligned to the vessel.
-                                .wrapContentWidth(unbounded = true, align = Alignment.End)
-                                // Sit INSIDE the card's top-right corner: the rings row starts space16 below
-                                // the top edge, so a small lift nestles the badge in the top padding — it no
-                                // longer straddles/floats above the top border over the liquid vessels.
-                                .offset(y = -Metrics.space8)
-                                .semantics { contentDescription = "Source: $heroSourceLabel" },
+                // REST, sleep composite 0–100, as a liquid vessel — symmetric with Charge/Effort now that
+                // the source label is one centred badge beneath the whole row (below), not anchored here.
+                HeroRingColumn(
+                    domain = DomainTheme.Rest,
+                    onInfo = { onScoreInfo(ScoreSection.REST) },
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        HeroScoreVessel(
+                            fraction = (restScore ?: 0.0) / 100.0,
+                            value = restScore ?: 0.0,
+                            tint = Palette.recoveryColor(restScore ?: 0.0),
+                            diameter = ring,
+                            animated = animated,
+                            showsValue = restScore != null,
                         )
+                        // #898: an aggregate-import user (a daily HRV/RHR import, no in-bed session) gets a
+                        // Charge from WatchRecovery but NO sleep_performance, so Rest used to read a bare
+                        // "No Data" next to a lit Charge , reading as broken. When a Charge IS present for the
+                        // day but Rest is absent, say WHY honestly ("Needs a tracked night") instead. We do
+                        // NOT fabricate a Rest number , an aggregate genuinely has no scored night. A day with
+                        // no Charge either (truly empty) keeps the plain "No Data". Mirrors iOS restRing.
+                        if (restScore == null) {
+                            if (recovery != null) RingNeedsTrackedNight() else RingNoData()
+                        }
                     }
                 }
             }
+        }
+        // ONE consolidated source label BENEATH the circles, centred + in normal flow (the pre-#409
+        // "aligned with the rings" placement). It still names the real per-metric merge winners
+        // (recovery/strain/sleep + a carried Charge's source, #412) — just no longer floating over
+        // the vessels. Hidden when no score has a resolved source.
+        if (heroSourceLabel != null) {
+            SourceBadge(
+                text = heroSourceLabel,
+                tint = Palette.onDarkSecondary,
+                modifier = Modifier
+                    .padding(horizontal = Metrics.gap)
+                    .semantics { contentDescription = "Source: $heroSourceLabel" },
+            )
         }
     }
 }
