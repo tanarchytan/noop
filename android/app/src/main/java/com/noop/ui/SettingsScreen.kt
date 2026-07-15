@@ -63,6 +63,9 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
+import androidx.compose.material.icons.filled.BatteryStd
+import androidx.compose.ui.res.stringResource
+import com.noop.R
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
@@ -517,6 +520,11 @@ fun SettingsScreen(
     // Card-surface opacity (0f = clear, 1f = solid), for the "Card transparency" slider. Live-previews via
     // CardAppearance; saved on release.
     var cardOpacity by remember { mutableStateOf(NoopPrefs.cardOpacityPercent(context) / 100f) }
+
+    // #477 Power saving: battery-adaptive strap-sync cadence + optional HRV-capture pause. Local mirrors.
+    var powerSaving by remember { mutableStateOf(NoopPrefs.powerSaving(context)) }
+    var powerSavingBatteryPct by remember { mutableStateOf(NoopPrefs.powerSavingBatteryPct(context)) }
+    var pauseHrvOnPowerSave by remember { mutableStateOf(NoopPrefs.pauseHrvOnPowerSave(context)) }
 
     // Modern Photo Picker for the optional profile photo (no READ_EXTERNAL_STORAGE permission needed).
     // Returns a single image Uri (or null if cancelled); we decode + downscale + persist off the main
@@ -1571,6 +1579,100 @@ fun SettingsScreen(
                     modifier = Modifier.semantics { contentDescription = "Recalibrate Charge baseline" },
                     onClick = { showRecalibrateConfirm = true },
                 )
+            }
+        }
+
+        // #477 Power saving. Two BENIGN battery levers only: the offload-cadence stretch (%-gated) and
+        // the HRV-capture pause (Battery-Saver-gated). The riskier connection-priority idle throttle is
+        // deliberately not surfaced here — it stays dormant pending on-strap validation (#478).
+        SettingsSection(
+            icon = Icons.Filled.BatteryStd,
+            title = stringResource(R.string.power_saving),
+            blurb = stringResource(R.string.power_saving_blurb),
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(stringResource(R.string.power_saving_mode), style = NoopType.subhead, color = Palette.textPrimary)
+                    Text(
+                        stringResource(R.string.power_saving_mode_desc),
+                        style = NoopType.footnote,
+                        color = Palette.textTertiary,
+                    )
+                }
+                Switch(
+                    checked = powerSaving,
+                    onCheckedChange = {
+                        powerSaving = it
+                        vm.setPowerSaving(it)
+                    },
+                    colors = SwitchDefaults.colors(
+                        checkedThumbColor = Palette.surfaceBase,
+                        checkedTrackColor = Palette.accent,
+                        uncheckedThumbColor = Palette.textSecondary,
+                        uncheckedTrackColor = Palette.surfaceInset,
+                        uncheckedBorderColor = Palette.hairline,
+                    ),
+                )
+            }
+            if (powerSaving) {
+                RowDivider()
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(stringResource(R.string.power_saving_kick_in), style = NoopType.subhead, color = Palette.textPrimary)
+                        Text(stringResource(R.string.power_saving_pct, powerSavingBatteryPct), style = NoopType.subhead, color = Palette.accent)
+                    }
+                    Slider(
+                        value = powerSavingBatteryPct.toFloat(),
+                        // 10–30% snapping to 5% steps (10/15/20/25/30). steps = the 3 stops BETWEEN ends.
+                        onValueChange = { powerSavingBatteryPct = it.roundToInt() },
+                        onValueChangeFinished = { vm.setPowerSavingBatteryPct(powerSavingBatteryPct) },
+                        valueRange = 10f..30f,
+                        steps = 3,
+                        colors = SliderDefaults.colors(
+                            thumbColor = Palette.accent,
+                            activeTrackColor = Palette.accent,
+                            inactiveTrackColor = Palette.surfaceInset,
+                        ),
+                    )
+                }
+                RowDivider()
+                // HRV pause: a sub-option of power saving, ON by default when the master is on.
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(stringResource(R.string.power_saving_hrv_pause), style = NoopType.subhead, color = Palette.textPrimary)
+                        Text(
+                            stringResource(R.string.power_saving_hrv_pause_desc),
+                            style = NoopType.footnote,
+                            color = Palette.textTertiary,
+                        )
+                    }
+                    Switch(
+                        checked = pauseHrvOnPowerSave,
+                        onCheckedChange = {
+                            pauseHrvOnPowerSave = it
+                            vm.setPauseHrvOnPowerSave(it)
+                        },
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = Palette.surfaceBase,
+                            checkedTrackColor = Palette.accent,
+                            uncheckedThumbColor = Palette.textSecondary,
+                            uncheckedTrackColor = Palette.surfaceInset,
+                            uncheckedBorderColor = Palette.hairline,
+                        ),
+                    )
+                }
             }
         }
 
