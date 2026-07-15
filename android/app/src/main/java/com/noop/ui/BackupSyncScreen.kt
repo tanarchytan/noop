@@ -2,6 +2,8 @@ package com.noop.ui
 
 import android.content.Intent
 import android.net.Uri
+import android.os.Build
+import android.provider.Settings
 import android.text.format.DateUtils
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -27,6 +29,7 @@ import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -36,6 +39,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.noop.data.DataBackup
 import com.noop.data.WhoopRepository
 import com.noop.ingest.WhoopCsvExporter
@@ -64,7 +70,10 @@ fun BackupSyncScreen(repo: WhoopRepository, activeStrapId: String) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
-    var treeUri by remember { mutableStateOf(BackupSyncPrefs.treeUri(context)) }
+    // Android-only fork: backups write to a STABLE public folder ([BackupSync.backupDir]) via All-Files
+    // Access, not a SAF tree whose per-folder grant is revoked on reinstall. [hasAccess] mirrors the live
+    // permission and is re-read on ON_RESUME so returning from the system grant screen updates the UI.
+    var hasAccess by remember { mutableStateOf(BackupSync.hasFilesAccess(context)) }
     var auto by remember { mutableStateOf(BackupSyncPrefs.autoEnabled(context)) }
     var lastMs by remember { mutableStateOf(BackupSyncPrefs.lastBackupMs(context)) }
     var busy by remember { mutableStateOf(false) }
@@ -75,9 +84,44 @@ fun BackupSyncScreen(repo: WhoopRepository, activeStrapId: String) {
     var backupMinute by remember { mutableStateOf(BackupSyncPrefs.backupMinute(context)) }
 
     // Restore-from-folder sheet state: the listed snapshots, and the one pending confirmation.
-    var snapshots by remember { mutableStateOf<List<BackupSync.SnapshotDoc>>(emptyList()) }
+    var snapshots by remember { mutableStateOf<List<BackupSync.SnapshotFile>>(emptyList()) }
     var showSnapshotPicker by remember { mutableStateOf(false) }
     var pendingRestore by remember { mutableStateOf<Pair<String, Uri>?>(null) }
+
+    // Legacy WRITE grant (API <= 29); API 30+ uses the All-Files-Access settings screen instead.
+    val writePermLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission(),
+    ) {
+        hasAccess = BackupSync.hasFilesAccess(context)
+        if (hasAccess) runCatching { BackupSync.reschedule(context) }
+    }
+    fun requestFilesAccess() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            // Open THIS app's "All files access" toggle; fall back to the generic list if the OEM lacks the
+            // app-specific screen. The grant is applied when the user returns (ON_RESUME re-reads it below).
+            runCatching {
+                context.startActivity(
+                    Intent(
+                        Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION,
+                        Uri.parse("package:${context.packageName}"),
+                    ),
+                )
+            }.onFailure {
+                runCatching { context.startActivity(Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION)) }
+            }
+        } else {
+            writePermLauncher.launch(android.Manifest.permission.WRITE_EXTERNAL_STORAGE)
+        }
+    }
+    // Re-read the live permission whenever the screen resumes (e.g. back from the All-Files-Access screen).
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val obs = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) hasAccess = BackupSync.hasFilesAccess(context)
+        }
+        lifecycleOwner.lifecycle.addObserver(obs)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(obs) }
+    }
 
     // Runs the actual destructive restore for a chosen backup Uri, off the main thread.
     fun runRestore(uri: Uri) {
@@ -111,21 +155,6 @@ fun BackupSyncScreen(repo: WhoopRepository, activeStrapId: String) {
                     Toast.makeText(context, r.message, Toast.LENGTH_LONG).show()
             }
         }
-    }
-
-    val pickFolder = rememberLauncherForActivityResult(
-        ActivityResultContracts.OpenDocumentTree(),
-    ) { uri ->
-        if (uri == null) return@rememberLauncherForActivityResult
-        runCatching {
-            context.contentResolver.takePersistableUriPermission(
-                uri,
-                Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION,
-            )
-        }
-        BackupSyncPrefs.setTreeUri(context, uri)
-        treeUri = uri
-        runCatching { BackupSync.reschedule(context) }
     }
 
     // Must-fix #1 + #3: the FILE fallback is tightened to the backup MIME types (was `*/*`). Used only
@@ -191,31 +220,39 @@ fun BackupSyncScreen(repo: WhoopRepository, activeStrapId: String) {
         item {
             NoopCard(padding = 20.dp) {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Text("Backup folder", style = NoopType.headline, color = Palette.textPrimary)
+                    Text("Backup location", style = NoopType.headline, color = Palette.textPrimary)
                     Text(
-                        treeUri?.let { "Saving to: ${folderLabel(it)}" }
-                            ?: "No folder chosen yet. Pick one your cloud app already syncs, or any local folder.",
+                        "Backups are saved to ${BackupSync.backupDir().path}",
                         style = NoopType.footnote, color = Palette.textTertiary,
                     )
                     Text(
-                        "Tip: a desktop Drive / Dropbox app auto-syncs a chosen folder. On the phone, save to a " +
-                            "folder a sync app (e.g. FolderSync / Autosync) keeps in your cloud.",
+                        "Point a sync app (FolderSync / Autosync) or a desktop Drive / Dropbox client at that " +
+                            "folder for off-device backup — NOOP only writes the local file.",
                         style = NoopType.caption, color = Palette.accent,
                     )
-                    NoopButton(
-                        text = if (treeUri == null) "Choose folder" else "Change folder",
-                        leadingIcon = Icons.Filled.FolderOpen,
-                        kind = NoopButtonKind.Secondary,
-                        enabled = !busy,
-                        onClick = { pickFolder.launch(null) },
-                    )
+                    if (hasAccess) {
+                        Text("✓ File access granted", style = NoopType.footnote, color = Palette.accent)
+                    } else {
+                        Text(
+                            "NOOP needs file access to write backups to that folder. Grant it once — it survives " +
+                                "reinstalls (unlike the old folder-picker, whose access was lost on every update).",
+                            style = NoopType.footnote, color = Palette.textTertiary,
+                        )
+                        NoopButton(
+                            text = "Allow file access",
+                            leadingIcon = Icons.Filled.FolderOpen,
+                            kind = NoopButtonKind.Secondary,
+                            enabled = !busy,
+                            onClick = { requestFilesAccess() },
+                        )
+                    }
                 }
             }
         }
 
         // 2 · Auto-backup + back up now
         item {
-            NoopCard(padding = 20.dp, tint = if (auto && treeUri != null) Palette.accent else null) {
+            NoopCard(padding = 20.dp, tint = if (auto && hasAccess) Palette.accent else null) {
                 Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Column(
@@ -232,7 +269,7 @@ fun BackupSyncScreen(repo: WhoopRepository, activeStrapId: String) {
                         Spacer(Modifier.width(16.dp))
                         Switch(
                             checked = auto,
-                            enabled = treeUri != null && !busy,
+                            enabled = hasAccess && !busy,
                             onCheckedChange = {
                                 auto = it
                                 BackupSyncPrefs.setAutoEnabled(context, it)
@@ -264,7 +301,7 @@ fun BackupSyncScreen(repo: WhoopRepository, activeStrapId: String) {
                         Spacer(Modifier.width(16.dp))
                         Box {
                             TextButton(
-                                enabled = treeUri != null && !busy,
+                                enabled = hasAccess && !busy,
                                 onClick = { keepMenu = true },
                             ) {
                                 Text("$keep", style = NoopType.body, color = Palette.accent)
@@ -328,7 +365,7 @@ fun BackupSyncScreen(repo: WhoopRepository, activeStrapId: String) {
                         text = if (busy) "Working…" else "Back up now",
                         leadingIcon = Icons.Filled.CloudUpload,
                         fullWidth = true,
-                        enabled = treeUri != null && !busy,
+                        enabled = hasAccess && !busy,
                         onClick = {
                             busy = true
                             scope.launch {
@@ -338,9 +375,9 @@ fun BackupSyncScreen(repo: WhoopRepository, activeStrapId: String) {
                                 Toast.makeText(
                                     context,
                                     if (ok) {
-                                        "Backed up to your folder."
+                                        "Backed up to ${BackupSync.backupDir().name}."
                                     } else {
-                                        "Backup failed - re-pick the folder and try again."
+                                        "Backup failed - grant file access and try again."
                                     },
                                     Toast.LENGTH_LONG,
                                 ).show()
@@ -367,18 +404,16 @@ fun BackupSyncScreen(repo: WhoopRepository, activeStrapId: String) {
                         kind = NoopButtonKind.Secondary,
                         enabled = !busy,
                         onClick = {
-                            val tree = treeUri
-                            if (tree == null) {
-                                // No folder set: fall back to the tightened file picker.
+                            if (!hasAccess) {
+                                // No file access yet: fall back to the one-off file picker (any location).
                                 pickRestoreFile.launch(RESTORE_MIME_TYPES)
                             } else {
                                 scope.launch {
                                     val found = withContext(Dispatchers.IO) {
-                                        runCatching { BackupSync.listSnapshotDocs(context, tree) }
-                                            .getOrDefault(emptyList())
+                                        runCatching { BackupSync.listSnapshots() }.getOrDefault(emptyList())
                                     }
                                     if (found.isEmpty()) {
-                                        // Folder has no snapshots we wrote - point at a file instead.
+                                        // Folder has no snapshots yet - point at a file instead.
                                         pickRestoreFile.launch(RESTORE_MIME_TYPES)
                                     } else {
                                         snapshots = found
@@ -465,7 +500,7 @@ fun BackupSyncScreen(repo: WhoopRepository, activeStrapId: String) {
                                         "the backup from $whenLabel"
                                     } else {
                                         snap.name
-                                    } to snap.uri
+                                    } to Uri.fromFile(snap.file)
                                 }
                                 .padding(vertical = 10.dp),
                         )
@@ -526,9 +561,3 @@ private val RESTORE_MIME_TYPES = arrayOf(
     "application/zip",
     "application/x-sqlite3",
 )
-
-/** A short, human label for a SAF tree Uri (the part after the volume colon). */
-private fun folderLabel(treeUri: Uri): String {
-    val seg = treeUri.lastPathSegment ?: return "selected folder"
-    return seg.substringAfterLast(':').ifBlank { seg }
-}

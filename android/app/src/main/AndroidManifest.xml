@@ -36,6 +36,16 @@
         android:name="android.permission.BLUETOOTH_ADMIN"
         android:maxSdkVersion="30" />
 
+    <!-- Local backups (.noopbak) write to a stable public folder (/storage/emulated/0/NOOP) so a
+         file-manager / cloud-sync app can watch it and the grant survives reinstall — unlike a SAF tree
+         URI, whose per-folder grant is revoked on reinstall (silent backup failure). This Android-only
+         fork sideloads (never Play), so All-Files-Access is available and granted once from Settings.
+         API 30+ uses MANAGE_EXTERNAL_STORAGE (special access); API <=29 uses the legacy WRITE grant. -->
+    <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" />
+    <uses-permission
+        android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        android:maxSdkVersion="29" />
+
     <!-- Fine location is needed on ALL API levels: pre-12 (API <=30) for BLE scans, and on every
          version for GPS-tracked workouts (route/distance/pace). It is requested at runtime right
          before a GPS workout starts (see rememberRequestLocation, #101) — NOT for BLE, which stays

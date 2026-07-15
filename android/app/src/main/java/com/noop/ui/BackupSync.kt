@@ -1,14 +1,18 @@
 package com.noop.ui
 
 import android.content.Context
+import android.content.pm.PackageManager
 import android.net.Uri
-import android.provider.DocumentsContract
+import android.os.Build
+import android.os.Environment
+import androidx.core.content.ContextCompat
 import androidx.work.CoroutineWorker
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import com.noop.data.DataBackup
+import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -164,92 +168,76 @@ object BackupSync {
     /** True when [nowMs] is at least a day past [lastBackupMs] (pure, so the catch-up gate is testable). */
     fun isCatchUpDue(lastBackupMs: Long, nowMs: Long): Boolean = nowMs - lastBackupMs >= DAY_MS
 
-    // ── Folder destination I/O (SAF tree via DocumentsContract - no extra dep) ──
+    // ── Fixed-folder I/O (Android-only fork). Backups write to a STABLE public folder via All-Files
+    //    Access, NOT a SAF tree whose per-URI grant is silently REVOKED on reinstall (that revoke, with
+    //    the folder pref surviving, is what made "Back up now" fail quietly). A normal path survives
+    //    reinstall and any file-manager / cloud-sync app (FolderSync, Autosync) can watch it. ──
 
-    /** Create + write one snapshot into the chosen [treeUri]; returns the new file Uri, or null on failure. */
-    fun writeSnapshot(context: Context, treeUri: Uri, nowMs: Long = System.currentTimeMillis()): Uri? {
-        val resolver = context.contentResolver
-        val parentDoc = DocumentsContract.buildDocumentUriUsingTree(
-            treeUri,
-            DocumentsContract.getTreeDocumentId(treeUri),
-        )
-        val fileUri = runCatching {
-            DocumentsContract.createDocument(resolver, parentDoc, MIME, snapshotName(nowMs))
-        }.getOrNull() ?: return null
-        // exportTo throws on failure; on a partial write delete the half-written doc so prune/latest
-        // never picks up a corrupt snapshot.
+    /** The stable public folder every backup writes to: `<external storage>/NOOP`
+     *  (`/storage/emulated/0/NOOP`). */
+    const val BACKUP_DIR_NAME = "NOOP"
+    fun backupDir(): File = File(Environment.getExternalStorageDirectory(), BACKUP_DIR_NAME)
+
+    /** True when NOOP can write [backupDir] without a picker: All-Files-Access on API 30+
+     *  ([Environment.isExternalStorageManager]), or the legacy WRITE_EXTERNAL_STORAGE runtime grant on
+     *  API ≤ 29. The Backup screen requests it; every write + the schedule gate on it. */
+    fun hasFilesAccess(context: Context): Boolean =
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            Environment.isExternalStorageManager()
+        } else {
+            ContextCompat.checkSelfPermission(
+                context,
+                android.Manifest.permission.WRITE_EXTERNAL_STORAGE,
+            ) == PackageManager.PERMISSION_GRANTED
+        }
+
+    /** One restorable snapshot: its [file], display [name], and the ms used to order + label it. */
+    data class SnapshotFile(val file: File, val name: String, val timeMs: Long)
+
+    /** Create + write one snapshot into [backupDir]; returns the file, or null on failure (no access,
+     *  the folder couldn't be made, or the write threw). A partial write is deleted so prune/latest
+     *  never pick up a corrupt snapshot. */
+    fun writeSnapshot(context: Context, nowMs: Long = System.currentTimeMillis()): File? {
+        if (!hasFilesAccess(context)) return null
+        val dir = backupDir()
+        if (!dir.exists()) runCatching { dir.mkdirs() }
+        if (!dir.isDirectory) return null
+        val file = File(dir, snapshotName(nowMs))
         return runCatching {
-            DataBackup.exportTo(context, fileUri)
-            fileUri
+            DataBackup.exportTo(context, Uri.fromFile(file))
+            file
         }.getOrElse {
-            runCatching { DocumentsContract.deleteDocument(resolver, fileUri) }
+            runCatching { file.delete() }
             null
         }
     }
 
-    /** Run one backup into the persisted folder, prune to [BackupSyncPrefs.keepCount], stamp last-backup. */
+    /** Run one backup into [backupDir], prune to [BackupSyncPrefs.keepCount], stamp last-backup. */
     fun backupNow(context: Context): Boolean {
-        val treeUri = BackupSyncPrefs.treeUri(context) ?: return false
-        writeSnapshot(context, treeUri) ?: return false
+        writeSnapshot(context) ?: return false
         BackupSyncPrefs.setLastBackupMs(context, System.currentTimeMillis())
-        prune(context, treeUri)
+        prune(context)
         return true
     }
 
     /** Best-effort retention: delete snapshots beyond keepCount. Listing failures are ignored. */
-    private fun prune(context: Context, treeUri: Uri) {
+    private fun prune(context: Context) {
         val keep = BackupSyncPrefs.keepCount(context)
-        val children = runCatching { listSnapshotDocs(context, treeUri) }.getOrDefault(emptyList())
-        val toDelete = snapshotsToPrune(children.map { it.name }, keep).toSet()
-        for (doc in children) {
-            if (doc.name in toDelete) {
-                runCatching { DocumentsContract.deleteDocument(context.contentResolver, doc.uri) }
-            }
-        }
+        val files = runCatching { listSnapshots() }.getOrDefault(emptyList())
+        val toDelete = snapshotsToPrune(files.map { it.name }, keep).toSet()
+        for (f in files) if (f.name in toDelete) runCatching { f.file.delete() }
     }
 
-    /** One row of the restore picker: display name, its Uri, and the resolved ms used to order + label it. */
-    data class SnapshotDoc(val name: String, val uri: Uri, val timeMs: Long)
-
     /**
-     * Every `.noopbak` in the tree, newest-first, as (name, Uri, resolved-ms) rows. Drives
-     * restore-from-folder. Lists ANY `.noopbak`, not just canonically-named ones (#852): a hand-named
-     * backup like `noop-backup-2026-06-30.noopbak` still shows. DUPLICATES ARE PRESERVED - two docs
-     * sharing a display name (Drive duplicates, a sync client dropping the same file twice) both survive,
-     * distinguished by their Uri, so no real backup silently vanishes. Canonical names order + label by
-     * their embedded stamp; the rest by the SAF last-modified date, so the picker shows a friendly date
-     * even for a hand-named file (parity with Swift). Content is validated on restore, so a bad file here
-     * is caught then.
+     * Every `.noopbak` in [backupDir], newest-first, as [SnapshotFile] rows — drives restore-from-folder.
+     * Lists ANY `.noopbak` (#852): a hand-named backup like `noop-backup-2026-06-30.noopbak` still shows.
+     * Canonical names order + label by their embedded UTC stamp; the rest by the file's last-modified date.
+     * Content is validated on restore, so a bad file here is caught then.
      */
-    fun listSnapshotDocs(context: Context, treeUri: Uri): List<SnapshotDoc> {
-        val childrenUri = DocumentsContract.buildChildDocumentsUriUsingTree(
-            treeUri,
-            DocumentsContract.getTreeDocumentId(treeUri),
-        )
-        val docs = ArrayList<BackupDoc>()
-        context.contentResolver.query(
-            childrenUri,
-            arrayOf(
-                DocumentsContract.Document.COLUMN_DOCUMENT_ID,
-                DocumentsContract.Document.COLUMN_DISPLAY_NAME,
-                DocumentsContract.Document.COLUMN_LAST_MODIFIED,
-            ),
-            null, null, null,
-        )?.use { c ->
-            while (c.moveToNext()) {
-                val id = c.getString(0)
-                val name = c.getString(1) ?: continue
-                if (isBackupFile(name)) {
-                    // COLUMN_LAST_MODIFIED can be null for some providers; fall back to 0.
-                    val modifiedMs = if (c.isNull(2)) 0L else c.getLong(2)
-                    docs.add(BackupDoc(name, DocumentsContract.buildDocumentUriUsingTree(treeUri, id), modifiedMs))
-                }
-            }
-        }
-        // Order + preserve duplicates in the pure helper, then resolve each row's display ms the same way
-        // (embedded stamp when present, else the file date) so the screen can label from timeMs directly.
-        return restorableDocsNewestFirst(docs, { it.name }, { it.modifiedMs }).map {
-            SnapshotDoc(it.name, it.uri, snapshotTimeMs(it.name) ?: it.modifiedMs)
+    fun listSnapshots(): List<SnapshotFile> {
+        val files = backupDir().listFiles { f -> f.isFile && isBackupFile(f.name) }?.toList().orEmpty()
+        return restorableDocsNewestFirst(files, { it.name }, { it.lastModified() }).map {
+            SnapshotFile(it, it.name, snapshotTimeMs(it.name) ?: it.lastModified())
         }
     }
 
@@ -264,7 +252,7 @@ object BackupSync {
      */
     fun reschedule(context: Context) {
         val wm = WorkManager.getInstance(context.applicationContext)
-        if (!BackupSyncPrefs.autoEnabled(context) || BackupSyncPrefs.treeUri(context) == null) {
+        if (!BackupSyncPrefs.autoEnabled(context) || !hasFilesAccess(context)) {
             wm.cancelUniqueWork(WORK)
             return
         }
@@ -294,7 +282,7 @@ object BackupSync {
      */
     fun catchUpIfDue(context: Context, nowMs: Long = System.currentTimeMillis()): Boolean {
         if (!BackupSyncPrefs.autoEnabled(context)) return false
-        if (BackupSyncPrefs.treeUri(context) == null) return false
+        if (!hasFilesAccess(context)) return false
         if (!isCatchUpDue(BackupSyncPrefs.lastBackupMs(context), nowMs)) return false
         return backupNow(context)
     }
@@ -321,11 +309,6 @@ class BackupSyncWorker(appContext: Context, params: WorkerParameters) :
 object BackupSyncPrefs {
     private const val FILE = "backup_sync"
     private fun p(c: Context) = c.applicationContext.getSharedPreferences(FILE, Context.MODE_PRIVATE)
-
-    fun treeUri(c: Context): Uri? = p(c).getString("tree_uri", null)?.let(Uri::parse)
-    fun setTreeUri(c: Context, uri: Uri?) = p(c).edit().apply {
-        if (uri == null) remove("tree_uri") else putString("tree_uri", uri.toString())
-    }.apply()
 
     /** Master enable for the daily auto-backup. Default OFF (every NOOP automation is opt-in). */
     fun autoEnabled(c: Context): Boolean = p(c).getBoolean("auto", false)
