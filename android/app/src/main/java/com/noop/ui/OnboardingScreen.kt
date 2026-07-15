@@ -52,6 +52,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -73,7 +74,10 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.noop.ble.WhoopModel
+import com.noop.data.DeviceStatus
 import com.noop.data.ImportSummary
+import com.noop.data.PairedDeviceRow
+import com.noop.data.SourceKind
 import com.noop.ingest.AppleHealthImporter
 import com.noop.ingest.HealthConnectImporter
 import com.noop.ingest.WhoopCsvImporter
@@ -98,12 +102,9 @@ fun OnboardingScreen(viewModel: AppViewModel, onFinished: () -> Unit) {
     val page = pages[pageIndex]
     val live by viewModel.live.collectAsStateWithLifecycle()
 
-    // The bonded celebration only makes sense once a strap is actually bonded. Auto-advance to it
-    // the moment that happens on the Connect step (mirrors macOS's scan → celebration), and skip
-    // it in both directions when nothing is bonded so it never shows a false "You're connected".
-    LaunchedEffect(live.bonded) {
-        if (live.bonded && page == OnboardingPage.Connect) pageIndex++
-    }
+    // No auto-advance off the Connect step: a user with several bands must pick which one to pair, so
+    // the step now shows a per-band picker and the user advances by tapping Continue. advance() still
+    // routes Connect → celebration when a strap is bonded, or Connect → Profile when nothing is.
 
     fun complete() {
         // Onboarding deferred the foreground promotion; do it now if a strap is live.
@@ -405,7 +406,7 @@ private fun WhatItDoesStep() {
                 icon = Icons.Filled.MonitorHeart,
                 tint = Palette.accent,
                 title = "Watch your heart, live",
-                body = "Connect a WHOOP, a heart-rate strap or a gym machine and watch each beat in real time, with zones that match your profile. Already have history elsewhere? Import it from WHOOP, Apple Health, Oura, Fitbit or Garmin.",
+                body = "Connect your WHOOP and watch each beat in real time, with zones that match your profile. Already have history elsewhere? Import it from WHOOP, Apple Health, Oura, Fitbit or Garmin.",
             )
             FeatureRow(
                 icon = Icons.Filled.Lock,
@@ -483,33 +484,58 @@ private fun ConnectStep(viewModel: AppViewModel) {
     val context = LocalContext.current
     val live by viewModel.live.collectAsStateWithLifecycle()
     val selectedModel by viewModel.selectedModel.collectAsStateWithLifecycle()
+    val scope = rememberCoroutineScope()
 
     val blePerms = remember { blePermissions() }
-    // The Scan button goes through the same shared gate as Live/Settings (requests the permission
-    // if missing, then connects). Onboarding connects without promoting the foreground service —
-    // OnboardingScreen promotes it on completion. See AppViewModel.connect(promoteService).
-    val requestConnect = rememberRequestScan { viewModel.connect(promoteService = false) }
-    var autoConnectStarted by rememberSaveable { mutableStateOf(false) }
-
     val bleGranted = blePerms.all {
         ContextCompat.checkSelfPermission(context, it) == PackageManager.PERMISSION_GRANTED
     }
 
-    LaunchedEffect(Unit) {
-        if (!autoConnectStarted && !live.bonded && !live.connected && !live.scanning) {
-            autoConnectStarted = true
-            // Only auto-scan if permission is already in hand (granted on the Bluetooth step). We
-            // never raise the OS prompt here — that would land on top of this step's own content.
-            if (bleGranted) viewModel.connect(promoteService = false)
-        }
+    // Same PRESENT-ONLY scan the Add-device wizard uses: it lists nearby straps in
+    // viewModel.discoveredWhoops WITHOUT auto-connecting, so a user with several bands chooses WHICH
+    // one to pair instead of the app grabbing the first (or an already-OS-connected) strap. Keyed on
+    // the selected model so switching the WHOOP family re-presents the scan for that family. Only runs
+    // once permission is in hand (granted on the Bluetooth step) and nothing is bonded yet — we never
+    // raise the OS prompt here, and never start the scanner once a strap is bonded.
+    LaunchedEffect(selectedModel) {
+        if (bleGranted && !live.bonded) viewModel.presentWhoopScan(selectedModel)
+    }
+    // Stop the present-scan when the user leaves the step (advance / back / dismiss) so the LE scanner
+    // isn't left running past this screen.
+    DisposableEffect(Unit) {
+        onDispose { viewModel.stopWhoopScan() }
+    }
+
+    // Commit the chosen strap the same way the wizard's finishAdd does: build a WHOOP PairedDeviceRow
+    // from the picked strap's address/name and the selected family, register it active (the
+    // SourceCoordinator then connects + pins THAT band), and end the present-scan. Once it bonds,
+    // live.bonded flips true and the user taps Continue to the celebration.
+    fun commit(strap: com.noop.ble.WhoopBleClient.DiscoveredWhoop) {
+        val wm = selectedModel
+        val modelLabel = if (wm == WhoopModel.WHOOP4) "4.0" else "5.0 MG"
+        val now = System.currentTimeMillis() / 1000
+        val device = PairedDeviceRow(
+            id = "whoop-${strap.address}",
+            brand = "WHOOP",
+            model = modelLabel,
+            nickname = strap.name?.takeIf { it.isNotBlank() } ?: wm.displayName,
+            peripheralId = strap.address,
+            sourceKind = SourceKind.liveBLE.name,
+            capabilities = "hr,hrv,spo2,skinTemp,sleep,strainLoad",
+            status = DeviceStatus.paired.name,
+            addedAt = now,
+            lastSeenAt = now,
+        )
+        scope.launch { viewModel.registerDevice(device, makeActive = true) }
+        viewModel.stopWhoopScan()
     }
 
     StepShell(
         title = "Find your strap",
         subtitle = when {
             live.bonded -> "Bonded. You can keep going."
-            bleGranted -> "NOOP starts looking as soon as this step appears. You can keep going while it bonds."
-            else -> "Allow Bluetooth and tap Scan to find your strap, or keep going and connect later."
+            bleGranted -> "Pick your band from the list below. NOOP starts looking as soon as this step appears."
+            else -> "Allow Bluetooth on the previous step to find your strap, or keep going and connect later."
         },
     ) {
         Column(
@@ -543,50 +569,32 @@ private fun ConnectStep(viewModel: AppViewModel) {
 
             if (!live.bonded) {
                 NoopCard(padding = 16.dp) {
-                    Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        ) {
-                            Text("Strap", style = NoopType.footnote, color = Palette.textSecondary)
-                            SegmentedPillControl(
-                                items = WhoopModel.entries.toList(),
-                                selection = selectedModel,
-                                label = { it.displayName },
-                                onSelect = {
-                                    viewModel.setSelectedModel(it)
-                                    if (!live.bonded) {
-                                        viewModel.disconnect()
-                                        requestConnect()
-                                    }
-                                },
-                                modifier = Modifier.weight(1f),
-                            )
-                        }
-
-                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
-                            Button(
-                                onClick = { requestConnect() },
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = Palette.accent,
-                                    contentColor = Palette.surfaceBase,
-                                ),
-                                modifier = Modifier.weight(1f),
-                            ) {
-                                Icon(Icons.Filled.Bluetooth, contentDescription = null, modifier = Modifier.size(18.dp))
-                                Spacer(Modifier.width(6.dp))
-                                Text(if (live.connected || live.scanning) "Re-scan" else "Scan again", style = NoopType.body)
-                            }
-                            OutlinedButton(
-                                onClick = { viewModel.disconnect() },
-                                enabled = live.connected || live.scanning,
-                                colors = ButtonDefaults.outlinedButtonColors(contentColor = Palette.statusCritical),
-                                modifier = Modifier.weight(1f),
-                            ) {
-                                Text("Stop", style = NoopType.body)
-                            }
-                        }
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        Text("Strap", style = NoopType.footnote, color = Palette.textSecondary)
+                        SegmentedPillControl(
+                            items = WhoopModel.entries.toList(),
+                            selection = selectedModel,
+                            label = { it.displayName },
+                            // Changing the family re-points the present-scan via the LaunchedEffect above
+                            // (keyed on selectedModel), so the list refills with that family's straps.
+                            onSelect = { viewModel.setSelectedModel(it) },
+                            modifier = Modifier.weight(1f),
+                        )
                     }
+                }
+
+                // The SAME per-band picker the Add-device wizard uses: tap the strap that's yours to pair
+                // it. Only shown while a present-scan can actually be running (permission granted, not yet
+                // bonded); the picker owns its own Rescan.
+                if (bleGranted) {
+                    WhoopPickStep(
+                        viewModel = viewModel,
+                        onSelect = { strap -> commit(strap) },
+                        onRescan = { viewModel.presentWhoopScan(selectedModel) },
+                    )
                 }
             }
 
@@ -597,14 +605,14 @@ private fun ConnectStep(viewModel: AppViewModel) {
                 message = "If the strap is nearby, NOOP will keep the BLE link alive in the background. You can continue through profile and import while it bonds.",
             )
 
-            // WHOOP is NOOP's primary band, so onboarding leads with it — but it isn't required.
-            // Make that obvious so a non-WHOOP user doesn't feel stuck on this step (#415-adjacent):
-            // they can continue now and pair a heart-rate strap or import data afterwards.
+            // WHOOP is NOOP's primary band, so onboarding leads with it — but it isn't required. Make that
+            // obvious so a user without a WHOOP doesn't feel stuck on this step (#415-adjacent): they can
+            // continue now and add a device or import history afterwards.
             if (!live.bonded) {
                 Text(
-                    "No WHOOP? You can still continue. Pair a heart-rate strap (Polar, Wahoo, Coospo, Garmin HRM…) " +
-                        "or a gym machine under Devices, or import from WHOOP, Apple Health, Oura, Fitbit, Garmin " +
-                        "and more under Data Sources. You can do either any time.",
+                    "No WHOOP? You can still continue. Add your WHOOP (or the experimental Oura ring) later " +
+                        "under Devices, or import from WHOOP, Apple Health, Oura, Fitbit, Garmin and more under " +
+                        "Data Sources. You can do either any time.",
                     style = NoopType.footnote,
                     color = Palette.textTertiary,
                     textAlign = TextAlign.Center,

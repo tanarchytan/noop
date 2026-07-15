@@ -793,8 +793,11 @@ private val ouraPrepInstructions: List<String> = listOf(
 
 // MARK: - Step 3 - pick from the live scan
 
+// `internal` (not `private`) so the first-run OnboardingScreen can reuse the SAME per-band picker the
+// wizard uses, instead of auto-grabbing whatever strap the phone already holds (its helpers PickList /
+// DiscoveredRow stay private to this file).
 @Composable
-private fun WhoopPickStep(
+internal fun WhoopPickStep(
     viewModel: AppViewModel,
     onSelect: (WhoopBleClient.DiscoveredWhoop) -> Unit,
     onRescan: () -> Unit,
