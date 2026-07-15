@@ -815,16 +815,22 @@ fun TodayScreen(
     // (Baselines.minNightsSeed valid nights). Show honest "calibrating, N of 4 nights" progress
     // instead of a bare "No Data" so a new BLE-only user knows scores are coming, not broken. (PR #85)
     val recoveryCalibration: Int? = if (selectedDayOffset == 0) {
-        recoveryCalibrationNights(days, displayMetric?.recovery != null)
+        // Thread the persisted "Recalibrate HRV baseline" epoch (0 = none) so N folds the SAME
+        // epoch-aware history the recovery engine folds — otherwise a post-recalibration user's pre-epoch
+        // nights inflate the count past the seed gate and the score side wrongly reads NeedsStrap (Bug B).
+        val hrvEpoch = NoopPrefs.of(context).getLong(Baselines.hrvBaselineEpochKey, 0L).toDouble()
+        recoveryCalibrationNights(days, displayMetric?.recovery != null, hrvEpoch)
     } else {
         null
     }
 
-    // Calibration-milestone gamification: the UNCAPPED banked-night tally (unlike recoveryCalibration,
-    // which nulls out past the 4-night seed) drives the WHOOP-style countdown cards (First Recovery 4 →
-    // Sleep 7 → Trusted 14 → 30-day baseline). Same analytics-layer source as the seed gate
-    // (RecoveryScorer.bankedNights), so the two can't diverge. Today only, and only while at least one
-    // milestone is still unreached; presentation-only — the targets never touch the Baselines math.
+    // Calibration-milestone gamification: the UNCAPPED lifetime banked-night tally (unlike
+    // recoveryCalibration, which nulls out past the 4-night seed) drives the WHOOP-style countdown cards
+    // (First Recovery 4 → Sleep 7 → Trusted 14 → 30-day baseline). NB post-#449: the seed-gate "Calibrating
+    // N of 4" now reads the epoch-aware baseline nValid, so after a manual HRV recalibration these two can
+    // legitimately differ — this milestone card is the lifetime achievement tally by design (it does not
+    // reset on recalibration). Today only, and only while at least one milestone is still unreached;
+    // presentation-only — the targets never touch the Baselines math.
     val calibrationMilestones: List<CalibrationMilestones.Progress>? =
         if (selectedDayOffset == 0) {
             val banked = RecoveryScorer.bankedNights(days.map { it.avgHrv })
@@ -3716,22 +3722,34 @@ private fun ContributorBar(label: String, readout: String, fraction: Double?, co
 }
 
 /**
- * Recent nights carrying a usable nightly HRV, the signal that seeds the recovery baseline. While
- * recovery is still null and this count is in [1, seed), it is the honest "calibrating N of <seed>"
- * progress shown in place of "No Data"; null once recovery exists or no night has data yet. Pure +
- * unit-tested (RecoveryCalibrationTest). Mirrors Baselines.minNightsSeed as the seed gate. (PR #85)
+ * The recovery baseline's real seed count while it still cold-starts, the honest "calibrating N of
+ * <seed>" progress shown in place of "No Data"; null once recovery exists or the baseline has crossed
+ * the seed gate. N is the HRV baseline's `nValid` from folding the SAME day-keyed, epoch-aware history
+ * the recovery engine folds ([Baselines.foldHistory] with [hrvBaselineEpoch]), NOT a looser per-night
+ * bounds count.
+ *
+ * The old count advanced on every in-range night, including nights the engine's fold DROPS after a
+ * manual "Recalibrate HRV baseline" (each night dated before the epoch is discarded, not skip-and-held).
+ * A genuinely-calibrating user who had >= seed old in-range nights therefore read `count >= seed → null`,
+ * and the Today score side fell through to [ScoreState.NeedsStrap] while the post-recalibration baseline
+ * was still seeding (Bug B, #393 follow-up). `nValid` is the exact count Baselines.computeStatus gates
+ * CALIBRATING on, so N now tracks the baseline the Charge ring rides and can never over-state it.
+ * [days] is oldest→newest (same order the engine folds). Pure + unit-tested (RecoveryCalibrationTest).
+ * (PR #85)
  */
 internal fun recoveryCalibrationNights(
     days: List<DailyMetric>,
     hasRecovery: Boolean,
+    hrvBaselineEpoch: Double,
     seed: Int = Baselines.minNightsSeed,
 ): Int? {
     if (hasRecovery) return null
+    val n = Baselines.foldHistory(
+        days.map { it.avgHrv }, days.map { it.day }, Baselines.hrvCfg, hrvBaselineEpoch,
+    ).nValid
     // Include 0: a brand-new user (no banked nights) reads "Calibrating, 0 of N" on Charge, not a
-    // bare "No data" that looks broken (#335). Caller gates past days to null; >= seed → null. The
-    // uncapped valid-HRV tally lives in the analytics layer (RecoveryScorer.bankedNights) so this seed
-    // gate and the calibration-milestone cards can't diverge; mirrors Swift RecoveryScorer.calibrationNights.
-    return RecoveryScorer.bankedNights(days.map { it.avgHrv }).takeIf { it in 0 until seed }
+    // bare "No data" that looks broken (#335). Caller gates past days to null; >= seed → null.
+    return n.takeIf { it in 0 until seed }
 }
 
 /**
