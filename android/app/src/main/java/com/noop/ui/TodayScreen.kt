@@ -2303,11 +2303,6 @@ private fun ScoreHeroRow(
     // count-up both honour Reduce Motion internally, so this is purely a "don't animate an empty hero" cost
     // gate. A carried Charge counts as data (its dimmed vessel should slosh like the Rest one).
     val animated = recovery != null || strain != null || restScore != null || lastScoredCharge != null
-    var sourceBadgeHeightPx by remember(heroSourceLabel) { mutableIntStateOf(0) }
-    val sourceBadgeHalfHeight = with(LocalDensity.current) {
-        if (sourceBadgeHeightPx > 0) (sourceBadgeHeightPx / 2f).toDp()
-        else Metrics.sourceBadgeHeight / 2
-    }
 
     Box(
         modifier = Modifier
@@ -2419,14 +2414,13 @@ private fun ScoreHeroRow(
                             tint = Palette.onDarkSecondary,
                             modifier = Modifier
                                 .align(Alignment.TopEnd)
-                                // Measure the full label even when it is wider than the Rest vessel, then
-                                // let it overflow left while preserving the vessel-aligned trailing edge.
+                                // Let the full label overflow left when it's wider than the Rest vessel,
+                                // keeping its trailing edge aligned to the vessel.
                                 .wrapContentWidth(unbounded = true, align = Alignment.End)
-                                .onSizeChanged { sourceBadgeHeightPx = it.height }
-                                // The row starts one space16 inside the card; lifting by that plus half the
-                                // measured badge height puts its centre exactly on the top border, including
-                                // when Android font scaling grows it above the canonical compact height.
-                                .offset(y = -(Metrics.space16 + sourceBadgeHalfHeight))
+                                // Sit INSIDE the card's top-right corner: the rings row starts space16 below
+                                // the top edge, so a small lift nestles the badge in the top padding — it no
+                                // longer straddles/floats above the top border over the liquid vessels.
+                                .offset(y = -Metrics.space8)
                                 .semantics { contentDescription = "Source: $heroSourceLabel" },
                         )
                     }
