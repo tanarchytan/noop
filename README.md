@@ -9,16 +9,6 @@
 <p align="center"><sub>The <b>Android-only</b> line of NOOP — the <b>Liquid Metal</b> look: living liquid scores and a sky that moves with your day.</sub></p>
 
 <p align="center">
-  <img alt="Platform" src="https://img.shields.io/badge/platform-Android%208%2B%20(minSdk%2026)-E8B84B?style=flat-square">
-  <img alt="Language" src="https://img.shields.io/badge/language-Kotlin%20%C2%B7%20Compose-E8B84B?style=flat-square">
-  <img alt="Local first" src="https://img.shields.io/badge/local-first-E8B84B?style=flat-square">
-  <img alt="Account free" src="https://img.shields.io/badge/account-free-C8902F?style=flat-square">
-  <img alt="WHOOP 4 and 5" src="https://img.shields.io/badge/works%20with-WHOOP%204.0%20%26%205.0-6B737B?style=flat-square">
-  <a href="LICENSE"><img alt="License: PolyForm Noncommercial 1.0.0" src="https://img.shields.io/badge/license-PolyForm%20Noncommercial%201.0.0-6B737B?style=flat-square"></a>
-</p>
-
-<p align="center">
-  <a href="#download">⬇&nbsp;Download</a> ·
   <a href="#features">Features</a> ·
   <a href="#quickstart-android">Build</a> ·
   <a href="docs/PROTOCOL.md">Protocol</a>
