@@ -431,11 +431,6 @@ class WhoopBleClient(
         // (CoreBluetooth does this implicitly via setNotifyValue; Android requires the explicit write).
         private val CCCD: UUID = UUID.fromString("00002902-0000-1000-8000-00805f9b34fb")
 
-        /** Fixed rescan delay for the firmware-reset / stale-OS-bond re-pair path ONLY — that path
-         *  deliberately KEEPS scanning at a steady 3s so a fresh re-pair is picked up promptly, so it
-         *  stays un-backed-off. The ordinary involuntary-reconnect paths use the capped-exponential
-         *  [ReconnectBackoff] instead (#48). (BLEManager: "rescanning in 3s".) */
-        private const val RECONNECT_DELAY_MS = 3_000L
         /** PR #588: after this many CONSECUTIVE involuntary reconnect attempts, drop the scan from the
          *  battery-hungry LOW_LATENCY mode to a lower-power mode. A strap that's genuinely out of range
          *  (left at home, dead battery) would otherwise hold the radio at full power indefinitely while
@@ -5641,9 +5636,16 @@ class WhoopBleClient(
                         """.trimIndent()
                     ) }
                 }
-                // #1030 (ryanbr): route through scheduleReconnect so this backoff timer is cancellable
-                // and can't tear down a link that returns before it fires.
-                scheduleReconnect(RECONNECT_DELAY_MS) { connect(selectedModel) }
+                // #1030 (ryanbr): route through scheduleReconnect so this timer is cancellable and can't
+                // tear down a link that returns before it fires. Capped-exponential backoff keyed on
+                // staleDirectFailures (3 → 6 → 12 → 24 → 48 → 60s), NOT a fixed 3s: a persistent stale OS
+                // bond (the WHOOP app re-bonded, or a firmware update reset pairing) can only be cleared by
+                // a USER forget+re-pair (the guide above), so running a full connect→fail→teardown cycle
+                // every 3s indefinitely in the background just burns CPU + BLE radio (the v8.5.2 reconnect-
+                // churn class). The first retry stays fast (attempt 1 = 3s) for a transient drop; a genuine
+                // bond resets staleDirectFailures to 0 (see #84 parity reset), so the backoff resets too,
+                // and a fresh re-pair is still auto-picked-up within ≤60s.
+                scheduleReconnect(ReconnectBackoff.nextDelayMs(staleDirectFailures)) { connect(selectedModel) }
                 return
             }
             val dev = lastDevice
