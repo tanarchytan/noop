@@ -407,7 +407,7 @@ fun AppRoot(viewModel: AppViewModel = viewModel()) {
                         onOpenAppleHealth = { nav.navigate(Destination.AppleHealth.route) },
                     )
                 }
-                composable(Destination.BackupSync.route) { BackupSyncScreen(viewModel.repo) }
+                composable(Destination.BackupSync.route) { BackupSyncScreen(viewModel.repo, viewModel.activeStrapId) }
                 composable(Destination.Notifications.route) { NotificationsSettingsScreen(viewModel) }
                 composable(Destination.Settings.route) {
                     SettingsScreen(
