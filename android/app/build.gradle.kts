@@ -29,6 +29,10 @@ android {
         vectorDrawables {
             useSupportLibrary = true
         }
+        // The Rust whoop-ffi .so ships for these two ABIs only (arm64 phones, x86_64 emulator).
+        ndk {
+            abiFilters += listOf("arm64-v8a", "x86_64")
+        }
     }
 
     signingConfigs {
@@ -163,6 +167,10 @@ dependencies {
     // --- Coroutines ---
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.8.1")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
+
+    // --- Rust whoop-ffi codec (the from-scratch whoop-rs core, via uniffi). JNA is its Kotlin runtime;
+    //     the .so ships in jniLibs. No BLE crosses the FFI — native BLE feeds decoded bytes in. ---
+    implementation("net.java.dev.jna:jna:5.14.0@aar")
 
     // --- Room (local-only persistence; on-device, nothing leaves the phone) ---
     val roomVersion = "2.6.1"
