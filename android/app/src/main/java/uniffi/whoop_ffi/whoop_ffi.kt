@@ -673,17 +673,55 @@ internal object IntegrityCheckingUniffiLib {
         uniffiCheckContractApiVersion(this)
         uniffiCheckApiChecksums(this)
     }
+    external fun uniffi_whoop_ffi_checksum_func_haptic_clock_pulses(
+    ): Int
+    external fun uniffi_whoop_ffi_checksum_func_hrv_readiness(
+    ): Int
+    external fun uniffi_whoop_ffi_checksum_func_hrv_rmssd_gap_aware(
+    ): Int
+    external fun uniffi_whoop_ffi_checksum_func_ppg_hr(
+    ): Int
+    external fun uniffi_whoop_ffi_checksum_func_spo2_from_paired(
+    ): Int
+    external fun uniffi_whoop_ffi_checksum_method_whoopcodec_alarm_disable_frame(
+    ): Int
+    external fun uniffi_whoop_ffi_checksum_method_whoopcodec_alarm_set_frame(
+    ): Int
+    external fun uniffi_whoop_ffi_checksum_method_whoopcodec_broadcast_hr_frame(
+    ): Int
+    external fun uniffi_whoop_ffi_checksum_method_whoopcodec_buzz_frame(
+    ): Int
     external fun uniffi_whoop_ffi_checksum_method_whoopcodec_client_hello(
     ): Int
     external fun uniffi_whoop_ffi_checksum_method_whoopcodec_decode_history(
     ): Int
+    external fun uniffi_whoop_ffi_checksum_method_whoopcodec_decode_live(
+    ): Int
+    external fun uniffi_whoop_ffi_checksum_method_whoopcodec_decode_response(
+    ): Int
     external fun uniffi_whoop_ffi_checksum_method_whoopcodec_feed(
+    ): Int
+    external fun uniffi_whoop_ffi_checksum_method_whoopcodec_get_battery_frame(
+    ): Int
+    external fun uniffi_whoop_ffi_checksum_method_whoopcodec_get_data_range_frame(
+    ): Int
+    external fun uniffi_whoop_ffi_checksum_method_whoopcodec_get_hello_frame(
+    ): Int
+    external fun uniffi_whoop_ffi_checksum_method_whoopcodec_offload_abort(
     ): Int
     external fun uniffi_whoop_ffi_checksum_method_whoopcodec_offload_start(
     ): Int
     external fun uniffi_whoop_ffi_checksum_method_whoopcodec_r22_frames(
     ): Int
+    external fun uniffi_whoop_ffi_checksum_method_whoopcodec_reboot_frame(
+    ): Int
     external fun uniffi_whoop_ffi_checksum_method_whoopcodec_reset(
+    ): Int
+    external fun uniffi_whoop_ffi_checksum_method_whoopcodec_set_config_frame(
+    ): Int
+    external fun uniffi_whoop_ffi_checksum_method_whoopcodec_stop_raw_flood_frame(
+    ): Int
+    external fun uniffi_whoop_ffi_checksum_method_whoopcodec_toggle_realtime_hr_frame(
     ): Int
     external fun uniffi_whoop_ffi_checksum_constructor_whoopcodec_new(
     ): Int
@@ -711,18 +749,56 @@ internal object UniffiLib {
     ): Unit
     external fun uniffi_whoop_ffi_fn_constructor_whoopcodec_new(`gen`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): Long
+    external fun uniffi_whoop_ffi_fn_method_whoopcodec_alarm_disable_frame(`ptr`: Long,`seq`: Byte,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    external fun uniffi_whoop_ffi_fn_method_whoopcodec_alarm_set_frame(`ptr`: Long,`seq`: Byte,`wakeEpochMs`: Long,`alarmId`: Byte,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    external fun uniffi_whoop_ffi_fn_method_whoopcodec_broadcast_hr_frame(`ptr`: Long,`seq`: Byte,`on`: Byte,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    external fun uniffi_whoop_ffi_fn_method_whoopcodec_buzz_frame(`ptr`: Long,`seq`: Byte,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_method_whoopcodec_client_hello(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_method_whoopcodec_decode_history(`ptr`: Long,`raw`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
+    external fun uniffi_whoop_ffi_fn_method_whoopcodec_decode_live(`ptr`: Long,`raw`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    external fun uniffi_whoop_ffi_fn_method_whoopcodec_decode_response(`ptr`: Long,`raw`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_method_whoopcodec_feed(`ptr`: Long,`chan`: RustBuffer.ByValue,`bytes`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    external fun uniffi_whoop_ffi_fn_method_whoopcodec_get_battery_frame(`ptr`: Long,`seq`: Byte,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    external fun uniffi_whoop_ffi_fn_method_whoopcodec_get_data_range_frame(`ptr`: Long,`seq`: Byte,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    external fun uniffi_whoop_ffi_fn_method_whoopcodec_get_hello_frame(`ptr`: Long,`seq`: Byte,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    external fun uniffi_whoop_ffi_fn_method_whoopcodec_offload_abort(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_method_whoopcodec_offload_start(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_method_whoopcodec_r22_frames(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
+    external fun uniffi_whoop_ffi_fn_method_whoopcodec_reboot_frame(`ptr`: Long,`seq`: Byte,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_method_whoopcodec_reset(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
     ): Unit
+    external fun uniffi_whoop_ffi_fn_method_whoopcodec_set_config_frame(`ptr`: Long,`seq`: Byte,`name`: RustBuffer.ByValue,`value`: Byte,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    external fun uniffi_whoop_ffi_fn_method_whoopcodec_stop_raw_flood_frame(`ptr`: Long,`seq`: Byte,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    external fun uniffi_whoop_ffi_fn_method_whoopcodec_toggle_realtime_hr_frame(`ptr`: Long,`seq`: Byte,`on`: Byte,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    external fun uniffi_whoop_ffi_fn_func_haptic_clock_pulses(`hour`: Int,`minute`: Int,`is24h`: Byte,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    external fun uniffi_whoop_ffi_fn_func_hrv_readiness(`nightlyRmssd`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    external fun uniffi_whoop_ffi_fn_func_hrv_rmssd_gap_aware(`runs`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    external fun uniffi_whoop_ffi_fn_func_ppg_hr(`samples`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    external fun uniffi_whoop_ffi_fn_func_spo2_from_paired(`red`: RustBuffer.ByValue,`ir`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
     external fun ffi_whoop_ffi_rustbuffer_alloc(`size`: Long,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     external fun ffi_whoop_ffi_rustbuffer_from_bytes(`bytes`: ForeignBytes.ByValue,uniffi_out_err: UniffiRustCallStatus, 
@@ -842,13 +918,58 @@ private fun uniffiCheckContractApiVersion(lib: IntegrityCheckingUniffiLib) {
 }
 @Suppress("UNUSED_PARAMETER")
 private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
+    if (lib.uniffi_whoop_ffi_checksum_func_haptic_clock_pulses() != 28487) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_whoop_ffi_checksum_func_hrv_readiness() != 20540) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_whoop_ffi_checksum_func_hrv_rmssd_gap_aware() != 21845) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_whoop_ffi_checksum_func_ppg_hr() != 31690) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_whoop_ffi_checksum_func_spo2_from_paired() != 11748) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_whoop_ffi_checksum_method_whoopcodec_alarm_disable_frame() != 46355) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_whoop_ffi_checksum_method_whoopcodec_alarm_set_frame() != 19569) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_whoop_ffi_checksum_method_whoopcodec_broadcast_hr_frame() != 13762) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_whoop_ffi_checksum_method_whoopcodec_buzz_frame() != 11134) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_whoop_ffi_checksum_method_whoopcodec_client_hello() != 3690) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_whoop_ffi_checksum_method_whoopcodec_decode_history() != 27090) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_whoop_ffi_checksum_method_whoopcodec_decode_live() != 56040) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_whoop_ffi_checksum_method_whoopcodec_decode_response() != 29506) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_whoop_ffi_checksum_method_whoopcodec_feed() != 59783) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_whoop_ffi_checksum_method_whoopcodec_get_battery_frame() != 30262) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_whoop_ffi_checksum_method_whoopcodec_get_data_range_frame() != 62610) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_whoop_ffi_checksum_method_whoopcodec_get_hello_frame() != 5496) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_whoop_ffi_checksum_method_whoopcodec_offload_abort() != 36453) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_whoop_ffi_checksum_method_whoopcodec_offload_start() != 52980) {
@@ -857,7 +978,19 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_whoop_ffi_checksum_method_whoopcodec_r22_frames() != 57192) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_whoop_ffi_checksum_method_whoopcodec_reboot_frame() != 26556) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_whoop_ffi_checksum_method_whoopcodec_reset() != 2067) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_whoop_ffi_checksum_method_whoopcodec_set_config_frame() != 61201) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_whoop_ffi_checksum_method_whoopcodec_stop_raw_flood_frame() != 37934) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_whoop_ffi_checksum_method_whoopcodec_toggle_realtime_hr_frame() != 27293) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_whoop_ffi_checksum_constructor_whoopcodec_new() != 50108) {
@@ -1123,6 +1256,75 @@ public object FfiConverterUInt: FfiConverter<UInt, Int> {
 /**
  * @suppress
  */
+public object FfiConverterInt: FfiConverter<Int, Int> {
+    override fun lift(value: Int): Int {
+        return value
+    }
+
+    override fun read(buf: ByteBuffer): Int {
+        return buf.getInt()
+    }
+
+    override fun lower(value: Int): Int {
+        return value
+    }
+
+    override fun allocationSize(value: Int) = 4UL
+
+    override fun write(value: Int, buf: ByteBuffer) {
+        buf.putInt(value)
+    }
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterULong: FfiConverter<ULong, Long> {
+    override fun lift(value: Long): ULong {
+        return value.toULong()
+    }
+
+    override fun read(buf: ByteBuffer): ULong {
+        return lift(buf.getLong())
+    }
+
+    override fun lower(value: ULong): Long {
+        return value.toLong()
+    }
+
+    override fun allocationSize(value: ULong) = 8UL
+
+    override fun write(value: ULong, buf: ByteBuffer) {
+        buf.putLong(value.toLong())
+    }
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterLong: FfiConverter<Long, Long> {
+    override fun lift(value: Long): Long {
+        return value
+    }
+
+    override fun read(buf: ByteBuffer): Long {
+        return buf.getLong()
+    }
+
+    override fun lower(value: Long): Long {
+        return value
+    }
+
+    override fun allocationSize(value: Long) = 8UL
+
+    override fun write(value: Long, buf: ByteBuffer) {
+        buf.putLong(value)
+    }
+}
+
+/**
+ * @suppress
+ */
 public object FfiConverterFloat: FfiConverter<Float, Float> {
     override fun lift(value: Float): Float {
         return value
@@ -1140,6 +1342,52 @@ public object FfiConverterFloat: FfiConverter<Float, Float> {
 
     override fun write(value: Float, buf: ByteBuffer) {
         buf.putFloat(value)
+    }
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterDouble: FfiConverter<Double, Double> {
+    override fun lift(value: Double): Double {
+        return value
+    }
+
+    override fun read(buf: ByteBuffer): Double {
+        return buf.getDouble()
+    }
+
+    override fun lower(value: Double): Double {
+        return value
+    }
+
+    override fun allocationSize(value: Double) = 8UL
+
+    override fun write(value: Double, buf: ByteBuffer) {
+        buf.putDouble(value)
+    }
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterBoolean: FfiConverter<Boolean, Byte> {
+    override fun lift(value: Byte): Boolean {
+        return value.toInt() != 0
+    }
+
+    override fun read(buf: ByteBuffer): Boolean {
+        return lift(buf.get())
+    }
+
+    override fun lower(value: Boolean): Byte {
+        return if (value) 1.toByte() else 0.toByte()
+    }
+
+    override fun allocationSize(value: Boolean) = 1UL
+
+    override fun write(value: Boolean, buf: ByteBuffer) {
+        buf.put(lower(value))
     }
 }
 
@@ -1322,6 +1570,26 @@ public object FfiConverterByteArray: FfiConverterRustBuffer<ByteArray> {
 public interface WhoopCodecInterface {
     
     /**
+     * DISABLE_ALARM (5/MG form).
+     */
+    fun `alarmDisableFrame`(`seq`: kotlin.UByte): kotlin.ByteArray
+    
+    /**
+     * SET_ALARM_TIME (5/MG, 20-byte body). `wake_epoch_ms` is resolved app-side. Experimental, UI-gated.
+     */
+    fun `alarmSetFrame`(`seq`: kotlin.UByte, `wakeEpochMs`: kotlin.ULong, `alarmId`: kotlin.UByte): kotlin.ByteArray
+    
+    /**
+     * SET_DEVICE_CONFIG to advertise standard 0x180D HR (Garmin/Edge). Opt-in gated in the app.
+     */
+    fun `broadcastHrFrame`(`seq`: kotlin.UByte, `on`: kotlin.Boolean): kotlin.ByteArray
+    
+    /**
+     * One-shot 5/MG buzz.
+     */
+    fun `buzzFrame`(`seq`: kotlin.UByte): kotlin.ByteArray
+    
+    /**
      * The GEN5 bond-open frame — write it (confirmed) after connecting to trigger the just-works bond.
      */
     fun `clientHello`(): kotlin.ByteArray
@@ -1332,10 +1600,41 @@ public interface WhoopCodecInterface {
     fun `decodeHistory`(`raw`: kotlin.ByteArray): HistorySummary?
     
     /**
+     * Decode a single live-notify frame (realtime HR/R-R, on-wrist r22 biometric, event/battery, or
+     * console text). Stateless; the app routes live-channel frames here, offload stays in `feed`.
+     */
+    fun `decodeLive`(`raw`: kotlin.ByteArray): Live?
+    
+    /**
+     * Decode a single command-response frame (identity/battery/clock/data-range/firmware).
+     */
+    fun `decodeResponse`(`raw`: kotlin.ByteArray): Response?
+    
+    /**
      * Feed one native notification (its channel + bytes): reassembles frames and drives the offload,
      * returning the steps to perform (persist records, write ACKs, stop on Complete).
      */
     fun `feed`(`chan`: Chan, `bytes`: kotlin.ByteArray): List<Step>
+    
+    /**
+     * GET_BATTERY_LEVEL (also the bond-establishing write on 5/MG).
+     */
+    fun `getBatteryFrame`(`seq`: kotlin.UByte): kotlin.ByteArray
+    
+    /**
+     * GET_DATA_RANGE (the oldest/newest banked seconds).
+     */
+    fun `getDataRangeFrame`(`seq`: kotlin.UByte): kotlin.ByteArray
+    
+    /**
+     * GET_HELLO (identity + firmware), family-forked.
+     */
+    fun `getHelloFrame`(`seq`: kotlin.UByte): kotlin.ByteArray
+    
+    /**
+     * Cleanly abort an in-flight history drain.
+     */
+    fun `offloadAbort`(): kotlin.ByteArray
     
     /**
      * The SEND_HISTORICAL_DATA frame that starts a drain.
@@ -1348,9 +1647,29 @@ public interface WhoopCodecInterface {
     fun `r22Frames`(): List<kotlin.ByteArray>
     
     /**
+     * Warm-reboot the strap (data kept). Confirmation-gated in the app.
+     */
+    fun `rebootFrame`(`seq`: kotlin.UByte): kotlin.ByteArray
+    
+    /**
      * Drop any buffered partial frames — call on (re)connect.
      */
     fun `reset`()
+    
+    /**
+     * SET_CONFIG for one runtime-named feature flag. Opt-in / deep-data gated in the app.
+     */
+    fun `setConfigFrame`(`seq`: kotlin.UByte, `name`: kotlin.String, `value`: kotlin.UByte): kotlin.ByteArray
+    
+    /**
+     * Stop the live type-43 raw flood (sent during the handshake).
+     */
+    fun `stopRawFloodFrame`(`seq`: kotlin.UByte): kotlin.ByteArray
+    
+    /**
+     * Toggle the realtime HR/R-R stream on the vendor channel.
+     */
+    fun `toggleRealtimeHrFrame`(`seq`: kotlin.UByte, `on`: kotlin.Boolean): kotlin.ByteArray
     
     companion object
 }
@@ -1471,6 +1790,77 @@ open class WhoopCodec: Disposable, AutoCloseable, WhoopCodecInterface
 
     
     /**
+     * DISABLE_ALARM (5/MG form).
+     */override fun `alarmDisableFrame`(`seq`: kotlin.UByte): kotlin.ByteArray {
+            return FfiConverterByteArray.lift(
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_method_whoopcodec_alarm_disable_frame(
+        it,
+        
+        FfiConverterUByte.lower(`seq`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * SET_ALARM_TIME (5/MG, 20-byte body). `wake_epoch_ms` is resolved app-side. Experimental, UI-gated.
+     */override fun `alarmSetFrame`(`seq`: kotlin.UByte, `wakeEpochMs`: kotlin.ULong, `alarmId`: kotlin.UByte): kotlin.ByteArray {
+            return FfiConverterByteArray.lift(
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_method_whoopcodec_alarm_set_frame(
+        it,
+        
+        FfiConverterUByte.lower(`seq`),
+        FfiConverterULong.lower(`wakeEpochMs`),
+        FfiConverterUByte.lower(`alarmId`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * SET_DEVICE_CONFIG to advertise standard 0x180D HR (Garmin/Edge). Opt-in gated in the app.
+     */override fun `broadcastHrFrame`(`seq`: kotlin.UByte, `on`: kotlin.Boolean): kotlin.ByteArray {
+            return FfiConverterByteArray.lift(
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_method_whoopcodec_broadcast_hr_frame(
+        it,
+        
+        FfiConverterUByte.lower(`seq`),
+        FfiConverterBoolean.lower(`on`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * One-shot 5/MG buzz.
+     */override fun `buzzFrame`(`seq`: kotlin.UByte): kotlin.ByteArray {
+            return FfiConverterByteArray.lift(
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_method_whoopcodec_buzz_frame(
+        it,
+        
+        FfiConverterUByte.lower(`seq`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
      * The GEN5 bond-open frame — write it (confirmed) after connecting to trigger the just-works bond.
      */override fun `clientHello`(): kotlin.ByteArray {
             return FfiConverterByteArray.lift(
@@ -1504,6 +1894,41 @@ open class WhoopCodec: Disposable, AutoCloseable, WhoopCodecInterface
 
     
     /**
+     * Decode a single live-notify frame (realtime HR/R-R, on-wrist r22 biometric, event/battery, or
+     * console text). Stateless; the app routes live-channel frames here, offload stays in `feed`.
+     */override fun `decodeLive`(`raw`: kotlin.ByteArray): Live? {
+            return FfiConverterOptionalTypeLive.lift(
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_method_whoopcodec_decode_live(
+        it,
+        
+        FfiConverterByteArray.lower(`raw`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Decode a single command-response frame (identity/battery/clock/data-range/firmware).
+     */override fun `decodeResponse`(`raw`: kotlin.ByteArray): Response? {
+            return FfiConverterOptionalTypeResponse.lift(
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_method_whoopcodec_decode_response(
+        it,
+        
+        FfiConverterByteArray.lower(`raw`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
      * Feed one native notification (its channel + bytes): reassembles frames and drives the offload,
      * returning the steps to perform (persist records, write ACKs, stop on Complete).
      */override fun `feed`(`chan`: Chan, `bytes`: kotlin.ByteArray): List<Step> {
@@ -1515,6 +1940,73 @@ open class WhoopCodec: Disposable, AutoCloseable, WhoopCodecInterface
         
         FfiConverterTypeChan.lower(`chan`),
         FfiConverterByteArray.lower(`bytes`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * GET_BATTERY_LEVEL (also the bond-establishing write on 5/MG).
+     */override fun `getBatteryFrame`(`seq`: kotlin.UByte): kotlin.ByteArray {
+            return FfiConverterByteArray.lift(
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_method_whoopcodec_get_battery_frame(
+        it,
+        
+        FfiConverterUByte.lower(`seq`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * GET_DATA_RANGE (the oldest/newest banked seconds).
+     */override fun `getDataRangeFrame`(`seq`: kotlin.UByte): kotlin.ByteArray {
+            return FfiConverterByteArray.lift(
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_method_whoopcodec_get_data_range_frame(
+        it,
+        
+        FfiConverterUByte.lower(`seq`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * GET_HELLO (identity + firmware), family-forked.
+     */override fun `getHelloFrame`(`seq`: kotlin.UByte): kotlin.ByteArray {
+            return FfiConverterByteArray.lift(
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_method_whoopcodec_get_hello_frame(
+        it,
+        
+        FfiConverterUByte.lower(`seq`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Cleanly abort an in-flight history drain.
+     */override fun `offloadAbort`(): kotlin.ByteArray {
+            return FfiConverterByteArray.lift(
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_method_whoopcodec_offload_abort(
+        it,
+        _status)
 }
     }
     )
@@ -1555,6 +2047,23 @@ open class WhoopCodec: Disposable, AutoCloseable, WhoopCodecInterface
 
     
     /**
+     * Warm-reboot the strap (data kept). Confirmation-gated in the app.
+     */override fun `rebootFrame`(`seq`: kotlin.UByte): kotlin.ByteArray {
+            return FfiConverterByteArray.lift(
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_method_whoopcodec_reboot_frame(
+        it,
+        
+        FfiConverterUByte.lower(`seq`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
      * Drop any buffered partial frames — call on (re)connect.
      */override fun `reset`()
         = 
@@ -1566,6 +2075,60 @@ open class WhoopCodec: Disposable, AutoCloseable, WhoopCodecInterface
 }
     }
     
+    
+
+    
+    /**
+     * SET_CONFIG for one runtime-named feature flag. Opt-in / deep-data gated in the app.
+     */override fun `setConfigFrame`(`seq`: kotlin.UByte, `name`: kotlin.String, `value`: kotlin.UByte): kotlin.ByteArray {
+            return FfiConverterByteArray.lift(
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_method_whoopcodec_set_config_frame(
+        it,
+        
+        FfiConverterUByte.lower(`seq`),
+        FfiConverterString.lower(`name`),
+        FfiConverterUByte.lower(`value`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Stop the live type-43 raw flood (sent during the handshake).
+     */override fun `stopRawFloodFrame`(`seq`: kotlin.UByte): kotlin.ByteArray {
+            return FfiConverterByteArray.lift(
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_method_whoopcodec_stop_raw_flood_frame(
+        it,
+        
+        FfiConverterUByte.lower(`seq`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Toggle the realtime HR/R-R stream on the vendor channel.
+     */override fun `toggleRealtimeHrFrame`(`seq`: kotlin.UByte, `on`: kotlin.Boolean): kotlin.ByteArray {
+            return FfiConverterByteArray.lift(
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_method_whoopcodec_toggle_realtime_hr_frame(
+        it,
+        
+        FfiConverterUByte.lower(`seq`),
+        FfiConverterBoolean.lower(`on`),_status)
+}
+    }
+    )
+    }
     
 
     
@@ -1620,9 +2183,27 @@ data class HistorySummary (
     , 
     var `rrIntervals`: List<kotlin.UShort>
     , 
+    var `gravity`: List<kotlin.Float>?
+    , 
     var `skinTempC`: kotlin.Float?
     , 
+    var `spo2Red`: kotlin.UShort?
+    , 
+    var `spo2Ir`: kotlin.UShort?
+    , 
+    var `spo2Pct`: kotlin.UByte?
+    , 
+    var `respRaw`: kotlin.UShort?
+    , 
+    var `steps`: kotlin.UShort?
+    , 
+    var `activityClass`: kotlin.UByte?
+    , 
     var `sleepState`: kotlin.UByte?
+    , 
+    var `signalFlags`: kotlin.UByte?
+    , 
+    var `signalQuality`: kotlin.UByte?
     
 ){
     
@@ -1643,7 +2224,16 @@ public object FfiConverterTypeHistorySummary: FfiConverterRustBuffer<HistorySumm
             FfiConverterUInt.read(buf),
             FfiConverterOptionalUByte.read(buf),
             FfiConverterSequenceUShort.read(buf),
+            FfiConverterOptionalSequenceFloat.read(buf),
             FfiConverterOptionalFloat.read(buf),
+            FfiConverterOptionalUShort.read(buf),
+            FfiConverterOptionalUShort.read(buf),
+            FfiConverterOptionalUByte.read(buf),
+            FfiConverterOptionalUShort.read(buf),
+            FfiConverterOptionalUShort.read(buf),
+            FfiConverterOptionalUByte.read(buf),
+            FfiConverterOptionalUByte.read(buf),
+            FfiConverterOptionalUByte.read(buf),
             FfiConverterOptionalUByte.read(buf),
         )
     }
@@ -1653,8 +2243,17 @@ public object FfiConverterTypeHistorySummary: FfiConverterRustBuffer<HistorySumm
             FfiConverterUInt.allocationSize(value.`unix`) +
             FfiConverterOptionalUByte.allocationSize(value.`heartRate`) +
             FfiConverterSequenceUShort.allocationSize(value.`rrIntervals`) +
+            FfiConverterOptionalSequenceFloat.allocationSize(value.`gravity`) +
             FfiConverterOptionalFloat.allocationSize(value.`skinTempC`) +
-            FfiConverterOptionalUByte.allocationSize(value.`sleepState`)
+            FfiConverterOptionalUShort.allocationSize(value.`spo2Red`) +
+            FfiConverterOptionalUShort.allocationSize(value.`spo2Ir`) +
+            FfiConverterOptionalUByte.allocationSize(value.`spo2Pct`) +
+            FfiConverterOptionalUShort.allocationSize(value.`respRaw`) +
+            FfiConverterOptionalUShort.allocationSize(value.`steps`) +
+            FfiConverterOptionalUByte.allocationSize(value.`activityClass`) +
+            FfiConverterOptionalUByte.allocationSize(value.`sleepState`) +
+            FfiConverterOptionalUByte.allocationSize(value.`signalFlags`) +
+            FfiConverterOptionalUByte.allocationSize(value.`signalQuality`)
     )
 
     override fun write(value: HistorySummary, buf: ByteBuffer) {
@@ -1662,8 +2261,242 @@ public object FfiConverterTypeHistorySummary: FfiConverterRustBuffer<HistorySumm
             FfiConverterUInt.write(value.`unix`, buf)
             FfiConverterOptionalUByte.write(value.`heartRate`, buf)
             FfiConverterSequenceUShort.write(value.`rrIntervals`, buf)
+            FfiConverterOptionalSequenceFloat.write(value.`gravity`, buf)
             FfiConverterOptionalFloat.write(value.`skinTempC`, buf)
+            FfiConverterOptionalUShort.write(value.`spo2Red`, buf)
+            FfiConverterOptionalUShort.write(value.`spo2Ir`, buf)
+            FfiConverterOptionalUByte.write(value.`spo2Pct`, buf)
+            FfiConverterOptionalUShort.write(value.`respRaw`, buf)
+            FfiConverterOptionalUShort.write(value.`steps`, buf)
+            FfiConverterOptionalUByte.write(value.`activityClass`, buf)
             FfiConverterOptionalUByte.write(value.`sleepState`, buf)
+            FfiConverterOptionalUByte.write(value.`signalFlags`, buf)
+            FfiConverterOptionalUByte.write(value.`signalQuality`, buf)
+    }
+}
+
+
+
+/**
+ * An HRV-readiness reading (log-domain baseline vs the personal normal band).
+ */
+data class HrvReadinessInfo (
+    var `tier`: ReadinessTier
+    , 
+    var `baseline7Ms`: kotlin.Double
+    , 
+    var `normalLowMs`: kotlin.Double
+    , 
+    var `normalHighMs`: kotlin.Double
+    , 
+    var `overreachingWatch`: kotlin.Boolean
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeHrvReadinessInfo: FfiConverterRustBuffer<HrvReadinessInfo> {
+    override fun read(buf: ByteBuffer): HrvReadinessInfo {
+        return HrvReadinessInfo(
+            FfiConverterTypeReadinessTier.read(buf),
+            FfiConverterDouble.read(buf),
+            FfiConverterDouble.read(buf),
+            FfiConverterDouble.read(buf),
+            FfiConverterBoolean.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: HrvReadinessInfo) = (
+            FfiConverterTypeReadinessTier.allocationSize(value.`tier`) +
+            FfiConverterDouble.allocationSize(value.`baseline7Ms`) +
+            FfiConverterDouble.allocationSize(value.`normalLowMs`) +
+            FfiConverterDouble.allocationSize(value.`normalHighMs`) +
+            FfiConverterBoolean.allocationSize(value.`overreachingWatch`)
+    )
+
+    override fun write(value: HrvReadinessInfo, buf: ByteBuffer) {
+            FfiConverterTypeReadinessTier.write(value.`tier`, buf)
+            FfiConverterDouble.write(value.`baseline7Ms`, buf)
+            FfiConverterDouble.write(value.`normalLowMs`, buf)
+            FfiConverterDouble.write(value.`normalHighMs`, buf)
+            FfiConverterBoolean.write(value.`overreachingWatch`, buf)
+    }
+}
+
+
+
+/**
+ * A derived HR estimate from `ppg_hr`.
+ */
+data class PpgEstimate (
+    var `ts`: kotlin.Long
+    , 
+    var `bpm`: kotlin.Int
+    , 
+    var `conf`: kotlin.Double
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypePpgEstimate: FfiConverterRustBuffer<PpgEstimate> {
+    override fun read(buf: ByteBuffer): PpgEstimate {
+        return PpgEstimate(
+            FfiConverterLong.read(buf),
+            FfiConverterInt.read(buf),
+            FfiConverterDouble.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: PpgEstimate) = (
+            FfiConverterLong.allocationSize(value.`ts`) +
+            FfiConverterInt.allocationSize(value.`bpm`) +
+            FfiConverterDouble.allocationSize(value.`conf`)
+    )
+
+    override fun write(value: PpgEstimate, buf: ByteBuffer) {
+            FfiConverterLong.write(value.`ts`, buf)
+            FfiConverterInt.write(value.`bpm`, buf)
+            FfiConverterDouble.write(value.`conf`, buf)
+    }
+}
+
+
+
+/**
+ * One raw PPG sample for `ppg_hr` (wall-clock second + raw ADC value).
+ */
+data class PpgSample (
+    var `ts`: kotlin.Long
+    , 
+    var `value`: kotlin.Int
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypePpgSample: FfiConverterRustBuffer<PpgSample> {
+    override fun read(buf: ByteBuffer): PpgSample {
+        return PpgSample(
+            FfiConverterLong.read(buf),
+            FfiConverterInt.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: PpgSample) = (
+            FfiConverterLong.allocationSize(value.`ts`) +
+            FfiConverterInt.allocationSize(value.`value`)
+    )
+
+    override fun write(value: PpgSample, buf: ByteBuffer) {
+            FfiConverterLong.write(value.`ts`, buf)
+            FfiConverterInt.write(value.`value`, buf)
+    }
+}
+
+
+
+/**
+ * One haptic buzz pulse; a clock chime is a sequence of these (write a buzz per pulse).
+ */
+data class Pulse (
+    var `durationMs`: kotlin.UInt
+    , 
+    var `gapMs`: kotlin.UInt
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypePulse: FfiConverterRustBuffer<Pulse> {
+    override fun read(buf: ByteBuffer): Pulse {
+        return Pulse(
+            FfiConverterUInt.read(buf),
+            FfiConverterUInt.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: Pulse) = (
+            FfiConverterUInt.allocationSize(value.`durationMs`) +
+            FfiConverterUInt.allocationSize(value.`gapMs`)
+    )
+
+    override fun write(value: Pulse, buf: ByteBuffer) {
+            FfiConverterUInt.write(value.`durationMs`, buf)
+            FfiConverterUInt.write(value.`gapMs`, buf)
+    }
+}
+
+
+
+/**
+ * One record's R-R for gap-aware RMSSD (the app builds these from a `HistorySummary`'s unix + rr_intervals).
+ */
+data class RrRun (
+    var `unix`: kotlin.UInt
+    , 
+    var `rr`: List<kotlin.UShort>
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeRrRun: FfiConverterRustBuffer<RrRun> {
+    override fun read(buf: ByteBuffer): RrRun {
+        return RrRun(
+            FfiConverterUInt.read(buf),
+            FfiConverterSequenceUShort.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: RrRun) = (
+            FfiConverterUInt.allocationSize(value.`unix`) +
+            FfiConverterSequenceUShort.allocationSize(value.`rr`)
+    )
+
+    override fun write(value: RrRun, buf: ByteBuffer) {
+            FfiConverterUInt.write(value.`unix`, buf)
+            FfiConverterSequenceUShort.write(value.`rr`, buf)
     }
 }
 
@@ -1735,6 +2568,425 @@ public object FfiConverterTypeGen: FfiConverterRustBuffer<Gen> {
 
     override fun write(value: Gen, buf: ByteBuffer) {
         buf.putInt(value.ordinal + 1)
+    }
+}
+
+
+
+
+
+/**
+ * A live-notify frame decoded off the realtime / event / console channels (separate from the offload path).
+ */
+sealed class Live {
+    
+    data class Realtime(
+        val `unix`: kotlin.UInt, 
+        val `heartRate`: kotlin.UByte, 
+        val `rrIntervals`: List<kotlin.UShort>) : Live()
+        
+    {
+        
+
+        companion object
+    }
+    
+    data class R22(
+        val `unix`: kotlin.UInt, 
+        val `hrCh1`: kotlin.UByte, 
+        val `hrCh2`: kotlin.UByte?, 
+        val `accel`: List<kotlin.Float>) : Live()
+        
+    {
+        
+
+        companion object
+    }
+    
+    data class Event(
+        val `number`: kotlin.UByte, 
+        val `unix`: kotlin.UInt) : Live()
+        
+    {
+        
+
+        companion object
+    }
+    
+    data class Battery(
+        val `socPercent`: kotlin.Float, 
+        val `millivolts`: kotlin.UShort, 
+        val `charging`: kotlin.Boolean) : Live()
+        
+    {
+        
+
+        companion object
+    }
+    
+    data class Console(
+        val `text`: kotlin.String) : Live()
+        
+    {
+        
+
+        companion object
+    }
+    
+
+    
+
+    
+    
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeLive : FfiConverterRustBuffer<Live>{
+    override fun read(buf: ByteBuffer): Live {
+        return when(buf.getInt()) {
+            1 -> Live.Realtime(
+                FfiConverterUInt.read(buf),
+                FfiConverterUByte.read(buf),
+                FfiConverterSequenceUShort.read(buf),
+                )
+            2 -> Live.R22(
+                FfiConverterUInt.read(buf),
+                FfiConverterUByte.read(buf),
+                FfiConverterOptionalUByte.read(buf),
+                FfiConverterSequenceFloat.read(buf),
+                )
+            3 -> Live.Event(
+                FfiConverterUByte.read(buf),
+                FfiConverterUInt.read(buf),
+                )
+            4 -> Live.Battery(
+                FfiConverterFloat.read(buf),
+                FfiConverterUShort.read(buf),
+                FfiConverterBoolean.read(buf),
+                )
+            5 -> Live.Console(
+                FfiConverterString.read(buf),
+                )
+            else -> throw RuntimeException("invalid enum value, something is very wrong!!")
+        }
+    }
+
+    override fun allocationSize(value: Live): ULong = when(value) {
+        is Live.Realtime -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterUInt.allocationSize(value.`unix`)
+                + FfiConverterUByte.allocationSize(value.`heartRate`)
+                + FfiConverterSequenceUShort.allocationSize(value.`rrIntervals`)
+            )
+        }
+        is Live.R22 -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterUInt.allocationSize(value.`unix`)
+                + FfiConverterUByte.allocationSize(value.`hrCh1`)
+                + FfiConverterOptionalUByte.allocationSize(value.`hrCh2`)
+                + FfiConverterSequenceFloat.allocationSize(value.`accel`)
+            )
+        }
+        is Live.Event -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterUByte.allocationSize(value.`number`)
+                + FfiConverterUInt.allocationSize(value.`unix`)
+            )
+        }
+        is Live.Battery -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterFloat.allocationSize(value.`socPercent`)
+                + FfiConverterUShort.allocationSize(value.`millivolts`)
+                + FfiConverterBoolean.allocationSize(value.`charging`)
+            )
+        }
+        is Live.Console -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterString.allocationSize(value.`text`)
+            )
+        }
+    }
+
+    override fun write(value: Live, buf: ByteBuffer) {
+        when(value) {
+            is Live.Realtime -> {
+                buf.putInt(1)
+                FfiConverterUInt.write(value.`unix`, buf)
+                FfiConverterUByte.write(value.`heartRate`, buf)
+                FfiConverterSequenceUShort.write(value.`rrIntervals`, buf)
+                Unit
+            }
+            is Live.R22 -> {
+                buf.putInt(2)
+                FfiConverterUInt.write(value.`unix`, buf)
+                FfiConverterUByte.write(value.`hrCh1`, buf)
+                FfiConverterOptionalUByte.write(value.`hrCh2`, buf)
+                FfiConverterSequenceFloat.write(value.`accel`, buf)
+                Unit
+            }
+            is Live.Event -> {
+                buf.putInt(3)
+                FfiConverterUByte.write(value.`number`, buf)
+                FfiConverterUInt.write(value.`unix`, buf)
+                Unit
+            }
+            is Live.Battery -> {
+                buf.putInt(4)
+                FfiConverterFloat.write(value.`socPercent`, buf)
+                FfiConverterUShort.write(value.`millivolts`, buf)
+                FfiConverterBoolean.write(value.`charging`, buf)
+                Unit
+            }
+            is Live.Console -> {
+                buf.putInt(5)
+                FfiConverterString.write(value.`text`, buf)
+                Unit
+            }
+        }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
+    }
+}
+
+
+
+
+
+
+enum class ReadinessTier {
+    
+    PRIMED,
+    NORMAL,
+    SUPPRESSED;
+
+    
+
+
+    companion object
+}
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeReadinessTier: FfiConverterRustBuffer<ReadinessTier> {
+    override fun read(buf: ByteBuffer) = try {
+        ReadinessTier.values()[buf.getInt() - 1]
+    } catch (e: IndexOutOfBoundsException) {
+        throw RuntimeException("invalid enum value, something is very wrong!!", e)
+    }
+
+    override fun allocationSize(value: ReadinessTier) = 4UL
+
+    override fun write(value: ReadinessTier, buf: ByteBuffer) {
+        buf.putInt(value.ordinal + 1)
+    }
+}
+
+
+
+
+
+/**
+ * A decoded command response (identity, battery, clock, data range, firmware).
+ */
+sealed class Response {
+    
+    data class Battery(
+        val `percent`: kotlin.Float) : Response()
+        
+    {
+        
+
+        companion object
+    }
+    
+    data class Clock(
+        val `unix`: kotlin.UInt) : Response()
+        
+    {
+        
+
+        companion object
+    }
+    
+    data class Hello(
+        val `deviceName`: kotlin.String, 
+        val `fwVersion`: kotlin.ByteArray?) : Response()
+        
+    {
+        
+
+        companion object
+    }
+    
+    data class DataRange(
+        val `oldest`: kotlin.UInt, 
+        val `newest`: kotlin.UInt) : Response()
+        
+    {
+        
+
+        companion object
+    }
+    
+    data class Version(
+        val `fw`: List<kotlin.UInt>) : Response()
+        
+    {
+        
+
+        companion object
+    }
+    
+    data class Other(
+        val `cmd`: kotlin.UByte, 
+        val `result`: kotlin.UByte?) : Response()
+        
+    {
+        
+
+        companion object
+    }
+    
+
+    
+
+    
+    
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeResponse : FfiConverterRustBuffer<Response>{
+    override fun read(buf: ByteBuffer): Response {
+        return when(buf.getInt()) {
+            1 -> Response.Battery(
+                FfiConverterFloat.read(buf),
+                )
+            2 -> Response.Clock(
+                FfiConverterUInt.read(buf),
+                )
+            3 -> Response.Hello(
+                FfiConverterString.read(buf),
+                FfiConverterOptionalByteArray.read(buf),
+                )
+            4 -> Response.DataRange(
+                FfiConverterUInt.read(buf),
+                FfiConverterUInt.read(buf),
+                )
+            5 -> Response.Version(
+                FfiConverterSequenceUInt.read(buf),
+                )
+            6 -> Response.Other(
+                FfiConverterUByte.read(buf),
+                FfiConverterOptionalUByte.read(buf),
+                )
+            else -> throw RuntimeException("invalid enum value, something is very wrong!!")
+        }
+    }
+
+    override fun allocationSize(value: Response): ULong = when(value) {
+        is Response.Battery -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterFloat.allocationSize(value.`percent`)
+            )
+        }
+        is Response.Clock -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterUInt.allocationSize(value.`unix`)
+            )
+        }
+        is Response.Hello -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterString.allocationSize(value.`deviceName`)
+                + FfiConverterOptionalByteArray.allocationSize(value.`fwVersion`)
+            )
+        }
+        is Response.DataRange -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterUInt.allocationSize(value.`oldest`)
+                + FfiConverterUInt.allocationSize(value.`newest`)
+            )
+        }
+        is Response.Version -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterSequenceUInt.allocationSize(value.`fw`)
+            )
+        }
+        is Response.Other -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterUByte.allocationSize(value.`cmd`)
+                + FfiConverterOptionalUByte.allocationSize(value.`result`)
+            )
+        }
+    }
+
+    override fun write(value: Response, buf: ByteBuffer) {
+        when(value) {
+            is Response.Battery -> {
+                buf.putInt(1)
+                FfiConverterFloat.write(value.`percent`, buf)
+                Unit
+            }
+            is Response.Clock -> {
+                buf.putInt(2)
+                FfiConverterUInt.write(value.`unix`, buf)
+                Unit
+            }
+            is Response.Hello -> {
+                buf.putInt(3)
+                FfiConverterString.write(value.`deviceName`, buf)
+                FfiConverterOptionalByteArray.write(value.`fwVersion`, buf)
+                Unit
+            }
+            is Response.DataRange -> {
+                buf.putInt(4)
+                FfiConverterUInt.write(value.`oldest`, buf)
+                FfiConverterUInt.write(value.`newest`, buf)
+                Unit
+            }
+            is Response.Version -> {
+                buf.putInt(5)
+                FfiConverterSequenceUInt.write(value.`fw`, buf)
+                Unit
+            }
+            is Response.Other -> {
+                buf.putInt(6)
+                FfiConverterUByte.write(value.`cmd`, buf)
+                FfiConverterOptionalUByte.write(value.`result`, buf)
+                Unit
+            }
+        }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
     }
 }
 
@@ -2026,6 +3278,70 @@ public object FfiConverterOptionalFloat: FfiConverterRustBuffer<kotlin.Float?> {
 /**
  * @suppress
  */
+public object FfiConverterOptionalDouble: FfiConverterRustBuffer<kotlin.Double?> {
+    override fun read(buf: ByteBuffer): kotlin.Double? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterDouble.read(buf)
+    }
+
+    override fun allocationSize(value: kotlin.Double?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterDouble.allocationSize(value)
+        }
+    }
+
+    override fun write(value: kotlin.Double?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterDouble.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterOptionalByteArray: FfiConverterRustBuffer<kotlin.ByteArray?> {
+    override fun read(buf: ByteBuffer): kotlin.ByteArray? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterByteArray.read(buf)
+    }
+
+    override fun allocationSize(value: kotlin.ByteArray?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterByteArray.allocationSize(value)
+        }
+    }
+
+    override fun write(value: kotlin.ByteArray?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterByteArray.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterOptionalTypeHistorySummary: FfiConverterRustBuffer<HistorySummary?> {
     override fun read(buf: ByteBuffer): HistorySummary? {
         if (buf.get().toInt() == 0) {
@@ -2048,6 +3364,134 @@ public object FfiConverterOptionalTypeHistorySummary: FfiConverterRustBuffer<His
         } else {
             buf.put(1)
             FfiConverterTypeHistorySummary.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterOptionalTypeHrvReadinessInfo: FfiConverterRustBuffer<HrvReadinessInfo?> {
+    override fun read(buf: ByteBuffer): HrvReadinessInfo? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterTypeHrvReadinessInfo.read(buf)
+    }
+
+    override fun allocationSize(value: HrvReadinessInfo?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterTypeHrvReadinessInfo.allocationSize(value)
+        }
+    }
+
+    override fun write(value: HrvReadinessInfo?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterTypeHrvReadinessInfo.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterOptionalTypeLive: FfiConverterRustBuffer<Live?> {
+    override fun read(buf: ByteBuffer): Live? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterTypeLive.read(buf)
+    }
+
+    override fun allocationSize(value: Live?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterTypeLive.allocationSize(value)
+        }
+    }
+
+    override fun write(value: Live?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterTypeLive.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterOptionalTypeResponse: FfiConverterRustBuffer<Response?> {
+    override fun read(buf: ByteBuffer): Response? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterTypeResponse.read(buf)
+    }
+
+    override fun allocationSize(value: Response?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterTypeResponse.allocationSize(value)
+        }
+    }
+
+    override fun write(value: Response?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterTypeResponse.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterOptionalSequenceFloat: FfiConverterRustBuffer<List<kotlin.Float>?> {
+    override fun read(buf: ByteBuffer): List<kotlin.Float>? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterSequenceFloat.read(buf)
+    }
+
+    override fun allocationSize(value: List<kotlin.Float>?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterSequenceFloat.allocationSize(value)
+        }
+    }
+
+    override fun write(value: List<kotlin.Float>?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterSequenceFloat.write(value, buf)
         }
     }
 }
@@ -2114,6 +3558,90 @@ public object FfiConverterSequenceShort: FfiConverterRustBuffer<List<kotlin.Shor
 /**
  * @suppress
  */
+public object FfiConverterSequenceUInt: FfiConverterRustBuffer<List<kotlin.UInt>> {
+    override fun read(buf: ByteBuffer): List<kotlin.UInt> {
+        val len = buf.getInt()
+        return List<kotlin.UInt>(len) {
+            FfiConverterUInt.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<kotlin.UInt>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterUInt.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<kotlin.UInt>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterUInt.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceFloat: FfiConverterRustBuffer<List<kotlin.Float>> {
+    override fun read(buf: ByteBuffer): List<kotlin.Float> {
+        val len = buf.getInt()
+        return List<kotlin.Float>(len) {
+            FfiConverterFloat.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<kotlin.Float>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterFloat.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<kotlin.Float>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterFloat.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceDouble: FfiConverterRustBuffer<List<kotlin.Double>> {
+    override fun read(buf: ByteBuffer): List<kotlin.Double> {
+        val len = buf.getInt()
+        return List<kotlin.Double>(len) {
+            FfiConverterDouble.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<kotlin.Double>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterDouble.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<kotlin.Double>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterDouble.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterSequenceByteArray: FfiConverterRustBuffer<List<kotlin.ByteArray>> {
     override fun read(buf: ByteBuffer): List<kotlin.ByteArray> {
         val len = buf.getInt()
@@ -2132,6 +3660,118 @@ public object FfiConverterSequenceByteArray: FfiConverterRustBuffer<List<kotlin.
         buf.putInt(value.size)
         value.iterator().forEach {
             FfiConverterByteArray.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypePpgEstimate: FfiConverterRustBuffer<List<PpgEstimate>> {
+    override fun read(buf: ByteBuffer): List<PpgEstimate> {
+        val len = buf.getInt()
+        return List<PpgEstimate>(len) {
+            FfiConverterTypePpgEstimate.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<PpgEstimate>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypePpgEstimate.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<PpgEstimate>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypePpgEstimate.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypePpgSample: FfiConverterRustBuffer<List<PpgSample>> {
+    override fun read(buf: ByteBuffer): List<PpgSample> {
+        val len = buf.getInt()
+        return List<PpgSample>(len) {
+            FfiConverterTypePpgSample.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<PpgSample>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypePpgSample.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<PpgSample>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypePpgSample.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypePulse: FfiConverterRustBuffer<List<Pulse>> {
+    override fun read(buf: ByteBuffer): List<Pulse> {
+        val len = buf.getInt()
+        return List<Pulse>(len) {
+            FfiConverterTypePulse.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<Pulse>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypePulse.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<Pulse>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypePulse.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeRrRun: FfiConverterRustBuffer<List<RrRun>> {
+    override fun read(buf: ByteBuffer): List<RrRun> {
+        val len = buf.getInt()
+        return List<RrRun>(len) {
+            FfiConverterTypeRrRun.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<RrRun>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeRrRun.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<RrRun>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeRrRun.write(it, buf)
         }
     }
 }
@@ -2163,4 +3803,105 @@ public object FfiConverterSequenceTypeStep: FfiConverterRustBuffer<List<Step>> {
         }
     }
 }
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceOptionalDouble: FfiConverterRustBuffer<List<kotlin.Double?>> {
+    override fun read(buf: ByteBuffer): List<kotlin.Double?> {
+        val len = buf.getInt()
+        return List<kotlin.Double?>(len) {
+            FfiConverterOptionalDouble.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<kotlin.Double?>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterOptionalDouble.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<kotlin.Double?>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterOptionalDouble.write(it, buf)
+        }
+    }
+}
+        /**
+         * The haptic pulses for a clock chime (write a buzz per pulse, spaced by its gap). Pure encoder.
+         */ fun `hapticClockPulses`(`hour`: kotlin.UInt, `minute`: kotlin.UInt, `is24h`: kotlin.Boolean): List<Pulse> {
+            return FfiConverterSequenceTypePulse.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_func_haptic_clock_pulses(
+    
+        
+        FfiConverterUInt.lower(`hour`),
+        FfiConverterUInt.lower(`minute`),
+        FfiConverterBoolean.lower(`is24h`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * HRV-readiness over a nightly RMSSD series (oldest → newest; `None` slots = missing nights).
+         */ fun `hrvReadiness`(`nightlyRmssd`: List<kotlin.Double?>): HrvReadinessInfo? {
+            return FfiConverterOptionalTypeHrvReadinessInfo.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_func_hrv_readiness(
+    
+        
+        FfiConverterSequenceOptionalDouble.lower(`nightlyRmssd`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Gap-aware, artifact-corrected nightly RMSSD (ms) from per-record R-R runs.
+         */ fun `hrvRmssdGapAware`(`runs`: List<RrRun>): kotlin.Double? {
+            return FfiConverterOptionalDouble.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_func_hrv_rmssd_gap_aware(
+    
+        
+        FfiConverterSequenceTypeRrRun.lower(`runs`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * HR from a v26 optical PPG buffer (24 Hz autocorrelation).
+         */ fun `ppgHr`(`samples`: List<PpgSample>): List<PpgEstimate> {
+            return FfiConverterSequenceTypePpgEstimate.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_func_ppg_hr(
+    
+        
+        FfiConverterSequenceTypePpgSample.lower(`samples`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * SpO2 (%) from a 4.0 paired red/IR window (ratio-of-ratios). `None` if not pulsatile.
+         */ fun `spo2FromPaired`(`red`: List<kotlin.Double>, `ir`: List<kotlin.Double>): kotlin.Double? {
+            return FfiConverterOptionalDouble.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_func_spo2_from_paired(
+    
+        
+        FfiConverterSequenceDouble.lower(`red`),
+        FfiConverterSequenceDouble.lower(`ir`),_status)
+}
+    )
+    }
+    
+
 
