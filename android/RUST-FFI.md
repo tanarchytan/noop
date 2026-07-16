@@ -7,12 +7,21 @@ only frame bytes cross the FFI, nothing async or radio-bound.
 
 ## What is committed here
 
-- `app/src/main/jniLibs/{arm64-v8a,x86_64}/libwhoop_ffi.so` — the prebuilt Rust core.
-- `app/src/main/java/uniffi/whoop_ffi/whoop_ffi.kt` — the generated uniffi Kotlin binding.
-- `app/src/main/java/com/noop/protocol/RustCodec.kt` — a thin bridge (`decodeHistory`).
-- `build.gradle.kts` — the JNA runtime dep and an `arm64-v8a`/`x86_64` `abiFilters`.
+- `app/src/main/jniLibs/{arm64-v8a,x86_64}/libwhoop_ffi.so` — the prebuilt Rust core (regenerated,
+  carries the skin-temp-raw / ExtendedBattery / BatteryPack surface).
+- `app/src/main/java/uniffi/whoop_ffi/whoop_ffi.kt` — the generated uniffi Kotlin binding (regenerated
+  to match the `.so`; binding + `.so` must always regenerate together or reads corrupt).
+- `app/src/main/java/com/noop/protocol/RustCodec.kt` — the bridge
+  (`decodeHistory`/`decodeLive`/`decodeResponse`/`rmssd`/`readiness`).
+- `app/src/main/java/com/noop/protocol/RustAdapter.kt` — FFI→StreamBatch row mappers + shadow diff.
+- `app/src/main/java/com/noop/protocol/RustShadowParity.kt` — thread-safe per-field parity counters.
+- `build.gradle.kts` — the JNA runtime dep, an `arm64-v8a`/`x86_64` `abiFilters`, and the host-JVM
+  `jna.library.path` for the parity test.
 
-## Regenerating (after a whoop-rs change)
+## Regenerating (after a whoop-rs change) — DONE for the current surface
+
+The committed `.so` + binding are current. Regenerate both together after any future whoop-rs change.
+From the `whoop-rs` checkout, with the Android NDK path set:
 
 From the `whoop-rs` checkout, with the Android NDK path set:
 
@@ -35,6 +44,30 @@ command frame the app writes (hello/battery/data-range/offload-abort/stop-raw-fl
 reboot/buzz/broadcast-hr/set-config/alarm), and exposes the derived metrics (ppg-hr, HRV, SpO2).
 It compiles into the app and ships in the APK (both ABIs). The core and the Rust bridge are
 **parallel to** the old `com.noop.protocol` Kotlin decoders, which are still the live path.
+
+### Done: regen + harness + shadow adapter
+
+- **Regen — DONE.** Both `.so` (arm64-v8a + x86_64) and the uniffi binding were regenerated together
+  so `HistorySummary.skin_temp_raw`, `Response.ExtendedBattery`, and `Response.BatteryPack` are all
+  present and layout-consistent. App build (`assembleFullDebug`) and unit tests are green.
+- **Harness — DONE.** Two parity mechanisms: a Rust-golden set in whoop-rs (`real_frames.rs` +
+  `ppg_hr_real.rs`, real-frame v26 PPG + battery/wrist EVENT + `ppg_hr`, all from a 5.0 capture), and a
+  host-JVM JNA test `RustKotlinHistoryParityTest` that decodes every shared fixture through both the
+  Rust FFI and the Kotlin decoders and asserts field-by-field equality (18 type-47 frames byte-identical
+  incl. exact f32→f64 gravity). It self-skips when the host dll is absent so CI never breaks.
+- **Adapter (shadow) — DONE.** `RustAdapter` maps FFI outputs onto `StreamBatch` rows and diffs them
+  against the authoritative Kotlin decode into `RustShadowParity`, behind a default-OFF flag.
+
+### Shadow flag + Test Centre location
+
+- **Flag:** `PuffinExperiment.isRustShadowEnabled` (SharedPreferences key `noopRustShadow`, file
+  `noop_experiments`), **default OFF**.
+- **UI:** Test Centre → **Diagnostic tools** card → **"Rust shadow decode (parity)"** switch, with a
+  parity-report readout and Refresh / Reset buttons.
+- When OFF the native codec is never loaded and no stored value changes; when ON the Rust decode runs in
+  parallel at three seams (offload `Backfiller.finishChunk`; live + response `WhoopBleClient.onInbound`)
+  and only writes parity counters. All entry points are `runCatching`-wrapped so a native failure can
+  never crash the BLE thread.
 
 ## Decoder convergence (done in whoop-rs, pre-wiring)
 
@@ -59,32 +92,67 @@ Since then the FFI also gained (all hardware-verified, additive): 4.0 serial+fir
 and two new command responses — `ExtendedBattery` (4.0 fuel gauge: mV / remaining-mAh / current) and
 `BatteryPack` (5.0 pack: serial / SOC / mV / pack-id).
 
-The whoop-rs `.so` + Kotlin binding in this tree are now several convergences behind and must be
-**regenerated** before the wiring step below (`HistorySummary.skin_temp_raw`, plus the `ExtendedBattery` /
-`BatteryPack` `Response` variants).
+The whoop-rs `.so` + Kotlin binding in this tree have now been **regenerated** to carry all of the above
+(`HistorySummary.skin_temp_raw`, plus the `ExtendedBattery` / `BatteryPack` `Response` variants), so they
+are current with the convergence work.
 
-## Next batch: retire the Kotlin decoders (route decode only through whoop-rs)
+## Next batch: retire the Kotlin decoders (route decode only through whoop-rs) — GATED
 
-The goal is one decoder. Concrete steps:
+The goal is one decoder. This batch is **not started and is hard-gated** on both of:
 
-1. **Find the decode call sites** in `com.noop.ble` (the `WhoopBleClient`) and `com.noop.collect`/
-   `data`: where notification bytes go into `Framing` / `HistoricalStreams` / `Streams` / `Enums`
-   response+live decode.
-2. **Adapter layer** — map `RustCodec` outputs (`HistorySummary` / `Live` / `Response` / `Step`) onto
-   the app's existing record/stream/Room types (or move the consumers to the FFI types). The stored
-   values must stay byte-identical to the old path (Room migrations depend on them).
-3. **Route the radio** — feed offload frames to `WhoopCodec.feed`, live-notify frames to `decodeLive`,
+- **(a)** the shadow parity report reading **clean on a real strap night** (turn the flag on, wear +
+  sync a real band, read the Test Centre parity counters, confirm zero mismatches across the fields the
+  shadow covers) — see `DECODE-CUTOVER-PLAN.md` for the runbook, and
+- **(b)** **explicit approval from David** to delete Kotlin decode.
+
+No Kotlin decoder is deleted until both are satisfied. The remaining steps:
+
+1. **Route the radio** — feed offload frames to `WhoopCodec.feed`, live-notify frames to `decodeLive`,
    command replies to `decodeResponse`; write the frames the builders return (seq + gates stay native).
-4. **Validate on a real strap** (BLE contract) — a parity night: same band, decode both ways, diff the
-   stored records. Compile proves nothing about connection behaviour.
-5. **Delete the superseded Kotlin**: `Crc`, `Framing`, `HistoricalStreams`, `Streams`, `Whoop5RawImu`,
-   `PpgHr`, and the response/live decode in `Enums`. **Keep**: `DeviceFamily` (label→Gen resolution),
-   `BackfillCaptureJsonl` (the capture writer — Rust hands back `Step` + `Frame.raw()`), the
-   command-SEND orchestration (seq/allow-list/confirm gates), standard-GATT parse (`0x2A37`/`0x2A19`),
-   and timezone→epoch for the alarm.
-6. **Optional**: a Gradle cargo-ndk task to build the `.so` + bindings from the whoop-rs source, so the
+   The single cleanest cutover tap is `WhoopCodec.feed(chan,bytes)` at `onInbound` (includes reassembly).
+2. **Delete the superseded Kotlin**: `Crc`, `Framing` (`parseFrame` + `Reassembler`), `HistoricalStreams`
+   decode, `Streams.extractStreams`, `Whoop5RawImu`, `PpgHr`, and the response/live decode role in `Enums`.
+   **Keep**: `DeviceFamily.forRegistryModel` (label→Gen resolution), `BackfillCaptureJsonl` (the capture
+   writer), the command-SEND orchestration (seq/allow-list/confirm gates), standard-GATT parse
+   (`0x2A37`/`0x2A19`), `AlarmPayload` timezone→epoch math, and `DataRange` until Rust grows a range-scan.
+3. **Optional**: a Gradle cargo-ndk task to build the `.so` + bindings from the whoop-rs source, so the
    generated artifacts stop being committed here.
+
+### Pre-deletion checklist (from the shadow-pass completeness review)
+
+The current shadow proves parity only for **per-second historical scalars + transient live HR/R-R +
+battery percent**. Every item below must be closed before any Kotlin decoder is deleted; each is a
+known gap in the current shadow, not a hypothetical:
+
+- [ ] **v26 PPG `ppgHr` (bpm/conf)** — the spec's highest-risk field and a **known structural
+      divergence**: production hardwires sub-lag parabolic interpolation ON (`PuffinExperiment`), the
+      Rust FFI `ppg_hr` is integer-lag only. Not diffed by the shadow today. Add a `ppgHr` shadow diff
+      **and** a sub-lag path in Rust (or accept + document the delta) before deleting `PpgHr`.
+- [ ] **`ppgWaveform` LE-i16 BLOB** — layout agrees by construction but is not routed through the
+      adapter (`decodeHistory` has no samples field) and is untested end-to-end. Wire + diff it.
+- [ ] **EVENT rows** — Rust `Live::Event` carries only `{number,unix}`; it cannot yet reproduce the
+      stored `NAME(raw)` label + deterministic sorted-key `payloadJSON`. Events stay Kotlin-only until
+      the FFI emits them. Extend the FFI, then diff.
+- [ ] **Stored live rows** — the shadow diffs the transient `parseFrame` map, not the values that
+      `flushLive`→`extractStreams` actually persists. Diff the stored decode.
+- [ ] **ts + PK path** — the shadow diffs pre-correction field values; the #547 plausibility drop, #72
+      snap-to-5-min grid, and the rrInterval `(deviceId,ts,rrMs,seq)` PK are app-side and unexercised.
+      Confirm the corrected-ts + seq PK path is stable across the swap (ts logic MUST stay app-side).
+- [ ] **Battery soc precision** — the shadow's battery diff compares Kotlin f64 `raw/10` against Rust
+      f32; fractional deci-percent (GEN4 / live battery event) diverges by float noise, so battery
+      parity can't be validated as-is. Either widen Rust to f64 or diff with a tolerance + document.
+- [ ] **Gen4 / WHOOP 4.0 leg** — no automated or hardware parity yet (v24/v25 layouts, different live
+      chars). Needs a real 4.0 offload parity run.
+- [ ] **Enforced CI gate** — the host parity test self-skips without the native dll and CI never builds
+      the cdylib, so no always-running test loads Rust. Add a hard CI parity gate (build the cdylib,
+      diff a captured frame corpus) and wire the diff into both offload replay sites
+      (`RawHistoryArchive.replay`, `CaptureImporter`) so a stored `.jsonl` corpus can be diffed offline.
+- [ ] **COMMAND_RESPONSE coverage** — only battery percent + a firmware-present boolean are diffed; the
+      new `ExtendedBattery` / `BatteryPack` variants, the fw version string, clock, and result codes are
+      not. Broaden the response diff.
+- [ ] **Reassembly** — the shadow feeds Rust only complete Kotlin-reassembled frames; Rust's own
+      reassembly (the intended `WhoopCodec.feed` cutover tap) is unvalidated. Exercise it.
 
 Deferred whoop-rs core-gaps to add only if the swap surfaces a need: a SET_CLOCK frame builder (handshake
 clock-set, FORBIDDEN/gated), the WHOOP4 alarm leg (Gen4 still unverified), and off-nominal
-GET_DATA_RANGE scanning.
+GET_DATA_RANGE scanning (Kotlin `DataRange` stays until this lands).

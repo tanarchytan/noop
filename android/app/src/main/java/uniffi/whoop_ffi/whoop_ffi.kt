@@ -2189,6 +2189,8 @@ data class HistorySummary (
     , 
     var `skinTempC`: kotlin.Float?
     , 
+    var `skinTempRaw`: kotlin.UShort?
+    , 
     var `spo2Red`: kotlin.UShort?
     , 
     var `spo2Ir`: kotlin.UShort?
@@ -2230,6 +2232,7 @@ public object FfiConverterTypeHistorySummary: FfiConverterRustBuffer<HistorySumm
             FfiConverterOptionalFloat.read(buf),
             FfiConverterOptionalUShort.read(buf),
             FfiConverterOptionalUShort.read(buf),
+            FfiConverterOptionalUShort.read(buf),
             FfiConverterOptionalUByte.read(buf),
             FfiConverterOptionalUShort.read(buf),
             FfiConverterOptionalUShort.read(buf),
@@ -2247,6 +2250,7 @@ public object FfiConverterTypeHistorySummary: FfiConverterRustBuffer<HistorySumm
             FfiConverterSequenceUShort.allocationSize(value.`rrIntervals`) +
             FfiConverterOptionalSequenceFloat.allocationSize(value.`gravity`) +
             FfiConverterOptionalFloat.allocationSize(value.`skinTempC`) +
+            FfiConverterOptionalUShort.allocationSize(value.`skinTempRaw`) +
             FfiConverterOptionalUShort.allocationSize(value.`spo2Red`) +
             FfiConverterOptionalUShort.allocationSize(value.`spo2Ir`) +
             FfiConverterOptionalUByte.allocationSize(value.`spo2Pct`) +
@@ -2265,6 +2269,7 @@ public object FfiConverterTypeHistorySummary: FfiConverterRustBuffer<HistorySumm
             FfiConverterSequenceUShort.write(value.`rrIntervals`, buf)
             FfiConverterOptionalSequenceFloat.write(value.`gravity`, buf)
             FfiConverterOptionalFloat.write(value.`skinTempC`, buf)
+            FfiConverterOptionalUShort.write(value.`skinTempRaw`, buf)
             FfiConverterOptionalUShort.write(value.`spo2Red`, buf)
             FfiConverterOptionalUShort.write(value.`spo2Ir`, buf)
             FfiConverterOptionalUByte.write(value.`spo2Pct`, buf)
@@ -2854,6 +2859,29 @@ sealed class Response {
         companion object
     }
     
+    data class ExtendedBattery(
+        val `millivolts`: kotlin.UShort, 
+        val `remainingMah`: kotlin.UShort, 
+        val `currentMa`: kotlin.Short) : Response()
+        
+    {
+        
+
+        companion object
+    }
+    
+    data class BatteryPack(
+        val `serial`: kotlin.String, 
+        val `socPct`: kotlin.Float, 
+        val `millivolts`: kotlin.UShort, 
+        val `packId`: kotlin.UInt) : Response()
+        
+    {
+        
+
+        companion object
+    }
+    
     data class Other(
         val `cmd`: kotlin.UByte, 
         val `result`: kotlin.UByte?) : Response()
@@ -2897,7 +2925,18 @@ public object FfiConverterTypeResponse : FfiConverterRustBuffer<Response>{
             5 -> Response.Version(
                 FfiConverterSequenceUInt.read(buf),
                 )
-            6 -> Response.Other(
+            6 -> Response.ExtendedBattery(
+                FfiConverterUShort.read(buf),
+                FfiConverterUShort.read(buf),
+                FfiConverterShort.read(buf),
+                )
+            7 -> Response.BatteryPack(
+                FfiConverterString.read(buf),
+                FfiConverterFloat.read(buf),
+                FfiConverterUShort.read(buf),
+                FfiConverterUInt.read(buf),
+                )
+            8 -> Response.Other(
                 FfiConverterUByte.read(buf),
                 FfiConverterOptionalUByte.read(buf),
                 )
@@ -2943,6 +2982,25 @@ public object FfiConverterTypeResponse : FfiConverterRustBuffer<Response>{
                 + FfiConverterSequenceUInt.allocationSize(value.`fw`)
             )
         }
+        is Response.ExtendedBattery -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterUShort.allocationSize(value.`millivolts`)
+                + FfiConverterUShort.allocationSize(value.`remainingMah`)
+                + FfiConverterShort.allocationSize(value.`currentMa`)
+            )
+        }
+        is Response.BatteryPack -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterString.allocationSize(value.`serial`)
+                + FfiConverterFloat.allocationSize(value.`socPct`)
+                + FfiConverterUShort.allocationSize(value.`millivolts`)
+                + FfiConverterUInt.allocationSize(value.`packId`)
+            )
+        }
         is Response.Other -> {
             // Add the size for the Int that specifies the variant plus the size needed for all fields
             (
@@ -2982,8 +3040,23 @@ public object FfiConverterTypeResponse : FfiConverterRustBuffer<Response>{
                 FfiConverterSequenceUInt.write(value.`fw`, buf)
                 Unit
             }
-            is Response.Other -> {
+            is Response.ExtendedBattery -> {
                 buf.putInt(6)
+                FfiConverterUShort.write(value.`millivolts`, buf)
+                FfiConverterUShort.write(value.`remainingMah`, buf)
+                FfiConverterShort.write(value.`currentMa`, buf)
+                Unit
+            }
+            is Response.BatteryPack -> {
+                buf.putInt(7)
+                FfiConverterString.write(value.`serial`, buf)
+                FfiConverterFloat.write(value.`socPct`, buf)
+                FfiConverterUShort.write(value.`millivolts`, buf)
+                FfiConverterUInt.write(value.`packId`, buf)
+                Unit
+            }
+            is Response.Other -> {
+                buf.putInt(8)
                 FfiConverterUByte.write(value.`cmd`, buf)
                 FfiConverterOptionalUByte.write(value.`result`, buf)
                 Unit

@@ -130,6 +130,18 @@ android {
         kotlinCompilerExtensionVersion = "1.5.14"
     }
 
+    testOptions {
+        unitTests.all {
+            // The RustCodec (FFI) parity test loads the host build of libwhoop_ffi via JNA. The desktop
+            // library (whoop_ffi.dll on Windows) lives in the sibling whoop-rs checkout's release dir;
+            // point jna.library.path at it. When absent (CI / no sibling), the parity test self-skips.
+            it.systemProperty(
+                "jna.library.path",
+                rootProject.projectDir.resolve("../../whoop-rs/target/release").absolutePath,
+            )
+        }
+    }
+
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
@@ -188,6 +200,9 @@ dependencies {
 
     // --- Unit / instrumentation tests ---
     testImplementation("junit:junit:4.13.2")
+    // Plain JNA jar (not the @aar) so the desktop jnidispatch is on the JVM unit-test classpath — lets
+    // the in-JVM RustCodec/FFI parity test load libwhoop_ffi on the host.
+    testImplementation("net.java.dev.jna:jna:5.14.0")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.8.1")
     testImplementation("org.json:json:20240303") // real org.json for JVM unit tests (android.jar ships throwing stubs)
     testImplementation("net.sf.kxml:kxml2:2.3.0") // real XmlPullParser for JVM tests (android.util.Xml is a throwing stub)

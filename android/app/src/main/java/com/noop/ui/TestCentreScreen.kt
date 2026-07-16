@@ -393,6 +393,61 @@ private fun DiagnosticToolsCard(vm: AppViewModel, is5MG: Boolean, onReport: () -
                 style = NoopType.caption,
                 color = Palette.textTertiary,
             )
+            // Rust shadow decode (whoop-rs FFI cross-check, default OFF): decode each offload / live /
+            // command-response frame a second time through the shared Rust codec and diff field-by-field
+            // against the Kotlin decode. Nothing stored changes; the counters below are the parity report.
+            var rustShadow by remember { mutableStateOf(puffinExperiment.isRustShadowEnabled) }
+            var parityReport by remember { mutableStateOf(com.noop.protocol.RustShadowParity.report()) }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+            ) {
+                Text(
+                    "Rust shadow decode (parity)",
+                    style = NoopType.subhead,
+                    color = Palette.textPrimary,
+                    modifier = Modifier.weight(1f),
+                )
+                Switch(
+                    checked = rustShadow,
+                    onCheckedChange = {
+                        rustShadow = it
+                        puffinExperiment.isRustShadowEnabled = it
+                        parityReport = com.noop.protocol.RustShadowParity.report()
+                    },
+                    colors = settingsSwitchColors(),
+                )
+            }
+            Text(
+                "Decodes each frame a second time through the shared Rust codec (whoop-rs) and compares it " +
+                    "field-by-field to the app's own decode, to prove they agree before any switch-over. It " +
+                    "never changes a stored value. Off by default.",
+                style = NoopType.caption,
+                color = Palette.textTertiary,
+            )
+            if (rustShadow || com.noop.protocol.RustShadowParity.hasData()) {
+                Text(
+                    parityReport,
+                    style = NoopType.footnote,
+                    color = Palette.textSecondary,
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    NoopButton(
+                        text = "Refresh parity",
+                        kind = NoopButtonKind.Secondary,
+                        onClick = { parityReport = com.noop.protocol.RustShadowParity.report() },
+                    )
+                    NoopButton(
+                        text = "Reset counters",
+                        kind = NoopButtonKind.Secondary,
+                        onClick = {
+                            com.noop.protocol.RustShadowParity.reset()
+                            parityReport = com.noop.protocol.RustShadowParity.report()
+                        },
+                    )
+                }
+            }
             if (is5MG) {
                 // 5/MG raw-frame capture (moved from the Settings Experimental card): record every frame
                 // of each history sync to a phone-local file, then share it (or the matched raw+log pair)

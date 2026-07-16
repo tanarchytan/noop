@@ -1,0 +1,366 @@
+{
+  "_comment": [
+    "Real captured type-47 HISTORICAL_DATA frames, decoded by the whoop-protocol dispatcher and checked",
+    "against pinned values. Each frame carries only biometrics + timestamp (no serial/name/token), so it is",
+    "safe to commit. A field absent from a record's 'expect' is simply not asserted (the decoder emits a",
+    "superset per family). gravity_unit=true asserts |g| is about 1. This is whoop-rs's own regression",
+    "fixture; add a frame here rather than hard-coding hex in a test.",
+    "ppg_frames: real v26 optical bursts (consecutive strap-seconds); event_frames: real EVENT bodies; ppg_hr: derived HR golden (see whoop-metrics test)."
+  ],
+  "frames": [
+    {
+      "name": "v24_real_whoop4_worn",
+      "family": "gen4",
+      "hex": "aa6400a12f18054c1c0a023ed0266a5037805418016d022b0234020000000000006b07ff0085593c1f65cebed7b3e63eb85a5f3f000080401f65cebed7b3e63eb85a5f3f500264025d03640229014009010c020c00000000000f0001c4020000000000008fdeb278",
+      "expect": {
+        "version": 24,
+        "unix": 1780928574,
+        "heart_rate": 109,
+        "rr": [
+          555,
+          564
+        ],
+        "gravity_unit": true,
+        "skin_temp_raw": 861,
+        "spo2": [
+          592,
+          612
+        ]
+      }
+    },
+    {
+      "name": "v25_real_whoop4_a",
+      "family": "gen4",
+      "hex": "aa50000c2f1900006800007dff2a6a20430900433103007e026502ba026c022eff70f996f879fad6fd8300d6017e0267027201be00290258030e05c507f00c030ead11cb15791500d2553c9003000000d6393716",
+      "expect": {
+        "version": 25,
+        "unix": 1781202813,
+        "gravity_unit": true
+      }
+    },
+    {
+      "name": "v25_real_whoop4_b",
+      "family": "gen4",
+      "hex": "aa50000c2f1900016800007eff2a6a283e0900a0ad03007a0e880698018bfff5fb61eee9f2a7fa2bfe1af5fdf618fdf0f9c2fb0804510a14046a004dffd0ff6dfdddfd670183014e071a3f9003000000587bbabf",
+      "expect": {
+        "version": 25,
+        "unix": 1781202814,
+        "gravity_unit": true
+      }
+    },
+    {
+      "name": "v25_real_whoop4_c",
+      "family": "gen4",
+      "hex": "aa50000c2f1900026800007fff2a6a38390900729103003608a2fd0104850d4f1bd21aa60f080d850edb116b0f160b7d063f06ab04d5041704a4045f04f003f5ffd7ff7efe73ffa8b2333e9003010000fa54e5e9",
+      "expect": {
+        "version": 25,
+        "unix": 1781202815,
+        "gravity_unit": true
+      }
+    },
+    {
+      "name": "v18_real_whoop5_worn",
+      "family": "gen5",
+      "hex": "aa01740001003fb12f1280733d8401b69f266a66460066025a0265020000000000007b0a8d656463ff0012163cf6a439bf2924fd3ed763fe3e3200aa000000000000000000f7000901f10b0007010c020c00000000000000000000000000000000000000000000000100656f1e1e0000009d61a7c00000003e862817",
+      "expect": {
+        "version": 18,
+        "unix": 1780916150,
+        "heart_rate": 102,
+        "rr": [
+          602,
+          613
+        ],
+        "skin_temp_raw": 3057,
+        "activity_class": 0,
+        "steps": 50,
+        "sleep_state": 0,
+        "gravity": [
+          -0.72517335,
+          0.4944165,
+          0.49685547
+        ]
+      }
+    },
+    {
+      "name": "v18_real_whoop5_offwrist",
+      "family": "gen5",
+      "hex": "aa01740001003fb12f12803a3d84018889266a3d0a00000000000000000000000000000000000000000064c33b52b47d3fe1ba1dbda470ecbd000064000000000000000000e500e200c708000c010c020c0000000000000000000000000000000000000000000000010000008080000000000000000000009ffafe6c",
+      "expect": {
+        "version": 18,
+        "unix": 1780910472,
+        "skin_temp_raw": 2247
+      }
+    },
+    {
+      "name": "v18_real_whoop5_second_device",
+      "family": "gen5",
+      "hex": "aa01740001003fb12f128093c47c006dbc296a00600039000000000000000000006137020b610000e1e04c063d8fce36bf7b08233f8fea993e38a50000000000000000000019012101920b5002010c020c0100000000000000000000000000000000000000000005010085808080000000a5538ec000000016d0680d",
+      "expect": {
+        "version": 18,
+        "unix": 1781120109,
+        "heart_rate": 57,
+        "skin_temp_raw": 2962
+      }
+    }
+  ],
+  "ppg_frames": [
+    {
+      "hex": "aa015000010035412f1a80cdbb7601e700556a33730800e3aa020024013201cf0129020900f2f960f821fac6fbe9fca9fea6fea0fec7fe5eff7bff64006600fc0058014701cc0123017afc800f2c3c6006000100fdb8be41",
+      "unix": 1783955687,
+      "record_id": 48077,
+      "samples": [
+        292,
+        306,
+        463,
+        553,
+        9,
+        -1550,
+        -1952,
+        -1503,
+        -1082,
+        -791,
+        -343,
+        -346,
+        -352,
+        -313,
+        -162,
+        -133,
+        100,
+        102,
+        252,
+        344,
+        327,
+        460,
+        291,
+        -902
+      ]
+    },
+    {
+      "hex": "aa015000010035412f1a80cebb7601e800556a33730800918b0200e6f703faf6fb2bfe7c00b0009a003f003000f5ff2a00b800d100cf00d2005f01750144fdfef776f717f981fad6fb60fd0025fd3b6006000100849b30ab",
+      "unix": 1783955688,
+      "record_id": 48078
+    },
+    {
+      "hex": "aa015000010035412f1a80cfbb7601e900556a337308005c5702009ffdebfd0afecafe14ff67ffc2fff7ff96003a0131017b000dfac4f646f79ef92dfb04fddcfd68fec6fed6fe1500840000001b3c6006000100c8dc5fb3",
+      "unix": 1783955689,
+      "record_id": 48079
+    },
+    {
+      "hex": "aa015000010035412f1a80d0bb7601ea00556a33730800de260200e10110026002af01270296022dffc8f8acf735fa4dfcc4fd2400cbffc9ffc0ff2d00380171011702990273035e034f0300f1f33b6006000100105c998a",
+      "unix": 1783955690,
+      "record_id": 48080
+    },
+    {
+      "hex": "aa015000010035412f1a80d1bb7601eb00556a337308004a2c0200f0022afdfef81bfb80fed2ff28012d013300210182014d01d2013d031e037b030a03a002b3028202e1fd26f9e9f7e2fb80241e3c600600010007e54723",
+      "unix": 1783955691,
+      "record_id": 48081
+    },
+    {
+      "hex": "aa015000010035412f1a80d2bb7601ec00556a337308006c24020063ffaeff25009fff3500f000f70151026b02a20246038a03c403f60355003bfa8ef85ffacdfb2efd9dff2a003effccff40e01c3c600600010043566c39",
+      "unix": 1783955692,
+      "record_id": 48082
+    },
+    {
+      "hex": "aa015000010035412f1a80d3bb7601ed00556a337308008c2102003e008400eb016102a702b7025502f8011afd03f8e6f7b6f9ddfb46fd1dffcdff8afffaff370186019801f202d5028d02001c1a3c60060001007af517da",
+      "unix": 1783955693,
+      "record_id": 48083
+    },
+    {
+      "hex": "aa015000010035412f1a80d4bb7601ee00556a33730800c71d0200b20223028cfc5cf75cf87afab0fbb2fe8300f2ff1dfffeffcd01eb011c02f6017902520235025904bf033ffd98f9adfa40936a3c600600010086b52f07",
+      "unix": 1783955694,
+      "record_id": 48084
+    },
+    {
+      "hex": "aa015000010035412f1a80d5bb7601ef00556a337308005908020008fe8a003501ef00e400c600f300f7004202eb02da029902150378023002cffb2df84af913fb04fd62ffc100bf007e000017c93b6006000100ecc06b6c",
+      "unix": 1783955695,
+      "record_id": 48085
+    },
+    {
+      "hex": "aa015000010035412f1a80d6bb7601f000556a337308004b0702005702c5021f033903d7037703c903b103a303a1fef5f752f71ffa90fb2afdf5feaaff8fffb3ff7d004d01c20178023f0280a8463c6006000100bcea64e6",
+      "unix": 1783955696,
+      "record_id": 48086
+    },
+    {
+      "hex": "aa015000010035412f1a80d7bb7601f100556a33730800e50d020026014201a201d6ff82f88af542f7b4f90efc95fedbffe2fe91fe8a02cf0040fd49fd2d008e05e9061a08f5095b0bf508d081643d60060000007fccd392",
+      "unix": 1783955697,
+      "record_id": 48087
+    },
+    {
+      "hex": "aa015000010035412f1a80d8bb7601f200556a33730800e11d0200ae034e07f80b8a0bec0ad1080d06bf0365048c06330688057b035d0092fd3df96af77cf378f357f5dffad400b7033e076c4ff03e60060000004b598d46",
+      "unix": 1783955698,
+      "record_id": 48088
+    },
+    {
+      "hex": "aa015000010035412f1a80d9bb7601f300556a33730800cb5102008105b7034d031a03740188ff66ffdb00fc006efe7bf72af420f4eff609f9e6fa0dfb20fa63f989f939fb78fc9cfc3efc00f7513c60060100006e4b8957",
+      "unix": 1783955699,
+      "record_id": 48089
+    },
+    {
+      "hex": "aa015000010035412f1a80dabb7601f400556a33730800a6010200d8fcfefb9cf5ccf27cf408f750f9e9fa2afba4fa00fae8fb56fd5cfeecfeabff5900810099fc4bf748f6aff7a5f861f900afe63b6006000100d8384221",
+      "unix": 1783955700,
+      "record_id": 48090
+    },
+    {
+      "hex": "aa015000010035412f1a80dbbb7601f500556a337308005678010044fbaafaf4fadbfbacfc55fd23febffedbffe5fe33f9dcf61cf86dfafcfb9cfda4fe9dfe0bfeb2fe7aff8500d000ff000004dc3b60060100004ef8acc5",
+      "unix": 1783955701,
+      "record_id": 48091
+    },
+    {
+      "hex": "aa015000010035412f1a80dcbb7601f600556a33730800e83301001301f2005afff9fe27019010112e712620139508fc011cfa35f55af75cfc63020e05e4043c0513053204fd001f0010030079ae3d600600000076787fb0",
+      "unix": 1783955702,
+      "record_id": 48092
+    },
+    {
+      "hex": "aa015000010035412f1a80ddbb7601f700556a3373080076bc0100f6022404080201002cfdf8fc6bfd2afde1fe57ff1eff88fe15fe8ffdeaf8f6f6c7f83ffa9dfb56fd34fe38fe56feb8fe0029ca3c600601000020f6f3dc",
+      "unix": 1783955703,
+      "record_id": 48093
+    },
+    {
+      "hex": "aa015000010035412f1a80debb7601f800556a33730800238901004807e706440686052b04d5025f02270058fc12fc65fd89fd3efee1ff7affecfe87ff14008e00c700c700e2008301e505002f0e3c600600010069e7d2f3",
+      "unix": 1783955704,
+      "record_id": 48094
+    },
+    {
+      "hex": "aa015000010035412f1a80dfbb7601f900556a337308007eac0100be0453004efef1fdeafde2fe28002a010607410dc90dcc0be70995088007a6069d0577045e009bfc67fcd2fd30ffe60180f3af3c6006010000902bfe0a",
+      "unix": 1783955705,
+      "record_id": 48095
+    },
+    {
+      "hex": "aa015000010035412f1a80e0bb7601fa00556a337308004600020038038c011b00c2ff12007500eeff8cff86fe8cff33ffeafbe9f870f8b0f876fa51fdb0fe1701fa02e6059f03b0057205a035c33c600601000055fdb46e",
+      "unix": 1783955706,
+      "record_id": 48096
+    },
+    {
+      "hex": "aa015000010035412f1a80e1bb7601fb00556a337308007efb01007b029a00cdfff9fc73f85af7c3f89afaecfbbefc66fd31fd9ffd19fe5afec7feaf0094011002bb013b046b00f5fa05f8403f753c6006000100a20bf353",
+      "unix": 1783955707,
+      "record_id": 48097
+    },
+    {
+      "hex": "aa015000010035412f1a80e2bb7601fc00556a337308000ac201006afab0fb1afd58fd8afd28fd3afd80fe86ff3c00330034004800b8ffbbfbcff92bfb86fd46fe1500500148016502b603e0c0ab3c6006000100c227f82f",
+      "unix": 1783955708,
+      "record_id": 48098
+    },
+    {
+      "hex": "aa015000010035412f1a80e3bb7601fd00556a3373080006a401000a022a0241015800a1ff95ffd7fea3f90cf8c2f9a2fb37fd59fffbff46014d034800b000b506ab0dbb0f220ede0de80e803df73c60060000003f3a4ac9",
+      "unix": 1783955709,
+      "record_id": 48099
+    },
+    {
+      "hex": "aa015000010035412f1a80e4bb7601fe00556a3373080072eb0100d7048f023002c6088709c606940877063604c5067504c201b801cd0198ff4b00b2ff06ffe6f94bf57df50af896f8f6fb00733c3d6006000000e84271e7",
+      "unix": 1783955710,
+      "record_id": 48100
+    },
+    {
+      "hex": "aa015000010035412f1a80e5bb7601ff00556a33730800f7ff01007dff81fe55feb7fea9fe76fb32fcdcfec0febefd1effcaff2ffbe0f835fab0fc31fea4ff3300f1ff61ff13ffa2feef03b003473d60060000005bfd4262",
+      "unix": 1783955711,
+      "record_id": 48101
+    },
+    {
+      "hex": "aa015000010035412f1a80e6bb76010001556a33730800e2d80100bd06e804aa01e201590175fb7df84bf99ff902f973fb7dfadff8c6f7f4f80afa0cfba4fc65fe14ff18ff24003f004cfd4088913c6006000100e7e3d834",
+      "unix": 1783955712,
+      "record_id": 48102
+    },
+    {
+      "hex": "aa015000010035412f1a80e7bb76010101556a7a7408007b90010061fbbffb14fc94fc21feddff28fffafd5bfe64ffdbfed4fd1fff93004f01190188fe9efa4dfb0efdd9fdb0fea200040070be943d600600000099e16c5c",
+      "unix": 1783955713,
+      "record_id": 48103
+    },
+    {
+      "hex": "aa015000010035412f1a80e8bb76010201556a337308002766010061ff9f00f203b107400ad90b85074b07b110af11880e030d660c720b1f0c260a6b044a0123ffd10089022d077e09c71098a44b3e600600000024981e9f",
+      "unix": 1783955714,
+      "record_id": 48104
+    },
+    {
+      "hex": "aa015000010035412f1a80e9bb76010301556a33730800763e0200a70de7018ffce5fb9dfdf7fd78fe2c000e014d0242021f021d035704b2030f047c0320ff25fb36fbfcfb0afed0ffb400e070c33c60060100003039f6eb",
+      "unix": 1783955715,
+      "record_id": 48105
+    },
+    {
+      "hex": "aa015000010035412f1a80eabb76010401556a7a740800a54b020060008700ecff83ff11fe47fd06fd37fdf9f9def4b8f1dcf0f4f25ff9effe59fd8efbeff9faf76df6d2f553f798f854f980ff833c6006000100c7703f83",
+      "unix": 1783955716,
+      "record_id": 48106
+    },
+    {
+      "hex": "aa015000010035412f1a80ebbb76010501556a33730800edb70100c5f580f23ef38df5d2f684f991fb97fbfbfb3afc2afd57feeffe41ff5bff9cff9fffc0fc04f852f7e2f8cffa67fc02fe005a8d3c60060001006c027b39",
+      "unix": 1783955717,
+      "record_id": 48107
+    },
+    {
+      "hex": "aa015000010035412f1a80ecbb76010601556a33730800d139010084fe93ff7201b601230257023502b3011702ef02fd0267009bfefdfe56005501680216032802b9015c013401cc008700004a333c6006010000fe35c5f9",
+      "unix": 1783955718,
+      "record_id": 48108
+    },
+    {
+      "hex": "aa015000010035412f1a80edbb76010701556a337308000e590100cc0011013e01f0014e01a8fcdafa4efc1fff1a00f00109027c028c028a034d059207210a2b0d0f0d7f0b7d106717d51ab094093d6006010000343a9960",
+      "unix": 1783955719,
+      "record_id": 48109
+    },
+    {
+      "hex": "aa015000010035412f1a80eebb76010801556a3373080070f30100dd0c4708df0463020effc4fe2fffbefe0dfe7fff8c010f01870181020a038d03eb02ce0254ff4ffc4cfcbefd87fe09ffc0f8d03c60060001003aab70c0",
+      "unix": 1783955720,
+      "record_id": 48110
+    },
+    {
+      "hex": "aa015000010035412f1a80efbb76010901556a33730800890f02009e001b0057003a0005013a014a01ad01800184017a010101b4fd25fb75fbfefc88fea300ce022302f90189016c019202806f073c60060001003cbfff7c",
+      "unix": 1783955721,
+      "record_id": 48111
+    },
+    {
+      "hex": "aa015000010035412f1a80f0bb76010a01556a337308009b1a0200c90233027e01e1011a013dfe7ffa87f988faa6fb38fd52fe70fe4dfee2fef6ff9f00aafffefb67fcbafd51fd94fcd1f9007c113c60060001009b638b26",
+      "unix": 1783955722,
+      "record_id": 48112
+    },
+    {
+      "hex": "aa015000010035412f1a80f1bb76010b01556a33730800c3e5010014f9eefa53fc1cfed1fba5fa83fc7cfc9ffc42fd9bfd2afe90fe1fff16fedff9b6f6c0f75ef962fa9bfbb9fb69fb87fb00e3193c60060001006fcfb5bc",
+      "unix": 1783955723,
+      "record_id": 48113
+    },
+    {
+      "hex": "aa015000010035412f1a80f2bb76010c01556a337308007e7b0100bffc7afd05fe13fe0ffe68fed9fd11fafff7a5f8dafab6fb59fd59fefffd16fe77fef9feb9ff2a00a400a400a8009bff00f3eb3b6006010000ef2d8801",
+      "unix": 1783955724,
+      "record_id": 48114
+    },
+    {
+      "hex": "aa015000010035412f1a80f3bb76010d01556a337308001d3f010000fa50fb3cfdd1feb80051017a01670153018e0104012b030a02e2006d00ceff1cfc93fab1fb38fdbcfed3ff2b00aeff80c53c3c6006000100a954fa42",
+      "unix": 1783955725,
+      "record_id": 48115
+    },
+    {
+      "hex": "aa015000010035412f1a80f4bb76010e01556a33730800db2c010021ff7fffb5ff2500cd0022014f03a3052b0412052b0690086b087209150a1109d4076807e706dc06c70585063f05cc04c02d973c6006000100c00f9966",
+      "unix": 1783955726,
+      "record_id": 48116
+    }
+  ],
+  "event_frames": [
+    {
+      "hex": "aa01240001002eb1303f03008203556a707d140002e70300001e11000000000f0c2d000900000000885a839f",
+      "name": "battery_level",
+      "number": 3,
+      "timestamp": 1783956354,
+      "battery": {
+        "soc_percent": 99.9,
+        "millivolts": 4382,
+        "charging": false
+      }
+    },
+    {
+      "hex": "aa01100001002081300709006603556aa350000070131d21",
+      "name": "wrist_on",
+      "number": 9,
+      "timestamp": 1783956326
+    }
+  ],
+  "ppg_hr": {
+    "_comment": "whoop_metrics::ppg_hr::estimate over the concatenated ppg_frames; first estimate is the deterministic golden anchor.",
+    "estimate_count": 22,
+    "first": {
+      "ts": 1783955687,
+      "bpm": 76,
+      "conf": 0.731
+    },
+    "confident_bpm_range": [
+      60,
+      100
+    ]
+  }
+}

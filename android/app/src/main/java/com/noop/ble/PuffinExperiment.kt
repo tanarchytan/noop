@@ -30,6 +30,14 @@ class PuffinExperiment(private val prefs: SharedPreferences) {
         get() = prefs.getBoolean(KEY_CAPTURE, false)
         set(v) = prefs.edit().putBoolean(KEY_CAPTURE, v).apply()
 
+    /** True if the user opted in to the RUST SHADOW decode (default false). When on, each offload / live /
+     *  command-response frame is decoded a SECOND time through the whoop-rs FFI and diffed field-by-field
+     *  against the authoritative Kotlin decode (results in [com.noop.protocol.RustShadowParity]); the shadow
+     *  never changes a stored value. Off = zero extra work and the native codec is never loaded. */
+    var isRustShadowEnabled: Boolean
+        get() = prefs.getBoolean(KEY_RUST_SHADOW, false)
+        set(v) = prefs.edit().putBoolean(KEY_RUST_SHADOW, v).apply()
+
     /** True if the user opted in to the WHOOP 5/MG "R22" deep-data unlock — the one probe that WRITES
      *  a persistent feature flag to the strap (the `enable_r22_*` SET_CONFIG sequence). Kept distinct
      *  from [isEnabled] because it changes strap state; reversible, default false. Mirrors the macOS
@@ -85,6 +93,9 @@ class PuffinExperiment(private val prefs: SharedPreferences) {
 
         /** 5/MG R22 deep-data unlock opt-in (mirrors macOS `PuffinExperiment.deepDataKey`). */
         const val KEY_DEEP_DATA = "noopWhoop5DeepData"
+
+        /** Rust shadow-decode parity diff opt-in (Android-only; whoop-rs FFI cross-check). */
+        const val KEY_RUST_SHADOW = "noopRustShadow"
 
         /** "Broadcast heart rate" opt-in (mirrors macOS `PuffinExperiment.broadcastHrKey`). */
         const val KEY_BROADCAST_HR = "noopBroadcastHr"

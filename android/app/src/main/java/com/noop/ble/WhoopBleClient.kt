@@ -1451,6 +1451,9 @@ class WhoopBleClient(
         // live each chunk so a mid-session toggle takes effect. Default OFF (byte-identical to today).
         ppgHrSubLagInterp = { puffinExperiment.ppgHrSubLagInterp },
         firmwareLayout = { v -> _state.update { it.copy(historyLayoutVersion = v) } },
+        // Rust shadow decode (Test Centre opt-in, default OFF): diff each committed chunk through the
+        // whoop-rs FFI. Read live so a mid-session flip applies next chunk. Off = native codec never loaded.
+        rustShadow = { puffinExperiment.isRustShadowEnabled },
     )
 
     /**
@@ -3670,6 +3673,14 @@ class WhoopBleClient(
                     // must not drive LIVE-only state (the charging pill). Mirrors iOS, where the offload
                     // path skips the live router entirely. (PR #568 reimpl)
                     handleFrame(frame, parsed, replayedOffload = offloadFrame)
+
+                    // Rust SHADOW decode (Test Centre opt-in, default OFF): ALSO decode this LIVE frame
+                    // (REALTIME_DATA HR/R-R, COMMAND_RESPONSE battery/fw) via the whoop-rs FFI and diff it.
+                    // Offload replays are covered by the Backfiller shadow, so skip them here. Additive only —
+                    // the Kotlin decode above stays authoritative. Total (never throws).
+                    if (!offloadFrame && puffinExperiment.isRustShadowEnabled) {
+                        com.noop.protocol.RustAdapter.diffLiveOrResponse(connectedFamily, frame, parsed)
+                    }
 
                     // Capture the strap's newest stored record from a GET_DATA_RANGE reply, feeding
                     // the liveness watchdog. The response command byte is family-dependent: @6 on
