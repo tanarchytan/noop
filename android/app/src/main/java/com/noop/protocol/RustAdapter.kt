@@ -14,7 +14,9 @@ import com.noop.data.StreamBatch
 import com.noop.data.StreamPersistence
 import uniffi.whoop_ffi.HistorySummary
 import uniffi.whoop_ffi.Live
+import uniffi.whoop_ffi.PpgSample
 import uniffi.whoop_ffi.Response
+import uniffi.whoop_ffi.ppgHr
 
 /**
  * Maps whoop-rs FFI decode types onto the app's StreamBatch rows, and drives the SHADOW parity diff
@@ -103,13 +105,7 @@ object RustAdapter {
     /** Reproduce [decodeEventWhoop5] + the storage split: the residual payload map, its canonical JSON
      *  event row, and (for BATTERY_LEVEL) the battery row — from the widened FFI [Live.Event]. */
     private fun eventToBatch(ev: Live.Event, ts: Long): StreamBatch {
-        val number = ev.number.toInt()
-        val residual = LinkedHashMap<String, Any?>()
-        ev.batterySocDeci?.toInt()?.let { deci -> if (deci <= 1100) residual["battery_pct"] = deci.toDouble() / 10.0 }
-        ev.batteryMillivolts?.toInt()?.let { mv -> if (mv in 3000..4300) residual["battery_mV"] = mv }
-        ev.batteryCharging?.let { residual["battery_charging"] = if (it) 1 else 0 }
-        ev.payloadHex?.let { residual["event_payload_hex"] = it }
-
+        val residual = eventResidual(ev)
         val battery = ArrayList<BatteryRow>(1)
         val soc = residual["battery_pct"] as? Double
         val mv = residual["battery_mV"] as? Int
@@ -117,16 +113,222 @@ object RustAdapter {
             val charging = (residual["battery_charging"] as? Int)?.let { it != 0 }
             battery.add(BatteryRow(ts, soc = soc, mv = mv, charging = charging))
         }
-        val kind = EventNumber.fromRaw(number)?.let { "${it.name}($number)" } ?: "0x%02X(%d)".format(number, number)
-        return StreamBatch(battery = battery, events = listOf(EventEntry(ts, kind, StreamPersistence.encodePayload(residual))))
+        return StreamBatch(
+            battery = battery,
+            events = listOf(EventEntry(ts, eventKind(ev.number.toInt()), StreamPersistence.encodePayload(residual))),
+        )
     }
+
+    /** The residual payload map for a widened [Live.Event] — the keys the app stores beyond
+     *  event/event_timestamp: battery_* (deci-% divided in f64, matching Kotlin's Double store) for a
+     *  BATTERY_LEVEL, and the Gen5 opaque payload hex. Shared by the live batch + the primary event seam. */
+    private fun eventResidual(ev: Live.Event): LinkedHashMap<String, Any?> {
+        val residual = LinkedHashMap<String, Any?>()
+        ev.batterySocDeci?.toInt()?.let { deci -> if (deci <= 1100) residual["battery_pct"] = deci.toDouble() / 10.0 }
+        ev.batteryMillivolts?.toInt()?.let { mv -> if (mv in 3000..4300) residual["battery_mV"] = mv }
+        ev.batteryCharging?.let { residual["battery_charging"] = if (it) 1 else 0 }
+        ev.payloadHex?.let { residual["event_payload_hex"] = it }
+        return residual
+    }
+
+    /** The stored `NAME(raw)` event kind via the retained [EventNumber] label table (0x-fallback for an
+     *  uncatalogued number), matching the Kotlin decode's `event` field. */
+    private fun eventKind(number: Int): String =
+        EventNumber.fromRaw(number)?.let { "${it.name}($number)" } ?: "0x%02X(%d)".format(number, number)
 
     /** A command response → its battery row (soc %), or null for identity/clock/range/version/other. */
     fun responseToBattery(response: Response, ts: Long): BatteryRow? = when (response) {
-        is Response.Battery -> BatteryRow(ts, soc = response.percent.toDouble(), mv = null)
+        is Response.Battery -> BatteryRow(ts, soc = response.percent, mv = null)
         is Response.ExtendedBattery -> BatteryRow(ts, soc = null, mv = response.millivolts.toInt())
-        is Response.BatteryPack -> BatteryRow(ts, soc = response.socPct.toDouble(), mv = response.millivolts.toInt())
+        is Response.BatteryPack -> BatteryRow(ts, soc = response.socPct, mv = response.millivolts.toInt())
         else -> null
+    }
+
+    // --- PRIMARY decode (whoop-rs is the authoritative writer; Kotlin decode feeds the comparator) -----
+    // Each returns the SAME parsed-map/estimate shape the Kotlin storing path already consumes, so the
+    // app-side ts / #547 / #72 / seq pipeline is untouched. On a native-load / decode error the Kotlin
+    // decode is returned (RustShadowParity.nativeError) so no frame's data is lost. Family drives Gen4/Gen5.
+
+    /** Map a Rust [HistorySummary] onto the flat map keys [extractHistoricalStreams] reads (the same keys
+     *  [decodeHistorical] emits). rr 0s dropped to match Kotlin's `v != 0` store rule; gravity widened exactly. */
+    internal fun summaryToHistMap(s: HistorySummary): Map<String, Any?> {
+        val m = LinkedHashMap<String, Any?>()
+        m["hist_version"] = s.version.toInt()
+        m["unix"] = s.unix.toInt()
+        s.heartRate?.let { m["heart_rate"] = it.toInt() }
+        m["rr_intervals"] = s.rrIntervals.map { it.toInt() }.filter { it != 0 }
+        s.spo2Red?.let { m["spo2_red"] = it.toInt() }
+        s.spo2Ir?.let { m["spo2_ir"] = it.toInt() }
+        s.skinTempRaw?.let { m["skin_temp_raw"] = it.toInt() }
+        s.respRaw?.let { m["resp_rate_raw"] = it.toInt() }
+        s.steps?.let { m["step_motion_counter"] = it.toInt() }
+        s.activityClass?.let { m["activity_class"] = it.toInt() }
+        s.sleepState?.let { m["sleep_state"] = it.toInt() }
+        s.gravity?.let { g ->
+            if (g.size >= 3) {
+                m["gravity_x"] = g[0].toDouble(); m["gravity_y"] = g[1].toDouble(); m["gravity_z"] = g[2].toDouble()
+            }
+        }
+        return m
+    }
+
+    /** PRIMARY history record decode: Rust field map (authoritative), Kotlin decode for the comparator +
+     *  the fallback. null when BOTH decoders agree the frame is not a stored record (v26 / console / CRC). */
+    fun recordFieldsPrimary(frame: ByteArray, family: DeviceFamily): Map<String, Any?>? = try {
+        val gen5 = isGen5(family)
+        val r = RustCodec.decodeHistory(gen5, frame)
+        val k = decodeHistorical(frame, family)
+        when {
+            r == null && k == null -> null
+            r == null -> { RustShadowParity.frameCompared(); RustShadowParity.record("record", false); RustShadowParity.note("record: rust=null kotlin=present → kept kotlin"); k }
+            k == null -> { RustShadowParity.frameCompared(); RustShadowParity.record("record", false); RustShadowParity.note("record: rust=present kotlin=null → kept rust"); summaryToHistMap(r) }
+            else -> { RustShadowParity.frameCompared(); diffHistoryFields(k, r); summaryToHistMap(r) }
+        }
+    } catch (t: Throwable) {
+        RustShadowParity.nativeError()
+        decodeHistorical(frame, family)
+    }
+
+    /** PRIMARY v26 PPG-HR: Rust's winning sub-lag estimator (authoritative), Kotlin sub-lag for the
+     *  comparator + the fallback. Samples are byte-identical on both sides (extracted app-side). */
+    fun ppgEstimatesPrimary(samples: List<PpgHr.Sample>): List<PpgHr.Estimate> {
+        if (samples.isEmpty()) return emptyList()
+        return try {
+            val rust = ppgHr(samples.map { PpgSample(it.ts, it.value) })
+            val kotlin = PpgHr.estimate(samples, subLagInterp = true)
+            RustShadowParity.frameCompared()
+            if (rust.size != kotlin.size) {
+                RustShadowParity.record("ppgHr", false)
+                RustShadowParity.note("ppgHr window count rust=${rust.size} kotlin=${kotlin.size}")
+            } else {
+                val mism = rust.indices.count { rust[it].bpm != kotlin[it].bpm }
+                RustShadowParity.record("ppgHr", mism == 0)
+                if (mism > 0) RustShadowParity.note("ppgHr $mism/${rust.size} windows differ")
+            }
+            rust.map { PpgHr.Estimate(ts = it.ts, bpm = it.bpm, conf = it.conf) }
+        } catch (t: Throwable) {
+            RustShadowParity.nativeError()
+            PpgHr.estimate(samples, subLagInterp = true)
+        }
+    }
+
+    /** (kind, rawTs, residual) for a widened [Live.Event] — the pieces the storing event tail needs. */
+    fun eventFieldsFromLive(ev: Live.Event): EventFields =
+        EventFields(eventKind(ev.number.toInt()), ev.unix.toLong() and 0xFFFFFFFFL, eventResidual(ev))
+
+    /** PRIMARY event decode: Rust widened event (authoritative kind + canonical residual), Kotlin decode
+     *  for the comparator + the fallback. Returns null only when neither side decodes an event. */
+    fun eventFieldsPrimary(frame: ByteArray, family: DeviceFamily): EventFields? {
+        val kEv = decodeEventKotlin(frame, family)
+        return try {
+            val live = RustCodec.decodeLive(isGen5(family), frame)
+            if (live !is Live.Event) {
+                if (kEv != null) {
+                    RustShadowParity.frameCompared(); RustShadowParity.record("event", false)
+                    RustShadowParity.note("event: rust=non-event kotlin=${kEv.kind} → kept kotlin")
+                }
+                return kEv
+            }
+            val rEv = eventFieldsFromLive(live)
+            RustShadowParity.frameCompared()
+            if (kEv != null) {
+                cmp("event.kind", kEv.kind, rEv.kind)
+                cmp("event.ts", kEv.rawTs, rEv.rawTs)
+                cmp("event.json", StreamPersistence.encodePayload(kEv.residual), StreamPersistence.encodePayload(rEv.residual))
+            }
+            rEv
+        } catch (t: Throwable) {
+            RustShadowParity.nativeError()
+            kEv
+        }
+    }
+
+    /** A Rust command [Response] → the battery_* parsed-map keys [appendHistBattery]/[appendBattery] read
+     *  (percent divided in f64). Empty for a non-battery response. */
+    private fun responseBatteryMap(response: Response?): Map<String, Any?> {
+        val m = LinkedHashMap<String, Any?>()
+        when (response) {
+            is Response.Battery -> m["battery_pct"] = response.percent
+            is Response.ExtendedBattery -> m["battery_mV"] = response.millivolts.toInt()
+            is Response.BatteryPack -> { m["battery_pct"] = response.socPct; m["battery_mV"] = response.millivolts.toInt() }
+            else -> Unit
+        }
+        return m
+    }
+
+    /** PRIMARY command-response battery: Rust battery map (authoritative f64), Kotlin parse for the
+     *  comparator + the fallback. null when the frame is not a decodable response. */
+    fun responseBatteryPrimary(frame: ByteArray, family: DeviceFamily): Map<String, Any?>? {
+        val kParsed = Framing.parseFrame(frame, family)
+        if (!kParsed.ok || kParsed.crcOk == false) return null
+        val kMap = kParsed.parsed
+        return try {
+            val resp = RustCodec.decodeResponse(isGen5(family), frame)
+            val rMap = responseBatteryMap(resp)
+            val kPct = kMap.doubleOrNull("battery_pct")
+            val rPct = rMap["battery_pct"] as? Double
+            if (kPct != null || rPct != null) { RustShadowParity.frameCompared(); cmp("resp.battery", kPct, rPct) }
+            if (rMap.isEmpty()) kMap else rMap
+        } catch (t: Throwable) {
+            RustShadowParity.nativeError()
+            kMap
+        }
+    }
+
+    /**
+     * PRIMARY live-storing decode (flushLive seam): rebuild the [Streams] the Kotlin [extractStreams]
+     * would, but sourced from whoop-rs. Realtime HR/R-R, EVENTs (storage contract), and COMMAND_RESPONSE
+     * battery each go through Rust with the Kotlin decode feeding the comparator; a per-frame Rust error
+     * falls back to the Kotlin [ParsedFrame]. ts uses the same linear wall offset as [extractStreams].
+     */
+    fun liveStreamsPrimary(
+        frames: List<Pair<ByteArray, ParsedFrame>>,
+        family: DeviceFamily,
+        deviceClockRef: Int,
+        wallClockRef: Int,
+    ): Streams {
+        RustShadowParity.setPrimary(true)
+        val out = Streams()
+        fun toWall(deviceTs: Int?): Int? = if (deviceTs == null) null else wallClockRef + (deviceTs - deviceClockRef)
+        for ((frame, pf) in frames) {
+            if (!pf.ok || pf.crcOk == false) continue
+            when (pf.typeName) {
+                "REALTIME_DATA" -> {
+                    val ts = toWall(pf.parsed.intOrNull("timestamp")) ?: continue
+                    val live = try { RustCodec.decodeLive(isGen5(family), frame) } catch (t: Throwable) { RustShadowParity.nativeError(); null }
+                    if (live is Live.Realtime) {
+                        RustShadowParity.frameCompared()
+                        val kHr = pf.parsed.intOrNull("heart_rate")
+                        val rHr = live.heartRate.toInt()
+                        cmp("live.hr", kHr, rHr)
+                        val kRr = pf.parsed.intArrayOrNull("rr_intervals") ?: emptyList()
+                        val rRr = live.rrIntervals.map { it.toInt() }
+                        cmp("live.rr", kRr, rRr)
+                        out.hr.add(HrSample(ts, rHr))
+                        for (v in rRr) out.rr.add(RrInterval(ts, v))
+                    } else {
+                        // Rust did not surface a realtime record — keep the Kotlin decode (no loss).
+                        pf.parsed.intOrNull("heart_rate")?.let { out.hr.add(HrSample(ts, it)) }
+                        pf.parsed.intArrayOrNull("rr_intervals")?.let { for (v in it) out.rr.add(RrInterval(ts, v)) }
+                    }
+                }
+
+                "EVENT" -> {
+                    val ev = eventFieldsPrimary(frame, family) ?: continue
+                    val ts = ev.rawTs.toInt()
+                    if (ev.kind.startsWith("BATTERY_LEVEL")) appendBattery(out, ts, ev.residual)
+                    out.events.add(WhoopEvent(ts, ev.kind, ev.residual))
+                }
+
+                "COMMAND_RESPONSE" -> {
+                    val p = responseBatteryPrimary(frame, family) ?: continue
+                    appendBattery(out, wallClockRef, p)
+                }
+
+                else -> Unit
+            }
+        }
+        return out
     }
 
     // --- Shadow diff (additive; records into RustShadowParity, changes nothing) --------------------

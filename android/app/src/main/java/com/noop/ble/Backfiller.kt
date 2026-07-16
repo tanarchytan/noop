@@ -124,6 +124,13 @@ class Backfiller(
      * Default inert keeps the untraced/test path byte-identical and never loads the native codec.
      */
     private val rustShadow: () -> Boolean = { false },
+    /**
+     * Rust PRIMARY decode (Test Centre opt-in, default OFF): when true, whoop-rs is the AUTHORITATIVE
+     * decoder for this chunk's stored rows (record biometrics, v26 PPG-HR, events, response battery); the
+     * Kotlin decode still runs but only feeds the comparator, and a Rust error falls back to Kotlin per
+     * frame. Read live so a mid-session flip takes effect next chunk. Default inert = today's Kotlin path.
+     */
+    private val rustPrimary: () -> Boolean = { false },
 ) {
 
     /**
@@ -358,15 +365,18 @@ class Backfiller(
         var committed: StreamBatch? = null
         if (frames.isNotEmpty()) {
             val ref = clockRef
+            val primary = rustPrimary()
             val decoded = extractHistoricalStreams(
                 frames, ref.device, ref.wall, family,
                 sessionOldestUnix = sessionOldestUnix, sessionNewestUnix = sessionNewestUnix,
                 ppgHrSubLagInterp = ppgHrSubLagInterp(),
+                rustPrimary = primary,
             )
             // Rust SHADOW decode (Test Centre opt-in, default OFF): decode this chunk's frames a second time
             // via the whoop-rs FFI and diff field-by-field. Additive/observability only — the Kotlin `decoded`
             // above stays authoritative and nothing here changes a stored value. Total (never throws).
-            if (rustShadow()) runCatching { com.noop.protocol.RustAdapter.diffHistoryChunk(frames, family) }
+            // Skipped when PRIMARY is on: the primary path above already ran the comparator inline.
+            if (rustShadow() && !primary) runCatching { com.noop.protocol.RustAdapter.diffHistoryChunk(frames, family) }
             // Observability (PR #241): which historical layout does this strap emit? Only the unmapped/
             // reject path logged a version before, so a healthy sync never revealed v24/v25 (4.0) or
             // v18/v26 (5/MG). Sample the chunk's first genuine record (null ⇒ console/CRC-fail); log

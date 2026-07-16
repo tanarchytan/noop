@@ -38,6 +38,15 @@ class PuffinExperiment(private val prefs: SharedPreferences) {
         get() = prefs.getBoolean(KEY_RUST_SHADOW, false)
         set(v) = prefs.edit().putBoolean(KEY_RUST_SHADOW, v).apply()
 
+    /** True if the user opted in to the RUST PRIMARY decode (default false). When on, whoop-rs is the
+     *  AUTHORITATIVE writer for the stored history / live / response / event / ppg rows; the Kotlin decode
+     *  still runs but only feeds the comparator ([com.noop.protocol.RustShadowParity], which tags each
+     *  per-field delta EXPECTED-vs-UNEXPECTED). Any Rust error / native-load failure falls back to the
+     *  Kotlin decode for that frame so no data is lost. Off = today's Kotlin behavior, native codec unloaded. */
+    var isRustPrimaryEnabled: Boolean
+        get() = prefs.getBoolean(KEY_RUST_PRIMARY, false)
+        set(v) = prefs.edit().putBoolean(KEY_RUST_PRIMARY, v).apply()
+
     /** True if the user opted in to the WHOOP 5/MG "R22" deep-data unlock — the one probe that WRITES
      *  a persistent feature flag to the strap (the `enable_r22_*` SET_CONFIG sequence). Kept distinct
      *  from [isEnabled] because it changes strap state; reversible, default false. Mirrors the macOS
@@ -96,6 +105,9 @@ class PuffinExperiment(private val prefs: SharedPreferences) {
 
         /** Rust shadow-decode parity diff opt-in (Android-only; whoop-rs FFI cross-check). */
         const val KEY_RUST_SHADOW = "noopRustShadow"
+
+        /** Rust PRIMARY-decode opt-in (Android-only; whoop-rs FFI is the authoritative writer). */
+        const val KEY_RUST_PRIMARY = "noopRustPrimary"
 
         /** "Broadcast heart rate" opt-in (mirrors macOS `PuffinExperiment.broadcastHrKey`). */
         const val KEY_BROADCAST_HR = "noopBroadcastHr"

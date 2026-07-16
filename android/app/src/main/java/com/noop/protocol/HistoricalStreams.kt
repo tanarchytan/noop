@@ -477,6 +477,30 @@ fun classifyHistoricalMeta(p: ParsedFrame): HistoricalMeta {
     }
 }
 
+// MARK: - EVENT decode seam (shared by the Kotlin default path + the Rust-primary comparator)
+
+/**
+ * The pieces the offload EVENT tail needs, independent of which decoder produced them: the `NAME(raw)`
+ * [kind], the strap's own RTC [rawTs] (pre-correction), and the [residual] payload map (parsed fields
+ * minus event/event_timestamp — carries battery_* for a BATTERY_LEVEL, plus any Gen5 opaque payload).
+ */
+data class EventFields(val kind: String, val rawTs: Long, val residual: Map<String, Any?>)
+
+/**
+ * The Kotlin EVENT decode (the default, authoritative-off path): CRC-gate via [Framing.parseFrame], read
+ * the RTC timestamp + label, and split off the residual payload. null on a non-ok / ts-less frame.
+ */
+internal fun decodeEventKotlin(frame: ByteArray, family: DeviceFamily): EventFields? {
+    val parsed = Framing.parseFrame(frame, family)
+    if (!parsed.ok || parsed.crcOk == false) return null
+    val rawTs = parsed.parsed.intOrNull("event_timestamp")?.toLong() ?: return null
+    val kind = (parsed.parsed["event"] as? String) ?: ""
+    val residual = LinkedHashMap(parsed.parsed)
+    residual.remove("event")
+    residual.remove("event_timestamp")
+    return EventFields(kind, rawTs, residual)
+}
+
 // MARK: - Historical extraction (port of HistoricalStreams.swift extractHistoricalStreams)
 
 /**
@@ -514,7 +538,14 @@ fun extractHistoricalStreams(
     // the app-layer caller (Backfiller / archive replay / capture import) reads PuffinExperiment.ppgHrSubLagInterp
     // and passes it. Default false = byte-identical to today. Mirrors the Swift extractHistoricalStreams arg.
     ppgHrSubLagInterp: Boolean = false,
+    // Rust-PRIMARY cutover (Test Centre opt-in, default false): when true, whoop-rs is the AUTHORITATIVE
+    // decoder for every stored field (record biometrics, v26 PPG-HR, events, response battery); the Kotlin
+    // decode still runs but only feeds the comparator ([RustShadowParity], EXPECTED-vs-UNEXPECTED). A Rust
+    // error / native-load failure falls back to the Kotlin decode for that frame so no data is lost. The
+    // app-side ts / #547 / #72 pipeline below is UNCHANGED — Rust supplies raw fields, this owns the clock.
+    rustPrimary: Boolean = false,
 ): StreamBatch {
+    if (rustPrimary) RustShadowParity.setPrimary(true)
     // Count of records dropped by the #547 plausibility gate this batch, surfaced on the returned
     // StreamBatch so the Backfiller can log "bad strap clock" once per session via its existing seam.
     var droppedImplausible = 0
@@ -632,8 +663,10 @@ fun extractHistoricalStreams(
                     }
                 }
                 // type-47 carries the strap RTC's real-unix seconds. Correct for a grossly-stale RTC
-                // (FIX #72); a normal strap is unchanged (offset < threshold).
-                val p = decodeHistorical(frame, family) ?: continue
+                // (FIX #72); a normal strap is unchanged (offset < threshold). Rust-primary supplies the
+                // field map (Kotlin feeds the comparator + is the per-frame fallback); ts stays app-side.
+                val p = (if (rustPrimary) RustAdapter.recordFieldsPrimary(frame, family)
+                         else decodeHistorical(frame, family)) ?: continue
                 // #547: correctedWall is now nullable — it returns null for an implausible (far-past /
                 // future-dated) record, so the `?: continue` below skips a bad-clock record entirely
                 // instead of letting its garbage `unix` enter the DB and pollute the day-windowed analytics.
@@ -699,32 +732,34 @@ fun extractHistoricalStreams(
                 // persist the event (with battery extracted for BATTERY_LEVEL) so offloaded
                 // wrist/charge/battery events aren't lost. During a backfill the live path is
                 // suppressed, so the offload extractor MUST handle these.
-                val parsed = Framing.parseFrame(frame, family)
-                if (!parsed.ok || parsed.crcOk == false) continue
-                val rawTs = parsed.parsed.intOrNull("event_timestamp")?.toLong() ?: continue
-                val kind = (parsed.parsed["event"] as? String) ?: ""
+                // Rust-primary supplies the widened event (kind + canonical residual); Kotlin feeds the
+                // comparator + is the fallback. The ts / #547 / #324 tail below is shared and unchanged.
+                val ev = (if (rustPrimary) RustAdapter.eventFieldsPrimary(frame, family)
+                          else decodeEventKotlin(frame, family)) ?: continue
                 // #547: correctedWall now nullable — an EVENT with an implausible event_timestamp is
                 // skipped so a bad-clock wrist/charge/battery event can't enter the DB.
-                val ts = correctedWall(rawTs)
+                val ts = correctedWall(ev.rawTs)
                 if (ts == null) {
                     // #324: the #547 gate just dropped this event for an implausible ts. If it's an RTC-STATE
                     // event (RTC_LOST / BOOT / SET_RTC), that IS the ground truth that the clock reset —
                     // capture (kind, rawTs) for the strap log before discarding.
-                    if (DroppedRtcEvent.isRtcStateKind(kind)) droppedRtcEvents.add(DroppedRtcEvent(kind, rawTs))
+                    if (DroppedRtcEvent.isRtcStateKind(ev.kind)) droppedRtcEvents.add(DroppedRtcEvent(ev.kind, ev.rawTs))
                     continue
                 }
-                if (kind.startsWith("BATTERY_LEVEL")) appendHistBattery(battery, ts, parsed.parsed)
-                val payload = LinkedHashMap(parsed.parsed)
-                payload.remove("event")
-                payload.remove("event_timestamp")
-                events.add(EventEntry(ts, kind, StreamPersistence.encodePayload(payload)))
+                if (ev.kind.startsWith("BATTERY_LEVEL")) appendHistBattery(battery, ts, ev.residual)
+                events.add(EventEntry(ts, ev.kind, StreamPersistence.encodePayload(ev.residual)))
             }
 
             PacketType.COMMAND_RESPONSE.rawValue -> {
                 // No device timestamp on COMMAND_RESPONSE → stamp battery at wallClockRef (Swift parity).
-                val parsed = Framing.parseFrame(frame, family)
-                if (!parsed.ok || parsed.crcOk == false) continue
-                appendHistBattery(battery, wallClockRef.toLong(), parsed.parsed)
+                // Rust-primary supplies the f64 battery map; Kotlin parse feeds the comparator + fallback.
+                val p: Map<String, Any?>? = if (rustPrimary) {
+                    RustAdapter.responseBatteryPrimary(frame, family)
+                } else {
+                    val parsed = Framing.parseFrame(frame, family)
+                    if (!parsed.ok || parsed.crcOk == false) null else parsed.parsed
+                }
+                if (p != null) appendHistBattery(battery, wallClockRef.toLong(), p)
             }
 
             else -> Unit
@@ -732,8 +767,10 @@ fun extractHistoricalStreams(
     }
 
     // Derive HR from the accumulated v26 PPG waveform (8 s / 24 Hz autocorrelation, conf>=0.3). Empty
-    // unless the strap sent v26 records; falls back gracefully (no rows) on noise (#156).
-    val ppgHr = PpgHr.estimate(ppgSamples, subLagInterp = ppgHrSubLagInterp)
+    // unless the strap sent v26 records; falls back gracefully (no rows) on noise (#156). Rust-primary
+    // routes it through whoop-rs's winning sub-lag estimator (samples are byte-identical on both sides).
+    val ppgHr = (if (rustPrimary) RustAdapter.ppgEstimatesPrimary(ppgSamples)
+                 else PpgHr.estimate(ppgSamples, subLagInterp = ppgHrSubLagInterp))
         .map { PpgHrRow(ts = it.ts, bpm = it.bpm, conf = it.conf) }
 
     return StreamBatch(

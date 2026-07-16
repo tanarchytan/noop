@@ -159,7 +159,7 @@ object CaptureImporter {
      * inside this pure decode) so it stays JVM unit-testable; the importCapture caller supplies it.
      * Default false = byte-identical to today.
      */
-    fun decode(parsed: Parsed, ppgHrSubLagInterp: Boolean = false): Decoded {
+    fun decode(parsed: Parsed, ppgHrSubLagInterp: Boolean = false, rustPrimary: Boolean = false): Decoded {
         val batches = LinkedHashMap<DeviceFamily, StreamBatch>()
         val rejects = LinkedHashMap<DeviceFamily, List<ByteArray>>()
         var offload = 0
@@ -170,6 +170,9 @@ object CaptureImporter {
             val batch = extractHistoricalStreams(
                 offloadFrames, 0, 0, family,
                 ppgHrSubLagInterp = ppgHrSubLagInterp,
+                // Rust-primary import: re-decode the captured offload through whoop-rs when the user opted in
+                // (Kotlin feeds the comparator + is the per-frame fallback). Pure param, JVM-testable.
+                rustPrimary = rustPrimary,
             )
             if (!batch.isEmpty) batches[family] = batch
             val rej = rejectedHistoricalRecords(offloadFrames, family)
@@ -281,7 +284,11 @@ object CaptureImporter {
 
         // Test Centre → Experimental algorithms: re-derive v26 PPG-HR with the opt-in sub-lag interpolation
         // variant when the user has it on, matching the live offload / archive replay. Default OFF.
-        val decoded = decode(parsed, ppgHrSubLagInterp = PuffinExperiment.from(context).ppgHrSubLagInterp)
+        val decoded = decode(
+            parsed,
+            ppgHrSubLagInterp = PuffinExperiment.from(context).ppgHrSubLagInterp,
+            rustPrimary = PuffinExperiment.from(context).isRustPrimaryEnabled,
+        )
 
         // Reject-archive undecodable offload frames FIRST — before the empty-batch early return — so a
         // capture the current decoder can't map yet (e.g. a future record layout) is still preserved

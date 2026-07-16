@@ -1,9 +1,11 @@
 package com.noop.protocol
 
+import com.noop.data.StreamPersistence
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import uniffi.whoop_ffi.HistorySummary
+import uniffi.whoop_ffi.Live
 
 /**
  * Pure mapping tests for [RustAdapter.historyToRows]: constructing the uniffi record type is plain
@@ -89,6 +91,84 @@ class RustAdapterTest {
     fun `spo2 pct is not stored`() {
         val b = RustAdapter.historyToRows(summary(spo2Pct = 97), ts = 3L)
         assertTrue(b.spo2.isEmpty()) // 5.0 sleep SpO2 % is intentionally unstored, matching Kotlin
+    }
+
+    // ---- PRIMARY seam: HistorySummary → the flat map keys the offload loop reads (no native lib) --------
+
+    @Test
+    fun `summaryToHistMap emits the storing-loop keys, rr zeros dropped, gravity widened`() {
+        val m = RustAdapter.summaryToHistMap(
+            summary(heartRate = 96, rr = listOf(602, 0, 613), gravity = listOf(-0.72517335f, 0.4944165f, 0.49685547f),
+                skinTempRaw = 3057, spo2Red = 592, spo2Ir = 612, respRaw = 3073, steps = 42296, activityClass = 1, sleepState = 2),
+        )
+        assertEquals(18, m["hist_version"])
+        assertEquals(1_784_000_000, m["unix"]) // UInt → Int, matches the Kotlin decode's store type
+        assertEquals(96, m["heart_rate"])
+        assertEquals(listOf(602, 613), m["rr_intervals"]) // 0 dropped to match Kotlin's `v != 0`
+        assertEquals(3057, m["skin_temp_raw"])
+        assertEquals(592, m["spo2_red"]); assertEquals(612, m["spo2_ir"])
+        assertEquals(3073, m["resp_rate_raw"])
+        assertEquals(42296, m["step_motion_counter"]); assertEquals(1, m["activity_class"])
+        assertEquals(2, m["sleep_state"])
+        assertEquals((-0.72517335f).toDouble(), m["gravity_x"]) // exact widen
+    }
+
+    @Test
+    fun `summaryToHistMap omits absent fields and never emits spo2 pct`() {
+        val m = RustAdapter.summaryToHistMap(summary(heartRate = 0, spo2Pct = 97))
+        assertEquals(0, m["heart_rate"]) // present-but-0: the loop drops it, the map carries it
+        assertTrue(m["rr_intervals"] as List<*> == emptyList<Int>())
+        assertTrue(!m.containsKey("skin_temp_raw"))
+        assertTrue(!m.containsKey("gravity_x"))
+        assertTrue(!m.containsKey("spo2_pct")) // 5.0 sleep SpO2 % is not a stored key
+    }
+
+    // ---- PRIMARY seam: widened Live.Event → the stored (kind, rawTs, residual) contract (no native) -----
+
+    @Test
+    fun `eventFieldsFromLive builds the NAME(raw) kind and f64 battery residual`() {
+        // BATTERY_LEVEL(3): raw deci-% 999 → the exact Double 99.9 (f64 division, not f32 99.90000152).
+        val ev = Live.Event(
+            number = 3u, unix = 1_784_000_000u, batterySocDeci = 999u, batteryMillivolts = 4100u,
+            batteryCharging = false, payloadHex = "707d",
+        )
+        val ef = RustAdapter.eventFieldsFromLive(ev)
+        assertEquals("BATTERY_LEVEL(3)", ef.kind)
+        assertEquals(1_784_000_000L, ef.rawTs)
+        assertEquals(99.9, ef.residual["battery_pct"] as Double, 0.0)
+        assertEquals(4100, ef.residual["battery_mV"])
+        assertEquals(0, ef.residual["battery_charging"])
+        assertEquals("707d", ef.residual["event_payload_hex"])
+        // The canonical JSON is sorted-key; the exact f64 must render as 99.9 (not 99.90000152587891).
+        assertTrue(StreamPersistence.encodePayload(ef.residual).contains("\"battery_pct\":99.9"))
+    }
+
+    @Test
+    fun `eventFieldsFromLive gates an out-of-range battery mV and deci-percent out`() {
+        val ev = Live.Event(
+            number = 9u, unix = 5u, batterySocDeci = 1200u, batteryMillivolts = 4382u,
+            batteryCharging = null, payloadHex = "a3500000",
+        )
+        val ef = RustAdapter.eventFieldsFromLive(ev)
+        assertEquals("WRIST_ON(9)", ef.kind)
+        assertTrue(!ef.residual.containsKey("battery_pct")) // deci 1200 > 1100 store gate
+        assertTrue(!ef.residual.containsKey("battery_mV")) // 4382 > 4300 store gate
+        assertEquals("a3500000", ef.residual["event_payload_hex"])
+    }
+
+    // ---- comparator classification: EXPECTED (adjudicated) vs UNEXPECTED (triage) ------------------------
+
+    @Test
+    fun `parity report splits expected and unexpected deltas`() {
+        RustShadowParity.reset()
+        RustShadowParity.frameCompared()
+        RustShadowParity.record("gravity", false) // adjudicated whoop-rs win → EXPECTED
+        RustShadowParity.record("hr", false) // a real mismatch → UNEXPECTED
+        RustShadowParity.record("hr", true)
+        val report = RustShadowParity.report()
+        assertTrue(report.contains("EXPECTED deltas (adjudicated whoop-rs win): 1"))
+        assertTrue(report.contains("UNEXPECTED (triage): 1"))
+        RustShadowParity.reset()
     }
 
     private data class HrRowExpected(val ts: Long, val bpm: Int)

@@ -426,7 +426,40 @@ private fun DiagnosticToolsCard(vm: AppViewModel, is5MG: Boolean, onReport: () -
                 style = NoopType.caption,
                 color = Palette.textTertiary,
             )
-            if (rustShadow || com.noop.protocol.RustShadowParity.hasData()) {
+            // Rust PRIMARY decode (whoop-rs is the AUTHORITATIVE writer, default OFF): whoop-rs decodes the
+            // stored history / live / response / event / ppg rows; the Kotlin decode still runs but only feeds
+            // the comparator above, and a Rust error falls back to Kotlin per frame so no data is lost.
+            var rustPrimary by remember { mutableStateOf(puffinExperiment.isRustPrimaryEnabled) }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+            ) {
+                Text(
+                    "Rust primary decode (authoritative)",
+                    style = NoopType.subhead,
+                    color = Palette.textPrimary,
+                    modifier = Modifier.weight(1f),
+                )
+                Switch(
+                    checked = rustPrimary,
+                    onCheckedChange = {
+                        rustPrimary = it
+                        puffinExperiment.isRustPrimaryEnabled = it
+                        parityReport = com.noop.protocol.RustShadowParity.report()
+                    },
+                    colors = settingsSwitchColors(),
+                )
+            }
+            Text(
+                "Makes whoop-rs the authoritative decoder for the rows stored from history, live, responses " +
+                    "and events. The app's own decode still runs and feeds the parity report, which tags each " +
+                    "difference as EXPECTED (an adjudicated whoop-rs improvement) or UNEXPECTED (to triage). " +
+                    "Any Rust error falls back to the app decode for that frame. Off by default.",
+                style = NoopType.caption,
+                color = Palette.textTertiary,
+            )
+            if (rustShadow || rustPrimary || com.noop.protocol.RustShadowParity.hasData()) {
                 Text(
                     parityReport,
                     style = NoopType.footnote,
