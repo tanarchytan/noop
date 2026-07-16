@@ -97,16 +97,45 @@ The whoop-rs `.so` + Kotlin binding in this tree have now been **regenerated** t
 (`HistorySummary.skin_temp_raw`, plus the `ExtendedBattery` / `BatteryPack` `Response` variants), so they
 are current with the convergence work.
 
-## Next batch: retire the Kotlin decoders (route decode only through whoop-rs) — GATED
+## Rust-primary cutover — WIRED behind a flag (Kotlin not deleted) — GATED
 
-The goal is one decoder. This batch is **not started and is hard-gated** on both of:
+The Rust-primary save path is now **wired and shipping in the APK**, default OFF. When
+`PuffinExperiment.isRustPrimaryEnabled` (SharedPreferences key `noopRustPrimary`) is ON, whoop-rs is the
+**authoritative writer** at every storing seam and the Kotlin decode feeds the `RustShadowParity`
+comparator; any native error falls back to Kotlin for that frame (recorded, no data lost). Wired seams:
+`WhoopBleClient.flushLive`, `Backfiller.finishChunk`, `RawHistoryArchive.replay`, `CaptureImporter`, and
+the `COMMAND_RESPONSE` battery leg. The app-side ts/#547/#72/rrInterval-seq PK path is untouched — Rust
+supplies only the raw unix seconds into the existing correction pipeline. Test Centre switch:
+**"Rust primary decode (authoritative)"**.
 
-- **(a)** the shadow parity report reading **clean on a real strap night** (turn the flag on, wear +
-  sync a real band, read the Test Centre parity counters, confirm zero mismatches across the fields the
-  shadow covers) — see `DECODE-CUTOVER-PLAN.md` for the runbook, and
+### Adjudicated decode choices (whoop-rs = single source of truth)
+
+Each divergent field was adjudicated against real captures + external RE, and the better implementation
+landed in whoop-rs (analysis in `whoop-research/decoder-adjudication/`). The **intended behavioral deltas
+vs the OLD Kotlin** (correct-by-design, classified EXPECTED by the comparator):
+
+- **ppgHr (v26)** — whoop-rs gained the sub-lag parabolic ACF refine. Net-zero vs the current app (Kotlin
+  already ships sub-lag hardwired ON); the visible delta is only vs the old integer-lag whoop-rs
+  (fixture 76→78). Confirmed a real-data win on the 838 night: sub-lag MAE 2.12 vs integer 2.50 bpm.
+- **battery SOC** — f64 division of the deci-percent (999 → exact 99.9). Net-zero vs the current app
+  (Kotlin already divides in f64); fixes whoop-rs to match (was f32-domain 99.90000152).
+- **gravity gate** — whoop-rs gates v18/v24 |g| to [0.5,1.5], dropping garbage the ungated Kotlin path
+  would store. On 1861 real v18 frames the gate never fired, so on real data this is a no-op that only
+  rejects corrupt/future-firmware vectors (cleaner sleep-stager input).
+- **event row** — `Live.Event` widened to carry the raw battery deci-% + mV + charging + Gen5
+  `payload_hex`, so `RustAdapter` reproduces Kotlin's exact `NAME(raw)` kind + canonical `payloadJSON`.
+- **5.0 sleep spo2_pct (deferred)** — whoop-rs decodes a real signal the Kotlin app discards as aux byte
+  82. Adding a stored Room stream is a schema migration, **out of this batch** — flagged for David.
+
+The goal is still one decoder. **No Kotlin decoder is deleted**; deletion is hard-gated on both of:
+
+- **(a)** the Rust-primary parity report reading **clean on a real strap night** (turn the flag on, wear +
+  sync a real 5.0 AND 4.0 band, read the Test Centre parity counters — 0 UNEXPECTED on raw/contract
+  fields, sanity-OK on the whoop-rs-win fields, 0 native fallbacks, rows persisted) — see
+  `DECODE-CUTOVER-PLAN.md` for the field-tiered runbook, and
 - **(b)** **explicit approval from David** to delete Kotlin decode.
 
-No Kotlin decoder is deleted until both are satisfied. The remaining steps:
+The remaining steps after the gate:
 
 1. **Route the radio** — feed offload frames to `WhoopCodec.feed`, live-notify frames to `decodeLive`,
    command replies to `decodeResponse`; write the frames the builders return (seq + gates stay native).
