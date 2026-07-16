@@ -36,6 +36,33 @@ reboot/buzz/broadcast-hr/set-config/alarm), and exposes the derived metrics (ppg
 It compiles into the app and ships in the APK (both ABIs). The core and the Rust bridge are
 **parallel to** the old `com.noop.protocol` Kotlin decoders, which are still the live path.
 
+## Decoder convergence (done in whoop-rs, pre-wiring)
+
+Before routing decode through the FFI, the two decoders' per-field outputs were adjudicated so the swap can
+be byte-identical. Each mismatch was resolved to its superior side and landed in whoop-rs (the app keeps
+only app-policy scaling); verified against the external RE cross-check and real hardware, not against
+Kotlin as ground truth:
+
+- **skin_temp** — whoop-rs now exposes `skin_temp_raw` (the raw register) alongside `skin_temp_c`. The app
+  stores the raw value byte-identically and keeps its family/device-specific °C scale (the 4.0 per-device
+  anchor). Verified: v18 `/100` → 33.3 °C on the 838 dump; v24 raw 861 → ~34 °C on a real 4.0 frame. The
+  4.0 °C scale is device-dependent, so raw is the dispute-neutral store.
+- **activity_class (v18)** — whoop-rs gates it to the mapped `{0,1,2}` codes (0xFF / unmapped store
+  nothing), matching noop's guard. Empirical on both sides (not in the external RE map).
+- **spo2_pct (v18)** — whoop-rs decodes it (sleep-only tri-mode, 70..100); noop does not store 5.0 SpO2
+  today. Default stays byte-identical (unstored); wiring a gated consumer is a separate opt-in.
+- **4.0 Gen4 leg** — was unverified; now confirmed decoding a real WHOOP 4.0 v24 hardware frame end to end.
+
+Since then the FFI also gained (all hardware-verified, additive): 4.0 serial+firmware from the
+`GET_HELLO_HARVARD` hello (the 4.0 omits the DeviceInfo GATT service), a gen5-hello `?` bug fix (a truncated
+5.0 hello no longer drops the serial), the 5.0 strap-battery decode-offset fix (was `p[13]`, real is `p[2]`),
+and two new command responses — `ExtendedBattery` (4.0 fuel gauge: mV / remaining-mAh / current) and
+`BatteryPack` (5.0 pack: serial / SOC / mV / pack-id).
+
+The whoop-rs `.so` + Kotlin binding in this tree are now several convergences behind and must be
+**regenerated** before the wiring step below (`HistorySummary.skin_temp_raw`, plus the `ExtendedBattery` /
+`BatteryPack` `Response` variants).
+
 ## Next batch: retire the Kotlin decoders (route decode only through whoop-rs)
 
 The goal is one decoder. Concrete steps:
