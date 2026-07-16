@@ -29,6 +29,35 @@ Then copy the two `.so` into `jniLibs/<abi>/` and `whoop_ffi.kt` into
 
 ## Status
 
-Compiles into the app and ships in the APK (both ABIs). Runtime decode is validated on a
-device/emulator, not in CI. A follow-up can build the `.so` + bindings from source via a
-Gradle cargo-ndk task instead of committing the artifacts.
+The FFI surface is at **full client parity**: `WhoopCodec` decodes history (all fields), live
+(realtime HR/R-R, on-wrist r22, event/battery, console), and command responses, builds every
+command frame the app writes (hello/battery/data-range/offload-abort/stop-raw-flood/toggle-hr/
+reboot/buzz/broadcast-hr/set-config/alarm), and exposes the derived metrics (ppg-hr, HRV, SpO2).
+It compiles into the app and ships in the APK (both ABIs). The core and the Rust bridge are
+**parallel to** the old `com.noop.protocol` Kotlin decoders, which are still the live path.
+
+## Next batch: retire the Kotlin decoders (route decode only through whoop-rs)
+
+The goal is one decoder. Concrete steps:
+
+1. **Find the decode call sites** in `com.noop.ble` (the `WhoopBleClient`) and `com.noop.collect`/
+   `data`: where notification bytes go into `Framing` / `HistoricalStreams` / `Streams` / `Enums`
+   response+live decode.
+2. **Adapter layer** — map `RustCodec` outputs (`HistorySummary` / `Live` / `Response` / `Step`) onto
+   the app's existing record/stream/Room types (or move the consumers to the FFI types). The stored
+   values must stay byte-identical to the old path (Room migrations depend on them).
+3. **Route the radio** — feed offload frames to `WhoopCodec.feed`, live-notify frames to `decodeLive`,
+   command replies to `decodeResponse`; write the frames the builders return (seq + gates stay native).
+4. **Validate on a real strap** (BLE contract) — a parity night: same band, decode both ways, diff the
+   stored records. Compile proves nothing about connection behaviour.
+5. **Delete the superseded Kotlin**: `Crc`, `Framing`, `HistoricalStreams`, `Streams`, `Whoop5RawImu`,
+   `PpgHr`, and the response/live decode in `Enums`. **Keep**: `DeviceFamily` (label→Gen resolution),
+   `BackfillCaptureJsonl` (the capture writer — Rust hands back `Step` + `Frame.raw()`), the
+   command-SEND orchestration (seq/allow-list/confirm gates), standard-GATT parse (`0x2A37`/`0x2A19`),
+   and timezone→epoch for the alarm.
+6. **Optional**: a Gradle cargo-ndk task to build the `.so` + bindings from the whoop-rs source, so the
+   generated artifacts stop being committed here.
+
+Deferred whoop-rs core-gaps to add only if the swap surfaces a need: a SET_CLOCK frame builder (handshake
+clock-set, FORBIDDEN/gated), the WHOOP4 alarm leg (Gen4 still unverified), and off-nominal
+GET_DATA_RANGE scanning.
