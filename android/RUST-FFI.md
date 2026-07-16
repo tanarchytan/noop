@@ -8,7 +8,8 @@ only frame bytes cross the FFI, nothing async or radio-bound.
 ## What is committed here
 
 - `app/src/main/jniLibs/{arm64-v8a,x86_64}/libwhoop_ffi.so` — the prebuilt Rust core (regenerated,
-  carries the skin-temp-raw / ExtendedBattery / BatteryPack surface).
+  carries the skin-temp-raw / ExtendedBattery / BatteryPack surface, the sub-lag v26 ppgHr, f64 battery
+  precision, and the widened `Live.Event` that reproduces the stored event contract).
 - `app/src/main/java/uniffi/whoop_ffi/whoop_ffi.kt` — the generated uniffi Kotlin binding (regenerated
   to match the `.so`; binding + `.so` must always regenerate together or reads corrupt).
 - `app/src/main/java/com/noop/protocol/RustCodec.kt` — the bridge
@@ -124,23 +125,26 @@ The current shadow proves parity only for **per-second historical scalars + tran
 battery percent**. Every item below must be closed before any Kotlin decoder is deleted; each is a
 known gap in the current shadow, not a hypothetical:
 
-- [ ] **v26 PPG `ppgHr` (bpm/conf)** — the spec's highest-risk field and a **known structural
-      divergence**: production hardwires sub-lag parabolic interpolation ON (`PuffinExperiment`), the
-      Rust FFI `ppg_hr` is integer-lag only. Not diffed by the shadow today. Add a `ppgHr` shadow diff
-      **and** a sub-lag path in Rust (or accept + document the delta) before deleting `PpgHr`.
+- [x] **v26 PPG `ppgHr` (bpm/conf)** — RESOLVED: whoop-rs `ppg_hr` now does the same sub-lag parabolic
+      refine the app hardwires ON, so the FFI matches `PpgHr.estimate(subLagInterp = true)` window-for-window
+      (host-JNA `RustAdjudicationParityTest`, 22/22 on the real v26 fixture, golden bpm 78). A shadow diff on
+      device is still worth adding, but the algorithm divergence is closed.
 - [ ] **`ppgWaveform` LE-i16 BLOB** — layout agrees by construction but is not routed through the
       adapter (`decodeHistory` has no samples field) and is untested end-to-end. Wire + diff it.
-- [ ] **EVENT rows** — Rust `Live::Event` carries only `{number,unix}`; it cannot yet reproduce the
-      stored `NAME(raw)` label + deterministic sorted-key `payloadJSON`. Events stay Kotlin-only until
-      the FFI emits them. Extend the FFI, then diff.
+- [x] **EVENT rows** — RESOLVED: `Live.Event` is widened to `{number,unix,battery_soc_deci,
+      battery_millivolts,battery_charging,payload_hex}`, and `RustAdapter.liveToBatch` rebuilds the stored
+      `NAME(raw)` kind (EventNumber table) + canonical sorted-key `payloadJSON` (StreamPersistence) from it.
+      Byte-identical to the Kotlin decode on the real battery_level + wrist_on fixtures (parity test). Edge
+      residual: the `charging` bit is a `bool`, so the raw-byte `<= 1` store gate can't be reproduced.
 - [ ] **Stored live rows** — the shadow diffs the transient `parseFrame` map, not the values that
       `flushLive`→`extractStreams` actually persists. Diff the stored decode.
 - [ ] **ts + PK path** — the shadow diffs pre-correction field values; the #547 plausibility drop, #72
       snap-to-5-min grid, and the rrInterval `(deviceId,ts,rrMs,seq)` PK are app-side and unexercised.
       Confirm the corrected-ts + seq PK path is stable across the swap (ts logic MUST stay app-side).
-- [ ] **Battery soc precision** — the shadow's battery diff compares Kotlin f64 `raw/10` against Rust
-      f32; fractional deci-percent (GEN4 / live battery event) diverges by float noise, so battery
-      parity can't be validated as-is. Either widen Rust to f64 or diff with a tolerance + document.
+- [x] **Battery soc precision** — RESOLVED: the FFI battery-bearing values divide in f64 now
+      (`Response.Battery.percent`, `BatteryPack.socPct` are f64; the event carries the raw deci-% so the
+      adapter divides in f64). Gen4 999 → the exact 99.9 (not the f32-domain 99.90000152), pinned by the
+      host-JNA parity test.
 - [ ] **Gen4 / WHOOP 4.0 leg** — no automated or hardware parity yet (v24/v25 layouts, different live
       chars). Needs a real 4.0 offload parity run.
 - [ ] **Enforced CI gate** — the host parity test self-skips without the native dll and CI never builds

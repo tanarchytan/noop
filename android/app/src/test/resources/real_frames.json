@@ -351,11 +351,11 @@
     }
   ],
   "ppg_hr": {
-    "_comment": "whoop_metrics::ppg_hr::estimate over the concatenated ppg_frames; first estimate is the deterministic golden anchor.",
+    "_comment": "whoop_metrics::ppg_hr::estimate over the concatenated ppg_frames; first estimate is the deterministic golden anchor (sub-lag parabolic-refined).",
     "estimate_count": 22,
     "first": {
       "ts": 1783955687,
-      "bpm": 76,
+      "bpm": 78,
       "conf": 0.731
     },
     "confident_bpm_range": [

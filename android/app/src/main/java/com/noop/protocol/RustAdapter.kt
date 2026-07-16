@@ -1,6 +1,7 @@
 package com.noop.protocol
 
 import com.noop.data.BatteryRow
+import com.noop.data.EventEntry
 import com.noop.data.GravityRow
 import com.noop.data.HrRow
 import com.noop.data.RespRow
@@ -10,6 +11,7 @@ import com.noop.data.SleepStateRow
 import com.noop.data.Spo2Row
 import com.noop.data.StepRow
 import com.noop.data.StreamBatch
+import com.noop.data.StreamPersistence
 import uniffi.whoop_ffi.HistorySummary
 import uniffi.whoop_ffi.Live
 import uniffi.whoop_ffi.Response
@@ -79,8 +81,13 @@ object RustAdapter {
         )
     }
 
-    /** A live realtime/battery frame → the rows it carries (event kind-naming stays Kotlin, so events
-     *  are not mapped here). Realtime HR=0 dropped; RR=0 dropped. Used by a later live cutover. */
+    /**
+     * A live realtime/event frame → the rows it carries at the corrected [ts]. Realtime HR=0/RR=0 dropped.
+     * EVENT: builds the app's storage contract from the widened FFI struct — the `NAME(raw)` kind via the
+     * [EventNumber] label table, and the canonical sorted-key `payloadJSON` via [StreamPersistence]. A
+     * BATTERY_LEVEL event also fans a [BatteryRow]. soc is divided in f64 (raw deci-% / 10.0); charging
+     * renders as an Int (0/1), mirroring [decodeEventWhoop5]. Gates match the Kotlin decode.
+     */
     fun liveToBatch(live: Live, ts: Long): StreamBatch = when (live) {
         is Live.Realtime -> {
             val hr = ArrayList<HrRow>(1)
@@ -89,10 +96,29 @@ object RustAdapter {
             for (v in live.rrIntervals) { val ms = v.toInt(); if (ms != 0) rr.add(RrRow(ts, ms)) }
             StreamBatch(hr = hr, rr = rr)
         }
-        is Live.Battery -> StreamBatch(
-            battery = listOf(BatteryRow(ts, soc = live.socPercent.toDouble(), mv = live.millivolts.toInt(), charging = live.charging)),
-        )
+        is Live.Event -> eventToBatch(live, ts)
         else -> StreamBatch()
+    }
+
+    /** Reproduce [decodeEventWhoop5] + the storage split: the residual payload map, its canonical JSON
+     *  event row, and (for BATTERY_LEVEL) the battery row — from the widened FFI [Live.Event]. */
+    private fun eventToBatch(ev: Live.Event, ts: Long): StreamBatch {
+        val number = ev.number.toInt()
+        val residual = LinkedHashMap<String, Any?>()
+        ev.batterySocDeci?.toInt()?.let { deci -> if (deci <= 1100) residual["battery_pct"] = deci.toDouble() / 10.0 }
+        ev.batteryMillivolts?.toInt()?.let { mv -> if (mv in 3000..4300) residual["battery_mV"] = mv }
+        ev.batteryCharging?.let { residual["battery_charging"] = if (it) 1 else 0 }
+        ev.payloadHex?.let { residual["event_payload_hex"] = it }
+
+        val battery = ArrayList<BatteryRow>(1)
+        val soc = residual["battery_pct"] as? Double
+        val mv = residual["battery_mV"] as? Int
+        if (soc != null || mv != null) {
+            val charging = (residual["battery_charging"] as? Int)?.let { it != 0 }
+            battery.add(BatteryRow(ts, soc = soc, mv = mv, charging = charging))
+        }
+        val kind = EventNumber.fromRaw(number)?.let { "${it.name}($number)" } ?: "0x%02X(%d)".format(number, number)
+        return StreamBatch(battery = battery, events = listOf(EventEntry(ts, kind, StreamPersistence.encodePayload(residual))))
     }
 
     /** A command response → its battery row (soc %), or null for identity/clock/range/version/other. */

@@ -65,7 +65,10 @@ object RustShadowParity {
                 totalMismatch += c.mismatch
                 sb.append("  $field: ${c.match} match / ${c.mismatch} mismatch\n")
             }
-            sb.append(if (totalMismatch == 0L) "ALL FIELDS BYTE-IDENTICAL" else "MISMATCHES PRESENT ($totalMismatch)")
+            // A per-field delta is not automatically a defect: where adjudication chose whoop-rs over the
+            // old Kotlin (e.g. the v18 gravity |g|-gate), a difference is correct-by-design. Mismatches are
+            // reported for triage as EXPECTED-vs-UNEXPECTED, never asserted byte-identical across the board.
+            sb.append(if (totalMismatch == 0L) "shadowed fields match Kotlin" else "MISMATCHES PRESENT ($totalMismatch) — adjudicate (see notes)")
             if (notes.isNotEmpty()) {
                 sb.append("\nfirst mismatches:")
                 for (n in notes) sb.append("\n  ").append(n)

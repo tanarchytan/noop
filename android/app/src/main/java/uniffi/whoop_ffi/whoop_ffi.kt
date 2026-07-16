@@ -2610,20 +2610,17 @@ sealed class Live {
         companion object
     }
     
+    /**
+     * An EVENT frame. `battery_*` are Some only for BATTERY_LEVEL (raw deci-% + mV + charging — the
+     * consumer divides the deci-% in f64). `payload_hex` is the Gen5 opaque residual (lowercase hex).
+     */
     data class Event(
         val `number`: kotlin.UByte, 
-        val `unix`: kotlin.UInt) : Live()
-        
-    {
-        
-
-        companion object
-    }
-    
-    data class Battery(
-        val `socPercent`: kotlin.Float, 
-        val `millivolts`: kotlin.UShort, 
-        val `charging`: kotlin.Boolean) : Live()
+        val `unix`: kotlin.UInt, 
+        val `batterySocDeci`: kotlin.UShort?, 
+        val `batteryMillivolts`: kotlin.UShort?, 
+        val `batteryCharging`: kotlin.Boolean?, 
+        val `payloadHex`: kotlin.String?) : Live()
         
     {
         
@@ -2670,13 +2667,12 @@ public object FfiConverterTypeLive : FfiConverterRustBuffer<Live>{
             3 -> Live.Event(
                 FfiConverterUByte.read(buf),
                 FfiConverterUInt.read(buf),
+                FfiConverterOptionalUShort.read(buf),
+                FfiConverterOptionalUShort.read(buf),
+                FfiConverterOptionalBoolean.read(buf),
+                FfiConverterOptionalString.read(buf),
                 )
-            4 -> Live.Battery(
-                FfiConverterFloat.read(buf),
-                FfiConverterUShort.read(buf),
-                FfiConverterBoolean.read(buf),
-                )
-            5 -> Live.Console(
+            4 -> Live.Console(
                 FfiConverterString.read(buf),
                 )
             else -> throw RuntimeException("invalid enum value, something is very wrong!!")
@@ -2709,15 +2705,10 @@ public object FfiConverterTypeLive : FfiConverterRustBuffer<Live>{
                 4UL
                 + FfiConverterUByte.allocationSize(value.`number`)
                 + FfiConverterUInt.allocationSize(value.`unix`)
-            )
-        }
-        is Live.Battery -> {
-            // Add the size for the Int that specifies the variant plus the size needed for all fields
-            (
-                4UL
-                + FfiConverterFloat.allocationSize(value.`socPercent`)
-                + FfiConverterUShort.allocationSize(value.`millivolts`)
-                + FfiConverterBoolean.allocationSize(value.`charging`)
+                + FfiConverterOptionalUShort.allocationSize(value.`batterySocDeci`)
+                + FfiConverterOptionalUShort.allocationSize(value.`batteryMillivolts`)
+                + FfiConverterOptionalBoolean.allocationSize(value.`batteryCharging`)
+                + FfiConverterOptionalString.allocationSize(value.`payloadHex`)
             )
         }
         is Live.Console -> {
@@ -2750,17 +2741,14 @@ public object FfiConverterTypeLive : FfiConverterRustBuffer<Live>{
                 buf.putInt(3)
                 FfiConverterUByte.write(value.`number`, buf)
                 FfiConverterUInt.write(value.`unix`, buf)
-                Unit
-            }
-            is Live.Battery -> {
-                buf.putInt(4)
-                FfiConverterFloat.write(value.`socPercent`, buf)
-                FfiConverterUShort.write(value.`millivolts`, buf)
-                FfiConverterBoolean.write(value.`charging`, buf)
+                FfiConverterOptionalUShort.write(value.`batterySocDeci`, buf)
+                FfiConverterOptionalUShort.write(value.`batteryMillivolts`, buf)
+                FfiConverterOptionalBoolean.write(value.`batteryCharging`, buf)
+                FfiConverterOptionalString.write(value.`payloadHex`, buf)
                 Unit
             }
             is Live.Console -> {
-                buf.putInt(5)
+                buf.putInt(4)
                 FfiConverterString.write(value.`text`, buf)
                 Unit
             }
@@ -2813,7 +2801,7 @@ public object FfiConverterTypeReadinessTier: FfiConverterRustBuffer<ReadinessTie
 sealed class Response {
     
     data class Battery(
-        val `percent`: kotlin.Float) : Response()
+        val `percent`: kotlin.Double) : Response()
         
     {
         
@@ -2872,7 +2860,7 @@ sealed class Response {
     
     data class BatteryPack(
         val `serial`: kotlin.String, 
-        val `socPct`: kotlin.Float, 
+        val `socPct`: kotlin.Double, 
         val `millivolts`: kotlin.UShort, 
         val `packId`: kotlin.UInt) : Response()
         
@@ -2909,7 +2897,7 @@ public object FfiConverterTypeResponse : FfiConverterRustBuffer<Response>{
     override fun read(buf: ByteBuffer): Response {
         return when(buf.getInt()) {
             1 -> Response.Battery(
-                FfiConverterFloat.read(buf),
+                FfiConverterDouble.read(buf),
                 )
             2 -> Response.Clock(
                 FfiConverterUInt.read(buf),
@@ -2932,7 +2920,7 @@ public object FfiConverterTypeResponse : FfiConverterRustBuffer<Response>{
                 )
             7 -> Response.BatteryPack(
                 FfiConverterString.read(buf),
-                FfiConverterFloat.read(buf),
+                FfiConverterDouble.read(buf),
                 FfiConverterUShort.read(buf),
                 FfiConverterUInt.read(buf),
                 )
@@ -2949,7 +2937,7 @@ public object FfiConverterTypeResponse : FfiConverterRustBuffer<Response>{
             // Add the size for the Int that specifies the variant plus the size needed for all fields
             (
                 4UL
-                + FfiConverterFloat.allocationSize(value.`percent`)
+                + FfiConverterDouble.allocationSize(value.`percent`)
             )
         }
         is Response.Clock -> {
@@ -2996,7 +2984,7 @@ public object FfiConverterTypeResponse : FfiConverterRustBuffer<Response>{
             (
                 4UL
                 + FfiConverterString.allocationSize(value.`serial`)
-                + FfiConverterFloat.allocationSize(value.`socPct`)
+                + FfiConverterDouble.allocationSize(value.`socPct`)
                 + FfiConverterUShort.allocationSize(value.`millivolts`)
                 + FfiConverterUInt.allocationSize(value.`packId`)
             )
@@ -3015,7 +3003,7 @@ public object FfiConverterTypeResponse : FfiConverterRustBuffer<Response>{
         when(value) {
             is Response.Battery -> {
                 buf.putInt(1)
-                FfiConverterFloat.write(value.`percent`, buf)
+                FfiConverterDouble.write(value.`percent`, buf)
                 Unit
             }
             is Response.Clock -> {
@@ -3050,7 +3038,7 @@ public object FfiConverterTypeResponse : FfiConverterRustBuffer<Response>{
             is Response.BatteryPack -> {
                 buf.putInt(7)
                 FfiConverterString.write(value.`serial`, buf)
-                FfiConverterFloat.write(value.`socPct`, buf)
+                FfiConverterDouble.write(value.`socPct`, buf)
                 FfiConverterUShort.write(value.`millivolts`, buf)
                 FfiConverterUInt.write(value.`packId`, buf)
                 Unit
@@ -3375,6 +3363,70 @@ public object FfiConverterOptionalDouble: FfiConverterRustBuffer<kotlin.Double?>
         } else {
             buf.put(1)
             FfiConverterDouble.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterOptionalBoolean: FfiConverterRustBuffer<kotlin.Boolean?> {
+    override fun read(buf: ByteBuffer): kotlin.Boolean? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterBoolean.read(buf)
+    }
+
+    override fun allocationSize(value: kotlin.Boolean?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterBoolean.allocationSize(value)
+        }
+    }
+
+    override fun write(value: kotlin.Boolean?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterBoolean.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterOptionalString: FfiConverterRustBuffer<kotlin.String?> {
+    override fun read(buf: ByteBuffer): kotlin.String? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterString.read(buf)
+    }
+
+    override fun allocationSize(value: kotlin.String?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterString.allocationSize(value)
+        }
+    }
+
+    override fun write(value: kotlin.String?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterString.write(value, buf)
         }
     }
 }
