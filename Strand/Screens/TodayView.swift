@@ -1813,7 +1813,11 @@ struct TodayView: View {
     /// presentation only. Design-system tokens only. Mirrors Android `CalibrationMilestonesCard`.
     @ViewBuilder
     private func calibrationMilestonesCard(progress: [CalibrationMilestones.Progress]) -> some View {
-        NoopCard(padding: 14) {
+        // Charge-tinted like every other Today card (and the sibling chargeCalibrationCountdown it sits
+        // beside) — the milestones ride the HRV/recovery baseline, so the Charge theme is apt. Android's
+        // note lane (ScoreStateNote) is neutral, so it stays neutral there; each platform matches its own
+        // Today-card convention (feature-level parity, not pixel-level).
+        NoopCard(padding: 14, tint: StrandPalette.chargeColor) {
             VStack(alignment: .leading, spacing: 12) {
                 HStack(spacing: 10) {
                     Image(systemName: "slider.horizontal.3")
