@@ -966,7 +966,7 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_whoop_ffi_checksum_method_whoopcodec_get_data_range_frame() != 62610) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_whoop_ffi_checksum_method_whoopcodec_get_hello_frame() != 5496) {
+    if (lib.uniffi_whoop_ffi_checksum_method_whoopcodec_get_hello_frame() != 30823) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_whoop_ffi_checksum_method_whoopcodec_offload_abort() != 36453) {
@@ -1627,7 +1627,8 @@ public interface WhoopCodecInterface {
     fun `getDataRangeFrame`(`seq`: kotlin.UByte): kotlin.ByteArray
     
     /**
-     * GET_HELLO (identity + firmware), family-forked.
+     * GET_HELLO (identity + firmware), family-forked. The `[0x00]` payload matches the client's default
+     * no-arg body (frame-identical to empty on Gen5 after padding; it is the trailing byte Gen4 expects).
      */
     fun `getHelloFrame`(`seq`: kotlin.UByte): kotlin.ByteArray
     
@@ -1982,7 +1983,8 @@ open class WhoopCodec: Disposable, AutoCloseable, WhoopCodecInterface
 
     
     /**
-     * GET_HELLO (identity + firmware), family-forked.
+     * GET_HELLO (identity + firmware), family-forked. The `[0x00]` payload matches the client's default
+     * no-arg body (frame-identical to empty on Gen5 after padding; it is the trailing byte Gen4 expects).
      */override fun `getHelloFrame`(`seq`: kotlin.UByte): kotlin.ByteArray {
             return FfiConverterByteArray.lift(
     callWithHandle {

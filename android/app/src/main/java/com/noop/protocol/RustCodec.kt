@@ -21,7 +21,7 @@ object RustCodec {
     private val gen4 by lazy { WhoopCodec(Gen.GEN4) }
     private fun codec(isGen5: Boolean) = if (isGen5) gen5 else gen4
 
-    /** Decode one type-47 HISTORICAL_DATA frame to its per-second summary (all 14 fields), or null. */
+    /** Decode one type-47 HISTORICAL_DATA frame to its full per-second summary, or null. */
     fun decodeHistory(isGen5: Boolean, frame: ByteArray): HistorySummary? = codec(isGen5).decodeHistory(frame)
 
     /** Decode one live-notify frame (realtime HR/R-R, on-wrist r22, event/battery, console), or null. */
