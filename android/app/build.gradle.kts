@@ -139,6 +139,14 @@ android {
                 "jna.library.path",
                 rootProject.projectDir.resolve("../../whoop-rs/target/release").absolutePath,
             )
+            // Forward any -Dnoop.* fixture-path override from the gradle CLI into the forked test JVM,
+            // so a local run with -Dnoop.hrvGoldFixtures=<dir> (or -Dnoop.rrFixture=<file>) actually
+            // reaches the agreement/gold tests (Gradle does not propagate system properties to the
+            // fork by default). With no override they fall back to a local default and self-skip when
+            // the fixtures are absent (e.g. CI), keeping the build green.
+            System.getProperties().stringPropertyNames()
+                .filter { name -> name.startsWith("noop.") }
+                .forEach { name -> it.systemProperty(name, System.getProperty(name)) }
         }
     }
 

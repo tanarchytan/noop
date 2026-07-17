@@ -26,7 +26,7 @@ import kotlin.math.abs
 class RealDataRundownTest {
 
     private val fixturePath: String =
-        System.getProperty("noop.rrFixture") ?: "C:/Users/DavidGillot/Projects/whoop/whoop data/rr-real-fixture.json"
+        System.getProperty("noop.rrFixture") ?: "C:/Users/DavidGillot/Projects/whoop/whoop-data/harnesses/rr-real-fixture.json"
 
     private fun nightlyHrv(rr: List<Pair<Long, Int>>, gapAware: Boolean): Double? {
         if (rr.isEmpty()) return null

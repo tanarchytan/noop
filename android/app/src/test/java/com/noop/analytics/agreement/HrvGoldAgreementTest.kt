@@ -28,7 +28,7 @@ import kotlin.math.abs
 class HrvGoldAgreementTest {
 
     private val dir: String = System.getProperty("noop.hrvGoldFixtures")
-        ?: "C:/Users/DavidGillot/Projects/whoop/whoop data/datasets/agreement-fixtures"
+        ?: "C:/Users/DavidGillot/Projects/whoop/whoop-data/harnesses/agreement-fixtures"
 
     private val tol = 1e-6
 

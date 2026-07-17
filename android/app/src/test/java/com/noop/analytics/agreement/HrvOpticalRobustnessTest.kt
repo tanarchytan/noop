@@ -27,7 +27,7 @@ import kotlin.math.abs
 class HrvOpticalRobustnessTest {
 
     private val dir: String = System.getProperty("noop.hrvGoldFixtures")
-        ?: "C:/Users/DavidGillot/Projects/whoop/whoop data/datasets/agreement-fixtures"
+        ?: "C:/Users/DavidGillot/Projects/whoop/whoop-data/harnesses/agreement-fixtures"
 
     /** Gold sources whose R-R is clean enough to be a truth reference (chest ECG / chest belt). */
     private fun isGoldTruth(source: String) = source.contains("ECG", true) || source.contains("Polar", true)

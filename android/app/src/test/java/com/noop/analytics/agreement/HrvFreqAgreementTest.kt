@@ -22,7 +22,7 @@ import kotlin.math.abs
 class HrvFreqAgreementTest {
 
     private val path: String = (System.getProperty("noop.hrvGoldFixtures")
-        ?: "C:/Users/DavidGillot/Projects/whoop/whoop data/datasets/agreement-fixtures") + "/hrv_freq_cases.json"
+        ?: "C:/Users/DavidGillot/Projects/whoop/whoop-data/harnesses/agreement-fixtures") + "/hrv_freq_cases.json"
 
     @Test
     fun lfHfRatioAgreesWithScipyReference() {
