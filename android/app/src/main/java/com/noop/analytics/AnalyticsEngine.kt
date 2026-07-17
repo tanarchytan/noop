@@ -440,8 +440,9 @@ object AnalyticsEngine {
         // ── Raw SpO2 (WHOOP 4.0 v24 PPG ADC) ──────────────────────────────────
         // Nightly red/IR ADC means over the detected in-bed spans, or null when the night carried no raw
         // SpO2 samples in any span. Baseline-independent (unlike skin temp): a RAW device reading banked
-        // as-is for the Health "Raw SpO2" tile — NOT a calibrated blood-oxygen %. (#93)
-        val nightlySpo2Raw = nightlySpo2RawMeans(matched, spo2)
+        // as-is for the Health "Raw SpO2" tile — NOT a calibrated blood-oxygen %. Scored in whoop-rs
+        // physio-algo (RustScores.nightlySpo2RawMeans). (#93)
+        val nightlySpo2Raw = RustScores.nightlySpo2RawMeans(matched, spo2)
 
         // ── Sleep SpO2 percent (WHOOP 5.0/MG v18 @frame-82) ───────────────────
         // The MEDIAN (robust to the tail) of the night's physiological SpO2 readings over the detected
@@ -721,34 +722,6 @@ object AnalyticsEngine {
         anchorRaw: Double? = null,
         minSamples: Int = MIN_SKIN_TEMP_SAMPLES_INLINE,
     ): Double? = skinTempFunnel(sessions, hr, skinTemp, family, anchorRaw, minSamples).mean
-
-    /**
-     * Nightly means of the WHOOP 4.0 raw SpO2 PPG channels (red/IR ADC) over the detected in-bed
-     * [sessions], or null when no raw SpO2 sample fell inside any span. A sample counts when its
-     * timestamp lies within a session's [start, end]. WHOOP 4.0 banks these as raw PPG ADC values
-     * (spo2_red@68 / spo2_ir@70 on the v24 historical layout) but NOT a calibrated blood-oxygen % —
-     * computing one needs WHOOP's proprietary curve, so we surface the RAW means only. Deliberately NO
-     * wear gate (unlike skin temp): the strap only streams SpO2 on-wrist, so there is no off-charger
-     * drift to exclude, and the value is surfaced honestly as raw ADC — never scored — so there is
-     * nothing to poison into a fake %. Pure + deterministic; twin of the Swift `nightlySpo2RawMeans`. (#93)
-     */
-    internal fun nightlySpo2RawMeans(
-        sessions: List<DetectedSleep>,
-        spo2: List<Spo2Sample>,
-    ): Pair<Int, Int>? {
-        if (sessions.isEmpty() || spo2.isEmpty()) return null
-        var redSum = 0L
-        var irSum = 0L
-        var kept = 0
-        for (s in spo2) {
-            if (sessions.none { s.ts in it.start..it.end }) continue
-            redSum += s.red
-            irSum += s.ir
-            kept++
-        }
-        if (kept == 0) return null
-        return (redSum / kept).toInt() to (irSum / kept).toInt()
-    }
 
     /** Physiological SpO2 band (%) the nightly median counts. whoop-rs already drops sentinels/diagnostics
      *  at decode, so this is a defensive floor/ceiling — never a clinical range. (v18 @frame-82) */

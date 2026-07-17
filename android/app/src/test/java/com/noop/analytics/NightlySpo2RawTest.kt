@@ -6,9 +6,10 @@ import org.junit.Assert.assertNull
 import org.junit.Test
 
 /**
- * Pure unit test for [AnalyticsEngine.nightlySpo2RawMeans] (WHOOP 4.0 raw SpO2 red/IR ADC means over
- * detected sleep, #93). Twin of the Swift `nightlySpo2RawMeans`. No wear gate: the strap streams SpO2
- * only on-wrist, so a sample counts purely by whether its timestamp lands inside a detected in-bed span.
+ * Behavioral guard for the nightly raw SpO2 red/IR ADC means (WHOOP 4.0 v24, #93), now scored in whoop-rs
+ * physio-algo via [RustScores.nightlySpo2RawMeans] (the deleted Kotlin twin). Loads the host libwhoop_ffi
+ * through JNA. No wear gate: the strap streams SpO2 only on-wrist, so a sample counts purely by whether its
+ * timestamp lands inside a detected in-bed span.
  */
 class NightlySpo2RawTest {
 
@@ -21,8 +22,8 @@ class NightlySpo2RawTest {
 
     @Test
     fun emptyInputs_returnNull() {
-        assertNull(AnalyticsEngine.nightlySpo2RawMeans(emptyList(), listOf(spo2(100, 1, 1))))
-        assertNull(AnalyticsEngine.nightlySpo2RawMeans(listOf(sleep(0, 1000)), emptyList()))
+        assertNull(RustScores.nightlySpo2RawMeans(emptyList(), listOf(spo2(100, 1, 1))))
+        assertNull(RustScores.nightlySpo2RawMeans(listOf(sleep(0, 1000)), emptyList()))
     }
 
     @Test
@@ -32,7 +33,7 @@ class NightlySpo2RawTest {
             spo2(1100, red = 30000, ir = 20000),
             spo2(1500, red = 32000, ir = 24000),
         )
-        val (red, ir) = AnalyticsEngine.nightlySpo2RawMeans(sessions, samples)!!
+        val (red, ir) = RustScores.nightlySpo2RawMeans(sessions, samples)!!
         assertEquals(31000, red)   // (30000 + 32000) / 2
         assertEquals(22000, ir)    // (20000 + 24000) / 2
     }
@@ -41,7 +42,7 @@ class NightlySpo2RawTest {
     fun samplesOutsideEveryWindow_returnNull() {
         val sessions = listOf(sleep(1000, 2000))
         val samples = listOf(spo2(500, 1, 1), spo2(2500, 2, 2))  // both outside [1000, 2000]
-        assertNull(AnalyticsEngine.nightlySpo2RawMeans(sessions, samples))
+        assertNull(RustScores.nightlySpo2RawMeans(sessions, samples))
     }
 
     @Test
@@ -53,7 +54,7 @@ class NightlySpo2RawTest {
             spo2(2000, red = 300, ir = 400),   // inclusive end → kept
             spo2(2001, red = 9, ir = 9),       // just after → dropped
         )
-        val (red, ir) = AnalyticsEngine.nightlySpo2RawMeans(sessions, samples)!!
+        val (red, ir) = RustScores.nightlySpo2RawMeans(sessions, samples)!!
         assertEquals(200, red)   // (100 + 300) / 2
         assertEquals(300, ir)    // (200 + 400) / 2
     }
@@ -66,7 +67,7 @@ class NightlySpo2RawTest {
             spo2(2000, red = 99, ir = 99),   // gap → dropped
             spo2(3200, red = 30, ir = 40),   // in second
         )
-        val (red, ir) = AnalyticsEngine.nightlySpo2RawMeans(sessions, samples)!!
+        val (red, ir) = RustScores.nightlySpo2RawMeans(sessions, samples)!!
         assertEquals(20, red)   // (10 + 30) / 2
         assertEquals(30, ir)    // (20 + 40) / 2
     }
