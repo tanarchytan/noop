@@ -523,11 +523,19 @@ object AnalyticsEngine {
         val effMaxHR: Double? = maxHROverride
             ?: if (profile.age > 0) StrainScorer.tanakaHRmax(profile.age) else null
         val restForStrain = restingHRDaily?.toDouble() ?: StrainScorer.defaultRestingHR
-        val strain = StrainScorer.strain(
+        // Day Effort (0–100 log cardiovascular load) now scores in whoop-rs physio-algo via
+        // [RustScores.strain] (proven bit-for-bit == the Kotlin StrainScorer.strain by RustStrainParityTest,
+        // incl. real captured 5.0 nights). The Edwards method + default denominator here match the Kotlin
+        // defaults this store site used. StrainScorer.strain itself stays — the Tier-3 per-bout workout path
+        // (WorkoutDetector / ManualWorkoutRescore) and the frontend live-preview (AppViewModel / TodayScreen /
+        // WhoopRepository) still call it; only this Tier-1 daily store site routes to Rust.
+        val strain = RustScores.strain(
             hr = dayHr ?: hr,
             maxHR = effMaxHR,
             restingHR = restForStrain,
+            method = StrainScorer.Method.EDWARDS,
             sex = profile.sex,
+            denominator = RustScores.strainDenominator(),
         )
 
         // ── Workouts ──────────────────────────────────────────────────────────
