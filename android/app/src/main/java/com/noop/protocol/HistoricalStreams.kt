@@ -304,10 +304,10 @@ fun extractHistoricalStreams(
                 // whoop-rs's [RustCodec.decodePpg] yields the 24 samples and HR is derived after the loop.
                 // One v26 record == one strap second == 24 samples, appended in wire (time) order so the
                 // concatenated stream is contiguous at 24 Hz. The whole-second `ts` is the record's unix,
-                // getting the same grossly-stale-RTC correction (FIX #72) as every other stream. Gated on
-                // the record version (@9 == 26): the Rust PPG decode reads the sample span unconditionally,
-                // so a v18 record must not be mis-fed here (it decodes as a record below instead).
-                if (family == DeviceFamily.WHOOP5 && frame.histU8(9) == 26) {
+                // getting the same grossly-stale-RTC correction (FIX #72) as every other stream. whoop-rs
+                // version-gates the PPG decode: a non-v26 record returns null and falls through to the
+                // record path below. The WHOOP5 family guard stays — the FFI PPG codec is gen5-only.
+                if (family == DeviceFamily.WHOOP5) {
                     RustCodec.decodePpg(frame)?.let { rec ->
                         // #547: skip a v26 PPG buffer whose unix is implausible (correctedWall → null) so a
                         // bad-clock strap can't seed the derived-HR estimator with garbage-timestamped samples.

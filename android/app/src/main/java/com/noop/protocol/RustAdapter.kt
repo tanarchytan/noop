@@ -101,16 +101,10 @@ object RustAdapter {
     // --- Decode (whoop-rs is the sole decoder; null when the frame is not a stored record/event) --------
 
     /** Decode one type-47 record via whoop-rs into the flat map keys the offload loop reads. null for a
-     *  v26 PPG / console / CRC-failed / non-record frame.
-     *
-     *  Integrity gate via the retained [Framing.parseFrame] (the same CRC gate the old Kotlin decoder had):
-     *  whoop-rs's decode surfaces `crc_ok` as a field but does not itself reject a bad-CRC frame, so a
-     *  garbled/forged offload frame could otherwise inject rows. Gate first, then decode the fields. */
-    fun recordFields(frame: ByteArray, family: DeviceFamily): Map<String, Any?>? {
-        val checked = Framing.parseFrame(frame, family)
-        if (!checked.ok || checked.crcOk == false) return null
-        return RustCodec.decodeHistory(isGen5(family), frame)?.let { summaryToHistMap(it) }
-    }
+     *  v26 PPG / console / CRC-failed / non-record frame — whoop-rs rejects a bad-CRC frame itself, so a
+     *  garbled/forged offload frame yields null (archived by rejectedHistoricalRecords, never stored). */
+    fun recordFields(frame: ByteArray, family: DeviceFamily): Map<String, Any?>? =
+        RustCodec.decodeHistory(isGen5(family), frame)?.let { summaryToHistMap(it) }
 
     /** (kind, rawTs, residual) for a widened [Live.Event] — the pieces the storing event tail needs. */
     fun eventFieldsFromLive(ev: Live.Event): EventFields =

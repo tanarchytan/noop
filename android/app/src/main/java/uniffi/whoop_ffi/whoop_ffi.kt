@@ -1007,7 +1007,7 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_whoop_ffi_checksum_method_whoopcodec_command_frame() != 13829) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_whoop_ffi_checksum_method_whoopcodec_decode_history() != 27090) {
+    if (lib.uniffi_whoop_ffi_checksum_method_whoopcodec_decode_history() != 63820) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_whoop_ffi_checksum_method_whoopcodec_decode_imu_frame() != 59046) {
@@ -1019,7 +1019,7 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_whoop_ffi_checksum_method_whoopcodec_decode_metadata() != 33906) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_whoop_ffi_checksum_method_whoopcodec_decode_ppg_frame() != 19846) {
+    if (lib.uniffi_whoop_ffi_checksum_method_whoopcodec_decode_ppg_frame() != 58215) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_whoop_ffi_checksum_method_whoopcodec_decode_response() != 29506) {
@@ -1691,7 +1691,8 @@ public interface WhoopCodecInterface {
     fun `commandFrame`(`seq`: kotlin.UByte, `cmd`: kotlin.UByte, `payload`: kotlin.ByteArray): kotlin.ByteArray?
     
     /**
-     * Decode a single complete history frame (for offline replay of a captured file).
+     * Decode a single complete history frame (for offline replay of a captured file). A bad-CRC frame is
+     * rejected here (None) — a forged/corrupt record must not be stored past the trim.
      */
     fun `decodeHistory`(`raw`: kotlin.ByteArray): HistorySummary?
     
@@ -1714,6 +1715,7 @@ public interface WhoopCodecInterface {
     
     /**
      * Decode a single v26 PPG waveform frame (the 24 optical samples) for offline replay / the deep buffers.
+     * Bad-CRC frames are rejected; `decode_ppg` version-gates, so a v18/v24 frame yields None (not 24 samples).
      */
     fun `decodePpgFrame`(`raw`: kotlin.ByteArray): PpgFrame?
     
@@ -2066,7 +2068,8 @@ open class WhoopCodec: Disposable, AutoCloseable, WhoopCodecInterface
 
     
     /**
-     * Decode a single complete history frame (for offline replay of a captured file).
+     * Decode a single complete history frame (for offline replay of a captured file). A bad-CRC frame is
+     * rejected here (None) — a forged/corrupt record must not be stored past the trim.
      */override fun `decodeHistory`(`raw`: kotlin.ByteArray): HistorySummary? {
             return FfiConverterOptionalTypeHistorySummary.lift(
     callWithHandle {
@@ -2137,6 +2140,7 @@ open class WhoopCodec: Disposable, AutoCloseable, WhoopCodecInterface
     
     /**
      * Decode a single v26 PPG waveform frame (the 24 optical samples) for offline replay / the deep buffers.
+     * Bad-CRC frames are rejected; `decode_ppg` version-gates, so a v18/v24 frame yields None (not 24 samples).
      */override fun `decodePpgFrame`(`raw`: kotlin.ByteArray): PpgFrame? {
             return FfiConverterOptionalTypePpgFrame.lift(
     callWithHandle {

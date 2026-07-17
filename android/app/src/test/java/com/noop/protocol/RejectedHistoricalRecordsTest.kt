@@ -21,6 +21,13 @@ class RejectedHistoricalRecordsTest {
         "85593c1f65cebed7b3e63eb85a5f3f000080401f65cebed7b3e63eb85a5f3f500264025d03" +
         "640229014009010c020c00000000000f0001c4020000000000008fdeb278"
 
+    // Real worn WHOOP 5/MG v18 record (HR 102) — type-47 at frame[8], version 18 at frame[9].
+    private val realV18Whoop5Hex =
+        "aa01740001003fb12f1280733d8401b69f266a66460066025a0265020000000000007b0a8d65" +
+        "6463ff0012163cf6a439bf2924fd3ed763fe3e3200aa000000000000000000f7000901f10b00" +
+        "07010c020c00000000000000000000000000000000000000000000000100656f1e1e0000009d" +
+        "61a7c00000003e862817"
+
     private fun bytes(s: String): ByteArray =
         ByteArray(s.length / 2) { ((s[it * 2].digitToInt(16) shl 4) or s[it * 2 + 1].digitToInt(16)).toByte() }
 
@@ -77,6 +84,22 @@ class RejectedHistoricalRecordsTest {
         for (i in 40 until 52) bad[i] = 0     // zero gravity x/y/z → |g| = 0, fails the gate
         repairCrc32(bad)
         val rejected = rejectedHistoricalRecords(listOf(bad), DeviceFamily.WHOOP4)
+        assertEquals(1, rejected.size)
+        assertTrue(rejected[0].contentEquals(bad))
+    }
+
+    @Test
+    fun whoop5V18BadCrcRecordIsArchivedNotStored() {
+        // The 5/MG history border now trusts whoop-rs to reject a bad-CRC frame (the Kotlin parseFrame
+        // pre-gate was dropped). Control: the intact v18 record decodes, so it is NOT flagged as lost.
+        val good = bytes(realV18Whoop5Hex)
+        assertEquals(emptyList<ByteArray>(), rejectedHistoricalRecords(listOf(good), DeviceFamily.WHOOP5))
+
+        // Flip a body byte, leave the CRC trailer stale -> CRC mismatch. whoop-rs returns null, so the
+        // record is NOT stored (recordFields null) and IS archived before the trim (persist-before-trim).
+        val bad = bytes(realV18Whoop5Hex).also { it[20] = (it[20].toInt() xor 0xFF).toByte() }
+        assertEquals(null, RustAdapter.recordFields(bad, DeviceFamily.WHOOP5))
+        val rejected = rejectedHistoricalRecords(listOf(bad), DeviceFamily.WHOOP5)
         assertEquals(1, rejected.size)
         assertTrue(rejected[0].contentEquals(bad))
     }
