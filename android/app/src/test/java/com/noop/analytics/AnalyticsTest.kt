@@ -201,22 +201,22 @@ class AnalyticsTest {
         assertNull(IllnessWatch.evaluate(baseline + recent))
     }
 
-    // --- sessionAvgHRV ectopic cleaning (#262/#235) -------------------------
+    // --- windowed avgHrv ectopic cleaning (#262/#235) -----------------------
 
     @Test
-    fun sessionAvgHrv_rejectsEctopicSpikes() {
+    fun windowedAvgHrv_rejectsEctopicSpikes() {
         // A 5-min window of steady ~900 ms beats (≈67 bpm) with a +600 ms ectopic
         // spike every 15th beat — the shape of PPG-derived 0x2A37 RR on a WHOOP 5/MG.
         // rMSSD is built from SUCCESSIVE differences, so the spikes would inflate the
-        // session HRV if left in. cleanRR's Malik ectopic rejection drops them, so the
-        // cleaned series is steady → HRV ≈ 0. Pre-fix (rangeFilter only) this path
-        // returned ~200 ms; this guards against regression.
+        // session HRV if left in. The Malik ectopic rejection (now scored in whoop-rs
+        // via RustScores.windowedAvgHrv) drops them, so the cleaned series is steady →
+        // HRV ≈ 0. Pre-fix (rangeFilter only) this path returned ~200 ms.
         val start = 1000L
         val end = start + 300
         val rr = (0 until 300).map { i ->
             RrInterval(deviceId = "d", ts = start + i, rrMs = if (i % 15 == 0) 1500 else 900)
         }
-        val hrv = SleepStager.sessionAvgHRV(start, end, rr)
+        val hrv = RustScores.windowedAvgHrv(start, end, rr)
         assertNotNull(hrv)
         assertTrue("ectopic spikes must be rejected before rMSSD", hrv!! < 50.0)
     }

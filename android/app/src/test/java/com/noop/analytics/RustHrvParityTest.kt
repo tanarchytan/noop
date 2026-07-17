@@ -55,6 +55,26 @@ class RustHrvParityTest {
     private fun kotlinStored(rows: List<RrInterval>): Double? =
         HrvAnalyzer.analyzeRaw(rows.map { it.rrMs.toDouble() }).rmssd
 
+    /** Kotlin STORED windowed avgHrv: mean of per-5-min-bucket RMSSD, the value the deleted
+     *  SleepStager.sessionAvgHRV produced (built from the retained sessionHrvWindows). */
+    private fun kotlinWindowed(rows: List<RrInterval>, start: Long, end: Long): Double? {
+        val vals = SleepStager.sessionHrvWindows(start, end, rows, emptyList()).mapNotNull { it.rmssd }
+        return if (vals.isEmpty()) null else vals.sum() / vals.size.toDouble()
+    }
+
+    /** Same exact-bits contract as [assertRmssdParity], for the windowed avgHrv seam. */
+    private fun assertWindowedParity(msg: String, kotlin: Double?, rust: Double?) {
+        if (kotlin == null || rust == null) {
+            assertEquals("$msg windowed null-ness (Kotlin vs Rust)", kotlin, rust)
+            return
+        }
+        assertEquals(
+            "$msg windowed avgHrv bits (Kotlin=$kotlin Rust=$rust)",
+            java.lang.Double.doubleToLongBits(kotlin),
+            java.lang.Double.doubleToLongBits(rust),
+        )
+    }
+
     // ── crafted golden (always runs, no fixture) ─────────────────────────────
 
     /**
@@ -87,6 +107,18 @@ class RustHrvParityTest {
         assertRmssdParity("golden night", kotlin, rust)
     }
 
+    @Test
+    fun `rust windowed avgHrv matches the kotlin stored value on the clean golden night`() {
+        val rows = goldenNight()
+        val start = rows.first().ts
+        val end = rows.last().ts
+        val kotlin = kotlinWindowed(rows, start, end)
+        val rust = RustScores.windowedAvgHrv(start, end, rows)
+        assertNotNull("golden Kotlin windowed avgHrv should be computable", kotlin)
+        assertTrue("golden windowed avgHrv should be positive", (kotlin ?: 0.0) > 0.0)
+        assertWindowedParity("golden night", kotlin, rust)
+    }
+
     // ── real backup nights (rr-real-fixture.json) ────────────────────────────
 
     /**
@@ -114,6 +146,14 @@ class RustHrvParityTest {
             if (rows.isEmpty()) continue
             val date = o.optString("date", "night$i")
             assertRmssdParity("real night $date (${rows.size} beats)", kotlinStored(rows), RustScores.rmssdGapAware(rows))
+            // Windowed avgHrv seam: score the WHOLE night as one [minTs, maxTs] span through both sides.
+            val start = rows.minOf { it.ts }
+            val end = rows.maxOf { it.ts }
+            assertWindowedParity(
+                "real night $date (${rows.size} beats)",
+                kotlinWindowed(rows, start, end),
+                RustScores.windowedAvgHrv(start, end, rows),
+            )
             scored++
         }
         assertTrue("fixture present but no night scored", scored > 0)
@@ -155,6 +195,13 @@ class RustHrvParityTest {
                     tSec += ms / 1000.0
                 }
                 assertRmssdParity("$src window $i (${rows.size} beats)", kotlinStored(rows), RustScores.rmssdGapAware(rows))
+                val start = rows.first().ts
+                val end = rows.last().ts
+                assertWindowedParity(
+                    "$src window $i (${rows.size} beats)",
+                    kotlinWindowed(rows, start, end),
+                    RustScores.windowedAvgHrv(start, end, rows),
+                )
                 windows++
             }
         }

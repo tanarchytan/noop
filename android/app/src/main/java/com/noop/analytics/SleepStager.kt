@@ -1115,7 +1115,9 @@ object SleepStager {
                     hr = hrS, rr = rrS, resp = respS)
             }
             val eff = efficiency(start = p.start, end = p.end, stages = stages)
-            val avgHrv = sessionAvgHRV(start = p.start, end = p.end, rr = rrS)
+            // Stored session avgHrv (mean of per-5-min-bucket gap-aware RMSSD) is scored in whoop-rs
+            // physio-algo (RustScores.windowedAvgHrv). rrS is ts-sorted (RMSSD = successive diffs).
+            val avgHrv = RustScores.windowedAvgHrv(start = p.start, end = p.end, rr = rrS)
             sessions.add(
                 DetectedSleep(
                     start = p.start, end = p.end, efficiency = eff,
@@ -1953,21 +1955,14 @@ object SleepStager {
 
     /** One 5-min HRV window: its start ts, the sleep stage at its center, the clean-beat count, and the
      *  window RMSSD (null when fewer than 2 clean beats, or when every successive pair straddles a dropped
-     *  beat). Drives both [sessionAvgHRV] and the HRV test-mode trace. */
+     *  beat). Drives the deep-stage HRV pool and the HRV test-mode trace. */
     data class HrvWindow(val startTs: Long, val stage: String, val cleanBeats: Int, val rmssd: Double?)
 
     /**
-     * Mean RMSSD over 5-min tumbling windows across the session (ms), or null.
-     * Uses the same range-filter + ≥2-valid-interval rule as hrv.rmssd().
-     */
-    internal fun sessionAvgHRV(start: Long, end: Long, rr: List<RrInterval>): Double? {
-        val vals = sessionHrvWindows(start, end, rr, emptyList()).mapNotNull { it.rmssd }
-        return if (vals.isEmpty()) null else vals.sum() / vals.size.toDouble()
-    }
-
-    /**
      * Per-5-min-window RMSSD across a session, each window tagged with the sleep stage at its CENTER (from
-     * [stages]) — the SINGLE source [sessionAvgHRV] averages, and the HRV test-mode nightly trace reads.
+     * [stages]) — the source the deep-stage HRV pool ([AnalyticsEngine]) and the HRV test-mode nightly trace
+     * read. The stored session avgHrv (the plain mean of these window RMSSDs) is scored in whoop-rs
+     * ([RustScores.windowedAvgHrv]); this Kotlin path stays only for the stage-tagged trace/deep-pool.
      * Passing `emptyList()` for [stages] tags every window "?" (the plain-average path doesn't need stages).
      */
     internal fun sessionHrvWindows(
