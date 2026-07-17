@@ -4,7 +4,7 @@ import android.content.Context
 import com.noop.analytics.EffectRanker
 import com.noop.analytics.LabMarkerCategory
 import com.noop.analytics.MarkerCatalog
-import com.noop.analytics.StressIndex
+import com.noop.analytics.RustScores
 import com.noop.data.DailyMetric
 import com.noop.data.JournalEntry
 import com.noop.data.LabMarkerRow
@@ -708,12 +708,13 @@ class AiCoach(private val repo: WhoopRepository) {
 
         /**
          * One derived stress line for the coach context: the Baevsky Stress Index over a series of R-R
-         * intervals, summarised to a single number. Pure (no IO) so it is unit-testable; returns null
-         * when there are too few clean beats (the histogram needs >= [StressIndex.MIN_BEATS]), so the
-         * line is simply absent, never a fabricated value. Summary-only: no raw R-R leaves the device.
+         * intervals, summarised to a single number. The SI is scored in whoop-rs physio-algo via
+         * [RustScores.stressIndex]; returns null when there are too few clean beats (the histogram's
+         * honest-data gate), so the line is simply absent, never a fabricated value. Summary-only: no raw
+         * R-R leaves the device.
          */
         fun stressIndexLine(rr: List<com.noop.data.RrInterval>): String? {
-            val si = StressIndex.stressIndex(rr) ?: return null
+            val si = RustScores.stressIndex(rr) ?: return null
             return stressIndexSummary(si)
         }
 

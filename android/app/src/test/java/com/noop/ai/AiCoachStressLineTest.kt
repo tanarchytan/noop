@@ -1,5 +1,6 @@
 package com.noop.ai
 
+import com.noop.analytics.RustScores
 import com.noop.analytics.StressIndex
 import com.noop.data.RrInterval
 import org.junit.Assert.assertFalse
@@ -11,10 +12,10 @@ import org.junit.Test
 /**
  * Parity with macOS [AICoachPromptAndStressTests]: the derived Baevsky Stress Index context line.
  *
- * Covers the pure pieces (no Android Context, no IO): [AiCoach.stressIndexSummary] formats one
- * rounded number with the proxy note (no raw R-R egress), and [AiCoach.stressIndexLine] uses the
- * SAME [StressIndex.stressIndex] computation StressScreen does — reporting that value, or null when
- * there are too few clean beats so the line is simply absent.
+ * Covers the pure pieces (no Android Context): [AiCoach.stressIndexSummary] formats one rounded number
+ * with the proxy note (no raw R-R egress), and [AiCoach.stressIndexLine] reports the SAME whoop-rs SI
+ * ([RustScores.stressIndex]) StressScreen now shows — reporting that value, or null when there are too few
+ * clean beats so the line is simply absent. The line's Rust leg loads libwhoop_ffi via JNA.
  */
 class AiCoachStressLineTest {
 
@@ -39,7 +40,7 @@ class AiCoachStressLineTest {
 
     @Test
     fun lineMatchesStressScreenComputation() {
-        val si = StressIndex.stressIndex(rr(goldenMs))
+        val si = RustScores.stressIndex(rr(goldenMs))
         assertNotNull(si)
         val line = AiCoach.stressIndexLine(rr(goldenMs))
         assertNotNull(line)
@@ -50,7 +51,7 @@ class AiCoachStressLineTest {
     fun tooFewBeatsYieldsNoLine() {
         // Below StressIndex.MIN_BEATS → no SI → no line (never a fabricated number).
         val tooFew = rr(List(StressIndex.MIN_BEATS - 1) { 800 })
-        assertNull(StressIndex.stressIndex(tooFew))
+        assertNull(RustScores.stressIndex(tooFew))
         assertNull(AiCoach.stressIndexLine(tooFew))
     }
 }

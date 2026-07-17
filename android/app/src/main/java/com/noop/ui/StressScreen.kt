@@ -56,6 +56,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.noop.analytics.DaytimeStress
 import com.noop.analytics.HrvFreqDomain
+import com.noop.analytics.RustScores
 import com.noop.analytics.StressIndex
 import com.noop.data.DailyMetric
 import java.util.Locale
@@ -180,7 +181,10 @@ private suspend fun loadDaytimeStress(vm: AppViewModel): DaytimeReadout {
     val daytime = DaytimeStress.analyze(hr, rr, tzOffsetSeconds)
     // ADDITIVE advanced readouts from the SAME `rr`. Each engine self-gates and returns null when
     // its requirement is not met, in which case its row is simply hidden in the UI.
-    val si = StressIndex.components(rr)
+    // SI scored in whoop-rs physio-algo (analytics cutover); map the FFI result into the display DTO.
+    val si = RustScores.stressComponents(rr)?.let {
+        StressIndex.Components(moSec = it.moSec, aMoPercent = it.amoPercent, mxDMnSec = it.mxdmnSec, si = it.si)
+    }
     val freq = HrvFreqDomain.freqDomain(rr)
     return DaytimeReadout(daytime, si, freq)
 }
