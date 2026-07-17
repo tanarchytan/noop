@@ -7,7 +7,11 @@ read-only mappers (2026-07-17): the noop-tan analytics inventory and the physio-
 ## Status headline
 
 *(Mapping-day snapshot, 2026-07-17 — for LIVE per-score progress see "Tier-1 cutover status" below: 8 of the
-11 Tier-1 scores are now routed, HRV is parity-proven and route-pending, SpO2 is BLOCKED on an FFI gap.)*
+11 Tier-1 scores are now routed + Kotlin-deleted, Recovery is HARDENED (bit-for-bit parity pinned at machine
+precision), HRV is parity-proven but its store seam correctly stays Kotlin (blocked on a windowed-bucket-mean
+FFI — routing the whole-night door would break `avgHrv` parity), and SpO2 is BLOCKED on an FFI gap. The
+post-cutover de-cruft (dead FFI wrappers, stale doc-comments, resp-rate range guard) has landed. Closeout gate
+= GREEN: `:app:testFullDebugUnitTest` 2614 tests / 0 failures with the real Rust DLL through JNA.)*
 
 At mapping time **only sleep *staging* crossed into Rust** (`SleepStager.kt:1197` → `RustSleepStager` →
 `stageSleepV1/V2`). Everything else in `com.noop.analytics` (~30 metrics) was pure Kotlin — faithful ports of
@@ -28,18 +32,21 @@ through JNA).
 | Tier-1 score | State | Notes |
 |---|---|---|
 | Sleep staging | **ROUTED + DELETED** | Baseline route (`RustSleepStager` → `stageSleepV1/V2`); Kotlin stagers gone. |
-| Recovery / Charge | **ROUTED + DELETED** | `RustScores.recovery` at all 3 store sites (`AnalyticsEngine`, `IntelligenceEngine.recomputeRecovery`, `WatchRecovery`). `RecoveryScorer` keeps `zScore`/`band`/`recoveryIndexSlope`/`bankedNights` for the frontend `RecoveryDrivers` breakdown (ruled OUT) + the Resting-HR route. |
+| Recovery / Charge | **ROUTED + DELETED + HARDENED** | `RustScores.recovery` at all 3 store sites (`AnalyticsEngine`, `IntelligenceEngine.recomputeRecovery`, `WatchRecovery`). `RecoveryScorer` keeps `zScore`/`band`/`recoveryIndexSlope`/`bankedNights` for the frontend `RecoveryDrivers` breakdown (ruled OUT), `RecoveryScorerTrace`, `CalibrationMilestones`, + the Resting-HR route. **Hardened (`0577f078`):** `RustRecoveryParityTest` now freezes a byte-identical copy of the deleted Kotlin composite and pins `RustScores.recovery` to it at machine precision across the full term matrix + null-semantics edges — observed maxErr 0.0 (bit-for-bit), replacing the loose 1e-6 numpy reference so no future whoop-rs edit can silently drift the stored value. |
 | Day Strain / Effort | **ROUTED (store site) + parity-proven** | Daily store site → `RustScores.strain`. `StrainScorer.strain` itself STAYS (Tier-3 per-bout workout path: `WorkoutDetector`/`ManualWorkoutRescore`/live UI) — full delete waits on Tier-3 workout detection landing in physio-algo. |
 | Resting HR | **ROUTED + DELETED** | `RustScores.sessionRestingHr`/`dailyRestingHr`; `RecoveryScorer.restingHR` removed. |
 | Respiratory rate | **ROUTED + DELETED** | `RustScores.respRateFromRr`; `SleepStager.respRateFromRR` removed. |
 | HR zones + time-in-zone | **ROUTED + DELETED** | `RustScores.hrZonesForAge`/`hrTimeInZone`; `HrZones` keeps only the direct `zones(maxHR)` builder. |
-| Baevsky Stress Index | **ROUTED + DELETED** | `RustScores.stressIndex`/`stressComponents`; `StressIndex` keeps `MIN_BEATS` + the `Components` shape. |
+| Baevsky Stress Index | **ROUTED + DELETED + HARDENED** | `RustScores.stressIndex`/`stressComponents`; `StressIndex` keeps `MIN_BEATS` (documented gate the Rust door enforces internally — no production path reads it) + the `Components` shape. **Hardened (`0577f078`):** `RustStressParityTest` now feeds raw series with out-of-range dropouts + ectopic spikes and asserts the SI and every histogram component match bit-for-bit, proving the Rust `stress_index` reproduces the Kotlin `clean_rr` (range band + Malik ectopic) internally — so the bridge feeds raw rrMs with no pre-clean. |
 | VO2max / Fitness Age | **ROUTED + DELETED** | `RustScores.vo2maxEstimate`/`fitnessAgeCompute`. `FitnessAgeEngine` keeps PA-index reconstruction (Tier-2 gap #5) + the UI readiness checklist. |
-| PPG-HR (v26) | **ROUTED (decode cutover)** | `PpgHr.kt` deleted with the decode cutover; v26 HR comes from Rust decode. `RustScores.ppgHr` exposed for any re-derive. |
-| **HRV / RMSSD** | **PARITY-PROVEN, ROUTE PENDING** | `RustHrvParityTest` passes bit-for-bit on the golden night (+ local real/gold fixtures when present); the store seam (`IntelligenceEngine` → `HrvAnalyzer.analyzeRaw`) is NOT yet switched, so the Kotlin gap-aware RMSSD is still the stored `avgHrv`. Flip the seam to `RustScores.rmssdGapAware`, then delete `HrvAnalyzer`'s RMSSD core (keep the freq-domain + windowing helpers — Tier-3). |
+| PPG-HR (v26) | **ROUTED (decode cutover)** | `PpgHr.kt` deleted with the decode cutover; v26 HR comes from Rust decode. The `RustScores.ppgHr` re-derive wrapper (and the unused `hrvReadiness` wrapper) were pruned in the de-cruft pass (`8e60c117`) — no consumer read them; the FFI symbols remain if a re-derive is ever needed. |
+| **HRV / RMSSD** | **PARITY-PROVEN, seam stays Kotlin (BLOCKED on a bucket-mean FFI)** | `RustHrvParityTest` (`63e9f214`) proves `RustScores.rmssdGapAware` == `HrvAnalyzer.analyzeRaw`'s whole-night gap-aware RMSSD bit-for-bit on the golden night (+ local real/gold fixtures when present). But the store seam is deliberately NOT flipped: the shipped `avgHrv` is the *mean over 5-min buckets* of `rmssdGapAware(cleanRRGapAware(bucket))` (`SleepStager` sessionHrvWindows/sessionAvgHRV → `AnalyticsEngine.avgHRVDaily`), a windowed pool — NOT the whole-night `analyzeRaw` the FFI reproduces. The two agree only when a night fits one 5-min bucket (the 240 s golden fixture); routing the whole-night door would change `avgHrv` on every real multi-bucket night and diverge from the Swift twin (also a bucket-mean), breaking the cross-platform / `.noopbak` contract. **Blocked on a whoop-rs FFI that reproduces the windowed bucket-mean** (or a per-bucket `rmssdGapAware` primitive with the ≥2-pair guard + index-contiguity mask); until then `avgHrv` stays Kotlin. `HrvAnalyzer` keeps `cleanRR`/`rangeFilter`/`rejectEctopic`/`rmssdRaw`/`median` (frontend OUT-scope consumers). |
 | **SpO2 (4.0 red/IR)** | **BLOCKED (mapping mismatch)** | `RustSpo2ParityTest` proves the two sides compute DIFFERENT quantities — see the fix request below. Kotlin `AnalyticsEngine.nightlySpo2RawMeans` STAYS. |
 
 ### BLOCKED / FAIL list — whoop-rs fix requests (parallel-agent lane)
+
+These are the open whoop-rs (physio-algo / FFI) tasks the noop-tan lane cannot resolve itself (whoop-rs is
+read+build-only from here). Each unblocks a Tier-1 route or removes a frontend reimplementation.
 
 - **SpO2 — `spo2_from_paired` is the wrong door.** Kotlin `nightlySpo2RawMeans` stores the integer-truncated
   RAW red/IR PPG ADC means (`Pair<Int,Int>` → Room `DailyMetric.spo2Red`/`spo2Ir`) and deliberately does NOT
@@ -47,10 +54,29 @@ through JNA).
   70–100). A raw-ADC mean (tens of thousands) can never equal a 70–100 percent, and one percent can't
   reconstruct the two ADC columns → no bit-for-bit route. **Fix:** add a `nightly_spo2_raw_means` FFI
   returning `(red_mean_i32, ir_mean_i32)` with the SAME in-span filter + `sum/kept` integer truncation the
-  Kotlin uses. Until then SpO2 stays Kotlin (re-mapping the Room column is out of scope).
+  Kotlin uses. Until then SpO2 stays Kotlin (re-mapping the Room column is out of scope). Guard =
+  `RustSpo2ParityTest` (documents the mismatch; ready to assert once the door lands).
+- **HRV — need a windowed bucket-mean door.** `RustScores.rmssdGapAware` (whole-night `hrv_rmssd_gap_aware`)
+  is parity-proven but is the WRONG grain for the stored `avgHrv`, which is a mean over 5-min buckets (see the
+  Tier-1 HRV row). **Fix:** add a whoop-rs FFI that reproduces the windowed bucket-mean of
+  `rmssdGapAware(cleanRRGapAware(bucket))` — either a whole-night `nightly_avg_hrv(bucket_s = 300)` rollup, or
+  a per-bucket `rmssdGapAware` primitive (with the ≥2 contiguous-pair guard + index-contiguity mask) the
+  Kotlin can fold. Then flip the `IntelligenceEngine` seam and delete `HrvAnalyzer`'s RMSSD core (keeping the
+  freq-domain + `cleanRR`/`rangeFilter`/`rejectEctopic`/`rmssdRaw`/`median` helpers — Tier-3 / frontend).
+- **Recovery breakdown — need a per-term marginal-contribution door.** `RecoveryDrivers.chargeDrivers`
+  (`RecoveryDrivers.kt`) reimplements the routed logistic in Kotlin (same term set / append order / weights,
+  neutralize-one-term to get each row's point swing) to render the "what shaped it" breakdown. It reads the
+  surviving `RecoveryScorer.zScore`/`wHRV`/`wRHR`/… helpers, so it currently matches the Rust score by
+  construction — but any future whoop-rs recovery edit would silently drift the breakdown from the stored
+  score. **Fix:** expose a `recovery_drivers` FFI returning each term's z + marginal contribution from the
+  SAME physio-algo composite, so the frontend renders Rust-sourced rows instead of re-deriving them. Not a
+  blocker for the score (that's routed + hardened); it removes a parity-fragile reimplementation.
+- **Recovery / Stress alignment — NONE outstanding.** The `0577f078` hardening pass PROVED alignment rather
+  than surfacing gaps: recovery pins bit-for-bit (maxErr 0.0) and stress reproduces `clean_rr` internally
+  (no bridge pre-clean). No whoop-rs change is needed for either family.
 
-No Tier-1 FAIL(drift) outcomes so far — every routed score matched bit-for-bit on its fixture; the only open
-Tier-1 items are the HRV seam-flip (parity already green) and the SpO2 FFI gap.
+No Tier-1 FAIL(drift) outcomes — every routed score matched bit-for-bit on its fixture. Open Tier-1 items are
+the HRV bucket-mean FFI (whole-night parity already green) and the SpO2 raw-means FFI; both are whoop-rs-side.
 
 ## Tier 1 — DIRECT ROUTE (physio-algo has it AND it's FFI-exposed; just wire + prove parity)
 
