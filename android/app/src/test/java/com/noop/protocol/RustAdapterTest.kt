@@ -156,20 +156,5 @@ class RustAdapterTest {
         assertEquals("a3500000", ef.residual["event_payload_hex"])
     }
 
-    // ---- comparator classification: EXPECTED (adjudicated) vs UNEXPECTED (triage) ------------------------
-
-    @Test
-    fun `parity report splits expected and unexpected deltas`() {
-        RustShadowParity.reset()
-        RustShadowParity.frameCompared()
-        RustShadowParity.record("gravity", false) // adjudicated whoop-rs win → EXPECTED
-        RustShadowParity.record("hr", false) // a real mismatch → UNEXPECTED
-        RustShadowParity.record("hr", true)
-        val report = RustShadowParity.report()
-        assertTrue(report.contains("EXPECTED deltas (adjudicated whoop-rs win): 1"))
-        assertTrue(report.contains("UNEXPECTED (triage): 1"))
-        RustShadowParity.reset()
-    }
-
     private data class HrRowExpected(val ts: Long, val bpm: Int)
 }

@@ -14,6 +14,7 @@ import com.noop.data.Spo2Row
 import com.noop.data.StepRow
 import com.noop.data.StreamBatch
 import com.noop.data.StreamPersistence
+import uniffi.whoop_ffi.PpgSample
 
 /*
  * Historical (offload) decode for the WHOOP 4.0 — the type-47 HISTORICAL_DATA path.
@@ -68,342 +69,21 @@ const val FUTURE_MARGIN: Long = 86_400L
  */
 const val SESSION_RANGE_MARGIN: Long = 7L * 86_400L
 
-// MARK: - little-endian readers (null when out of range; mirror PostHooks.swift u8/u16/u32/f32)
+// MARK: - little-endian reader (null when out of range; the packet-type/version byte probe)
 
 private fun ByteArray.histU8(off: Int): Int? = if (off + 1 <= size) this[off].toInt() and 0xFF else null
 
-private fun ByteArray.histU16(off: Int): Int? =
-    if (off + 2 <= size) (this[off].toInt() and 0xFF) or ((this[off + 1].toInt() and 0xFF) shl 8) else null
-
-/** Signed little-endian i16 (two's complement) -> Int. null when out of range. Mirrors Swift `readI16`. */
-private fun ByteArray.histI16(off: Int): Int? {
-    if (off + 2 > size) return null
-    val u = (this[off].toInt() and 0xFF) or ((this[off + 1].toInt() and 0xFF) shl 8)
-    return if (u >= 0x8000) u - 0x10000 else u
-}
-
-private fun ByteArray.histU32(off: Int): Long? {
-    if (off + 4 > size) return null
-    return (this[off].toLong() and 0xFFL) or
-        ((this[off + 1].toLong() and 0xFFL) shl 8) or
-        ((this[off + 2].toLong() and 0xFFL) shl 16) or
-        ((this[off + 3].toLong() and 0xFFL) shl 24)
-}
-
-/**
- * IEEE-754 float32 LE -> Double (exact, NO rounding). null when out of range.
- * Port of PostHooks.swift `f32`: read the 4 bytes as a u32 bit-pattern, reinterpret as Float,
- * then widen to Double. Kotlin's `Float.fromBits(Int)` is the exact analog of
- * `Float(bitPattern:)`; widening Float -> Double is value-preserving.
- */
-private fun ByteArray.histF32(off: Int): Double? {
-    val bits = histU32(off) ?: return null
-    return Float.fromBits(bits.toInt()).toDouble()
-}
-
-/**
- * One decoded type-47 field-layout VERSION. Frame-absolute offsets, lifted verbatim from the
- * `HISTORICAL_DATA.versions` table in whoop_protocol.json. `rrFirstOff` is where the (up to 4)
- * u16 R-R intervals begin. A null DSP-block offset means that field is absent for the version.
- */
-private data class HistVersion(
-    val unixOff: Int,
-    val hrOff: Int,
-    val rrCountOff: Int,
-    val rrFirstOff: Int,
-    // Full DSP biometric block (V24 / V12 only); null on the generic V5/V7/V9 records.
-    val spo2RedOff: Int? = null,
-    val spo2IrOff: Int? = null,
-    val skinTempRawOff: Int? = null,
-    val respRateRawOff: Int? = null,
-    val gravityXOff: Int? = null,
-    val gravityYOff: Int? = null,
-    val gravityZOff: Int? = null,
-)
-
-/**
- * V24 layout (this WHOOP 4.0; verified on 762 device records per the schema note). V12 shares the
- * exact same DSP layout ("ref":"24"). Offsets are FRAME-ABSOLUTE, copied from whoop_protocol.json.
- */
-private val HIST_V24 = HistVersion(
-    unixOff = 11,
-    hrOff = 21,
-    rrCountOff = 22,
-    rrFirstOff = 23,
-    spo2RedOff = 68,
-    spo2IrOff = 70,
-    skinTempRawOff = 72,
-    respRateRawOff = 80,
-    gravityXOff = 40,
-    gravityYOff = 44,
-    gravityZOff = 48,
-)
-
-/** Generic HR/RR-only record (V5; V7/V9 share it via "ref":"5"). No DSP sensor block. */
-private val HIST_V5 = HistVersion(
-    unixOff = 11,
-    hrOff = 21,
-    rrCountOff = 22,
-    rrFirstOff = 23,
-)
-
-/** Resolve a record version (frame[5]) to its field layout, or null if the layout is unmapped. */
-private fun histVersionLayout(version: Int): HistVersion? = when (version) {
-    24, 12 -> HIST_V24
-    5, 7, 9 -> HIST_V5
-    else -> null
-}
-
-/**
- * Decode a single type-47 HISTORICAL_DATA frame into the same flat parsed-map keys the Swift
- * `postHooks["historical_data"]` produces. Returns null when the frame is not a valid type-47
- * record (wrong SOF/too short/failed CRC/unmapped version) — callers skip those, matching the
- * Swift `if !r.ok || r.crcOK == false { continue }` + unmapped-layout guard.
- *
- * Keys emitted (only when present in the frame): `hist_version`, `unix`, `heart_rate`, `rr_count`,
- * `rr_intervals` (List<Int>), `spo2_red`, `spo2_ir`, `skin_temp_raw`, `resp_rate_raw`, `gravity_x`,
- * `gravity_y`, `gravity_z`. These match the keys [extractHistoricalStreams] reads.
- */
-fun decodeHistorical(frame: ByteArray, family: DeviceFamily = DeviceFamily.WHOOP4): Map<String, Any?>? {
-    if (frame.size < 8 || frame[0] != 0xAA.toByte()) return null
-
-    // Integrity gate: validate the envelope + CRC32 via the shared Framing parser. We reuse its
-    // crcOk so a garbled/forged offload frame can never inject rows. parseFrame leaves type-47's
-    // `parsed` empty (the live decoder skips type-47), so we decode the record ourselves below.
-    val checked = Framing.parseFrame(frame, family)
-    if (!checked.ok || checked.crcOk == false) return null
-
-    // WHOOP 5.0/MG has the longer puffin envelope (record @8), so its v18 layout is decoded separately
-    // at its own absolute offsets (port of Swift decodeWhoop5Historical). WHOOP 4 below is unchanged.
-    if (family == DeviceFamily.WHOOP5) return decodeWhoop5Historical(frame)
-    if (family != DeviceFamily.WHOOP4) return null
-    if (frame[4].toInt() and 0xFF != PacketType.HISTORICAL_DATA.rawValue) return null
-
-    val version = frame[5].toInt() and 0xFF
-
-    // WHOOP 4.0 **v25** historical layout (issue #30). RE'd from 45 real records on v1.92+ full dumps
-    // (faklei / FrankdeJong / tchoucker15): an 84-byte record with `unix` @11 (u32 LE) and the DSP
-    // gravity vector @73/75/77 as 3×i16 LE / 16384 — |gravity| ≈ 1 g on 45/45 records. Bytes 23-72 are
-    // the optical PPG waveform; per-second HR is NOT stored in v25 (PPG-derived), so this yields motion
-    // + timestamp — exactly what the sleep stager gates on. Additive + version-gated; v18/v24/v26
-    // untouched. Mirrors Swift PostHooks "historical_data" v25 case.
-    if (version == 25 && frame.size >= 79) {
-        val out = LinkedHashMap<String, Any?>()
-        out["hist_version"] = version
-        frame.histU32(11)?.let { out["unix"] = it.toInt() }
-        fun grav(off: Int): Double? {
-            val u = frame.histU16(off) ?: return null
-            return (if (u >= 32768) u - 65536 else u).toDouble() / 16384.0   // i16 LE, ±2 g full-scale
-        }
-        val gx = grav(73); val gy = grav(75); val gz = grav(77)
-        if (gx != null && gy != null && gz != null) {
-            val mag = Math.sqrt(gx * gx + gy * gy + gz * gz)
-            if (mag in 0.5..1.5) {   // a real DSP orientation vector is ~1 g; reject garbage
-                out["gravity_x"] = gx; out["gravity_y"] = gy; out["gravity_z"] = gz
-            }
-        }
-        out["rr_intervals"] = ArrayList<Int>()
-        return out
-    }
-
-    // Unmapped firmware version: instead of dropping the whole record (→ no HR/R-R/gravity → no sleep,
-    // and on Android this previously meant ZERO data for a strap on newer firmware — the macOS
-    // issue-#30 fix that never reached Android; the likely cause of #77 on some WHOOP 4 straps), fall
-    // back to the canonical v24 DSP layout. Firmware versions overwhelmingly share it (V12 == V24). We
-    // accept the fallback ONLY if it decodes to physically-real data (validated at the end) so a wrong
-    // layout can never store garbage. Mapped versions are unaffected. Mirrors Swift PostHooks
-    // "historical_data" (PostHooks.swift). (#30 / #77)
-    val mapped = histVersionLayout(version)
-    val usingFallback = mapped == null
-    val layout = mapped ?: HIST_V24
-
-    val out = LinkedHashMap<String, Any?>()
-    out["hist_version"] = version
-
-    // unix is the record's REAL unix seconds (no clock offset needed for type-47).
-    frame.histU32(layout.unixOff)?.let { out["unix"] = it.toInt() }
-    frame.histU8(layout.hrOff)?.let { out["heart_rate"] = it }
-    val rrn = frame.histU8(layout.rrCountOff) ?: 0
-    out["rr_count"] = rrn
-
-    // Up to 4 R-R intervals (u16, ms). Drop 0 ms placeholders, matching PostHooks (`v != 0`).
-    val rrVals = ArrayList<Int>()
-    for (i in 0 until minOf(rrn, 4)) {
-        val v = frame.histU16(layout.rrFirstOff + i * 2)
-        if (v != null && v != 0) rrVals.add(v)
-    }
-    out["rr_intervals"] = rrVals
-
-    // Full DSP block (V24/V12 only). Each read is guarded; absent fields are simply not emitted.
-    layout.spo2RedOff?.let { off -> frame.histU16(off)?.let { out["spo2_red"] = it } }
-    layout.spo2IrOff?.let { off -> frame.histU16(off)?.let { out["spo2_ir"] = it } }
-    layout.skinTempRawOff?.let { off -> frame.histU16(off)?.let { out["skin_temp_raw"] = it } }
-    layout.respRateRawOff?.let { off -> frame.histU16(off)?.let { out["resp_rate_raw"] = it } }
-    layout.gravityXOff?.let { off -> frame.histF32(off)?.let { out["gravity_x"] = it } }
-    layout.gravityYOff?.let { off -> frame.histF32(off)?.let { out["gravity_y"] = it } }
-    layout.gravityZOff?.let { off -> frame.histF32(off)?.let { out["gravity_z"] = it } }
-
-    // Validate the v24-layout guess for an unmapped version: gravity is the DSP-separated orientation
-    // vector, so |gravity| ≈ 1 g on a real record regardless of motion, and HR is physiological. If the
-    // guess doesn't fit this firmware the decoded values are random — drop the record rather than store
-    // garbage (same outcome as before the fallback). Mapped versions skip this entirely. (#30 / #77)
-    if (usingFallback) {
-        val gx = (out["gravity_x"] as? Double) ?: Double.NaN
-        val gy = (out["gravity_y"] as? Double) ?: Double.NaN
-        val gz = (out["gravity_z"] as? Double) ?: Double.NaN
-        val mag = Math.sqrt(gx * gx + gy * gy + gz * gz)
-        val hr = (out["heart_rate"] as? Int) ?: 0
-        if (!(mag in 0.8..1.2 && hr in 25..230)) return null
-    }
-
-    return out
-}
-
-/**
- * WHOOP 5.0/MG type-47 "v18" historical decode. The puffin envelope is longer, so the record starts at
- * byte 8 (type@8, version@9) and fields sit at their WHOOP5-ABSOLUTE offsets — NOT the WHOOP4 V24 layout
- * shifted by +4 (that decodes to garbage on v18). Offsets verified against real worn/off-wrist frames
- * (the data is the arbiter): unix@15, hr@22, rr@24+, gravity@45/49/53, and per-second fields each gated
- * to a physical range so a wrong offset on unmapped firmware stores nothing; further fields (aux thermal
- * @69/71, status words @75/77/79, the @81 band-flag nibbles, aux byte @82) are read off the same real
- * frames. Mirrors Swift `decodeWhoop5Historical`, and emits the same keys [extractHistoricalStreams] reads.
- * v26 (PPG) and other
- * versions aren't stored, so they return null here (skipped), matching the Swift raw-region treatment.
- */
-private fun decodeWhoop5Historical(frame: ByteArray): Map<String, Any?>? {
-    if (frame.histU8(8) != PacketType.HISTORICAL_DATA.rawValue) return null
-    val version = frame.histU8(9) ?: return null
-    if (version != 18) return null
-
-    val out = LinkedHashMap<String, Any?>()
-    out["hist_version"] = version
-    // @11 a per-record counter: +1 every record, independent of unix (advances across gaps); seen on
-    // two straps. @11 is only the low byte — read the full u32 LE.
-    frame.histU32(11)?.let { out["record_index"] = it.toInt() }
-    frame.histU32(15)?.let { out["unix"] = it.toInt() }
-    frame.histU8(22)?.let { out["heart_rate"] = it }
-    val rrn = frame.histU8(23) ?: 0
-    out["rr_count"] = rrn
-    val rrVals = ArrayList<Int>()
-    for (i in 0 until minOf(rrn, 4)) {
-        val v = frame.histU16(24 + i * 2)
-        if (v != null && v != 0) rrVals.add(v)
-    }
-    out["rr_intervals"] = rrVals
-    // Bytes adjacent to the HR/R-R fields. @36/256 tracks hr@22 to sub-bpm (corr 0.989) — a
-    // higher-precision heart rate; the others are carried raw (meaning not pinned).
-    frame.histU8(33)?.let { out["cardiac_flags"] = it }
-    frame.histU16(36)?.let { out["hr_fixed_8_8"] = it }   // bpm = value / 256
-    frame.histU16(38)?.let { out["rr_packed"] = it }
-    frame.histU8(40)?.let { out["cardiac_status"] = it }
-    frame.histF32(45)?.let { out["gravity_x"] = it }
-    frame.histF32(49)?.let { out["gravity_y"] = it }
-    frame.histF32(53)?.let { out["gravity_z"] = it }
-
-    // Per-second fields beyond HR/gravity, each gated to a physically-real range (cross-validated
-    // worn vs off-wrist). Optical/perfusion @69/71 still doesn't decode consistently and is left raw.
-    frame.histF32(41)?.let { if (it.isFinite() && it in 0.0..8.0) out["dynamic_acceleration"] = it }
-    frame.histU16(57)?.let { out["step_motion_counter"] = it }
-    // @59 a per-step cadence-like byte (never 0; lower when moving faster). Raw — no unit asserted.
-    frame.histU8(59)?.let { out["step_cadence"] = it }
-    frame.histU8(63)?.let { if (it in 0..2) out["motion_wear_quality"] = it }
-    // @63 also reads as a small validated ACTIVITY-CLASS enum (community finding, #316): 0=still, 1=walk,
-    // 2=run, 0xFF=invalid. A lightweight, no-cloud per-record activity readout that rides alongside the
-    // step counter. Only the four known codes are surfaced — anything else (incl. 0xFF) stores nothing so
-    // an unmapped firmware can't inject garbage.
-    frame.histU8(63)?.let { if (it == 0 || it == 1 || it == 2) out["activity_class"] = it }
-    // Auxiliary thermal readings adjacent to the main skin-temperature register, read off a digital
-    // skin-temperature sensor. Carried raw; °C = raw/10. Signed i16, gated to a plausible thermal range
-    // so a wrong offset on an unmapped layout stores nothing rather than garbage.
-    frame.histI16(69)?.let { if ((it / 10.0) in 0.0..60.0) out["temp_aux_1_raw"] = it }
-    frame.histI16(71)?.let { if ((it / 10.0) in 0.0..60.0) out["temp_aux_2_raw"] = it }
-    // skin temp: raw u16 (the store keeps it raw, /100 at display). Gate on a plausible thermal range:
-    // °C = raw/100 — gives physiological worn temperatures (median ~34 °C across two straps), whereas a
-    // /128 reading lands at a non-physiological ~27 °C. The gate is only a garbage filter; the absolute
-    // scale lives in the consumer.
-    frame.histU16(73)?.let { if ((it / 100.0) in 5.0..45.0) out["skin_temp_raw"] = it }
-    // @75 a 16-bit status word; NOT a deep-sleep marker (low nibble 0 across observed records, equal
-    // awake/asleep — the "80=deep" reading is a misread).
-    frame.histU16(75)?.let { out["status_word"] = it }
-    // @77 / @79 two further 16-bit status words adjacent to @75; carried raw, meaning not pinned.
-    frame.histU16(77)?.let { out["status_word_1"] = it }
-    frame.histU16(79)?.let { out["status_word_2"] = it }
-    // @81 packs several band flags into one byte. High nibble (bits 4-5) tracks a scored night:
-    // 0 wake / 1 still / 2 asleep / 3 up. bits 2-3 a wake-quality field; bits 0-1 an on-wrist flag.
-    // Deep/REM/light are computed off-band, not here.
-    frame.histU8(81)?.let {
-        out["sleep_state"] = (it shr 4) and 3
-        out["wake_quality"] = (it shr 2) and 3
-        out["onwrist"] = it and 3
-    }
-    // @82 a single raw byte adjacent to the flag byte; carried raw, meaning not pinned.
-    frame.histU8(82)?.let { out["aux_byte_82"] = it }
-    // ── The @82–119 "optical/tail" span, reverse-engineered over 18,602 real v18 records (a third strap's
-    // overnight R22 stream) + cross-checked on two fixture devices: it is ~85% ZERO PADDING (83–103,
-    // 110–112, 117–119 constant 0x00; @104 a constant 0x01 marker). Only @106 (u16), @108/@109 (a paired
-    // channel) and the @113 float carry data, and none is physiologically ground-truth-named (no
-    // SpO2/respiratory reference), so each is carried RAW. Mirror of Swift decodeWhoop5Historical.
-    // @106 an analog u16 optical/ADC baseline: wanders overnight, reads 0 only off-wrist; raw, not pinned.
-    frame.histU16(106)?.let { out["optical_baseline_106"] = it }
-    // @108/@109 a tightly-coupled PAIR (equal ~24% of records, within ±2 ~80%). Both rise monotonically
-    // with HR/motion and read 128 as a per-CHANNEL invalid sentinel — seen off-wrist AND on worn records
-    // that still carry a valid HR. Amplitude/quality-like; carried raw, NOT named SpO2/perfusion without
-    // on-device ground truth.
-    frame.histU8(108)?.let { out["optical_amp_a"] = it }
-    frame.histU8(109)?.let { out["optical_amp_b"] = it }
-    // @113 a float32 (observed range ~ -5.3..0, 0 = unset); purpose unknown, carried raw. EMPIRICAL.
-    frame.histF32(113)?.let { if (it.isFinite()) out["unknown_f32_113"] = it }
-    // PROVENANCE / lossless-tail note (A10): this decoder maps only the fields above; bytes past @113
-    // up to the CRC32 trailer are NOT consumed here and are NOT a per-field loss. The Backfiller hands
-    // the VERBATIM frame (header..tail..CRC) to [RawHistoryArchive] for any record it can't turn into
-    // rows, and to the raw-capture batch when that research toggle is on, so the untouched trailing
-    // bytes survive on disk for a future re-decode. The `frame` ByteArray itself is never truncated by
-    // this function, so a caller that retains it keeps the full record. VERIFIED fields (physiologically
-    // cross-checked vs the strap's live 2A37 HR / |gravity|~1g): unix, heart_rate, rr, gravity, skin_temp.
-    // EMPIRICAL / not-pinned: status words, aux bytes, unknown_f32_113.
-    return out
-}
-
-/**
- * WHOOP 5.0/MG type-47 **layout v26** PPG-waveform decode (#156). Mirror of Swift
- * `decodeWhoop5HistoricalV26`. v26 is NOT a per-second biometric summary like v18 — it is a 24 Hz
- * optical PPG buffer: **24 little-endian i16 samples at frame bytes [27:75]**, one record per second,
- * with the record's own unix u32 LE @15 (the v18 slot). WHOOP stores no per-second HR in v26 (HR is
- * PPG-derived on-device), so the win here is the waveform itself, which [PpgHr] turns into HR.
- *
- * Returns the record's wall-second [unix] and the 24 raw ADC [samples], or null when the frame is not
- * a v26 HISTORICAL_DATA record or the waveform region is truncated. The bytes before [27] (header +
- * the raw per-burst counter @21 — `burst_index`, NOT a channel id; PR#553) and the footer after [75]
- * are intentionally not mapped here: the Android offload path needs only [unix] + the waveform for HR.
- */
-private data class V26Record(val unix: Int, val samples: List<Int>)
-
-private fun decodeWhoop5HistoricalV26(frame: ByteArray): V26Record? {
-    if (frame.histU8(8) != PacketType.HISTORICAL_DATA.rawValue) return null
-    if (frame.histU8(9) != 26) return null
-    val unix = frame.histU32(15)?.toInt() ?: return null
-    val samples = ArrayList<Int>(24)
-    var off = 27
-    while (off < 75) {
-        val v = frame.histI16(off) ?: break
-        samples.add(v)
-        off += 2
-    }
-    if (samples.isEmpty()) return null
-    return V26Record(unix = unix, samples = samples)
-}
-
 /**
  * The HISTORICAL_DATA (type-47) record frames in [rawFrames] that genuinely FAIL to decode — a CRC
- * failure, or an unmapped firmware layout whose v24 plausibility gate (see [decodeHistorical]) also
- * rejects it. These are exactly the record frames [extractHistoricalStreams] silently drops: their
- * biometric payload would otherwise be lost forever once the strap trims the acked history.
+ * failure, or a layout whoop-rs cannot turn into biometrics. These are exactly the record frames
+ * [extractHistoricalStreams] silently drops: their biometric payload would otherwise be lost forever
+ * once the strap trims the acked history.
  *
  * EXCLUDED (decode to zero rows BY DESIGN, never "lost" data — must NOT be counted):
  *   - CONSOLE_LOGS (type-50) frames — the strap's own diagnostics text channel. On WHOOP 4.0 the
  *     inner type byte is frame[4]; type-50 (0x32) is not type-47 so the family-aware type guard below
  *     already skips it. On WHOOP 5/MG the inner type byte is at frame[8].
- *   - WHOOP 5/MG v26 (raw PPG) records — deliberately unstored (see [decodeWhoop5Historical]), known
+ *   - WHOOP 5/MG v26 (raw PPG) records — deliberately unstored as per-second biometrics, known
  *     and skipped by design, not lost.
  *   - Non-record frames (METADATA, EVENT, etc.) — not type-47, so never returned.
  *
@@ -424,11 +104,10 @@ fun rejectedHistoricalRecords(
         if (t != PacketType.HISTORICAL_DATA.rawValue) return@filter false // type-50 console / metadata / etc.
         // WHOOP 5/MG v26 = raw PPG block, deliberately not stored — known-skipped, not lost data.
         if (family == DeviceFamily.WHOOP5 && frame.histU8(9) == 26) return@filter false
-        // A type-47 record that [decodeHistorical] cannot turn into usable biometrics — CRC failure or
-        // an unmapped layout the v24-fallback plausibility gate rejected. This is precisely what
-        // [extractHistoricalStreams] drops (`decodeHistorical(...) ?: continue`), so the rejected set
-        // matches the silently-lost set exactly.
-        decodeHistorical(frame, family) == null
+        // A type-47 record whoop-rs cannot turn into usable biometrics (CRC failure / unmappable
+        // layout). This is precisely what [extractHistoricalStreams] drops (`recordFields(...) ?:
+        // continue`), so the rejected set matches the silently-lost set exactly.
+        RustAdapter.recordFields(frame, family) == null
     }
 }
 
@@ -477,29 +156,14 @@ fun classifyHistoricalMeta(p: ParsedFrame): HistoricalMeta {
     }
 }
 
-// MARK: - EVENT decode seam (shared by the Kotlin default path + the Rust-primary comparator)
+// MARK: - EVENT decode seam (whoop-rs produces these via [RustAdapter.eventFields])
 
 /**
- * The pieces the offload EVENT tail needs, independent of which decoder produced them: the `NAME(raw)`
- * [kind], the strap's own RTC [rawTs] (pre-correction), and the [residual] payload map (parsed fields
- * minus event/event_timestamp — carries battery_* for a BATTERY_LEVEL, plus any Gen5 opaque payload).
+ * The pieces the offload EVENT tail needs: the `NAME(raw)` [kind], the strap's own RTC [rawTs]
+ * (pre-correction), and the [residual] payload map (parsed fields minus event/event_timestamp —
+ * carries battery_* for a BATTERY_LEVEL, plus any Gen5 opaque payload).
  */
 data class EventFields(val kind: String, val rawTs: Long, val residual: Map<String, Any?>)
-
-/**
- * The Kotlin EVENT decode (the default, authoritative-off path): CRC-gate via [Framing.parseFrame], read
- * the RTC timestamp + label, and split off the residual payload. null on a non-ok / ts-less frame.
- */
-internal fun decodeEventKotlin(frame: ByteArray, family: DeviceFamily): EventFields? {
-    val parsed = Framing.parseFrame(frame, family)
-    if (!parsed.ok || parsed.crcOk == false) return null
-    val rawTs = parsed.parsed.intOrNull("event_timestamp")?.toLong() ?: return null
-    val kind = (parsed.parsed["event"] as? String) ?: ""
-    val residual = LinkedHashMap(parsed.parsed)
-    residual.remove("event")
-    residual.remove("event_timestamp")
-    return EventFields(kind, rawTs, residual)
-}
 
 // MARK: - Historical extraction (port of HistoricalStreams.swift extractHistoricalStreams)
 
@@ -513,9 +177,12 @@ internal fun decodeEventKotlin(frame: ByteArray, family: DeviceFamily): EventFie
  * mirror the Swift signature). EVENT timestamps are real RTC unix seconds (already wall-clock).
  * CRC-failed / non-ok frames are skipped.
  *
- * [rawFrames] are the verbatim BLE frames for this chunk; [decodeHistorical] re-validates + decodes
- * each. We take the frames (not pre-parsed records) because the live [Framing.parseFrame] doesn't
- * populate type-47 fields — the type-47 record is decoded here by [decodeHistorical].
+ * [rawFrames] are the verbatim BLE frames for this chunk; each record is decoded through whoop-rs
+ * ([RustAdapter.recordFields] / [RustCodec.decodePpg]). We take the frames (not pre-parsed records)
+ * because the live [Framing.parseFrame] doesn't populate type-47 fields.
+ *
+ * DECODE routes solely through whoop-rs; the app-side plausibility drop, the grossly-stale-RTC 5-min
+ * snap and rrInterval seq stability below are UNCHANGED — Rust supplies the raw fields, this owns the clock.
  */
 fun extractHistoricalStreams(
     rawFrames: List<ByteArray>,
@@ -533,19 +200,11 @@ fun extractHistoricalStreams(
     // (unchanged). Kept in lockstep with the Swift extractHistoricalStreams session args.
     sessionOldestUnix: Long? = null,
     sessionNewestUnix: Long? = null,
-    // Opt-in "HR-from-PPG sub-lag interpolation" (Test Centre → Experimental algorithms, default false):
-    // threaded straight into the v26 PPG-HR estimator below. The pure protocol package can't read prefs, so
-    // the app-layer caller (Backfiller / archive replay / capture import) reads PuffinExperiment.ppgHrSubLagInterp
-    // and passes it. Default false = byte-identical to today. Mirrors the Swift extractHistoricalStreams arg.
-    ppgHrSubLagInterp: Boolean = false,
-    // Rust-PRIMARY cutover (Test Centre opt-in, default false): when true, whoop-rs is the AUTHORITATIVE
-    // decoder for every stored field (record biometrics, v26 PPG-HR, events, response battery); the Kotlin
-    // decode still runs but only feeds the comparator ([RustShadowParity], EXPECTED-vs-UNEXPECTED). A Rust
-    // error / native-load failure falls back to the Kotlin decode for that frame so no data is lost. The
-    // app-side ts / #547 / #72 pipeline below is UNCHANGED — Rust supplies raw fields, this owns the clock.
-    rustPrimary: Boolean = false,
+    // Retained caller/Swift-signature arg (Test Centre → Experimental algorithms). The v26 PPG-HR now
+    // runs through whoop-rs's adjudicated sub-lag estimator (always sub-lag), so this flag no longer
+    // gates the estimate; it is kept so the caller contract is unchanged.
+    @Suppress("UNUSED_PARAMETER") ppgHrSubLagInterp: Boolean = false,
 ): StreamBatch {
-    if (rustPrimary) RustShadowParity.setPrimary(true)
     // Count of records dropped by the #547 plausibility gate this batch, surfaced on the returned
     // StreamBatch so the Backfiller can log "bad strap clock" once per session via its existing seam.
     var droppedImplausible = 0
@@ -628,7 +287,7 @@ fun extractHistoricalStreams(
     val events = ArrayList<EventEntry>()
     val battery = ArrayList<BatteryRow>()
     // v26 PPG samples accumulate across the chunk, then get turned into HR after the loop (#156).
-    val ppgSamples = ArrayList<PpgHr.Sample>()
+    val ppgSamples = ArrayList<PpgSample>()
     // The RAW v26 waveform kept PER RECORD (one row per strap-second) for durable storage (#156
     // follow-up) — the same (ts, samples) the estimator above consumes, but grouped per second so it
     // persists as its own `ppgWaveformSample` stream rather than being flattened into the HR buffer.
@@ -641,32 +300,32 @@ fun extractHistoricalStreams(
         when (t) {
             PacketType.HISTORICAL_DATA.rawValue -> {
                 // WHOOP 5/MG layout v26 = the 24 Hz optical PPG buffer. It carries no per-second HR
-                // (HR is PPG-derived on-device), so [decodeHistorical] returns null for it; instead we
-                // accumulate its waveform samples here and derive HR after the loop via [PpgHr] (#156).
+                // (HR is PPG-derived on-device), so [RustAdapter.recordFields] returns null for it; instead
+                // whoop-rs's [RustCodec.decodePpg] yields the 24 samples and HR is derived after the loop.
                 // One v26 record == one strap second == 24 samples, appended in wire (time) order so the
-                // concatenated stream is contiguous at 24 Hz. The whole-second `ts` is the record's unix
-                // (sub-second resolution isn't needed — [PpgHr] indexes by sample position, not ts, and
-                // the emitted HR is per-second). The unix gets the same grossly-stale-RTC correction
-                // (FIX #72) as every other stream.
-                if (family == DeviceFamily.WHOOP5) {
-                    decodeWhoop5HistoricalV26(frame)?.let { rec ->
+                // concatenated stream is contiguous at 24 Hz. The whole-second `ts` is the record's unix,
+                // getting the same grossly-stale-RTC correction (FIX #72) as every other stream. Gated on
+                // the record version (@9 == 26): the Rust PPG decode reads the sample span unconditionally,
+                // so a v18 record must not be mis-fed here (it decodes as a record below instead).
+                if (family == DeviceFamily.WHOOP5 && frame.histU8(9) == 26) {
+                    RustCodec.decodePpg(frame)?.let { rec ->
                         // #547: skip a v26 PPG buffer whose unix is implausible (correctedWall → null) so a
                         // bad-clock strap can't seed the derived-HR estimator with garbage-timestamped samples.
                         val baseTs = correctedWall(rec.unix.toLong() and 0xFFFFFFFFL)
                         if (baseTs != null) {
-                            for (v in rec.samples) ppgSamples.add(PpgHr.Sample(ts = baseTs, value = v))
+                            val samples = rec.samples.map { it.toInt() }
+                            for (v in samples) ppgSamples.add(PpgSample(baseTs, v))
                             // Persist the raw waveform itself too (#156 follow-up), keyed on the record's
                             // corrected wall-second. Guard on non-empty so a truncated frame that decoded
                             // zero samples never banks an empty row (mirrors the Swift `!samples.isEmpty`).
-                            if (rec.samples.isNotEmpty()) ppgWaveform.add(PpgWaveformRow(baseTs, rec.samples))
+                            if (samples.isNotEmpty()) ppgWaveform.add(PpgWaveformRow(baseTs, samples))
                         }
                     }
                 }
                 // type-47 carries the strap RTC's real-unix seconds. Correct for a grossly-stale RTC
-                // (FIX #72); a normal strap is unchanged (offset < threshold). Rust-primary supplies the
-                // field map (Kotlin feeds the comparator + is the per-frame fallback); ts stays app-side.
-                val p = (if (rustPrimary) RustAdapter.recordFieldsPrimary(frame, family)
-                         else decodeHistorical(frame, family)) ?: continue
+                // (FIX #72); a normal strap is unchanged (offset < threshold). whoop-rs supplies the
+                // field map; ts stays app-side.
+                val p = RustAdapter.recordFields(frame, family) ?: continue
                 // #547: correctedWall is now nullable — it returns null for an implausible (far-past /
                 // future-dated) record, so the `?: continue` below skips a bad-clock record entirely
                 // instead of letting its garbage `unix` enter the DB and pollute the day-windowed analytics.
@@ -682,9 +341,9 @@ fun extractHistoricalStreams(
                     spo2.add(Spo2Row(ts, red = red, ir = p.intOrNull("spo2_ir") ?: 0))
                 }
                 p.intOrNull("skin_temp_raw")?.let { raw -> skinTemp.add(SkinTempRow(ts, raw)) }
-                // step_motion_counter@57 is the WHOOP5 CUMULATIVE u16 counter (decoded but, until now,
-                // dropped). Stored raw; AnalyticsEngine derives the daily step total from counter deltas.
-                // APPROXIMATE — @57 semantics unverified vs the official app (see decodeWhoop5Historical). (#78)
+                // step_motion_counter@57 is the WHOOP5 CUMULATIVE u16 counter. Stored raw; AnalyticsEngine
+                // derives the daily step total from counter deltas. APPROXIMATE — @57 semantics unverified
+                // vs the official app. (#78)
                 // activity_class@63 (0=still/1=walk/2=run) rides on the same record — null when invalid/absent.
                 p.intOrNull("step_motion_counter")?.let { c ->
                     steps.add(StepRow(ts, c, activityClass = p.intOrNull("activity_class")))
@@ -732,10 +391,9 @@ fun extractHistoricalStreams(
                 // persist the event (with battery extracted for BATTERY_LEVEL) so offloaded
                 // wrist/charge/battery events aren't lost. During a backfill the live path is
                 // suppressed, so the offload extractor MUST handle these.
-                // Rust-primary supplies the widened event (kind + canonical residual); Kotlin feeds the
-                // comparator + is the fallback. The ts / #547 / #324 tail below is shared and unchanged.
-                val ev = (if (rustPrimary) RustAdapter.eventFieldsPrimary(frame, family)
-                          else decodeEventKotlin(frame, family)) ?: continue
+                // whoop-rs supplies the widened event (kind + canonical residual). The ts / #547 / #324
+                // tail below is app-side and unchanged.
+                val ev = RustAdapter.eventFields(frame, family) ?: continue
                 // #547: correctedWall now nullable — an EVENT with an implausible event_timestamp is
                 // skipped so a bad-clock wrist/charge/battery event can't enter the DB.
                 val ts = correctedWall(ev.rawTs)
@@ -752,25 +410,19 @@ fun extractHistoricalStreams(
 
             PacketType.COMMAND_RESPONSE.rawValue -> {
                 // No device timestamp on COMMAND_RESPONSE → stamp battery at wallClockRef (Swift parity).
-                // Rust-primary supplies the f64 battery map; Kotlin parse feeds the comparator + fallback.
-                val p: Map<String, Any?>? = if (rustPrimary) {
-                    RustAdapter.responseBatteryPrimary(frame, family)
-                } else {
-                    val parsed = Framing.parseFrame(frame, family)
-                    if (!parsed.ok || parsed.crcOk == false) null else parsed.parsed
-                }
-                if (p != null) appendHistBattery(battery, wallClockRef.toLong(), p)
+                // The response is a live-channel frame (kept on [Framing.parseFrame], not part of the
+                // history/ppg decode cutover).
+                val parsed = Framing.parseFrame(frame, family)
+                if (parsed.ok && parsed.crcOk != false) appendHistBattery(battery, wallClockRef.toLong(), parsed.parsed)
             }
 
             else -> Unit
         }
     }
 
-    // Derive HR from the accumulated v26 PPG waveform (8 s / 24 Hz autocorrelation, conf>=0.3). Empty
-    // unless the strap sent v26 records; falls back gracefully (no rows) on noise (#156). Rust-primary
-    // routes it through whoop-rs's winning sub-lag estimator (samples are byte-identical on both sides).
-    val ppgHr = (if (rustPrimary) RustAdapter.ppgEstimatesPrimary(ppgSamples)
-                 else PpgHr.estimate(ppgSamples, subLagInterp = ppgHrSubLagInterp))
+    // Derive HR from the accumulated v26 PPG waveform via whoop-rs's adjudicated sub-lag estimator.
+    // Empty unless the strap sent v26 records; falls back gracefully (no rows) on noise (#156).
+    val ppgHr = RustCodec.ppgEstimates(ppgSamples)
         .map { PpgHrRow(ts = it.ts, bpm = it.bpm, conf = it.conf) }
 
     return StreamBatch(

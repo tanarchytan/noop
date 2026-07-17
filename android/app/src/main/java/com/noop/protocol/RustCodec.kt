@@ -4,11 +4,15 @@ import uniffi.whoop_ffi.Gen
 import uniffi.whoop_ffi.HistorySummary
 import uniffi.whoop_ffi.HrvReadinessInfo
 import uniffi.whoop_ffi.Live
+import uniffi.whoop_ffi.PpgEstimate
+import uniffi.whoop_ffi.PpgFrame
+import uniffi.whoop_ffi.PpgSample
 import uniffi.whoop_ffi.Response
 import uniffi.whoop_ffi.RrRun
 import uniffi.whoop_ffi.WhoopCodec
 import uniffi.whoop_ffi.hrvReadiness
 import uniffi.whoop_ffi.hrvRmssdGapAware
+import uniffi.whoop_ffi.ppgHr
 
 /**
  * Bridge to the Rust whoop-ffi codec (the from-scratch whoop-rs core, shared across apps). Native BLE
@@ -29,6 +33,12 @@ object RustCodec {
 
     /** Decode one command response (identity/battery/clock/data-range/firmware), or null. */
     fun decodeResponse(isGen5: Boolean, frame: ByteArray): Response? = codec(isGen5).decodeResponse(frame)
+
+    /** Decode one v26 optical-PPG frame (24 samples + unix), or null. WHOOP 5/MG only. */
+    fun decodePpg(frame: ByteArray): PpgFrame? = gen5.decodePpgFrame(frame)
+
+    /** Per-second HR from the concatenated v26 PPG samples (sub-lag autocorrelation). */
+    fun ppgEstimates(samples: List<PpgSample>): List<PpgEstimate> = ppgHr(samples)
 
     /** Gap-aware, artifact-corrected nightly RMSSD (ms) from per-record R-R runs. */
     fun rmssd(runs: List<RrRun>): Double? = hrvRmssdGapAware(runs)

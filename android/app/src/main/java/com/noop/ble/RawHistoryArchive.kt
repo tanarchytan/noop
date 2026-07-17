@@ -149,9 +149,6 @@ class RawHistoryArchive(
             val decoded = extractHistoricalStreams(
                 frames, 0, 0, family,
                 ppgHrSubLagInterp = PuffinExperiment.from(context).ppgHrSubLagInterp,
-                // Rust-primary replay: re-decode this archived chunk through whoop-rs when the user opted in
-                // (Kotlin feeds the comparator + is the per-frame fallback). Idempotent — rows dedupe on ts.
-                rustPrimary = PuffinExperiment.from(context).isRustPrimaryEnabled,
             )
             // Count rows ACTUALLY inserted, not decoded: under the per-app-version gate the archive
             // replays every release, and dedupe makes those re-runs insert 0 — counting decoded rows

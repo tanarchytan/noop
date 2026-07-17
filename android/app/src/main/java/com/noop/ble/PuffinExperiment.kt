@@ -30,23 +30,6 @@ class PuffinExperiment(private val prefs: SharedPreferences) {
         get() = prefs.getBoolean(KEY_CAPTURE, false)
         set(v) = prefs.edit().putBoolean(KEY_CAPTURE, v).apply()
 
-    /** True if the user opted in to the RUST SHADOW decode (default false). When on, each offload / live /
-     *  command-response frame is decoded a SECOND time through the whoop-rs FFI and diffed field-by-field
-     *  against the authoritative Kotlin decode (results in [com.noop.protocol.RustShadowParity]); the shadow
-     *  never changes a stored value. Off = zero extra work and the native codec is never loaded. */
-    var isRustShadowEnabled: Boolean
-        get() = prefs.getBoolean(KEY_RUST_SHADOW, false)
-        set(v) = prefs.edit().putBoolean(KEY_RUST_SHADOW, v).apply()
-
-    /** True if the user opted in to the RUST PRIMARY decode (default false). When on, whoop-rs is the
-     *  AUTHORITATIVE writer for the stored history / live / response / event / ppg rows; the Kotlin decode
-     *  still runs but only feeds the comparator ([com.noop.protocol.RustShadowParity], which tags each
-     *  per-field delta EXPECTED-vs-UNEXPECTED). Any Rust error / native-load failure falls back to the
-     *  Kotlin decode for that frame so no data is lost. Off = today's Kotlin behavior, native codec unloaded. */
-    var isRustPrimaryEnabled: Boolean
-        get() = prefs.getBoolean(KEY_RUST_PRIMARY, false)
-        set(v) = prefs.edit().putBoolean(KEY_RUST_PRIMARY, v).apply()
-
     /** True if the user opted in to the WHOOP 5/MG "R22" deep-data unlock — the one probe that WRITES
      *  a persistent feature flag to the strap (the `enable_r22_*` SET_CONFIG sequence). Kept distinct
      *  from [isEnabled] because it changes strap state; reversible, default false. Mirrors the macOS
@@ -71,12 +54,11 @@ class PuffinExperiment(private val prefs: SharedPreferences) {
      *  model-agnostic (WHOOP 4 and 5/MG). */
     val experimentalSleepV2: Boolean get() = true
 
-    /** HR-from-PPG sub-lag interpolation always runs: the v26 optical-PPG gap-fill HR estimator
-     *  ([com.noop.protocol.PpgHr]) refines its integer autocorrelation lag with a parabolic (Variant A)
+    /** HR-from-PPG sub-lag interpolation always runs: the v26 optical-PPG gap-fill HR estimator (now
+     *  whoop-rs's adjudicated sub-lag estimator) refines its integer autocorrelation lag with a parabolic
      *  interpolation of the ACF peak, removing the ~+-8 bpm lag-quantization near a high HR. It only ever
-     *  fills seconds the strap never reported an HR for (NEVER overrides a WHOOP-stored HR). The pure
-     *  [com.noop.protocol.PpgHr] package can't read prefs, so this is threaded from the app-layer call site
-     *  (Backfiller / archive replay / capture import). noop-tan hardwires it on (no experimental toggle). */
+     *  fills seconds the strap never reported an HR for (NEVER overrides a WHOOP-stored HR). Threaded from
+     *  the app-layer call site (Backfiller / archive replay / capture import); noop-tan hardwires it on. */
     val ppgHrSubLagInterp: Boolean get() = true
 
     /** Motion-aware wake refinement (#364 "Proposal 2") always runs: a post-pass
@@ -102,12 +84,6 @@ class PuffinExperiment(private val prefs: SharedPreferences) {
 
         /** 5/MG R22 deep-data unlock opt-in (mirrors macOS `PuffinExperiment.deepDataKey`). */
         const val KEY_DEEP_DATA = "noopWhoop5DeepData"
-
-        /** Rust shadow-decode parity diff opt-in (Android-only; whoop-rs FFI cross-check). */
-        const val KEY_RUST_SHADOW = "noopRustShadow"
-
-        /** Rust PRIMARY-decode opt-in (Android-only; whoop-rs FFI is the authoritative writer). */
-        const val KEY_RUST_PRIMARY = "noopRustPrimary"
 
         /** "Broadcast heart rate" opt-in (mirrors macOS `PuffinExperiment.broadcastHrKey`). */
         const val KEY_BROADCAST_HR = "noopBroadcastHr"

@@ -53,7 +53,7 @@ data class HrSample(
 
 /**
  * HR derived from the WHOOP 5/MG **v26** optical PPG waveform (#156). The v26 record stores no
- * per-second bpm (HR is PPG-derived on-device), so [com.noop.protocol.PpgHr] reconstructs it by
+ * per-second bpm (HR is PPG-derived on-device), so whoop-rs reconstructs it by
  * autocorrelation. Kept in its own table (NOT merged into `hrSample`) so a real sensor HR is never
  * confused with a derived estimate; [conf] (0…1) records the autocorrelation strength. PK
  * (deviceId, ts) = one estimate per window-centre second; [hrBuckets][WhoopDao.hrBuckets] COALESCE-
@@ -161,7 +161,7 @@ data class SkinTempSample(
  * per-sample delta, the daily step total is derived in AnalyticsEngine by summing positive
  * consecutive deltas (with u16 wraparound handling). Mirrors SkinTempSample exactly (IGNORE-dedupe
  * by natural key). APPROXIMATE: @57's step semantics are an on-device estimate, unverified against
- * the official WHOOP app (see HistoricalStreams.decodeWhoop5Historical comments). (#78)
+ * the official WHOOP app (the v18 record decode lives in whoop-rs). (#78)
  */
 @Entity(tableName = "stepSample", primaryKeys = ["deviceId", "ts"])
 data class StepSample(

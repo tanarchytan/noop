@@ -1451,12 +1451,6 @@ class WhoopBleClient(
         // live each chunk so a mid-session toggle takes effect. Default OFF (byte-identical to today).
         ppgHrSubLagInterp = { puffinExperiment.ppgHrSubLagInterp },
         firmwareLayout = { v -> _state.update { it.copy(historyLayoutVersion = v) } },
-        // Rust shadow decode (Test Centre opt-in, default OFF): diff each committed chunk through the
-        // whoop-rs FFI. Read live so a mid-session flip applies next chunk. Off = native codec never loaded.
-        rustShadow = { puffinExperiment.isRustShadowEnabled },
-        // Rust PRIMARY decode (Test Centre opt-in, default OFF): whoop-rs is the authoritative writer for
-        // this chunk's rows (Kotlin still feeds the comparator + is the per-frame fallback). Read live.
-        rustPrimary = { puffinExperiment.isRustPrimaryEnabled },
     )
 
     /**
@@ -3677,14 +3671,6 @@ class WhoopBleClient(
                     // path skips the live router entirely. (PR #568 reimpl)
                     handleFrame(frame, parsed, replayedOffload = offloadFrame)
 
-                    // Rust SHADOW decode (Test Centre opt-in, default OFF): ALSO decode this LIVE frame
-                    // (REALTIME_DATA HR/R-R, COMMAND_RESPONSE battery/fw) via the whoop-rs FFI and diff it.
-                    // Offload replays are covered by the Backfiller shadow, so skip them here. Additive only —
-                    // the Kotlin decode above stays authoritative. Total (never throws).
-                    if (!offloadFrame && puffinExperiment.isRustShadowEnabled) {
-                        com.noop.protocol.RustAdapter.diffLiveOrResponse(connectedFamily, frame, parsed)
-                    }
-
                     // Capture the strap's newest stored record from a GET_DATA_RANGE reply, feeding
                     // the liveness watchdog. The response command byte is family-dependent: @6 on
                     // WHOOP4, @10 on 5/MG (+4 puffin envelope) — reading 6 unconditionally meant
@@ -4851,15 +4837,9 @@ class WhoopBleClient(
             .filter { it.ok && it.crcOk != false && it.typeName == "REALTIME_DATA" }
             .mapNotNull { (it.parsed["timestamp"] as? Number)?.toInt() }
             .maxOrNull() ?: now
-        // Rust PRIMARY (Test Centre opt-in, default OFF): whoop-rs is the authoritative decoder for the
-        // stored live rows (realtime HR/R-R, events, response battery); the Kotlin extractStreams still
-        // feeds the comparator, and a per-frame Rust error falls back to the Kotlin decode. The wall-offset
-        // ts is the same on both paths. Off = today's Kotlin path exactly.
-        val streams: Streams = if (puffinExperiment.isRustPrimaryEnabled) {
-            com.noop.protocol.RustAdapter.liveStreamsPrimary(frames, connectedFamily, deviceClockRef = newestRealtimeTs, wallClockRef = now)
-        } else {
-            extractStreams(parsed, deviceClockRef = newestRealtimeTs, wallClockRef = now)
-        }
+        // Live row assembly stays Kotlin ([extractStreams] over already-parsed frames); the history/ppg
+        // decode cutover does not touch the live path.
+        val streams = extractStreams(parsed, deviceClockRef = newestRealtimeTs, wallClockRef = now)
         val batch = StreamPersistence.toBatch(streams)
         if (!batch.isEmpty) {
             try {

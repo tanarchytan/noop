@@ -33,9 +33,9 @@ class Whoop5PpgWaveformStreamTest {
     )
 
     /**
-     * A single v26 record is one second of samples — nowhere near the run [PpgHr] needs for a confident HR
-     * estimate, so `ppgHr` stays empty. Before this change that meant the ENTIRE record vanished (nothing
-     * else read the waveform); now the raw waveform is still captured as its own stream.
+     * A single v26 record is one second of samples — nowhere near the run the PPG-HR estimator needs for a
+     * confident HR estimate, so `ppgHr` stays empty. Before this change that meant the ENTIRE record vanished
+     * (nothing else read the waveform); now the raw waveform is still captured as its own stream.
      */
     @Test
     fun extractPersistsRawPpgWaveform() {

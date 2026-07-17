@@ -8,8 +8,8 @@ import com.noop.protocol.BadClockDiagnostics
 import com.noop.protocol.DeviceFamily
 import com.noop.protocol.Framing
 import com.noop.protocol.HistoricalMeta
+import com.noop.protocol.RustAdapter
 import com.noop.protocol.classifyHistoricalMeta
-import com.noop.protocol.decodeHistorical
 import com.noop.protocol.extractHistoricalStreams
 import com.noop.protocol.rejectedHistoricalRecords
 import kotlinx.coroutines.sync.Mutex
@@ -117,20 +117,6 @@ class Backfiller(
     private val ppgHrSubLagInterp: () -> Boolean = { false },
     /** Live UI/export observation of the historical record layout (`hist_version`). */
     private val firmwareLayout: (Int) -> Unit = {},
-    /**
-     * Rust SHADOW decode (Test Centre opt-in, default OFF): when true, each committed chunk's frames are
-     * decoded a SECOND time through the whoop-rs FFI and diffed against the Kotlin decode into
-     * [com.noop.protocol.RustShadowParity]. Read live so a mid-session flip takes effect next chunk.
-     * Default inert keeps the untraced/test path byte-identical and never loads the native codec.
-     */
-    private val rustShadow: () -> Boolean = { false },
-    /**
-     * Rust PRIMARY decode (Test Centre opt-in, default OFF): when true, whoop-rs is the AUTHORITATIVE
-     * decoder for this chunk's stored rows (record biometrics, v26 PPG-HR, events, response battery); the
-     * Kotlin decode still runs but only feeds the comparator, and a Rust error falls back to Kotlin per
-     * frame. Read live so a mid-session flip takes effect next chunk. Default inert = today's Kotlin path.
-     */
-    private val rustPrimary: () -> Boolean = { false },
 ) {
 
     /**
@@ -365,23 +351,16 @@ class Backfiller(
         var committed: StreamBatch? = null
         if (frames.isNotEmpty()) {
             val ref = clockRef
-            val primary = rustPrimary()
             val decoded = extractHistoricalStreams(
                 frames, ref.device, ref.wall, family,
                 sessionOldestUnix = sessionOldestUnix, sessionNewestUnix = sessionNewestUnix,
                 ppgHrSubLagInterp = ppgHrSubLagInterp(),
-                rustPrimary = primary,
             )
-            // Rust SHADOW decode (Test Centre opt-in, default OFF): decode this chunk's frames a second time
-            // via the whoop-rs FFI and diff field-by-field. Additive/observability only — the Kotlin `decoded`
-            // above stays authoritative and nothing here changes a stored value. Total (never throws).
-            // Skipped when PRIMARY is on: the primary path above already ran the comparator inline.
-            if (rustShadow() && !primary) runCatching { com.noop.protocol.RustAdapter.diffHistoryChunk(frames, family) }
             // Observability (PR #241): which historical layout does this strap emit? Only the unmapped/
             // reject path logged a version before, so a healthy sync never revealed v24/v25 (4.0) or
             // v18/v26 (5/MG). Sample the chunk's first genuine record (null ⇒ console/CRC-fail); log
             // each distinct layout once per session.
-            frames.firstNotNullOfOrNull { decodeHistorical(it, family)?.get("hist_version") as? Int }
+            frames.firstNotNullOfOrNull { RustAdapter.recordFields(it, family)?.get("hist_version") as? Int }
                 ?.let { v ->
                     if (loggedLayoutVersions.add(v)) {
                         log("Backfill: historical records use layout v$v")
@@ -391,9 +370,8 @@ class Backfiller(
                         // Gated zero-cost. Twin of the Swift Backfiller emit.
                         emitConnection {
                             val decodable = frames.any {
-                                val d = decodeHistorical(it, family)
-                                d != null && (d.containsKey("heart_rate") || d.containsKey("gravity_x") ||
-                                    d.containsKey("ppg_waveform"))
+                                val d = RustAdapter.recordFields(it, family)
+                                d != null && (d.containsKey("heart_rate") || d.containsKey("gravity_x"))
                             }
                             com.noop.analytics.ConnectionTrace.firmwareLine(v, decodable)
                         }
@@ -404,14 +382,14 @@ class Backfiller(
             // strap banks a COMPUTED SpO2 (a byte tracking the WHOOP app's nightly %) vs only the raw
             // red/IR ADC we already decode. Log-only and bounded per session across chunks ([spo2Dumped],
             // reset in begin); zero-cost when the mode is off (one Bool short-circuit). Only genuine
-            // historical records (decodeHistorical returns a map with `unix`) spend the sample budget -
+            // historical records (recordFields returns a map with `unix`) spend the sample budget -
             // the strap's type-50 console frames carry no record bytes to correlate. Records dump whether
             // or not they carry SpO2 channels, so "nothing banked" is provable too. Never a user-facing
             // number (never-fabricate; the #194 lesson). Twin of the Swift Backfiller emit.
             if (spo2Dumped < com.noop.analytics.Spo2ReTrace.MAX_SAMPLES && connectionActive()) {
                 for (f in frames) {
                     if (spo2Dumped >= com.noop.analytics.Spo2ReTrace.MAX_SAMPLES) break
-                    val d = decodeHistorical(f, family) ?: continue
+                    val d = RustAdapter.recordFields(f, family) ?: continue
                     val recUnix = d["unix"] as? Int ?: continue
                     connectionLog(
                         com.noop.analytics.Spo2ReTrace.recordLine(
