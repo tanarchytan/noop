@@ -712,7 +712,7 @@ object SleepStager {
      * too short or never shows a genuine cardiac dip below the day median. Overnight windows
      * never reach here. Returns true = keep, false = reject.
      *
-     * [restingHR] is the window's own lowest 5-min rolling-mean HR (the sleep-depth proxy
+     * `restingHR` (the parameter) is the window's own lowest 5-min rolling-mean HR (the sleep-depth proxy
      * detectSleep already computes); [baseline] is the day's median HR. With no usable HR
      * evidence (null baseline OR null restingHR) a daytime stretch cannot be confirmed as a
      * real nap, so it is rejected — sedentary daytime stillness without a measured HR dip is

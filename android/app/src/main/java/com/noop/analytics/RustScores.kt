@@ -6,9 +6,6 @@ import uniffi.whoop_ffi.DriverBaselineInfo
 import uniffi.whoop_ffi.FitnessAgeInfo
 import uniffi.whoop_ffi.HrTick
 import uniffi.whoop_ffi.HrZoneSetInfo
-import uniffi.whoop_ffi.HrvReadinessInfo
-import uniffi.whoop_ffi.PpgEstimate
-import uniffi.whoop_ffi.PpgSample
 import uniffi.whoop_ffi.RecoveryDrivers
 import uniffi.whoop_ffi.RrBeat
 import uniffi.whoop_ffi.RrRun
@@ -145,9 +142,6 @@ internal object RustScores {
 
     fun rmssdGapAware(rr: List<RrInterval>): Double? = uniffi.whoop_ffi.hrvRmssdGapAware(groupRuns(rr))
 
-    fun hrvReadiness(nightlyRmssd: List<Double?>): HrvReadinessInfo? =
-        uniffi.whoop_ffi.hrvReadiness(nightlyRmssd)
-
     // ── Resting HR ───────────────────────────────────────────────────────────
 
     fun sessionRestingHr(hr: List<HrSample>, start: Long, end: Long): Int? =
@@ -158,7 +152,17 @@ internal object RustScores {
     // ── Respiratory rate ─────────────────────────────────────────────────────
 
     fun respRateFromRr(rr: List<RrInterval>, start: Long, end: Long): Double? =
-        uniffi.whoop_ffi.respRateFromRr(rr.map { RrBeat(it.ts, it.rrMs.toUShort()) }, start, end)
+        uniffi.whoop_ffi.respRateFromRr(
+            // Drop physiologically out-of-range beats up front (same bounds as HrvAnalyzer.rangeFilter, which
+            // the Kotlin reference applies) so an rrMs that would wrap on the UShort cast is dropped, not
+            // aliased into range — keeping the Rust leg bit-for-bit with the full-width Int reference.
+            rr.asSequence()
+                .filter { it.rrMs.toDouble() in HrvAnalyzer.RR_MIN_MS..HrvAnalyzer.RR_MAX_MS }
+                .map { RrBeat(it.ts, it.rrMs.toUShort()) }
+                .toList(),
+            start,
+            end,
+        )
 
     // ── Baevsky Stress Index ─────────────────────────────────────────────────
 
@@ -198,9 +202,4 @@ internal object RustScores {
         waistCm: Double? = null,
         lowerConfidence: Boolean = false,
     ): FitnessAgeInfo? = uniffi.whoop_ffi.fitnessAgeCompute(age, sex, restingHr, paIndex, waistCm, lowerConfidence)
-
-    // ── PPG-HR (v26 optical) ─────────────────────────────────────────────────
-
-    fun ppgHr(samples: List<Pair<Long, Int>>): List<PpgEstimate> =
-        uniffi.whoop_ffi.ppgHr(samples.map { PpgSample(it.first, it.second) })
 }

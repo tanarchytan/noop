@@ -15,9 +15,11 @@ package com.noop.analytics
  *
  * Analytics cutover (Tier 1): the SI math now lives only in whoop-rs physio-algo (`stress_index` /
  * `stress_components`), reached through [RustScores.stressIndex] / [RustScores.stressComponents]. What
- * survives here is the frontend surface the Stress screen / coach lean on: the [Components] display DTO and
- * the [MIN_BEATS] honest-gate constant (the Rust door enforces the same gate). The bit-for-bit parity of the
- * Rust output with the deleted Kotlin twin is pinned by RustStressParityTest before this deletion landed.
+ * survives here is [Components], the display DTO the Stress screen reads, plus the [MIN_BEATS] gate value:
+ * the Rust door enforces that gate internally (returning null below it), so no production path reads the
+ * constant — it stays as the documented threshold the stress parity / coach tests assert against. The
+ * bit-for-bit parity of the Rust output with the deleted Kotlin twin is pinned by RustStressParityTest
+ * before this deletion landed.
  */
 object StressIndex {
 

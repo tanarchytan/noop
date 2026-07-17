@@ -146,7 +146,7 @@ object RecoveryScorer {
     // ─────────────────────────────────────────────────────────────────────────
 
     /**
-     * Minimum 5-minute bins ([restingHR]'s SAME binning) required before a slope is trusted —
+     * Minimum 5-minute bins (the SAME [restingHRWindowS] binning) required before a slope is trusted —
      * below this, too little of the night has elapsed to fit a trend, and a 1-2-point
      * regression is noise, not a night-long pattern. 6 bins = 30 minutes of binned coverage,
      * a deliberately low floor so a short/partial night still gets a number rather than a
@@ -157,10 +157,10 @@ object RecoveryScorer {
     /**
      * Overnight resting-HR DECLINE slope (bpm/hour) across the in-bed window — the "Recovery
      * Index" component of Oura's Readiness that Charge lacked (it previously only read the
-     * overnight FLOOR via [restingHR] above, never the trend that reaches it).
+     * overnight resting-HR FLOOR, never the trend that reaches it).
      *
-     * Computed as the least-squares slope of the SAME non-overlapping 5-minute HR bin means
-     * [restingHR] uses ([restingHRWindowS]) against each bin's midpoint time (hours from
+     * Computed as the least-squares slope of the SAME non-overlapping 5-minute HR bin means the
+     * resting-HR floor uses ([restingHRWindowS]) against each bin's midpoint time (hours from
      * `start`). NEGATIVE = declining (HR falling through the night — the physiologically
      * expected, good pattern); POSITIVE = rising (restlessness, illness, alcohol, a late
      * stimulant). Returns null when fewer than [recoveryIndexMinBins] bins have data (too
@@ -237,6 +237,6 @@ object RecoveryScorer {
     // The recovery/Charge composite (z-score + logistic) now lives in whoop-rs physio-algo,
     // reached via [RustScores.recovery] (proven bit-for-bit == the deleted Kotlin twin by
     // RustRecoveryParityTest over the recovery_cases fixtures). The [DriverBaseline] data class,
-    // [zScore], [band], [restingHR], [recoveryIndexSlope] and [bankedNights] stay here — they are
-    // read by frontend consumers (RecoveryDrivers / RecoveryScorerTrace) and the Resting-HR route.
+    // [zScore], [band], [recoveryIndexSlope] and [bankedNights] stay here — they are read by
+    // frontend consumers (RecoveryDrivers / RecoveryScorerTrace / CalibrationMilestones).
 }
