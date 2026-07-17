@@ -7,6 +7,10 @@ import org.junit.Assert.assertTrue
 import org.junit.Assume.assumeTrue
 import org.junit.Test
 import java.io.File
+import kotlin.math.abs
+import kotlin.math.exp
+import kotlin.math.max
+import kotlin.math.min
 import kotlin.math.roundToInt
 
 /**
@@ -120,6 +124,141 @@ class RustRecoveryParityTest {
         val kotlinSlope = RecoveryScorer.recoveryIndexSlope(hr, start, end)
         val rustSlope = RustScores.recoveryIndexSlope(hr, start, end)
         assertSameDouble("recovery index slope", kotlinSlope, rustSlope)
+    }
+
+    /**
+     * Frozen, byte-identical copy of the DELETED `RecoveryScorer.recovery` composite (the primary
+     * `DriverBaseline` overload) — same term insertion order, same weights/constants (read live off the
+     * surviving [RecoveryScorer]), same `sumOf` left-to-right f64 accumulation, same drop-and-renormalise
+     * null semantics, same `100/(1+exp(-K(z-Z0)))` logistic and `max(0, min(100, ·))` clamp, computed via
+     * the SURVIVING [RecoveryScorer.zScore] and Kotlin `exp`. This is the exact value the pre-cutover Kotlin
+     * scorer wrote to the RAW (un-rounded) `DailyMetric.recovery` column, restated locally the same way
+     * [RustStressParityTest] restates the deleted Baevsky histogram. The routed [RustScores.recovery] must
+     * reproduce it at machine precision.
+     */
+    private fun refRecovery(
+        hrv: Double,
+        rhr: Double,
+        resp: Double?,
+        hrvBaseline: RecoveryScorer.DriverBaseline?,
+        rhrBaseline: RecoveryScorer.DriverBaseline?,
+        respBaseline: RecoveryScorer.DriverBaseline?,
+        sleepPerf: Double?,
+        skinTempDev: Double? = null,
+        hrvBaselineUsable: Boolean = true,
+        recoveryIndexSlope: Double? = null,
+        effortBaseline: RecoveryScorer.DriverBaseline? = null,
+        priorDayEffort: Double? = null,
+    ): Double? {
+        if (!hrvBaselineUsable) return null
+        val terms = ArrayList<Pair<Double, Double>>()
+        hrvBaseline?.let { b -> terms.add(RecoveryScorer.zScore(hrv, b.mean, b.spread) to RecoveryScorer.wHRV) }
+        rhrBaseline?.let { b -> terms.add(RecoveryScorer.zScore(b.mean, rhr, b.spread) to RecoveryScorer.wRHR) }
+        if (resp != null && respBaseline != null) {
+            terms.add(RecoveryScorer.zScore(respBaseline.mean, resp, respBaseline.spread) to RecoveryScorer.wResp)
+        }
+        if (sleepPerf != null) {
+            terms.add(((sleepPerf - RecoveryScorer.sleepPerfCenter) / RecoveryScorer.sleepPerfScale) to RecoveryScorer.wSleep)
+        }
+        if (skinTempDev != null) {
+            terms.add((-abs(skinTempDev) / RecoveryScorer.skinTempDevScale) to RecoveryScorer.wSkinTemp)
+        }
+        if (recoveryIndexSlope != null) {
+            terms.add((-recoveryIndexSlope / RecoveryScorer.recoveryIndexScaleBpmPerHr) to RecoveryScorer.wRecoveryIndex)
+        }
+        if (priorDayEffort != null && effortBaseline != null) {
+            terms.add(RecoveryScorer.zScore(effortBaseline.mean, priorDayEffort, effortBaseline.spread) to RecoveryScorer.wActivityBalance)
+        }
+        if (terms.isEmpty()) return null
+        val totalWeight = terms.sumOf { it.second }
+        if (totalWeight <= 0.0) return null
+        val z = terms.sumOf { it.first * it.second } / totalWeight
+        val score = 100.0 / (1.0 + exp(-RecoveryScorer.logisticK * (z - RecoveryScorer.logisticZ0)))
+        return max(0.0, min(100.0, score))
+    }
+
+    /**
+     * DURABILITY PIN (closes the recovery HIGH). The correctness pin above asserts the routed score against
+     * an independent numpy reference at 1e-6 — loose enough that a future whoop-rs edit could silently drift
+     * the RAW stored `DailyMetric.recovery` Double (written un-rounded at AnalyticsEngine.kt:507 /
+     * IntelligenceEngine.recomputeRecovery:1291) yet still pass. This pins [RustScores.recovery] to the EXACT
+     * value the deleted Kotlin twin produced ([refRecovery]) at machine precision. The composite is pure
+     * arithmetic bar one transcendental, so the driver z and the weighted mean are bit-identical on both
+     * sides; the only admissible residual is the last-ulp gap between Kotlin `exp` and Rust `f64::exp`
+     * (bounded ≈ 1e-13 for a 0–100 score), so the tolerance is [machinePrecision], ~1e6 tighter than the
+     * gold pin. Any structural drift (a changed weight, term order, renormalisation, or clamp) exceeds it and
+     * fails — to be reported as a whoop-rs fix, never widened. CI-safe: crafted in-memory cases run without
+     * the local fixture.
+     */
+    @Test
+    fun `recovery matches the exact deleted Kotlin composite at machine precision`() {
+        val machinePrecision = 1e-12
+        val b = { mean: Double, spread: Double -> RecoveryScorer.DriverBaseline(mean, spread) }
+
+        // (label, () -> refValue, () -> rustValue) over the full term matrix + the null-semantics edges.
+        data class Case(val label: String, val ref: () -> Double?, val rust: () -> Double?)
+        val cases = listOf(
+            Case(
+                "all-terms typical night",
+                { refRecovery(55.0, 52.0, 14.0, b(50.0, 5.0), b(55.0, 3.0), b(14.5, 1.0), 0.9, 0.4) },
+                { RustScores.recovery(55.0, 52.0, 14.0, b(50.0, 5.0), b(55.0, 3.0), b(14.5, 1.0), 0.9, 0.4) },
+            ),
+            Case(
+                "skin-temp term dropped",
+                { refRecovery(61.0, 48.0, 13.0, b(50.0, 5.0), b(55.0, 3.0), b(14.5, 1.0), 0.95, null) },
+                { RustScores.recovery(61.0, 48.0, 13.0, b(50.0, 5.0), b(55.0, 3.0), b(14.5, 1.0), 0.95, null) },
+            ),
+            Case(
+                "resp + sleep dropped, rhr baseline null",
+                { refRecovery(40.0, 60.0, null, b(50.0, 5.0), null, null, null, 0.2) },
+                { RustScores.recovery(40.0, 60.0, null, b(50.0, 5.0), null, null, null, 0.2) },
+            ),
+            Case(
+                "Oura terms (recovery-index slope + prior-day effort) folded in",
+                {
+                    refRecovery(
+                        52.0, 53.0, 15.0, b(50.0, 5.0), b(55.0, 3.0), b(14.5, 1.0), 0.88, 0.1,
+                        recoveryIndexSlope = -3.0, effortBaseline = b(40.0, 12.0), priorDayEffort = 70.0,
+                    )
+                },
+                {
+                    RustScores.recovery(
+                        52.0, 53.0, 15.0, b(50.0, 5.0), b(55.0, 3.0), b(14.5, 1.0), 0.88, 0.1,
+                        recoveryIndexSlope = -3.0, effortBaseline = b(40.0, 12.0), priorDayEffort = 70.0,
+                    )
+                },
+            ),
+            Case(
+                "cold-start (hrv baseline not usable) → null",
+                { refRecovery(60.0, 50.0, null, b(50.0, 5.0), null, null, null, hrvBaselineUsable = false) },
+                { RustScores.recovery(60.0, 50.0, null, b(50.0, 5.0), null, null, null, hrvBaselineUsable = false) },
+            ),
+            Case(
+                "no scorable driver (every term drops) → null",
+                { refRecovery(60.0, 50.0, null, null, null, null, null) },
+                { RustScores.recovery(60.0, 50.0, null, null, null, null, null) },
+            ),
+        )
+
+        var maxErr = 0.0
+        var bitForBit = true
+        for (c in cases) {
+            val ref = c.ref()
+            val rust = c.rust()
+            if (ref == null || rust == null) {
+                assertEquals("${c.label}: null-semantics must agree", ref, rust)
+                continue
+            }
+            val err = abs(ref - rust)
+            maxErr = max(maxErr, err)
+            if (ref.toRawBits() != rust.toRawBits()) bitForBit = false
+            assertTrue(
+                "${c.label}: routed recovery ($rust) drifted from the deleted Kotlin composite ($ref) by " +
+                    "$err > $machinePrecision — structural parity break, report as a whoop-rs fix",
+                err <= machinePrecision,
+            )
+        }
+        println("[recovery] machine-precision pin vs deleted Kotlin composite: maxErr=$maxErr bitForBit=$bitForBit")
     }
 
     @Test

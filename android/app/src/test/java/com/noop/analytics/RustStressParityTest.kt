@@ -151,6 +151,46 @@ class RustStressParityTest {
     }
 
     @Test
+    fun `rust cleans R-R identically (range + Malik ectopic) before the SI histogram`() {
+        // [RustScores.stressIndex] feeds the RAW rrMs (RustScores.kt:165); the deleted Kotlin
+        // StressIndex.componentsRaw cleaned via HrvAnalyzer.cleanRR (range band + Malik ectopic) FIRST. The
+        // crafted-golden case above is already-clean, so it can't tell "Rust cleans internally" from "Rust
+        // skips cleaning". These series make cleaning MATTER: they carry out-of-range dropouts and ectopic
+        // spikes that cleanRR must strip. [refComponents] cleans through the surviving HrvAnalyzer.cleanRR;
+        // if the Rust `stress_index` door reproduces the SAME range+Malik pipeline on the raw feed, the SI +
+        // every component land bit-identical. A drift here means the bridge must pre-clean (or the Rust
+        // clean_rr diverged) — either way it is caught, never tolerated.
+
+        // A clean, spread core (30 in-range beats, no ectopics) spliced with artifacts cleanRR must drop:
+        // out-of-range dropouts (100 / 250 ms too fast, 2400 / 2600 ms too slow) and in-range ectopic spikes
+        // (a beat > 20% off its local ~800 ms median). After cleaning both sides keep exactly the 30 core
+        // beats → identical histogram → identical SI, proving the internal clean is byte-for-byte equal.
+        val core = (0 until 30).map { 760 + (it % 9) * 12 } // 760..856 ms, several 50 ms bins, non-degenerate
+        val withArtifacts = ArrayList<Int>()
+        for ((i, v) in core.withIndex()) {
+            withArtifacts.add(v)
+            when (i) {
+                4 -> withArtifacts.add(100)   // range: far too fast → dropped
+                9 -> withArtifacts.add(1300)  // ectopic: ~+63% off local median → dropped
+                14 -> withArtifacts.add(2600) // range: too slow → dropped
+                19 -> withArtifacts.add(450)  // ectopic: ~-44% off local median → dropped
+                24 -> withArtifacts.add(2400) // range: too slow → dropped
+            }
+        }
+        // Sanity: the reference cleaning is genuinely NOT a no-op here (drops the 5 artifacts).
+        val cleaned = HrvAnalyzer.cleanRR(withArtifacts.map { it.toDouble() })
+        assertEquals("crafted series must drop exactly the 5 artifacts", core.size, cleaned.size)
+        assertParity("range+ectopic-artifacts", rr(withArtifacts))
+
+        // A tighter cluster with a single ectopic burst, still > MIN_BEATS clean survivors.
+        val burst = ArrayList<Int>()
+        for (i in 0 until 28) burst.add(if (i % 5 == 0) 812 else 798)
+        burst.add(6, 1600) // lone ectopic spike mid-series
+        burst.add(150)     // trailing out-of-range dropout
+        assertParity("single-ectopic-plus-dropout", rr(burst))
+    }
+
+    @Test
     fun `rust matches Kotlin null semantics on degenerate R-R`() {
         // Too few clean beats (< MIN_BEATS) → honest null on both paths.
         assertParity("too-few-beats", rr(List(StressIndex.MIN_BEATS - 1) { 800 }))
