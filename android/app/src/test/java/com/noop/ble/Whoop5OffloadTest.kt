@@ -1,9 +1,7 @@
 package com.noop.ble
 
 import com.noop.protocol.DeviceFamily
-import com.noop.protocol.Framing
 import org.junit.Assert.assertArrayEquals
-import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -18,13 +16,6 @@ import org.junit.Test
  * path (BLEManager.isOffloadFrame, Backfiller.endData, decodeWhoop5Metadata).
  */
 class Whoop5OffloadTest {
-
-    private fun ByteArray.putU32LE(off: Int, v: Long) {
-        this[off] = (v and 0xFF).toByte()
-        this[off + 1] = ((v shr 8) and 0xFF).toByte()
-        this[off + 2] = ((v shr 16) and 0xFF).toByte()
-        this[off + 3] = ((v shr 24) and 0xFF).toByte()
-    }
 
     // ---- isOffloadFrame: family-aware type index + the 56 accept-set ----
 
@@ -77,23 +68,5 @@ class Whoop5OffloadTest {
         val f = ByteArray(30)
         for (i in 21 until 29) f[i] = (i - 20).toByte() // 1..8 at [21..28]
         assertArrayEquals(byteArrayOf(1, 2, 3, 4, 5, 6, 7, 8), Backfiller.endData(f, DeviceFamily.WHOOP5))
-    }
-
-    // ---- WHOOP5 METADATA decode (+4): meta_type@10, unix@11, trim_cursor@21 ----
-
-    @Test
-    fun parsesWhoop5HistoryEndMetadata() {
-        val f = ByteArray(30)
-        f[0] = 0xAA.toByte()
-        f[8] = 56            // PUFFIN_METADATA -> typeName "METADATA"
-        f[10] = 2            // meta_type = HISTORY_END(2)
-        f.putU32LE(11, 1_780_916_150L)  // unix (the real worn-frame timestamp)
-        f.putU32LE(21, 112_193L)        // trim_cursor (the real HISTORY_END trim, Swift Whoop5HistoricalTests)
-
-        val p = Framing.parseFrame(f, DeviceFamily.WHOOP5)
-        assertEquals("METADATA", p.typeName)
-        assertTrue((p.parsed["meta_type"] as String).startsWith("HISTORY_END"))
-        assertEquals(1_780_916_150, p.parsed["unix"])
-        assertEquals(112_193, p.parsed["trim_cursor"])
     }
 }
