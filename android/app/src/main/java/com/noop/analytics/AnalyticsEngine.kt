@@ -341,8 +341,8 @@ object AnalyticsEngine {
         // widen the change's blast radius into the recovery score right at a release boundary for a
         // negligible shift. The Rest/sleep-quality term is main-night; the recovery physiology is
         // day-best-resting, night-dominated. Mirrors the Swift note in AnalyticsEngine.swift.
-        // Daily resting HR = lowest per-session resting HR across matched sessions.
-        val restingHRDaily: Int? = matched.mapNotNull { it.restingHR }.minOrNull()
+        // Daily resting HR = lowest per-session resting HR across matched sessions (whoop-rs physio-algo).
+        val restingHRDaily: Int? = RustScores.dailyRestingHr(matched.map { it.restingHR })
         // Daily avg HRV = in-bed-weighted mean of per-session avg HRV.
         val avgHRVDaily: Double? = if (deepHrvWindow) {
             // #141: WHOOP-style HRV — pool RMSSD over DEEP-stage 5-min windows only (slow-wave sleep),

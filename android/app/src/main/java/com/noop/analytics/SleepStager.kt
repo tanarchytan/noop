@@ -1085,7 +1085,7 @@ object SleepStager {
             // Daytime false-sleep guard (#90): a window centered in the local daytime band
             // must clear a stricter bar (≥daytimeMinSleepMin AND a real resting-HR dip).
             // Overnight windows skip this entirely. restingHR is computed here (reused below).
-            val resting = sessionRestingHR(start = p.start, end = p.end, hr = hrS)
+            val resting = RustScores.sessionRestingHr(hrS, p.start, p.end)
             val continuesChain = chainPrevEnd?.let { p.start - it <= continuationGapS } ?: false
             val isNightTail = continuesChain && chainFromOvernight   // the night's tail, not a nap
             // H7 (#531): when the prior accepted chain BEGAN overnight, its wake (chainPrevEnd) anchors the
@@ -2077,24 +2077,6 @@ object SleepStager {
     }
 
     // ── Per-session HR / HRV ─────────────────────────────────────────────────
-
-    /** Lowest 5-min rolling-mean HR during the session (bpm), or null. */
-    internal fun sessionRestingHR(start: Long, end: Long, hr: List<HrSample>): Int? {
-        val seg = hr.filter { it.ts in start..end }
-        if (seg.isEmpty()) return null
-        val windowS = 5 * 60L
-        val means = ArrayList<Double>()
-        var t = start
-        while (t < end) {
-            val win = seg.filter { it.ts >= t && it.ts < t + windowS }
-            if (win.isNotEmpty()) means.add(win.sumOf { it.bpm }.toDouble() / win.size.toDouble())
-            t += windowS
-        }
-        val m = means.minOrNull()
-        if (m != null) return m.roundToInt()
-        val all = seg.sumOf { it.bpm }.toDouble() / seg.size.toDouble()
-        return all.roundToInt()
-    }
 
     /** One 5-min HRV window: its start ts, the sleep stage at its center, the clean-beat count, and the
      *  window RMSSD (null when fewer than 2 clean beats, or when every successive pair straddles a dropped
