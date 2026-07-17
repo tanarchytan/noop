@@ -33,7 +33,7 @@ class CaptureTrimParityTest {
         var endTotal = 0
         var endOk = 0
         file.forEachLine { line ->
-            if (line.isBlank()) return@forEachLine
+            if (line.isBlank() || line.startsWith("#")) return@forEachLine
             val o = JSONObject(line)
             if (o.optString("type_name") != "METADATA") return@forEachLine
             val parsed = o.getJSONObject("parsed")

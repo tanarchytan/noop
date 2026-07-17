@@ -193,12 +193,11 @@ object RustAdapter {
                 RustCodec.decodeMetadata(gen5, frame)?.let { md ->
                     crcOk = md.crcOk
                     parsed["meta_type"] = metaLabel(md.metaType.toInt())
-                    // Only a HISTORY_END carries a stored unix/trim window; keep the 4.0/5.0 contract
-                    // where START/COMPLETE are keyed off meta_type alone.
-                    if (md.metaType.toInt() == MetadataType.HISTORY_END.rawValue) {
-                        parsed["unix"] = md.unix.toInt()
-                        parsed["trim_cursor"] = md.trimCursor.toInt()
-                    }
+                    // whoop-rs reads unix@inner3 / trim@inner13 and zero-fills when the (shorter
+                    // START/COMPLETE) body doesn't reach them; a real record unix/trim is never 0, so a
+                    // non-zero value == "the frame carried it", matching the length-gated live contract.
+                    if (md.unix != 0u) parsed["unix"] = md.unix.toInt()
+                    if (md.trimCursor != 0u) parsed["trim_cursor"] = md.trimCursor.toInt()
                 }
             else -> Unit // HISTORICAL_DATA / REALTIME_RAW_DATA / IMU / unknown: named, no live fields.
         }
