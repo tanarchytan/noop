@@ -687,7 +687,13 @@ internal object IntegrityCheckingUniffiLib {
     ): Int
     external fun uniffi_whoop_ffi_checksum_func_spo2_from_paired(
     ): Int
+    external fun uniffi_whoop_ffi_checksum_func_stage_sleep_v1(
+    ): Int
+    external fun uniffi_whoop_ffi_checksum_func_stage_sleep_v2(
+    ): Int
     external fun uniffi_whoop_ffi_checksum_method_whoopcodec_advertising_name_frame(
+    ): Int
+    external fun uniffi_whoop_ffi_checksum_method_whoopcodec_advertising_name_frame_gen5(
     ): Int
     external fun uniffi_whoop_ffi_checksum_method_whoopcodec_alarm_disable_frame(
     ): Int
@@ -773,6 +779,8 @@ internal object UniffiLib {
     ): Long
     external fun uniffi_whoop_ffi_fn_method_whoopcodec_advertising_name_frame(`ptr`: Long,`seq`: Byte,`name`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
+    external fun uniffi_whoop_ffi_fn_method_whoopcodec_advertising_name_frame_gen5(`ptr`: Long,`seq`: Byte,`name`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_method_whoopcodec_alarm_disable_frame(`ptr`: Long,`seq`: Byte,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_method_whoopcodec_alarm_set_frame(`ptr`: Long,`seq`: Byte,`wakeEpochMs`: Long,`alarmId`: Byte,uniffi_out_err: UniffiRustCallStatus, 
@@ -842,6 +850,10 @@ internal object UniffiLib {
     external fun uniffi_whoop_ffi_fn_func_ppg_hr(`samples`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_func_spo2_from_paired(`red`: RustBuffer.ByValue,`ir`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    external fun uniffi_whoop_ffi_fn_func_stage_sleep_v1(`input`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    external fun uniffi_whoop_ffi_fn_func_stage_sleep_v2(`input`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     external fun ffi_whoop_ffi_rustbuffer_alloc(`size`: Long,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
@@ -983,7 +995,16 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_whoop_ffi_checksum_func_spo2_from_paired() != 11748) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_whoop_ffi_checksum_func_stage_sleep_v1() != 2021) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_whoop_ffi_checksum_func_stage_sleep_v2() != 46996) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_whoop_ffi_checksum_method_whoopcodec_advertising_name_frame() != 25971) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_whoop_ffi_checksum_method_whoopcodec_advertising_name_frame_gen5() != 58833) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_whoop_ffi_checksum_method_whoopcodec_alarm_disable_frame() != 46355) {
@@ -1653,6 +1674,12 @@ public interface WhoopCodecInterface {
     fun `advertisingNameFrame`(`seq`: kotlin.UByte, `name`: kotlin.String): kotlin.ByteArray
     
     /**
+     * SET_ADVERTISING_NAME (5/MG) — rename the strap's puffin BLE advertising name (clamped to 24 UTF-8
+     * bytes). The strap reboots to apply. Hardware-unverified (opcode/b3 inferred). Gated in the app.
+     */
+    fun `advertisingNameFrameGen5`(`seq`: kotlin.UByte, `name`: kotlin.String): kotlin.ByteArray
+    
+    /**
      * DISABLE_ALARM (5/MG form).
      */
     fun `alarmDisableFrame`(`seq`: kotlin.UByte): kotlin.ByteArray
@@ -1929,6 +1956,25 @@ open class WhoopCodec: Disposable, AutoCloseable, WhoopCodecInterface
     callWithHandle {
     uniffiRustCall() { _status ->
     UniffiLib.uniffi_whoop_ffi_fn_method_whoopcodec_advertising_name_frame(
+        it,
+        
+        FfiConverterUByte.lower(`seq`),
+        FfiConverterString.lower(`name`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * SET_ADVERTISING_NAME (5/MG) — rename the strap's puffin BLE advertising name (clamped to 24 UTF-8
+     * bytes). The strap reboots to apply. Hardware-unverified (opcode/b3 inferred). Gated in the app.
+     */override fun `advertisingNameFrameGen5`(`seq`: kotlin.UByte, `name`: kotlin.String): kotlin.ByteArray {
+            return FfiConverterByteArray.lift(
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_method_whoopcodec_advertising_name_frame_gen5(
         it,
         
         FfiConverterUByte.lower(`seq`),
@@ -2962,6 +3008,287 @@ public object FfiConverterTypeRrRun: FfiConverterRustBuffer<RrRun> {
 
 
 /**
+ * One 3-axis accel / gravity sample (g) at unix second `ts`.
+ */
+data class SleepAccelSample (
+    var `ts`: kotlin.Long
+    , 
+    var `x`: kotlin.Double
+    , 
+    var `y`: kotlin.Double
+    , 
+    var `z`: kotlin.Double
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeSleepAccelSample: FfiConverterRustBuffer<SleepAccelSample> {
+    override fun read(buf: ByteBuffer): SleepAccelSample {
+        return SleepAccelSample(
+            FfiConverterLong.read(buf),
+            FfiConverterDouble.read(buf),
+            FfiConverterDouble.read(buf),
+            FfiConverterDouble.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: SleepAccelSample) = (
+            FfiConverterLong.allocationSize(value.`ts`) +
+            FfiConverterDouble.allocationSize(value.`x`) +
+            FfiConverterDouble.allocationSize(value.`y`) +
+            FfiConverterDouble.allocationSize(value.`z`)
+    )
+
+    override fun write(value: SleepAccelSample, buf: ByteBuffer) {
+            FfiConverterLong.write(value.`ts`, buf)
+            FfiConverterDouble.write(value.`x`, buf)
+            FfiConverterDouble.write(value.`y`, buf)
+            FfiConverterDouble.write(value.`z`, buf)
+    }
+}
+
+
+
+/**
+ * One HR sample for the stager (`bpm` at unix second `ts`).
+ */
+data class SleepHrSample (
+    var `ts`: kotlin.Long
+    , 
+    var `bpm`: kotlin.UShort
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeSleepHrSample: FfiConverterRustBuffer<SleepHrSample> {
+    override fun read(buf: ByteBuffer): SleepHrSample {
+        return SleepHrSample(
+            FfiConverterLong.read(buf),
+            FfiConverterUShort.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: SleepHrSample) = (
+            FfiConverterLong.allocationSize(value.`ts`) +
+            FfiConverterUShort.allocationSize(value.`bpm`)
+    )
+
+    override fun write(value: SleepHrSample, buf: ByteBuffer) {
+            FfiConverterLong.write(value.`ts`, buf)
+            FfiConverterUShort.write(value.`bpm`, buf)
+    }
+}
+
+
+
+/**
+ * The protocol-free input bundle for one detected in-bed span (`[start, end]` unix seconds).
+ */
+data class SleepInput (
+    var `start`: kotlin.Long
+    , 
+    var `end`: kotlin.Long
+    , 
+    var `hr`: List<SleepHrSample>
+    , 
+    var `rr`: List<SleepRrRun>
+    , 
+    var `accel`: List<SleepAccelSample>
+    , 
+    var `resp`: List<SleepRespSample>
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeSleepInput: FfiConverterRustBuffer<SleepInput> {
+    override fun read(buf: ByteBuffer): SleepInput {
+        return SleepInput(
+            FfiConverterLong.read(buf),
+            FfiConverterLong.read(buf),
+            FfiConverterSequenceTypeSleepHrSample.read(buf),
+            FfiConverterSequenceTypeSleepRrRun.read(buf),
+            FfiConverterSequenceTypeSleepAccelSample.read(buf),
+            FfiConverterSequenceTypeSleepRespSample.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: SleepInput) = (
+            FfiConverterLong.allocationSize(value.`start`) +
+            FfiConverterLong.allocationSize(value.`end`) +
+            FfiConverterSequenceTypeSleepHrSample.allocationSize(value.`hr`) +
+            FfiConverterSequenceTypeSleepRrRun.allocationSize(value.`rr`) +
+            FfiConverterSequenceTypeSleepAccelSample.allocationSize(value.`accel`) +
+            FfiConverterSequenceTypeSleepRespSample.allocationSize(value.`resp`)
+    )
+
+    override fun write(value: SleepInput, buf: ByteBuffer) {
+            FfiConverterLong.write(value.`start`, buf)
+            FfiConverterLong.write(value.`end`, buf)
+            FfiConverterSequenceTypeSleepHrSample.write(value.`hr`, buf)
+            FfiConverterSequenceTypeSleepRrRun.write(value.`rr`, buf)
+            FfiConverterSequenceTypeSleepAccelSample.write(value.`accel`, buf)
+            FfiConverterSequenceTypeSleepRespSample.write(value.`resp`, buf)
+    }
+}
+
+
+
+/**
+ * One raw respiration-ADC sample at unix second `ts` (accepted for parity; V2 recovers RSA from R-R).
+ */
+data class SleepRespSample (
+    var `ts`: kotlin.Long
+    , 
+    var `raw`: kotlin.Int
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeSleepRespSample: FfiConverterRustBuffer<SleepRespSample> {
+    override fun read(buf: ByteBuffer): SleepRespSample {
+        return SleepRespSample(
+            FfiConverterLong.read(buf),
+            FfiConverterInt.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: SleepRespSample) = (
+            FfiConverterLong.allocationSize(value.`ts`) +
+            FfiConverterInt.allocationSize(value.`raw`)
+    )
+
+    override fun write(value: SleepRespSample, buf: ByteBuffer) {
+            FfiConverterLong.write(value.`ts`, buf)
+            FfiConverterInt.write(value.`raw`, buf)
+    }
+}
+
+
+
+/**
+ * A run of consecutive R-R intervals (ms) sharing one unix-second anchor `ts`.
+ */
+data class SleepRrRun (
+    var `ts`: kotlin.Long
+    , 
+    var `intervals`: List<kotlin.UShort>
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeSleepRrRun: FfiConverterRustBuffer<SleepRrRun> {
+    override fun read(buf: ByteBuffer): SleepRrRun {
+        return SleepRrRun(
+            FfiConverterLong.read(buf),
+            FfiConverterSequenceUShort.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: SleepRrRun) = (
+            FfiConverterLong.allocationSize(value.`ts`) +
+            FfiConverterSequenceUShort.allocationSize(value.`intervals`)
+    )
+
+    override fun write(value: SleepRrRun, buf: ByteBuffer) {
+            FfiConverterLong.write(value.`ts`, buf)
+            FfiConverterSequenceUShort.write(value.`intervals`, buf)
+    }
+}
+
+
+
+/**
+ * A contiguous run of one stage over `[start, end]` wall-clock unix seconds.
+ */
+data class SleepSegment (
+    var `start`: kotlin.Long
+    , 
+    var `end`: kotlin.Long
+    , 
+    var `stage`: SleepStage
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeSleepSegment: FfiConverterRustBuffer<SleepSegment> {
+    override fun read(buf: ByteBuffer): SleepSegment {
+        return SleepSegment(
+            FfiConverterLong.read(buf),
+            FfiConverterLong.read(buf),
+            FfiConverterTypeSleepStage.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: SleepSegment) = (
+            FfiConverterLong.allocationSize(value.`start`) +
+            FfiConverterLong.allocationSize(value.`end`) +
+            FfiConverterTypeSleepStage.allocationSize(value.`stage`)
+    )
+
+    override fun write(value: SleepSegment, buf: ByteBuffer) {
+            FfiConverterLong.write(value.`start`, buf)
+            FfiConverterLong.write(value.`end`, buf)
+            FfiConverterTypeSleepStage.write(value.`stage`, buf)
+    }
+}
+
+
+
+/**
  * The logical notify channel a native notification arrived on (mapped from its characteristic UUID).
  */
 
@@ -3248,11 +3575,15 @@ public object FfiConverterTypeReadinessTier: FfiConverterRustBuffer<ReadinessTie
 
 
 /**
- * A decoded command response (identity, battery, clock, data range, firmware).
+ * A decoded command response (identity, battery, clock, data range, firmware). Every variant carries
+ * `resp_cmd` (the command byte replied to) and `result` (the status code, `None` on 4.0) so the live
+ * COMMAND_RESPONSE handshake can gate on them.
  */
 sealed class Response {
     
     data class Battery(
+        val `respCmd`: kotlin.UByte, 
+        val `result`: kotlin.UByte?, 
         val `percent`: kotlin.Double) : Response()
         
     {
@@ -3262,6 +3593,8 @@ sealed class Response {
     }
     
     data class Clock(
+        val `respCmd`: kotlin.UByte, 
+        val `result`: kotlin.UByte?, 
         val `unix`: kotlin.UInt) : Response()
         
     {
@@ -3271,6 +3604,8 @@ sealed class Response {
     }
     
     data class Hello(
+        val `respCmd`: kotlin.UByte, 
+        val `result`: kotlin.UByte?, 
         val `deviceName`: kotlin.String, 
         val `fwVersion`: kotlin.ByteArray?) : Response()
         
@@ -3281,6 +3616,8 @@ sealed class Response {
     }
     
     data class DataRange(
+        val `respCmd`: kotlin.UByte, 
+        val `result`: kotlin.UByte?, 
         val `oldest`: kotlin.UInt, 
         val `newest`: kotlin.UInt) : Response()
         
@@ -3291,6 +3628,8 @@ sealed class Response {
     }
     
     data class Version(
+        val `respCmd`: kotlin.UByte, 
+        val `result`: kotlin.UByte?, 
         val `fw`: List<kotlin.UInt>) : Response()
         
     {
@@ -3300,6 +3639,8 @@ sealed class Response {
     }
     
     data class ExtendedBattery(
+        val `respCmd`: kotlin.UByte, 
+        val `result`: kotlin.UByte?, 
         val `millivolts`: kotlin.UShort, 
         val `remainingMah`: kotlin.UShort, 
         val `currentMa`: kotlin.Short) : Response()
@@ -3311,6 +3652,8 @@ sealed class Response {
     }
     
     data class BatteryPack(
+        val `respCmd`: kotlin.UByte, 
+        val `result`: kotlin.UByte?, 
         val `serial`: kotlin.String, 
         val `socPct`: kotlin.Double, 
         val `millivolts`: kotlin.UShort, 
@@ -3323,7 +3666,7 @@ sealed class Response {
     }
     
     data class Other(
-        val `cmd`: kotlin.UByte, 
+        val `respCmd`: kotlin.UByte, 
         val `result`: kotlin.UByte?) : Response()
         
     {
@@ -3349,28 +3692,42 @@ public object FfiConverterTypeResponse : FfiConverterRustBuffer<Response>{
     override fun read(buf: ByteBuffer): Response {
         return when(buf.getInt()) {
             1 -> Response.Battery(
+                FfiConverterUByte.read(buf),
+                FfiConverterOptionalUByte.read(buf),
                 FfiConverterDouble.read(buf),
                 )
             2 -> Response.Clock(
+                FfiConverterUByte.read(buf),
+                FfiConverterOptionalUByte.read(buf),
                 FfiConverterUInt.read(buf),
                 )
             3 -> Response.Hello(
+                FfiConverterUByte.read(buf),
+                FfiConverterOptionalUByte.read(buf),
                 FfiConverterString.read(buf),
                 FfiConverterOptionalByteArray.read(buf),
                 )
             4 -> Response.DataRange(
+                FfiConverterUByte.read(buf),
+                FfiConverterOptionalUByte.read(buf),
                 FfiConverterUInt.read(buf),
                 FfiConverterUInt.read(buf),
                 )
             5 -> Response.Version(
+                FfiConverterUByte.read(buf),
+                FfiConverterOptionalUByte.read(buf),
                 FfiConverterSequenceUInt.read(buf),
                 )
             6 -> Response.ExtendedBattery(
+                FfiConverterUByte.read(buf),
+                FfiConverterOptionalUByte.read(buf),
                 FfiConverterUShort.read(buf),
                 FfiConverterUShort.read(buf),
                 FfiConverterShort.read(buf),
                 )
             7 -> Response.BatteryPack(
+                FfiConverterUByte.read(buf),
+                FfiConverterOptionalUByte.read(buf),
                 FfiConverterString.read(buf),
                 FfiConverterDouble.read(buf),
                 FfiConverterUShort.read(buf),
@@ -3389,6 +3746,8 @@ public object FfiConverterTypeResponse : FfiConverterRustBuffer<Response>{
             // Add the size for the Int that specifies the variant plus the size needed for all fields
             (
                 4UL
+                + FfiConverterUByte.allocationSize(value.`respCmd`)
+                + FfiConverterOptionalUByte.allocationSize(value.`result`)
                 + FfiConverterDouble.allocationSize(value.`percent`)
             )
         }
@@ -3396,6 +3755,8 @@ public object FfiConverterTypeResponse : FfiConverterRustBuffer<Response>{
             // Add the size for the Int that specifies the variant plus the size needed for all fields
             (
                 4UL
+                + FfiConverterUByte.allocationSize(value.`respCmd`)
+                + FfiConverterOptionalUByte.allocationSize(value.`result`)
                 + FfiConverterUInt.allocationSize(value.`unix`)
             )
         }
@@ -3403,6 +3764,8 @@ public object FfiConverterTypeResponse : FfiConverterRustBuffer<Response>{
             // Add the size for the Int that specifies the variant plus the size needed for all fields
             (
                 4UL
+                + FfiConverterUByte.allocationSize(value.`respCmd`)
+                + FfiConverterOptionalUByte.allocationSize(value.`result`)
                 + FfiConverterString.allocationSize(value.`deviceName`)
                 + FfiConverterOptionalByteArray.allocationSize(value.`fwVersion`)
             )
@@ -3411,6 +3774,8 @@ public object FfiConverterTypeResponse : FfiConverterRustBuffer<Response>{
             // Add the size for the Int that specifies the variant plus the size needed for all fields
             (
                 4UL
+                + FfiConverterUByte.allocationSize(value.`respCmd`)
+                + FfiConverterOptionalUByte.allocationSize(value.`result`)
                 + FfiConverterUInt.allocationSize(value.`oldest`)
                 + FfiConverterUInt.allocationSize(value.`newest`)
             )
@@ -3419,6 +3784,8 @@ public object FfiConverterTypeResponse : FfiConverterRustBuffer<Response>{
             // Add the size for the Int that specifies the variant plus the size needed for all fields
             (
                 4UL
+                + FfiConverterUByte.allocationSize(value.`respCmd`)
+                + FfiConverterOptionalUByte.allocationSize(value.`result`)
                 + FfiConverterSequenceUInt.allocationSize(value.`fw`)
             )
         }
@@ -3426,6 +3793,8 @@ public object FfiConverterTypeResponse : FfiConverterRustBuffer<Response>{
             // Add the size for the Int that specifies the variant plus the size needed for all fields
             (
                 4UL
+                + FfiConverterUByte.allocationSize(value.`respCmd`)
+                + FfiConverterOptionalUByte.allocationSize(value.`result`)
                 + FfiConverterUShort.allocationSize(value.`millivolts`)
                 + FfiConverterUShort.allocationSize(value.`remainingMah`)
                 + FfiConverterShort.allocationSize(value.`currentMa`)
@@ -3435,6 +3804,8 @@ public object FfiConverterTypeResponse : FfiConverterRustBuffer<Response>{
             // Add the size for the Int that specifies the variant plus the size needed for all fields
             (
                 4UL
+                + FfiConverterUByte.allocationSize(value.`respCmd`)
+                + FfiConverterOptionalUByte.allocationSize(value.`result`)
                 + FfiConverterString.allocationSize(value.`serial`)
                 + FfiConverterDouble.allocationSize(value.`socPct`)
                 + FfiConverterUShort.allocationSize(value.`millivolts`)
@@ -3445,7 +3816,7 @@ public object FfiConverterTypeResponse : FfiConverterRustBuffer<Response>{
             // Add the size for the Int that specifies the variant plus the size needed for all fields
             (
                 4UL
-                + FfiConverterUByte.allocationSize(value.`cmd`)
+                + FfiConverterUByte.allocationSize(value.`respCmd`)
                 + FfiConverterOptionalUByte.allocationSize(value.`result`)
             )
         }
@@ -3455,33 +3826,45 @@ public object FfiConverterTypeResponse : FfiConverterRustBuffer<Response>{
         when(value) {
             is Response.Battery -> {
                 buf.putInt(1)
+                FfiConverterUByte.write(value.`respCmd`, buf)
+                FfiConverterOptionalUByte.write(value.`result`, buf)
                 FfiConverterDouble.write(value.`percent`, buf)
                 Unit
             }
             is Response.Clock -> {
                 buf.putInt(2)
+                FfiConverterUByte.write(value.`respCmd`, buf)
+                FfiConverterOptionalUByte.write(value.`result`, buf)
                 FfiConverterUInt.write(value.`unix`, buf)
                 Unit
             }
             is Response.Hello -> {
                 buf.putInt(3)
+                FfiConverterUByte.write(value.`respCmd`, buf)
+                FfiConverterOptionalUByte.write(value.`result`, buf)
                 FfiConverterString.write(value.`deviceName`, buf)
                 FfiConverterOptionalByteArray.write(value.`fwVersion`, buf)
                 Unit
             }
             is Response.DataRange -> {
                 buf.putInt(4)
+                FfiConverterUByte.write(value.`respCmd`, buf)
+                FfiConverterOptionalUByte.write(value.`result`, buf)
                 FfiConverterUInt.write(value.`oldest`, buf)
                 FfiConverterUInt.write(value.`newest`, buf)
                 Unit
             }
             is Response.Version -> {
                 buf.putInt(5)
+                FfiConverterUByte.write(value.`respCmd`, buf)
+                FfiConverterOptionalUByte.write(value.`result`, buf)
                 FfiConverterSequenceUInt.write(value.`fw`, buf)
                 Unit
             }
             is Response.ExtendedBattery -> {
                 buf.putInt(6)
+                FfiConverterUByte.write(value.`respCmd`, buf)
+                FfiConverterOptionalUByte.write(value.`result`, buf)
                 FfiConverterUShort.write(value.`millivolts`, buf)
                 FfiConverterUShort.write(value.`remainingMah`, buf)
                 FfiConverterShort.write(value.`currentMa`, buf)
@@ -3489,6 +3872,8 @@ public object FfiConverterTypeResponse : FfiConverterRustBuffer<Response>{
             }
             is Response.BatteryPack -> {
                 buf.putInt(7)
+                FfiConverterUByte.write(value.`respCmd`, buf)
+                FfiConverterOptionalUByte.write(value.`result`, buf)
                 FfiConverterString.write(value.`serial`, buf)
                 FfiConverterDouble.write(value.`socPct`, buf)
                 FfiConverterUShort.write(value.`millivolts`, buf)
@@ -3497,11 +3882,50 @@ public object FfiConverterTypeResponse : FfiConverterRustBuffer<Response>{
             }
             is Response.Other -> {
                 buf.putInt(8)
-                FfiConverterUByte.write(value.`cmd`, buf)
+                FfiConverterUByte.write(value.`respCmd`, buf)
                 FfiConverterOptionalUByte.write(value.`result`, buf)
                 Unit
             }
         }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
+    }
+}
+
+
+
+
+
+/**
+ * A staged sleep stage. String forms are `"wake" | "light" | "deep" | "rem"` for cross-platform parity.
+ */
+
+enum class SleepStage {
+    
+    WAKE,
+    LIGHT,
+    DEEP,
+    REM;
+
+    
+
+
+    companion object
+}
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeSleepStage: FfiConverterRustBuffer<SleepStage> {
+    override fun read(buf: ByteBuffer) = try {
+        SleepStage.values()[buf.getInt() - 1]
+    } catch (e: IndexOutOfBoundsException) {
+        throw RuntimeException("invalid enum value, something is very wrong!!", e)
+    }
+
+    override fun allocationSize(value: SleepStage) = 4UL
+
+    override fun write(value: SleepStage, buf: ByteBuffer) {
+        buf.putInt(value.ordinal + 1)
     }
 }
 
@@ -4558,6 +4982,146 @@ public object FfiConverterSequenceTypeRrRun: FfiConverterRustBuffer<List<RrRun>>
 /**
  * @suppress
  */
+public object FfiConverterSequenceTypeSleepAccelSample: FfiConverterRustBuffer<List<SleepAccelSample>> {
+    override fun read(buf: ByteBuffer): List<SleepAccelSample> {
+        val len = buf.getInt()
+        return List<SleepAccelSample>(len) {
+            FfiConverterTypeSleepAccelSample.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<SleepAccelSample>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeSleepAccelSample.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<SleepAccelSample>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeSleepAccelSample.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeSleepHrSample: FfiConverterRustBuffer<List<SleepHrSample>> {
+    override fun read(buf: ByteBuffer): List<SleepHrSample> {
+        val len = buf.getInt()
+        return List<SleepHrSample>(len) {
+            FfiConverterTypeSleepHrSample.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<SleepHrSample>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeSleepHrSample.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<SleepHrSample>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeSleepHrSample.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeSleepRespSample: FfiConverterRustBuffer<List<SleepRespSample>> {
+    override fun read(buf: ByteBuffer): List<SleepRespSample> {
+        val len = buf.getInt()
+        return List<SleepRespSample>(len) {
+            FfiConverterTypeSleepRespSample.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<SleepRespSample>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeSleepRespSample.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<SleepRespSample>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeSleepRespSample.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeSleepRrRun: FfiConverterRustBuffer<List<SleepRrRun>> {
+    override fun read(buf: ByteBuffer): List<SleepRrRun> {
+        val len = buf.getInt()
+        return List<SleepRrRun>(len) {
+            FfiConverterTypeSleepRrRun.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<SleepRrRun>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeSleepRrRun.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<SleepRrRun>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeSleepRrRun.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeSleepSegment: FfiConverterRustBuffer<List<SleepSegment>> {
+    override fun read(buf: ByteBuffer): List<SleepSegment> {
+        val len = buf.getInt()
+        return List<SleepSegment>(len) {
+            FfiConverterTypeSleepSegment.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<SleepSegment>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeSleepSegment.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<SleepSegment>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeSleepSegment.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterSequenceTypeStep: FfiConverterRustBuffer<List<Step>> {
     override fun read(buf: ByteBuffer): List<Step> {
         val len = buf.getInt()
@@ -4708,6 +5272,35 @@ public object FfiConverterSequenceOptionalDouble: FfiConverterRustBuffer<List<ko
         
         FfiConverterSequenceDouble.lower(`red`),
         FfiConverterSequenceDouble.lower(`ir`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Sleep hypnogram via V1 (Cole-Kripke) — the 4.0 recipe and the session-detection source of truth.
+         */ fun `stageSleepV1`(`input`: SleepInput): List<SleepSegment> {
+            return FfiConverterSequenceTypeSleepSegment.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_func_stage_sleep_v1(
+    
+        
+        FfiConverterTypeSleepInput.lower(`input`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Sleep hypnogram via V2 (cardiorespiratory) — the 5.0/MG default. Per-30 s-epoch stage segments over
+         * the detected in-bed span. Pure and deterministic.
+         */ fun `stageSleepV2`(`input`: SleepInput): List<SleepSegment> {
+            return FfiConverterSequenceTypeSleepSegment.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_func_stage_sleep_v2(
+    
+        
+        FfiConverterTypeSleepInput.lower(`input`),_status)
 }
     )
     }
