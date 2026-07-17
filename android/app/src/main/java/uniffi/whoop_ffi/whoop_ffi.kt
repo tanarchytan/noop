@@ -673,6 +673,10 @@ internal object IntegrityCheckingUniffiLib {
         uniffiCheckContractApiVersion(this)
         uniffiCheckApiChecksums(this)
     }
+    external fun uniffi_whoop_ffi_checksum_func_data_range_newest(
+    ): Int
+    external fun uniffi_whoop_ffi_checksum_func_data_range_oldest(
+    ): Int
     external fun uniffi_whoop_ffi_checksum_func_haptic_clock_pulses(
     ): Int
     external fun uniffi_whoop_ffi_checksum_func_hrv_readiness(
@@ -683,9 +687,13 @@ internal object IntegrityCheckingUniffiLib {
     ): Int
     external fun uniffi_whoop_ffi_checksum_func_spo2_from_paired(
     ): Int
+    external fun uniffi_whoop_ffi_checksum_method_whoopcodec_advertising_name_frame(
+    ): Int
     external fun uniffi_whoop_ffi_checksum_method_whoopcodec_alarm_disable_frame(
     ): Int
     external fun uniffi_whoop_ffi_checksum_method_whoopcodec_alarm_set_frame(
+    ): Int
+    external fun uniffi_whoop_ffi_checksum_method_whoopcodec_alarm_set_frame_gen4(
     ): Int
     external fun uniffi_whoop_ffi_checksum_method_whoopcodec_broadcast_hr_frame(
     ): Int
@@ -693,9 +701,17 @@ internal object IntegrityCheckingUniffiLib {
     ): Int
     external fun uniffi_whoop_ffi_checksum_method_whoopcodec_client_hello(
     ): Int
+    external fun uniffi_whoop_ffi_checksum_method_whoopcodec_command_frame(
+    ): Int
     external fun uniffi_whoop_ffi_checksum_method_whoopcodec_decode_history(
     ): Int
+    external fun uniffi_whoop_ffi_checksum_method_whoopcodec_decode_imu_frame(
+    ): Int
     external fun uniffi_whoop_ffi_checksum_method_whoopcodec_decode_live(
+    ): Int
+    external fun uniffi_whoop_ffi_checksum_method_whoopcodec_decode_metadata(
+    ): Int
+    external fun uniffi_whoop_ffi_checksum_method_whoopcodec_decode_ppg_frame(
     ): Int
     external fun uniffi_whoop_ffi_checksum_method_whoopcodec_decode_response(
     ): Int
@@ -716,6 +732,12 @@ internal object IntegrityCheckingUniffiLib {
     external fun uniffi_whoop_ffi_checksum_method_whoopcodec_reboot_frame(
     ): Int
     external fun uniffi_whoop_ffi_checksum_method_whoopcodec_reset(
+    ): Int
+    external fun uniffi_whoop_ffi_checksum_method_whoopcodec_run_haptics_frame(
+    ): Int
+    external fun uniffi_whoop_ffi_checksum_method_whoopcodec_set_clock_frame(
+    ): Int
+    external fun uniffi_whoop_ffi_checksum_method_whoopcodec_set_clock_legacy_frame(
     ): Int
     external fun uniffi_whoop_ffi_checksum_method_whoopcodec_set_config_frame(
     ): Int
@@ -749,9 +771,13 @@ internal object UniffiLib {
     ): Unit
     external fun uniffi_whoop_ffi_fn_constructor_whoopcodec_new(`gen`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): Long
+    external fun uniffi_whoop_ffi_fn_method_whoopcodec_advertising_name_frame(`ptr`: Long,`seq`: Byte,`name`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_method_whoopcodec_alarm_disable_frame(`ptr`: Long,`seq`: Byte,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_method_whoopcodec_alarm_set_frame(`ptr`: Long,`seq`: Byte,`wakeEpochMs`: Long,`alarmId`: Byte,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    external fun uniffi_whoop_ffi_fn_method_whoopcodec_alarm_set_frame_gen4(`ptr`: Long,`seq`: Byte,`wakeEpochSecs`: Int,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_method_whoopcodec_broadcast_hr_frame(`ptr`: Long,`seq`: Byte,`on`: Byte,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
@@ -759,9 +785,17 @@ internal object UniffiLib {
     ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_method_whoopcodec_client_hello(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
+    external fun uniffi_whoop_ffi_fn_method_whoopcodec_command_frame(`ptr`: Long,`seq`: Byte,`cmd`: Byte,`payload`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_method_whoopcodec_decode_history(`ptr`: Long,`raw`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
+    external fun uniffi_whoop_ffi_fn_method_whoopcodec_decode_imu_frame(`ptr`: Long,`raw`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_method_whoopcodec_decode_live(`ptr`: Long,`raw`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    external fun uniffi_whoop_ffi_fn_method_whoopcodec_decode_metadata(`ptr`: Long,`raw`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    external fun uniffi_whoop_ffi_fn_method_whoopcodec_decode_ppg_frame(`ptr`: Long,`raw`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_method_whoopcodec_decode_response(`ptr`: Long,`raw`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
@@ -783,11 +817,21 @@ internal object UniffiLib {
     ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_method_whoopcodec_reset(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
     ): Unit
+    external fun uniffi_whoop_ffi_fn_method_whoopcodec_run_haptics_frame(`ptr`: Long,`seq`: Byte,`patternId`: Byte,`loops`: Byte,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    external fun uniffi_whoop_ffi_fn_method_whoopcodec_set_clock_frame(`ptr`: Long,`seq`: Byte,`nowUnix`: Int,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    external fun uniffi_whoop_ffi_fn_method_whoopcodec_set_clock_legacy_frame(`ptr`: Long,`seq`: Byte,`nowUnix`: Int,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_method_whoopcodec_set_config_frame(`ptr`: Long,`seq`: Byte,`name`: RustBuffer.ByValue,`value`: Byte,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_method_whoopcodec_stop_raw_flood_frame(`ptr`: Long,`seq`: Byte,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_method_whoopcodec_toggle_realtime_hr_frame(`ptr`: Long,`seq`: Byte,`on`: Byte,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    external fun uniffi_whoop_ffi_fn_func_data_range_newest(`frame`: RustBuffer.ByValue,`wallNowUnix`: Long,`futureSkewSeconds`: Long,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    external fun uniffi_whoop_ffi_fn_func_data_range_oldest(`frame`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_func_haptic_clock_pulses(`hour`: Int,`minute`: Int,`is24h`: Byte,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
@@ -918,6 +962,12 @@ private fun uniffiCheckContractApiVersion(lib: IntegrityCheckingUniffiLib) {
 }
 @Suppress("UNUSED_PARAMETER")
 private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
+    if (lib.uniffi_whoop_ffi_checksum_func_data_range_newest() != 53769) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_whoop_ffi_checksum_func_data_range_oldest() != 344) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_whoop_ffi_checksum_func_haptic_clock_pulses() != 28487) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
@@ -933,10 +983,16 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_whoop_ffi_checksum_func_spo2_from_paired() != 11748) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_whoop_ffi_checksum_method_whoopcodec_advertising_name_frame() != 25971) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_whoop_ffi_checksum_method_whoopcodec_alarm_disable_frame() != 46355) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_whoop_ffi_checksum_method_whoopcodec_alarm_set_frame() != 19569) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_whoop_ffi_checksum_method_whoopcodec_alarm_set_frame_gen4() != 9936) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_whoop_ffi_checksum_method_whoopcodec_broadcast_hr_frame() != 13762) {
@@ -948,10 +1004,22 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_whoop_ffi_checksum_method_whoopcodec_client_hello() != 3690) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_whoop_ffi_checksum_method_whoopcodec_command_frame() != 13829) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_whoop_ffi_checksum_method_whoopcodec_decode_history() != 27090) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_whoop_ffi_checksum_method_whoopcodec_decode_imu_frame() != 59046) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_whoop_ffi_checksum_method_whoopcodec_decode_live() != 56040) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_whoop_ffi_checksum_method_whoopcodec_decode_metadata() != 33906) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_whoop_ffi_checksum_method_whoopcodec_decode_ppg_frame() != 19846) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_whoop_ffi_checksum_method_whoopcodec_decode_response() != 29506) {
@@ -982,6 +1050,15 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_whoop_ffi_checksum_method_whoopcodec_reset() != 2067) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_whoop_ffi_checksum_method_whoopcodec_run_haptics_frame() != 13284) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_whoop_ffi_checksum_method_whoopcodec_set_clock_frame() != 62713) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_whoop_ffi_checksum_method_whoopcodec_set_clock_legacy_frame() != 42586) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_whoop_ffi_checksum_method_whoopcodec_set_config_frame() != 61201) {
@@ -1570,6 +1647,12 @@ public object FfiConverterByteArray: FfiConverterRustBuffer<ByteArray> {
 public interface WhoopCodecInterface {
     
     /**
+     * SET_ADVERTISING_NAME — rename the 4.0 strap's BLE advertising name (clamped to 24 UTF-8 bytes). The
+     * strap reboots to apply. Gated in the app.
+     */
+    fun `advertisingNameFrame`(`seq`: kotlin.UByte, `name`: kotlin.String): kotlin.ByteArray
+    
+    /**
      * DISABLE_ALARM (5/MG form).
      */
     fun `alarmDisableFrame`(`seq`: kotlin.UByte): kotlin.ByteArray
@@ -1578,6 +1661,12 @@ public interface WhoopCodecInterface {
      * SET_ALARM_TIME (5/MG, 20-byte body). `wake_epoch_ms` is resolved app-side. Experimental, UI-gated.
      */
     fun `alarmSetFrame`(`seq`: kotlin.UByte, `wakeEpochMs`: kotlin.ULong, `alarmId`: kotlin.UByte): kotlin.ByteArray
+    
+    /**
+     * SET_ALARM_TIME — the WHOOP 4.0 9-byte body (minute-precision). `wake_epoch_secs` is resolved
+     * app-side. Experimental, UI-gated.
+     */
+    fun `alarmSetFrameGen4`(`seq`: kotlin.UByte, `wakeEpochSecs`: kotlin.UInt): kotlin.ByteArray
     
     /**
      * SET_DEVICE_CONFIG to advertise standard 0x180D HR (Garmin/Edge). Opt-in gated in the app.
@@ -1595,15 +1684,38 @@ public interface WhoopCodecInterface {
     fun `clientHello`(): kotlin.ByteArray
     
     /**
+     * Generic outbound COMMAND builder for opcodes without a dedicated method (get-clock/version,
+     * alarm-readback, run-alarm, stop-haptics, historical-data-result, plus the gated set-clock/adv-name
+     * the app allow-lists). Refuses the genuinely-destructive set (trim/DFU) so it can't be built here.
+     */
+    fun `commandFrame`(`seq`: kotlin.UByte, `cmd`: kotlin.UByte, `payload`: kotlin.ByteArray): kotlin.ByteArray?
+    
+    /**
      * Decode a single complete history frame (for offline replay of a captured file).
      */
     fun `decodeHistory`(`raw`: kotlin.ByteArray): HistorySummary?
+    
+    /**
+     * Decode a single v21 6-axis IMU buffer frame (accel/gyro columns) for the deep-buffer diagnostics.
+     */
+    fun `decodeImuFrame`(`raw`: kotlin.ByteArray): ImuFrame?
     
     /**
      * Decode a single live-notify frame (realtime HR/R-R, on-wrist r22 biometric, event/battery, or
      * console text). Stateless; the app routes live-channel frames here, offload stays in `feed`.
      */
     fun `decodeLive`(`raw`: kotlin.ByteArray): Live?
+    
+    /**
+     * Decode a single METADATA frame's offload-state fields (meta_type + unix + trim_cursor + crc_ok), so
+     * the app's offload state machine can recognise HISTORY_END/COMPLETE. `None` off a non-metadata frame.
+     */
+    fun `decodeMetadata`(`raw`: kotlin.ByteArray): MetadataInfo?
+    
+    /**
+     * Decode a single v26 PPG waveform frame (the 24 optical samples) for offline replay / the deep buffers.
+     */
+    fun `decodePpgFrame`(`raw`: kotlin.ByteArray): PpgFrame?
     
     /**
      * Decode a single command-response frame (identity/battery/clock/data-range/firmware).
@@ -1656,6 +1768,23 @@ public interface WhoopCodecInterface {
      * Drop any buffered partial frames — call on (re)connect.
      */
     fun `reset`()
+    
+    /**
+     * RUN_HAPTICS_PATTERN — the 4.0 preset buzz `[pattern_id][loops][0][0][0]` (pattern 2 = graduated
+     * alarm buzz). On 5/MG the app remaps to the maverick buzz instead.
+     */
+    fun `runHapticsFrame`(`seq`: kotlin.UByte, `patternId`: kotlin.UByte, `loops`: kotlin.UByte): kotlin.ByteArray
+    
+    /**
+     * SET_CLOCK — the 8-byte form newer firmware latches. Gated in the app.
+     */
+    fun `setClockFrame`(`seq`: kotlin.UByte, `nowUnix`: kotlin.UInt): kotlin.ByteArray
+    
+    /**
+     * SET_CLOCK — the legacy 9-byte form older 4.0 firmware needs (a no-op on newer). Sent alongside the
+     * 8-byte form so either firmware latches.
+     */
+    fun `setClockLegacyFrame`(`seq`: kotlin.UByte, `nowUnix`: kotlin.UInt): kotlin.ByteArray
     
     /**
      * SET_CONFIG for one runtime-named feature flag. Opt-in / deep-data gated in the app.
@@ -1791,6 +1920,25 @@ open class WhoopCodec: Disposable, AutoCloseable, WhoopCodecInterface
 
     
     /**
+     * SET_ADVERTISING_NAME — rename the 4.0 strap's BLE advertising name (clamped to 24 UTF-8 bytes). The
+     * strap reboots to apply. Gated in the app.
+     */override fun `advertisingNameFrame`(`seq`: kotlin.UByte, `name`: kotlin.String): kotlin.ByteArray {
+            return FfiConverterByteArray.lift(
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_method_whoopcodec_advertising_name_frame(
+        it,
+        
+        FfiConverterUByte.lower(`seq`),
+        FfiConverterString.lower(`name`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
      * DISABLE_ALARM (5/MG form).
      */override fun `alarmDisableFrame`(`seq`: kotlin.UByte): kotlin.ByteArray {
             return FfiConverterByteArray.lift(
@@ -1819,6 +1967,25 @@ open class WhoopCodec: Disposable, AutoCloseable, WhoopCodecInterface
         FfiConverterUByte.lower(`seq`),
         FfiConverterULong.lower(`wakeEpochMs`),
         FfiConverterUByte.lower(`alarmId`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * SET_ALARM_TIME — the WHOOP 4.0 9-byte body (minute-precision). `wake_epoch_secs` is resolved
+     * app-side. Experimental, UI-gated.
+     */override fun `alarmSetFrameGen4`(`seq`: kotlin.UByte, `wakeEpochSecs`: kotlin.UInt): kotlin.ByteArray {
+            return FfiConverterByteArray.lift(
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_method_whoopcodec_alarm_set_frame_gen4(
+        it,
+        
+        FfiConverterUByte.lower(`seq`),
+        FfiConverterUInt.lower(`wakeEpochSecs`),_status)
 }
     }
     )
@@ -1878,12 +2045,50 @@ open class WhoopCodec: Disposable, AutoCloseable, WhoopCodecInterface
 
     
     /**
+     * Generic outbound COMMAND builder for opcodes without a dedicated method (get-clock/version,
+     * alarm-readback, run-alarm, stop-haptics, historical-data-result, plus the gated set-clock/adv-name
+     * the app allow-lists). Refuses the genuinely-destructive set (trim/DFU) so it can't be built here.
+     */override fun `commandFrame`(`seq`: kotlin.UByte, `cmd`: kotlin.UByte, `payload`: kotlin.ByteArray): kotlin.ByteArray? {
+            return FfiConverterOptionalByteArray.lift(
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_method_whoopcodec_command_frame(
+        it,
+        
+        FfiConverterUByte.lower(`seq`),
+        FfiConverterUByte.lower(`cmd`),
+        FfiConverterByteArray.lower(`payload`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
      * Decode a single complete history frame (for offline replay of a captured file).
      */override fun `decodeHistory`(`raw`: kotlin.ByteArray): HistorySummary? {
             return FfiConverterOptionalTypeHistorySummary.lift(
     callWithHandle {
     uniffiRustCall() { _status ->
     UniffiLib.uniffi_whoop_ffi_fn_method_whoopcodec_decode_history(
+        it,
+        
+        FfiConverterByteArray.lower(`raw`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Decode a single v21 6-axis IMU buffer frame (accel/gyro columns) for the deep-buffer diagnostics.
+     */override fun `decodeImuFrame`(`raw`: kotlin.ByteArray): ImuFrame? {
+            return FfiConverterOptionalTypeImuFrame.lift(
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_method_whoopcodec_decode_imu_frame(
         it,
         
         FfiConverterByteArray.lower(`raw`),_status)
@@ -1902,6 +2107,41 @@ open class WhoopCodec: Disposable, AutoCloseable, WhoopCodecInterface
     callWithHandle {
     uniffiRustCall() { _status ->
     UniffiLib.uniffi_whoop_ffi_fn_method_whoopcodec_decode_live(
+        it,
+        
+        FfiConverterByteArray.lower(`raw`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Decode a single METADATA frame's offload-state fields (meta_type + unix + trim_cursor + crc_ok), so
+     * the app's offload state machine can recognise HISTORY_END/COMPLETE. `None` off a non-metadata frame.
+     */override fun `decodeMetadata`(`raw`: kotlin.ByteArray): MetadataInfo? {
+            return FfiConverterOptionalTypeMetadataInfo.lift(
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_method_whoopcodec_decode_metadata(
+        it,
+        
+        FfiConverterByteArray.lower(`raw`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Decode a single v26 PPG waveform frame (the 24 optical samples) for offline replay / the deep buffers.
+     */override fun `decodePpgFrame`(`raw`: kotlin.ByteArray): PpgFrame? {
+            return FfiConverterOptionalTypePpgFrame.lift(
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_method_whoopcodec_decode_ppg_frame(
         it,
         
         FfiConverterByteArray.lower(`raw`),_status)
@@ -2077,6 +2317,63 @@ open class WhoopCodec: Disposable, AutoCloseable, WhoopCodecInterface
 }
     }
     
+    
+
+    
+    /**
+     * RUN_HAPTICS_PATTERN — the 4.0 preset buzz `[pattern_id][loops][0][0][0]` (pattern 2 = graduated
+     * alarm buzz). On 5/MG the app remaps to the maverick buzz instead.
+     */override fun `runHapticsFrame`(`seq`: kotlin.UByte, `patternId`: kotlin.UByte, `loops`: kotlin.UByte): kotlin.ByteArray {
+            return FfiConverterByteArray.lift(
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_method_whoopcodec_run_haptics_frame(
+        it,
+        
+        FfiConverterUByte.lower(`seq`),
+        FfiConverterUByte.lower(`patternId`),
+        FfiConverterUByte.lower(`loops`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * SET_CLOCK — the 8-byte form newer firmware latches. Gated in the app.
+     */override fun `setClockFrame`(`seq`: kotlin.UByte, `nowUnix`: kotlin.UInt): kotlin.ByteArray {
+            return FfiConverterByteArray.lift(
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_method_whoopcodec_set_clock_frame(
+        it,
+        
+        FfiConverterUByte.lower(`seq`),
+        FfiConverterUInt.lower(`nowUnix`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * SET_CLOCK — the legacy 9-byte form older 4.0 firmware needs (a no-op on newer). Sent alongside the
+     * 8-byte form so either firmware latches.
+     */override fun `setClockLegacyFrame`(`seq`: kotlin.UByte, `nowUnix`: kotlin.UInt): kotlin.ByteArray {
+            return FfiConverterByteArray.lift(
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_method_whoopcodec_set_clock_legacy_frame(
+        it,
+        
+        FfiConverterUByte.lower(`seq`),
+        FfiConverterUInt.lower(`nowUnix`),_status)
+}
+    }
+    )
+    }
     
 
     
@@ -2341,6 +2638,111 @@ public object FfiConverterTypeHrvReadinessInfo: FfiConverterRustBuffer<HrvReadin
 
 
 /**
+ * A single-frame v21 100 Hz 6-axis IMU buffer: accel + gyro interleaved x,y,z per sample (raw i16 LSB —
+ * scale accel by 1/4096 for g, gyro by 2000/32768 for deg/s).
+ */
+data class ImuFrame (
+    var `unix`: kotlin.UInt
+    , 
+    var `sampleRateHz`: kotlin.UShort
+    , 
+    var `accel`: List<kotlin.Short>
+    , 
+    var `gyro`: List<kotlin.Short>
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeImuFrame: FfiConverterRustBuffer<ImuFrame> {
+    override fun read(buf: ByteBuffer): ImuFrame {
+        return ImuFrame(
+            FfiConverterUInt.read(buf),
+            FfiConverterUShort.read(buf),
+            FfiConverterSequenceShort.read(buf),
+            FfiConverterSequenceShort.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: ImuFrame) = (
+            FfiConverterUInt.allocationSize(value.`unix`) +
+            FfiConverterUShort.allocationSize(value.`sampleRateHz`) +
+            FfiConverterSequenceShort.allocationSize(value.`accel`) +
+            FfiConverterSequenceShort.allocationSize(value.`gyro`)
+    )
+
+    override fun write(value: ImuFrame, buf: ByteBuffer) {
+            FfiConverterUInt.write(value.`unix`, buf)
+            FfiConverterUShort.write(value.`sampleRateHz`, buf)
+            FfiConverterSequenceShort.write(value.`accel`, buf)
+            FfiConverterSequenceShort.write(value.`gyro`, buf)
+    }
+}
+
+
+
+/**
+ * METADATA offload-state fields: `meta_type` (1 start / 2 end / 3 complete) drives the drain, and for a
+ * HISTORY_END `unix` + `trim_cursor` are the ack/advance cursor. `crc_ok` lets the app gate on a
+ * checksum-valid frame (a forged HISTORY_END must not advance the trim over unstored data).
+ */
+data class MetadataInfo (
+    var `metaType`: kotlin.UByte
+    , 
+    var `unix`: kotlin.UInt
+    , 
+    var `trimCursor`: kotlin.UInt
+    , 
+    var `crcOk`: kotlin.Boolean
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeMetadataInfo: FfiConverterRustBuffer<MetadataInfo> {
+    override fun read(buf: ByteBuffer): MetadataInfo {
+        return MetadataInfo(
+            FfiConverterUByte.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterBoolean.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: MetadataInfo) = (
+            FfiConverterUByte.allocationSize(value.`metaType`) +
+            FfiConverterUInt.allocationSize(value.`unix`) +
+            FfiConverterUInt.allocationSize(value.`trimCursor`) +
+            FfiConverterBoolean.allocationSize(value.`crcOk`)
+    )
+
+    override fun write(value: MetadataInfo, buf: ByteBuffer) {
+            FfiConverterUByte.write(value.`metaType`, buf)
+            FfiConverterUInt.write(value.`unix`, buf)
+            FfiConverterUInt.write(value.`trimCursor`, buf)
+            FfiConverterBoolean.write(value.`crcOk`, buf)
+    }
+}
+
+
+
+/**
  * A derived HR estimate from `ppg_hr`.
  */
 data class PpgEstimate (
@@ -2381,6 +2783,52 @@ public object FfiConverterTypePpgEstimate: FfiConverterRustBuffer<PpgEstimate> {
             FfiConverterLong.write(value.`ts`, buf)
             FfiConverterInt.write(value.`bpm`, buf)
             FfiConverterDouble.write(value.`conf`, buf)
+    }
+}
+
+
+
+/**
+ * A single-frame v26 24 Hz PPG waveform (24 i16 samples, single wavelength).
+ */
+data class PpgFrame (
+    var `unix`: kotlin.UInt
+    , 
+    var `recordId`: kotlin.UShort?
+    , 
+    var `samples`: List<kotlin.Short>
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypePpgFrame: FfiConverterRustBuffer<PpgFrame> {
+    override fun read(buf: ByteBuffer): PpgFrame {
+        return PpgFrame(
+            FfiConverterUInt.read(buf),
+            FfiConverterOptionalUShort.read(buf),
+            FfiConverterSequenceShort.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: PpgFrame) = (
+            FfiConverterUInt.allocationSize(value.`unix`) +
+            FfiConverterOptionalUShort.allocationSize(value.`recordId`) +
+            FfiConverterSequenceShort.allocationSize(value.`samples`)
+    )
+
+    override fun write(value: PpgFrame, buf: ByteBuffer) {
+            FfiConverterUInt.write(value.`unix`, buf)
+            FfiConverterOptionalUShort.write(value.`recordId`, buf)
+            FfiConverterSequenceShort.write(value.`samples`, buf)
     }
 }
 
@@ -3105,6 +3553,23 @@ sealed class Step {
     }
     
     /**
+     * A raw multi-wavelength optical buffer (v20): ~25 Hz × 6 channels, raw 20-bit signed ADC counts,
+     * flattened channel-major (25 samples of ch0, then ch1, …). Channels [0,1] green, [2,3] ambient,
+     * [4,5] red/IR (inferred). SpO2 % is not here — it rides the v18 summary.
+     */
+    data class Optical(
+        val `unix`: kotlin.UInt, 
+        val `sampleRateHz`: kotlin.UShort, 
+        val `channels`: kotlin.UByte, 
+        val `samples`: List<kotlin.Int>) : Step()
+        
+    {
+        
+
+        companion object
+    }
+    
+    /**
      * Write these bytes (confirmed) to the command characteristic — the mandatory HISTORY_END ACK.
      */
     data class Ack(
@@ -3152,10 +3617,16 @@ public object FfiConverterTypeStep : FfiConverterRustBuffer<Step>{
                 FfiConverterSequenceShort.read(buf),
                 FfiConverterSequenceShort.read(buf),
                 )
-            4 -> Step.Ack(
+            4 -> Step.Optical(
+                FfiConverterUInt.read(buf),
+                FfiConverterUShort.read(buf),
+                FfiConverterUByte.read(buf),
+                FfiConverterSequenceInt.read(buf),
+                )
+            5 -> Step.Ack(
                 FfiConverterByteArray.read(buf),
                 )
-            5 -> Step.Complete
+            6 -> Step.Complete
             else -> throw RuntimeException("invalid enum value, something is very wrong!!")
         }
     }
@@ -3185,6 +3656,16 @@ public object FfiConverterTypeStep : FfiConverterRustBuffer<Step>{
                 + FfiConverterUShort.allocationSize(value.`sampleRateHz`)
                 + FfiConverterSequenceShort.allocationSize(value.`accel`)
                 + FfiConverterSequenceShort.allocationSize(value.`gyro`)
+            )
+        }
+        is Step.Optical -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterUInt.allocationSize(value.`unix`)
+                + FfiConverterUShort.allocationSize(value.`sampleRateHz`)
+                + FfiConverterUByte.allocationSize(value.`channels`)
+                + FfiConverterSequenceInt.allocationSize(value.`samples`)
             )
         }
         is Step.Ack -> {
@@ -3224,13 +3705,21 @@ public object FfiConverterTypeStep : FfiConverterRustBuffer<Step>{
                 FfiConverterSequenceShort.write(value.`gyro`, buf)
                 Unit
             }
-            is Step.Ack -> {
+            is Step.Optical -> {
                 buf.putInt(4)
+                FfiConverterUInt.write(value.`unix`, buf)
+                FfiConverterUShort.write(value.`sampleRateHz`, buf)
+                FfiConverterUByte.write(value.`channels`, buf)
+                FfiConverterSequenceInt.write(value.`samples`, buf)
+                Unit
+            }
+            is Step.Ack -> {
+                buf.putInt(5)
                 FfiConverterByteArray.write(value.`frame`, buf)
                 Unit
             }
             is Step.Complete -> {
-                buf.putInt(5)
+                buf.putInt(6)
                 Unit
             }
         }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
@@ -3299,6 +3788,38 @@ public object FfiConverterOptionalUShort: FfiConverterRustBuffer<kotlin.UShort?>
         } else {
             buf.put(1)
             FfiConverterUShort.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterOptionalUInt: FfiConverterRustBuffer<kotlin.UInt?> {
+    override fun read(buf: ByteBuffer): kotlin.UInt? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterUInt.read(buf)
+    }
+
+    override fun allocationSize(value: kotlin.UInt?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterUInt.allocationSize(value)
+        }
+    }
+
+    override fun write(value: kotlin.UInt?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterUInt.write(value, buf)
         }
     }
 }
@@ -3533,6 +4054,102 @@ public object FfiConverterOptionalTypeHrvReadinessInfo: FfiConverterRustBuffer<H
 /**
  * @suppress
  */
+public object FfiConverterOptionalTypeImuFrame: FfiConverterRustBuffer<ImuFrame?> {
+    override fun read(buf: ByteBuffer): ImuFrame? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterTypeImuFrame.read(buf)
+    }
+
+    override fun allocationSize(value: ImuFrame?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterTypeImuFrame.allocationSize(value)
+        }
+    }
+
+    override fun write(value: ImuFrame?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterTypeImuFrame.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterOptionalTypeMetadataInfo: FfiConverterRustBuffer<MetadataInfo?> {
+    override fun read(buf: ByteBuffer): MetadataInfo? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterTypeMetadataInfo.read(buf)
+    }
+
+    override fun allocationSize(value: MetadataInfo?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterTypeMetadataInfo.allocationSize(value)
+        }
+    }
+
+    override fun write(value: MetadataInfo?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterTypeMetadataInfo.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterOptionalTypePpgFrame: FfiConverterRustBuffer<PpgFrame?> {
+    override fun read(buf: ByteBuffer): PpgFrame? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterTypePpgFrame.read(buf)
+    }
+
+    override fun allocationSize(value: PpgFrame?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterTypePpgFrame.allocationSize(value)
+        }
+    }
+
+    override fun write(value: PpgFrame?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterTypePpgFrame.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterOptionalTypeLive: FfiConverterRustBuffer<Live?> {
     override fun read(buf: ByteBuffer): Live? {
         if (buf.get().toInt() == 0) {
@@ -3703,6 +4320,34 @@ public object FfiConverterSequenceUInt: FfiConverterRustBuffer<List<kotlin.UInt>
         buf.putInt(value.size)
         value.iterator().forEach {
             FfiConverterUInt.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceInt: FfiConverterRustBuffer<List<kotlin.Int>> {
+    override fun read(buf: ByteBuffer): List<kotlin.Int> {
+        val len = buf.getInt()
+        return List<kotlin.Int>(len) {
+            FfiConverterInt.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<kotlin.Int>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterInt.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<kotlin.Int>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterInt.write(it, buf)
         }
     }
 }
@@ -3958,6 +4603,39 @@ public object FfiConverterSequenceOptionalDouble: FfiConverterRustBuffer<List<ko
         }
     }
 }
+        /**
+         * Newest plausible unix banked, scanning EVERY byte offset of a GET_DATA_RANGE frame and preferring the
+         * newest non-future word (falls back to newest-any). This is the sync gate — it REPLACES the fixed-offset
+         * `Response::DataRange` newest read.
+         */ fun `dataRangeNewest`(`frame`: kotlin.ByteArray, `wallNowUnix`: kotlin.ULong, `futureSkewSeconds`: kotlin.ULong): kotlin.UInt? {
+            return FfiConverterOptionalUInt.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_func_data_range_newest(
+    
+        
+        FfiConverterByteArray.lower(`frame`),
+        FfiConverterULong.lower(`wallNowUnix`),
+        FfiConverterULong.lower(`futureSkewSeconds`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Oldest plausible unix banked (backlog depth), scanning only the aligned-from-7 grid (asymmetric with
+         * the newest scan by design, to dodge a WHOOP-4 straddle word).
+         */ fun `dataRangeOldest`(`frame`: kotlin.ByteArray): kotlin.UInt? {
+            return FfiConverterOptionalUInt.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_func_data_range_oldest(
+    
+        
+        FfiConverterByteArray.lower(`frame`),_status)
+}
+    )
+    }
+    
+
         /**
          * The haptic pulses for a clock chime (write a buzz per pulse, spaced by its gap). Pure encoder.
          */ fun `hapticClockPulses`(`hour`: kotlin.UInt, `minute`: kotlin.UInt, `is24h`: kotlin.Boolean): List<Pulse> {

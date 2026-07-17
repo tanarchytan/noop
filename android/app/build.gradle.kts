@@ -214,3 +214,15 @@ dependencies {
     debugImplementation("androidx.compose.ui:ui-tooling")
     debugImplementation("androidx.compose.ui:ui-test-manifest")
 }
+
+// --- Host cdylib for the JVM unit tests (see jna.library.path in testOptions) ---
+// The decode-pipeline tests load the host build of libwhoop_ffi via JNA. Build it from the sibling
+// whoop-rs checkout before unit tests run so they exercise the real Rust decode. Skips cleanly when
+// the sibling checkout (or cargo) is absent, in which case the FFI test self-skips as before.
+val whoopRsDir = rootProject.projectDir.resolve("../../whoop-rs")
+val buildRustHostDll = tasks.register<Exec>("buildRustHostDll") {
+    workingDir = whoopRsDir
+    commandLine("cargo", "build", "--release", "-p", "whoop-ffi")
+    onlyIf { whoopRsDir.resolve("Cargo.toml").exists() }
+}
+tasks.withType<Test>().configureEach { dependsOn(buildRustHostDll) }
