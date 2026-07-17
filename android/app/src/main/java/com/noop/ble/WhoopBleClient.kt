@@ -38,10 +38,10 @@ import com.noop.protocol.BackfillCaptureRecord
 import com.noop.protocol.BackfillCaptureSummary
 import com.noop.protocol.CommandNumber
 import com.noop.protocol.DeviceFamily
-import com.noop.protocol.Framing
 import com.noop.protocol.HapticClock
 import com.noop.protocol.Reassembler
 import com.noop.protocol.RebootProbeVariant
+import com.noop.protocol.RustAdapter
 import com.noop.protocol.RustCodec
 import com.noop.protocol.Streams
 import com.noop.protocol.Whoop5Config
@@ -3666,8 +3666,9 @@ class WhoopBleClient(
                     noteWhoop5R22Telemetry(frame, offloadFrame)  // #174
                     // #47: decode this frame ONCE and thread it to both consumers (the router below and the
                     // live collector) instead of each re-parsing it — steady-state drops 2→1 parse per live
-                    // frame. Family-aware, so it's correct for WHOOP4 and 5/MG alike.
-                    val parsed = Framing.parseFrame(frame, connectedFamily)
+                    // frame. Family-aware, so it's correct for WHOOP4 and 5/MG alike. Decode is whoop-rs's
+                    // (the sole bytes->values decoder); this yields the app ParsedFrame contract from it.
+                    val parsed = RustAdapter.parseFrame(frame, connectedFamily)
                     // A frame replayed as part of the historical offload (type 47/48/… during a backfill)
                     // must not drive LIVE-only state (the charging pill). Mirrors iOS, where the offload
                     // path skips the live router entirely. (PR #568 reimpl)
@@ -3754,7 +3755,7 @@ class WhoopBleClient(
                         // are retained before the trim ack deletes the strap's copy. No-op (single
                         // null check) when the toggle is off. (#78 fork)
                         if (connectedFamily == DeviceFamily.WHOOP5 && captureWriter != null) {
-                            writeWhoop5BackfillCapture(uuid.toString(), frame)
+                            writeWhoop5BackfillCapture(uuid.toString(), frame, parsed)
                         }
                         // Historical offload: route ONLY genuine offload frames (47/48/49/50) through
                         // the serial drain (preserves chunk order) + re-arm the idle watchdog on them.
@@ -3839,7 +3840,7 @@ class WhoopBleClient(
     /** Parse-then-route shim (#47). Kept for any caller/test that passes raw bytes; the live dispatcher
      *  parses ONCE and calls the overload below with the result. */
     private fun handleFrame(frame: ByteArray, replayedOffload: Boolean = false) =
-        handleFrame(frame, Framing.parseFrame(frame, connectedFamily), replayedOffload)
+        handleFrame(frame, RustAdapter.parseFrame(frame, connectedFamily), replayedOffload)
 
     /** #47: the dispatcher decodes each frame ONCE and threads it here, so a live frame is parsed once
      *  instead of twice (this router path + the live-collector flush). `frame` is still passed for the
@@ -4768,7 +4769,7 @@ class WhoopBleClient(
     /** Parse-then-buffer shim (#47). Kept for callers that pass raw bytes; the live dispatcher passes the
      *  parse it already did. */
     private fun ingestLiveFrame(frame: ByteArray) =
-        ingestLiveFrame(frame, Framing.parseFrame(frame, connectedFamily))
+        ingestLiveFrame(frame, RustAdapter.parseFrame(frame, connectedFamily))
 
     private fun ingestLiveFrame(frame: ByteArray, parsed: com.noop.protocol.ParsedFrame) {
         val shouldFlush = synchronized(collectorLock) {
@@ -5783,10 +5784,12 @@ class WhoopBleClient(
         }
     }
 
-    private fun writeWhoop5BackfillCapture(characteristic: String, frame: ByteArray) {
+    private fun writeWhoop5BackfillCapture(characteristic: String, frame: ByteArray, parsed: com.noop.protocol.ParsedFrame) {
         val w = captureWriter ?: return
         runCatching {
-            val parsed = Framing.parseFrame(frame, connectedFamily)
+            // #47: reuse the whoop-rs-decoded frame the inbound loop already produced (no re-parse). The
+            // annotation (typeName/crcOk/parsed) is whoop-rs's for the live-decodable types; the raw `hex`
+            // is always the authoritative research payload.
             captureSummary.record(parsed.typeName, parsed.crcOk, frame.size, characteristic, frame.toHex())
             val line = BackfillCaptureJsonl.encode(
                 BackfillCaptureRecord(
