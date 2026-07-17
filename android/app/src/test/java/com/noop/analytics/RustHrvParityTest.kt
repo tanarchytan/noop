@@ -97,7 +97,7 @@ class RustHrvParityTest {
     @Test
     fun `rust rmssd matches the kotlin stored value on real backup nights`() {
         val path = System.getProperty("noop.rrFixture")
-            ?: "C:/Users/DavidGillot/Projects/whoop/whoop data/rr-real-fixture.json"
+            ?: "C:/Users/DavidGillot/Projects/whoop/whoop-data/harnesses/rr-real-fixture.json"
         val f = File(path)
         assumeTrue("real R-R fixture absent (local-only), skipping: $path", f.exists())
 
@@ -130,7 +130,7 @@ class RustHrvParityTest {
     @Test
     fun `rust rmssd matches the kotlin stored value on gold nn windows`() {
         val dir = System.getProperty("noop.hrvGoldFixtures")
-            ?: "C:/Users/DavidGillot/Projects/whoop/whoop data/datasets/agreement-fixtures"
+            ?: "C:/Users/DavidGillot/Projects/whoop/whoop-data/harnesses/agreement-fixtures"
         val fixtures = File(dir).listFiles { fl -> fl.extension == "json" }?.sortedBy { it.name }.orEmpty()
         assumeTrue("gold HRV fixtures absent (local-only), skipping: $dir", fixtures.isNotEmpty())
 
@@ -144,7 +144,7 @@ class RustHrvParityTest {
             val ws = obj.getJSONArray("windows")
             for (i in 0 until ws.length()) {
                 val w = ws.getJSONObject(i)
-                val nnArr = w.getJSONArray("nn")
+                val nnArr = w.optJSONArray("nn") ?: continue   // e.g. optical-vs-gold windows carry no NN
                 if (nnArr.length() < 2) continue
                 val rows = ArrayList<RrInterval>(nnArr.length())
                 var tSec = 0.0
