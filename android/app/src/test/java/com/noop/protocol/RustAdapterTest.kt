@@ -88,9 +88,14 @@ class RustAdapterTest {
     }
 
     @Test
-    fun `spo2 pct is not stored`() {
+    fun `spo2 pct maps to its own stream, never the red-ir spo2 list`() {
         val b = RustAdapter.historyToRows(summary(spo2Pct = 97), ts = 3L)
-        assertTrue(b.spo2.isEmpty()) // 5.0 sleep SpO2 % is intentionally unstored, matching Kotlin
+        assertEquals(97, b.spo2Pct.single().pct) // 5/MG sleep SpO2 % → its own stream
+        assertEquals(3L, b.spo2Pct.single().ts)
+        assertTrue(b.spo2.isEmpty()) // never leaks into the raw red/IR spo2 list
+
+        val none = RustAdapter.historyToRows(summary(spo2Pct = null), ts = 3L)
+        assertTrue(none.spo2Pct.isEmpty()) // null (sentinel dropped at decode) → no row
     }
 
     // ---- PRIMARY seam: HistorySummary → the flat map keys the offload loop reads (no native lib) --------
@@ -114,13 +119,16 @@ class RustAdapterTest {
     }
 
     @Test
-    fun `summaryToHistMap omits absent fields and never emits spo2 pct`() {
+    fun `summaryToHistMap omits absent fields and emits spo2 pct when present`() {
         val m = RustAdapter.summaryToHistMap(summary(heartRate = 0, spo2Pct = 97))
         assertEquals(0, m["heart_rate"]) // present-but-0: the loop drops it, the map carries it
         assertTrue(m["rr_intervals"] as List<*> == emptyList<Int>())
         assertTrue(!m.containsKey("skin_temp_raw"))
         assertTrue(!m.containsKey("gravity_x"))
-        assertTrue(!m.containsKey("spo2_pct")) // 5.0 sleep SpO2 % is not a stored key
+        assertEquals(97, m["spo2_pct"]) // 5/MG sleep SpO2 % now stored when the decode surfaced one
+
+        // Absent (sentinel/diagnostic dropped at decode) → the key is omitted, never a fabricated 0.
+        assertTrue(!RustAdapter.summaryToHistMap(summary(heartRate = 0)).containsKey("spo2_pct"))
     }
 
     // ---- PRIMARY seam: widened Live.Event → the stored (kind, rawTs, residual) contract (no native) -----

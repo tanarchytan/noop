@@ -29,6 +29,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         EventRow::class,
         BatterySample::class,
         Spo2Sample::class,
+        Spo2PctSample::class,
         SkinTempSample::class,
         StepSample::class,
         SleepStateSampleEntity::class,
@@ -49,7 +50,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         LiveSessionRow::class,
         PpgWaveformSampleEntity::class,
     ],
-    version = 20,
+    version = 21,
     exportSchema = false,
 )
 abstract class WhoopDatabase : RoomDatabase() {
@@ -553,6 +554,27 @@ abstract class WhoopDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * v20 -> v21: ADDITIVE, adds the `spo2PctSample` table — the WHOOP 5.0/MG sleep SpO2 percent
+         * whoop-rs already decodes (v18 @frame-82) but which the app discarded. One row per (deviceId, ts),
+         * the SAME shape as every other per-second decoded stream (sleepStateSample precedent). CREATE TABLE
+         * only (no existing data touched), so already-offloaded raw streams survive (the strap trims acked
+         * history and won't re-send it). The SQL MUST match Room's generated schema for [Spo2PctSample]
+         * exactly: every column NOT NULL (Kotlin, no SQL DEFAULT), composite PRIMARY KEY (deviceId, ts) in
+         * declaration order. No destructive fallback (see the class doc). Exposed as
+         * [SPO2_PCT_SAMPLE_MIGRATION_SQL] so a plain-JVM unit test can pin the shape without Robolectric.
+         */
+        internal val SPO2_PCT_SAMPLE_MIGRATION_SQL: List<String> = listOf(
+            "CREATE TABLE IF NOT EXISTS `spo2PctSample` (`deviceId` TEXT NOT NULL, " +
+                "`ts` INTEGER NOT NULL, `pct` INTEGER NOT NULL, PRIMARY KEY(`deviceId`, `ts`))",
+        )
+
+        internal val MIGRATION_20_21 = object : Migration(20, 21) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                for (stmt in SPO2_PCT_SAMPLE_MIGRATION_SQL) db.execSQL(stmt)
+            }
+        }
+
         private fun build(appContext: Context): WhoopDatabase =
             Room.databaseBuilder(appContext, WhoopDatabase::class.java, DB_NAME)
                 // #1014: replace ONLY the corruption handling of the default open-helper. The
@@ -568,7 +590,7 @@ abstract class WhoopDatabase : RoomDatabase() {
                     MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10,
                     MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14,
                     MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18,
-                    MIGRATION_18_19, MIGRATION_19_20,
+                    MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21,
                 )
                 // #1037: a FRESH install builds the schema straight at the current version and runs NO
                 // migrations, so the MIGRATION_7_8 "my-whoop" registry seed never fires and the WHOOP,

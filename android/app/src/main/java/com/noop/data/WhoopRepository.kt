@@ -20,6 +20,12 @@ data class StreamBatch(
     val events: List<EventEntry> = emptyList(),
     val battery: List<BatteryRow> = emptyList(),
     val spo2: List<Spo2Row> = emptyList(),
+    /**
+     * WHOOP 5.0/MG sleep SpO2 percent (v18 @frame-82), decoded by whoop-rs. Distinct from [spo2] (the
+     * WHOOP 4.0 raw red/IR ADC): a physiological % the strap itself computed. Persist-only. A WELLNESS
+     * estimate, never medical. Empty on a WHOOP 4.0 / a non-sleep record.
+     */
+    val spo2Pct: List<Spo2PctRow> = emptyList(),
     val skinTemp: List<SkinTempRow> = emptyList(),
     val resp: List<RespRow> = emptyList(),
     val gravity: List<GravityRow> = emptyList(),
@@ -63,7 +69,7 @@ data class StreamBatch(
 ) {
     val isEmpty: Boolean
         get() = hr.isEmpty() && rr.isEmpty() && events.isEmpty() && battery.isEmpty() &&
-            spo2.isEmpty() && skinTemp.isEmpty() && resp.isEmpty() && gravity.isEmpty() &&
+            spo2.isEmpty() && spo2Pct.isEmpty() && skinTemp.isEmpty() && resp.isEmpty() && gravity.isEmpty() &&
             steps.isEmpty() && sleepState.isEmpty() && ppgHr.isEmpty() && ppgWaveform.isEmpty()
 }
 
@@ -100,6 +106,8 @@ internal fun assignRrSeq(deviceId: String, rows: List<RrRow>): List<RrInterval> 
 data class EventEntry(val ts: Long, val kind: String, val payloadJSON: String)
 data class BatteryRow(val ts: Long, val soc: Double?, val mv: Int?, val charging: Boolean? = null)
 data class Spo2Row(val ts: Long, val red: Int, val ir: Int)
+/** WHOOP 5.0/MG sleep SpO2 percent at [ts] (v18 @frame-82). deviceId attached on insert. Wellness estimate. */
+data class Spo2PctRow(val ts: Long, val pct: Int)
 data class SkinTempRow(val ts: Long, val raw: Int)
 /**
  * Cumulative u16 step/motion counter at [ts] (WHOOP5 step_motion_counter@57). deviceId attached on insert. (#78)
@@ -231,6 +239,12 @@ class WhoopRepository(private val dao: WhoopDao) {
             dao.insertBattery(streams.battery.map { BatterySample(deviceId, it.ts, it.soc, it.mv, it.charging) })
         val spo2Ids = if (streams.spo2.isEmpty()) emptyList() else
             dao.insertSpo2(streams.spo2.map { Spo2Sample(deviceId, it.ts, it.red, it.ir) })
+        // WHOOP 5.0/MG sleep SpO2 percent (v18 @frame-82). Persist-only, same as sleepState/steps — the
+        // strap's OWN physiological % that whoop-rs decodes but the app discarded. Idempotent by
+        // (deviceId, ts); not counted into InsertCounts (no consumer reads a count). A WELLNESS estimate.
+        if (streams.spo2Pct.isNotEmpty()) {
+            dao.insertSpo2Pct(streams.spo2Pct.map { Spo2PctSample(deviceId, it.ts, it.pct) })
+        }
         val skinIds = if (streams.skinTemp.isEmpty()) emptyList() else
             dao.insertSkinTemp(streams.skinTemp.map { SkinTempSample(deviceId, it.ts, it.raw) })
         // activityClass (#316, v13 column) is the @63 activity-class enum (0=still/1=walk/2=run) the decoder
@@ -683,6 +697,11 @@ class WhoopRepository(private val dao: WhoopDao) {
 
     suspend fun spo2Samples(deviceId: String, from: Long, to: Long, limit: Int = DEFAULT_LIMIT) =
         dao.spo2Samples(deviceId, from, to, limit)
+
+    /** WHOOP 5.0/MG sleep SpO2 percent samples (v18 @frame-82) in [from, to], ascending. Feeds the nightly
+     *  median banked on [DailyMetric.spo2Pct]. Empty on a WHOOP 4.0 / an unbanked window. Wellness estimate. */
+    suspend fun spo2PctSamples(deviceId: String, from: Long, to: Long, limit: Int = DEFAULT_LIMIT) =
+        dao.spo2PctSamples(deviceId, from, to, limit)
 
     suspend fun skinTempSamples(deviceId: String, from: Long, to: Long, limit: Int = DEFAULT_LIMIT) =
         dao.skinTempSamples(deviceId, from, to, limit)

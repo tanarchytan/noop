@@ -472,6 +472,9 @@ object IntelligenceEngine {
             // #93: WHOOP 4.0 raw SpO2 PPG samples for the night; analyzeDay banks the nightly red/IR ADC
             // means on the DailyMetric. Empty on a 5/MG (no v24 spo2 channels) → the raw means stay null.
             val spo2 = repo.spo2Samples(owner, from, to, STREAM_LIMIT)
+            // WHOOP 5.0/MG sleep SpO2 percent (v18 @frame-82); analyzeDay banks the nightly MEDIAN on
+            // DailyMetric.spo2Pct. Empty on a WHOOP 4.0 (which banks raw red/IR instead) → spo2Pct stays null.
+            val spo2Pct = repo.spo2PctSamples(owner, from, to, STREAM_LIMIT)
             // #938: the strap family that WROTE this owner's skin-temp rows, so analyzeDay converts the raw
             // register on the right scale (5/MG banks centidegrees, a WHOOP 4.0 v24 banks a raw ADC). The
             // owner source resolves it from the registry; unknown/non-WHOOP owners fall back to WHOOP5 (the
@@ -558,6 +561,7 @@ object IntelligenceEngine {
                 skinTempFamily = skinFamily,   // #938
                 skinTempAnchorRaw = skinAnchorRaw,   // #938 second capture: per-device worn anchor
                 spo2 = spo2,                   // #93
+                spo2Pct = spo2Pct,             // 5/MG v18 sleep SpO2 %
                 profile = profile,
                 baselines = baselines1,
                 maxHROverride = maxHROverride,

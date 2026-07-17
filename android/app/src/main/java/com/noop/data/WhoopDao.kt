@@ -55,6 +55,10 @@ interface WhoopDao : DeviceRegistryDao {
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertSpo2(rows: List<Spo2Sample>): List<Long>
 
+    /** WHOOP 5.0/MG sleep SpO2 percent (v18 @frame-82). Persist-only, idempotent by (deviceId, ts). */
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertSpo2Pct(rows: List<Spo2PctSample>): List<Long>
+
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertSkinTemp(rows: List<SkinTempSample>): List<Long>
 
@@ -268,6 +272,12 @@ interface WhoopDao : DeviceRegistryDao {
             "ORDER BY ts ASC LIMIT :limit"
     )
     suspend fun spo2Samples(deviceId: String, from: Long, to: Long, limit: Int): List<Spo2Sample>
+
+    @Query(
+        "SELECT * FROM spo2PctSample WHERE deviceId = :deviceId AND ts >= :from AND ts <= :to " +
+            "ORDER BY ts ASC LIMIT :limit"
+    )
+    suspend fun spo2PctSamples(deviceId: String, from: Long, to: Long, limit: Int): List<Spo2PctSample>
 
     @Query(
         "SELECT * FROM skinTempSample WHERE deviceId = :deviceId AND ts >= :from AND ts <= :to " +

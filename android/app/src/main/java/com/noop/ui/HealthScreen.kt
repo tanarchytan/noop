@@ -2062,6 +2062,13 @@ fun VitalDetailScreen(vm: AppViewModel, key: String) {
                         }
                     }
                 }
+                if (detail.key == "spo2") {
+                    Text(
+                        "A wellness estimate from your strap's sleep readings, not a medical device.",
+                        style = NoopType.footnote,
+                        color = Palette.textTertiary,
+                    )
+                }
             }
         }
 

@@ -146,6 +146,19 @@ data class Spo2Sample(
     val synced: Int = 0,
 )
 
+/**
+ * WHOOP 5.0/MG sleep blood-oxygen percent. whoop-rs decodes it from the v18 sleep record (@frame-82,
+ * tri-mode: only physiological readings surface, sentinels/diagnostics drop to null at decode), so a
+ * stored row is always a real reading. A WELLNESS estimate, never medical. Distinct from [Spo2Sample]
+ * (the WHOOP 4.0 raw red/IR ADC channels); a WHOOP 4.0 inserts nothing here. PK (deviceId, ts).
+ */
+@Entity(tableName = "spo2PctSample", primaryKeys = ["deviceId", "ts"])
+data class Spo2PctSample(
+    val deviceId: String,
+    val ts: Long,
+    val pct: Int,
+)
+
 /** Skin-temperature raw-ADC sample (type-47). Swift `skinTempSample` (v3). PK (deviceId, ts). */
 @Entity(tableName = "skinTempSample", primaryKeys = ["deviceId", "ts"])
 data class SkinTempSample(

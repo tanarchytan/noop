@@ -10,6 +10,7 @@ import com.noop.data.RespRow
 import com.noop.data.RrRow
 import com.noop.data.SkinTempRow
 import com.noop.data.SleepStateRow
+import com.noop.data.Spo2PctRow
 import com.noop.data.Spo2Row
 import com.noop.data.StepRow
 import com.noop.data.StreamBatch
@@ -270,6 +271,7 @@ fun extractHistoricalStreams(
     val hr = ArrayList<HrRow>()
     val rr = ArrayList<RrRow>()
     val spo2 = ArrayList<Spo2Row>()
+    val spo2Pct = ArrayList<Spo2PctRow>()
     val skinTemp = ArrayList<SkinTempRow>()
     val steps = ArrayList<StepRow>()
     val sleepState = ArrayList<SleepStateRow>()
@@ -331,6 +333,9 @@ fun extractHistoricalStreams(
                 p.intOrNull("spo2_red")?.let { red ->
                     spo2.add(Spo2Row(ts, red = red, ir = p.intOrNull("spo2_ir") ?: 0))
                 }
+                // 5/MG v18 sleep SpO2 percent (@frame-82). whoop-rs already sleep-gates it and drops
+                // sentinels, so a present key is a real physiological reading; banked as its own stream.
+                p.intOrNull("spo2_pct")?.let { pct -> spo2Pct.add(Spo2PctRow(ts, pct)) }
                 p.intOrNull("skin_temp_raw")?.let { raw -> skinTemp.add(SkinTempRow(ts, raw)) }
                 // step_motion_counter@57 is the WHOOP5 CUMULATIVE u16 counter. Stored raw; AnalyticsEngine
                 // derives the daily step total from counter deltas. APPROXIMATE — @57 semantics unverified
@@ -413,7 +418,7 @@ fun extractHistoricalStreams(
 
     return StreamBatch(
         hr = hr, rr = rr, events = events, battery = battery,
-        spo2 = spo2, skinTemp = skinTemp, resp = resp, gravity = gravity, steps = steps,
+        spo2 = spo2, spo2Pct = spo2Pct, skinTemp = skinTemp, resp = resp, gravity = gravity, steps = steps,
         sleepState = sleepState,
         ppgHr = ppgHr,
         ppgWaveform = ppgWaveform,

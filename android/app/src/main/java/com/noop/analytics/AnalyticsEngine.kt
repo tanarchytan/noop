@@ -5,6 +5,7 @@ import com.noop.data.EventRow
 import com.noop.data.GravitySample
 import com.noop.data.HrSample
 import com.noop.data.SkinTempSample
+import com.noop.data.Spo2PctSample
 import com.noop.data.Spo2Sample
 import com.noop.data.RespSample
 import com.noop.data.RrInterval
@@ -182,6 +183,11 @@ object AnalyticsEngine {
         // decoded" data, NOT a calibrated blood-oxygen % (that needs WHOOP's proprietary curve). Default
         // empty keeps pure-function callers/tests + non-4.0 nights null.
         spo2: List<Spo2Sample> = emptyList(),
+        // WHOOP 5.0/MG sleep SpO2 percent samples (v18 @frame-82) for the night window. whoop-rs already
+        // sleep-gates them and drops sentinels, so each is a real physiological reading; the nightly MEDIAN
+        // over detected sleep is banked on the DailyMetric as the day's SpO2 %. A WELLNESS estimate, never
+        // medical. Default empty keeps pure-function callers/tests + WHOOP 4.0 nights null.
+        spo2Pct: List<Spo2PctSample> = emptyList(),
         profile: UserProfile,
         baselines: ProfileBaselines = ProfileBaselines(),
         maxHROverride: Double? = null,
@@ -436,6 +442,13 @@ object AnalyticsEngine {
         // as-is for the Health "Raw SpO2" tile — NOT a calibrated blood-oxygen %. (#93)
         val nightlySpo2Raw = nightlySpo2RawMeans(matched, spo2)
 
+        // ── Sleep SpO2 percent (WHOOP 5.0/MG v18 @frame-82) ───────────────────
+        // The MEDIAN (robust to the tail) of the night's physiological SpO2 readings over the detected
+        // in-bed spans, banked on DailyMetric.spo2Pct. whoop-rs already sleep-gates + drops sentinels, so
+        // every sample is a real reading. A WELLNESS estimate, never medical. Null on a WHOOP 4.0 / a night
+        // with no readings.
+        val nightlySpo2Pct = nightlySpo2PctMedian(matched, spo2Pct)
+
         // ── Rest (sleep_performance composite, 0–100) ─────────────────────────
         // Replaces the bare efficiency proxy: duration-vs-personal-need 0.50 + efficiency 0.20 +
         // restorative (deep+REM)/asleep 0.20 + consistency 0.10. Stored under the sleep_performance
@@ -601,7 +614,7 @@ object AnalyticsEngine {
             recovery = recovery,
             strain = strain,
             exerciseCount = workouts.size,
-            spo2Pct = null,
+            spo2Pct = nightlySpo2Pct,
             skinTempDevC = skinTempDevC,
             respRateBpm = respRateDaily,
             steps = stepsTotal,
@@ -726,6 +739,35 @@ object AnalyticsEngine {
         }
         if (kept == 0) return null
         return (redSum / kept).toInt() to (irSum / kept).toInt()
+    }
+
+    /** Physiological SpO2 band (%) the nightly median counts. whoop-rs already drops sentinels/diagnostics
+     *  at decode, so this is a defensive floor/ceiling — never a clinical range. (v18 @frame-82) */
+    private const val SPO2_PCT_MIN: Int = 70
+    private const val SPO2_PCT_MAX: Int = 100
+
+    /**
+     * Nightly MEDIAN of the WHOOP 5.0/MG sleep SpO2 percent over the detected in-bed [sessions], or null
+     * when no physiological reading fell inside any span. A sample counts when its timestamp lies within a
+     * session's [start, end] AND its value is in the physiological band. whoop-rs already sleep-gates and
+     * drops sentinels, so every stored sample is a real reading; the median (robust to a stray tail) is
+     * banked as the day's SpO2 %. A WELLNESS estimate, never a medical/clinical reading. Pure + deterministic.
+     */
+    internal fun nightlySpo2PctMedian(
+        sessions: List<DetectedSleep>,
+        spo2Pct: List<Spo2PctSample>,
+    ): Double? {
+        if (sessions.isEmpty() || spo2Pct.isEmpty()) return null
+        val vals = ArrayList<Int>(spo2Pct.size)
+        for (s in spo2Pct) {
+            if (s.pct < SPO2_PCT_MIN || s.pct > SPO2_PCT_MAX) continue
+            if (sessions.none { s.ts in it.start..it.end }) continue
+            vals.add(s.pct)
+        }
+        if (vals.isEmpty()) return null
+        vals.sort()
+        val n = vals.size
+        return if (n % 2 == 1) vals[n / 2].toDouble() else (vals[n / 2 - 1] + vals[n / 2]) / 2.0
     }
 
     /** Plausible worn skin-temperature range (°C). Off-wrist/charging samples drift to ambient and are

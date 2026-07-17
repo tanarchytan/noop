@@ -6,6 +6,7 @@ import com.noop.data.RespRow
 import com.noop.data.RrRow
 import com.noop.data.SkinTempRow
 import com.noop.data.SleepStateRow
+import com.noop.data.Spo2PctRow
 import com.noop.data.Spo2Row
 import com.noop.data.StepRow
 import com.noop.data.StreamBatch
@@ -29,8 +30,9 @@ object RustAdapter {
 
     /**
      * Fan one per-second [summary] out to its per-signal rows at the corrected [ts]: hr=0 dropped, rr=0
-     * dropped, spo2/skinTemp/resp as raw registers, steps carry the nullable activity class, sleep_state
-     * verbatim (0 kept), gravity widened exactly. spo2_pct (5.0 sleep %) is intentionally NOT stored.
+     * dropped, spo2 red/IR and skinTemp/resp as raw registers, spo2_pct (5.0 sleep %) as its own stream
+     * when present, steps carry the nullable activity class, sleep_state verbatim (0 kept), gravity widened
+     * exactly. whoop-rs already sleep-gates spo2_pct and drops sentinels, so a non-null value is a real reading.
      */
     fun historyToRows(summary: HistorySummary, ts: Long): StreamBatch {
         val hr = ArrayList<HrRow>(1)
@@ -44,6 +46,9 @@ object RustAdapter {
 
         val spo2 = ArrayList<Spo2Row>(1)
         summary.spo2Red?.toInt()?.let { red -> spo2.add(Spo2Row(ts, red = red, ir = summary.spo2Ir?.toInt() ?: 0)) }
+
+        val spo2Pct = ArrayList<Spo2PctRow>(1)
+        summary.spo2Pct?.toInt()?.let { pct -> spo2Pct.add(Spo2PctRow(ts, pct)) }
 
         val skinTemp = ArrayList<SkinTempRow>(1)
         summary.skinTempRaw?.toInt()?.let { skinTemp.add(SkinTempRow(ts, it)) }
@@ -70,7 +75,7 @@ object RustAdapter {
         }
 
         return StreamBatch(
-            hr = hr, rr = rr, spo2 = spo2, skinTemp = skinTemp, resp = resp,
+            hr = hr, rr = rr, spo2 = spo2, spo2Pct = spo2Pct, skinTemp = skinTemp, resp = resp,
             steps = steps, sleepState = sleepState, gravity = gravity,
         )
     }
@@ -85,6 +90,7 @@ object RustAdapter {
         m["rr_intervals"] = s.rrIntervals.map { it.toInt() }.filter { it != 0 }
         s.spo2Red?.let { m["spo2_red"] = it.toInt() }
         s.spo2Ir?.let { m["spo2_ir"] = it.toInt() }
+        s.spo2Pct?.let { m["spo2_pct"] = it.toInt() }
         s.skinTempRaw?.let { m["skin_temp_raw"] = it.toInt() }
         s.respRaw?.let { m["resp_rate_raw"] = it.toInt() }
         s.steps?.let { m["step_motion_counter"] = it.toInt() }
