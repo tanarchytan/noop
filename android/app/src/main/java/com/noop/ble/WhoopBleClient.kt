@@ -33,7 +33,6 @@ import com.noop.data.RrRow
 import com.noop.data.StreamBatch
 import com.noop.data.StreamPersistence
 import com.noop.data.WhoopRepository
-import com.noop.protocol.AlarmPayload
 import com.noop.protocol.BackfillCaptureJsonl
 import com.noop.protocol.BackfillCaptureRecord
 import com.noop.protocol.BackfillCaptureSummary
@@ -43,6 +42,7 @@ import com.noop.protocol.Framing
 import com.noop.protocol.HapticClock
 import com.noop.protocol.Reassembler
 import com.noop.protocol.RebootProbeVariant
+import com.noop.protocol.RustCodec
 import com.noop.protocol.Streams
 import com.noop.protocol.Whoop5Config
 import com.noop.protocol.extractStreams
@@ -2208,72 +2208,71 @@ class WhoopBleClient(
     }
 
     /**
-     * Send a command to the strap.
-     * Port of `BLEManager.send(_:payload:writeType:)` — builds the framed COMMAND packet via
-     * [Framing.buildCommand] and writes it to the command characteristic (61080002).
+     * Send a command to the strap. The frame bytes come from the whoop-rs FFI (via [sendCommand]); this
+     * keeps only the send policy (seq, 5/MG allow-list, gates). Writes to the command characteristic.
      *
      * Default write type is WITHOUT response (matching the Swift default), so existing call sites
      * (toggleRealtimeHR, getBatteryLevel, runHapticsPattern) are link-cheap. The bond write and any
      * acked command use WITH response.
      */
     fun send(cmd: CommandNumber, payload: ByteArray = byteArrayOf(0), withResponse: Boolean = false) {
+        val gen5 = connectedFamily == DeviceFamily.WHOOP5
+        // WHOOP 5/MG haptics differ from 4.0 on opcode AND payload (#48): cmd 0x13 (not 79, which a real
+        // MG rejects) + the maverick "notify" preset body. Everything else builds via the generic FFI
+        // command builder; the frame bytes are byte-identical to the former Kotlin envelope (test-locked).
+        val isHaptics = cmd == CommandNumber.RUN_HAPTICS_PATTERN
+        val sent = sendCommand(cmd, withResponse) { s ->
+            when {
+                gen5 && isHaptics -> RustCodec.buzzFrame(s)
+                else -> RustCodec.commandFrame(isGen5 = gen5, seq = s, cmd = cmd.rawValue, payload = payload)
+            }
+        }
+        if (sent) {
+            val note = if (gen5) (if (isHaptics) " (puffin cmd=0x13)" else " (puffin)") else ""
+            log("→ ${cmd.name} payload=${payload.toHex()}$note")
+        }
+    }
+
+    /**
+     * The single outbound choke: not-connected guard, the 5/MG send allow-list gate, one seq off the
+     * shared counter, then the whoop-rs FFI [build] for the frame bytes, then enqueue. Returns true when
+     * a frame was enqueued. All send POLICY stays here in Kotlin; whoop-rs owns only the bytes.
+     */
+    private fun sendCommand(cmd: CommandNumber, withResponse: Boolean, build: (seq: Int) -> ByteArray?): Boolean {
         val ch = cmdCharacteristic
         if (gatt == null || ch == null) {
             log("send(${cmd.name}) ignored — not connected")
-            return
+            return false
         }
-        // WHOOP 5.0/MG uses puffin (CRC16) command framing, not the WHOOP4 frame. The realtime-HR toggle
-        // is hardware-confirmed (issue #17 — a 5/MG owner saw live HR on v1.13), which proves the strap
-        // acts on puffin-framed commands. We now also send haptics (buzz) on that same proven transport —
-        // experimental: the strap may or may not honor that specific command, but it's no longer a blind
-        // guess. Everything else stays dropped (offload commands need the held work). WHOOP 4.0 unaffected.
-        if (connectedFamily == DeviceFamily.WHOOP5) {
-            // 5/MG allow-list: live HR, buzz, and the historical-offload pair (trigger + ack). The
-            // offload commands ride the SAME proven puffin COMMAND frame as the Swift path
-            // (whoop5HistoricalAckFrame = puffinCommandFrame(23, [0x01]+endData)). (#78)
-            if (cmd != CommandNumber.TOGGLE_REALTIME_HR && cmd != CommandNumber.RUN_HAPTICS_PATTERN &&
-                cmd != CommandNumber.SEND_HISTORICAL_DATA && cmd != CommandNumber.HISTORICAL_DATA_RESULT &&
-                cmd != CommandNumber.SET_CLOCK && cmd != CommandNumber.GET_CLOCK &&
-                cmd != CommandNumber.GET_DATA_RANGE &&
-                cmd != CommandNumber.SET_ALARM_TIME && cmd != CommandNumber.DISABLE_ALARM &&
-                // GET_ALARM_TIME (67): the log-only arm-readback armStrapAlarm sends right after a 5/MG arm
-                // (a READ; the 4.0 path already used it). Without this it would be dropped here. (noop-tan)
-                cmd != CommandNumber.GET_ALARM_TIME &&
-                // REBOOT_STRAP (29) over puffin: opcode shared with 4.0, framing is the puffin form built
-                // below. NOT hardware-confirmed on 5/MG — rebootStrap() logs the COMMAND_RESPONSE so a strap
-                // log confirms whether the frame is accepted. User-initiated + confirmation-gated only.
-                cmd != CommandNumber.REBOOT_STRAP &&
-                // SET_CONFIG (the R22 deep-stream unlock) is allowed ONLY while the deep-data experiment
-                // is opted in — it writes a persistent feature flag to the strap, so it must never fire
-                // on a default install. Reversible; driven only by enableWhoop5DeepData(). (#174)
-                !(cmd == CommandNumber.SET_CONFIG && puffinExperiment.isDeepDataEnabled) &&
-                // SET_DEVICE_CONFIG (the Broadcast-HR flag) is allowed ONLY while that opt-in is on.
-                // Reversible; driven only by setBroadcastHr(). (#181)
-                !(cmd == CommandNumber.SET_DEVICE_CONFIG && puffinExperiment.broadcastHr)) {
-                log("send(${cmd.name}) skipped — no WHOOP 5/MG framing for this command yet")
-                return
-            }
-            // WHOOP 5/MG haptics differ from WHOOP 4.0 on BOTH the opcode AND the payload (#48, decoded
-            // from the working "maverick" app's binary). Opcode: 0x13, not RUN_HAPTICS_PATTERN=79 (a real-MG
-            // capture showed the strap rejecting 79 with COMMAND_RESPONSE result=0x03). Payload: the maverick
-            // haptic body [0x01, effects(8), loopControl(u16 LE), overallLoop] — here the "notify" preset
-            // (effects 47,152), NOT the 4.0 [patternId, loops, …]. puffinCommandFrame pads the inner to a
-            // 4-byte boundary, which this 12-byte payload needs. WHOOP 4.0 is untouched (79 + its own frame).
-            val isHaptics = cmd == CommandNumber.RUN_HAPTICS_PATTERN
-            val puffinCmd = if (isHaptics) 0x13 else cmd.rawValue
-            val puffinPayload = if (isHaptics)
-                byteArrayOf(0x01, 47, 152.toByte(), 0, 0, 0, 0, 0, 0, 0, 0, 0) else payload
-            val s = seq.incrementAndGet() and 0xFF
-            val frame = Framing.puffinCommandFrame(cmd = puffinCmd, seq = s, payload = puffinPayload)
-            enqueueWrite(PendingWrite(frame, withResponse, cmd))
-            val cmdNote = if (isHaptics) " cmd=0x13" else ""
-            log("→ ${cmd.name} payload=${puffinPayload.toHex()} (puffin$cmdNote)")
-            return
+        if (connectedFamily == DeviceFamily.WHOOP5 && !whoop5SendAllowed(cmd)) {
+            log("send(${cmd.name}) skipped — no WHOOP 5/MG framing for this command yet")
+            return false
         }
         val s = seq.incrementAndGet() and 0xFF
-        val frame = Framing.buildCommand(cmd, payload, s)
+        val frame = build(s)
+        if (frame == null) {
+            log("send(${cmd.name}) refused — destructive opcode blocked by the codec")
+            return false
+        }
         enqueueWrite(PendingWrite(frame, withResponse, cmd))
-        log("→ ${cmd.name} payload=${payload.toHex()}")
+        return true
+    }
+
+    /**
+     * The WHOOP 5/MG send allow-list. 5/MG uses puffin (CRC16) framing; the realtime-HR toggle is
+     * hardware-confirmed (#17), the offload pair rides the same proven COMMAND frame (#78), SET_CONFIG /
+     * SET_DEVICE_CONFIG are the reversible deep-data (#174) / broadcast-HR (#181) opt-ins, and REBOOT_STRAP
+     * is user-initiated + confirmation-gated. Everything else stays dropped on 5/MG. WHOOP 4.0 sends all.
+     */
+    private fun whoop5SendAllowed(cmd: CommandNumber): Boolean = when (cmd) {
+        CommandNumber.TOGGLE_REALTIME_HR, CommandNumber.RUN_HAPTICS_PATTERN,
+        CommandNumber.SEND_HISTORICAL_DATA, CommandNumber.HISTORICAL_DATA_RESULT,
+        CommandNumber.SET_CLOCK, CommandNumber.GET_CLOCK, CommandNumber.GET_DATA_RANGE,
+        CommandNumber.SET_ALARM_TIME, CommandNumber.DISABLE_ALARM, CommandNumber.GET_ALARM_TIME,
+        CommandNumber.REBOOT_STRAP -> true
+        CommandNumber.SET_CONFIG -> puffinExperiment.isDeepDataEnabled
+        CommandNumber.SET_DEVICE_CONFIG -> puffinExperiment.broadcastHr
+        else -> false
     }
 
     /**
@@ -2555,12 +2554,12 @@ class WhoopBleClient(
             _state.update { it.copy(renameStatus = "Enter a name first.") }
             return
         }
-        // Clamp to 24 UTF-8 bytes on a whole-character boundary (never split a multibyte char), leaving
-        // room for the rest of the BLE advertising structure. Mirrors WhoopCommand.advertisingNamePayload.
+        // The whoop-rs builder clamps to 24 UTF-8 bytes on a char boundary; clamp a local copy for the log.
         var clamped = name
         while (clamped.toByteArray(Charsets.UTF_8).size > 24) clamped = clamped.dropLast(1)
-        val payload = byteArrayOf(0, 0) + clamped.toByteArray(Charsets.UTF_8) + byteArrayOf(0)
-        send(CommandNumber.SET_ADVERTISING_NAME, payload, withResponse = true)
+        sendCommand(CommandNumber.SET_ADVERTISING_NAME, withResponse = true) { s ->
+            RustCodec.advertisingNameFrame(s, name)
+        }
         log("Strap rename: wrote advertising name=$clamped")
         _state.update { it.copy(
             renameStatus = "Sent - your strap will reboot to apply, then reconnect with the new name.",
@@ -2713,10 +2712,9 @@ class WhoopBleClient(
      * Arm the strap's **firmware** alarm to buzz at [epochSec] (absolute UTC seconds). The strap fires
      * at that instant even if the phone is asleep or NOOP is closed. SET_CLOCK is sent first so the
      * strap's RTC is UTC-correct (a wrong RTC fires the alarm at the wrong wall-clock time). The 4.0
-     * payload is `[0x01] + u32 LE epoch + [0x00, 0x00] + [0x00, 0x00]` (9 bytes — see
-     * [whoop4AlarmPayload]; the trailing two bytes are the haptic-mode field the official app sends,
-     * added per @ujix's wire capture #535). Port of macOS `BLEManager.armStrapAlarm`. WHOOP 4.0; on
-     * 5/MG `send()` uses the separate REVISION_4 path.
+     * frame is the whoop-rs 9-byte SET_ALARM_TIME body `[0x01] + u32 LE epoch + [4 zero]` (the trailing
+     * pair is the haptic-mode field the official app sends). Port of macOS `BLEManager.armStrapAlarm`.
+     * WHOOP 4.0; on 5/MG the separate REVISION_4 path is used.
      */
     fun armStrapAlarm(epochSec: Long) {
         if (connectedFamily == DeviceFamily.WHOOP5) {
@@ -2729,7 +2727,9 @@ class WhoopBleClient(
                 log("Alarm: 5/MG firmware alarm needs the Experimental toggle (unconfirmed) — not armed")
                 return
             }
-            send(CommandNumber.SET_ALARM_TIME, AlarmPayload.build(epochSec * 1000L))
+            sendCommand(CommandNumber.SET_ALARM_TIME, withResponse = false) { s ->
+                RustCodec.alarmSetFrame(s, epochSec * 1000L)
+            }
             recordAlarmArm(epochSec)
             log(if (_state.value.connected) "Alarm: armed 5/MG rev4 EXPERIMENTAL (epoch $epochSec)"
                 else "Alarm: queued 5/MG rev4 EXPERIMENTAL (epoch $epochSec) — strap not connected")
@@ -2742,7 +2742,9 @@ class WhoopBleClient(
             return
         }
         sendSetClockBothForms()
-        send(CommandNumber.SET_ALARM_TIME, whoop4AlarmPayload(epochSec))
+        sendCommand(CommandNumber.SET_ALARM_TIME, withResponse = false) { s ->
+            RustCodec.alarmSetFrameGen4(s, epochSec)
+        }
         recordAlarmArm(epochSec)
         // #34: only claim "armed" when the strap is connected (the send actually went out); otherwise it's
         // queued and re-sent on the next connect.
@@ -2774,7 +2776,9 @@ class WhoopBleClient(
         if (connectedFamily == DeviceFamily.WHOOP5) {
             // 5/MG DISABLE_ALARM is REVISION_2 [0x02, 0xFF]. Sent unconditionally (clearing is safe
             // even if arming was gated off — a no-op on a strap with no alarm set). (PR #85)
-            send(CommandNumber.DISABLE_ALARM, AlarmPayload.disableRev2())
+            sendCommand(CommandNumber.DISABLE_ALARM, withResponse = false) { s ->
+                RustCodec.alarmDisableFrame(s)
+            }
             log("Alarm: disarmed (5/MG rev2)")
             return
         }
@@ -4442,12 +4446,9 @@ class WhoopBleClient(
         if (!s.connected || !s.bonded) {
             log("Broadcast HR: connect and bond a 5/MG strap first — ignored."); return
         }
-        val value = if (on) 0x31 else 0x30   // ASCII '1' / '0'
-        send(
-            CommandNumber.SET_DEVICE_CONFIG,
-            byteArrayOf(0x01) + Whoop5Config.deviceConfigBody("whoop_live_hr_in_adv_ind_pkt", value),
-            withResponse = true,
-        )
+        sendCommand(CommandNumber.SET_DEVICE_CONFIG, withResponse = true) { sq ->
+            RustCodec.broadcastHrFrame(sq, on)
+        }
         log("Broadcast HR: wrote whoop_live_hr_in_adv_ind_pkt=" + (if (on) "1" else "0"))
     }
 
@@ -4484,11 +4485,9 @@ class WhoopBleClient(
         log("Deep-data: sending the ${flags.size}-flag enable_r22 sequence (experimental, reversible)…")
         flags.forEachIndexed { i, flag ->
             handler.postDelayed({
-                send(
-                    CommandNumber.SET_CONFIG,
-                    byteArrayOf(0x01) + Whoop5Config.payloadBody(flag.name, flag.value),
-                    withResponse = true,
-                )
+                sendCommand(CommandNumber.SET_CONFIG, withResponse = true) { s ->
+                    RustCodec.setConfigFrame(s, flag.name, flag.value)
+                }
             }, 80L * i)
         }
         handler.postDelayed({
@@ -4497,51 +4496,20 @@ class WhoopBleClient(
     }
 
     /**
-     * SET_CLOCK(10) payload = the strap's 8-byte form: [seconds u32 LE][subseconds u32 LE].
-     * Port of `BLEManager.setClockPayload`. The payload LENGTH is firmware-specific: newer WHOOP 4
-     * firmware latches this form, but fw 41.17.x ignores it (no COMMAND_RESPONSE, RTC unchanged) and
-     * latches only the legacy 9-byte form below. A strap that misses the set keeps an invalid RTC and
-     * stops banking sensor data to flash, surfacing as endless console-only syncs (#120). Send WHOOP 4
-     * through [sendSetClockBothForms] so either firmware latches.
-     */
-    private fun setClockPayload(now: Long = System.currentTimeMillis() / 1000L): ByteArray {
-        return byteArrayOf(
-            (now and 0xFF).toByte(),
-            ((now shr 8) and 0xFF).toByte(),
-            ((now shr 16) and 0xFF).toByte(),
-            ((now shr 24) and 0xFF).toByte(),
-            0, 0, 0, 0,
-        )
-    }
-
-    /**
-     * SET_CLOCK(10) payload — the legacy 9-byte form `[seconds u32 LE][5 zero]` required by WHOOP 4
-     * fw 41.17.x, which ignores the 8-byte form. Port of `BLEManager.setClockPayloadLegacy`. On a
-     * strap whose RTC was stuck in the past, the 8-byte form drew no response while the 9-byte form was
-     * ack'd, latched, and resumed flash banking (#120). On newer firmware this form is ack'd but NOT
-     * latched, so it's a no-op there — both forms carry the same seconds.
-     */
-    private fun setClockPayloadLegacy(now: Long = System.currentTimeMillis() / 1000L): ByteArray {
-        return byteArrayOf(
-            (now and 0xFF).toByte(),
-            ((now shr 8) and 0xFF).toByte(),
-            ((now shr 16) and 0xFF).toByte(),
-            ((now shr 24) and 0xFF).toByte(),
-            0, 0, 0, 0, 0,
-        )
-    }
-
-    /**
      * Send SET_CLOCK in every payload form the WHOOP 4 firmware family is known to accept (8-byte for
-     * newer firmware, 9-byte for 41.17.x — each a no-op on the other). Both carry the same `now`, so
-     * double-latching is harmless. WHOOP 5/MG keeps its single hardware-validated 8-byte send, so the
-     * legacy form is gated to WHOOP 4. Port of `BLEManager.sendSetClockBothForms`. (#120)
+     * newer firmware, 9-byte for fw 41.17.x — each a no-op on the other). The 8-byte form is what newer
+     * WHOOP 4 and 5/MG latch; fw 41.17.x latches only the legacy 9-byte form, and a strap that misses the
+     * set keeps an invalid RTC and stops banking sensor data to flash (#120). Both carry the same `now`,
+     * so double-latching is harmless. WHOOP 5/MG keeps its single 8-byte send. Frame bytes from whoop-rs.
      */
     private fun sendSetClockBothForms(withResponse: Boolean = false) {
         val now = System.currentTimeMillis() / 1000L
-        send(CommandNumber.SET_CLOCK, setClockPayload(now), withResponse = withResponse)
+        val gen5 = connectedFamily == DeviceFamily.WHOOP5
+        val sent = sendCommand(CommandNumber.SET_CLOCK, withResponse) { s -> RustCodec.setClockFrame(gen5, s, now) }
+        if (sent) log("→ SET_CLOCK (8-byte)")
         if (selectedModel == WhoopModel.WHOOP4) {
-            send(CommandNumber.SET_CLOCK, setClockPayloadLegacy(now), withResponse = withResponse)
+            val legacy = sendCommand(CommandNumber.SET_CLOCK, withResponse) { s -> RustCodec.setClockLegacyFrame(false, s, now) }
+            if (legacy) log("→ SET_CLOCK (legacy 9-byte)")
         }
     }
 
@@ -4644,7 +4612,7 @@ class WhoopBleClient(
     private fun writeBondFrame(g: BluetoothGatt, ch: BluetoothGattCharacteristic) {
         val ops = gattOps ?: return
         val s = seq.incrementAndGet() and 0xFF
-        val bondFrame = Framing.buildCommand(CommandNumber.GET_BATTERY_LEVEL, byteArrayOf(0), s)
+        val bondFrame = RustCodec.getBatteryFrame(isGen5 = false, seq = s)
         log("Bonding: confirmed write GET_BATTERY_LEVEL to 61080002")
         writeInFlight = true   // hold the slot until onCharacteristicWrite fires (with response).
         // safeGatt: a throw means the binder died (#314) — teardown, return false, fall into the
@@ -4727,7 +4695,9 @@ class WhoopBleClient(
             if (connectedFamily == DeviceFamily.WHOOP5 && didBond && !connectHandshakeDone) {
                 connectHandshakeDone = true
                 noteRebootReconnectIfNeeded()
-                send(CommandNumber.SET_CLOCK, setClockPayload(), withResponse = true)
+                sendCommand(CommandNumber.SET_CLOCK, withResponse = true) { s ->
+                    RustCodec.setClockFrame(isGen5 = true, seq = s, nowUnix = System.currentTimeMillis() / 1000L)
+                }
                 send(CommandNumber.GET_CLOCK, byteArrayOf(), withResponse = true)
                 // Populate the battery ring right after connect, not only once the Live screen opens. Posted
                 // after the clock writes settle so the 0x2A19 read does not race them on a slow stack.
@@ -6011,35 +5981,11 @@ private val PII_MAC_RE = Regex("([0-9A-Fa-f]{2}):[0-9A-Fa-f]{2}:[0-9A-Fa-f]{2}:[
 private val PII_WHOOP_SERIAL_RE = Regex("WHOOP (\\d[0-9A-Za-z]{5,})")
 
 /**
- * Builds the 9-byte WHOOP 4.0 SET_ALARM_TIME (cmd 66) payload.
- * Layout: `[0x01] + u32 LE epoch + [0x00, 0x00]` subseconds + `[0x00, 0x00]` haptic-mode field.
- *
- * The earlier 7-byte form omitted the trailing two bytes; the strap ACKed it but never buzzed (#428).
- * @ujix's btsnoop capture of the official WHOOP app (#535) shows the official app always sends 9 bytes,
- * so we now match it. The buzz is confirmed on-device by the capture author (PR #535, 2026-06-20): a
- * real WHOOP 4.0 buzzes at the specified time with this 9-byte frame. That's one device/firmware, so
- * the Automations UI keeps a "keep a backup alarm" caveat for anything critical.
- * Pinned byte-for-byte by `Whoop4AlarmPayloadTest`.
- */
-internal fun whoop4AlarmPayload(epochSec: Long): ByteArray {
-    val e = epochSec.toInt()
-    return byteArrayOf(
-        0x01,
-        (e and 0xFF).toByte(),
-        ((e shr 8) and 0xFF).toByte(),
-        ((e shr 16) and 0xFF).toByte(),
-        ((e shr 24) and 0xFF).toByte(),
-        0x00, 0x00, // subseconds (always 0 — minute-precision alarm)
-        0x00, 0x00, // haptic-mode field required to actually buzz (official-app wire capture, #535)
-    )
-}
-
-/**
  * The payload of a WHOOP 4.0 COMMAND_RESPONSE: the bytes after `[type,seq,cmd,origin_seq,result]`
  * (payload starts at absolute offset 9) up to the crc32 trailer at `length` (u16 LE at frame[1..2],
  * marking where the trailer starts - same envelope walk as the Swift `FrameRouter.advertisingName`).
  * null when the frame is too short to carry any payload. File-scope so it unit-tests without
- * constructing the Android-only BLE client (the [whoop4AlarmPayload] idiom).
+ * constructing the Android-only BLE client.
  */
 internal fun whoop4CommandResponsePayload(frame: ByteArray): ByteArray? {
     if (frame.size < 3) return null

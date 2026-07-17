@@ -18,14 +18,6 @@ package com.noop.protocol
 // behind an explicit opt-in, and writable only on real iOS/Android hardware. (#174)
 object Whoop5Config {
 
-    /** SET_CONFIG / SET_FF_VALUE command opcode. */
-    const val SET_CONFIG_CMD = 0x78
-
-    /** SET_DEVICE_CONFIG opcode (0x77). Writes one persistent device-config value (vs the feature-flag
-     *  SET_CONFIG/0x78). Used for the Broadcast-HR flag; validated on real hardware. Keep in lockstep
-     *  with the Swift `Whoop5Config.setDeviceConfigCmd`. (#181) */
-    const val SET_DEVICE_CONFIG_CMD = 0x77
-
     /** One persistent feature flag and the value the official app writes for it (ASCII '1'/'2'). */
     data class Flag(val name: String, val value: Int)
 
@@ -53,37 +45,4 @@ object Whoop5Config {
         Flag("dorset_inhibit_wpt", 0x32),
         Flag("enable_sig12", 0x32),   // #103: 16th flag seen in a real on-strap capture, not in judes.club
     )
-
-    /** The 40-byte SET_CONFIG payload body: flag name as ASCII NUL-padded to 32 bytes, value byte at
-     *  offset 32, then 7 zero bytes. (Mirrors judes.club `setConfigPayload(name, value)`.) */
-    fun payloadBody(name: String, value: Int): ByteArray {
-        val p = ByteArray(40)
-        val bytes = name.toByteArray(Charsets.US_ASCII)
-        for (i in 0 until minOf(32, bytes.size)) p[i] = bytes[i]
-        p[32] = (value and 0xFF).toByte()
-        return p
-    }
-
-    /** The device-config write body: key name as ASCII NUL-padded to 32 bytes, then the value byte (an
-     *  ASCII digit, e.g. '1'=0x31 / '0'=0x30). 33 bytes, no trailing padding (unlike the 40-byte
-     *  feature-flag body). The caller prepends the b3 byte (0x01) before sending, like CLIENT_HELLO.
-     *  Validated for whoop_live_hr_in_adv_ind_pkt on real hardware (paired on a Garmin Edge 840).
-     *  Keep in lockstep with the Swift `Whoop5Config.deviceConfigBody`. (#181) */
-    fun deviceConfigBody(name: String, value: Int): ByteArray {
-        val b = ByteArray(33)
-        val bytes = name.toByteArray(Charsets.US_ASCII)
-        for (i in 0 until minOf(32, bytes.size)) b[i] = bytes[i]
-        b[32] = (value and 0xFF).toByte()
-        return b
-    }
-
-    /** The full puffin command-frame bytes for one feature-flag write (b3=0x01 ahead of the body),
-     *  ready to send to the 5/MG command characteristic. Byte-for-byte identical to the official
-     *  app's captured writes and to the Swift `Whoop5Config.frame`. */
-    fun frame(flag: Flag, seq: Int): ByteArray =
-        Framing.puffinCommandFrame(
-            cmd = SET_CONFIG_CMD,
-            seq = seq,
-            payload = byteArrayOf(0x01) + payloadBody(flag.name, flag.value),
-        )
 }

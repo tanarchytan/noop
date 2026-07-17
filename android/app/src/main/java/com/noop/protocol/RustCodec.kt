@@ -45,4 +45,46 @@ object RustCodec {
 
     /** HRV-readiness over a nightly RMSSD series (oldest to newest). */
     fun readiness(nightlyRmssd: List<Double?>): HrvReadinessInfo? = hrvReadiness(nightlyRmssd)
+
+    // --- Outbound command frames: whoop-rs builds every frame's bytes (envelope + CRC + payload). Kotlin
+    //     keeps only the send policy (seq counter, 5/MG allow-list, opt-in gates, R22 ordering). ---
+
+    /** Generic COMMAND frame for [cmd]+[payload]; null if the codec refuses a destructive opcode. */
+    fun commandFrame(isGen5: Boolean, seq: Int, cmd: Int, payload: ByteArray): ByteArray? =
+        codec(isGen5).commandFrame(seq.toUByte(), cmd.toUByte(), payload)
+
+    /** 5/MG one-shot maverick buzz (the notify preset). */
+    fun buzzFrame(seq: Int): ByteArray = gen5.buzzFrame(seq.toUByte())
+
+    /** GET_BATTERY_LEVEL (also the 4.0 bond-establishing write). */
+    fun getBatteryFrame(isGen5: Boolean, seq: Int): ByteArray = codec(isGen5).getBatteryFrame(seq.toUByte())
+
+    /** SET_CLOCK 8-byte form (newer firmware). */
+    fun setClockFrame(isGen5: Boolean, seq: Int, nowUnix: Long): ByteArray =
+        codec(isGen5).setClockFrame(seq.toUByte(), nowUnix.toUInt())
+
+    /** SET_CLOCK legacy 9-byte form (older 4.0 firmware). */
+    fun setClockLegacyFrame(isGen5: Boolean, seq: Int, nowUnix: Long): ByteArray =
+        codec(isGen5).setClockLegacyFrame(seq.toUByte(), nowUnix.toUInt())
+
+    /** SET_ALARM_TIME 5/MG rev4 body. */
+    fun alarmSetFrame(seq: Int, wakeEpochMs: Long, alarmId: Int = 1): ByteArray =
+        gen5.alarmSetFrame(seq.toUByte(), wakeEpochMs.toULong(), alarmId.toUByte())
+
+    /** SET_ALARM_TIME WHOOP 4.0 9-byte body. */
+    fun alarmSetFrameGen4(seq: Int, wakeEpochSec: Long): ByteArray =
+        gen4.alarmSetFrameGen4(seq.toUByte(), wakeEpochSec.toUInt())
+
+    /** DISABLE_ALARM 5/MG rev2 form. */
+    fun alarmDisableFrame(seq: Int): ByteArray = gen5.alarmDisableFrame(seq.toUByte())
+
+    /** SET_ADVERTISING_NAME (WHOOP 4.0 strap rename; the name is clamped to 24 UTF-8 bytes in-codec). */
+    fun advertisingNameFrame(seq: Int, name: String): ByteArray = gen4.advertisingNameFrame(seq.toUByte(), name)
+
+    /** SET_CONFIG for one named 5/MG feature flag (the R22 sequence). */
+    fun setConfigFrame(seq: Int, name: String, value: Int): ByteArray =
+        gen5.setConfigFrame(seq.toUByte(), name, value.toUByte())
+
+    /** SET_DEVICE_CONFIG for the 5/MG Broadcast-HR flag. */
+    fun broadcastHrFrame(seq: Int, on: Boolean): ByteArray = gen5.broadcastHrFrame(seq.toUByte(), on)
 }
