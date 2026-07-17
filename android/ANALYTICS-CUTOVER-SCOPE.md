@@ -6,12 +6,19 @@ read-only mappers (2026-07-17): the noop-tan analytics inventory and the physio-
 
 ## Status headline
 
-*(Mapping-day snapshot, 2026-07-17 — for LIVE per-score progress see "Tier-1 cutover status" below: 8 of the
-11 Tier-1 scores are now routed + Kotlin-deleted, Recovery is HARDENED (bit-for-bit parity pinned at machine
-precision), HRV is parity-proven but its store seam correctly stays Kotlin (blocked on a windowed-bucket-mean
-FFI — routing the whole-night door would break `avgHrv` parity), and SpO2 is BLOCKED on an FFI gap. The
-post-cutover de-cruft (dead FFI wrappers, stale doc-comments, resp-rate range guard) has landed. Closeout gate
-= GREEN: `:app:testFullDebugUnitTest` 2614 tests / 0 failures with the real Rust DLL through JNA.)*
+*(Mapping-day snapshot, 2026-07-17 — for LIVE per-score progress see "Tier-1 cutover status" below: ALL 11
+Tier-1 scores are now routed + Kotlin-deleted. Recovery is HARDENED (bit-for-bit parity pinned at machine
+precision). HRV `avgHrv` is ROUTED through the windowed bucket-mean FFI (`RustScores.windowedAvgHrv` →
+`hrv_windowed_avg`, `f187e5b`) bit-for-bit, after the `rmssd` divergence was FIXED in whoop-rs `0595d63` — the
+Rust gap-aware RMSSD had used a >5 s time-gap split + >200 ms delta-skip; it now uses the Kotlin
+range[300,2000] + Malik ectopic-reject + contiguous-pair-count clean (that mismatch was the 12.5% divergence
+root cause). SpO2 is ROUTED through the raw-means FFI (`RustScores.nightlySpo2RawMeans` →
+`nightly_spo2_raw_means`, `8a7681b`). The post-cutover de-cruft (dead FFI wrappers, stale doc-comments,
+resp-rate range guard) has landed. ONE residual: with the experimental `deepHrvWindow` (#141) toggle ON,
+`avgHrv` is still Kotlin-aggregated (tracked as a follow-up). whoop-rs was edited to land these doors
+(`0595d63`/`f187e5b`/`8a7681b` — its first cross-tree commits, unpushed; coordinate with the parallel agent).
+Closeout gate = GREEN: `:app:testFullDebugUnitTest` 0 failures with the real Rust DLL through JNA
+(`RustHrvParityTest` 4 legs / skipped=0, `RustSpo2ParityTest` 2 legs).)*
 
 At mapping time **only sleep *staging* crossed into Rust** (`SleepStager.kt:1197` → `RustSleepStager` →
 `stageSleepV1/V2`). Everything else in `com.noop.analytics` (~30 metrics) was pure Kotlin — faithful ports of
@@ -40,30 +47,32 @@ through JNA).
 | Baevsky Stress Index | **ROUTED + DELETED + HARDENED** | `RustScores.stressIndex`/`stressComponents`; `StressIndex` keeps `MIN_BEATS` (documented gate the Rust door enforces internally — no production path reads it) + the `Components` shape. **Hardened (`0577f078`):** `RustStressParityTest` now feeds raw series with out-of-range dropouts + ectopic spikes and asserts the SI and every histogram component match bit-for-bit, proving the Rust `stress_index` reproduces the Kotlin `clean_rr` (range band + Malik ectopic) internally — so the bridge feeds raw rrMs with no pre-clean. |
 | VO2max / Fitness Age | **ROUTED + DELETED** | `RustScores.vo2maxEstimate`/`fitnessAgeCompute`. `FitnessAgeEngine` keeps PA-index reconstruction (Tier-2 gap #5) + the UI readiness checklist. |
 | PPG-HR (v26) | **ROUTED (decode cutover)** | `PpgHr.kt` deleted with the decode cutover; v26 HR comes from Rust decode. The `RustScores.ppgHr` re-derive wrapper (and the unused `hrvReadiness` wrapper) were pruned in the de-cruft pass (`8e60c117`) — no consumer read them; the FFI symbols remain if a re-derive is ever needed. |
-| **HRV / RMSSD** | **PARITY-PROVEN, seam stays Kotlin (BLOCKED on a bucket-mean FFI)** | `RustHrvParityTest` (`63e9f214`) proves `RustScores.rmssdGapAware` == `HrvAnalyzer.analyzeRaw`'s whole-night gap-aware RMSSD bit-for-bit on the golden night (+ local real/gold fixtures when present). But the store seam is deliberately NOT flipped: the shipped `avgHrv` is the *mean over 5-min buckets* of `rmssdGapAware(cleanRRGapAware(bucket))` (`SleepStager` sessionHrvWindows/sessionAvgHRV → `AnalyticsEngine.avgHRVDaily`), a windowed pool — NOT the whole-night `analyzeRaw` the FFI reproduces. The two agree only when a night fits one 5-min bucket (the 240 s golden fixture); routing the whole-night door would change `avgHrv` on every real multi-bucket night and diverge from the Swift twin (also a bucket-mean), breaking the cross-platform / `.noopbak` contract. **Blocked on a whoop-rs FFI that reproduces the windowed bucket-mean** (or a per-bucket `rmssdGapAware` primitive with the ≥2-pair guard + index-contiguity mask); until then `avgHrv` stays Kotlin. `HrvAnalyzer` keeps `cleanRR`/`rangeFilter`/`rejectEctopic`/`rmssdRaw`/`median` (frontend OUT-scope consumers). |
-| **SpO2 (4.0 red/IR)** | **BLOCKED (mapping mismatch)** | `RustSpo2ParityTest` proves the two sides compute DIFFERENT quantities — see the fix request below. Kotlin `AnalyticsEngine.nightlySpo2RawMeans` STAYS. |
+| **HRV / RMSSD** | **ROUTED + DELETED** | `avgHrv` now routes through `RustScores.windowedAvgHrv` → the whoop-rs `hrv_windowed_avg` FFI (`f187e5b`), the windowed bucket-mean of `rmssdGapAware(cleanRRGapAware(bucket))` bit-for-bit — the now-deleted `SleepStager.sessionAvgHRV` twin (`aea515ee`). `RustHrvParityTest` is a live guard (`988ae184`) asserting the routed value == the frozen Kotlin reference across the golden night + local real/gold fixtures (4 legs / skipped=0). This landed only after the `rmssd` grain was aligned in whoop-rs `0595d63`: the Rust gap-aware RMSSD had used a >5 s time-gap split + >200 ms delta-skip; it now uses the Kotlin range[300,2000] + Malik ectopic-reject + contiguous-pair-count clean (that mismatch was the 12.5% divergence root cause). **ONE residual:** with the experimental `deepHrvWindow` (#141) toggle ON, `avgHrv` is still Kotlin-aggregated (follow-up). `HrvAnalyzer` keeps `cleanRR`/`rangeFilter`/`rejectEctopic`/`rmssdRaw`/`median` (freq-domain + frontend OUT-scope consumers). |
+| **SpO2 (4.0 red/IR)** | **ROUTED + DELETED** | `AnalyticsEngine.nightlySpo2RawMeans` now routes through `RustScores.nightlySpo2RawMeans` → the whoop-rs `nightly_spo2_raw_means` FFI (`8a7681b`), which returns the integer-truncated raw red/IR ADC means `(red_i32, ir_i32)` with the SAME in-span filter + `sum/kept` truncation the Kotlin used — NOT the `spo2_from_paired` wellness percent (that was the door mismatch). Kotlin `nightlySpo2RawMeans` deleted (`1f531f76`); `RustSpo2ParityTest` guards it bit-for-bit (2 legs). |
 
-### BLOCKED / FAIL list — whoop-rs fix requests (parallel-agent lane)
+### whoop-rs fix requests (parallel-agent lane) — 2 CLOSED, 1 open
 
-These are the open whoop-rs (physio-algo / FFI) tasks the noop-tan lane cannot resolve itself (whoop-rs is
-read+build-only from here). Each unblocks a Tier-1 route or removes a frontend reimplementation.
+Two of the three doors below LANDED in whoop-rs (its first cross-tree commits, unpushed — coordinate with the
+parallel agent); the third stays open. whoop-rs is read+build-only from the noop-tan lane.
 
-- **SpO2 — `spo2_from_paired` is the wrong door.** Kotlin `nightlySpo2RawMeans` stores the integer-truncated
-  RAW red/IR PPG ADC means (`Pair<Int,Int>` → Room `DailyMetric.spo2Red`/`spo2Ir`) and deliberately does NOT
-  derive a percent. The FFI `spo2_from_paired` returns a single wellness percent (`110 − 25·R`, clamped
-  70–100). A raw-ADC mean (tens of thousands) can never equal a 70–100 percent, and one percent can't
-  reconstruct the two ADC columns → no bit-for-bit route. **Fix:** add a `nightly_spo2_raw_means` FFI
-  returning `(red_mean_i32, ir_mean_i32)` with the SAME in-span filter + `sum/kept` integer truncation the
-  Kotlin uses. Until then SpO2 stays Kotlin (re-mapping the Room column is out of scope). Guard =
-  `RustSpo2ParityTest` (documents the mismatch; ready to assert once the door lands).
-- **HRV — need a windowed bucket-mean door.** `RustScores.rmssdGapAware` (whole-night `hrv_rmssd_gap_aware`)
-  is parity-proven but is the WRONG grain for the stored `avgHrv`, which is a mean over 5-min buckets (see the
-  Tier-1 HRV row). **Fix:** add a whoop-rs FFI that reproduces the windowed bucket-mean of
-  `rmssdGapAware(cleanRRGapAware(bucket))` — either a whole-night `nightly_avg_hrv(bucket_s = 300)` rollup, or
-  a per-bucket `rmssdGapAware` primitive (with the ≥2 contiguous-pair guard + index-contiguity mask) the
-  Kotlin can fold. Then flip the `IntelligenceEngine` seam and delete `HrvAnalyzer`'s RMSSD core (keeping the
-  freq-domain + `cleanRR`/`rangeFilter`/`rejectEctopic`/`rmssdRaw`/`median` helpers — Tier-3 / frontend).
-- **Recovery breakdown — need a per-term marginal-contribution door.** `RecoveryDrivers.chargeDrivers`
+- **SpO2 — `nightly_spo2_raw_means` LANDED (task #3 CLOSED).** The old `spo2_from_paired` was the wrong door:
+  it returned a single wellness percent (`110 − 25·R`, clamped 70–100), which can never equal the
+  integer-truncated RAW red/IR ADC means Kotlin `nightlySpo2RawMeans` stored (`Pair<Int,Int>` → Room
+  `DailyMetric.spo2Red`/`spo2Ir`), and one percent can't reconstruct the two ADC columns. whoop-rs `8a7681b`
+  added `nightly_spo2_raw_means` returning `(red_mean_i32, ir_mean_i32)` with the SAME in-span filter +
+  `sum/kept` integer truncation, so `AnalyticsEngine.nightlySpo2RawMeans` is now ROUTED + DELETED (`1f531f76`).
+  Guard = `RustSpo2ParityTest` (bit-for-bit, 2 legs).
+- **HRV — `hrv_windowed_avg` LANDED (task #9 CLOSED).** The whole-night `hrv_rmssd_gap_aware` was the WRONG
+  grain for the stored `avgHrv`, which is a mean over 5-min buckets (see the Tier-1 HRV row). whoop-rs
+  `f187e5b` added `hrv_windowed_avg` reproducing the windowed bucket-mean of
+  `rmssdGapAware(cleanRRGapAware(bucket))` (≥2 contiguous-pair guard + index-contiguity mask), and `0595d63`
+  first aligned the underlying gap-aware RMSSD clean to the Kotlin range[300,2000] + Malik ectopic path
+  (fixing the 12.5% divergence). `avgHrv` is now ROUTED + DELETED (`SleepStager.sessionAvgHRV` gone,
+  `aea515ee`); `HrvAnalyzer` keeps its `cleanRR`/`rangeFilter`/`rejectEctopic`/`rmssdRaw`/`median` + freq-domain
+  helpers (Tier-3 / frontend). Residual: the experimental `deepHrvWindow` (#141) path is still
+  Kotlin-aggregated (follow-up).
+- **Recovery breakdown — per-term marginal-contribution door (task #8, OPEN — the sole remaining item).**
+  `RecoveryDrivers.chargeDrivers`
   (`RecoveryDrivers.kt`) reimplements the routed logistic in Kotlin (same term set / append order / weights,
   neutralize-one-term to get each row's point swing) to render the "what shaped it" breakdown. It reads the
   surviving `RecoveryScorer.zScore`/`wHRV`/`wRHR`/… helpers, so it currently matches the Rust score by
@@ -75,8 +84,9 @@ read+build-only from here). Each unblocks a Tier-1 route or removes a frontend r
   than surfacing gaps: recovery pins bit-for-bit (maxErr 0.0) and stress reproduces `clean_rr` internally
   (no bridge pre-clean). No whoop-rs change is needed for either family.
 
-No Tier-1 FAIL(drift) outcomes — every routed score matched bit-for-bit on its fixture. Open Tier-1 items are
-the HRV bucket-mean FFI (whole-night parity already green) and the SpO2 raw-means FFI; both are whoop-rs-side.
+No Tier-1 FAIL(drift) outcomes — every routed score matched bit-for-bit on its fixture. All 11 Tier-1 scores
+are now routed + Kotlin-deleted; the HRV bucket-mean and SpO2 raw-means doors both landed, so the only open
+whoop-rs item is the Recovery-breakdown marginal-contribution FFI (task #8), which does not block a score.
 
 ## Tier 1 — DIRECT ROUTE (physio-algo has it AND it's FFI-exposed; just wire + prove parity)
 
@@ -84,12 +94,12 @@ the HRV bucket-mean FFI (whole-night parity already green) and the SpO2 raw-mean
 |---|---|---|
 | Recovery / Charge | `RecoveryScorer.recovery` (RecoveryScorer.kt:346) | `recovery_score` (+`recovery_band`, `recovery_index_slope`, `recovery_banked_nights`) |
 | Day Strain | `StrainScorer.strain` (StrainScorer.kt:254) | `strain_score` (+`strain_default_denominator`, `StrainMethod`) |
-| HRV / RMSSD | `HrvAnalyzer.analyze` (HrvAnalyzer.kt:265) | `hrv_rmssd_gap_aware` + `hrv_readiness` |
+| HRV / RMSSD (`avgHrv`) | `SleepStager.sessionAvgHRV` (routed+deleted) | `hrv_windowed_avg` (+`hrv_rmssd_gap_aware`) |
 | Resting HR | `RecoveryScorer.restingHR` (:191) | `session_resting_hr`, `daily_resting_hr` |
 | Sleep staging | already routed | `stage_sleep_v1` / `stage_sleep_v2` (DONE) |
 | Respiratory rate | `SleepStager.respRateFromRR` (:1535) | `resp_rate_from_rr` |
 | Baevsky Stress Index | `StressIndex.stressIndex` (StressIndex.kt:43) | `stress_index`, `stress_components` |
-| SpO2 (4.0 red/IR) | `AnalyticsEngine.nightlySpo2RawMeans` (:726) | `spo2_from_paired` |
+| SpO2 (4.0 red/IR) | `AnalyticsEngine.nightlySpo2RawMeans` (routed+deleted) | `nightly_spo2_raw_means` |
 | PPG-HR | (v26 path) | `ppg_hr` |
 | HR zones + time-in-zone | `HrZones` (HrZones.kt:88) | `hr_zones_for_age`, `hr_time_in_zone` |
 | VO2max / Fitness Age | `FitnessAgeEngine.compute` (:109) | `vo2max_estimate`, `fitness_age_compute` (needs PA-index, see Tier 2) |

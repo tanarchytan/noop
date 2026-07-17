@@ -71,17 +71,23 @@ reference bit-for-bit:
   divergence.
 - Six formula scores: all 88 goldens green in the Rust core.
 
-**Not-yet-applicable:** HRV/avgHrv is not yet routed through whoop-rs FFI (avgHrv
-door pending, task #9), so there is no Rust HRV number to fall below. When the
-door opens, re-run `HrvGoldAgreementTest` to confirm Rust reproduces maxErr=0.0.
+**Resolved:** HRV/avgHrv is now ROUTED through the whoop-rs `hrv_windowed_avg` FFI
+(door task #9 CLOSED), after the gap-aware RMSSD clean was aligned to the Kotlin
+range[300,2000] + Malik ectopic path in whoop-rs `0595d63` (the 12.5% divergence
+root cause). `RustHrvParityTest` live-guards the routed value bit-for-bit ==
+the frozen Kotlin reference (4 legs / skipped=0) — no port-divergence.
 
 ### CANNOT-MEASURE on this box
 
 - **recovery r~0.992 vs WHOOP** — external figure; WHOOP's model is closed and
   no WHOOP-paired recovery gold dataset is present. Not gradeable here.
-- **avgHrv Rust twin** — FFI door still closed; no Rust HRV path to measure yet.
-- **SpO2** — held pending FFI doors; needs type-43 raw red/IR (RE frontier), not
-  in the current dataset set.
+- **avgHrv Rust twin** — now ROUTED (`hrv_windowed_avg`); `RustHrvParityTest`
+  confirms bit-for-bit parity with the Kotlin reference. Accuracy is still graded
+  against the Kotlin gold agreement (formula maxErr already 0.0), not a new gold.
+- **SpO2** — now ROUTED (`nightly_spo2_raw_means`, raw red/IR ADC means, not a
+  percent); `RustSpo2ParityTest` guards it bit-for-bit. There is no accuracy grade
+  to make (raw passthrough); grading a % would still need type-43 raw red/IR gold
+  (RE frontier), not in the current dataset set.
 - **PPG-DaLiA** — zip unextracted on this box; gold R-R truth used instead was
   AAUWSS PSG 200Hz ECG + GalaxyPPG Polar H10 belt (sufficient clean ground truth).
 
@@ -108,27 +114,26 @@ grind).
 
 ---
 
-## Harness defects found (report-only, NOT fixed — out of scope)
+## Harness defects found — NOW FIXED (`6bd3134d`)
 
-Two infra defects surfaced during measurement. They do not affect any number
-above (worked around with data-only staging, no code edit), but they will bite a
-plain `gradle` run:
+Two infra defects surfaced during measurement. Both were report-only when this
+report was first written (worked around with data-only staging), and both are now
+FIXED in `6bd3134d`, so the agreement/gold tests run against the gold vectors on a
+local box instead of self-skipping green:
 
-1. **Stale fixture path.** `HrvGoldAgreementTest`, `HrvFreqAgreementTest`, and
-   `RecoveryAgreementTest` hard-code the space-path
-   `whoop data/datasets/agreement-fixtures`, which was renamed to `whoop-data`
-   on 2026-07-16. The dir no longer exists, so all three **self-SKIP green** on a
-   plain run (skipped=1, failures=0) and their numbers are silently unmeasured.
-2. **Inert `-D` override.** The documented `-Dnoop.hrvGoldFixtures` override
-   never reaches the forked test JVM because `build.gradle` `testOptions`
-   forwards only `jna.library.path`. So the path cannot be redirected from the
-   command line.
+1. **Stale fixture path — FIXED.** `HrvGoldAgreementTest`, `HrvFreqAgreementTest`,
+   `HrvOpticalRobustnessTest`, `RealDataRundownTest`, and `RecoveryAgreementTest`
+   defaulted to the pre-rename space-path `whoop data/datasets/agreement-fixtures`
+   (renamed to `whoop-data` on 2026-07-16), so they self-SKIPPED green
+   (skipped=1, failures=0) and their numbers were silently unmeasured. `6bd3134d`
+   points the defaults at the current `whoop-data/harnesses/agreement-fixtures`
+   (+ `rr-real-fixture.json`), so they now run when the local fixtures are present.
+2. **Inert `-D` override — FIXED.** The `-Dnoop.hrvGoldFixtures` override never
+   reached the forked test JVM (`testOptions` forwarded only `jna.library.path`).
+   `6bd3134d` forwards every `-Dnoop.*` system property into the fork, so the path
+   can be redirected from the command line.
 
-Workaround used for this report: copied the 7 gold fixtures from
-`whoop-data/harnesses/agreement-fixtures` into the hardcoded path (data only, no
-code), ran with skipped=0, read the numbers, then deleted the temp dir.
-
-Proper fix (a real code edit, deferred): update the three tests to the
-`whoop-data` path AND add
-`it.systemProperty("noop.hrvGoldFixtures", ...)` to the forked-test config so the
-override works.
+Fixtures stay local-only and gitignored, so the tests still skip gracefully on CI
+(green-by-skip there is correct — the gold vectors are not committed). Separately,
+the Rust HRV parity legs became a live guard in `988ae184` (`RustHrvParityTest`
+skipped=0 / 0-fail once the routed `avgHrv` door landed).
