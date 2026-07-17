@@ -410,13 +410,14 @@ object AnalyticsEngine {
         }
 
         // Nightly APPROXIMATE respiratory rate (breaths/min) from the R-R stream via
-        // RSA. WHOOP5 v18 carries no raw resp ADC, so this is an on-device estimate,
-        // NOT a cloud/clinical respiration value. Per matched in-bed session, estimate
-        // over [start, end]; the night's value = median of finite per-session
-        // estimates; null only when no session yields a finite estimate.
+        // RSA, scored in whoop-rs physio-algo (RustScores.respRateFromRr). WHOOP5 v18
+        // carries no raw resp ADC, so this is an on-device estimate, NOT a cloud/clinical
+        // respiration value. Per matched in-bed session, estimate over [start, end]; the
+        // night's value = median of finite per-session estimates (the FFI returns null for
+        // a session with no finite estimate); null only when no session yields one.
         val respRateDaily: Double? = run {
             val perSession = matched
-                .map { SleepStager.respRateFromRR(rr, it.start, it.end) }
+                .mapNotNull { RustScores.respRateFromRr(rr, it.start, it.end) }
                 .filter { it.isFinite() }
             if (perSession.isEmpty()) null else HrvAnalyzer.median(perSession)
         }
