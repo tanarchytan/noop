@@ -21,7 +21,7 @@ class Reassembler(private val family: DeviceFamily = DeviceFamily.WHOOP4) {
     // the historical offload pushes thousands of ~1.9 KB records across a multi-night sync, so that cost
     // dominated. Here fragments are appended into [data], [head] simply advances past consumed bytes,
     // and the leftover tail is slid back to the front once per feed(). The emitted frames are identical
-    // in bytes and order; FramingTest's reassembler vectors hold that contract.
+    // in bytes and order; ReassemblerTest's reassembler vectors hold that contract.
     private var data = ByteArray(0)
     private var head = 0   // index of the first byte not yet consumed
     private var tail = 0   // index one past the last valid byte

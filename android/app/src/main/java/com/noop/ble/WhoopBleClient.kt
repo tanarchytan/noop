@@ -241,7 +241,7 @@ data class LiveState(
  *   6. onCharacteristicChanged — route inbound bytes (didUpdateValueFor):
  *        • HR char (0x2A37)      → parse standard HR + R-R
  *        • battery char (0x2A19) → first byte = percent
- *        • custom notify chars   → Reassembler.feed → Framing.parseFrame → update LiveState
+ *        • custom notify chars   → Reassembler.feed → RustAdapter.parseFrame → update LiveState
  *
  * Android 12+ (API 31) runtime-permission notes:
  *   - The caller MUST hold BLUETOOTH_SCAN and BLUETOOTH_CONNECT at runtime before [connect].

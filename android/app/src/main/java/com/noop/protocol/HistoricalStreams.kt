@@ -31,10 +31,10 @@ import uniffi.whoop_ffi.Response
  *   - `extractHistoricalStreams` (Packages/WhoopProtocol/.../HistoricalStreams.swift), which turns
  *     a batch of parsed offload frames into datastore rows.
  *
- * WHY this lives here and not in [Framing.parseFrame]: the live [Framing] decoder deliberately
- * does NOT decode type-47 (it only handles REALTIME_DATA / EVENT / COMMAND_RESPONSE / METADATA),
- * exactly like the Swift live path. Historical records are decoded only during a backfill, so the
- * type-47 decoder is kept on the offload path to mirror the Swift split precisely.
+ * WHY this lives here and not on the live decode path: the live decode ([RustAdapter.parseFrame] over
+ * the whoop-rs codec) surfaces only REALTIME_DATA / EVENT / COMMAND_RESPONSE / METADATA, exactly like
+ * the Swift live path. Historical records are decoded only during a backfill, so the type-47 decode is
+ * kept on the offload path to mirror the Swift split precisely.
  *
  * The frame envelope is identical to Framing.kt's: [0]=0xAA, [1..2]=len u16 LE, [3]=crc8(len),
  * [4]=packet type (47 here), [5]=record VERSION (NOT a sequence byte for type-47 — the schema
@@ -171,7 +171,7 @@ data class EventFields(val kind: String, val rawTs: Long, val residual: Map<Stri
  *
  * [rawFrames] are the verbatim BLE frames for this chunk; each record is decoded through whoop-rs
  * ([RustAdapter.recordFields] / [RustCodec.decodePpg]). We take the frames (not pre-parsed records)
- * because the live [Framing.parseFrame] doesn't populate type-47 fields.
+ * because the live decode path doesn't populate type-47 fields.
  *
  * DECODE routes solely through whoop-rs; the app-side plausibility drop, the grossly-stale-RTC 5-min
  * snap and rrInterval seq stability below are UNCHANGED — Rust supplies the raw fields, this owns the clock.
