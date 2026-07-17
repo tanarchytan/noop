@@ -1531,9 +1531,11 @@ object IntelligenceEngine {
             rhrDays = rhrs.size, activityDays = gateDays.mapNotNull { it.strain }.size,
             hasHeightWeight = profile.heightCm > 0 && profile.weightKg > 0, hasWaist = waist != null)
         if (!ready.canCompute) return emptyList()
-        val res = FitnessAgeEngine.compute(
+        // VO2max + Fitness-Age math routes through the whoop-rs physio-algo FFI (RustScores); the readiness
+        // gate above and the PA-index below stay Kotlin (PA-index FFI door not yet open).
+        val res = RustScores.fitnessAgeCompute(
             age = profile.age, sex = profile.sex,
-            restingHR = medianOfDoubles(rhrs),
+            restingHr = medianOfDoubles(rhrs),
             paIndex = FitnessAgeEngine.physicalActivityIndexFromStrain(strains.size, meanStrain),
             waistCm = waist) ?: return emptyList()
         val rows = mutableListOf(MetricSeriesRow(deviceId = computedId, day = satKey, key = "fitness_age", value = res.fitnessAge))

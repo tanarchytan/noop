@@ -1,37 +1,19 @@
 package com.noop.analytics
 
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNull
-import org.junit.Assert.assertNotNull
-import org.junit.Assert.assertTrue
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/** Mirror of the Swift FitnessAgeEngineTests — identical inputs and expected numbers (parity guard). */
+/**
+ * Guards the Kotlin support that stayed after the VO2max / Fitness-Age scoring math routed to whoop-rs
+ * (RustScores): BMI, the PA-index reconstruction, and the readiness checklist. The Nes-2011 VO2max +
+ * self-consistent Fitness-Age numbers are now pinned Rust-side in [RustVo2maxParityTest].
+ */
 class FitnessAgeEngineTest {
-
-    @Test fun vo2maxMen() =
-        assertEquals(46.275, FitnessAgeEngine.estimateVO2max(40.0, "male", 90.0, 65.0, 5.0), 1e-3)
-
-    @Test fun vo2maxWomen() =
-        assertEquals(37.72, FitnessAgeEngine.estimateVO2max(40.0, "female", 80.0, 65.0, 5.0), 1e-3)
 
     @Test fun bmiHelper() =
         assertEquals(25.249, FitnessAgeEngine.bmi(80.0, 178.0), 1e-3)
-
-    @Test fun referenceFitPersonEqualsChronoAge() {
-        assertEquals(40.0, FitnessAgeEngine.fitnessAge(40.0, "male", 65.0, 5.0), 1e-9)
-        assertEquals(55.0, FitnessAgeEngine.fitnessAge(55.0, "female", 65.0, 5.0), 1e-9)
-    }
-
-    @Test fun fitterIsYounger() =
-        assertEquals(28.33, FitnessAgeEngine.fitnessAge(40.0, "male", 50.0, 10.0), 0.05)
-
-    @Test fun unfitterIsOlder() =
-        assertEquals(50.15, FitnessAgeEngine.fitnessAge(40.0, "male", 80.0, 2.0), 0.05)
-
-    @Test fun clampHigh() = assertEquals(80.0, FitnessAgeEngine.fitnessAge(75.0, "male", 120.0, 0.0), 1e-9)
-    @Test fun clampLow() = assertEquals(20.0, FitnessAgeEngine.fitnessAge(25.0, "male", 35.0, 15.0), 1e-9)
 
     @Test fun paiSedentary() = assertEquals(0.0, FitnessAgeEngine.physicalActivityIndex(0, 0.0, 0.0), 1e-9)
     @Test fun paiHigh() = assertEquals(15.0, FitnessAgeEngine.physicalActivityIndex(7, 75.0, 0.8), 1e-9)
@@ -43,27 +25,6 @@ class FitnessAgeEngineTest {
         assertEquals(3.75, FitnessAgeEngine.physicalActivityIndexFromStrain(3, 45.0), 1e-9)
         assertEquals(5.0, FitnessAgeEngine.physicalActivityIndexFromStrain(4, 60.0), 1e-9)
     }
-
-    @Test fun computeReferencePerson() {
-        val r = FitnessAgeEngine.compute(40.0, "male", 65.0, 5.0)
-        assertNotNull(r)
-        assertEquals(40.0, r!!.fitnessAge, 1e-9)
-        assertEquals(0.0, r.deltaYears, 1e-9)
-        assertNull(r.vo2max)
-        assertFalse(r.lowerConfidence)
-    }
-
-    @Test fun computeWithWaistFillsVO2max() {
-        val r = FitnessAgeEngine.compute(40.0, "male", 65.0, 5.0, waistCm = 90.0)
-        assertEquals(46.275, r!!.vo2max!!, 1e-3)
-    }
-
-    @Test fun computeNonBinaryLowerConfidence() {
-        val r = FitnessAgeEngine.compute(40.0, "nonbinary", 60.0, 6.0)
-        assertTrue(r!!.lowerConfidence)
-    }
-
-    @Test fun computeNilNoRhr() = assertNull(FitnessAgeEngine.compute(40.0, "male", 0.0, 7.5))
 
     // Readiness checklist
     @Test fun readinessAllPresentIsReady() {
