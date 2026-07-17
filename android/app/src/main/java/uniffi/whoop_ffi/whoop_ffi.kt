@@ -691,7 +691,11 @@ internal object IntegrityCheckingUniffiLib {
     ): Int
     external fun uniffi_whoop_ffi_checksum_func_hrv_rmssd_gap_aware(
     ): Int
+    external fun uniffi_whoop_ffi_checksum_func_hrv_windowed_avg(
+    ): Int
     external fun uniffi_whoop_ffi_checksum_func_imu_features(
+    ): Int
+    external fun uniffi_whoop_ffi_checksum_func_nightly_spo2_raw_means(
     ): Int
     external fun uniffi_whoop_ffi_checksum_func_ppg_hr(
     ): Int
@@ -887,7 +891,11 @@ internal object UniffiLib {
     ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_func_hrv_rmssd_gap_aware(`runs`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
+    external fun uniffi_whoop_ffi_fn_func_hrv_windowed_avg(`start`: Int,`end`: Int,`runs`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_func_imu_features(`samples`: RustBuffer.ByValue,`sampleRateHz`: Int,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    external fun uniffi_whoop_ffi_fn_func_nightly_spo2_raw_means(`spans`: RustBuffer.ByValue,`samples`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_func_ppg_hr(`samples`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
@@ -1065,7 +1073,13 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_whoop_ffi_checksum_func_hrv_rmssd_gap_aware() != 21845) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_whoop_ffi_checksum_func_hrv_windowed_avg() != 17402) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_whoop_ffi_checksum_func_imu_features() != 23396) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_whoop_ffi_checksum_func_nightly_spo2_raw_means() != 36193) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_whoop_ffi_checksum_func_ppg_hr() != 31690) {
@@ -3900,6 +3914,134 @@ public object FfiConverterTypeSleepSegment: FfiConverterRustBuffer<SleepSegment>
 
 
 /**
+ * Integer-truncated nightly means of the raw red/IR ADC (the app's `DailyMetric.spo2Red`/`spo2Ir`).
+ */
+data class Spo2RawMeans (
+    var `red`: kotlin.Int
+    , 
+    var `ir`: kotlin.Int
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeSpo2RawMeans: FfiConverterRustBuffer<Spo2RawMeans> {
+    override fun read(buf: ByteBuffer): Spo2RawMeans {
+        return Spo2RawMeans(
+            FfiConverterInt.read(buf),
+            FfiConverterInt.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: Spo2RawMeans) = (
+            FfiConverterInt.allocationSize(value.`red`) +
+            FfiConverterInt.allocationSize(value.`ir`)
+    )
+
+    override fun write(value: Spo2RawMeans, buf: ByteBuffer) {
+            FfiConverterInt.write(value.`red`, buf)
+            FfiConverterInt.write(value.`ir`, buf)
+    }
+}
+
+
+
+/**
+ * One 4.0 raw SpO2 sample: red/IR PPG ADC at unix second `ts`.
+ */
+data class Spo2RawSample (
+    var `ts`: kotlin.Long
+    , 
+    var `red`: kotlin.Int
+    , 
+    var `ir`: kotlin.Int
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeSpo2RawSample: FfiConverterRustBuffer<Spo2RawSample> {
+    override fun read(buf: ByteBuffer): Spo2RawSample {
+        return Spo2RawSample(
+            FfiConverterLong.read(buf),
+            FfiConverterInt.read(buf),
+            FfiConverterInt.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: Spo2RawSample) = (
+            FfiConverterLong.allocationSize(value.`ts`) +
+            FfiConverterInt.allocationSize(value.`red`) +
+            FfiConverterInt.allocationSize(value.`ir`)
+    )
+
+    override fun write(value: Spo2RawSample, buf: ByteBuffer) {
+            FfiConverterLong.write(value.`ts`, buf)
+            FfiConverterInt.write(value.`red`, buf)
+            FfiConverterInt.write(value.`ir`, buf)
+    }
+}
+
+
+
+/**
+ * One in-bed span (`[start, end]` unix seconds) for the nightly SpO2 raw-means gate.
+ */
+data class Spo2Span (
+    var `start`: kotlin.Long
+    , 
+    var `end`: kotlin.Long
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeSpo2Span: FfiConverterRustBuffer<Spo2Span> {
+    override fun read(buf: ByteBuffer): Spo2Span {
+        return Spo2Span(
+            FfiConverterLong.read(buf),
+            FfiConverterLong.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: Spo2Span) = (
+            FfiConverterLong.allocationSize(value.`start`) +
+            FfiConverterLong.allocationSize(value.`end`)
+    )
+
+    override fun write(value: Spo2Span, buf: ByteBuffer) {
+            FfiConverterLong.write(value.`start`, buf)
+            FfiConverterLong.write(value.`end`, buf)
+    }
+}
+
+
+
+/**
  * Baevsky Stress Index histogram terms behind an SI.
  */
 data class StressComponentsInfo (
@@ -5414,6 +5556,38 @@ public object FfiConverterOptionalTypePpgFrame: FfiConverterRustBuffer<PpgFrame?
 /**
  * @suppress
  */
+public object FfiConverterOptionalTypeSpo2RawMeans: FfiConverterRustBuffer<Spo2RawMeans?> {
+    override fun read(buf: ByteBuffer): Spo2RawMeans? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterTypeSpo2RawMeans.read(buf)
+    }
+
+    override fun allocationSize(value: Spo2RawMeans?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterTypeSpo2RawMeans.allocationSize(value)
+        }
+    }
+
+    override fun write(value: Spo2RawMeans?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterTypeSpo2RawMeans.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterOptionalTypeStressComponentsInfo: FfiConverterRustBuffer<StressComponentsInfo?> {
     override fun read(buf: ByteBuffer): StressComponentsInfo? {
         if (buf.get().toInt() == 0) {
@@ -6102,6 +6276,62 @@ public object FfiConverterSequenceTypeSleepSegment: FfiConverterRustBuffer<List<
 /**
  * @suppress
  */
+public object FfiConverterSequenceTypeSpo2RawSample: FfiConverterRustBuffer<List<Spo2RawSample>> {
+    override fun read(buf: ByteBuffer): List<Spo2RawSample> {
+        val len = buf.getInt()
+        return List<Spo2RawSample>(len) {
+            FfiConverterTypeSpo2RawSample.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<Spo2RawSample>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeSpo2RawSample.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<Spo2RawSample>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeSpo2RawSample.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeSpo2Span: FfiConverterRustBuffer<List<Spo2Span>> {
+    override fun read(buf: ByteBuffer): List<Spo2Span> {
+        val len = buf.getInt()
+        return List<Spo2Span>(len) {
+            FfiConverterTypeSpo2Span.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<Spo2Span>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeSpo2Span.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<Spo2Span>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeSpo2Span.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterSequenceTypeStep: FfiConverterRustBuffer<List<Step>> {
     override fun read(buf: ByteBuffer): List<Step> {
         val len = buf.getInt()
@@ -6321,6 +6551,24 @@ public object FfiConverterSequenceOptionalDouble: FfiConverterRustBuffer<List<ko
     
 
         /**
+         * Windowed session avgHrv (ms): the mean of per-5-min-bucket gap-aware RMSSD over `[start, end]`, the
+         * app's stored `SleepSession.avgHrv`. `runs` are the session's per-record `(unix, rr)` in chronological
+         * order; buckets tumble from `start`. `None` when no bucket yields a value.
+         */ fun `hrvWindowedAvg`(`start`: kotlin.UInt, `end`: kotlin.UInt, `runs`: List<RrRun>): kotlin.Double? {
+            return FfiConverterOptionalDouble.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_func_hrv_windowed_avg(
+    
+        
+        FfiConverterUInt.lower(`start`),
+        FfiConverterUInt.lower(`end`),
+        FfiConverterSequenceTypeRrRun.lower(`runs`),_status)
+}
+    )
+    }
+    
+
+        /**
          * Accel/gyro energy, jerk and gait-band cadence over IMU samples at `sample_rate_hz`.
          */ fun `imuFeatures`(`samples`: List<ImuSampleInfo>, `sampleRateHz`: kotlin.Int): ImuFeaturesInfo {
             return FfiConverterTypeImuFeaturesInfo.lift(
@@ -6330,6 +6578,23 @@ public object FfiConverterSequenceOptionalDouble: FfiConverterRustBuffer<List<ko
         
         FfiConverterSequenceTypeImuSampleInfo.lower(`samples`),
         FfiConverterInt.lower(`sampleRateHz`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Nightly integer-truncated means of the 4.0 raw red/IR PPG ADC over the detected in-bed `spans`, the
+         * app's stored `DailyMetric.spo2Red`/`spo2Ir`. A sample counts when its `ts` lies inside any span.
+         * `None` when either input is empty or no sample landed in-span. Raw ADC only, never a calibrated percent.
+         */ fun `nightlySpo2RawMeans`(`spans`: List<Spo2Span>, `samples`: List<Spo2RawSample>): Spo2RawMeans? {
+            return FfiConverterOptionalTypeSpo2RawMeans.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_func_nightly_spo2_raw_means(
+    
+        
+        FfiConverterSequenceTypeSpo2Span.lower(`spans`),
+        FfiConverterSequenceTypeSpo2RawSample.lower(`samples`),_status)
 }
     )
     }

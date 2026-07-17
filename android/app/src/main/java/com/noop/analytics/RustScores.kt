@@ -2,6 +2,7 @@ package com.noop.analytics
 
 import com.noop.data.HrSample
 import com.noop.data.RrInterval
+import com.noop.data.Spo2Sample
 import uniffi.whoop_ffi.DriverBaselineInfo
 import uniffi.whoop_ffi.FitnessAgeInfo
 import uniffi.whoop_ffi.HrTick
@@ -9,6 +10,8 @@ import uniffi.whoop_ffi.HrZoneSetInfo
 import uniffi.whoop_ffi.RecoveryDrivers
 import uniffi.whoop_ffi.RrBeat
 import uniffi.whoop_ffi.RrRun
+import uniffi.whoop_ffi.Spo2RawSample
+import uniffi.whoop_ffi.Spo2Span
 import uniffi.whoop_ffi.StrainMethod
 import uniffi.whoop_ffi.StressComponentsInfo
 import uniffi.whoop_ffi.TimeInZoneInfo
@@ -142,6 +145,11 @@ internal object RustScores {
 
     fun rmssdGapAware(rr: List<RrInterval>): Double? = uniffi.whoop_ffi.hrvRmssdGapAware(groupRuns(rr))
 
+    /** Windowed session avgHrv (ms): mean of per-5-min-bucket gap-aware RMSSD over [start, end] — the stored
+     *  DailyMetric.avgHrv/SleepSession.avgHrv (twin of SleepStager.sessionAvgHRV). `rr` must be ts-sorted. */
+    fun windowedAvgHrv(start: Long, end: Long, rr: List<RrInterval>): Double? =
+        uniffi.whoop_ffi.hrvWindowedAvg(start.toUInt(), end.toUInt(), groupRuns(rr))
+
     // ── Resting HR ───────────────────────────────────────────────────────────
 
     fun sessionRestingHr(hr: List<HrSample>, start: Long, end: Long): Int? =
@@ -175,6 +183,14 @@ internal object RustScores {
 
     fun spo2FromPaired(red: List<Double>, ir: List<Double>): Double? =
         uniffi.whoop_ffi.spo2FromPaired(red, ir)
+
+    /** Nightly integer-truncated raw red/IR ADC means over the detected in-bed [sessions] — the stored
+     *  DailyMetric.spo2Red/spo2Ir (twin of AnalyticsEngine.nightlySpo2RawMeans). Never a calibrated percent. */
+    fun nightlySpo2RawMeans(sessions: List<DetectedSleep>, spo2: List<Spo2Sample>): Pair<Int, Int>? =
+        uniffi.whoop_ffi.nightlySpo2RawMeans(
+            sessions.map { Spo2Span(it.start, it.end) },
+            spo2.map { Spo2RawSample(it.ts, it.red, it.ir) },
+        )?.let { it.red to it.ir }
 
     // ── HR zones + time-in-zone ──────────────────────────────────────────────
 
