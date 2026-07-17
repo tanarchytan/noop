@@ -673,23 +673,55 @@ internal object IntegrityCheckingUniffiLib {
         uniffiCheckContractApiVersion(this)
         uniffiCheckApiChecksums(this)
     }
+    external fun uniffi_whoop_ffi_checksum_func_daily_resting_hr(
+    ): Int
     external fun uniffi_whoop_ffi_checksum_func_data_range_newest(
     ): Int
     external fun uniffi_whoop_ffi_checksum_func_data_range_oldest(
     ): Int
+    external fun uniffi_whoop_ffi_checksum_func_fitness_age_compute(
+    ): Int
     external fun uniffi_whoop_ffi_checksum_func_haptic_clock_pulses(
+    ): Int
+    external fun uniffi_whoop_ffi_checksum_func_hr_time_in_zone(
+    ): Int
+    external fun uniffi_whoop_ffi_checksum_func_hr_zones_for_age(
     ): Int
     external fun uniffi_whoop_ffi_checksum_func_hrv_readiness(
     ): Int
     external fun uniffi_whoop_ffi_checksum_func_hrv_rmssd_gap_aware(
     ): Int
+    external fun uniffi_whoop_ffi_checksum_func_imu_features(
+    ): Int
     external fun uniffi_whoop_ffi_checksum_func_ppg_hr(
+    ): Int
+    external fun uniffi_whoop_ffi_checksum_func_recovery_band(
+    ): Int
+    external fun uniffi_whoop_ffi_checksum_func_recovery_banked_nights(
+    ): Int
+    external fun uniffi_whoop_ffi_checksum_func_recovery_index_slope(
+    ): Int
+    external fun uniffi_whoop_ffi_checksum_func_recovery_score(
+    ): Int
+    external fun uniffi_whoop_ffi_checksum_func_resp_rate_from_rr(
+    ): Int
+    external fun uniffi_whoop_ffi_checksum_func_session_resting_hr(
     ): Int
     external fun uniffi_whoop_ffi_checksum_func_spo2_from_paired(
     ): Int
     external fun uniffi_whoop_ffi_checksum_func_stage_sleep_v1(
     ): Int
     external fun uniffi_whoop_ffi_checksum_func_stage_sleep_v2(
+    ): Int
+    external fun uniffi_whoop_ffi_checksum_func_strain_default_denominator(
+    ): Int
+    external fun uniffi_whoop_ffi_checksum_func_strain_score(
+    ): Int
+    external fun uniffi_whoop_ffi_checksum_func_stress_components(
+    ): Int
+    external fun uniffi_whoop_ffi_checksum_func_stress_index(
+    ): Int
+    external fun uniffi_whoop_ffi_checksum_func_vo2max_estimate(
     ): Int
     external fun uniffi_whoop_ffi_checksum_method_whoopcodec_advertising_name_frame(
     ): Int
@@ -837,17 +869,39 @@ internal object UniffiLib {
     ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_method_whoopcodec_toggle_realtime_hr_frame(`ptr`: Long,`seq`: Byte,`on`: Byte,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
+    external fun uniffi_whoop_ffi_fn_func_daily_resting_hr(`sessionFloors`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_func_data_range_newest(`frame`: RustBuffer.ByValue,`wallNowUnix`: Long,`futureSkewSeconds`: Long,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_func_data_range_oldest(`frame`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
+    external fun uniffi_whoop_ffi_fn_func_fitness_age_compute(`age`: Double,`sex`: RustBuffer.ByValue,`restingHr`: Double,`paIndex`: Double,`waistCm`: RustBuffer.ByValue,`lowerConfidence`: Byte,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_func_haptic_clock_pulses(`hour`: Int,`minute`: Int,`is24h`: Byte,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    external fun uniffi_whoop_ffi_fn_func_hr_time_in_zone(`hr`: RustBuffer.ByValue,`age`: Double,`maxHrOverride`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    external fun uniffi_whoop_ffi_fn_func_hr_zones_for_age(`age`: Double,`maxHrOverride`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_func_hrv_readiness(`nightlyRmssd`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_func_hrv_rmssd_gap_aware(`runs`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
+    external fun uniffi_whoop_ffi_fn_func_imu_features(`samples`: RustBuffer.ByValue,`sampleRateHz`: Int,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_func_ppg_hr(`samples`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    external fun uniffi_whoop_ffi_fn_func_recovery_band(`score`: Double,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    external fun uniffi_whoop_ffi_fn_func_recovery_banked_nights(`nightlyHrv`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): Int
+    external fun uniffi_whoop_ffi_fn_func_recovery_index_slope(`hr`: RustBuffer.ByValue,`start`: Long,`end`: Long,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    external fun uniffi_whoop_ffi_fn_func_recovery_score(`d`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    external fun uniffi_whoop_ffi_fn_func_resp_rate_from_rr(`beats`: RustBuffer.ByValue,`start`: Long,`end`: Long,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    external fun uniffi_whoop_ffi_fn_func_session_resting_hr(`start`: Long,`end`: Long,`hr`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_func_spo2_from_paired(`red`: RustBuffer.ByValue,`ir`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
@@ -855,6 +909,16 @@ internal object UniffiLib {
     ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_func_stage_sleep_v2(`input`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
+    external fun uniffi_whoop_ffi_fn_func_strain_default_denominator(uniffi_out_err: UniffiRustCallStatus, 
+    ): Double
+    external fun uniffi_whoop_ffi_fn_func_strain_score(`hr`: RustBuffer.ByValue,`maxHr`: RustBuffer.ByValue,`restingHr`: Double,`method`: RustBuffer.ByValue,`sex`: RustBuffer.ByValue,`denominator`: Double,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    external fun uniffi_whoop_ffi_fn_func_stress_components(`rrMs`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    external fun uniffi_whoop_ffi_fn_func_stress_index(`rrMs`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    external fun uniffi_whoop_ffi_fn_func_vo2max_estimate(`age`: Double,`sex`: RustBuffer.ByValue,`waistCm`: Double,`restingHr`: Double,`paIndex`: Double,uniffi_out_err: UniffiRustCallStatus, 
+    ): Double
     external fun ffi_whoop_ffi_rustbuffer_alloc(`size`: Long,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     external fun ffi_whoop_ffi_rustbuffer_from_bytes(`bytes`: ForeignBytes.ByValue,uniffi_out_err: UniffiRustCallStatus, 
@@ -974,13 +1038,25 @@ private fun uniffiCheckContractApiVersion(lib: IntegrityCheckingUniffiLib) {
 }
 @Suppress("UNUSED_PARAMETER")
 private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
+    if (lib.uniffi_whoop_ffi_checksum_func_daily_resting_hr() != 11457) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_whoop_ffi_checksum_func_data_range_newest() != 53769) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_whoop_ffi_checksum_func_data_range_oldest() != 344) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_whoop_ffi_checksum_func_fitness_age_compute() != 21035) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_whoop_ffi_checksum_func_haptic_clock_pulses() != 28487) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_whoop_ffi_checksum_func_hr_time_in_zone() != 23829) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_whoop_ffi_checksum_func_hr_zones_for_age() != 34437) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_whoop_ffi_checksum_func_hrv_readiness() != 20540) {
@@ -989,7 +1065,28 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_whoop_ffi_checksum_func_hrv_rmssd_gap_aware() != 21845) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_whoop_ffi_checksum_func_imu_features() != 23396) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_whoop_ffi_checksum_func_ppg_hr() != 31690) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_whoop_ffi_checksum_func_recovery_band() != 29263) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_whoop_ffi_checksum_func_recovery_banked_nights() != 31054) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_whoop_ffi_checksum_func_recovery_index_slope() != 62676) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_whoop_ffi_checksum_func_recovery_score() != 34274) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_whoop_ffi_checksum_func_resp_rate_from_rr() != 47487) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_whoop_ffi_checksum_func_session_resting_hr() != 56066) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_whoop_ffi_checksum_func_spo2_from_paired() != 11748) {
@@ -999,6 +1096,21 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_whoop_ffi_checksum_func_stage_sleep_v2() != 46996) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_whoop_ffi_checksum_func_strain_default_denominator() != 31363) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_whoop_ffi_checksum_func_strain_score() != 23299) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_whoop_ffi_checksum_func_stress_components() != 33971) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_whoop_ffi_checksum_func_stress_index() != 62115) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_whoop_ffi_checksum_func_vo2max_estimate() != 10792) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_whoop_ffi_checksum_method_whoopcodec_advertising_name_frame() != 25971) {
@@ -2521,6 +2633,108 @@ public object FfiConverterTypeWhoopCodec: FfiConverter<WhoopCodec, Long> {
 
 
 /**
+ * A personal baseline driver (mean + spread) for recovery z-scoring.
+ */
+data class DriverBaselineInfo (
+    var `mean`: kotlin.Double
+    , 
+    var `spread`: kotlin.Double
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeDriverBaselineInfo: FfiConverterRustBuffer<DriverBaselineInfo> {
+    override fun read(buf: ByteBuffer): DriverBaselineInfo {
+        return DriverBaselineInfo(
+            FfiConverterDouble.read(buf),
+            FfiConverterDouble.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: DriverBaselineInfo) = (
+            FfiConverterDouble.allocationSize(value.`mean`) +
+            FfiConverterDouble.allocationSize(value.`spread`)
+    )
+
+    override fun write(value: DriverBaselineInfo, buf: ByteBuffer) {
+            FfiConverterDouble.write(value.`mean`, buf)
+            FfiConverterDouble.write(value.`spread`, buf)
+    }
+}
+
+
+
+/**
+ * A computed Fitness Age with the inputs to present it. `vo2max` is filled only with a waist.
+ */
+data class FitnessAgeInfo (
+    var `vo2max`: kotlin.Double?
+    , 
+    var `fitnessAge`: kotlin.Double
+    , 
+    var `chronoAge`: kotlin.Double
+    , 
+    var `deltaYears`: kotlin.Double
+    , 
+    var `bandYears`: kotlin.Double
+    , 
+    var `lowerConfidence`: kotlin.Boolean
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeFitnessAgeInfo: FfiConverterRustBuffer<FitnessAgeInfo> {
+    override fun read(buf: ByteBuffer): FitnessAgeInfo {
+        return FitnessAgeInfo(
+            FfiConverterOptionalDouble.read(buf),
+            FfiConverterDouble.read(buf),
+            FfiConverterDouble.read(buf),
+            FfiConverterDouble.read(buf),
+            FfiConverterDouble.read(buf),
+            FfiConverterBoolean.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: FitnessAgeInfo) = (
+            FfiConverterOptionalDouble.allocationSize(value.`vo2max`) +
+            FfiConverterDouble.allocationSize(value.`fitnessAge`) +
+            FfiConverterDouble.allocationSize(value.`chronoAge`) +
+            FfiConverterDouble.allocationSize(value.`deltaYears`) +
+            FfiConverterDouble.allocationSize(value.`bandYears`) +
+            FfiConverterBoolean.allocationSize(value.`lowerConfidence`)
+    )
+
+    override fun write(value: FitnessAgeInfo, buf: ByteBuffer) {
+            FfiConverterOptionalDouble.write(value.`vo2max`, buf)
+            FfiConverterDouble.write(value.`fitnessAge`, buf)
+            FfiConverterDouble.write(value.`chronoAge`, buf)
+            FfiConverterDouble.write(value.`deltaYears`, buf)
+            FfiConverterDouble.write(value.`bandYears`, buf)
+            FfiConverterBoolean.write(value.`lowerConfidence`, buf)
+    }
+}
+
+
+
+/**
  * A per-second history summary handed to the app (v18 on 5.0/MG, v5/v24 on 4.0).
  */
 data class HistorySummary (
@@ -2632,6 +2846,149 @@ public object FfiConverterTypeHistorySummary: FfiConverterRustBuffer<HistorySumm
 
 
 /**
+ * One heart-rate tick (unix seconds + bpm) shared by strain, recovery, resting-HR and zones.
+ */
+data class HrTick (
+    var `ts`: kotlin.Long
+    , 
+    var `bpm`: kotlin.Int
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeHrTick: FfiConverterRustBuffer<HrTick> {
+    override fun read(buf: ByteBuffer): HrTick {
+        return HrTick(
+            FfiConverterLong.read(buf),
+            FfiConverterInt.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: HrTick) = (
+            FfiConverterLong.allocationSize(value.`ts`) +
+            FfiConverterInt.allocationSize(value.`bpm`)
+    )
+
+    override fun write(value: HrTick, buf: ByteBuffer) {
+            FfiConverterLong.write(value.`ts`, buf)
+            FfiConverterInt.write(value.`bpm`, buf)
+    }
+}
+
+
+
+/**
+ * A single HR zone as a bpm interval `[lower, upper)` plus its %HRmax band.
+ */
+data class HrZoneInfo (
+    var `number`: kotlin.UByte
+    , 
+    var `lower`: kotlin.Double
+    , 
+    var `upper`: kotlin.Double
+    , 
+    var `lowerPct`: kotlin.Double
+    , 
+    var `upperPct`: kotlin.Double
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeHrZoneInfo: FfiConverterRustBuffer<HrZoneInfo> {
+    override fun read(buf: ByteBuffer): HrZoneInfo {
+        return HrZoneInfo(
+            FfiConverterUByte.read(buf),
+            FfiConverterDouble.read(buf),
+            FfiConverterDouble.read(buf),
+            FfiConverterDouble.read(buf),
+            FfiConverterDouble.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: HrZoneInfo) = (
+            FfiConverterUByte.allocationSize(value.`number`) +
+            FfiConverterDouble.allocationSize(value.`lower`) +
+            FfiConverterDouble.allocationSize(value.`upper`) +
+            FfiConverterDouble.allocationSize(value.`lowerPct`) +
+            FfiConverterDouble.allocationSize(value.`upperPct`)
+    )
+
+    override fun write(value: HrZoneInfo, buf: ByteBuffer) {
+            FfiConverterUByte.write(value.`number`, buf)
+            FfiConverterDouble.write(value.`lower`, buf)
+            FfiConverterDouble.write(value.`upper`, buf)
+            FfiConverterDouble.write(value.`lowerPct`, buf)
+            FfiConverterDouble.write(value.`upperPct`, buf)
+    }
+}
+
+
+
+/**
+ * Five HR zones, the max HR they were built from, and its source ("tanaka" | "manual").
+ */
+data class HrZoneSetInfo (
+    var `zones`: List<HrZoneInfo>
+    , 
+    var `maxHr`: kotlin.Double
+    , 
+    var `source`: kotlin.String
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeHrZoneSetInfo: FfiConverterRustBuffer<HrZoneSetInfo> {
+    override fun read(buf: ByteBuffer): HrZoneSetInfo {
+        return HrZoneSetInfo(
+            FfiConverterSequenceTypeHrZoneInfo.read(buf),
+            FfiConverterDouble.read(buf),
+            FfiConverterString.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: HrZoneSetInfo) = (
+            FfiConverterSequenceTypeHrZoneInfo.allocationSize(value.`zones`) +
+            FfiConverterDouble.allocationSize(value.`maxHr`) +
+            FfiConverterString.allocationSize(value.`source`)
+    )
+
+    override fun write(value: HrZoneSetInfo, buf: ByteBuffer) {
+            FfiConverterSequenceTypeHrZoneInfo.write(value.`zones`, buf)
+            FfiConverterDouble.write(value.`maxHr`, buf)
+            FfiConverterString.write(value.`source`, buf)
+    }
+}
+
+
+
+/**
  * An HRV-readiness reading (log-domain baseline vs the personal normal band).
  */
 data class HrvReadinessInfo (
@@ -2688,6 +3045,67 @@ public object FfiConverterTypeHrvReadinessInfo: FfiConverterRustBuffer<HrvReadin
 
 
 /**
+ * Compact activity features over a window of raw IMU samples.
+ */
+data class ImuFeaturesInfo (
+    var `accelEnergyG`: kotlin.Double
+    , 
+    var `gyroEnergyDps`: kotlin.Double
+    , 
+    var `jerkRms`: kotlin.Double
+    , 
+    var `cadenceHz`: kotlin.Double?
+    , 
+    var `cadenceStrength`: kotlin.Double
+    , 
+    var `sampleCount`: kotlin.UInt
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeImuFeaturesInfo: FfiConverterRustBuffer<ImuFeaturesInfo> {
+    override fun read(buf: ByteBuffer): ImuFeaturesInfo {
+        return ImuFeaturesInfo(
+            FfiConverterDouble.read(buf),
+            FfiConverterDouble.read(buf),
+            FfiConverterDouble.read(buf),
+            FfiConverterOptionalDouble.read(buf),
+            FfiConverterDouble.read(buf),
+            FfiConverterUInt.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: ImuFeaturesInfo) = (
+            FfiConverterDouble.allocationSize(value.`accelEnergyG`) +
+            FfiConverterDouble.allocationSize(value.`gyroEnergyDps`) +
+            FfiConverterDouble.allocationSize(value.`jerkRms`) +
+            FfiConverterOptionalDouble.allocationSize(value.`cadenceHz`) +
+            FfiConverterDouble.allocationSize(value.`cadenceStrength`) +
+            FfiConverterUInt.allocationSize(value.`sampleCount`)
+    )
+
+    override fun write(value: ImuFeaturesInfo, buf: ByteBuffer) {
+            FfiConverterDouble.write(value.`accelEnergyG`, buf)
+            FfiConverterDouble.write(value.`gyroEnergyDps`, buf)
+            FfiConverterDouble.write(value.`jerkRms`, buf)
+            FfiConverterOptionalDouble.write(value.`cadenceHz`, buf)
+            FfiConverterDouble.write(value.`cadenceStrength`, buf)
+            FfiConverterUInt.write(value.`sampleCount`, buf)
+    }
+}
+
+
+
+/**
  * A single-frame v21 100 Hz 6-axis IMU buffer: accel + gyro interleaved x,y,z per sample (raw i16 LSB —
  * scale accel by 1/4096 for g, gyro by 2000/32768 for deg/s).
  */
@@ -2734,6 +3152,67 @@ public object FfiConverterTypeImuFrame: FfiConverterRustBuffer<ImuFrame> {
             FfiConverterUShort.write(value.`sampleRateHz`, buf)
             FfiConverterSequenceShort.write(value.`accel`, buf)
             FfiConverterSequenceShort.write(value.`gyro`, buf)
+    }
+}
+
+
+
+/**
+ * One raw IMU sample: 3-axis accelerometer (g) + 3-axis gyroscope (deg/s).
+ */
+data class ImuSampleInfo (
+    var `ax`: kotlin.Double
+    , 
+    var `ay`: kotlin.Double
+    , 
+    var `az`: kotlin.Double
+    , 
+    var `gx`: kotlin.Double
+    , 
+    var `gy`: kotlin.Double
+    , 
+    var `gz`: kotlin.Double
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeImuSampleInfo: FfiConverterRustBuffer<ImuSampleInfo> {
+    override fun read(buf: ByteBuffer): ImuSampleInfo {
+        return ImuSampleInfo(
+            FfiConverterDouble.read(buf),
+            FfiConverterDouble.read(buf),
+            FfiConverterDouble.read(buf),
+            FfiConverterDouble.read(buf),
+            FfiConverterDouble.read(buf),
+            FfiConverterDouble.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: ImuSampleInfo) = (
+            FfiConverterDouble.allocationSize(value.`ax`) +
+            FfiConverterDouble.allocationSize(value.`ay`) +
+            FfiConverterDouble.allocationSize(value.`az`) +
+            FfiConverterDouble.allocationSize(value.`gx`) +
+            FfiConverterDouble.allocationSize(value.`gy`) +
+            FfiConverterDouble.allocationSize(value.`gz`)
+    )
+
+    override fun write(value: ImuSampleInfo, buf: ByteBuffer) {
+            FfiConverterDouble.write(value.`ax`, buf)
+            FfiConverterDouble.write(value.`ay`, buf)
+            FfiConverterDouble.write(value.`az`, buf)
+            FfiConverterDouble.write(value.`gx`, buf)
+            FfiConverterDouble.write(value.`gy`, buf)
+            FfiConverterDouble.write(value.`gz`, buf)
     }
 }
 
@@ -2961,6 +3440,138 @@ public object FfiConverterTypePulse: FfiConverterRustBuffer<Pulse> {
     override fun write(value: Pulse, buf: ByteBuffer) {
             FfiConverterUInt.write(value.`durationMs`, buf)
             FfiConverterUInt.write(value.`gapMs`, buf)
+    }
+}
+
+
+
+/**
+ * Nightly recovery drivers. Optional terms drop and the weights renormalise.
+ */
+data class RecoveryDrivers (
+    var `hrv`: kotlin.Double
+    , 
+    var `rhr`: kotlin.Double
+    , 
+    var `resp`: kotlin.Double?
+    , 
+    var `hrvBaseline`: DriverBaselineInfo?
+    , 
+    var `rhrBaseline`: DriverBaselineInfo?
+    , 
+    var `respBaseline`: DriverBaselineInfo?
+    , 
+    var `sleepPerf`: kotlin.Double?
+    , 
+    var `skinTempDev`: kotlin.Double?
+    , 
+    var `hrvBaselineUsable`: kotlin.Boolean
+    , 
+    var `recoveryIndexSlope`: kotlin.Double?
+    , 
+    var `effortBaseline`: DriverBaselineInfo?
+    , 
+    var `priorDayEffort`: kotlin.Double?
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeRecoveryDrivers: FfiConverterRustBuffer<RecoveryDrivers> {
+    override fun read(buf: ByteBuffer): RecoveryDrivers {
+        return RecoveryDrivers(
+            FfiConverterDouble.read(buf),
+            FfiConverterDouble.read(buf),
+            FfiConverterOptionalDouble.read(buf),
+            FfiConverterOptionalTypeDriverBaselineInfo.read(buf),
+            FfiConverterOptionalTypeDriverBaselineInfo.read(buf),
+            FfiConverterOptionalTypeDriverBaselineInfo.read(buf),
+            FfiConverterOptionalDouble.read(buf),
+            FfiConverterOptionalDouble.read(buf),
+            FfiConverterBoolean.read(buf),
+            FfiConverterOptionalDouble.read(buf),
+            FfiConverterOptionalTypeDriverBaselineInfo.read(buf),
+            FfiConverterOptionalDouble.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: RecoveryDrivers) = (
+            FfiConverterDouble.allocationSize(value.`hrv`) +
+            FfiConverterDouble.allocationSize(value.`rhr`) +
+            FfiConverterOptionalDouble.allocationSize(value.`resp`) +
+            FfiConverterOptionalTypeDriverBaselineInfo.allocationSize(value.`hrvBaseline`) +
+            FfiConverterOptionalTypeDriverBaselineInfo.allocationSize(value.`rhrBaseline`) +
+            FfiConverterOptionalTypeDriverBaselineInfo.allocationSize(value.`respBaseline`) +
+            FfiConverterOptionalDouble.allocationSize(value.`sleepPerf`) +
+            FfiConverterOptionalDouble.allocationSize(value.`skinTempDev`) +
+            FfiConverterBoolean.allocationSize(value.`hrvBaselineUsable`) +
+            FfiConverterOptionalDouble.allocationSize(value.`recoveryIndexSlope`) +
+            FfiConverterOptionalTypeDriverBaselineInfo.allocationSize(value.`effortBaseline`) +
+            FfiConverterOptionalDouble.allocationSize(value.`priorDayEffort`)
+    )
+
+    override fun write(value: RecoveryDrivers, buf: ByteBuffer) {
+            FfiConverterDouble.write(value.`hrv`, buf)
+            FfiConverterDouble.write(value.`rhr`, buf)
+            FfiConverterOptionalDouble.write(value.`resp`, buf)
+            FfiConverterOptionalTypeDriverBaselineInfo.write(value.`hrvBaseline`, buf)
+            FfiConverterOptionalTypeDriverBaselineInfo.write(value.`rhrBaseline`, buf)
+            FfiConverterOptionalTypeDriverBaselineInfo.write(value.`respBaseline`, buf)
+            FfiConverterOptionalDouble.write(value.`sleepPerf`, buf)
+            FfiConverterOptionalDouble.write(value.`skinTempDev`, buf)
+            FfiConverterBoolean.write(value.`hrvBaselineUsable`, buf)
+            FfiConverterOptionalDouble.write(value.`recoveryIndexSlope`, buf)
+            FfiConverterOptionalTypeDriverBaselineInfo.write(value.`effortBaseline`, buf)
+            FfiConverterOptionalDouble.write(value.`priorDayEffort`, buf)
+    }
+}
+
+
+
+/**
+ * One R-R beat for respiratory-rate estimation (unix seconds + interval ms).
+ */
+data class RrBeat (
+    var `ts`: kotlin.Long
+    , 
+    var `rrMs`: kotlin.UShort
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeRrBeat: FfiConverterRustBuffer<RrBeat> {
+    override fun read(buf: ByteBuffer): RrBeat {
+        return RrBeat(
+            FfiConverterLong.read(buf),
+            FfiConverterUShort.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: RrBeat) = (
+            FfiConverterLong.allocationSize(value.`ts`) +
+            FfiConverterUShort.allocationSize(value.`rrMs`)
+    )
+
+    override fun write(value: RrBeat, buf: ByteBuffer) {
+            FfiConverterLong.write(value.`ts`, buf)
+            FfiConverterUShort.write(value.`rrMs`, buf)
     }
 }
 
@@ -3283,6 +3894,98 @@ public object FfiConverterTypeSleepSegment: FfiConverterRustBuffer<SleepSegment>
             FfiConverterLong.write(value.`start`, buf)
             FfiConverterLong.write(value.`end`, buf)
             FfiConverterTypeSleepStage.write(value.`stage`, buf)
+    }
+}
+
+
+
+/**
+ * Baevsky Stress Index histogram terms behind an SI.
+ */
+data class StressComponentsInfo (
+    var `moSec`: kotlin.Double
+    , 
+    var `amoPercent`: kotlin.Double
+    , 
+    var `mxdmnSec`: kotlin.Double
+    , 
+    var `si`: kotlin.Double
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeStressComponentsInfo: FfiConverterRustBuffer<StressComponentsInfo> {
+    override fun read(buf: ByteBuffer): StressComponentsInfo {
+        return StressComponentsInfo(
+            FfiConverterDouble.read(buf),
+            FfiConverterDouble.read(buf),
+            FfiConverterDouble.read(buf),
+            FfiConverterDouble.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: StressComponentsInfo) = (
+            FfiConverterDouble.allocationSize(value.`moSec`) +
+            FfiConverterDouble.allocationSize(value.`amoPercent`) +
+            FfiConverterDouble.allocationSize(value.`mxdmnSec`) +
+            FfiConverterDouble.allocationSize(value.`si`)
+    )
+
+    override fun write(value: StressComponentsInfo, buf: ByteBuffer) {
+            FfiConverterDouble.write(value.`moSec`, buf)
+            FfiConverterDouble.write(value.`amoPercent`, buf)
+            FfiConverterDouble.write(value.`mxdmnSec`, buf)
+            FfiConverterDouble.write(value.`si`, buf)
+    }
+}
+
+
+
+/**
+ * Seconds in each of the five zones (index 0 == Zone 1) plus time below Zone 1.
+ */
+data class TimeInZoneInfo (
+    var `seconds`: List<kotlin.Double>
+    , 
+    var `belowZone1`: kotlin.Double
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeTimeInZoneInfo: FfiConverterRustBuffer<TimeInZoneInfo> {
+    override fun read(buf: ByteBuffer): TimeInZoneInfo {
+        return TimeInZoneInfo(
+            FfiConverterSequenceDouble.read(buf),
+            FfiConverterDouble.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: TimeInZoneInfo) = (
+            FfiConverterSequenceDouble.allocationSize(value.`seconds`) +
+            FfiConverterDouble.allocationSize(value.`belowZone1`)
+    )
+
+    override fun write(value: TimeInZoneInfo, buf: ByteBuffer) {
+            FfiConverterSequenceDouble.write(value.`seconds`, buf)
+            FfiConverterDouble.write(value.`belowZone1`, buf)
     }
 }
 
@@ -4158,6 +4861,43 @@ public object FfiConverterTypeStep : FfiConverterRustBuffer<Step>{
 
 
 
+/**
+ * TRIMP accumulation method for strain.
+ */
+
+enum class StrainMethod {
+    
+    EDWARDS,
+    BANISTER;
+
+    
+
+
+    companion object
+}
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeStrainMethod: FfiConverterRustBuffer<StrainMethod> {
+    override fun read(buf: ByteBuffer) = try {
+        StrainMethod.values()[buf.getInt() - 1]
+    } catch (e: IndexOutOfBoundsException) {
+        throw RuntimeException("invalid enum value, something is very wrong!!", e)
+    }
+
+    override fun allocationSize(value: StrainMethod) = 4UL
+
+    override fun write(value: StrainMethod, buf: ByteBuffer) {
+        buf.putInt(value.ordinal + 1)
+    }
+}
+
+
+
+
+
 
 /**
  * @suppress
@@ -4248,6 +4988,38 @@ public object FfiConverterOptionalUInt: FfiConverterRustBuffer<kotlin.UInt?> {
         } else {
             buf.put(1)
             FfiConverterUInt.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterOptionalInt: FfiConverterRustBuffer<kotlin.Int?> {
+    override fun read(buf: ByteBuffer): kotlin.Int? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterInt.read(buf)
+    }
+
+    override fun allocationSize(value: kotlin.Int?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterInt.allocationSize(value)
+        }
+    }
+
+    override fun write(value: kotlin.Int?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterInt.write(value, buf)
         }
     }
 }
@@ -4418,6 +5190,70 @@ public object FfiConverterOptionalByteArray: FfiConverterRustBuffer<kotlin.ByteA
 /**
  * @suppress
  */
+public object FfiConverterOptionalTypeDriverBaselineInfo: FfiConverterRustBuffer<DriverBaselineInfo?> {
+    override fun read(buf: ByteBuffer): DriverBaselineInfo? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterTypeDriverBaselineInfo.read(buf)
+    }
+
+    override fun allocationSize(value: DriverBaselineInfo?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterTypeDriverBaselineInfo.allocationSize(value)
+        }
+    }
+
+    override fun write(value: DriverBaselineInfo?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterTypeDriverBaselineInfo.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterOptionalTypeFitnessAgeInfo: FfiConverterRustBuffer<FitnessAgeInfo?> {
+    override fun read(buf: ByteBuffer): FitnessAgeInfo? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterTypeFitnessAgeInfo.read(buf)
+    }
+
+    override fun allocationSize(value: FitnessAgeInfo?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterTypeFitnessAgeInfo.allocationSize(value)
+        }
+    }
+
+    override fun write(value: FitnessAgeInfo?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterTypeFitnessAgeInfo.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterOptionalTypeHistorySummary: FfiConverterRustBuffer<HistorySummary?> {
     override fun read(buf: ByteBuffer): HistorySummary? {
         if (buf.get().toInt() == 0) {
@@ -4568,6 +5404,38 @@ public object FfiConverterOptionalTypePpgFrame: FfiConverterRustBuffer<PpgFrame?
         } else {
             buf.put(1)
             FfiConverterTypePpgFrame.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterOptionalTypeStressComponentsInfo: FfiConverterRustBuffer<StressComponentsInfo?> {
+    override fun read(buf: ByteBuffer): StressComponentsInfo? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterTypeStressComponentsInfo.read(buf)
+    }
+
+    override fun allocationSize(value: StressComponentsInfo?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterTypeStressComponentsInfo.allocationSize(value)
+        }
+    }
+
+    override fun write(value: StressComponentsInfo?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterTypeStressComponentsInfo.write(value, buf)
         }
     }
 }
@@ -4870,6 +5738,90 @@ public object FfiConverterSequenceByteArray: FfiConverterRustBuffer<List<kotlin.
 /**
  * @suppress
  */
+public object FfiConverterSequenceTypeHrTick: FfiConverterRustBuffer<List<HrTick>> {
+    override fun read(buf: ByteBuffer): List<HrTick> {
+        val len = buf.getInt()
+        return List<HrTick>(len) {
+            FfiConverterTypeHrTick.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<HrTick>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeHrTick.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<HrTick>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeHrTick.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeHrZoneInfo: FfiConverterRustBuffer<List<HrZoneInfo>> {
+    override fun read(buf: ByteBuffer): List<HrZoneInfo> {
+        val len = buf.getInt()
+        return List<HrZoneInfo>(len) {
+            FfiConverterTypeHrZoneInfo.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<HrZoneInfo>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeHrZoneInfo.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<HrZoneInfo>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeHrZoneInfo.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeImuSampleInfo: FfiConverterRustBuffer<List<ImuSampleInfo>> {
+    override fun read(buf: ByteBuffer): List<ImuSampleInfo> {
+        val len = buf.getInt()
+        return List<ImuSampleInfo>(len) {
+            FfiConverterTypeImuSampleInfo.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<ImuSampleInfo>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeImuSampleInfo.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<ImuSampleInfo>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeImuSampleInfo.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterSequenceTypePpgEstimate: FfiConverterRustBuffer<List<PpgEstimate>> {
     override fun read(buf: ByteBuffer): List<PpgEstimate> {
         val len = buf.getInt()
@@ -4944,6 +5896,34 @@ public object FfiConverterSequenceTypePulse: FfiConverterRustBuffer<List<Pulse>>
         buf.putInt(value.size)
         value.iterator().forEach {
             FfiConverterTypePulse.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeRrBeat: FfiConverterRustBuffer<List<RrBeat>> {
+    override fun read(buf: ByteBuffer): List<RrBeat> {
+        val len = buf.getInt()
+        return List<RrBeat>(len) {
+            FfiConverterTypeRrBeat.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<RrBeat>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeRrBeat.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<RrBeat>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeRrBeat.write(it, buf)
         }
     }
 }
@@ -5150,6 +6130,34 @@ public object FfiConverterSequenceTypeStep: FfiConverterRustBuffer<List<Step>> {
 /**
  * @suppress
  */
+public object FfiConverterSequenceOptionalInt: FfiConverterRustBuffer<List<kotlin.Int?>> {
+    override fun read(buf: ByteBuffer): List<kotlin.Int?> {
+        val len = buf.getInt()
+        return List<kotlin.Int?>(len) {
+            FfiConverterOptionalInt.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<kotlin.Int?>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterOptionalInt.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<kotlin.Int?>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterOptionalInt.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterSequenceOptionalDouble: FfiConverterRustBuffer<List<kotlin.Double?>> {
     override fun read(buf: ByteBuffer): List<kotlin.Double?> {
         val len = buf.getInt()
@@ -5171,6 +6179,20 @@ public object FfiConverterSequenceOptionalDouble: FfiConverterRustBuffer<List<ko
         }
     }
 }
+        /**
+         * Daily resting HR = min of the per-session floors.
+         */ fun `dailyRestingHr`(`sessionFloors`: List<kotlin.Int?>): kotlin.Int? {
+            return FfiConverterOptionalInt.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_func_daily_resting_hr(
+    
+        
+        FfiConverterSequenceOptionalInt.lower(`sessionFloors`),_status)
+}
+    )
+    }
+    
+
         /**
          * Newest plausible unix banked, scanning EVERY byte offset of a GET_DATA_RANGE frame and preferring the
          * newest non-future word (falls back to newest-any). This is the sync gate — it REPLACES the fixed-offset
@@ -5205,6 +6227,25 @@ public object FfiConverterSequenceOptionalDouble: FfiConverterRustBuffer<List<ko
     
 
         /**
+         * Full Fitness Age. `None` only if RHR or age is missing.
+         */ fun `fitnessAgeCompute`(`age`: kotlin.Double, `sex`: kotlin.String, `restingHr`: kotlin.Double, `paIndex`: kotlin.Double, `waistCm`: kotlin.Double?, `lowerConfidence`: kotlin.Boolean): FitnessAgeInfo? {
+            return FfiConverterOptionalTypeFitnessAgeInfo.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_func_fitness_age_compute(
+    
+        
+        FfiConverterDouble.lower(`age`),
+        FfiConverterString.lower(`sex`),
+        FfiConverterDouble.lower(`restingHr`),
+        FfiConverterDouble.lower(`paIndex`),
+        FfiConverterOptionalDouble.lower(`waistCm`),
+        FfiConverterBoolean.lower(`lowerConfidence`),_status)
+}
+    )
+    }
+    
+
+        /**
          * The haptic pulses for a clock chime (write a buzz per pulse, spaced by its gap). Pure encoder.
          */ fun `hapticClockPulses`(`hour`: kotlin.UInt, `minute`: kotlin.UInt, `is24h`: kotlin.Boolean): List<Pulse> {
             return FfiConverterSequenceTypePulse.lift(
@@ -5215,6 +6256,37 @@ public object FfiConverterSequenceOptionalDouble: FfiConverterRustBuffer<List<ko
         FfiConverterUInt.lower(`hour`),
         FfiConverterUInt.lower(`minute`),
         FfiConverterBoolean.lower(`is24h`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Seconds spent in each HR zone over an HR series, using age-derived (or override) zones.
+         */ fun `hrTimeInZone`(`hr`: List<HrTick>, `age`: kotlin.Double, `maxHrOverride`: kotlin.Double?): TimeInZoneInfo {
+            return FfiConverterTypeTimeInZoneInfo.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_func_hr_time_in_zone(
+    
+        
+        FfiConverterSequenceTypeHrTick.lower(`hr`),
+        FfiConverterDouble.lower(`age`),
+        FfiConverterOptionalDouble.lower(`maxHrOverride`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Age-derived (Tanaka) HR zones, or a manual max-HR override.
+         */ fun `hrZonesForAge`(`age`: kotlin.Double, `maxHrOverride`: kotlin.Double?): HrZoneSetInfo {
+            return FfiConverterTypeHrZoneSetInfo.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_func_hr_zones_for_age(
+    
+        
+        FfiConverterDouble.lower(`age`),
+        FfiConverterOptionalDouble.lower(`maxHrOverride`),_status)
 }
     )
     }
@@ -5249,6 +6321,21 @@ public object FfiConverterSequenceOptionalDouble: FfiConverterRustBuffer<List<ko
     
 
         /**
+         * Accel/gyro energy, jerk and gait-band cadence over IMU samples at `sample_rate_hz`.
+         */ fun `imuFeatures`(`samples`: List<ImuSampleInfo>, `sampleRateHz`: kotlin.Int): ImuFeaturesInfo {
+            return FfiConverterTypeImuFeaturesInfo.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_func_imu_features(
+    
+        
+        FfiConverterSequenceTypeImuSampleInfo.lower(`samples`),
+        FfiConverterInt.lower(`sampleRateHz`),_status)
+}
+    )
+    }
+    
+
+        /**
          * HR from a v26 optical PPG buffer (24 Hz autocorrelation).
          */ fun `ppgHr`(`samples`: List<PpgSample>): List<PpgEstimate> {
             return FfiConverterSequenceTypePpgEstimate.lift(
@@ -5257,6 +6344,96 @@ public object FfiConverterSequenceOptionalDouble: FfiConverterRustBuffer<List<ko
     
         
         FfiConverterSequenceTypePpgSample.lower(`samples`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Recovery colour band ("red" | "yellow" | "green") for a score.
+         */ fun `recoveryBand`(`score`: kotlin.Double): kotlin.String {
+            return FfiConverterString.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_func_recovery_band(
+    
+        
+        FfiConverterDouble.lower(`score`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Count of nights carrying a usable nightly HRV — the calibration-progress count.
+         */ fun `recoveryBankedNights`(`nightlyHrv`: List<kotlin.Double?>): kotlin.UInt {
+            return FfiConverterUInt.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_func_recovery_banked_nights(
+    
+        
+        FfiConverterSequenceOptionalDouble.lower(`nightlyHrv`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Overnight HR-decline slope (bpm/hour) — the recovery-index driver.
+         */ fun `recoveryIndexSlope`(`hr`: List<HrTick>, `start`: kotlin.Long, `end`: kotlin.Long): kotlin.Double? {
+            return FfiConverterOptionalDouble.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_func_recovery_index_slope(
+    
+        
+        FfiConverterSequenceTypeHrTick.lower(`hr`),
+        FfiConverterLong.lower(`start`),
+        FfiConverterLong.lower(`end`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Recovery "Charge" score in [0, 100]. `None` at cold-start or when no driver is available.
+         */ fun `recoveryScore`(`d`: RecoveryDrivers): kotlin.Double? {
+            return FfiConverterOptionalDouble.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_func_recovery_score(
+    
+        
+        FfiConverterTypeRecoveryDrivers.lower(`d`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Respiratory rate (breaths/min) from R-R via RSA. `None` when the signal is too thin.
+         */ fun `respRateFromRr`(`beats`: List<RrBeat>, `start`: kotlin.Long, `end`: kotlin.Long): kotlin.Double? {
+            return FfiConverterOptionalDouble.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_func_resp_rate_from_rr(
+    
+        
+        FfiConverterSequenceTypeRrBeat.lower(`beats`),
+        FfiConverterLong.lower(`start`),
+        FfiConverterLong.lower(`end`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Lowest 5-min tumbling-window mean bpm floor over `[start, end]`. `None` with no samples.
+         */ fun `sessionRestingHr`(`start`: kotlin.Long, `end`: kotlin.Long, `hr`: List<HrTick>): kotlin.Int? {
+            return FfiConverterOptionalInt.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_func_session_resting_hr(
+    
+        
+        FfiConverterLong.lower(`start`),
+        FfiConverterLong.lower(`end`),
+        FfiConverterSequenceTypeHrTick.lower(`hr`),_status)
 }
     )
     }
@@ -5301,6 +6478,84 @@ public object FfiConverterSequenceOptionalDouble: FfiConverterRustBuffer<List<ko
     
         
         FfiConverterTypeSleepInput.lower(`input`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * The default strain denominator (log-map scale onto 0–100).
+         */ fun `strainDefaultDenominator`(): kotlin.Double {
+            return FfiConverterDouble.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_func_strain_default_denominator(
+    
+        _status)
+}
+    )
+    }
+    
+
+        /**
+         * Cardiovascular Effort (0–100) from an HR series. `None` without enough data or when HRR ≤ 0.
+         */ fun `strainScore`(`hr`: List<HrTick>, `maxHr`: kotlin.Double?, `restingHr`: kotlin.Double, `method`: StrainMethod, `sex`: kotlin.String, `denominator`: kotlin.Double): kotlin.Double? {
+            return FfiConverterOptionalDouble.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_func_strain_score(
+    
+        
+        FfiConverterSequenceTypeHrTick.lower(`hr`),
+        FfiConverterOptionalDouble.lower(`maxHr`),
+        FfiConverterDouble.lower(`restingHr`),
+        FfiConverterTypeStrainMethod.lower(`method`),
+        FfiConverterString.lower(`sex`),
+        FfiConverterDouble.lower(`denominator`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Full SI components from a raw R-R series (ms).
+         */ fun `stressComponents`(`rrMs`: List<kotlin.Double>): StressComponentsInfo? {
+            return FfiConverterOptionalTypeStressComponentsInfo.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_func_stress_components(
+    
+        
+        FfiConverterSequenceDouble.lower(`rrMs`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Baevsky Stress Index from a raw R-R series (ms). `None` on too-few beats or a degenerate range.
+         */ fun `stressIndex`(`rrMs`: List<kotlin.Double>): kotlin.Double? {
+            return FfiConverterOptionalDouble.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_func_stress_index(
+    
+        
+        FfiConverterSequenceDouble.lower(`rrMs`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Non-exercise VO2max estimate (ml/kg/min) from the waist-circumference model. Wellness only.
+         */ fun `vo2maxEstimate`(`age`: kotlin.Double, `sex`: kotlin.String, `waistCm`: kotlin.Double, `restingHr`: kotlin.Double, `paIndex`: kotlin.Double): kotlin.Double {
+            return FfiConverterDouble.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_func_vo2max_estimate(
+    
+        
+        FfiConverterDouble.lower(`age`),
+        FfiConverterString.lower(`sex`),
+        FfiConverterDouble.lower(`waistCm`),
+        FfiConverterDouble.lower(`restingHr`),
+        FfiConverterDouble.lower(`paIndex`),_status)
 }
     )
     }
