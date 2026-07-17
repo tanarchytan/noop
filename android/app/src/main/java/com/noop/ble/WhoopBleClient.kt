@@ -889,21 +889,19 @@ class WhoopBleClient(
          * record. Mirrors Swift `BLEManager.dataRangeNewestUnix`: scan u32 LE words in the response
          * body (starts at frame[7], after [type,seq,cmd]), keep those in the unix range, return max.
          */
-        // #286 follow-up: delegate to the pure, twin-tested com.noop.protocol.DataRange (byte-identical to
-        // Swift WhoopProtocol.DataRange) so this parity-critical read — it gates auto-sync via
-        // isFutureDatedNewest → BackfillPolicy — is CI-pinned on BOTH platforms. Thin wrapper so existing
-        // call sites + DataRangeScanTest are unchanged.
+        // The scan (every-offset newest, aligned-from-7 oldest, future-skew preference) lives in whoop-rs;
+        // this parity-critical read gates auto-sync via isFutureDatedNewest → BackfillPolicy. Thin wrapper so
+        // existing call sites + DataRangeScanTest are unchanged.
         fun dataRangeNewestUnix(
             frame: ByteArray,
             wallNowUnix: Long = System.currentTimeMillis() / 1000L,
-        ): Long? = com.noop.protocol.DataRange.newestUnix(frame, wallNowUnix, AUTO_CONTINUE_FUTURE_SKEW_SECONDS)
+        ): Long? = com.noop.protocol.RustCodec.dataRangeNewest(frame, wallNowUnix, AUTO_CONTINUE_FUTURE_SKEW_SECONDS)
 
         /** OLDEST plausible record timestamp in a GET_DATA_RANGE frame — the start of the strap's stored
-         *  history. Same scan as [dataRangeNewestUnix] but keeps the minimum, so one connect can report the
-         *  full banked SPAN (oldest…newest) = the backlog DEPTH a deep oldest-first drain must cover before
-         *  recent nights land (#364). Mirrors Swift `BLEManager.dataRangeOldestUnix`. */
-        // #286 follow-up: delegate to the pure, twin-tested com.noop.protocol.DataRange (byte-identical Swift).
-        fun dataRangeOldestUnix(frame: ByteArray): Long? = com.noop.protocol.DataRange.oldestUnix(frame)
+         *  history. Aligned-from-7 grid (asymmetric with [dataRangeNewestUnix] by design), so one connect can
+         *  report the full banked SPAN (oldest…newest) = the backlog DEPTH a deep oldest-first drain must
+         *  cover before recent nights land (#364). */
+        fun dataRangeOldestUnix(frame: ByteArray): Long? = com.noop.protocol.RustCodec.dataRangeOldest(frame)
 
         /** #364 auto-continue cap: consecutive immediate re-kicks per connection before falling back to
          *  the 900s periodic timer. 6 × ~60s ≈ 6 min of back-to-back draining without letting a

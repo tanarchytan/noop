@@ -6,7 +6,6 @@ import com.noop.data.StreamBatch
 import com.noop.data.WhoopRepository
 import com.noop.protocol.BadClockDiagnostics
 import com.noop.protocol.DeviceFamily
-import com.noop.protocol.Framing
 import com.noop.protocol.HistoricalMeta
 import com.noop.protocol.RustAdapter
 import com.noop.protocol.classifyHistoricalMeta
@@ -296,7 +295,7 @@ class Backfiller(
      */
     suspend fun ingest(frame: ByteArray) {
         mutex.withLock {
-            when (val meta = classifyHistoricalMeta(Framing.parseFrame(frame, family))) {
+            when (val meta = classifyHistoricalMeta(frame, family)) {
                 is HistoricalMeta.Start -> {
                     isBackfilling = true
                     synchronized(chunkLock) {

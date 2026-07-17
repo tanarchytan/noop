@@ -14,7 +14,9 @@ import com.noop.data.Spo2Row
 import com.noop.data.StepRow
 import com.noop.data.StreamBatch
 import com.noop.data.StreamPersistence
+import uniffi.whoop_ffi.Live
 import uniffi.whoop_ffi.PpgSample
+import uniffi.whoop_ffi.Response
 
 /*
  * Historical (offload) decode for the WHOOP 4.0 — the type-47 HISTORICAL_DATA path.
@@ -125,33 +127,22 @@ sealed class HistoricalMeta {
 }
 
 /**
- * Classify a parsed METADATA frame into the four cases the offload state machine needs.
- * Direct port of Swift `classifyHistoricalMeta`.
+ * Classify a METADATA frame into the four cases the offload state machine needs. The bytes->values
+ * decode routes through whoop-rs ([RustCodec.decodeMetadata]); this owns only the offload POLICY.
  *
- * Field mapping (whoop_protocol.json + Framing.decodeMetadata): `meta_type` is the
- * "NAME(rawValue)" enum label (e.g. "HISTORY_END(2)"); for HISTORY_END the metadata decoder
- * additionally stores `unix` and `trim_cursor`. We match by prefix so a raw-value change can't
- * break the classifier.
- *
- * Integrity gate (kept from Swift): only act on a checksum-valid frame — without it a garbled or
- * forged BLE peer could forge HISTORY_END / HISTORY_COMPLETE and advance/ack the trim cursor for
- * data we never durably stored.
+ * Integrity gate: only act on a checksum-valid frame — whoop-rs reports `crcOk`, and a non-metadata
+ * (or bad-CRC) frame yields Other, so a garbled/forged BLE peer can't forge HISTORY_END/COMPLETE and
+ * advance the trim cursor for data we never durably stored.
  */
-fun classifyHistoricalMeta(p: ParsedFrame): HistoricalMeta {
-    if (!p.ok || p.crcOk == false) return HistoricalMeta.Other
-    if (p.typeName != "METADATA") return HistoricalMeta.Other
-    val metaName = p.parsed["meta_type"] as? String ?: return HistoricalMeta.Other
-    return when {
-        metaName.startsWith("HISTORY_START") -> HistoricalMeta.Start
-        metaName.startsWith("HISTORY_COMPLETE") -> HistoricalMeta.Complete
-        metaName.startsWith("HISTORY_END") -> {
-            val unix = p.parsed.intOrNull("unix")
-            val trim = p.parsed.intOrNull("trim_cursor")
-            if (unix == null || trim == null) HistoricalMeta.Other
-            // u32-on-the-wire; the Int values were already truncated to 32 bits on decode. Carry as
-            // Long (unsigned-safe) so a value past 2^31 doesn't surface as negative downstream.
-            else HistoricalMeta.End(unix = unix.toLong() and 0xFFFFFFFFL, trim = trim.toLong() and 0xFFFFFFFFL)
-        }
+fun classifyHistoricalMeta(frame: ByteArray, family: DeviceFamily): HistoricalMeta {
+    val m = RustCodec.decodeMetadata(family == DeviceFamily.WHOOP5, frame) ?: return HistoricalMeta.Other
+    if (!m.crcOk) return HistoricalMeta.Other
+    return when (m.metaType.toInt()) {
+        MetadataType.HISTORY_START.rawValue -> HistoricalMeta.Start
+        MetadataType.HISTORY_COMPLETE.rawValue -> HistoricalMeta.Complete
+        // u32-on-the-wire carried as Long (unsigned-safe) so a value past 2^31 isn't negative downstream.
+        MetadataType.HISTORY_END.rawValue ->
+            HistoricalMeta.End(unix = m.unix.toLong() and 0xFFFFFFFFL, trim = m.trimCursor.toLong() and 0xFFFFFFFFL)
         else -> HistoricalMeta.Other
     }
 }
@@ -368,21 +359,16 @@ fun extractHistoricalStreams(
             }
 
             PacketType.REALTIME_RAW_DATA.rawValue -> {
-                // Fallback (rare during a plain type-47 offload): HR/RR off the type-43 header. Its
-                // timestamp is a device-epoch value, so it DOES get the wall-clock offset. The live
-                // Framing decoder doesn't decode type-43 biometrics, so re-parse via parseFrame and
-                // read whatever timestamp/HR/RR it surfaced (typically none on this firmware).
-                val parsed = Framing.parseFrame(frame, family)
-                if (!parsed.ok || parsed.crcOk == false) continue
-                val ts = wall(parsed.parsed.intOrNull("timestamp")) ?: continue
-                // #547: gate the wall()-corrected REALTIME_RAW_DATA ts on the same plausibility window — a
-                // bad device clock here would otherwise inject a far-past / future-dated HR/RR row.
+                // Fallback (rare during a plain type-47 offload): HR/RR off a realtime header. Its
+                // timestamp is a device-epoch value, so it DOES get the wall-clock offset. whoop-rs is the
+                // sole decoder; a plain type-43 raw header surfaces no biometrics (null → skip).
+                val live = RustCodec.decodeLive(family == DeviceFamily.WHOOP5, frame) as? Live.Realtime ?: continue
+                val ts = wall(live.unix.toInt()) ?: continue
+                // #547: gate the wall()-corrected ts on the same plausibility window — a bad device clock
+                // here would otherwise inject a far-past / future-dated HR/RR row.
                 if (!plausible(ts.toLong())) { droppedImplausible++; continue }
-                parsed.parsed.intOrNull("heart_rate")?.let { bpm -> hr.add(HrRow(ts.toLong(), bpm)) }
-                @Suppress("UNCHECKED_CAST")
-                (parsed.parsed["rr_intervals"] as? List<Int>)?.forEach { rrMs ->
-                    rr.add(RrRow(ts.toLong(), rrMs))
-                }
+                hr.add(HrRow(ts.toLong(), live.heartRate.toInt()))
+                live.rrIntervals.forEach { rrMs -> if (rrMs.toInt() != 0) rr.add(RrRow(ts.toLong(), rrMs.toInt())) }
             }
 
             PacketType.EVENT.rawValue -> {
@@ -410,10 +396,10 @@ fun extractHistoricalStreams(
 
             PacketType.COMMAND_RESPONSE.rawValue -> {
                 // No device timestamp on COMMAND_RESPONSE → stamp battery at wallClockRef (Swift parity).
-                // The response is a live-channel frame (kept on [Framing.parseFrame], not part of the
-                // history/ppg decode cutover).
-                val parsed = Framing.parseFrame(frame, family)
-                if (parsed.ok && parsed.crcOk != false) appendHistBattery(battery, wallClockRef.toLong(), parsed.parsed)
+                // whoop-rs decodes the response; only a GET_BATTERY_LEVEL reply carries a percent.
+                (RustCodec.decodeResponse(family == DeviceFamily.WHOOP5, frame) as? Response.Battery)?.let {
+                    battery.add(BatteryRow(ts = wallClockRef.toLong(), soc = it.percent, mv = null, charging = null))
+                }
             }
 
             else -> Unit

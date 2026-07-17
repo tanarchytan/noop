@@ -4,12 +4,15 @@ import uniffi.whoop_ffi.Gen
 import uniffi.whoop_ffi.HistorySummary
 import uniffi.whoop_ffi.HrvReadinessInfo
 import uniffi.whoop_ffi.Live
+import uniffi.whoop_ffi.MetadataInfo
 import uniffi.whoop_ffi.PpgEstimate
 import uniffi.whoop_ffi.PpgFrame
 import uniffi.whoop_ffi.PpgSample
 import uniffi.whoop_ffi.Response
 import uniffi.whoop_ffi.RrRun
 import uniffi.whoop_ffi.WhoopCodec
+import uniffi.whoop_ffi.dataRangeNewest as ffiDataRangeNewest
+import uniffi.whoop_ffi.dataRangeOldest as ffiDataRangeOldest
 import uniffi.whoop_ffi.hrvReadiness
 import uniffi.whoop_ffi.hrvRmssdGapAware
 import uniffi.whoop_ffi.ppgHr
@@ -33,6 +36,17 @@ object RustCodec {
 
     /** Decode one command response (identity/battery/clock/data-range/firmware), or null. */
     fun decodeResponse(isGen5: Boolean, frame: ByteArray): Response? = codec(isGen5).decodeResponse(frame)
+
+    /** Decode one METADATA frame's offload-state fields (meta_type/unix/trim_cursor/crc_ok), or null.
+     *  Drives the historical-offload trim: a wrong trim would delete un-drained history. */
+    fun decodeMetadata(isGen5: Boolean, frame: ByteArray): MetadataInfo? = codec(isGen5).decodeMetadata(frame)
+
+    /** Newest plausible unix banked (GET_DATA_RANGE), scanning every offset, preferring non-future. */
+    fun dataRangeNewest(frame: ByteArray, wallNowUnix: Long, futureSkewSeconds: Long): Long? =
+        ffiDataRangeNewest(frame, wallNowUnix.toULong(), futureSkewSeconds.toULong())?.toLong()
+
+    /** Oldest plausible unix banked (backlog depth), aligned-from-7 grid. */
+    fun dataRangeOldest(frame: ByteArray): Long? = ffiDataRangeOldest(frame)?.toLong()
 
     /** Decode one v26 optical-PPG frame (24 samples + unix), or null. WHOOP 5/MG only. */
     fun decodePpg(frame: ByteArray): PpgFrame? = gen5.decodePpgFrame(frame)
