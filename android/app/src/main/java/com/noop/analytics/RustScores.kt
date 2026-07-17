@@ -37,11 +37,18 @@ internal object RustScores {
     private fun baseline(b: RecoveryScorer.DriverBaseline?): DriverBaselineInfo? =
         b?.let { DriverBaselineInfo(it.mean, it.spread) }
 
-    /** Fold consecutive same-`ts` R-R into one run (preserving intra-second beat order), like the stager. */
+    /** Fold consecutive same-`ts` R-R into one run (preserving intra-second beat order), like the stager.
+     *  Clamp each rrMs into the UShort range before the cast so a value above u16 can't WRAP into a bogus
+     *  in-[300,2000] beat (the aliasing gap `respRateFromRr` guards against by pre-filtering the cast). Unlike
+     *  that wrapper we CLAMP rather than drop: the gap-aware RMSSD needs an out-of-physio-range beat to still
+     *  reach the whoop-rs clean, which drops it there WITH a contiguity break — dropping (or omitting) it here
+     *  would splice its neighbours into a spurious successive pair and diverge from the Kotlin reference. A
+     *  clamped value stays > RR_MAX_MS, so the Rust clean drops it with the same break; every real R-R (u16 on
+     *  the wire) is in range and passes through unchanged. */
     private fun groupRuns(rr: List<RrInterval>): List<RrRun> {
         val out = ArrayList<RrRun>()
         for (r in rr) {
-            val ms = r.rrMs.toUShort()
+            val ms = r.rrMs.coerceIn(0, UShort.MAX_VALUE.toInt()).toUShort()
             val last = out.lastOrNull()
             if (last != null && last.unix == r.ts.toUInt()) last.rr = last.rr + ms
             else out.add(RrRun(r.ts.toUInt(), listOf(ms)))
