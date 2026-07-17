@@ -1417,8 +1417,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val samples = runCatching { repository.hrSamples(deviceId, from, to) }.getOrDefault(emptyList())
         if (samples.isEmpty()) return null
         val age = profileStore.age.toDouble().takeIf { it > 0 } ?: 30.0
-        val zoneSet = com.noop.analytics.HrZones.zones(age = age)
-        val tiz = com.noop.analytics.HrZones.timeInZone(samples, zoneSet)
+        // Analytics cutover (Tier 1): the age-derived zone split + time-in-zone now score in whoop-rs
+        // physio-algo (hr_zones_for_age / hr_time_in_zone), proven bit-for-bit == the deleted Kotlin
+        // HrZones.zones(age)/timeInZone by RustHrZonesParityTest before the cutover.
+        val tiz = com.noop.analytics.RustScores.hrTimeInZone(samples, age = age)
         val minutes = tiz.seconds.map { it / 60.0 }
         return if (minutes.any { it > 0.0 }) minutes else null
     }

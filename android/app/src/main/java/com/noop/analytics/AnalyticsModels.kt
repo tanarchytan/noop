@@ -14,7 +14,7 @@ package com.noop.analytics
  * Naming notes (clash avoidance):
  *   - The analytics-internal detected-sleep type is [DetectedSleep] so it does NOT
  *     clash with the Room entity com.noop.data.SleepSession.
- *   - HR-zone display types ([HrZone]/[HrZoneSet]/[TimeInZone]) live in HrZones.kt.
+ *   - HR-zone display types ([HrZone]/[HrZoneSet]) live in HrZones.kt.
  *   - HRV result type ([HrvAnalyzer.HrvResult]) lives in HrvAnalyzer.kt.
  *
  * All `ts` / `start` / `end` are wall-clock unix SECONDS (Long) to match the
