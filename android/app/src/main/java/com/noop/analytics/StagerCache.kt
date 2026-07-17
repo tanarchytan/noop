@@ -6,8 +6,8 @@ import com.noop.data.RespSample
 import com.noop.data.RrInterval
 
 /**
- * StagerCache.kt — a small, bounded, thread-safe memo shared by [SleepStager.stageSession] (V1) and
- * [SleepStagerV2.stageSession] (V2). (v7.0.2 / #707)
+ * StagerCache.kt — a small, bounded, thread-safe memo in front of the whoop-rs stager bridge
+ * ([SleepStager.stageSession] V1 / [SleepStager.stageSessionV2] V2). (v7.0.2 / #707)
  *
  * WHY: per-night sleep staging is the single heaviest thing on the analytics model path, and it was being
  * recomputed for EVERY detected night on EVERY [IntelligenceEngine.analyzeRecent] — i.e. ~21× per post-sync

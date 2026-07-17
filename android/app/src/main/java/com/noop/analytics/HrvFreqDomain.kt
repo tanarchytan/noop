@@ -18,7 +18,7 @@ import kotlin.math.sqrt
  * interpolation that distorts the HF (respiratory) band. The Lomb-Scargle periodogram (Lomb 1976,
  * Scargle 1982) estimates the spectrum DIRECTLY from the irregular samples with no interpolation, and is the
  * estimator recommended for HRV on irregular tachograms (Laguna/Moody/Mark 1998; Clifford/Tarassenko 2005).
- * This generalises the band-limited DFT in SleepStagerV2.respRegularity (a uniform-grid DFT over the resp
+ * This generalises the band-limited DFT in the whoop-rs V2 stager (a uniform-grid DFT over the resp
  * band): same "probe only the frequencies we care about" idea, with the Lomb-Scargle estimator so no
  * resampling is needed.
  *

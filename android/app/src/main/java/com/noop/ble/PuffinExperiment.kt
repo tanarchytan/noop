@@ -46,7 +46,7 @@ class PuffinExperiment(private val prefs: SharedPreferences) {
         get() = prefs.getBoolean(KEY_BROADCAST_HR, false)
         set(v) = prefs.edit().putBoolean(KEY_BROADCAST_HR, v).apply()
 
-    /** Sleep staging always runs [com.noop.analytics.SleepStagerV2] (the transparent cardiorespiratory
+    /** Sleep staging always runs the whoop-rs V2 sleep stager (the transparent cardiorespiratory
      *  recipe) over already-detected sleep windows. V2 was promoted to the sole staging engine after a
      *  44-subject cross-subject benchmark (AAUWSS + Walch sleep-accel, leave-one-subject-out) showed it
      *  strictly dominates V1 (kappa 0.35 vs 0.03, deep recall 55% vs 1%). noop-tan hardwires it on and

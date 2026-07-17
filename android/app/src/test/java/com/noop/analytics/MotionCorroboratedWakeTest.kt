@@ -74,7 +74,7 @@ class MotionCorroboratedWakeTest {
     fun warmFlatHRStillNightScoresAsleepNotWakeV2() {
         val start = 1_749_517_200L
         val dur = 6 * 60 * 60
-        val segs = SleepStagerV2.stageSession(
+        val segs = SleepStager.stageSessionV2(
             start = start, end = start + dur,
             grav = stillWithTurnovers(start, dur, everyMin = 90),
             hr = elevatedFlatHR(start, dur, base = 58),
@@ -92,7 +92,7 @@ class MotionCorroboratedWakeTest {
     fun stillLowHRNightUnchangedByCorrectionV2() {
         val start = 1_749_517_200L
         val dur = 3 * 60 * 60
-        val segs = SleepStagerV2.stageSession(
+        val segs = SleepStager.stageSessionV2(
             start = start, end = start + dur,
             grav = stillGravity(start, dur),
             hr = elevatedFlatHR(start, dur, base = 48),   // natural resting
@@ -121,7 +121,7 @@ class MotionCorroboratedWakeTest {
         val hr = (0 until dur).map { i ->
             HrSample(deviceId = dev, ts = start + i, bpm = if (i in walkStart until walkEnd) 92 else 58)
         }
-        val segs = SleepStagerV2.stageSession(
+        val segs = SleepStager.stageSessionV2(
             start = start, end = start + dur, grav = grav,
             hr = hr, rr = regularRR(start, dur, meanMs = 1030), resp = emptyList())
         val walkWake = segs.filter {
@@ -134,20 +134,6 @@ class MotionCorroboratedWakeTest {
             "the still remainder must not be scored WAKE despite elevated HR",
             wakeMinutes(segs) < 60.0,
         )
-    }
-
-    // ── the motion-quiescent predicate ───────────────────────────────────────────────────────────────────
-
-    @Test
-    fun motionQuiescentPredicate() {
-        val still = SleepStagerV2.Epoch(
-            start = 0, hr = 58.0, hrVar = 1.0, hrFlat11 = 1.0, moveFrac = 0.0, jerkMax = 0.001,
-            respReg = null, clock = 0.5, jerkScale = 0.001)
-        assertTrue(SleepStagerV2.motionQuiescent(still))
-        val moved = SleepStagerV2.Epoch(
-            start = 0, hr = 58.0, hrVar = 1.0, hrFlat11 = 1.0, moveFrac = 0.3, jerkMax = 0.2,
-            respReg = null, clock = 0.5, jerkScale = 0.001)
-        assertFalse(SleepStagerV2.motionQuiescent(moved))
     }
 
     // ── detection level: confirmSleepWithHR motion corroboration ─────────────────────────────────────────

@@ -174,7 +174,7 @@ object SleepStager {
     // (a supplement protocol, a fever, a hot room, alcohol), that HR-led logic misreads hot-but-motionless
     // sleep as wake. The corroboration rule is: elevated-HR ALONE is insufficient — a run/epoch at the night's
     // quiescent MOTION floor with UNCHANGED posture cannot be called wake on cardiac evidence alone. The
-    // per-epoch half lives in the stagers ([SleepStagerV2.motionQuiescent]); this is the session-detection half.
+    // per-epoch half lives in the whoop-rs V2 stager; this is the session-detection half.
 
     /** The relaxed sleep-band multiplier applied to [confirmSleepWithHR] when the run is DEEPLY motion-quiescent.
      *  Wider than [hrSleepBaselineMult] (1.05) so a supplement-elevated but motionless overnight run is not
@@ -320,20 +320,6 @@ object SleepStager {
     const val smoothEpochs: Int = 5
     const val noREMAfterOnsetMin: Double = 15.0
     const val deepFirstFraction: Double = 1.0 / 3.0
-
-    /**
-     * Fragment-merge threshold (#274). A staged run shorter than this is "noise": the
-     * WHOOP 5/MG banks sparse motion, so the stager emits lots of sub-minute stage flecks
-     * and the hypnogram reads choppier than WHOOP's. mergeFragments (a DISPLAY/scoring
-     * smoothing applied AFTER staging, never to the underlying detection) absorbs runs
-     * below this into their neighbours. 3 min is conservative — long enough to clear the
-     * fleck noise, short enough to leave a genuine stage transition (a real deep or REM
-     * block runs many minutes) untouched. Mirrors Swift.
-     */
-    const val fragmentMergeMin: Double = 3.0
-
-    /** fragmentMergeMin expressed in 30 s epochs (6). A run with < this many epochs merges. */
-    val fragmentMergeEpochs: Int = (fragmentMergeMin * 60.0 / epochS).roundToInt()
 
     /** te Lindert 30 s Cole–Kripke weights [A₋₄..A₊₂]. SI = 0.001·Σ wᵢ·Aᵢ; sleep iff SI<1. */
     val ckWeights: List<Double> = listOf(106.0, 54.0, 58.0, 76.0, 230.0, 74.0, 67.0)
@@ -939,7 +925,7 @@ object SleepStager {
         // night window's persisted band state. It can only RESCUE a real-sleep block, never fabricate. Mirrors Swift.
         bandSleepState: List<Pair<Long, Int>> = emptyList(),
         // V7 / #690: when true, each accepted night is staged by the experimental cardiorespiratory recipe
-        // [SleepStagerV2.stageSession] instead of V1's [stageSession]. DETECTION is unchanged (same accepted
+        // [stageSessionV2] instead of V1's [stageSession]. DETECTION is unchanged (same accepted
         // windows); only the per-epoch hypnogram differs. Default false keeps V1 the byte-identical default
         // (frozen-golden tests stay green). The live call site threads the experimentalSleepV2 flag so the
         // Settings toggle now affects normal detected nights, not just the self-heal restage path. Mirrors Swift.
@@ -1122,7 +1108,7 @@ object SleepStager {
                 continue
             }
             val stages = if (useSleepStagerV2) {
-                SleepStagerV2.stageSession(start = p.start, end = p.end, grav = grav,
+                stageSessionV2(start = p.start, end = p.end, grav = grav,
                     hr = hrS, rr = rrS, resp = respS)
             } else {
                 stageSession(start = p.start, end = p.end, grav = grav,
@@ -1184,90 +1170,33 @@ object SleepStager {
         return Pair(o, f)
     }
 
-    /**
-     * Build a 30 s hypnogram for [start, end] and return StageSegments.
-     *
-     * PERF (v7.0.2 / #707): staging is the heaviest per-night step on the model path and it was being
-     * re-run for EVERY detected night on EVERY [IntelligenceEngine.analyzeRecent] — ~21× per post-sync
-     * pass, again per sleep edit, and up to thousands of nights on the one-shot full-history Effort rescore
-     * (maxDays=4000). It is a pure function of (start, end, samples), so this is a thin cache veneer over
-     * [stageSessionUncached]: each distinct night stages AT MOST ONCE, peak heap stays flat across repeated
-     * passes, and the output is byte-identical (the cached list is the same one the recipe produced, handed
-     * back as a fresh copy so a caller extending a segment in place can never poison the cache). Edits
-     * invalidate naturally — a moved bed/wake time changes start/end → new key; newly-banked samples change
-     * the per-stream count/edge-ts/checksum → new key (see [StagerCache.fingerprint]).
-     */
+    /** V1 Cole-Kripke hypnogram (4.0 recipe) for [start, end] via the whoop-rs stager (memoized bridge). */
     internal fun stageSession(
         start: Long, end: Long, grav: List<GravitySample>,
         hr: List<HrSample>, rr: List<RrInterval>, resp: List<RespSample>,
-    ): List<StageSegment> {
-        val key = StagerCache.fingerprint(StagerCache.Version.V1, start, end, grav, hr, rr, resp)
-        StagerCache.get(key)?.let { return StagerCache.copyOf(it) }
-        val segments = stageSessionUncached(start, end, grav, hr, rr, resp)
-        StagerCache.put(key, segments)
-        return StagerCache.copyOf(segments)
-    }
+    ): List<StageSegment> = stageVia(StagerCache.Version.V1, start, end, grav, hr, rr, resp)
 
-    /** The pure recipe, exactly as before — extracted so [stageSession] can memoize it. */
-    private fun stageSessionUncached(
+    /** V2 cardiorespiratory hypnogram (5.0/MG default). Same memoized bridge, V2 recipe. */
+    internal fun stageSessionV2(
         start: Long, end: Long, grav: List<GravitySample>,
         hr: List<HrSample>, rr: List<RrInterval>, resp: List<RespSample>,
+    ): List<StageSegment> = stageVia(StagerCache.Version.V2, start, end, grav, hr, rr, resp)
+
+    /**
+     * Memoized veneer over the whoop-rs stager ([RustSleepStager]). Staging is the heaviest per-night
+     * step and re-runs ~21× per pass, so each distinct night crosses the FFI at most once ([StagerCache]);
+     * output is byte-identical (a fresh copy is handed back so a caller extending a segment can't poison
+     * the cache). Edits invalidate naturally via [StagerCache.fingerprint].
+     */
+    private fun stageVia(
+        version: StagerCache.Version, start: Long, end: Long, grav: List<GravitySample>,
+        hr: List<HrSample>, rr: List<RrInterval>, resp: List<RespSample>,
     ): List<StageSegment> {
-        val gSeg = rowsBetween(grav, start, end) { it.ts }
-        if (gSeg.size < 2) return listOf(StageSegment(start = start, end = end, stage = "light"))
-
-        val gDeltas = gravityDeltas(gSeg)
-        val gTimes = gSeg.map { it.ts }
-
-        val hrSeg = rowsBetween(hr, start, end) { it.ts }
-        val rrSeg = rowsBetween(rr, start, end) { it.ts }
-        val respSeg = rowsBetween(resp, start, end) { it.ts }
-
-        val grid = buildEpochGrid(
-            start = start.toDouble(), end = end.toDouble(),
-            gravTimes = gTimes, gravDeltas = gDeltas,
-            hr = hrSeg, rr = rrSeg, resp = respSeg,
-        )
-        if (grid.nEpochs == 0) return listOf(StageSegment(start = start, end = end, stage = "light"))
-
-        val rescaled = rescaleCounts(grid.counts)
-        val ckFlags = coleKripke(rescaled)
-        val (onsetIdx, finalWakeIdx) = onsetAndFinalWake(ckFlags)
-
-        val dogHR = dogHRVariability(grid.hr)
-        val feats = extractFeatures(grid = grid, ckFlags = ckFlags, dogHR = dogHR,
-            onsetIdx = onsetIdx, finalWakeIdx = finalWakeIdx)
-
-        var labels = classifyEpochs(feats)
-        labels = smoothLabels(labels)
-        labels = reimposePhysiology(labels, features = feats,
-            onsetIdx = onsetIdx, finalWakeIdx = finalWakeIdx)
-        // Conservative fragment merge (#274): absorb sub-3-min stage flecks (the WHOOP 5/MG
-        // sparse-motion artefact) so the hypnogram stops reading choppier than WHOOP's,
-        // without erasing genuine multi-minute transitions. Display/scoring only — the
-        // per-epoch detection above is unchanged.
-        labels = mergeFragments(labels)
-
-        // Pre-onset and post-final-wake epochs are not sleep → force wake.
-        val mutLabels = labels.toMutableList()
-        for (i in mutLabels.indices) {
-            if (i < onsetIdx || i > finalWakeIdx) mutLabels[i] = "wake"
-        }
-
-        // Merge consecutive same-stage epochs into segments tiling [start, end].
-        val segments = ArrayList<StageSegment>()
-        for ((i, stage) in mutLabels.withIndex()) {
-            val segStart = grid.edges[i].roundToLong()
-            val segEnd = grid.edges[i + 1].roundToLong()
-            val last = segments.lastOrNull()
-            if (last != null && last.stage == stage) {
-                segments[segments.size - 1].end = segEnd
-            } else {
-                segments.add(StageSegment(start = segStart, end = segEnd, stage = stage))
-            }
-        }
-        if (segments.isNotEmpty()) segments[segments.size - 1].end = end
-        return segments
+        val key = StagerCache.fingerprint(version, start, end, grav, hr, rr, resp)
+        StagerCache.get(key)?.let { return StagerCache.copyOf(it) }
+        val segments = RustSleepStager.stage(version == StagerCache.Version.V2, start, end, grav, hr, rr, resp)
+        StagerCache.put(key, segments)
+        return StagerCache.copyOf(segments)
     }
 
     // ── Per-epoch motion (H8 — persisted beside stagesJSON) ───────────────────
@@ -2145,110 +2074,6 @@ object SleepStager {
             blockedRespRegular = blockedRespRegular, blockedNoRespFallbackBar = blockedNoRespFallbackBar,
             wonOtherStage = wonOtherStage,
         )
-    }
-
-    /**
-     * Sleep-depth rank, lighter → deeper: wake 0, light 1, rem 2, deep 3. Used by
-     * mergeFragments to bias an ambiguous merge toward the LIGHTER stage so smoothing
-     * can never inflate deep/REM. Unknown labels rank lightest (0) — they never win deep.
-     */
-    internal fun stageDepthRank(stage: String): Int = when (stage) {
-        "light" -> 1
-        "rem" -> 2
-        "deep" -> 3
-        else -> 0 // "wake" and any unexpected label
-    }
-
-    /** A contiguous run of one stage spanning [len] epochs. */
-    private data class StageRun(val stage: String, var len: Int)
-
-    /**
-     * Display/scoring smoothing of the staged label sequence (#274). Absorbs sub-threshold
-     * "noise" runs WITHOUT erasing real transitions — applied AFTER staging, it never
-     * touches the underlying per-epoch detection.
-     *
-     * Per run shorter than [thresholdEpochs]:
-     *   • bridged by two SAME-stage neighbours → absorbed into them (the fleck was a blip
-     *     inside one continuous stage);
-     *   • between DIFFERENT stages → relabelled to the dominant (longer) neighbour. On a tie
-     *     — or when the longer neighbour is the deeper one and the shorter is lighter and of
-     *     comparable length — it biases toward the LIGHTER neighbour so a stray fleck can
-     *     never inflate deep/REM (the least-reliable, most-overcountable classes).
-     *
-     * Single left-to-right pass over runs, mirroring mergePeriods' control flow so the
-     * Swift and Kotlin ports stay byte-identical. A run already ≥ threshold is a real
-     * transition and is always preserved.
-     */
-    internal fun mergeFragments(labels: List<String>, thresholdEpochs: Int = fragmentMergeEpochs): List<String> {
-        val n = labels.size
-        if (n == 0 || thresholdEpochs <= 1) return labels
-
-        // Collapse the per-epoch labels into contiguous runs of (stage, length).
-        val runs = ArrayList<StageRun>()
-        for (s in labels) {
-            val last = runs.lastOrNull()
-            if (last != null && last.stage == s) last.len += 1
-            else runs.add(StageRun(s, 1))
-        }
-        if (runs.size < 2) return labels
-
-        val merged = ArrayList<StageRun>()
-        var i = 0
-        while (i < runs.size) {
-            val current = runs[i]
-            if (current.len >= thresholdEpochs) {
-                merged.add(StageRun(current.stage, current.len))
-                i += 1
-                continue
-            }
-
-            val hasPrev = merged.isNotEmpty()
-            val hasNext = i + 1 < runs.size
-
-            if (hasPrev && hasNext && merged[merged.size - 1].stage == runs[i + 1].stage) {
-                // Same-stage bridge: absorb the fleck and the next run into the previous one.
-                merged[merged.size - 1].len += current.len + runs[i + 1].len
-                i += 2
-            } else if (hasPrev && hasNext) {
-                // Between two DIFFERENT stages: relabel to the dominant neighbour, biasing
-                // toward the lighter stage when the two neighbours are tied in length.
-                val prev = merged[merged.size - 1]
-                val next = runs[i + 1]
-                val winner: String = when {
-                    prev.len > next.len -> prev.stage
-                    next.len > prev.len -> next.stage
-                    // Tie → lighter (smaller depth rank) wins; never inflate deep/REM.
-                    else -> if (stageDepthRank(prev.stage) <= stageDepthRank(next.stage)) prev.stage else next.stage
-                }
-                if (winner == prev.stage) {
-                    merged[merged.size - 1].len += current.len
-                    i += 1
-                } else {
-                    // Becomes part of the NEXT run: extend next, drop current.
-                    runs[i + 1] = StageRun(next.stage, next.len + current.len)
-                    i += 1
-                }
-            } else if (hasNext) {
-                // No previous run (leading fleck): fold forward into the next run.
-                runs[i + 1] = StageRun(runs[i + 1].stage, runs[i + 1].len + current.len)
-                i += 1
-            } else if (hasPrev) {
-                // No next run (trailing fleck): fold back into the previous run.
-                merged[merged.size - 1].len += current.len
-                i += 1
-            } else {
-                // Single sub-threshold run with no neighbours — nothing to merge into.
-                merged.add(StageRun(current.stage, current.len))
-                i += 1
-            }
-        }
-
-        // Re-expand the runs back into a per-epoch label sequence of the same length.
-        val out = ArrayList<String>(n)
-        for (r in merged) {
-            for (k in 0 until r.len) out.add(r.stage)
-        }
-        return out
     }
 
     // ── Per-session HR / HRV ─────────────────────────────────────────────────

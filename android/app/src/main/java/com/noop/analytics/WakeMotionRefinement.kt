@@ -9,7 +9,7 @@ import com.noop.data.StepSample
  * (Packages/StrandAnalytics/Sources/StrandAnalytics/WakeMotionRefinement.swift) — same constants, same
  * algorithm, same [StageSegment] shape.
  *
- * THE PROBLEM. Both stagers ([SleepStager] V1, [SleepStagerV2]) call "wake" primarily from HR / HR
+ * THE PROBLEM. Both stagers (V1, V2, now in whoop-rs) call "wake" primarily from HR / HR
  * variability — neither consults locomotion or posture. On a strap night with pharmacologically- or
  * metabolically-elevated resting HR (a supplement protocol, a hot room, alcohol — anything that keeps HR
  * up without the wearer actually getting up), that HR-led call misreads hot-but-asleep as wake. A real

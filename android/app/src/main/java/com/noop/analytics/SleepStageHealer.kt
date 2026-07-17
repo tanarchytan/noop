@@ -56,7 +56,7 @@ object SleepStageHealer {
         end: Long,
         // Opt-in experimental staging (Settings → Experimental · Sleep staging). The analytics layer is
         // Context-free, so the flag is threaded in from the Context-aware caller (default false → V1, so
-        // existing callers / tests are unaffected). When true, stage with SleepStagerV2; else V1. (V7 3b)
+        // existing callers / tests are unaffected). When true, stage with V2; else V1. (V7 3b)
         useExperimentalSleepV2: Boolean = false,
         // Opt-in motion-aware wake refinement (#364 "Proposal 2" follow-up; density gate precedent #345).
         // Same Context-free threading as [useExperimentalSleepV2]; default false so existing callers/tests
@@ -119,7 +119,7 @@ object SleepStageHealer {
     ): String? {
         if (!isDense(grav, start, end)) return null
         val segs = if (useExperimentalSleepV2) {
-            SleepStagerV2.stageSession(start = start, end = end, grav = grav, hr = hr, rr = rr, resp = resp)
+            SleepStager.stageSessionV2(start = start, end = end, grav = grav, hr = hr, rr = rr, resp = resp)
         } else {
             SleepStager.stageSession(start = start, end = end, grav = grav, hr = hr, rr = rr, resp = resp)
         }
