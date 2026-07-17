@@ -1,9 +1,9 @@
 # Compile-and-test verification for the Android app.
 #
-# Debug build only, with unit tests. There is intentionally no signing config,
-# no keystore, no secrets, and no artifact publishing here: release APKs are
-# built and signed by hand. A debug build falls back to the Android debug key
-# automatically, so this job needs nothing from the repository owner to pass.
+# Debug build + unit tests. No signing/keystore/publishing (release APKs are built + signed by hand).
+# The analytics/decode unit tests run through the Rust whoop-rs core via the whoop-ffi host lib (JNA), so
+# the job checks out whoop-rs + its btleplug [patch] sibling and builds that lib. It needs one repo secret,
+# WHOOP_RS_TOKEN = a read-only PAT for the private tanarchytan/whoop-rs (the debug APK build needs nothing).
 name: Android CI
 
 on:
@@ -62,5 +62,25 @@ jobs:
       - name: Build debug APK
         run: ./gradlew assembleFullDebug
 
+      # The analytics/decode unit tests exercise the real Rust core through the whoop-ffi host lib (JNA):
+      # check out whoop-rs (private) + its btleplug [patch] sibling, build the host lib (buildRustHostDll),
+      # and point the test JVM at it via WHOOP_RS_DIR.
+      - name: Checkout whoop-rs (Rust core)
+        uses: actions/checkout@v4
+        with:
+          repository: tanarchytan/whoop-rs
+          token: ${{ secrets.WHOOP_RS_TOKEN }}
+          path: .ci/whoop-rs
+      - name: Checkout btleplug fork (whoop-rs [patch] sibling)
+        uses: actions/checkout@v4
+        with:
+          repository: tanarchytan/btleplug
+          ref: feat/winrtble-add-peripheral
+          path: .ci/btleplug
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+
       - name: Run unit tests
+        env:
+          WHOOP_RS_DIR: ${{ github.workspace }}/.ci/whoop-rs
         run: ./gradlew testFullDebugUnitTest
