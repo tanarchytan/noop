@@ -143,7 +143,7 @@ class ChargeEffortRestScoringTest {
     private val rhrBase = RecoveryScorer.DriverBaseline(mean = 55.0, spread = 4.0)
 
     /** HRV at baseline, RHR at baseline, sleepPerf at center → composite z = 0. */
-    private fun chargeAt(skinDev: Double?): Double? = RecoveryScorer.recovery(
+    private fun chargeAt(skinDev: Double?): Double? = RustScores.recovery(
         hrv = 60.0,
         rhr = 55.0,
         resp = null,
@@ -180,7 +180,7 @@ class ChargeEffortRestScoringTest {
     @Test
     fun charge_coldStartGateUnaffectedBySkinTemp() {
         // An unusable HRV baseline still refuses to score even with a skin-temp value present.
-        val score = RecoveryScorer.recovery(
+        val score = RustScores.recovery(
             hrv = 60.0,
             rhr = 55.0,
             resp = null,

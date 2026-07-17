@@ -1,6 +1,7 @@
 package com.noop.analytics.agreement
 
 import com.noop.analytics.RecoveryScorer
+import com.noop.analytics.RustScores
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -10,9 +11,10 @@ import org.junit.Test
 import java.io.File
 
 /**
- * Recovery-formula correctness / regression pin. Feeds diverse driver-input cases through
- * [RecoveryScorer.recovery] and asserts each matches an INDEPENDENT numpy replication of the exact
- * z-score + logistic composite (recovery_cases.json). Recovery is noop-defined (no external gold —
+ * Recovery-formula correctness / regression pin. Feeds diverse driver-input cases through the routed
+ * whoop-rs physio-algo composite ([RustScores.recovery], now the sole scorer) and asserts each matches
+ * an INDEPENDENT numpy replication of the exact z-score + logistic composite (recovery_cases.json).
+ * Recovery is noop-defined (no external gold —
  * WHOOP's model is proprietary), so this validates internal consistency and PINS all 11 constants
  * (driver weights, logistic K/Z0, sleep centre/scale, skin-temp scale, the 1.253 spread factor) against
  * silent regressions, plus the null semantics (cold-start, dropped-term renormalisation).
@@ -40,7 +42,7 @@ class RecoveryAgreementTest {
         var maxErr = 0.0
         for (i in 0 until arr.length()) {
             val c = arr.getJSONObject(i)
-            val got = RecoveryScorer.recovery(
+            val got = RustScores.recovery(
                 hrv = c.getDouble("hrv"),
                 rhr = c.getDouble("rhr"),
                 resp = optD(c, "resp"),

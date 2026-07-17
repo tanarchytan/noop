@@ -503,7 +503,7 @@ object AnalyticsEngine {
         if (hrvVal != null && rhrVal != null && hrvBase != null) {
             // Charge "Rest quality" term reads the Rest composite ÷100 (0..1), not raw efficiency.
             val sleepPerf = rest?.let { it / 100.0 }
-            recovery = RecoveryScorer.recovery(
+            recovery = RustScores.recovery(
                 hrv = hrvVal,
                 rhr = rhrVal.toDouble(),
                 resp = respRateDaily, // term drops + renormalizes when null / no baseline

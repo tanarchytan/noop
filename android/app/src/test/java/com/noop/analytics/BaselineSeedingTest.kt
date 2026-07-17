@@ -28,7 +28,7 @@ class BaselineSeedingTest {
         val hrvBase = Baselines.foldHistory(hrvNights, hrvCfg)
         val rhrBase = Baselines.foldHistory(rhrNights, rhrCfg)
         assertFalse("3 nights must not be a usable HRV baseline", hrvBase.usable)
-        val score = RecoveryScorer.recovery(
+        val score = RustScores.recovery(
             hrv = 60.0,
             rhr = 52.0,
             resp = null,
@@ -48,7 +48,7 @@ class BaselineSeedingTest {
         val hrvBase = Baselines.foldHistory(hrvNights, hrvCfg)
         val rhrBase = Baselines.foldHistory(rhrNights, rhrCfg)
         assertTrue("4 nights must be a usable HRV baseline", hrvBase.usable)
-        val score = RecoveryScorer.recovery(
+        val score = RustScores.recovery(
             hrv = 60.0,
             rhr = 52.0,
             resp = null,
@@ -81,7 +81,7 @@ class BaselineSeedingTest {
         // Usable hrv/rhr baselines centred on the night's values, so only resp moves the score.
         val hrvBase = Baselines.foldHistory(listOf(58.0, 61.0, 60.0, 59.0), hrvCfg)
         val rhrBase = Baselines.foldHistory(listOf(52.0, 51.0, 53.0, 52.0), rhrCfg)
-        return RecoveryScorer.recovery(
+        return RustScores.recovery(
             hrv = 59.5,
             rhr = 52.0,
             resp = resp,

@@ -24,7 +24,7 @@ class RecoveryScorerTraceTest {
         val hrvB = baseline(50.0, 6.0)
         val rhrB = baseline(55.0, 3.0)
         val respB = baseline(16.0, 2.0)
-        val plain = RecoveryScorer.recovery(
+        val plain = RustScores.recovery(
             hrv = 62.0, rhr = 51.0, resp = 15.0,
             hrvBaseline = hrvB, rhrBaseline = rhrB, respBaseline = respB,
             sleepPerf = 0.9, skinTempDev = 0.3,
@@ -47,7 +47,7 @@ class RecoveryScorerTraceTest {
 
     @Test fun traceNamesTheNilTermThatForcedRenorm() {
         val hrvB = baseline(50.0, 6.0)
-        val plain = RecoveryScorer.recovery(
+        val plain = RustScores.recovery(
             hrv = 55.0, rhr = 55.0, resp = null,
             hrvBaseline = hrvB, rhrBaseline = null, respBaseline = null,
             sleepPerf = 0.85, skinTempDev = null,

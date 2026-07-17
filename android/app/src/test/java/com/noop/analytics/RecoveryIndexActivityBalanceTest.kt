@@ -107,7 +107,7 @@ class RecoveryIndexActivityBalanceTest {
         // omits them (every pre-existing call site in the app) or supplies null explicitly —
         // proving the addition is non-breaking for every caller that does not yet supply the
         // two new signals. Covers BOTH overloads (BaselineState convenience + raw DriverBaseline).
-        val omitted = RecoveryScorer.recovery(
+        val omitted = RustScores.recovery(
             hrv = 55.0, rhr = 52.0, resp = 14.0,
             hrvBaseline = baseline(50.0, 6.0),
             rhrBaseline = baseline(55.0, 3.0),
@@ -115,7 +115,7 @@ class RecoveryIndexActivityBalanceTest {
             sleepPerf = 0.9,
             skinTempDev = 0.4,
         )!!
-        val explicitNull = RecoveryScorer.recovery(
+        val explicitNull = RustScores.recovery(
             hrv = 55.0, rhr = 52.0, resp = 14.0,
             hrvBaseline = baseline(50.0, 6.0),
             rhrBaseline = baseline(55.0, 3.0),
@@ -130,12 +130,12 @@ class RecoveryIndexActivityBalanceTest {
 
         val hrvB = RecoveryScorer.DriverBaseline(mean = 50.0, spread = 6.0 / 1.253)
         val rhrB = RecoveryScorer.DriverBaseline(mean = 55.0, spread = 3.0 / 1.253)
-        val rawOmitted = RecoveryScorer.recovery(
+        val rawOmitted = RustScores.recovery(
             hrv = 55.0, rhr = 52.0, resp = null,
             hrvBaseline = hrvB, rhrBaseline = rhrB, respBaseline = null,
             sleepPerf = 0.9, skinTempDev = 0.4,
         )!!
-        val rawExplicitNull = RecoveryScorer.recovery(
+        val rawExplicitNull = RustScores.recovery(
             hrv = 55.0, rhr = 52.0, resp = null,
             hrvBaseline = hrvB, rhrBaseline = rhrB, respBaseline = null,
             sleepPerf = 0.9, skinTempDev = 0.4, hrvBaselineUsable = true,
@@ -147,7 +147,7 @@ class RecoveryIndexActivityBalanceTest {
     @Test
     fun recoveryIndexSteeperDeclineRaisesChargeMoreThanFlatOrRising() {
         // Pin HRV/RHR/sleep at neutral so the ONLY thing moving is the slope term.
-        fun score(slope: Double?): Double = RecoveryScorer.recovery(
+        fun score(slope: Double?): Double = RustScores.recovery(
             hrv = 50.0, rhr = 55.0, resp = null,
             hrvBaseline = baseline(50.0, 6.0),
             rhrBaseline = baseline(55.0, 3.0),
@@ -172,7 +172,7 @@ class RecoveryIndexActivityBalanceTest {
         // Baseline drivers pinned ABOVE-center (positive composite z), same rigor as the
         // skin-temp precedent test, so the effort term's renormalization dilution has a
         // direction to push against.
-        fun score(effort: Double?): Double = RecoveryScorer.recovery(
+        fun score(effort: Double?): Double = RustScores.recovery(
             hrv = 58.0, rhr = 50.0, resp = null,
             hrvBaseline = baseline(50.0, 6.0),
             rhrBaseline = baseline(55.0, 3.0),
@@ -201,7 +201,7 @@ class RecoveryIndexActivityBalanceTest {
 
     @Test
     fun activityBalanceDropsTermUnlessBothValueAndBaselineArePresent() {
-        fun score(effort: Double?, effortBaseline: BaselineState?): Double = RecoveryScorer.recovery(
+        fun score(effort: Double?, effortBaseline: BaselineState?): Double = RustScores.recovery(
             hrv = 50.0, rhr = 55.0, resp = null,
             hrvBaseline = baseline(50.0, 6.0),
             rhrBaseline = baseline(55.0, 3.0),

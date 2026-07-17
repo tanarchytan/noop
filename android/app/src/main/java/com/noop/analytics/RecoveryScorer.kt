@@ -1,10 +1,7 @@
 package com.noop.analytics
 
 import com.noop.data.HrSample
-import kotlin.math.abs
-import kotlin.math.exp
 import kotlin.math.max
-import kotlin.math.min
 import kotlin.math.roundToInt
 
 /*
@@ -308,134 +305,9 @@ object RecoveryScorer {
         return (value - mean) / sigma
     }
 
-    /**
-     * Z-score + logistic recovery score in [0, 100]. APPROXIMATE.
-     *
-     * Returns null when the HRV baseline (dominant driver) is not yet usable, or
-     * no valid driver is available at all.
-     *
-     * @param hrv tonight's HRV (RMSSD, ms).
-     * @param rhr tonight's resting HR (bpm).
-     * @param resp tonight's respiration (raw or calibrated — z is scale-invariant);
-     *   null drops the term.
-     * @param hrvBaseline HRV baseline (required for a score).
-     * @param rhrBaseline resting-HR baseline; null drops the RHR term.
-     * @param respBaseline respiration baseline; null drops the resp term.
-     * @param sleepPerf sleep-performance proxy (Rest composite 0..1, or efficiency
-     *   0..1 for legacy callers); null drops the term.
-     * @param skinTempDev tonight's skin-temperature deviation from the personal
-     *   baseline (raw ±°C, DailyMetric.skinTempDevC); applied as a SYMMETRIC penalty
-     *   −|dev| / skinTempDevScale. null drops the term and renormalizes (score then
-     *   identical to the pre-skin-temp model).
-     * @param hrvBaselineUsable whether the HRV baseline has enough nights
-     *   (BaselineState.usable). When false, returns null (cold-start).
-     * @param recoveryIndexSlope overnight resting-HR DECLINE slope (bpm/hour, from
-     *   [recoveryIndexSlope]). Negative (declining) supports recovery; positive (rising)
-     *   limits it, weight [wRecoveryIndex]. null (the default) drops the term and the
-     *   weights renormalize, so the no-slope score is IDENTICAL to before this parameter
-     *   existed.
-     * @param effortBaseline personal EWMA baseline of daily Effort/strain
-     *   ([Baselines.strainCfg]). Needs [priorDayEffort] too — supplying only one drops
-     *   the term.
-     * @param priorDayEffort yesterday's Effort/strain (0–100, StrainScorer.strain). Lower vs
-     *   [effortBaseline] supports recovery, same "lower is better" direction as RHR/resp,
-     *   weight [wActivityBalance]. null (the default, like effortBaseline) drops the term
-     *   and the weights renormalize, so the no-effort score is IDENTICAL to before either
-     *   parameter existed.
-     */
-    fun recovery(
-        hrv: Double,
-        rhr: Double,
-        resp: Double?,
-        hrvBaseline: DriverBaseline?,
-        rhrBaseline: DriverBaseline?,
-        respBaseline: DriverBaseline?,
-        sleepPerf: Double?,
-        skinTempDev: Double? = null,
-        hrvBaselineUsable: Boolean = true,
-        recoveryIndexSlope: Double? = null,
-        effortBaseline: DriverBaseline? = null,
-        priorDayEffort: Double? = null,
-    ): Double? {
-        // Cold-start gate: HRV is the dominant driver; if its baseline isn't
-        // usable, refuse to score (more honest than a fabricated value).
-        if (!hrvBaselineUsable) return null
-
-        val terms = ArrayList<Pair<Double, Double>>() // (z, weight)
-
-        // HRV term: higher is better.
-        hrvBaseline?.let { b ->
-            terms.add(zScore(hrv, b.mean, b.spread) to wHRV)
-        }
-        // RHR term: lower is better → (μ − x) / σ.
-        rhrBaseline?.let { b ->
-            terms.add(zScore(b.mean, rhr, b.spread) to wRHR)
-        }
-        // Resp term: lower is better, optional.
-        if (resp != null && respBaseline != null) {
-            terms.add(zScore(respBaseline.mean, resp, respBaseline.spread) to wResp)
-        }
-        // Sleep-performance term: no baseline needed; centered at SLEEP_PERF_CENTER.
-        if (sleepPerf != null) {
-            terms.add(((sleepPerf - sleepPerfCenter) / sleepPerfScale) to wSleep)
-        }
-        // Skin-temp term: SYMMETRIC penalty, no baseline arg (skinTempDev is already a
-        // deviation). Further from baseline in either direction → more negative z.
-        if (skinTempDev != null) {
-            terms.add((-abs(skinTempDev) / skinTempDevScale) to wSkinTemp)
-        }
-        // Recovery-Index term: overnight HR-DECLINE slope (bpm/hour). No baseline needed (a
-        // fixed, documented scale, same style as sleepPerf/skin-temp). Negative (declining)
-        // supports recovery; positive (rising) limits it. Added only when supplied.
-        if (recoveryIndexSlope != null) {
-            terms.add((-recoveryIndexSlope / recoveryIndexScaleBpmPerHr) to wRecoveryIndex)
-        }
-        // Activity-Balance / previous-day-Effort term: lower vs personal baseline is better,
-        // same "lower is better" direction as RHR/resp → (μ − x) / σ. Needs BOTH the value
-        // and a baseline, matching resp's pattern; added only when both are supplied.
-        if (priorDayEffort != null && effortBaseline != null) {
-            terms.add(
-                zScore(effortBaseline.mean, priorDayEffort, effortBaseline.spread) to wActivityBalance,
-            )
-        }
-
-        if (terms.isEmpty()) return null
-        val totalWeight = terms.sumOf { it.second }
-        if (totalWeight <= 0.0) return null
-
-        val z = terms.sumOf { it.first * it.second } / totalWeight
-        val score = 100.0 / (1.0 + exp(-logisticK * (z - logisticZ0)))
-        return max(0.0, min(100.0, score))
-    }
-
-    /**
-     * Convenience overload taking [BaselineState] directly. Enforces the cold-start
-     * gate using `hrvBaseline.usable`. Mirrors the Swift `recovery(...)` overload.
-     */
-    fun recovery(
-        hrv: Double,
-        rhr: Double,
-        resp: Double?,
-        hrvBaseline: BaselineState,
-        rhrBaseline: BaselineState?,
-        respBaseline: BaselineState?,
-        sleepPerf: Double?,
-        skinTempDev: Double? = null,
-        recoveryIndexSlope: Double? = null,
-        effortBaseline: BaselineState? = null,
-        priorDayEffort: Double? = null,
-    ): Double? = recovery(
-        hrv = hrv,
-        rhr = rhr,
-        resp = resp,
-        hrvBaseline = DriverBaseline(hrvBaseline),
-        rhrBaseline = rhrBaseline?.let { DriverBaseline(it) },
-        respBaseline = respBaseline?.let { DriverBaseline(it) },
-        sleepPerf = sleepPerf,
-        skinTempDev = skinTempDev,
-        hrvBaselineUsable = hrvBaseline.usable,
-        recoveryIndexSlope = recoveryIndexSlope,
-        effortBaseline = effortBaseline?.let { DriverBaseline(it) },
-        priorDayEffort = priorDayEffort,
-    )
+    // The recovery/Charge composite (z-score + logistic) now lives in whoop-rs physio-algo,
+    // reached via [RustScores.recovery] (proven bit-for-bit == the deleted Kotlin twin by
+    // RustRecoveryParityTest over the recovery_cases fixtures). The [DriverBaseline] data class,
+    // [zScore], [band], [restingHR], [recoveryIndexSlope] and [bankedNights] stay here — they are
+    // read by frontend consumers (RecoveryDrivers / RecoveryScorerTrace) and the Resting-HR route.
 }

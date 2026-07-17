@@ -65,7 +65,7 @@ object WatchRecovery {
         // Reuse the canonical Charge engine. Drop the resp / sleep / skin-temp terms (the daily aggregate
         // doesn't carry them here) -> RecoveryScorer renormalises to HRV + RHR. RHR is optional: a missing
         // resting HR today passes the at-baseline value (z~0, neutral term) and drops the RHR term entirely.
-        val recovery = RecoveryScorer.recovery(
+        val recovery = RustScores.recovery(
             hrv = todayHrv,
             rhr = todayRhr?.toDouble() ?: rhrBase.baseline,
             resp = null,

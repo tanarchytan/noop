@@ -130,7 +130,7 @@ class RecoveryDriversTest {
         // A present score on a trusted baseline surfaces SOLID; a null score surfaces CALIBRATING.
         assertEquals(ScoreConfidence.SOLID, ScoreConfidence.forCharge(60.0, baseline(50.0, 6.0, nValid = 20)))
         assertEquals(ScoreConfidence.CALIBRATING, ScoreConfidence.forCharge(null, baseline(50.0, 6.0)))
-        assertNull(RecoveryScorer.recovery(
+        assertNull(RustScores.recovery(
             hrv = 60.0, rhr = 50.0, resp = null,
             hrvBaseline = BaselineState(50.0, 5.0, 2, 0, BaselineStatus.CALIBRATING),
             rhrBaseline = null, respBaseline = null, sleepPerf = 0.9,

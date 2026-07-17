@@ -86,6 +86,40 @@ internal object RustScores {
         ),
     )
 
+    /**
+     * [BaselineState] convenience overload (mirrors the deleted `RecoveryScorer.recovery` twin): converts
+     * each [BaselineState] to a [RecoveryScorer.DriverBaseline] and derives the cold-start gate from
+     * `hrvBaseline.usable`, exactly as the Kotlin scorer did, then delegates to the FFI path above. This is
+     * what the store sites ([AnalyticsEngine]/[IntelligenceEngine.recomputeRecovery]/[WatchRecovery]) and
+     * the [RecoveryScorerTrace] call.
+     */
+    fun recovery(
+        hrv: Double,
+        rhr: Double,
+        resp: Double?,
+        hrvBaseline: BaselineState,
+        rhrBaseline: BaselineState?,
+        respBaseline: BaselineState?,
+        sleepPerf: Double?,
+        skinTempDev: Double? = null,
+        recoveryIndexSlope: Double? = null,
+        effortBaseline: BaselineState? = null,
+        priorDayEffort: Double? = null,
+    ): Double? = recovery(
+        hrv = hrv,
+        rhr = rhr,
+        resp = resp,
+        hrvBaseline = RecoveryScorer.DriverBaseline(hrvBaseline),
+        rhrBaseline = rhrBaseline?.let { RecoveryScorer.DriverBaseline(it) },
+        respBaseline = respBaseline?.let { RecoveryScorer.DriverBaseline(it) },
+        sleepPerf = sleepPerf,
+        skinTempDev = skinTempDev,
+        hrvBaselineUsable = hrvBaseline.usable,
+        recoveryIndexSlope = recoveryIndexSlope,
+        effortBaseline = effortBaseline?.let { RecoveryScorer.DriverBaseline(it) },
+        priorDayEffort = priorDayEffort,
+    )
+
     fun band(score: Double): String = uniffi.whoop_ffi.recoveryBand(score)
 
     fun recoveryIndexSlope(hr: List<HrSample>, start: Long, end: Long): Double? =

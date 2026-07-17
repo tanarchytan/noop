@@ -40,8 +40,11 @@ object RecoveryScorerTrace {
         val lines = ArrayList<String>()
         val nilTerms = ArrayList<String>()
 
-        // The score the dashboard reads, verbatim, so the trace cannot diverge from it.
-        val score = RecoveryScorer.recovery(
+        // The score the dashboard reads, verbatim, so the trace cannot diverge from it. This is the
+        // SAME whoop-rs physio-algo path the store sites now use ([RustScores.recovery]); the per-term
+        // breakdown lines below are recomputed locally (via [RecoveryScorer.zScore] etc.) purely for
+        // display, but the headline number is the Rust score.
+        val score = RustScores.recovery(
             hrv = hrv, rhr = rhr, resp = resp,
             hrvBaseline = hrvBaseline, rhrBaseline = rhrBaseline,
             respBaseline = respBaseline, sleepPerf = sleepPerf, skinTempDev = skinTempDev,

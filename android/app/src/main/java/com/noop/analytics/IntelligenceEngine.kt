@@ -1288,7 +1288,7 @@ object IntelligenceEngine {
         // efficiency, and fold in the night's skin-temp deviation (both from persisted daily fields).
         // Mirrors the Swift recomputeRecovery. (Charge/Effort/Rest scoring redesign.)
         val restQuality = RestScorer.restFromDaily(daily)?.let { it / 100.0 } ?: daily.efficiency
-        return RecoveryScorer.recovery(
+        return RustScores.recovery(
             hrv = hrvVal,
             rhr = rhrVal.toDouble(),
             resp = daily.respRateBpm, // term drops + renormalizes when null / no usable baseline
