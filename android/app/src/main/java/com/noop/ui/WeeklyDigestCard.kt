@@ -30,7 +30,6 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.noop.analytics.BalanceRead
 import com.noop.analytics.RestScorer
 import com.noop.analytics.WeeklyDigest
 import com.noop.analytics.WeeklyDigestEngine

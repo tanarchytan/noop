@@ -2,7 +2,6 @@ package com.noop.protocol
 
 import uniffi.whoop_ffi.Gen
 import uniffi.whoop_ffi.HistorySummary
-import uniffi.whoop_ffi.HrvReadinessInfo
 import uniffi.whoop_ffi.Live
 import uniffi.whoop_ffi.MetadataInfo
 import uniffi.whoop_ffi.PpgEstimate
@@ -13,7 +12,6 @@ import uniffi.whoop_ffi.RrRun
 import uniffi.whoop_ffi.WhoopCodec
 import uniffi.whoop_ffi.dataRangeNewest as ffiDataRangeNewest
 import uniffi.whoop_ffi.dataRangeOldest as ffiDataRangeOldest
-import uniffi.whoop_ffi.hrvReadiness
 import uniffi.whoop_ffi.hrvRmssdGapAware
 import uniffi.whoop_ffi.ppgHr
 
@@ -56,9 +54,6 @@ object RustCodec {
 
     /** Gap-aware, artifact-corrected nightly RMSSD (ms) from per-record R-R runs. */
     fun rmssd(runs: List<RrRun>): Double? = hrvRmssdGapAware(runs)
-
-    /** HRV-readiness over a nightly RMSSD series (oldest to newest). */
-    fun readiness(nightlyRmssd: List<Double?>): HrvReadinessInfo? = hrvReadiness(nightlyRmssd)
 
     // --- Outbound command frames: whoop-rs builds every frame's bytes (envelope + CRC + payload). Kotlin
     //     keeps only the send policy (seq counter, 5/MG allow-list, opt-in gates, R22 ordering). ---

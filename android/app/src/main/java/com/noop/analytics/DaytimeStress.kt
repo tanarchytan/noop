@@ -3,7 +3,6 @@ package com.noop.analytics
 import com.noop.data.HrSample
 import com.noop.data.RrInterval
 import kotlin.math.exp
-import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.sqrt
 

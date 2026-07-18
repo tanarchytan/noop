@@ -220,7 +220,4 @@ object MetricArbitrationPolicy {
         MetricKind.CALORIES -> Tolerance(agree = 0.15, minorDelta = 0.40, isPercent = true)     // ±15/40%
         MetricKind.OTHER -> Tolerance(agree = 0.10, minorDelta = 0.30, isPercent = true)
     }
-
-    /** Convenience: tolerance for a raw resolver key (maps via [kind]). */
-    fun toleranceForKey(key: String): Tolerance = tolerance(kind(key))
 }

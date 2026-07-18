@@ -8,9 +8,10 @@ import uniffi.whoop_ffi.HistorySummary
 import uniffi.whoop_ffi.Live
 
 /**
- * Pure mapping tests for [RustAdapter.historyToRows]: constructing the uniffi record type is plain
- * Kotlin (no native library load), so these run everywhere and pin the byte-identity rules the
- * adapter must preserve. The native-backed field-by-field diff lives in [RustKotlinHistoryParityTest].
+ * Pure mapping tests for [RustAdapter.summaryToHistMap] and the live event path: constructing the
+ * uniffi record type is plain Kotlin (no native library load), so these run everywhere and pin the
+ * byte-identity rules the adapter must preserve. The native-backed field-by-field diff lives in
+ * [RustKotlinHistoryParityTest].
  */
 class RustAdapterTest {
 
@@ -44,59 +45,6 @@ class RustAdapterTest {
         signalFlags = null,
         signalQuality = null,
     )
-
-    @Test
-    fun `hr zero is dropped`() {
-        val b = RustAdapter.historyToRows(summary(heartRate = 0), ts = 100L)
-        assertTrue(b.hr.isEmpty())
-    }
-
-    @Test
-    fun `hr and rr map at ts, zero rr dropped`() {
-        val b = RustAdapter.historyToRows(summary(heartRate = 96, rr = listOf(602, 0, 613)), ts = 100L)
-        assertEquals(listOf(HrRowExpected(100L, 96)), b.hr.map { HrRowExpected(it.ts, it.bpm) })
-        assertEquals(listOf(602, 613), b.rr.map { it.rrMs })
-        assertTrue(b.rr.all { it.ts == 100L })
-    }
-
-    @Test
-    fun `gravity widens f32 to double exactly`() {
-        val gx = -0.72517335f
-        val b = RustAdapter.historyToRows(summary(gravity = listOf(gx, 0.4944165f, 0.49685547f)), ts = 5L)
-        assertEquals(1, b.gravity.size)
-        assertEquals(gx.toDouble(), b.gravity[0].x, 0.0) // exact widen, no rounding
-    }
-
-    @Test
-    fun `raw registers stored unscaled`() {
-        val b = RustAdapter.historyToRows(summary(skinTempRaw = 3345, spo2Red = 111, spo2Ir = 222, respRaw = 44), ts = 7L)
-        assertEquals(3345, b.skinTemp.single().raw)
-        assertEquals(111, b.spo2.single().red)
-        assertEquals(222, b.spo2.single().ir)
-        assertEquals(44, b.resp.single().raw)
-    }
-
-    @Test
-    fun `steps carries nullable activity class, sleep_state zero preserved`() {
-        val withClass = RustAdapter.historyToRows(summary(steps = 123, activityClass = 2, sleepState = 0), ts = 9L)
-        assertEquals(123, withClass.steps.single().counter)
-        assertEquals(2, withClass.steps.single().activityClass)
-        assertEquals(0, withClass.sleepState.single().state) // 0 is a real wake reading, not "absent"
-
-        val noClass = RustAdapter.historyToRows(summary(steps = 5, activityClass = null), ts = 9L)
-        assertEquals(null, noClass.steps.single().activityClass) // null stays null
-    }
-
-    @Test
-    fun `spo2 pct maps to its own stream, never the red-ir spo2 list`() {
-        val b = RustAdapter.historyToRows(summary(spo2Pct = 97), ts = 3L)
-        assertEquals(97, b.spo2Pct.single().pct) // 5/MG sleep SpO2 % → its own stream
-        assertEquals(3L, b.spo2Pct.single().ts)
-        assertTrue(b.spo2.isEmpty()) // never leaks into the raw red/IR spo2 list
-
-        val none = RustAdapter.historyToRows(summary(spo2Pct = null), ts = 3L)
-        assertTrue(none.spo2Pct.isEmpty()) // null (sentinel dropped at decode) → no row
-    }
 
     // ---- PRIMARY seam: HistorySummary → the flat map keys the offload loop reads (no native lib) --------
 
@@ -163,6 +111,4 @@ class RustAdapterTest {
         assertTrue(!ef.residual.containsKey("battery_mV")) // 4382 > 4300 store gate
         assertEquals("a3500000", ef.residual["event_payload_hex"])
     }
-
-    private data class HrRowExpected(val ts: Long, val bpm: Int)
 }

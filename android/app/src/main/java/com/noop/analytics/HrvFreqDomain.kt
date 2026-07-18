@@ -5,7 +5,6 @@ import kotlin.math.PI
 import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.sin
-import kotlin.math.sqrt
 
 /*
  * HrvFreqDomain.kt, frequency-domain HRV (LF / HF / LF-HF / total power) over an R-R series.

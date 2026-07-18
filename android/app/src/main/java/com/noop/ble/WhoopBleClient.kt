@@ -43,7 +43,6 @@ import com.noop.protocol.Reassembler
 import com.noop.protocol.RebootProbeVariant
 import com.noop.protocol.RustAdapter
 import com.noop.protocol.RustCodec
-import com.noop.protocol.Streams
 import com.noop.protocol.Whoop5Config
 import com.noop.protocol.extractStreams
 import com.noop.analytics.Baselines

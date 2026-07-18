@@ -1,8 +1,6 @@
 package com.noop.analytics
 
 import com.noop.data.DailyMetric
-import com.noop.data.GravitySample
-import com.noop.data.HrSample
 import com.noop.data.SleepSession
 import com.noop.data.WhoopRepository
 import org.junit.Assert.assertEquals

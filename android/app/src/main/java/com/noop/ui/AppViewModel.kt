@@ -18,7 +18,6 @@ import com.noop.analytics.RegistryDayOwnerSource
 import com.noop.analytics.RestScorer
 import com.noop.analytics.RouteMath
 import com.noop.analytics.SleepMark
-import com.noop.analytics.SleepMarkType
 import com.noop.analytics.Sport
 import com.noop.analytics.Calories
 import com.noop.analytics.StrainScorer
@@ -44,7 +43,6 @@ import com.noop.notif.IllnessAlertNotifier
 import com.noop.notif.ScheduledReportNotifier
 import com.noop.notif.ScheduledReportPolicy
 import com.noop.notif.scorePctOrNull
-import com.noop.protocol.CommandNumber
 import com.noop.widget.WidgetSnapshot
 import com.noop.widget.WidgetSnapshotStore
 import kotlinx.coroutines.Dispatchers

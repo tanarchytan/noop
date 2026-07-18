@@ -1,7 +1,6 @@
 package com.noop.analytics
 
 import kotlin.math.abs
-import kotlin.math.roundToLong
 
 /*
  * RangeReport.kt — the data model for a shareable offline "trends report" over a date

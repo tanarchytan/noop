@@ -33,21 +33,18 @@ import androidx.compose.material.icons.automirrored.filled.DirectionsWalk
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Accessibility
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Air
 import androidx.compose.material.icons.filled.Autorenew
 import androidx.compose.material.icons.automirrored.filled.BatteryUnknown
 import androidx.compose.material.icons.filled.Bedtime
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Functions
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.LockOpen
-import androidx.compose.material.icons.filled.MonitorHeart
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.TrackChanges
 import androidx.compose.material.icons.filled.Tune
@@ -1829,53 +1826,6 @@ private fun ScoreInfoButton(
             tint = Palette.textTertiary,
             modifier = Modifier.size(glyph),
         )
-    }
-}
-
-/**
- * One-time "New here?" card pointing first-run users at the scoring guide. A NoopCard in the Today
- * flow, never a dialog, with a primary "See how it works" action and a ✕ dismiss; both set the
- * seen-flag at the call site so the card never returns. Copy verbatim from the approved source.
- */
-@Composable
-private fun ScoringGuideIntroCard(onOpen: () -> Unit, onDismiss: () -> Unit) {
-    NoopCard {
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    Icons.Outlined.Info,
-                    contentDescription = null,
-                    tint = Palette.accent,
-                    modifier = Modifier.size(18.dp),
-                )
-                Spacer(Modifier.width(8.dp))
-                Text("New here?", style = NoopType.headline, color = Palette.textPrimary)
-                Spacer(Modifier.weight(1f))
-                IconButton(
-                    onClick = onDismiss,
-                    modifier = Modifier
-                        .size(Metrics.iconButton)
-                        .semantics { contentDescription = "Dismiss" },
-                ) {
-                    Icon(
-                        Icons.Filled.Close,
-                        contentDescription = null,
-                        tint = Palette.textTertiary,
-                        modifier = Modifier.size(Metrics.iconSmall),
-                    )
-                }
-            }
-            Text(
-                "See how Charge, Effort and Rest are calculated, and how they differ from WHOOP.",
-                style = NoopType.subhead,
-                color = Palette.textSecondary,
-            )
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                TextButton(onClick = onOpen) {
-                    Text("See how it works", style = NoopType.captionNumber, color = Palette.accent)
-                }
-            }
-        }
     }
 }
 

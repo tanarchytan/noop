@@ -2506,27 +2506,6 @@ private fun TrendPlaceholder() {
 }
 
 @Composable
-private fun TrendLegend(items: List<Pair<String, Color>>) {
-    Row(horizontalArrangement = Arrangement.spacedBy(Metrics.space14)) {
-        items.forEach { (label, color) ->
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(Metrics.space6),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Box(
-                    modifier = Modifier
-                        .width(Metrics.legendLineWidth)
-                        .height(Metrics.legendLineHeight)
-                        .clip(RoundedCornerShape(Metrics.cornerPill))
-                        .background(color),
-                )
-                Text(label, style = NoopType.footnote, color = Palette.textTertiary)
-            }
-        }
-    }
-}
-
-@Composable
 private fun DateAxisRow(days: List<String>) {
     if (days.isEmpty()) return
     val labels = listOf(
@@ -3360,9 +3339,6 @@ private fun stageSegments(s: Stages): List<Pair<String, Float>> {
 }
 
 // MARK: - Formatting helpers (mirror SleepView.swift)
-
-private fun pct(minutes: Double, total: Double): Int =
-    if (total > 0.0) (minutes / total * 100.0).roundToInt() else 0
 
 private fun pctValue(v: Double?): String = v?.let { "${it.roundToInt()}%" } ?: "—"
 

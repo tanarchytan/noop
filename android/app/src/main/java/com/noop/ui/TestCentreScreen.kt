@@ -47,9 +47,7 @@ import com.noop.testcentre.TestCentre
 import com.noop.testcentre.TestCentreLayout
 import com.noop.testcentre.TestDomain
 import com.noop.testcentre.TestMode
-import com.noop.testcentre.TestModeRegistry
 import com.noop.testcentre.TestReportFlow
-import com.noop.testcentre.TestReportLink
 import kotlinx.coroutines.launch
 
 /**

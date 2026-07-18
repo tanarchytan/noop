@@ -21,11 +21,6 @@ import uniffi.whoop_ffi.TimeInZoneInfo
  * uniffi). Sibling of [RustSleepStager]: it maps [HrSample]/[RrInterval]/baseline drivers into the FFI
  * record types, calls the exported score fn (fully qualified so a member never shadows the FFI symbol),
  * and returns the value the Kotlin scorer would have stored.
- *
- * This is the parity-harness scaffolding — each fn is proven bit-for-bit == its Kotlin twin
- * ([RecoveryScorer]/[StrainScorer]/[HrvAnalyzer]/[StressIndex]/[HrZones]/[FitnessAgeEngine] …) on real
- * fixture nights before the Kotlin math is deleted and this becomes the only path. Nothing is wired into
- * [IntelligenceEngine] until the matching parity test passes.
  */
 internal object RustScores {
 
@@ -187,9 +182,6 @@ internal object RustScores {
         uniffi.whoop_ffi.stressComponents(rr.map { it.rrMs.toDouble() })
 
     // ── SpO2 (4.0 paired red/IR) ─────────────────────────────────────────────
-
-    fun spo2FromPaired(red: List<Double>, ir: List<Double>): Double? =
-        uniffi.whoop_ffi.spo2FromPaired(red, ir)
 
     /** Nightly integer-truncated raw red/IR ADC means over the detected in-bed [sessions] — the stored
      *  DailyMetric.spo2Red/spo2Ir (twin of AnalyticsEngine.nightlySpo2RawMeans). Never a calibrated percent. */

@@ -553,7 +553,6 @@ internal class InsightsHubViewModel {
 
     companion object {
         const val DOSE_SOURCE = "noop-journal-dose"
-        private val OUTCOME_KEYS = listOf("recovery", "hrv", "sleep_performance", "rhr")
 
         fun doseKey(behavior: DosedBehavior): String = "dose_${behavior.raw}"
 

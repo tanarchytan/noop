@@ -12,7 +12,6 @@ import com.noop.data.StepRow
 import com.noop.data.StreamBatch
 import uniffi.whoop_ffi.HistorySummary
 import uniffi.whoop_ffi.Live
-import uniffi.whoop_ffi.MetadataInfo
 import uniffi.whoop_ffi.Response
 
 /**
@@ -29,58 +28,6 @@ object RustAdapter {
     private fun isGen5(family: DeviceFamily) = family == DeviceFamily.WHOOP5
 
     // --- Row mappers -------------------------------------------------------------------------------
-
-    /**
-     * Fan one per-second [summary] out to its per-signal rows at the corrected [ts]: hr=0 dropped, rr=0
-     * dropped, spo2 red/IR and skinTemp/resp as raw registers, spo2_pct (5.0 sleep %) as its own stream
-     * when present, steps carry the nullable activity class, sleep_state verbatim (0 kept), gravity widened
-     * exactly. whoop-rs already sleep-gates spo2_pct and drops sentinels, so a non-null value is a real reading.
-     */
-    fun historyToRows(summary: HistorySummary, ts: Long): StreamBatch {
-        val hr = ArrayList<HrRow>(1)
-        summary.heartRate?.toInt()?.let { if (it != 0) hr.add(HrRow(ts, it)) }
-
-        val rr = ArrayList<RrRow>(summary.rrIntervals.size)
-        for (v in summary.rrIntervals) {
-            val ms = v.toInt()
-            if (ms != 0) rr.add(RrRow(ts, ms))
-        }
-
-        val spo2 = ArrayList<Spo2Row>(1)
-        summary.spo2Red?.toInt()?.let { red -> spo2.add(Spo2Row(ts, red = red, ir = summary.spo2Ir?.toInt() ?: 0)) }
-
-        val spo2Pct = ArrayList<Spo2PctRow>(1)
-        summary.spo2Pct?.toInt()?.let { pct -> spo2Pct.add(Spo2PctRow(ts, pct)) }
-
-        val skinTemp = ArrayList<SkinTempRow>(1)
-        summary.skinTempRaw?.toInt()?.let { skinTemp.add(SkinTempRow(ts, it)) }
-
-        val resp = ArrayList<RespRow>(1)
-        summary.respRaw?.toInt()?.let { resp.add(RespRow(ts, it)) }
-
-        val steps = ArrayList<StepRow>(1)
-        summary.steps?.toInt()?.let { c -> steps.add(StepRow(ts, c, activityClass = summary.activityClass?.toInt())) }
-
-        val sleepState = ArrayList<SleepStateRow>(1)
-        summary.sleepState?.toInt()?.let { sleepState.add(SleepStateRow(ts, it)) }
-
-        val gravity = ArrayList<GravityRow>(1)
-        summary.gravity?.let { g ->
-            gravity.add(
-                GravityRow(
-                    ts,
-                    x = g.getOrElse(0) { 0f }.toDouble(),
-                    y = g.getOrElse(1) { 0f }.toDouble(),
-                    z = g.getOrElse(2) { 0f }.toDouble(),
-                ),
-            )
-        }
-
-        return StreamBatch(
-            hr = hr, rr = rr, spo2 = spo2, spo2Pct = spo2Pct, skinTemp = skinTemp, resp = resp,
-            steps = steps, sleepState = sleepState, gravity = gravity,
-        )
-    }
 
     /** Map a Rust [HistorySummary] onto the flat map keys [extractHistoricalStreams] reads. rr 0s dropped
      *  to match the `v != 0` store rule; gravity widened exactly. */
