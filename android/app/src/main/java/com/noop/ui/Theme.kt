@@ -67,9 +67,9 @@ object Palette {
     val textSecondary get() = active.textSecondary
     val textTertiary get() = active.textTertiary
 
-    // Text that always sits on a pinned-dark surface, independent of the app's active light/dark scheme.
-    // Mirrors StrandPalette.onDarkSecondary for the liquid hero's source badge.
-    val onDarkSecondary = Color(0xFFC8CFD8)
+    // Secondary text on the liquid hero. The hero card is now theme-aware (dark in dark, cream in light),
+    // so this follows it: a light grey on the dark hero, the warm secondary ink on the cream one.
+    val onDarkSecondary get() = if (isLight) textSecondary else Color(0xFFC8CFD8)
 
     // Glow.
     val glowAmbient get() = active.glowAmbient

@@ -193,7 +193,14 @@ private var todayDidSnapToTodayThisLaunch = false
 // The hero card the score vessels float on, ported from the iOS LiquidTodayView. `heroFill` is a
 // translucent near-black (mock rgba(13,14,20,.80)) so it floats over the day-of-sky; the vessels + white
 // count-up numbers read crisp on it. Radius 26 + a white@0.11 hairline give the frosted-glass edge.
-private val LIQUID_HERO_FILL: Color = Color(red = 13f / 255f, green = 14f / 255f, blue = 20f / 255f, alpha = 0.80f)
+private val LIQUID_HERO_FILL: Color
+    get() = if (Palette.isLight) {
+        // Light: a cream frosted card (≈ surfaceRaised) so the hero doesn't sit as a dark block on the
+        // sand canvas. Dark keeps the near-black float over the day-of-sky.
+        Color(red = 0.992f, green = 0.976f, blue = 0.945f, alpha = 0.92f)
+    } else {
+        Color(red = 13f / 255f, green = 14f / 255f, blue = 20f / 255f, alpha = 0.80f)
+    }
 private val LIQUID_HERO_RADIUS: Dp = 26.dp
 
 // The Vitality vessel purple (#9b7bff) — no exact Palette token in this theme, so a fixed brand literal
@@ -494,13 +501,6 @@ fun TodayScreen(
     // Both are loaded off the main thread and re-read as the day's data grows; SharedPreferences isn't
     // reactive, so the toggle is read once into local state.
     val hydrationEnabled = remember { NoopPrefs.hydrationTracking(context) }
-    // Day-cycle scene backdrop (#698). Default ON. When off, Today drops the SceneScreenBackground and
-    // the scaffold paints the plain dark surface canvas instead. SharedPreferences isn't reactive, so
-    // this is read once into local state (mirrors iOS @AppStorage in TodayView).
-    val showDayCycleBackground = remember { NoopPrefs.showDayCycleBackground(context) }
-    // "Sky behind cards" (opt-in, default OFF): extend the day-cycle sky behind the WHOLE scroll so the
-    // Card-transparency slider reveals it under every card (no effect when the scene is off). Read once.
-    val skyBehindCards = remember { NoopPrefs.skyBehindCards(context) }
     var hydrationTotalMl by remember { mutableStateOf(0.0) }
     // #989: `days` only changes on a data refresh, which a hydration write never causes, so the card sat
     // stale after logging a drink until an unrelated sync landed. Keying on the store's mutationSeq too
@@ -1020,19 +1020,10 @@ fun TodayScreen(
         // rhythm rather than the app-wide 20dp row gap, so the whole screen reads as compact/slick as iOS.
         // Scoped to this scaffold — no other screen's rhythm changes.
         rowSpacing = 12.dp,
-        // LIQUID SKY BACKDROP (the pilot pattern — LiquidScreenSky.kt): the time-of-day liquid sky sits
-        // behind the WHOLE top region, the liquid header + wordmark AND the hero vessels, full-bleed (full-width, up
-        // behind the status bar via the scaffold's topBackground plumbing), top-aligned, settling into the
-        // flat canvas over its lower half so the cards float OVER it on the theme surface. This is the
-        // Android equivalent of the iOS `ScreenScaffold(topBackground: liquidScaffoldSky())`: it replaces
-        // the classic day-cycle SceneScreenBackground with the liquid day-of-sky (LiquidSkyStatic — no
-        // per-frame cost on this scroll-heavy screen). The other liquid screens drop in the SAME
-        // LiquidScreenSky() slot verbatim.
-        // #698, gated on the "Day-cycle background" setting (default ON). Off passes null, so the scaffold
-        // paints the plain dark surface canvas instead, mirroring iOS's `showDayCycleBackground ? ... : nil`.
-        topBackground = if (showDayCycleBackground) { { LiquidScreenSky(fillHeight = skyBehindCards) } } else null,
-        // Sky-behind-cards fills the viewport so the transparent cards reveal the sky the whole way down.
-        fullBleedBackground = showDayCycleBackground && skyBehindCards,
+        // The day-of-sky hue backdrop was removed; Today sits on the plain themed surface canvas
+        // (topBackground null → the scaffold paints Palette.surfaceBase).
+        topBackground = null,
+        fullBleedBackground = false,
     ) {
         item {
         // LIQUID Today header (iOS LiquidTodayView.scene parity), a full structural rebuild to mirror the
@@ -1781,9 +1772,8 @@ private fun QuickActionDisc(onClick: () -> Unit) {
             .size(34.dp)
             .liquidPress(interaction)
             .clip(CircleShape)
-            // A translucent-white disc so the + reads on the day-of-sky like the rest of the liquid cluster,
-            // with a crisp white glyph. Mirrors iOS LiquidAddButton (a "plus" on Circle().fill(.white@0.16)).
-            .background(Color.White.copy(alpha = 0.16f))
+            // A subtle raised disc so the + reads on the plain themed canvas, in both light and dark.
+            .background(Palette.surfaceRaised)
             .clickable(
                 interactionSource = interaction,
                 indication = null,
@@ -1795,7 +1785,7 @@ private fun QuickActionDisc(onClick: () -> Unit) {
         Icon(
             Icons.Filled.Add,
             contentDescription = null,
-            tint = Color.White,
+            tint = Palette.textPrimary,
             modifier = Modifier.size(16.dp),
         )
     }
@@ -1968,16 +1958,15 @@ private fun LiquidTodayHeader(
                 dayTitle,
                 // ~28sp Bold rounded, matching iOS `StrandFont.rounded(28)`. A soft shadow so it reads on the
                 // day-of-sky. NoopType.number is the house tabular sans; Bold at 28 is the display day title.
-                style = NoopType.number(28f, weight = FontWeight.Bold)
-                    .copy(shadow = Shadow(color = Color.Black.copy(alpha = 0.4f), offset = Offset(0f, 1f), blurRadius = 10f)),
-                color = Color.White,
+                style = NoopType.number(28f, weight = FontWeight.Bold),
+                color = Palette.textPrimary,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
             Text(
                 humanDate,
-                style = NoopType.caption.copy(shadow = Shadow(color = Color.Black.copy(alpha = 0.35f), offset = Offset(0f, 1f), blurRadius = 8f)),
-                color = Color.White.copy(alpha = 0.78f),
+                style = NoopType.caption,
+                color = Palette.textSecondary,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -2204,9 +2193,8 @@ private fun LiquidWordmark() {
         "NOOP".forEach { ch ->
             Text(
                 ch.toString(),
-                style = NoopType.number(16f, weight = FontWeight.Bold)
-                    .copy(shadow = Shadow(color = Color.Black.copy(alpha = 0.25f), offset = Offset(0f, 1f), blurRadius = 6f)),
-                color = Color.White.copy(alpha = 0.5f),
+                style = NoopType.number(16f, weight = FontWeight.Bold),
+                color = Palette.textTertiary,
             )
         }
     }
@@ -2454,18 +2442,11 @@ private fun HeroRingColumn(
 }
 
 /**
- * One hero score as a liquid VESSEL with the value counting up over it — the signature liquid Today hero
- * element. A [LiquidVessel] (Compose primitive, LiquidPrimitives.kt) fills to [fraction] (0..1) in the
- * domain [tint], sized to [diameter]; over it a [CountUpText] rolls the number up to [value] (white,
- * tabular, a soft shadow so it reads on the vessel), matching the iOS `HeroScoreCell` (a count-up number
- * over a filling vessel). The number is hit-transparent (clearAndSetSemantics + no clickable) so a tap
- * falls THROUGH to the vessel — LiquidVessel owns its own tap→splash+haptic; the enclosing HeroRingColumn
- * adds the Charge breakdown tap. When [showsValue] is false (no score yet) the vessel draws empty and the
- * caller overlays the calibrating / No-Data text, so the number is simply omitted here.
- *
- * The number size tracks the diameter (≈ 0.27×, capped) so the three equal vessels stay balanced; it
- * mirrors the iOS 96dp-vessel → 26pt-number ratio. Values/bindings are UNCHANGED from the GlowRing this
- * replaced — same fraction, same value, same value-sampled tint.
+ * One hero score as a WHOOP-style ARC RING with the value counting up in the centre. [GlowRing]
+ * (Components.kt) draws a full-circle track plus a crisp [tint] arc to [fraction] (0..1), sized to
+ * [diameter], and rolls its own centre number up to [value] in the themed text colour. When [showsValue]
+ * is false (no score yet) the ring draws just the track and the caller overlays the calibrating / No-Data
+ * text. Values/bindings are unchanged from the liquid vessel this replaced: same fraction, value, tint.
  */
 @Composable
 private fun HeroScoreVessel(
@@ -2474,30 +2455,20 @@ private fun HeroScoreVessel(
     tint: Color,
     diameter: Dp,
     modifier: Modifier = Modifier,
-    animated: Boolean = true,
+    @Suppress("UNUSED_PARAMETER") animated: Boolean = true,
     showsValue: Boolean = true,
     format: (Double) -> String = { it.roundToInt().toString() },
 ) {
     Box(modifier = modifier.size(diameter), contentAlignment = Alignment.Center) {
-        LiquidVessel(
-            value = fraction.coerceIn(0.0, 1.0),
-            tint = tint,
-            animated = animated,
-            modifier = Modifier.size(diameter),
+        GlowRing(
+            fraction = fraction.coerceIn(0.0, 1.0).toFloat(),
+            value = value,
+            color = tint,
+            diameter = diameter,
+            lineWidth = diameter * 0.10f,
+            showsLabel = showsValue,
+            format = format,
         )
-        if (showsValue) {
-            // Count-up number over the vessel — white, tabular, a soft shadow for legibility, hit-transparent
-            // so the tap reaches the vessel (splash). Size ≈ diameter × 0.27 (iOS 96→26 ratio), capped.
-            val numberSp = (diameter.value * 0.27f).coerceIn(20f, 30f)
-            CountUpText(
-                value = value,
-                format = format,
-                style = NoopType.number(numberSp, weight = FontWeight.Bold)
-                    .copy(shadow = Shadow(color = Color.Black.copy(alpha = 0.5f), offset = Offset(0f, 1f), blurRadius = 6f)),
-                color = Color.White,
-                modifier = Modifier.clearAndSetSemantics {},
-            )
-        }
     }
 }
 
@@ -2538,15 +2509,6 @@ private fun SynthesisHeroCard(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            // The greeting yields/ellipsises first; the pill keeps its full width (#527).
-            Text(
-                greetingWord(),
-                style = NoopType.subhead,
-                color = Palette.textSecondary,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.weight(1f, fill = false),
-            )
             Spacer(Modifier.weight(1f))
             // S4 (#205): the one-word readiness read kept on the hero now the full Readiness card folded
             // into the Charge-ring tap. Push / Maintain / Rest; hidden when there isn't enough history.
@@ -5949,15 +5911,6 @@ private fun remember14(days: List<com.noop.data.DailyMetric>, anchorDay: LocalDa
     }
 
 // MARK: - Derived text (ported from TodayView.swift)
-
-private fun greetingWord(): String {
-    val h = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY)
-    return when {
-        h < 12 -> "Good morning"
-        h < 17 -> "Good afternoon"
-        else -> "Good evening"
-    }
-}
 
 private fun synthesisWord(score: Double?): String {
     if (score == null) return "No Data"
