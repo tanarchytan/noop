@@ -48,7 +48,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -340,7 +339,6 @@ fun SettingsScreen(
     vm: AppViewModel,
 ) {
     val context = LocalContext.current
-    val scope = rememberCoroutineScope()
     val live by vm.live.collectAsStateWithLifecycle()
 
     // The profile store is stable for the lifetime of this screen; only its sex is read here now (the
@@ -432,23 +430,6 @@ fun SettingsScreen(
     var powerSavingBatteryPct by remember { mutableStateOf(NoopPrefs.powerSavingBatteryPct(context)) }
     var pauseHrvOnPowerSave by remember { mutableStateOf(NoopPrefs.pauseHrvOnPowerSave(context)) }
 
-    // Modern Photo Picker for the optional profile photo (no READ_EXTERNAL_STORAGE permission needed).
-    // Returns a single image Uri (or null if cancelled); we decode + downscale + persist off the main
-    // thread via ProfileAvatarStore, which updates the live avatar everywhere. Stored only on this phone.
-    val avatarPickerLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.PickVisualMedia(),
-    ) { uri ->
-        if (uri == null) return@rememberLauncherForActivityResult
-        scope.launch {
-            val ok = withContext(Dispatchers.IO) {
-                ProfileAvatarStore.setAvatarFromUri(context, uri)
-            }
-            if (!ok) {
-                Toast.makeText(context, "Couldn't use that photo. Try another.", Toast.LENGTH_LONG).show()
-            }
-        }
-    }
-
     ScreenScaffold(
         title = "Settings",
         subtitle = "Your numbers, your strap, and how NOOP works. All on this phone.",
@@ -459,51 +440,6 @@ fun SettingsScreen(
         // returns Settings to the plain dark canvas too.
         topBackground = if (showDayCycleBackground) { { LiquidScreenSky() } } else null,
     ) {
-        // --- Profile photo (optional, on-device) ---
-        // Split into its own section ahead of the body-numbers Profile card, mirroring the iOS
-        // SettingsView `profilePhotoCard` (person.crop.circle, the offline blurb). A large avatar + a
-        // Choose/Change button and, once set, a Remove. Local-only and honest: the picked image is
-        // downscaled and kept on this phone, never uploaded. Reads ProfileAvatarStore.hasAvatar
-        // (snapshot state) so the controls update the instant a photo is set or cleared.
-        SettingsSection(
-            icon = Icons.Outlined.AccountCircle,
-            title = "Profile photo",
-            blurb = "Optional. Add a photo for the avatar in the top-left. Stored only on this phone. NOOP is offline, so it's never uploaded.",
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
-            ) {
-                ProfileAvatar(size = 64.dp, contentDescription = "Profile photo")
-                Column(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        NoopButton(
-                            text = if (ProfileAvatarStore.hasAvatar) "Change photo" else "Choose photo",
-                            kind = NoopButtonKind.Secondary,
-                            modifier = Modifier.weight(1f),
-                            onClick = {
-                                avatarPickerLauncher.launch(
-                                    PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly),
-                                )
-                            },
-                        )
-                        if (ProfileAvatarStore.hasAvatar) {
-                            NoopButton(
-                                text = "Remove photo",
-                                kind = NoopButtonKind.Tertiary,
-                                modifier = Modifier.weight(1f),
-                                onClick = { ProfileAvatarStore.clearAvatar(context) },
-                            )
-                        }
-                    }
-                }
-            }
-        }
-
         // --- Appearance (Theme) ---
         SettingsSection(
             icon = Icons.Filled.Brightness6,

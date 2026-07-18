@@ -1,5 +1,9 @@
 package com.noop.ui
 
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -18,6 +22,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Straighten
+import androidx.compose.material.icons.outlined.AccountCircle
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
@@ -26,6 +31,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -38,6 +44,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import kotlin.math.roundToInt
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 // MARK: - Profile menu (the top-left avatar destination)
 //
@@ -69,6 +78,35 @@ fun ProfileMenuScreen(vm: AppViewModel) {
     // tap-through. Full-screen Dialog; a manual-coefficient write bumps `rev` so the summary refreshes.
     var showStepsCalibration by remember { mutableStateOf(false) }
 
+    val scope = rememberCoroutineScope()
+
+    // Wheel-picker option lists for age / weight / height (mirrors the onboarding ProfileStep). The stored
+    // profile stays SI; the weight/height labels re-format per the live unit system and the picker maps the
+    // chosen index back to SI on select. Age is 13..100 (matches setAge's clamp).
+    val ageSteps = remember { (13..100).toList() }
+    val weightSteps = remember { generateSequence(30.0) { it + 0.5 }.takeWhile { it <= 250.0001 }.toList() }
+    val heightSteps = remember { (120..230).toList() }
+    val ageOptions = remember { ageSteps.map { "$it" } }
+    val weightOptions = remember(unitSystem) { weightSteps.map { UnitFormatter.massFromKilograms(it, unitSystem) } }
+    val heightOptions = remember(unitSystem) { heightSteps.map { UnitFormatter.heightFromCentimeters(it.toDouble(), unitSystem) } }
+
+    // Modern Photo Picker for the optional profile photo (no READ_EXTERNAL_STORAGE permission needed).
+    // Returns a single image Uri (or null if cancelled); we decode + downscale + persist off the main
+    // thread via ProfileAvatarStore, which updates the live avatar everywhere. Stored only on this phone.
+    val avatarPickerLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.PickVisualMedia(),
+    ) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        scope.launch {
+            val ok = withContext(Dispatchers.IO) {
+                ProfileAvatarStore.setAvatarFromUri(context, uri)
+            }
+            if (!ok) {
+                Toast.makeText(context, "Couldn't use that photo. Try another.", Toast.LENGTH_LONG).show()
+            }
+        }
+    }
+
     ScreenScaffold(
         title = "Profile",
         subtitle = "Your body profile and how NOOP shows units. All on this phone.",
@@ -89,6 +127,50 @@ fun ProfileMenuScreen(vm: AppViewModel) {
             }
         }
 
+        // --- Profile photo (optional, on-device) ---
+        // Moved here from Settings — the avatar the top-left menu and the Today header show. A large avatar
+        // + Choose/Change, and once set a Remove. Local-only: the picked image is downscaled and kept on
+        // this phone, never uploaded. Reads ProfileAvatarStore.hasAvatar (snapshot state) so the controls
+        // update the instant a photo is set or cleared.
+        ProfileSection(
+            icon = Icons.Outlined.AccountCircle,
+            title = "Profile photo",
+            blurb = "Optional. Add a photo for the avatar in the top-left. Stored only on this phone. NOOP is offline, so it's never uploaded.",
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+            ) {
+                ProfileAvatar(size = 64.dp, contentDescription = "Profile photo")
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        NoopButton(
+                            text = if (ProfileAvatarStore.hasAvatar) "Change photo" else "Choose photo",
+                            kind = NoopButtonKind.Secondary,
+                            modifier = Modifier.weight(1f),
+                            onClick = {
+                                avatarPickerLauncher.launch(
+                                    PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly),
+                                )
+                            },
+                        )
+                        if (ProfileAvatarStore.hasAvatar) {
+                            NoopButton(
+                                text = "Remove photo",
+                                kind = NoopButtonKind.Tertiary,
+                                modifier = Modifier.weight(1f),
+                                onClick = { ProfileAvatarStore.clearAvatar(context) },
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
         // --- Profile (body numbers) ---
         ProfileSection(
             icon = Icons.Outlined.Person,
@@ -97,14 +179,15 @@ fun ProfileMenuScreen(vm: AppViewModel) {
         ) {
             Column {
                 FormRow(label = "Age") {
-                    StepperField(
-                        value = profile.age.toString(),
+                    WheelPickerField(
+                        value = "${profile.age}",
+                        unit = "yrs",
                         accessibility = "Age, ${profile.age} years",
-                        // #146: age is derived from a stored date of birth, so it advances on its own. The
-                        // stepper re-anchors the DOB via setAge (which clamps to 13..100 — age feeds the
-                        // Fitness Age + Vitality engines that gate on age > 0, so it must never go 0/negative).
-                        onMinus = { mutate { profile.setAge(profile.age - 1) } },
-                        onPlus = { mutate { profile.setAge(profile.age + 1) } },
+                        options = ageOptions,
+                        selectedIndex = ageSteps.indexOf(profile.age).coerceAtLeast(0),
+                        dialogTitle = "Age",
+                        // #146: age derives from a stored date of birth; setAge re-anchors it (clamped 13..100).
+                        onSelected = { mutate { profile.setAge(ageSteps[it]) } },
                     )
                 }
                 RowDivider()
@@ -118,48 +201,26 @@ fun ProfileMenuScreen(vm: AppViewModel) {
                 }
                 RowDivider()
                 FormRow(label = "Weight") {
-                    // Imperial mode steps in whole pounds and stores the kg equivalent; metric steps in
-                    // 0.5 kg. The profile is always SI — only the entry unit changes.
-                    if (unitSystem == UnitSystem.IMPERIAL) {
-                        val lb = UnitFormatter.kgToPounds(profile.weightKg)
-                        StepperField(
-                            value = "%.0f".format(lb),
-                            unit = "lb",
-                            accessibility = "Weight, ${lb.roundToInt()} pounds",
-                            onMinus = { mutate { profile.weightKg = (lb - 1) / UnitFormatter.POUNDS_PER_KILOGRAM } },
-                            onPlus = { mutate { profile.weightKg = (lb + 1) / UnitFormatter.POUNDS_PER_KILOGRAM } },
-                        )
-                    } else {
-                        StepperField(
-                            value = "%.1f".format(profile.weightKg),
-                            unit = "kg",
-                            accessibility = "Weight in kilograms",
-                            onMinus = { mutate { profile.weightKg -= 0.5 } },
-                            onPlus = { mutate { profile.weightKg += 0.5 } },
-                        )
-                    }
+                    WheelPickerField(
+                        // Full re-labelled string (e.g. "74.5 kg" / "164.2 lb"); unit folded into value.
+                        value = UnitFormatter.massFromKilograms(profile.weightKg, unitSystem),
+                        accessibility = "Weight",
+                        options = weightOptions,
+                        selectedIndex = weightSteps.indices.minByOrNull { kotlin.math.abs(weightSteps[it] - profile.weightKg) } ?: 0,
+                        dialogTitle = "Weight",
+                        onSelected = { mutate { profile.weightKg = weightSteps[it] } },
+                    )
                 }
                 RowDivider()
                 FormRow(label = "Height") {
-                    // Imperial mode steps in whole inches and stores the cm equivalent; metric steps in cm.
-                    if (unitSystem == UnitSystem.IMPERIAL) {
-                        val (ft, inch) = UnitFormatter.cmToFeetInches(profile.heightCm)
-                        val totalInches = UnitFormatter.cmToInches(profile.heightCm).roundToInt()
-                        StepperField(
-                            value = "$ft′ $inch″",
-                            accessibility = "Height, $ft feet $inch inches",
-                            onMinus = { mutate { profile.heightCm = (totalInches - 1) * UnitFormatter.CENTIMETERS_PER_INCH } },
-                            onPlus = { mutate { profile.heightCm = (totalInches + 1) * UnitFormatter.CENTIMETERS_PER_INCH } },
-                        )
-                    } else {
-                        StepperField(
-                            value = "%.0f".format(profile.heightCm),
-                            unit = "cm",
-                            accessibility = "Height in centimetres",
-                            onMinus = { mutate { profile.heightCm -= 1 } },
-                            onPlus = { mutate { profile.heightCm += 1 } },
-                        )
-                    }
+                    WheelPickerField(
+                        value = UnitFormatter.heightFromCentimeters(profile.heightCm, unitSystem),
+                        accessibility = "Height",
+                        options = heightOptions,
+                        selectedIndex = heightSteps.indices.minByOrNull { kotlin.math.abs(heightSteps[it] - profile.heightCm) } ?: 0,
+                        dialogTitle = "Height",
+                        onSelected = { mutate { profile.heightCm = heightSteps[it].toDouble() } },
+                    )
                 }
                 RowDivider()
                 // Waist (optional): the one extra body measure that unlocks the Fitness Age VO₂max
