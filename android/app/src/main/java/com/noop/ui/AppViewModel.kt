@@ -218,7 +218,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     /**
      * Record the family detected for the strap the user picked in the merged onboarding scan, WITHOUT
-     * [setSelectedModel]'s teardown (it clears the saved device + drops the live bond). Points the
+     * the model-switch teardown (which clears the saved device + drops the live bond). Points the
      * scan/connect family and persists it so a later [SourceCoordinator] reconnect targets the right
      * service. Called at pick, before the strap is registered active.
      */
@@ -280,15 +280,6 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /** Which strap the user is pairing — drives the scan filter in [connect]. Defaults to WHOOP 4.0. */
     private val _selectedModel = MutableStateFlow(WhoopModel.WHOOP4)
     val selectedModel: StateFlow<WhoopModel> = _selectedModel.asStateFlow()
-    fun setSelectedModel(model: WhoopModel) {
-        if (model == _selectedModel.value) return
-        _selectedModel.value = model
-        // Switching straps: forget the saved one so launch auto-reconnect (#67) doesn't target the old strap.
-        NoopPrefs.clearLastDevice(appContext)
-        // Drop the previous strap's sticky bond/connection so the next scan targets the new family's
-        // service and bonds it fresh (lets a user move between a WHOOP 4 and a 5/MG).
-        ble.prepareForModelSwitch()
-    }
 
     // MARK: - Smoothed BPM (median over a short window, mirrors AppModel.bpm)
 

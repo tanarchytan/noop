@@ -114,7 +114,7 @@ fun ProfileMenuScreen(vm: AppViewModel) {
         // Read the revision counter so every profile write recomposes this subtree.
         @Suppress("UNUSED_VARIABLE") val tick = rev
 
-        // Header: the large avatar (the photo set in Settings, or the NOOP loop mark) + name/age.
+        // Header: the large avatar (the photo set below in the Profile menu, or the NOOP loop mark) + name/age.
         Row(
             modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
             verticalAlignment = Alignment.CenterVertically,

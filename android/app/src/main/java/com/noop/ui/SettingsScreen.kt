@@ -5,10 +5,7 @@ import android.content.Context
 import android.content.SharedPreferences
 import android.content.pm.PackageManager
 import android.widget.Toast
-import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.activity.result.PickVisualMediaRequest
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -16,7 +13,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
@@ -27,11 +23,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Autorenew
 import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.Brightness6
-import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Science
-import androidx.compose.material.icons.outlined.AccountCircle
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Slider
@@ -44,7 +38,6 @@ import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -64,9 +57,6 @@ import com.noop.analytics.Baselines
 import com.noop.analytics.Zones
 import com.noop.ble.PuffinExperiment
 import com.noop.ble.WhoopModel
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import kotlin.math.roundToInt
 
 // MARK: - Settings (ported from Strand/Screens/SettingsView.swift)
@@ -418,9 +408,6 @@ fun SettingsScreen(
     // Day-cycle background (#698) — the time-of-day scene behind Today. Default ON. SharedPreferences
     // isn't reactive, so the Switch mirrors into local state; TodayScreen reads the same pref on entry.
     var showDayCycleBackground by remember { mutableStateOf(NoopPrefs.showDayCycleBackground(context)) }
-    // "Sky behind cards" (opt-in, default OFF) — extend the day-cycle sky behind the whole Today scroll so
-    // Card transparency reveals it under every card. Mirrors into local state; TodayScreen reads on entry.
-    var skyBehindCards by remember { mutableStateOf(NoopPrefs.skyBehindCards(context)) }
     // Card-surface opacity (0f = clear, 1f = solid), for the "Card transparency" slider. Live-previews via
     // CardAppearance; saved on release.
     var cardOpacity by remember { mutableStateOf(NoopPrefs.cardOpacityPercent(context) / 100f) }
@@ -512,43 +499,6 @@ fun SettingsScreen(
                     onCheckedChange = {
                         showDayCycleBackground = it
                         NoopPrefs.setShowDayCycleBackground(context, it)
-                    },
-                    colors = SwitchDefaults.colors(
-                        checkedThumbColor = Palette.surfaceBase,
-                        checkedTrackColor = Palette.accent,
-                        uncheckedThumbColor = Palette.textSecondary,
-                        uncheckedTrackColor = Palette.surfaceInset,
-                        uncheckedBorderColor = Palette.hairline,
-                    ),
-                )
-            }
-
-            // Sky behind cards (opt-in): extend the day-cycle sky behind the WHOLE Today scroll so the Card
-            // transparency slider reveals it under every card, not just the hero. Off = the sky stays a top
-            // band and lower cards fade toward the flat canvas. Needs the day-cycle background to be on.
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        "Sky behind cards",
-                        style = NoopType.subhead,
-                        color = if (showDayCycleBackground) Palette.textPrimary else Palette.textTertiary,
-                    )
-                    Text(
-                        "Extends the sky behind the whole Today screen, so lowering Card transparency lets it show through every card. Needs the day-cycle background on.",
-                        style = NoopType.footnote,
-                        color = Palette.textTertiary,
-                    )
-                }
-                Switch(
-                    enabled = showDayCycleBackground,
-                    checked = skyBehindCards && showDayCycleBackground,
-                    onCheckedChange = {
-                        skyBehindCards = it
-                        NoopPrefs.setSkyBehindCards(context, it)
                     },
                     colors = SwitchDefaults.colors(
                         checkedThumbColor = Palette.surfaceBase,
@@ -1305,17 +1255,4 @@ private fun RowDivider() {
             .height(1.dp)
             .background(Palette.hairline),
     )
-}
-
-@Composable
-private fun AttributionRow(repo: String, note: String) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        modifier = Modifier.semantics { contentDescription = "$repo, $note" },
-    ) {
-        Text("›", style = NoopType.headline, color = Palette.accent)
-        Text(repo, style = NoopType.mono(12f), color = Palette.textPrimary)
-        Text("· $note", style = NoopType.footnote, color = Palette.textTertiary)
-    }
 }

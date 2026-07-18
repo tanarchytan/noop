@@ -405,7 +405,7 @@ private fun ConnectStep(viewModel: AppViewModel) {
             WhoopModel.WHOOP5_MG -> "5.0 MG"
             null -> "WHOOP"
         }
-        // Point the scan/connect family + persist it WITHOUT setSelectedModel's teardown (which would clear
+        // Point the scan/connect family + persist it WITHOUT the model-switch teardown (which would clear
         // the saved device and drop the bond) so a later reconnect targets the right service. Unknown → skip
         // (leave the persisted family as-is, resolve at connect).
         family?.let { viewModel.noteDetectedModel(it) }

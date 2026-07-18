@@ -81,7 +81,6 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.PathEffect
-import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -190,13 +189,14 @@ private var todayDidSnapToTodayThisLaunch = false
 
 // MARK: - Liquid hero tokens (the liquid Today restyle)
 //
-// The hero card the score vessels float on, ported from the iOS LiquidTodayView. `heroFill` is a
-// translucent near-black (mock rgba(13,14,20,.80)) so it floats over the day-of-sky; the vessels + white
-// count-up numbers read crisp on it. Radius 26 + a white@0.11 hairline give the frosted-glass edge.
+// The hero card the score arc rings sit on, ported from the iOS LiquidTodayView. `LIQUID_HERO_FILL` is
+// theme-aware — a cream frosted card in light, a translucent near-black (mock rgba(13,14,20,.80)) in dark —
+// sitting on the plain Palette.surfaceBase canvas (the day-of-sky backdrop was removed). The ring centre
+// numbers render in the themed text colour. Radius 26 + a white@0.11 hairline give the frosted-glass edge.
 private val LIQUID_HERO_FILL: Color
     get() = if (Palette.isLight) {
         // Light: a cream frosted card (≈ surfaceRaised) so the hero doesn't sit as a dark block on the
-        // sand canvas. Dark keeps the near-black float over the day-of-sky.
+        // sand canvas. Dark keeps the near-black card on the plain themed canvas.
         Color(red = 0.992f, green = 0.976f, blue = 0.945f, alpha = 0.92f)
     } else {
         Color(red = 13f / 255f, green = 14f / 255f, blue = 20f / 255f, alpha = 0.80f)
@@ -1184,15 +1184,14 @@ fun TodayScreen(
         // LiquidTodayView. Effort prefers today's live in-progress strain and falls back to the stored value
         // (#402); the single floating badge names the real score sources without consuming card spacing.
         // Staggered in as the score hero (index 1, after the header); each number counts up over its vessel.
-        // The day-cycle SCENE now sits at SCREEN level (the scaffold's `topBackground`, behind the header +
-        // these rings + bled full-width up behind the status bar), so the rings float DIRECTLY on the scene
-        // rather than in a card-clipped scene of their own, mirroring iOS, where TodayView moved the scene
-        // to a screen-level `SceneScreenBackground` and the hero dropped `.sceneHeroBackground()`.
+        // The day-of-sky scene backdrop was removed: the scaffold's `topBackground` is null, so Today paints
+        // the plain themed surface canvas (Palette.surfaceBase) and the hero rings float DIRECTLY on that
+        // flat surface (no card-clipped scene of their own, no screen-level day-cycle scene).
         item {
-        // The liquid hero CARD: a translucent near-black that floats over the day-of-sky so the vessels +
-        // white count-up numbers stay crisp — the card does the contrast work, not a muted sky. A rounded
-        // 26 corner + a faint white hairline give it the frosted-glass edge of the iOS liquid heroCard
-        // (heroFill = rgba(13,14,20,.80), stroke white@0.11). Mirrors the iOS LiquidTodayView heroCard.
+        // The hero CARD: a translucent frosted fill (LIQUID_HERO_FILL — cream in light, near-black in dark)
+        // that sits on the plain themed surface and keeps the arc rings + count-up numbers crisp; the card
+        // does the contrast work. A rounded 26 corner + a faint white hairline give it the frosted-glass
+        // edge of the iOS liquid heroCard (stroke white@0.11). Mirrors the iOS LiquidTodayView heroCard.
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -1201,7 +1200,12 @@ fun TodayScreen(
                     LIQUID_HERO_FILL.copy(alpha = LIQUID_HERO_FILL.alpha * CardAppearance.opacity),
                     RoundedCornerShape(LIQUID_HERO_RADIUS),
                 )
-                .border(1.dp, Color.White.copy(alpha = 0.11f * CardAppearance.opacity), RoundedCornerShape(LIQUID_HERO_RADIUS))
+                .border(
+                    1.dp,
+                    (if (Palette.isLight) Palette.textPrimary else Color.White)
+                        .copy(alpha = 0.11f * CardAppearance.opacity),
+                    RoundedCornerShape(LIQUID_HERO_RADIUS),
+                )
                 .staggeredAppear(1),
         ) {
             ScoreHeroRow(
@@ -1264,7 +1268,7 @@ fun TodayScreen(
         }
 
         // The plain-English read-out, the Charge-tinted Synthesis card with a WHITE headline, carries the
-        // greeting + the SOLID/CALIBRATING data-confidence pill in its top-right. Mirrors the iOS Synthesis
+        // SOLID/CALIBRATING data-confidence pill in its top-right. Mirrors the iOS Synthesis
         // InsightCard. Carries the last scored day's read at the rollover (#543) so it doesn't blank to
         // "No Data". Staggered in as index 2.
         item {
@@ -1941,7 +1945,7 @@ private fun LiquidTodayHeader(
         verticalAlignment = Alignment.Top,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        // LEADING: the profile avatar (the photo set in Settings, or the NOOP loop mark) → Profile menu.
+        // LEADING: the profile avatar (the photo set in the Profile menu, or the NOOP loop mark) → Profile menu.
         // Moved to the leading position so the avatar reads as "you" at the very start of the header.
         Box(
             modifier = Modifier
@@ -1975,8 +1979,8 @@ private fun LiquidTodayHeader(
         ) {
             Text(
                 dayTitle,
-                // ~28sp Bold rounded, matching iOS `StrandFont.rounded(28)`. A soft shadow so it reads on the
-                // day-of-sky. NoopType.number is the house tabular sans; Bold at 28 is the display day title.
+                // ~28sp Bold rounded, matching iOS `StrandFont.rounded(28)`. NoopType.number is the house
+                // tabular sans; Bold at 28 is the display day title.
                 style = NoopType.number(28f, weight = FontWeight.Bold),
                 color = Palette.textPrimary,
                 maxLines = 1,
@@ -2080,9 +2084,9 @@ private fun LiquidBatteryRing(batteryPct: Double?, onClick: () -> Unit) {
             .size(34.dp)
             .liquidPress(interaction)
             .clip(CircleShape)
-            // A translucent near-black disc + faint white rim, matching iOS (rgba(10,11,16,.5) + white@.15).
-            .background(Color(red = 10f / 255f, green = 11f / 255f, blue = 16f / 255f, alpha = 0.5f))
-            .border(1.dp, Color.White.copy(alpha = 0.15f), CircleShape)
+            // A raised themed disc + hairline rim so it reads on the plain themed canvas, in both light and dark.
+            .background(Palette.surfaceRaised)
+            .border(1.dp, Palette.hairline, CircleShape)
             .clickable(
                 interactionSource = interaction,
                 indication = null,
@@ -2104,7 +2108,7 @@ private fun LiquidBatteryRing(batteryPct: Double?, onClick: () -> Unit) {
                 val topLeft = Offset((size.width - d) / 2f, (size.height - d) / 2f)
                 // Track.
                 drawArc(
-                    color = Color.White.copy(alpha = 0.10f),
+                    color = Palette.hairline,
                     startAngle = -90f,
                     sweepAngle = 360f,
                     useCenter = false,
@@ -2126,13 +2130,13 @@ private fun LiquidBatteryRing(batteryPct: Double?, onClick: () -> Unit) {
             Text(
                 "${pct.roundToInt()}",
                 style = NoopType.number(9f, weight = FontWeight.Bold),
-                color = Color.White.copy(alpha = 0.9f),
+                color = Palette.textPrimary,
             )
         } else {
             Icon(
                 Icons.AutoMirrored.Filled.BatteryUnknown,
                 contentDescription = null,
-                tint = Color.White.copy(alpha = 0.5f),
+                tint = Palette.textSecondary,
                 modifier = Modifier.size(15.dp),
             )
         }
@@ -2239,13 +2243,6 @@ private fun ScoreHeroRow(
     val effortOutOf = if (effortScale == EffortScale.WHOOP) 21.0 else 100.0
     val effortVal = strain?.let { UnitFormatter.effortValue(it, effortScale) } ?: 0.0
 
-    // The vessels run LIVE (per-frame slosh + tilt) once the row has any real score to show; a wholly
-    // empty/calibrating hero poses them static so a brand-new user's launch churn isn't fighting live
-    // canvases (the Android equivalent of the iOS `dataLoaded` gate on HeroScoreCell). LiquidVessel + the
-    // count-up both honour Reduce Motion internally, so this is purely a "don't animate an empty hero" cost
-    // gate. A carried Charge counts as data (its dimmed vessel should slosh like the Rest one).
-    val animated = recovery != null || strain != null || restScore != null || lastScoredCharge != null
-
     // The hero column owns the vertical padding so the source label (below) sits INSIDE the card's
     // breathing room, centred under the circles, in normal flow — the pre-#409 placement, no longer an
     // overlay straddling the top border over the vessels.
@@ -2256,10 +2253,9 @@ private fun ScoreHeroRow(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(Metrics.space8),
     ) {
-        // iOS parity: the hero rings float DIRECTLY on the SCREEN-level day-cycle scene (the scaffold's
-        // topBackground), not on any per-hero atmosphere or the old scenic indigo gradient, matching
-        // TodayView, which moved the scene to a screen-level SceneScreenBackground and dropped the
-        // per-hero scene/ScenicHeroBackground.
+        // The hero rings float DIRECTLY on the plain themed surface canvas (the scaffold paints
+        // Palette.surfaceBase; topBackground is null), not on any per-hero atmosphere, day-cycle scene, or
+        // the old scenic indigo gradient.
         BoxWithConstraints(
             modifier = Modifier
                 .fillMaxWidth()
@@ -2274,7 +2270,7 @@ private fun ScoreHeroRow(
                 horizontalArrangement = Arrangement.spacedBy(ringGap, Alignment.CenterHorizontally),
                 verticalAlignment = Alignment.Top,
             ) {
-                // CHARGE, recovery 0–100, as a liquid VESSEL with the value counting up over it. Honest
+                // CHARGE, recovery 0–100, as a GlowRing arc with the value counting up in the ring centre. Honest
                 // empty / calibrating overlay; badges its recovery winner.
                 HeroRingColumn(
                     domain = DomainTheme.Charge,
@@ -2283,8 +2279,8 @@ private fun ScoreHeroRow(
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         // #802: when today has no Charge yet but a prior night's value is carried, draw a
-                        // DIMMED (0.8 opacity) REAL vessel filled to the carried value, matching the Rest
-                        // vessel, rather than a bare number on an empty vessel (which read as broken). Same
+                        // DIMMED (0.8 opacity) REAL ring filled to the carried value, matching the Rest
+                        // ring, rather than a bare number in an empty ring (which read as broken). Same
                         // diameter so the self-sizing hero row is untouched; the dim + the carried "Last
                         // night · <date>" caption mark it as carried, not today's fresh score. Mirrors iOS.
                         val carried = if (recovery == null && recoveryCalibration == null) lastScoredCharge else null
@@ -2295,7 +2291,6 @@ private fun ScoreHeroRow(
                                 value = carried.value,
                                 tint = Palette.recoveryColor(carried.value),
                                 diameter = ring,
-                                animated = animated,
                                 showsValue = true,
                             )
                         } else {
@@ -2304,7 +2299,6 @@ private fun ScoreHeroRow(
                                 value = recovery ?: 0.0,
                                 tint = Palette.recoveryColor(recovery ?: 0.0),
                                 diameter = ring,
-                                animated = animated,
                                 showsValue = recovery != null,
                             )
                             // Empty vessel + calibrating / no-data overlay (the carried case is above).
@@ -2314,7 +2308,7 @@ private fun ScoreHeroRow(
                         // the vessel (HeroRingColumn), matching iOS where the in-ring cue was removed.
                     }
                 }
-                // EFFORT, strain on the gauge, on the user's selected scale, as a liquid vessel.
+                // EFFORT, strain on the gauge, on the user's selected scale, as a GlowRing arc.
                 HeroRingColumn(domain = DomainTheme.Effort, onInfo = { onScoreInfo(ScoreSection.EFFORT) }) {
                     Box(contentAlignment = Alignment.Center) {
                         HeroScoreVessel(
@@ -2322,14 +2316,13 @@ private fun ScoreHeroRow(
                             value = effortVal,
                             tint = Palette.effortTint((strain ?: 0.0) / 100.0),
                             diameter = ring,
-                            animated = animated,
                             showsValue = strain != null,
                             format = { if (effortScale == EffortScale.WHOOP) String.format(Locale.US, "%.1f", it) else it.toInt().toString() },
                         )
                         if (strain == null) RingNoData()
                     }
                 }
-                // REST, sleep composite 0–100, as a liquid vessel — symmetric with Charge/Effort now that
+                // REST, sleep composite 0–100, as a GlowRing arc — symmetric with Charge/Effort now that
                 // the source label is one centred badge beneath the whole row (below), not anchored here.
                 HeroRingColumn(
                     domain = DomainTheme.Rest,
@@ -2341,7 +2334,6 @@ private fun ScoreHeroRow(
                             value = restScore ?: 0.0,
                             tint = Palette.recoveryColor(restScore ?: 0.0),
                             diameter = ring,
-                            animated = animated,
                             showsValue = restScore != null,
                         )
                         // #898: an aggregate-import user (a daily HRV/RHR import, no in-bed session) gets a
@@ -2460,7 +2452,6 @@ private fun HeroScoreVessel(
     tint: Color,
     diameter: Dp,
     modifier: Modifier = Modifier,
-    @Suppress("UNUSED_PARAMETER") animated: Boolean = true,
     showsValue: Boolean = true,
     format: (Double) -> String = { it.roundToInt().toString() },
 ) {
@@ -2480,7 +2471,7 @@ private fun HeroScoreVessel(
 /**
  * The plain-English Synthesis card, the Charge-tinted [InsightCard] read-out under the ring hero, with a
  * WHITE headline (the key iOS Design-Reset change, `statusColor: textPrimary`, not the recovery/charge
- * colour), carrying the greeting + the SOLID / CALIBRATING data-confidence pill in its top-right. Mirrors
+ * colour), carrying the SOLID / CALIBRATING data-confidence pill in its top-right. Mirrors
  * the iOS Synthesis InsightCard (which moved here when the big RecoveryRing hero that owned the pill went).
  */
 @Composable
@@ -2503,7 +2494,7 @@ private fun SynthesisHeroCard(
     val readDay = carriedDay ?: day
     val recovery = readDay?.recovery
     Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(Metrics.gap)) {
-        // The greeting + SOLID/CALIBRATING data-confidence pill ride in their OWN header row ABOVE the
+        // The SOLID/CALIBRATING data-confidence pill rides in its OWN header row ABOVE the
         // card, not as a top-end overlay over it (#527). The old overlay sat over the card's "SYNTHESIS"
         // overline + big status word and, on a narrow phone, collided with them, and squeezing the
         // status into the leftover width force-broke a single word ("Calibrating" → "Calibrati/ng").

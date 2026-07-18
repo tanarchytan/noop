@@ -2239,7 +2239,7 @@ class WhoopBleClient(
 
     /**
      * Record the WHOOP family the user picked from the merged onboarding scan WITHOUT the model-switch
-     * teardown [AppViewModel.setSelectedModel] does (that clears the saved device + drops the live bond).
+     * teardown that clears the saved device + drops the live bond.
      * Points this client's [selectedModel] at the detected family and persists it so a later launch /
      * [SourceCoordinator] reconnect targets the right service. Idempotent.
      */
