@@ -19,9 +19,10 @@ class Whoop5ConfigTest {
         // v4 and the passive-strap-fit flag are the only '1' (0x31) values in the documented set.
         assertEquals(0x31, seq.first { it.name == "enable_r22_v4_packets" }.value)
         assertEquals(0x31, seq.first { it.name == "enable_passive_strap_fit_gen5" }.value)
-        // #103: the 16th flag `enable_sig12` (value '2') was seen in a real on-strap capture, appended
-        // after the 15 judes.club-documented flags. Mirror of the Swift Whoop5ConfigTests guard.
+        // #103: the 16th flag `enable_sig12` was seen in a real on-strap capture, appended after the 15
+        // judes.club-documented flags. #423: a second real on-strap capture (spanning a live workout)
+        // decoded its value as '1' (0x31), not '2' — corrected here. Mirror of the Swift Whoop5ConfigTests guard.
         assertEquals("enable_sig12", seq.last().name)
-        assertEquals(0x32, seq.last().value)
+        assertEquals(0x31, seq.last().value)
     }
 }
