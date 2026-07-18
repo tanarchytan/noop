@@ -208,6 +208,25 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         ble.scanForWhoops(model)
     }
 
+    /**
+     * First-run onboarding scan: present nearby WHOOP straps of BOTH families at once WITHOUT
+     * auto-connecting, so the user never picks 4.0 vs 5/MG up front. Unlike [presentWhoopScan] this does
+     * NOT mutate [selectedModel] (the picked strap's family is recorded per-pick via [noteDetectedModel])
+     * and does NOT idle the engine (no prepareForPresentScan), so any live link is kept.
+     */
+    fun presentWhoopScanAll() = ble.scanForWhoopsAll()
+
+    /**
+     * Record the family detected for the strap the user picked in the merged onboarding scan, WITHOUT
+     * [setSelectedModel]'s teardown (it clears the saved device + drops the live bond). Points the
+     * scan/connect family and persists it so a later [SourceCoordinator] reconnect targets the right
+     * service. Called at pick, before the strap is registered active.
+     */
+    fun noteDetectedModel(model: WhoopModel) {
+        _selectedModel.value = model
+        ble.noteSelectedModel(model)
+    }
+
     /** End the WHOOP present-scan (idempotent). Call on leaving the wizard's pick step / on dismiss. */
     fun stopWhoopScan() = ble.stopWhoopScan()
 

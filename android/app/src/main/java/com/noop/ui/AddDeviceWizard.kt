@@ -807,7 +807,9 @@ internal fun WhoopPickStep(
         found.sortedByDescending { it.rssi }.forEach { strap ->
             DiscoveredRow(
                 name = strap.name?.takeIf { it.isNotBlank() } ?: "WHOOP",
-                subtitle = "WHOOP",
+                // Show the family the scan detected (the merged onboarding scan lists both at once), so a
+                // user with a 4.0 and a 5/MG can tell them apart. Falls back to "WHOOP" when unresolved.
+                subtitle = strap.family?.displayName ?: "WHOOP",
                 rssi = strap.rssi,
                 onTap = { onSelect(strap) },
             )

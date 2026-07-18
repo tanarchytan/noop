@@ -1113,8 +1113,10 @@ class WhoopBleClient(
 
     /** A WHOOP strap surfaced by the Add-a-device wizard's present-scan ([scanForWhoops]) WITHOUT
      *  auto-connecting. [address] is the BLE MAC; [name] the advertised name (may be null); [rssi] the
-     *  signal. Twin of the iOS `discoveredWhoops` tuple (uuid/name/rssi). */
-    data class DiscoveredWhoop(val address: String, val name: String?, val rssi: Int)
+     *  signal; [family] the WHOOP family read from the advertised service ([scanForWhoopsAll] lists both
+     *  at once, so this tells 4.0 apart from 5/MG without a pre-pick), null when it couldn't be resolved.
+     *  Twin of the iOS `discoveredWhoops` tuple (uuid/name/rssi). */
+    data class DiscoveredWhoop(val address: String, val name: String?, val rssi: Int, val family: WhoopModel? = null)
 
     private val _discoveredWhoops = MutableStateFlow<List<DiscoveredWhoop>>(emptyList())
     /** WHOOP straps seen while [scanningForList] is true (the Add-a-device wizard's present-scan), WITHOUT
@@ -2156,7 +2158,9 @@ class WhoopBleClient(
         // advertising straps.
         getConnectedWhoopDevice()?.let { d ->
             val n = try { d.name } catch (se: SecurityException) { null }
-            _discoveredWhoops.value = listOf(DiscoveredWhoop(address = d.address, name = n, rssi = 0))
+            // getConnectedWhoopDevice only ever returns a 5/MG-named strap (its name filter excludes 4.0),
+            // so its family is known even without an advert.
+            _discoveredWhoops.value = listOf(DiscoveredWhoop(address = d.address, name = n, rssi = 0, family = WhoopModel.WHOOP5_MG))
         }
         val filters = listOf(
             ScanFilter.Builder().setServiceUuid(ParcelUuid(model.service)).build(),
@@ -2178,6 +2182,70 @@ class WhoopBleClient(
             scanningForList = false
             log("Add-a-WHOOP scan failed to start: ${t.message}")
         }
+    }
+
+    /**
+     * First-run onboarding present-scan: list nearby WHOOP straps of BOTH families at once WITHOUT
+     * auto-connecting, so the user never has to pick 4.0 vs 5/MG up front. Same accumulate-don't-connect
+     * behaviour as [scanForWhoops] (it flips [scanningForList] and clears the list), but builds a
+     * ScanFilter LIST over both services — a filter list is OR'd, so a 4.0 and a 5/MG show up together —
+     * and does NOT force [selectedModel] to one family (the picked strap's family is recorded via
+     * [noteSelectedModel] when the user taps it). Leaves any live link alone (it never touches gatt/bond).
+     */
+    @SuppressLint("MissingPermission")
+    fun scanForWhoopsAll() {
+        val adp = adapter
+        if (adp == null || !adp.isEnabled) {
+            log("Add-a-WHOOP scan: Bluetooth not ready")
+            return
+        }
+        val sc = scanner
+        if (sc == null) {
+            log("Add-a-WHOOP scan: no BLE scanner available")
+            return
+        }
+        handler.removeCallbacks(scanTimeoutRunnable)
+        handler.removeCallbacks(scanFallbackRunnable)
+        stopScan()
+        scanningForList = true
+        _discoveredWhoops.value = emptyList()   // fresh list each time the onboarding scan opens
+        // Also list a 5/MG the OS already holds connected (rssi 0 = connected, not advertising); its family
+        // is known (the getConnected filter is 5/MG-named). The scan below still adds advertising straps.
+        getConnectedWhoopDevice()?.let { d ->
+            val n = try { d.name } catch (se: SecurityException) { null }
+            _discoveredWhoops.value = listOf(DiscoveredWhoop(address = d.address, name = n, rssi = 0, family = WhoopModel.WHOOP5_MG))
+        }
+        val filters = listOf(
+            ScanFilter.Builder().setServiceUuid(ParcelUuid(WhoopModel.WHOOP4.service)).build(),
+            ScanFilter.Builder().setServiceUuid(ParcelUuid(WhoopModel.WHOOP5_MG.service)).build(),
+        )
+        val settings = ScanSettings.Builder()
+            .setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY)
+            .build()
+        scanning = true
+        try {
+            sc.startScan(filters, settings, scanCallback)
+            log("Add-a-WHOOP scan: presenting nearby WHOOP straps (all families)")
+        } catch (se: SecurityException) {
+            scanning = false
+            scanningForList = false
+            log("Add-a-WHOOP scan blocked (permission): ${se.message}")
+        } catch (t: Throwable) {
+            scanning = false
+            scanningForList = false
+            log("Add-a-WHOOP scan failed to start: ${t.message}")
+        }
+    }
+
+    /**
+     * Record the WHOOP family the user picked from the merged onboarding scan WITHOUT the model-switch
+     * teardown [AppViewModel.setSelectedModel] does (that clears the saved device + drops the live bond).
+     * Points this client's [selectedModel] at the detected family and persists it so a later launch /
+     * [SourceCoordinator] reconnect targets the right service. Idempotent.
+     */
+    fun noteSelectedModel(model: WhoopModel) {
+        selectedModel = model
+        persistSelectedModel(model)
     }
 
     /**
@@ -2838,9 +2906,16 @@ class WhoopBleClient(
             // entirely and the auto-connect code below runs exactly as before.
             if (scanningForList) {
                 val addr = device.address ?: return
+                // Read the family from the advertised service so the merged all-families scan can tell a
+                // 4.0 apart from a 5/MG; a single-family scanForWhoops() only ever matches one service, so
+                // this resolves the same family it was filtered on.
+                val advertised = WhoopModel.fromServiceUuids(result.scanRecord?.serviceUuids?.map { it.uuid })
                 val list = _discoveredWhoops.value.toMutableList()
-                val item = DiscoveredWhoop(address = addr, name = name.takeIf { it != "unknown" }, rssi = result.rssi)
                 val i = list.indexOfFirst { it.address == addr }
+                // A scan-response-only callback can arrive with no service UUID after the family was already
+                // resolved from the advert; don't let it wipe a known family — keep the earlier one.
+                val family = advertised ?: (if (i >= 0) list[i].family else null)
+                val item = DiscoveredWhoop(address = addr, name = name.takeIf { it != "unknown" }, rssi = result.rssi, family = family)
                 if (i >= 0) list[i] = item else list.add(item)   // refresh RSSI / append
                 _discoveredWhoops.value = list
                 return

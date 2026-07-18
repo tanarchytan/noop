@@ -26,4 +26,17 @@ enum class WhoopModel(val displayName: String, val service: UUID) {
             WHOOP4 -> WHOOP5_MG
             WHOOP5_MG -> WHOOP4
         }
+
+    companion object {
+        /**
+         * Resolve the WHOOP family from a strap's advertised GATT service UUIDs. The merged onboarding
+         * scan lists BOTH families at once (a ScanFilter list is OR'd), so each found strap's family is
+         * read back from which service it advertised. Returns null when neither WHOOP service is present
+         * (e.g. an advert with no service UUID) — the caller labels it "WHOOP" and resolves at connect.
+         */
+        fun fromServiceUuids(uuids: List<UUID>?): WhoopModel? {
+            if (uuids.isNullOrEmpty()) return null
+            return WhoopModel.entries.firstOrNull { model -> uuids.any { it == model.service } }
+        }
+    }
 }

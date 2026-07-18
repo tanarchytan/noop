@@ -28,7 +28,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -42,7 +41,6 @@ import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.MonitorHeart
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Palette
-import androidx.compose.material.icons.filled.Sensors
 import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -179,11 +177,7 @@ fun OnboardingScreen(viewModel: AppViewModel, onFinished: () -> Unit) {
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 when (page) {
-                    OnboardingPage.Welcome -> WelcomeStep()
-                    OnboardingPage.WhatItDoes -> WhatItDoesStep()
-                    OnboardingPage.Expectations -> ExpectationsStep()
                     OnboardingPage.Bluetooth -> BluetoothStep()
-                    OnboardingPage.Wear -> WearStep()
                     OnboardingPage.Connect -> ConnectStep(viewModel)
                     OnboardingPage.Bonded -> BondedStep(viewModel)
                     OnboardingPage.Profile -> ProfileStep()
@@ -216,12 +210,12 @@ fun OnboardingScreen(viewModel: AppViewModel, onFinished: () -> Unit) {
     }
 }
 
+// Lean first-run flow. The marketing tour (Welcome / WhatItDoes / Expectations) and the "put your strap
+// on" (Wear) screens were cut; the legal gate is the Terms clickwrap that MainActivity shows BEFORE this.
+// Order: Bluetooth (permission) → Connect (scan/pair) → [Bonded] → Profile → Import → Notifications →
+// Appearance → Done. Bonded is skipped by advance()/onBack when nothing is bonded.
 private enum class OnboardingPage(val cta: String) {
-    Welcome("Begin"),
-    WhatItDoes("Continue"),
-    Expectations("Continue"),
     Bluetooth("Continue"),
-    Wear("Continue"),
     Connect("Continue"),
     Bonded("Continue"),
     Profile("Save & continue"),
@@ -349,92 +343,9 @@ private fun StepShell(
 // MARK: - Steps
 
 @Composable
-private fun WelcomeStep() {
-    StepShell {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .heightIn(min = 430.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center,
-        ) {
-            // The NOOP mark centred on a flat brushed-titanium hero tile (the metallic titanium ramp, a
-            // reset token — no gold). Clean and flat: a hairline rim, no bloom.
-            Box(contentAlignment = Alignment.Center, modifier = Modifier.size(150.dp)) {
-                Box(
-                    modifier = Modifier
-                        .size(150.dp)
-                        .clip(CircleShape)
-                        .background(Brush.linearGradient(*Palette.titaniumGradient.toTypedArray()))
-                        .border(1.dp, Palette.hairline, CircleShape),
-                )
-                BrandMark(size = 104.dp)
-            }
-            Spacer(Modifier.height(18.dp))
-            Text(
-                "all your data, none of the cloud",
-                style = NoopType.title2,
-                color = Palette.textSecondary,
-                textAlign = TextAlign.Center,
-            )
-            Spacer(Modifier.height(12.dp))
-            Text(
-                "A private window into your recovery, sleep and strain. Read straight from your strap, kept only on this phone.",
-                style = NoopType.body,
-                color = Palette.textTertiary,
-                textAlign = TextAlign.Center,
-            )
-        }
-    }
-}
-
-@Composable
-private fun WhatItDoesStep() {
-    StepShell(
-        title = "What NOOP does",
-        subtitle = "Three quiet promises.",
-    ) {
-        Column(verticalArrangement = Arrangement.spacedBy(Metrics.gap)) {
-            FeatureRow(
-                icon = Icons.Filled.AutoGraph,
-                tint = Palette.accent,
-                title = "See recovery, clearly",
-                body = "A calm ring rolls HRV, resting heart rate and sleep into one read on whether to push or rest.",
-            )
-            FeatureRow(
-                icon = Icons.Filled.MonitorHeart,
-                tint = Palette.accent,
-                title = "Watch your heart, live",
-                body = "Connect your WHOOP and watch each beat in real time, with zones that match your profile. Already have history elsewhere? Import it from WHOOP, Apple Health, Oura, Fitbit or Garmin.",
-            )
-            FeatureRow(
-                icon = Icons.Filled.Lock,
-                tint = Palette.statusPositive,
-                title = "Own your data, offline",
-                body = "Everything lives on this phone. No account, no sync, no cloud.",
-            )
-        }
-    }
-}
-
-@Composable
-private fun ExpectationsStep() {
-    StepShell(
-        title = "What to expect",
-        subtitle = "A few honest words, so nothing is a surprise.",
-    ) {
-        Column(verticalArrangement = Arrangement.spacedBy(Metrics.gap)) {
-            AppChangelog.expectations.forEach { e ->
-                ExpectationCard(e)
-            }
-        }
-    }
-}
-
-@Composable
 private fun BluetoothStep() {
     StepShell(
-        title = "A quick word before you connect",
+        title = "NOOP requires Bluetooth",
         subtitle = "NOOP uses Bluetooth to find your strap. When you continue, allow the permission so it can scan.",
     ) {
         Column(
@@ -456,33 +367,9 @@ private fun BluetoothStep() {
 }
 
 @Composable
-private fun WearStep() {
-    StepShell(
-        title = "Put your strap on",
-        subtitle = "The sensor needs skin contact before data starts to mean anything.",
-    ) {
-        Column(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(18.dp),
-        ) {
-            IconBadge(icon = Icons.Filled.Sensors, tint = Palette.accent, size = 86)
-            NoopCard(padding = 18.dp) {
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Checkline("Wear it snug on your wrist or bicep, sensor against skin.")
-                    Checkline("Give it a few minutes of charge if the battery is low.")
-                    Checkline("Keep it near this phone while pairing and during the first sync.")
-                }
-            }
-        }
-    }
-}
-
-@Composable
 private fun ConnectStep(viewModel: AppViewModel) {
     val context = LocalContext.current
     val live by viewModel.live.collectAsStateWithLifecycle()
-    val selectedModel by viewModel.selectedModel.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
 
     val blePerms = remember { blePermissions() }
@@ -490,14 +377,13 @@ private fun ConnectStep(viewModel: AppViewModel) {
         ContextCompat.checkSelfPermission(context, it) == PackageManager.PERMISSION_GRANTED
     }
 
-    // Same PRESENT-ONLY scan the Add-device wizard uses: it lists nearby straps in
-    // viewModel.discoveredWhoops WITHOUT auto-connecting, so a user with several bands chooses WHICH
-    // one to pair instead of the app grabbing the first (or an already-OS-connected) strap. Keyed on
-    // the selected model so switching the WHOOP family re-presents the scan for that family. Only runs
-    // once permission is in hand (granted on the Bluetooth step) and nothing is bonded yet — we never
-    // raise the OS prompt here, and never start the scanner once a strap is bonded.
-    LaunchedEffect(selectedModel) {
-        if (bleGranted && !live.bonded) viewModel.presentWhoopScan(selectedModel)
+    // The SAME present-only scan the Add-device wizard uses (lists nearby straps in
+    // viewModel.discoveredWhoops WITHOUT auto-connecting, so a user with several bands chooses WHICH one
+    // to pair), but scanning BOTH WHOOP families at once — the user no longer picks 4.0 vs 5/MG up front;
+    // each found band's family comes back on it. Runs once permission is in hand (granted on the Bluetooth
+    // step) and nothing is bonded yet — we never raise the OS prompt here, nor start the scanner once bonded.
+    LaunchedEffect(Unit) {
+        if (bleGranted && !live.bonded) viewModel.presentWhoopScanAll()
     }
     // Stop the present-scan when the user leaves the step (advance / back / dismiss) so the LE scanner
     // isn't left running past this screen.
@@ -505,19 +391,30 @@ private fun ConnectStep(viewModel: AppViewModel) {
         onDispose { viewModel.stopWhoopScan() }
     }
 
-    // Commit the chosen strap the same way the wizard's finishAdd does: build a WHOOP PairedDeviceRow
-    // from the picked strap's address/name and the selected family, register it active (the
-    // SourceCoordinator then connects + pins THAT band), and end the present-scan. Once it bonds,
+    // Commit the chosen strap the same way the wizard's finishAdd does: build a WHOOP PairedDeviceRow from
+    // the picked strap's address/name and the family the merged scan detected on it, register it active
+    // (the SourceCoordinator then connects + pins THAT band), and end the present-scan. Once it bonds,
     // live.bonded flips true and the user taps Continue to the celebration.
     fun commit(strap: com.noop.ble.WhoopBleClient.DiscoveredWhoop) {
-        val wm = selectedModel
-        val modelLabel = if (wm == WhoopModel.WHOOP4) "4.0" else "5.0 MG"
+        // The merged scan tags each strap with the family that advertised it. When an advert carried no
+        // service UUID we can't tell yet, so store the neutral "WHOOP" label — DeviceFamily.forRegistryModel
+        // treats that as the WHOOP5 default and the family resolves at connect (D8).
+        val family = strap.family
+        val modelLabel = when (family) {
+            WhoopModel.WHOOP4 -> "4.0"
+            WhoopModel.WHOOP5_MG -> "5.0 MG"
+            null -> "WHOOP"
+        }
+        // Point the scan/connect family + persist it WITHOUT setSelectedModel's teardown (which would clear
+        // the saved device and drop the bond) so a later reconnect targets the right service. Unknown → skip
+        // (leave the persisted family as-is, resolve at connect).
+        family?.let { viewModel.noteDetectedModel(it) }
         val now = System.currentTimeMillis() / 1000
         val device = PairedDeviceRow(
             id = "whoop-${strap.address}",
             brand = "WHOOP",
             model = modelLabel,
-            nickname = strap.name?.takeIf { it.isNotBlank() } ?: wm.displayName,
+            nickname = strap.name?.takeIf { it.isNotBlank() } ?: (family?.displayName ?: "WHOOP"),
             peripheralId = strap.address,
             sourceKind = SourceKind.liveBLE.name,
             capabilities = "hr,hrv,spo2,skinTemp,sleep,strainLoad",
@@ -567,32 +464,15 @@ private fun ConnectStep(viewModel: AppViewModel) {
             }
 
             if (!live.bonded) {
-                NoopCard(padding = 16.dp) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    ) {
-                        Text("Strap", style = NoopType.footnote, color = Palette.textSecondary)
-                        SegmentedPillControl(
-                            items = WhoopModel.entries.toList(),
-                            selection = selectedModel,
-                            label = { it.displayName },
-                            // Changing the family re-points the present-scan via the LaunchedEffect above
-                            // (keyed on selectedModel), so the list refills with that family's straps.
-                            onSelect = { viewModel.setSelectedModel(it) },
-                            modifier = Modifier.weight(1f),
-                        )
-                    }
-                }
-
                 // The SAME per-band picker the Add-device wizard uses: tap the strap that's yours to pair
-                // it. Only shown while a present-scan can actually be running (permission granted, not yet
-                // bonded); the picker owns its own Rescan.
+                // it. No 4.0-vs-5/MG choice up front — the scan lists both families and each row carries the
+                // family it detected. Only shown while a present-scan can actually be running (permission
+                // granted, not yet bonded); the picker owns its own Rescan.
                 if (bleGranted) {
                     WhoopPickStep(
                         viewModel = viewModel,
                         onSelect = { strap -> commit(strap) },
-                        onRescan = { viewModel.presentWhoopScan(selectedModel) },
+                        onRescan = { viewModel.presentWhoopScanAll() },
                     )
                 }
             }
@@ -1098,41 +978,6 @@ private fun DoneStep() {
 }
 
 // MARK: - Pieces
-
-@Composable
-private fun FeatureRow(icon: ImageVector, tint: Color, title: String, body: String) {
-    NoopCard(padding = 16.dp) {
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(14.dp),
-            verticalAlignment = Alignment.Top,
-        ) {
-            IconSquare(icon = icon, tint = tint)
-            Column(verticalArrangement = Arrangement.spacedBy(5.dp), modifier = Modifier.weight(1f)) {
-                Text(title, style = NoopType.headline, color = Palette.textPrimary)
-                Text(body, style = NoopType.subhead, color = Palette.textSecondary)
-            }
-        }
-    }
-}
-
-@Composable
-private fun ExpectationCard(e: AppChangelog.Expectation) {
-    NoopCard(padding = 14.dp) {
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(14.dp),
-            verticalAlignment = Alignment.Top,
-        ) {
-            Icon(e.icon, contentDescription = null, tint = Palette.accent, modifier = Modifier.size(22.dp))
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(4.dp),
-            ) {
-                Text(e.title, style = NoopType.headline, color = Palette.textPrimary)
-                Text(e.body, style = NoopType.subhead, color = Palette.textSecondary)
-            }
-        }
-    }
-}
 
 @Composable
 private fun InfoCard(icon: ImageVector, tint: Color, title: String, message: String) {
