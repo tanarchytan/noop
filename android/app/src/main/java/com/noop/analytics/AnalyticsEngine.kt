@@ -254,22 +254,12 @@ object AnalyticsEngine {
     ): DayResult {
 
         // ── Sleep detection + staging ─────────────────────────────────────────
-        val detectedSessions = SleepStager.detectSleep(
-            hr = hr, rr = rr, resp = resp, gravity = gravity, tzOffsetSeconds = tzOffsetSeconds,
-            wristOff = wristOff, bandSleepState = bandSleepState,
-            useSleepStagerV2 = useSleepStagerV2,
-            traceSink = traceSink,
+        // Detection + staging + the motion-aware wake refinement now all run in whoop-rs (physio-algo)
+        // behind one FFI call; `steps` feeds the refinement, which self-gates on the observed density.
+        val allSessions = SleepStager.detectSleep(
+            hr = hr, rr = rr, resp = resp, gravity = gravity, steps = steps,
+            tzOffsetSeconds = tzOffsetSeconds, wristOff = wristOff, bandSleepState = bandSleepState,
         )
-        // Motion-aware wake refinement (#364 follow-up) runs AFTER V1/V2 staging, over every detected
-        // session (naps included — the same eligibility gates apply). `steps` is the SAME calendar-day/
-        // night-window stream the caller passed for the rest of this analysis; the pass self-gates on its
-        // observed density, so an empty/sparse `steps` (e.g. a WHOOP 4.0, which never emits a step sample
-        // at all) is a no-op regardless of `useMotionAwareWake`.
-        val allSessions = if (useMotionAwareWake) {
-            detectedSessions.map { WakeMotionRefinement.refine(it, gravity, steps) }
-        } else {
-            detectedSessions
-        }
         // Sessions attributed to `day` = those whose end falls on `day` (LOCAL day, #277). `day` is
         // the caller's local-day key; attribute by the same offset so the bucket and the key agree.
         val matched = allSessions.filter { dayString(it.end, tzOffsetSeconds) == day }
@@ -656,8 +646,7 @@ object AnalyticsEngine {
         // caller persists NULL there rather than a fabricated zero series. Mirrors Swift.
         val sessionMotionByStart = HashMap<Long, List<Double>>()
         for (s in matched) {
-            val motion = SleepStager.sessionEpochMotion(s.start, s.end, gravity)
-            if (motion.isNotEmpty()) sessionMotionByStart[s.start] = motion
+            if (s.motionGrid.isNotEmpty()) sessionMotionByStart[s.start] = s.motionGrid
         }
 
         // ── Per-session per-epoch BAND sleep_state (#175) ─────────────────────
@@ -668,11 +657,8 @@ object AnalyticsEngine {
         // stays absent. Empty on a WHOOP 4.0. The band code is carried verbatim; it NEVER overrides the
         // derived hypnogram, only confirms a borderline morning re-onset. Mirrors Swift.
         val sessionSleepStateByStart = HashMap<Long, List<Int>>()
-        if (bandSleepState.isNotEmpty()) {
-            for (s in matched) {
-                val states = SleepStager.sessionEpochSleepState(s.start, s.end, bandSleepState)
-                if (states.isNotEmpty()) sessionSleepStateByStart[s.start] = states
-            }
+        for (s in matched) {
+            if (s.sleepStateGrid.isNotEmpty()) sessionSleepStateByStart[s.start] = s.sleepStateGrid
         }
 
         return DayResult(

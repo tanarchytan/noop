@@ -55,8 +55,8 @@ class RustSleepStagerParityTest {
     fun `rust v2 reproduces the frozen golden hypnogram through the bridge`() {
         val n = goldenNight()
         val end = start + dur
-        val segs = RustSleepStager.stage(v2 = true, start = start, end = end,
-            grav = n.grav, hr = n.hr, rr = n.rr, resp = emptyList())
+        val segs = RustSleepStager.stage(start = start, end = end,
+            grav = n.grav, hr = n.hr, rr = n.rr, resp = emptyList(), steps = emptyList())
         val golden = listOf(
             Triple(0L, 5070L, "deep"),
             Triple(5070L, 5280L, "light"),
@@ -73,15 +73,4 @@ class RustSleepStagerParityTest {
         }
     }
 
-    @Test
-    fun `rust v1 tiles the window contiguously through the bridge`() {
-        val n = goldenNight()
-        val end = start + dur
-        val segs = RustSleepStager.stage(v2 = false, start = start, end = end,
-            grav = n.grav, hr = n.hr, rr = n.rr, resp = emptyList())
-        assertTrue("V1 produced segments", segs.isNotEmpty())
-        assertEquals("V1 tiles from start", start, segs.first().start)
-        assertEquals("V1 tiles to end", end, segs.last().end)
-        for (i in 1 until segs.size) assertEquals("contiguous at $i", segs[i - 1].end, segs[i].start)
-    }
 }

@@ -4,6 +4,8 @@ import com.noop.data.GravitySample
 import com.noop.data.HrSample
 import com.noop.data.RespSample
 import com.noop.data.RrInterval
+import com.noop.data.StepSample
+import uniffi.whoop_ffi.BandStateSample
 import uniffi.whoop_ffi.SleepAccelSample
 import uniffi.whoop_ffi.SleepHrSample
 import uniffi.whoop_ffi.SleepInput
@@ -11,21 +13,59 @@ import uniffi.whoop_ffi.SleepRespSample
 import uniffi.whoop_ffi.SleepRrRun
 import uniffi.whoop_ffi.SleepSegment
 import uniffi.whoop_ffi.SleepStage
-import uniffi.whoop_ffi.stageSleepV1
-import uniffi.whoop_ffi.stageSleepV2
+import uniffi.whoop_ffi.SleepStepSample
+import uniffi.whoop_ffi.SleepStreams
+import uniffi.whoop_ffi.WristOffInterval
+import uniffi.whoop_ffi.analyzeSleep
+import uniffi.whoop_ffi.stageSleepRefined
 
 /**
- * Bridge from the app's per-night streams to the whoop-rs sleep stager (physio-algo, via uniffi). The
- * 4-class hypnogram recipe lives ONLY in Rust now; this maps [GravitySample]/[HrSample]/[RrInterval]/
- * [RespSample] into a [SleepInput], calls [stageSleepV2] (5.0/MG default) or [stageSleepV1] (4.0), and
- * maps the returned [SleepSegment]s back to the app's [StageSegment]. Byte-identical to the deleted
- * Kotlin engines (proven by RustSleepStagerParityTest over the DREAMT fixtures).
+ * Bridge from the app's per-night streams to the whoop-rs sleep pipeline (physio-algo, via uniffi). ALL
+ * detection + staging + motion-aware wake refinement lives in Rust now: [analyze] maps the app's sample
+ * rows into a [SleepStreams], calls the single `analyzeSleep` FFI, and maps each returned session back to
+ * a [DetectedSleep] (carrying the per-epoch motion + band sleep-state grids). [stage] re-stages a single
+ * `[start, end]` span with the V2 recipe for the edit self-heal path.
  */
 internal object RustSleepStager {
 
+    /** Detect + stage a night's streams: one FFI call returns one [DetectedSleep] per accepted in-bed span. */
+    fun analyze(
+        hr: List<HrSample>,
+        rr: List<RrInterval>,
+        resp: List<RespSample>,
+        gravity: List<GravitySample>,
+        steps: List<StepSample>,
+        tzOffsetSeconds: Long,
+        wristOff: List<Pair<Long, Long>>,
+        bandSleepState: List<Pair<Long, Int>>,
+    ): List<DetectedSleep> {
+        val streams = SleepStreams(
+            hr = hr.sortedBy { it.ts }.map { SleepHrSample(it.ts, it.bpm.toUShort()) },
+            rr = groupRuns(rr.sortedBy { it.ts }),
+            accel = gravity.sortedBy { it.ts }.map { SleepAccelSample(it.ts, it.x, it.y, it.z) },
+            resp = resp.sortedBy { it.ts }.map { SleepRespSample(it.ts, it.raw) },
+            steps = steps.sortedBy { it.ts }
+                .map { SleepStepSample(it.ts, it.counter.toUShort(), it.activityClass?.toUByte()) },
+            tzOffsetS = tzOffsetSeconds,
+            wristOff = wristOff.map { WristOffInterval(it.first, it.second) },
+            bandSleepState = bandSleepState.map { BandStateSample(it.first, it.second) },
+        )
+        return analyzeSleep(streams).map { s ->
+            DetectedSleep(
+                start = s.start, end = s.end, efficiency = s.efficiency,
+                stages = s.segments.map { StageSegment(start = it.start, end = it.end, stage = stageName(it.stage)) },
+                restingHR = s.restingHr, avgHRV = s.avgHrv,
+                motionGrid = s.motionGrid, sleepStateGrid = s.sleepStateGrid,
+            )
+        }
+    }
+
+    /** Re-stage one already-detected `[start, end]` span with the V2 recipe + motion-aware wake refinement
+     *  (the app's edit self-heal path). */
     fun stage(
-        v2: Boolean, start: Long, end: Long,
+        start: Long, end: Long,
         grav: List<GravitySample>, hr: List<HrSample>, rr: List<RrInterval>, resp: List<RespSample>,
+        steps: List<StepSample>,
     ): List<StageSegment> {
         val input = SleepInput(
             start = start, end = end,
@@ -34,8 +74,9 @@ internal object RustSleepStager {
             accel = grav.sortedBy { it.ts }.map { SleepAccelSample(it.ts, it.x, it.y, it.z) },
             resp = resp.sortedBy { it.ts }.map { SleepRespSample(it.ts, it.raw) },
         )
-        val segs = if (v2) stageSleepV2(input) else stageSleepV1(input)
-        return segs.map { StageSegment(start = it.start, end = it.end, stage = stageName(it.stage)) }
+        val ffiSteps = steps.sortedBy { it.ts }
+            .map { SleepStepSample(it.ts, it.counter.toUShort(), it.activityClass?.toUByte()) }
+        return stageSleepRefined(input, ffiSteps).map { StageSegment(start = it.start, end = it.end, stage = stageName(it.stage)) }
     }
 
     /** Fold consecutive same-`ts` intervals into one run, preserving intra-second beat order. */

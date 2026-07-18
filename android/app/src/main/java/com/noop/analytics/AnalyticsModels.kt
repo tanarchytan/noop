@@ -87,6 +87,10 @@ data class DetectedSleep(
     val restingHR: Int?,
     /** Mean RMSSD over 5-min windows across the session (ms), or null. */
     val avgHRV: Double?,
+    /** Per-30 s-epoch motion magnitudes (summed |Δgravity|), from the whoop-rs analyze; empty when ungriddable. */
+    val motionGrid: List<Double> = emptyList(),
+    /** Per-30 s-epoch band sleep_state (0 wake/1 still/2 asleep/3 up), from the whoop-rs analyze; empty when absent. */
+    val sleepStateGrid: List<Int> = emptyList(),
 )
 
 /**

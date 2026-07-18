@@ -118,12 +118,8 @@ object SleepStageHealer {
         useMotionAwareWake: Boolean = false,
     ): String? {
         if (!isDense(grav, start, end)) return null
-        val segs = if (useExperimentalSleepV2) {
-            SleepStager.stageSessionV2(start = start, end = end, grav = grav, hr = hr, rr = rr, resp = resp)
-        } else {
-            SleepStager.stageSession(start = start, end = end, grav = grav, hr = hr, rr = rr, resp = resp)
-        }
-        val refined = WakeMotionRefinement.apply(segs, grav, steps, useMotionAwareWake)
+        // Staging + motion-aware wake refinement run in whoop-rs; the V2/motion flags are always on now.
+        val refined = RustSleepStager.stage(start, end, grav, hr, rr, resp, steps)
         return AnalyticsEngine.encodeStages(refined)
     }
 

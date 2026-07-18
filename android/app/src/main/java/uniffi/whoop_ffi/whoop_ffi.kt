@@ -673,6 +673,10 @@ internal object IntegrityCheckingUniffiLib {
         uniffiCheckContractApiVersion(this)
         uniffiCheckApiChecksums(this)
     }
+    external fun uniffi_whoop_ffi_checksum_func_analyze_sleep(
+    ): Int
+    external fun uniffi_whoop_ffi_checksum_func_bridged_night_groups(
+    ): Int
     external fun uniffi_whoop_ffi_checksum_func_daily_resting_hr(
     ): Int
     external fun uniffi_whoop_ffi_checksum_func_data_range_newest(
@@ -680,6 +684,8 @@ internal object IntegrityCheckingUniffiLib {
     external fun uniffi_whoop_ffi_checksum_func_data_range_oldest(
     ): Int
     external fun uniffi_whoop_ffi_checksum_func_fitness_age_compute(
+    ): Int
+    external fun uniffi_whoop_ffi_checksum_func_habitual_midsleep_sec(
     ): Int
     external fun uniffi_whoop_ffi_checksum_func_haptic_clock_pulses(
     ): Int
@@ -694,6 +700,12 @@ internal object IntegrityCheckingUniffiLib {
     external fun uniffi_whoop_ffi_checksum_func_hrv_windowed_avg(
     ): Int
     external fun uniffi_whoop_ffi_checksum_func_imu_features(
+    ): Int
+    external fun uniffi_whoop_ffi_checksum_func_main_night_group_indices(
+    ): Int
+    external fun uniffi_whoop_ffi_checksum_func_main_night_index(
+    ): Int
+    external fun uniffi_whoop_ffi_checksum_func_main_night_selection(
     ): Int
     external fun uniffi_whoop_ffi_checksum_func_nightly_spo2_raw_means(
     ): Int
@@ -713,9 +725,7 @@ internal object IntegrityCheckingUniffiLib {
     ): Int
     external fun uniffi_whoop_ffi_checksum_func_spo2_from_paired(
     ): Int
-    external fun uniffi_whoop_ffi_checksum_func_stage_sleep_v1(
-    ): Int
-    external fun uniffi_whoop_ffi_checksum_func_stage_sleep_v2(
+    external fun uniffi_whoop_ffi_checksum_func_stage_sleep_refined(
     ): Int
     external fun uniffi_whoop_ffi_checksum_func_strain_default_denominator(
     ): Int
@@ -873,6 +883,10 @@ internal object UniffiLib {
     ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_method_whoopcodec_toggle_realtime_hr_frame(`ptr`: Long,`seq`: Byte,`on`: Byte,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
+    external fun uniffi_whoop_ffi_fn_func_analyze_sleep(`streams`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    external fun uniffi_whoop_ffi_fn_func_bridged_night_groups(`blocks`: RustBuffer.ByValue,`offsetS`: Long,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_func_daily_resting_hr(`sessionFloors`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_func_data_range_newest(`frame`: RustBuffer.ByValue,`wallNowUnix`: Long,`futureSkewSeconds`: Long,uniffi_out_err: UniffiRustCallStatus, 
@@ -880,6 +894,8 @@ internal object UniffiLib {
     external fun uniffi_whoop_ffi_fn_func_data_range_oldest(`frame`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_func_fitness_age_compute(`age`: Double,`sex`: RustBuffer.ByValue,`restingHr`: Double,`paIndex`: Double,`waistCm`: RustBuffer.ByValue,`lowerConfidence`: Byte,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    external fun uniffi_whoop_ffi_fn_func_habitual_midsleep_sec(`history`: RustBuffer.ByValue,`offsetS`: Long,`minDays`: Int,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_func_haptic_clock_pulses(`hour`: Int,`minute`: Int,`is24h`: Byte,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
@@ -894,6 +910,12 @@ internal object UniffiLib {
     external fun uniffi_whoop_ffi_fn_func_hrv_windowed_avg(`start`: Int,`end`: Int,`runs`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_func_imu_features(`samples`: RustBuffer.ByValue,`sampleRateHz`: Int,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    external fun uniffi_whoop_ffi_fn_func_main_night_group_indices(`blocks`: RustBuffer.ByValue,`offsetS`: Long,`habitualMidsleepSec`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    external fun uniffi_whoop_ffi_fn_func_main_night_index(`blocks`: RustBuffer.ByValue,`offsetS`: Long,`habitualMidsleepSec`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    external fun uniffi_whoop_ffi_fn_func_main_night_selection(`blocks`: RustBuffer.ByValue,`offsetS`: Long,`habitualMidsleepSec`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_func_nightly_spo2_raw_means(`spans`: RustBuffer.ByValue,`samples`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
@@ -913,9 +935,7 @@ internal object UniffiLib {
     ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_func_spo2_from_paired(`red`: RustBuffer.ByValue,`ir`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
-    external fun uniffi_whoop_ffi_fn_func_stage_sleep_v1(`input`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
-    ): RustBuffer.ByValue
-    external fun uniffi_whoop_ffi_fn_func_stage_sleep_v2(`input`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    external fun uniffi_whoop_ffi_fn_func_stage_sleep_refined(`input`: RustBuffer.ByValue,`steps`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_func_strain_default_denominator(uniffi_out_err: UniffiRustCallStatus, 
     ): Double
@@ -1046,6 +1066,12 @@ private fun uniffiCheckContractApiVersion(lib: IntegrityCheckingUniffiLib) {
 }
 @Suppress("UNUSED_PARAMETER")
 private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
+    if (lib.uniffi_whoop_ffi_checksum_func_analyze_sleep() != 45131) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_whoop_ffi_checksum_func_bridged_night_groups() != 55242) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_whoop_ffi_checksum_func_daily_resting_hr() != 11457) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
@@ -1056,6 +1082,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_whoop_ffi_checksum_func_fitness_age_compute() != 21035) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_whoop_ffi_checksum_func_habitual_midsleep_sec() != 2065) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_whoop_ffi_checksum_func_haptic_clock_pulses() != 28487) {
@@ -1077,6 +1106,15 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_whoop_ffi_checksum_func_imu_features() != 23396) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_whoop_ffi_checksum_func_main_night_group_indices() != 21956) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_whoop_ffi_checksum_func_main_night_index() != 51443) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_whoop_ffi_checksum_func_main_night_selection() != 4436) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_whoop_ffi_checksum_func_nightly_spo2_raw_means() != 36193) {
@@ -1106,10 +1144,7 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_whoop_ffi_checksum_func_spo2_from_paired() != 11748) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_whoop_ffi_checksum_func_stage_sleep_v1() != 2021) {
-        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
-    }
-    if (lib.uniffi_whoop_ffi_checksum_func_stage_sleep_v2() != 46996) {
+    if (lib.uniffi_whoop_ffi_checksum_func_stage_sleep_refined() != 22122) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_whoop_ffi_checksum_func_strain_default_denominator() != 31363) {
@@ -2647,6 +2682,47 @@ public object FfiConverterTypeWhoopCodec: FfiConverter<WhoopCodec, Long> {
 
 
 /**
+ * One band sleep-state sample: the strap's own `state` (0 wake/1 still/2 asleep/3 up) at `ts`.
+ */
+data class BandStateSample (
+    var `ts`: kotlin.Long
+    , 
+    var `state`: kotlin.Int
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeBandStateSample: FfiConverterRustBuffer<BandStateSample> {
+    override fun read(buf: ByteBuffer): BandStateSample {
+        return BandStateSample(
+            FfiConverterLong.read(buf),
+            FfiConverterInt.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: BandStateSample) = (
+            FfiConverterLong.allocationSize(value.`ts`) +
+            FfiConverterInt.allocationSize(value.`state`)
+    )
+
+    override fun write(value: BandStateSample, buf: ByteBuffer) {
+            FfiConverterLong.write(value.`ts`, buf)
+            FfiConverterInt.write(value.`state`, buf)
+    }
+}
+
+
+
+/**
  * A personal baseline driver (mean + spread) for recovery z-scoring.
  */
 data class DriverBaselineInfo (
@@ -3233,6 +3309,93 @@ public object FfiConverterTypeImuSampleInfo: FfiConverterRustBuffer<ImuSampleInf
 
 
 /**
+ * One candidate block for main-night selection: `[start, end]` unix seconds.
+ */
+data class MainNightBlock (
+    var `start`: kotlin.Long
+    , 
+    var `end`: kotlin.Long
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeMainNightBlock: FfiConverterRustBuffer<MainNightBlock> {
+    override fun read(buf: ByteBuffer): MainNightBlock {
+        return MainNightBlock(
+            FfiConverterLong.read(buf),
+            FfiConverterLong.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: MainNightBlock) = (
+            FfiConverterLong.allocationSize(value.`start`) +
+            FfiConverterLong.allocationSize(value.`end`)
+    )
+
+    override fun write(value: MainNightBlock, buf: ByteBuffer) {
+            FfiConverterLong.write(value.`start`, buf)
+            FfiConverterLong.write(value.`end`, buf)
+    }
+}
+
+
+
+/**
+ * The resolved main-night pick plus why it won and the chosen block's asleep span (seconds).
+ */
+data class MainNightSel (
+    var `index`: kotlin.UInt
+    , 
+    var `reason`: MainNightReason
+    , 
+    var `asleepSec`: kotlin.Long
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeMainNightSel: FfiConverterRustBuffer<MainNightSel> {
+    override fun read(buf: ByteBuffer): MainNightSel {
+        return MainNightSel(
+            FfiConverterUInt.read(buf),
+            FfiConverterTypeMainNightReason.read(buf),
+            FfiConverterLong.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: MainNightSel) = (
+            FfiConverterUInt.allocationSize(value.`index`) +
+            FfiConverterTypeMainNightReason.allocationSize(value.`reason`) +
+            FfiConverterLong.allocationSize(value.`asleepSec`)
+    )
+
+    override fun write(value: MainNightSel, buf: ByteBuffer) {
+            FfiConverterUInt.write(value.`index`, buf)
+            FfiConverterTypeMainNightReason.write(value.`reason`, buf)
+            FfiConverterLong.write(value.`asleepSec`, buf)
+    }
+}
+
+
+
+/**
  * METADATA offload-state fields: `meta_type` (1 start / 2 end / 3 complete) drives the drain, and for a
  * HISTORY_END `unix` + `trim_cursor` are the ack/advance cursor. `crc_ok` lets the app gate on a
  * checksum-valid frame (a forged HISTORY_END must not advance the trim over unstored data).
@@ -3684,6 +3847,134 @@ public object FfiConverterTypeSleepAccelSample: FfiConverterRustBuffer<SleepAcce
 
 
 /**
+ * One bridged night group: the composing original indices (ascending) + its inter-fragment wake seams.
+ */
+data class SleepBridgedGroup (
+    var `indices`: List<kotlin.UInt>
+    , 
+    var `gaps`: List<SleepGap>
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeSleepBridgedGroup: FfiConverterRustBuffer<SleepBridgedGroup> {
+    override fun read(buf: ByteBuffer): SleepBridgedGroup {
+        return SleepBridgedGroup(
+            FfiConverterSequenceUInt.read(buf),
+            FfiConverterSequenceTypeSleepGap.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: SleepBridgedGroup) = (
+            FfiConverterSequenceUInt.allocationSize(value.`indices`) +
+            FfiConverterSequenceTypeSleepGap.allocationSize(value.`gaps`)
+    )
+
+    override fun write(value: SleepBridgedGroup, buf: ByteBuffer) {
+            FfiConverterSequenceUInt.write(value.`indices`, buf)
+            FfiConverterSequenceTypeSleepGap.write(value.`gaps`, buf)
+    }
+}
+
+
+
+/**
+ * One inter-fragment wake seam `[start, end)` inside a bridged night group.
+ */
+data class SleepGap (
+    var `start`: kotlin.Long
+    , 
+    var `end`: kotlin.Long
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeSleepGap: FfiConverterRustBuffer<SleepGap> {
+    override fun read(buf: ByteBuffer): SleepGap {
+        return SleepGap(
+            FfiConverterLong.read(buf),
+            FfiConverterLong.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: SleepGap) = (
+            FfiConverterLong.allocationSize(value.`start`) +
+            FfiConverterLong.allocationSize(value.`end`)
+    )
+
+    override fun write(value: SleepGap, buf: ByteBuffer) {
+            FfiConverterLong.write(value.`start`, buf)
+            FfiConverterLong.write(value.`end`, buf)
+    }
+}
+
+
+
+/**
+ * One trailing-history block for learning habitual timing (`day_key` groups by local calendar day).
+ */
+data class SleepHistoryBlock (
+    var `start`: kotlin.Long
+    , 
+    var `end`: kotlin.Long
+    , 
+    var `dayKey`: kotlin.String
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeSleepHistoryBlock: FfiConverterRustBuffer<SleepHistoryBlock> {
+    override fun read(buf: ByteBuffer): SleepHistoryBlock {
+        return SleepHistoryBlock(
+            FfiConverterLong.read(buf),
+            FfiConverterLong.read(buf),
+            FfiConverterString.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: SleepHistoryBlock) = (
+            FfiConverterLong.allocationSize(value.`start`) +
+            FfiConverterLong.allocationSize(value.`end`) +
+            FfiConverterString.allocationSize(value.`dayKey`)
+    )
+
+    override fun write(value: SleepHistoryBlock, buf: ByteBuffer) {
+            FfiConverterLong.write(value.`start`, buf)
+            FfiConverterLong.write(value.`end`, buf)
+            FfiConverterString.write(value.`dayKey`, buf)
+    }
+}
+
+
+
+/**
  * One HR sample for the stager (`bpm` at unix second `ts`).
  */
 data class SleepHrSample (
@@ -3914,6 +4205,196 @@ public object FfiConverterTypeSleepSegment: FfiConverterRustBuffer<SleepSegment>
 
 
 /**
+ * One detected sleep session: span, motion-refined hypnogram, derived scalars, and the per-30 s-epoch
+ * motion + band sleep-state grids the caller persists.
+ */
+data class SleepSession (
+    var `start`: kotlin.Long
+    , 
+    var `end`: kotlin.Long
+    , 
+    var `efficiency`: kotlin.Double
+    , 
+    var `restingHr`: kotlin.Int?
+    , 
+    var `avgHrv`: kotlin.Double?
+    , 
+    var `segments`: List<SleepSegment>
+    , 
+    var `motionGrid`: List<kotlin.Double>
+    , 
+    var `sleepStateGrid`: List<kotlin.Int>
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeSleepSession: FfiConverterRustBuffer<SleepSession> {
+    override fun read(buf: ByteBuffer): SleepSession {
+        return SleepSession(
+            FfiConverterLong.read(buf),
+            FfiConverterLong.read(buf),
+            FfiConverterDouble.read(buf),
+            FfiConverterOptionalInt.read(buf),
+            FfiConverterOptionalDouble.read(buf),
+            FfiConverterSequenceTypeSleepSegment.read(buf),
+            FfiConverterSequenceDouble.read(buf),
+            FfiConverterSequenceInt.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: SleepSession) = (
+            FfiConverterLong.allocationSize(value.`start`) +
+            FfiConverterLong.allocationSize(value.`end`) +
+            FfiConverterDouble.allocationSize(value.`efficiency`) +
+            FfiConverterOptionalInt.allocationSize(value.`restingHr`) +
+            FfiConverterOptionalDouble.allocationSize(value.`avgHrv`) +
+            FfiConverterSequenceTypeSleepSegment.allocationSize(value.`segments`) +
+            FfiConverterSequenceDouble.allocationSize(value.`motionGrid`) +
+            FfiConverterSequenceInt.allocationSize(value.`sleepStateGrid`)
+    )
+
+    override fun write(value: SleepSession, buf: ByteBuffer) {
+            FfiConverterLong.write(value.`start`, buf)
+            FfiConverterLong.write(value.`end`, buf)
+            FfiConverterDouble.write(value.`efficiency`, buf)
+            FfiConverterOptionalInt.write(value.`restingHr`, buf)
+            FfiConverterOptionalDouble.write(value.`avgHrv`, buf)
+            FfiConverterSequenceTypeSleepSegment.write(value.`segments`, buf)
+            FfiConverterSequenceDouble.write(value.`motionGrid`, buf)
+            FfiConverterSequenceInt.write(value.`sleepStateGrid`, buf)
+    }
+}
+
+
+
+/**
+ * One step-counter sample: wrap-aware u16 `counter` + optional activity class (1=walk, 2=run) at `ts`.
+ */
+data class SleepStepSample (
+    var `ts`: kotlin.Long
+    , 
+    var `counter`: kotlin.UShort
+    , 
+    var `activityClass`: kotlin.UByte?
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeSleepStepSample: FfiConverterRustBuffer<SleepStepSample> {
+    override fun read(buf: ByteBuffer): SleepStepSample {
+        return SleepStepSample(
+            FfiConverterLong.read(buf),
+            FfiConverterUShort.read(buf),
+            FfiConverterOptionalUByte.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: SleepStepSample) = (
+            FfiConverterLong.allocationSize(value.`ts`) +
+            FfiConverterUShort.allocationSize(value.`counter`) +
+            FfiConverterOptionalUByte.allocationSize(value.`activityClass`)
+    )
+
+    override fun write(value: SleepStepSample, buf: ByteBuffer) {
+            FfiConverterLong.write(value.`ts`, buf)
+            FfiConverterUShort.write(value.`counter`, buf)
+            FfiConverterOptionalUByte.write(value.`activityClass`, buf)
+    }
+}
+
+
+
+/**
+ * The full night-window stream bundle for detection + staging (raw signals + off-wrist / band-state /
+ * tz-offset). `analyze_sleep` carves the in-bed spans and stages each behind this one border call.
+ */
+data class SleepStreams (
+    var `hr`: List<SleepHrSample>
+    , 
+    var `rr`: List<SleepRrRun>
+    , 
+    var `accel`: List<SleepAccelSample>
+    , 
+    var `resp`: List<SleepRespSample>
+    , 
+    var `steps`: List<SleepStepSample>
+    , 
+    var `tzOffsetS`: kotlin.Long
+    , 
+    var `wristOff`: List<WristOffInterval>
+    , 
+    var `bandSleepState`: List<BandStateSample>
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeSleepStreams: FfiConverterRustBuffer<SleepStreams> {
+    override fun read(buf: ByteBuffer): SleepStreams {
+        return SleepStreams(
+            FfiConverterSequenceTypeSleepHrSample.read(buf),
+            FfiConverterSequenceTypeSleepRrRun.read(buf),
+            FfiConverterSequenceTypeSleepAccelSample.read(buf),
+            FfiConverterSequenceTypeSleepRespSample.read(buf),
+            FfiConverterSequenceTypeSleepStepSample.read(buf),
+            FfiConverterLong.read(buf),
+            FfiConverterSequenceTypeWristOffInterval.read(buf),
+            FfiConverterSequenceTypeBandStateSample.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: SleepStreams) = (
+            FfiConverterSequenceTypeSleepHrSample.allocationSize(value.`hr`) +
+            FfiConverterSequenceTypeSleepRrRun.allocationSize(value.`rr`) +
+            FfiConverterSequenceTypeSleepAccelSample.allocationSize(value.`accel`) +
+            FfiConverterSequenceTypeSleepRespSample.allocationSize(value.`resp`) +
+            FfiConverterSequenceTypeSleepStepSample.allocationSize(value.`steps`) +
+            FfiConverterLong.allocationSize(value.`tzOffsetS`) +
+            FfiConverterSequenceTypeWristOffInterval.allocationSize(value.`wristOff`) +
+            FfiConverterSequenceTypeBandStateSample.allocationSize(value.`bandSleepState`)
+    )
+
+    override fun write(value: SleepStreams, buf: ByteBuffer) {
+            FfiConverterSequenceTypeSleepHrSample.write(value.`hr`, buf)
+            FfiConverterSequenceTypeSleepRrRun.write(value.`rr`, buf)
+            FfiConverterSequenceTypeSleepAccelSample.write(value.`accel`, buf)
+            FfiConverterSequenceTypeSleepRespSample.write(value.`resp`, buf)
+            FfiConverterSequenceTypeSleepStepSample.write(value.`steps`, buf)
+            FfiConverterLong.write(value.`tzOffsetS`, buf)
+            FfiConverterSequenceTypeWristOffInterval.write(value.`wristOff`, buf)
+            FfiConverterSequenceTypeBandStateSample.write(value.`bandSleepState`, buf)
+    }
+}
+
+
+
+/**
  * Integer-truncated nightly means of the raw red/IR ADC (the app's `DailyMetric.spo2Red`/`spo2Ir`).
  */
 data class Spo2RawMeans (
@@ -4128,6 +4609,47 @@ public object FfiConverterTypeTimeInZoneInfo: FfiConverterRustBuffer<TimeInZoneI
     override fun write(value: TimeInZoneInfo, buf: ByteBuffer) {
             FfiConverterSequenceDouble.write(value.`seconds`, buf)
             FfiConverterDouble.write(value.`belowZone1`, buf)
+    }
+}
+
+
+
+/**
+ * An off-wrist `[start, end)` interval (unix seconds).
+ */
+data class WristOffInterval (
+    var `start`: kotlin.Long
+    , 
+    var `end`: kotlin.Long
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeWristOffInterval: FfiConverterRustBuffer<WristOffInterval> {
+    override fun read(buf: ByteBuffer): WristOffInterval {
+        return WristOffInterval(
+            FfiConverterLong.read(buf),
+            FfiConverterLong.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: WristOffInterval) = (
+            FfiConverterLong.allocationSize(value.`start`) +
+            FfiConverterLong.allocationSize(value.`end`)
+    )
+
+    override fun write(value: WristOffInterval, buf: ByteBuffer) {
+            FfiConverterLong.write(value.`start`, buf)
+            FfiConverterLong.write(value.`end`, buf)
     }
 }
 
@@ -4377,6 +4899,45 @@ public object FfiConverterTypeLive : FfiConverterRustBuffer<Live>{
                 Unit
             }
         }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
+    }
+}
+
+
+
+
+
+/**
+ * Why the main-night selector chose the block it chose (for UI explainability).
+ */
+
+enum class MainNightReason {
+    
+    ONLY_BLOCK,
+    LONGEST,
+    LONGEST_NEAR_USUAL,
+    ALIGNED_TO_USUAL;
+
+    
+
+
+    companion object
+}
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeMainNightReason: FfiConverterRustBuffer<MainNightReason> {
+    override fun read(buf: ByteBuffer) = try {
+        MainNightReason.values()[buf.getInt() - 1]
+    } catch (e: IndexOutOfBoundsException) {
+        throw RuntimeException("invalid enum value, something is very wrong!!", e)
+    }
+
+    override fun allocationSize(value: MainNightReason) = 4UL
+
+    override fun write(value: MainNightReason, buf: ByteBuffer) {
+        buf.putInt(value.ordinal + 1)
     }
 }
 
@@ -5172,6 +5733,38 @@ public object FfiConverterOptionalInt: FfiConverterRustBuffer<kotlin.Int?> {
 /**
  * @suppress
  */
+public object FfiConverterOptionalLong: FfiConverterRustBuffer<kotlin.Long?> {
+    override fun read(buf: ByteBuffer): kotlin.Long? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterLong.read(buf)
+    }
+
+    override fun allocationSize(value: kotlin.Long?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterLong.allocationSize(value)
+        }
+    }
+
+    override fun write(value: kotlin.Long?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterLong.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterOptionalFloat: FfiConverterRustBuffer<kotlin.Float?> {
     override fun read(buf: ByteBuffer): kotlin.Float? {
         if (buf.get().toInt() == 0) {
@@ -5492,6 +6085,38 @@ public object FfiConverterOptionalTypeImuFrame: FfiConverterRustBuffer<ImuFrame?
 /**
  * @suppress
  */
+public object FfiConverterOptionalTypeMainNightSel: FfiConverterRustBuffer<MainNightSel?> {
+    override fun read(buf: ByteBuffer): MainNightSel? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterTypeMainNightSel.read(buf)
+    }
+
+    override fun allocationSize(value: MainNightSel?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterTypeMainNightSel.allocationSize(value)
+        }
+    }
+
+    override fun write(value: MainNightSel?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterTypeMainNightSel.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterOptionalTypeMetadataInfo: FfiConverterRustBuffer<MetadataInfo?> {
     override fun read(buf: ByteBuffer): MetadataInfo? {
         if (buf.get().toInt() == 0) {
@@ -5674,6 +6299,38 @@ public object FfiConverterOptionalTypeResponse: FfiConverterRustBuffer<Response?
         } else {
             buf.put(1)
             FfiConverterTypeResponse.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterOptionalSequenceUInt: FfiConverterRustBuffer<List<kotlin.UInt>?> {
+    override fun read(buf: ByteBuffer): List<kotlin.UInt>? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterSequenceUInt.read(buf)
+    }
+
+    override fun allocationSize(value: List<kotlin.UInt>?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterSequenceUInt.allocationSize(value)
+        }
+    }
+
+    override fun write(value: List<kotlin.UInt>?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterSequenceUInt.write(value, buf)
         }
     }
 }
@@ -5912,6 +6569,34 @@ public object FfiConverterSequenceByteArray: FfiConverterRustBuffer<List<kotlin.
 /**
  * @suppress
  */
+public object FfiConverterSequenceTypeBandStateSample: FfiConverterRustBuffer<List<BandStateSample>> {
+    override fun read(buf: ByteBuffer): List<BandStateSample> {
+        val len = buf.getInt()
+        return List<BandStateSample>(len) {
+            FfiConverterTypeBandStateSample.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<BandStateSample>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeBandStateSample.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<BandStateSample>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeBandStateSample.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterSequenceTypeHrTick: FfiConverterRustBuffer<List<HrTick>> {
     override fun read(buf: ByteBuffer): List<HrTick> {
         val len = buf.getInt()
@@ -5986,6 +6671,34 @@ public object FfiConverterSequenceTypeImuSampleInfo: FfiConverterRustBuffer<List
         buf.putInt(value.size)
         value.iterator().forEach {
             FfiConverterTypeImuSampleInfo.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeMainNightBlock: FfiConverterRustBuffer<List<MainNightBlock>> {
+    override fun read(buf: ByteBuffer): List<MainNightBlock> {
+        val len = buf.getInt()
+        return List<MainNightBlock>(len) {
+            FfiConverterTypeMainNightBlock.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<MainNightBlock>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeMainNightBlock.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<MainNightBlock>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeMainNightBlock.write(it, buf)
         }
     }
 }
@@ -6164,6 +6877,90 @@ public object FfiConverterSequenceTypeSleepAccelSample: FfiConverterRustBuffer<L
 /**
  * @suppress
  */
+public object FfiConverterSequenceTypeSleepBridgedGroup: FfiConverterRustBuffer<List<SleepBridgedGroup>> {
+    override fun read(buf: ByteBuffer): List<SleepBridgedGroup> {
+        val len = buf.getInt()
+        return List<SleepBridgedGroup>(len) {
+            FfiConverterTypeSleepBridgedGroup.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<SleepBridgedGroup>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeSleepBridgedGroup.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<SleepBridgedGroup>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeSleepBridgedGroup.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeSleepGap: FfiConverterRustBuffer<List<SleepGap>> {
+    override fun read(buf: ByteBuffer): List<SleepGap> {
+        val len = buf.getInt()
+        return List<SleepGap>(len) {
+            FfiConverterTypeSleepGap.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<SleepGap>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeSleepGap.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<SleepGap>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeSleepGap.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeSleepHistoryBlock: FfiConverterRustBuffer<List<SleepHistoryBlock>> {
+    override fun read(buf: ByteBuffer): List<SleepHistoryBlock> {
+        val len = buf.getInt()
+        return List<SleepHistoryBlock>(len) {
+            FfiConverterTypeSleepHistoryBlock.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<SleepHistoryBlock>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeSleepHistoryBlock.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<SleepHistoryBlock>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeSleepHistoryBlock.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterSequenceTypeSleepHrSample: FfiConverterRustBuffer<List<SleepHrSample>> {
     override fun read(buf: ByteBuffer): List<SleepHrSample> {
         val len = buf.getInt()
@@ -6276,6 +7073,62 @@ public object FfiConverterSequenceTypeSleepSegment: FfiConverterRustBuffer<List<
 /**
  * @suppress
  */
+public object FfiConverterSequenceTypeSleepSession: FfiConverterRustBuffer<List<SleepSession>> {
+    override fun read(buf: ByteBuffer): List<SleepSession> {
+        val len = buf.getInt()
+        return List<SleepSession>(len) {
+            FfiConverterTypeSleepSession.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<SleepSession>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeSleepSession.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<SleepSession>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeSleepSession.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeSleepStepSample: FfiConverterRustBuffer<List<SleepStepSample>> {
+    override fun read(buf: ByteBuffer): List<SleepStepSample> {
+        val len = buf.getInt()
+        return List<SleepStepSample>(len) {
+            FfiConverterTypeSleepStepSample.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<SleepStepSample>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeSleepStepSample.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<SleepStepSample>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeSleepStepSample.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterSequenceTypeSpo2RawSample: FfiConverterRustBuffer<List<Spo2RawSample>> {
     override fun read(buf: ByteBuffer): List<Spo2RawSample> {
         val len = buf.getInt()
@@ -6322,6 +7175,34 @@ public object FfiConverterSequenceTypeSpo2Span: FfiConverterRustBuffer<List<Spo2
         buf.putInt(value.size)
         value.iterator().forEach {
             FfiConverterTypeSpo2Span.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeWristOffInterval: FfiConverterRustBuffer<List<WristOffInterval>> {
+    override fun read(buf: ByteBuffer): List<WristOffInterval> {
+        val len = buf.getInt()
+        return List<WristOffInterval>(len) {
+            FfiConverterTypeWristOffInterval.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<WristOffInterval>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeWristOffInterval.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<WristOffInterval>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeWristOffInterval.write(it, buf)
         }
     }
 }
@@ -6410,6 +7291,32 @@ public object FfiConverterSequenceOptionalDouble: FfiConverterRustBuffer<List<ko
     }
 }
         /**
+         * Detect + stage a night's streams: one call carves the in-bed spans and returns one session each.
+         */ fun `analyzeSleep`(`streams`: SleepStreams): List<SleepSession> {
+            return FfiConverterSequenceTypeSleepSession.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_func_analyze_sleep(
+    
+        
+        FfiConverterTypeSleepStreams.lower(`streams`),_status)
+}
+    )
+    }
+    
+ fun `bridgedNightGroups`(`blocks`: List<MainNightBlock>, `offsetS`: kotlin.Long): List<SleepBridgedGroup> {
+            return FfiConverterSequenceTypeSleepBridgedGroup.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_func_bridged_night_groups(
+    
+        
+        FfiConverterSequenceTypeMainNightBlock.lower(`blocks`),
+        FfiConverterLong.lower(`offsetS`),_status)
+}
+    )
+    }
+    
+
+        /**
          * Daily resting HR = min of the per-session floors.
          */ fun `dailyRestingHr`(`sessionFloors`: List<kotlin.Int?>): kotlin.Int? {
             return FfiConverterOptionalInt.lift(
@@ -6470,6 +7377,19 @@ public object FfiConverterSequenceOptionalDouble: FfiConverterRustBuffer<List<ko
         FfiConverterDouble.lower(`paIndex`),
         FfiConverterOptionalDouble.lower(`waistCm`),
         FfiConverterBoolean.lower(`lowerConfidence`),_status)
+}
+    )
+    }
+    
+ fun `habitualMidsleepSec`(`history`: List<SleepHistoryBlock>, `offsetS`: kotlin.Long, `minDays`: kotlin.UInt): kotlin.Long? {
+            return FfiConverterOptionalLong.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_func_habitual_midsleep_sec(
+    
+        
+        FfiConverterSequenceTypeSleepHistoryBlock.lower(`history`),
+        FfiConverterLong.lower(`offsetS`),
+        FfiConverterUInt.lower(`minDays`),_status)
 }
     )
     }
@@ -6578,6 +7498,45 @@ public object FfiConverterSequenceOptionalDouble: FfiConverterRustBuffer<List<ko
         
         FfiConverterSequenceTypeImuSampleInfo.lower(`samples`),
         FfiConverterInt.lower(`sampleRateHz`),_status)
+}
+    )
+    }
+    
+ fun `mainNightGroupIndices`(`blocks`: List<MainNightBlock>, `offsetS`: kotlin.Long, `habitualMidsleepSec`: kotlin.Long?): List<kotlin.UInt>? {
+            return FfiConverterOptionalSequenceUInt.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_func_main_night_group_indices(
+    
+        
+        FfiConverterSequenceTypeMainNightBlock.lower(`blocks`),
+        FfiConverterLong.lower(`offsetS`),
+        FfiConverterOptionalLong.lower(`habitualMidsleepSec`),_status)
+}
+    )
+    }
+    
+ fun `mainNightIndex`(`blocks`: List<MainNightBlock>, `offsetS`: kotlin.Long, `habitualMidsleepSec`: kotlin.Long?): kotlin.UInt? {
+            return FfiConverterOptionalUInt.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_func_main_night_index(
+    
+        
+        FfiConverterSequenceTypeMainNightBlock.lower(`blocks`),
+        FfiConverterLong.lower(`offsetS`),
+        FfiConverterOptionalLong.lower(`habitualMidsleepSec`),_status)
+}
+    )
+    }
+    
+ fun `mainNightSelection`(`blocks`: List<MainNightBlock>, `offsetS`: kotlin.Long, `habitualMidsleepSec`: kotlin.Long?): MainNightSel? {
+            return FfiConverterOptionalTypeMainNightSel.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_func_main_night_selection(
+    
+        
+        FfiConverterSequenceTypeMainNightBlock.lower(`blocks`),
+        FfiConverterLong.lower(`offsetS`),
+        FfiConverterOptionalLong.lower(`habitualMidsleepSec`),_status)
 }
     )
     }
@@ -6720,29 +7679,16 @@ public object FfiConverterSequenceOptionalDouble: FfiConverterRustBuffer<List<ko
     
 
         /**
-         * Sleep hypnogram via V1 (Cole-Kripke) — the 4.0 recipe and the session-detection source of truth.
-         */ fun `stageSleepV1`(`input`: SleepInput): List<SleepSegment> {
+         * Stage one already-detected in-bed span with the V2 recipe + motion-aware wake refinement (the app's
+         * single-span edit self-heal path). Per-30 s-epoch stage segments over `[start, end]`.
+         */ fun `stageSleepRefined`(`input`: SleepInput, `steps`: List<SleepStepSample>): List<SleepSegment> {
             return FfiConverterSequenceTypeSleepSegment.lift(
     uniffiRustCall() { _status ->
-    UniffiLib.uniffi_whoop_ffi_fn_func_stage_sleep_v1(
+    UniffiLib.uniffi_whoop_ffi_fn_func_stage_sleep_refined(
     
         
-        FfiConverterTypeSleepInput.lower(`input`),_status)
-}
-    )
-    }
-    
-
-        /**
-         * Sleep hypnogram via V2 (cardiorespiratory) — the 5.0/MG default. Per-30 s-epoch stage segments over
-         * the detected in-bed span. Pure and deterministic.
-         */ fun `stageSleepV2`(`input`: SleepInput): List<SleepSegment> {
-            return FfiConverterSequenceTypeSleepSegment.lift(
-    uniffiRustCall() { _status ->
-    UniffiLib.uniffi_whoop_ffi_fn_func_stage_sleep_v2(
-    
-        
-        FfiConverterTypeSleepInput.lower(`input`),_status)
+        FfiConverterTypeSleepInput.lower(`input`),
+        FfiConverterSequenceTypeSleepStepSample.lower(`steps`),_status)
 }
     )
     }
