@@ -223,18 +223,6 @@ object AnalyticsEngine {
         // empty keeps pure-function callers/tests free of it; IntelligenceEngine threads the night window's
         // persisted band state. Mirrors Swift. (#531 / H8 consume)
         bandSleepState: List<Pair<Long, Int>> = emptyList(),
-        // Opt-in experimental sleep staging (V2). When true, detected nights are staged by [SleepStagerV2]
-        // instead of V1. Default false keeps V1 the byte-identical default for pure-function callers/tests;
-        // IntelligenceEngine threads PuffinExperiment.from(context).experimentalSleepV2. Mirrors Swift. (V7 / #690)
-        useSleepStagerV2: Boolean = false,
-        // Opt-in motion-aware wake refinement (#364 "Proposal 2" follow-up; density gate precedent #345).
-        // When true, [WakeMotionRefinement] re-derives each detected session's stages, reclassifying a
-        // hot-but-still WAKE segment to `light` when it shows no locomotion and a stable posture outside
-        // isolated burst minutes; it only ever runs AFTER V1/V2 staging and self-gates on the observed
-        // gravity + step density, so it is a no-op on a sparse (e.g. WHOOP 4.0) night regardless of this
-        // flag. Default false keeps every pure-function caller/test byte-identical; IntelligenceEngine
-        // threads PuffinExperiment.from(context).motionAwareWake. Mirrors Swift.
-        useMotionAwareWake: Boolean = false,
         // Sleep & Rest test-mode trace sink (E11). null = byte-identical default. When non-null the gate
         // trace from detectSleep and the Rest sub-score line are forwarded line-by-line. Mirrors Swift.
         traceSink: ((String) -> Unit)? = null,
@@ -254,22 +242,12 @@ object AnalyticsEngine {
     ): DayResult {
 
         // ── Sleep detection + staging ─────────────────────────────────────────
-        val detectedSessions = SleepStager.detectSleep(
-            hr = hr, rr = rr, resp = resp, gravity = gravity, tzOffsetSeconds = tzOffsetSeconds,
-            wristOff = wristOff, bandSleepState = bandSleepState,
-            useSleepStagerV2 = useSleepStagerV2,
-            traceSink = traceSink,
+        // Detection + staging + the motion-aware wake refinement now all run in whoop-rs (physio-algo)
+        // behind one FFI call; `steps` feeds the refinement, which self-gates on the observed density.
+        val allSessions = SleepStager.detectSleep(
+            hr = hr, rr = rr, resp = resp, gravity = gravity, steps = steps,
+            tzOffsetSeconds = tzOffsetSeconds, wristOff = wristOff, bandSleepState = bandSleepState,
         )
-        // Motion-aware wake refinement (#364 follow-up) runs AFTER V1/V2 staging, over every detected
-        // session (naps included — the same eligibility gates apply). `steps` is the SAME calendar-day/
-        // night-window stream the caller passed for the rest of this analysis; the pass self-gates on its
-        // observed density, so an empty/sparse `steps` (e.g. a WHOOP 4.0, which never emits a step sample
-        // at all) is a no-op regardless of `useMotionAwareWake`.
-        val allSessions = if (useMotionAwareWake) {
-            detectedSessions.map { WakeMotionRefinement.refine(it, gravity, steps) }
-        } else {
-            detectedSessions
-        }
         // Sessions attributed to `day` = those whose end falls on `day` (LOCAL day, #277). `day` is
         // the caller's local-day key; attribute by the same offset so the bucket and the key agree.
         val matched = allSessions.filter { dayString(it.end, tzOffsetSeconds) == day }
@@ -480,7 +458,7 @@ object AnalyticsEngine {
             // night can be explained from an export — WHOOP 4.0 banks motion coarsely (sparse=true), so most
             // epochs default to sleep → over-counted duration → high Rest; `stager` says whether V1/V2 ran.
             traceSink(RestScorer.sleepMotionLine(day, gravity.size, hr.size,
-                gravitySparse, useSleepStagerV2, skinTempFamily))
+                gravitySparse, skinTempFamily))
             // #271: the ONSET decision — did HR dip when the window opened, or did it open on a still-but-
             // awake stretch (HR still ~baseline)? Both the day-median baseline AND the at-onset window read
             // from the SAME HR that DETECTION ran over (`dayHr ?: hr` — the full calendar day when the caller
@@ -656,8 +634,7 @@ object AnalyticsEngine {
         // caller persists NULL there rather than a fabricated zero series. Mirrors Swift.
         val sessionMotionByStart = HashMap<Long, List<Double>>()
         for (s in matched) {
-            val motion = SleepStager.sessionEpochMotion(s.start, s.end, gravity)
-            if (motion.isNotEmpty()) sessionMotionByStart[s.start] = motion
+            if (s.motionGrid.isNotEmpty()) sessionMotionByStart[s.start] = s.motionGrid
         }
 
         // ── Per-session per-epoch BAND sleep_state (#175) ─────────────────────
@@ -668,11 +645,8 @@ object AnalyticsEngine {
         // stays absent. Empty on a WHOOP 4.0. The band code is carried verbatim; it NEVER overrides the
         // derived hypnogram, only confirms a borderline morning re-onset. Mirrors Swift.
         val sessionSleepStateByStart = HashMap<Long, List<Int>>()
-        if (bandSleepState.isNotEmpty()) {
-            for (s in matched) {
-                val states = SleepStager.sessionEpochSleepState(s.start, s.end, bandSleepState)
-                if (states.isNotEmpty()) sessionSleepStateByStart[s.start] = states
-            }
+        for (s in matched) {
+            if (s.sleepStateGrid.isNotEmpty()) sessionSleepStateByStart[s.start] = s.sleepStateGrid
         }
 
         return DayResult(
@@ -1002,13 +976,13 @@ object RestScorer {
      * #319 diagnostic (Sleep & Rest test mode): the motion-coverage + staging context behind the Rest
      * number, so a high score on a poor night can be explained straight from an export. `grav`/`hr` are the
      * night-window sample counts; `sparse` is the gravity-sparse gate (WHOOP 4.0 banks motion coarsely, so
-     * most epochs default to sleep → over-counted duration → high Rest); `stager` says which engine ran;
-     * `family` the day's owner. Pure, no em-dashes; byte-identical to Swift `AnalyticsEngine.sleepMotionLine`.
+     * most epochs default to sleep → over-counted duration → high Rest); `stager` is always V2 (the sole
+     * staging engine); `family` the day's owner. Pure, no em-dashes; byte-identical to Swift `AnalyticsEngine.sleepMotionLine`.
      */
     fun sleepMotionLine(
-        day: String, grav: Int, hr: Int, sparse: Boolean, useSleepStagerV2: Boolean, family: DeviceFamily,
+        day: String, grav: Int, hr: Int, sparse: Boolean, family: DeviceFamily,
     ): String = "sleep-motion day=$day grav=$grav hr=$hr sparse=$sparse " +
-        "stager=${if (useSleepStagerV2) "V2" else "V1"} family=${family.name.lowercase()}"
+        "stager=V2 family=${family.name.lowercase()}"
 
     /**
      * How long AFTER the detected onset to sample HR for the #271 onset trace (seconds). The first several

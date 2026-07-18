@@ -383,26 +383,6 @@ class MainNightConsistencyTest {
         assertEquals("nap-only day reports the nap's sleep", 38.0, r!!.sleep.totalSleepMin, 1e-6)
     }
 
-    /** Biphasic / bridged night: two runs separated by a < 60 min wake are one block for selection. */
-    @Test
-    fun gapBridgeMergesShortWakeSplitNight() {
-        val a = atHour(23) - 86_400L           // 3h
-        val bStart = a + 3 * 3600 + 30 * 60    // 30 min wake gap (< 60) then resume 3h
-        val bridged = SleepStageTotals.bridgeAdjacent(listOf(
-            SleepStageTotals.NightBlock(a, a + 3 * 3600),
-            SleepStageTotals.NightBlock(bStart, bStart + 3 * 3600),
-        ))
-        assertEquals("a < 60 min wake gap bridges the two runs", 1, bridged.size)
-        assertEquals(a, bridged[0].start)
-        assertEquals(bStart + 3 * 3600, bridged[0].end)
-        val cStart = a + 3 * 3600 + 75 * 60
-        val unbridged = SleepStageTotals.bridgeAdjacent(listOf(
-            SleepStageTotals.NightBlock(a, a + 3 * 3600),
-            SleepStageTotals.NightBlock(cStart, cStart + 3 * 3600),
-        ))
-        assertEquals("a >= 60 min wake gap stays two blocks", 2, unbridged.size)
-    }
-
     /** Cross-midnight onset: a 23:30 onset is overnight and its midpoint math wraps correctly. */
     @Test
     fun crossMidnightOnsetScoresAsNight() {
@@ -521,16 +501,6 @@ class MainNightConsistencyTest {
     }
 
     // ── #547 Caveat B: circularMeanSec degenerate-vector guard ────────────────────────────────────
-
-    /** Antipodal midpoints (12h apart) have a near-zero resultant vector, so `atan2` returns a meaningless
-     *  (and potentially cross-platform-divergent) direction. The guard returns null so `habitualMidsleepSec`
-     *  falls back to cold-start rather than emit a bogus anchor. Here: 8 midpoints at 00:00 + 8 at 12:00. */
-    @Test
-    fun circularMeanReturnsNullForAntipodalMidpoints() {
-        val secs = (0 until 8).flatMap { listOf(sod(0, 0), sod(12, 0)) }   // 16 values, perfectly antipodal
-        assertNull("antipodal midpoints → degenerate resultant → null (no meaningless angle)",
-            SleepStageTotals.circularMeanSec(secs))
-    }
 
     /** The guard also fires end-to-end: a 16-day history split evenly between two antipodal sleep times
      *  (per-day midpoints 12h apart) clears the day-count threshold but yields null, NOT a bogus
@@ -795,8 +765,6 @@ class MainNightConsistencyTest {
             SleepStageTotals.NightBlock(b, bEnd),
         )
         assertEquals(listOf(0, 1), SleepStageTotals.mainNightGroupIndices(blocks, 0L))
-        // The wider bridge lives only in mainNightGroupIndices; bridgeAdjacent's <60-min contract is unchanged.
-        assertEquals(2, SleepStageTotals.bridgeAdjacent(blocks).size)
     }
 
     /** The daytime guard the widening must NOT breach: a genuine afternoon nap (daytime onset) stays its OWN

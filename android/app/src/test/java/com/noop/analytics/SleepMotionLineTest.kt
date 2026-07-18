@@ -12,21 +12,21 @@ import org.junit.Test
 class SleepMotionLineTest {
 
     @Test
-    fun `sparse WHOOP4 night on V1`() {
+    fun `sparse WHOOP4 night`() {
         assertEquals(
-            "sleep-motion day=2026-07-12 grav=118 hr=590 sparse=true stager=V1 family=whoop4",
+            "sleep-motion day=2026-07-12 grav=118 hr=590 sparse=true stager=V2 family=whoop4",
             RestScorer.sleepMotionLine(
                 day = "2026-07-12", grav = 118, hr = 590, sparse = true,
-                useSleepStagerV2 = false, family = DeviceFamily.WHOOP4))
+                family = DeviceFamily.WHOOP4))
     }
 
     @Test
-    fun `dense 5MG night on V2`() {
+    fun `dense 5MG night`() {
         assertEquals(
             "sleep-motion day=2026-07-12 grav=800 hr=590 sparse=false stager=V2 family=whoop5",
             RestScorer.sleepMotionLine(
                 day = "2026-07-12", grav = 800, hr = 590, sparse = false,
-                useSleepStagerV2 = true, family = DeviceFamily.WHOOP5))
+                family = DeviceFamily.WHOOP5))
     }
 
     // #271 onset trace — byte-identical to the Swift RestSubScoreTraceTests.

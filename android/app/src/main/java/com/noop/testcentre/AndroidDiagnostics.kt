@@ -103,8 +103,6 @@ object AndroidDiagnostics {
                 add("(no raw biometric samples under '$id' for this night — expected on a freshly re-added strap; reconnect + let a history sync run, then re-export)")
                 return@runCatching
             }
-            com.noop.analytics.SleepStager.remFunnelDiagnostic(session.startTs, session.endTs, grav, hr, rr, resp)
-                ?.let { add(it.summary) } ?: add("REM funnel: insufficient motion data (<2 gravity samples)")
             val det = com.noop.analytics.DetectedSleep(
                 start = session.startTs, end = session.endTs,
                 efficiency = session.efficiency ?: 0.0, stages = emptyList(),

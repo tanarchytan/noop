@@ -750,11 +750,6 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                         // report ships proof of what was computed per day. Mirrors the macOS sink wired to
                         // live.append(log:). (Sleep overhaul §2.5.)
                         diag = { line -> ble.externalLog(line) },
-                        // Opt-in experimental sleep staging (V2) — read off SharedPreferences here (the
-                        // analytics layer is Context-free) and thread it into the sleep self-heal. (V7 3b)
-                        useExperimentalSleepV2 = PuffinExperiment.from(appContext).experimentalSleepV2,
-                        // Opt-in motion-aware wake refinement (#364 follow-up) — same Context-free threading.
-                        useMotionAwareWake = PuffinExperiment.from(appContext).motionAwareWake,
                         // Sleep & Rest test mode (Test Centre E5): when the SLEEP domain is on, route the
                         // per-day sleep gate trace into the SAME shareable strap log, tagged .sleep so it
                         // lands under the profile in the export. Zero-cost when off: the gate is one
@@ -1301,11 +1296,6 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 // would re-score + persist every night's HRV over the WHOLE night, silently overwriting the
                 // deep-window value (the "deep sleep window changes nothing" bug).
                 deepHrvWindow = UnitPrefs.hrvWindow(appContext) == HrvWindow.DEEP_SLEEP,
-                // Opt-in experimental sleep staging (V2) — same flag the 15-min loop reads, so a manual
-                // re-score after an edit stages with the same engine the user chose. (V7 Pillar 3b)
-                useExperimentalSleepV2 = PuffinExperiment.from(appContext).experimentalSleepV2,
-                // Opt-in motion-aware wake refinement (#364 follow-up) — same flag the 15-min loop reads.
-                useMotionAwareWake = PuffinExperiment.from(appContext).motionAwareWake,
             )
         }.onFailure { if (it is kotlin.coroutines.cancellation.CancellationException) throw it }
     }

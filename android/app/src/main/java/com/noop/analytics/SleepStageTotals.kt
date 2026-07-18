@@ -2,6 +2,13 @@ package com.noop.analytics
 
 import org.json.JSONArray
 import org.json.JSONObject
+import uniffi.whoop_ffi.MainNightBlock
+import uniffi.whoop_ffi.SleepHistoryBlock
+import uniffi.whoop_ffi.bridgedNightGroups as ffiBridgedNightGroups
+import uniffi.whoop_ffi.habitualMidsleepSec as ffiHabitualMidsleepSec
+import uniffi.whoop_ffi.mainNightGroupIndices as ffiMainNightGroupIndices
+import uniffi.whoop_ffi.mainNightIndex as ffiMainNightIndex
+import uniffi.whoop_ffi.mainNightSelection as ffiMainNightSelection
 
 /**
  * Decode a sleep session's `stagesJSON` into stage MINUTE totals, and aggregate a night's blocks into
@@ -146,13 +153,6 @@ object SleepStageTotals {
     /** Circular distance (seconds) at/after which the alignment bonus is 0. Mirrors Swift. */
     const val ALIGNMENT_ZERO_SEC = 5 * 3_600L
 
-    /** A block is treated as having a MEANINGFUL alignment bonus when it earns ANY positive credit, i.e.
-     *  its midpoint sits inside the bonus window (circular distance < [ALIGNMENT_ZERO_SEC]). Outside the
-     *  window the bonus is exactly 0 and contributes nothing to the pick. Tiny epsilon so floating-point
-     *  noise at the window edge can't be mistaken for credit. Identical cross-platform. Mirrors Swift
-     *  `meaningfulBonusEpsilon`. (spec 2026-06-20) */
-    const val MEANINGFUL_BONUS_EPSILON = 1e-9
-
     /** Adjacent sleep runs separated by a wake gap shorter than this (minutes) are bridged into one block
      *  for selection, so a biphasic / briefly-interrupted main sleep is scored as one night. Matches the
      *  research's <60 min "same sleep period" threshold. Mirrors Swift `gapBridgeMaxMin`. (#547) */
@@ -165,8 +165,8 @@ object SleepStageTotals {
      *  the night's tail, not an isolated nap" threshold the detection spine already trusts. Applied (in
      *  [mainNightGroupIndices]) ONLY when the later fragment's onset is still in the overnight band
      *  ([isOvernightOnset]), so a genuine daytime nap (hours away AND begun in daytime) can never be
-     *  folded into the night. Below [GAP_BRIDGE_MAX_MIN] the unconditional bridge is unchanged (so
-     *  [bridgeAdjacent] and its golden tests stay byte-identical). Mirrors Swift `nightTailBridgeMaxMin`. (#861) */
+     *  folded into the night. Below [GAP_BRIDGE_MAX_MIN] the unconditional short-wake bridge is unchanged.
+     *  Mirrors Swift `nightTailBridgeMaxMin`. (#861) */
     const val NIGHT_TAIL_BRIDGE_MAX_MIN = 90
 
     /** One candidate block for main-night selection: its effective onset and end (unix seconds). A user
@@ -228,26 +228,6 @@ object SleepStageTotals {
     internal fun targetMidsleepSec(habitualMidsleepSec: Long?): Long =
         habitualMidsleepSec ?: coldStartAnchorSec
 
-    /** Merge adjacent [NightBlock]s separated by a wake gap shorter than [GAP_BRIDGE_MAX_MIN] into single
-     *  blocks for selection, so a fragmented main sleep is scored as one night. Sorts on [NightBlock.start]
-     *  first so neighbours are adjacent. Pure + deterministic. Mirrors Swift `bridgeAdjacent`. (#547) */
-    fun bridgeAdjacent(blocks: List<NightBlock>): List<NightBlock> {
-        if (blocks.size <= 1) return blocks
-        val sorted = blocks.sortedBy { it.start }
-        val bridgeS = GAP_BRIDGE_MAX_MIN * 60L
-        val out = mutableListOf(sorted[0])
-        for (b in sorted.drop(1)) {
-            val last = out[out.size - 1]
-            val gap = b.start - last.end
-            if (gap in 0 until bridgeS) {
-                out[out.size - 1] = NightBlock(last.start, maxOf(last.end, b.end))
-            } else {
-                out.add(b)
-            }
-        }
-        return out
-    }
-
     /** One bridged night group over the whole input: the fragments (as ORIGINAL indices, ascending) plus
      *  the group's inter-fragment wake seams (start, end) pairs. Produced by [bridgedNightGroups] for the
      *  consumers that must present a briefly-interrupted night as ONE night — the Health Connect export
@@ -260,43 +240,9 @@ object SleepStageTotals {
      *  (a block starting inside the previous span) does not bridge — pinned legacy semantics, `gap >= 0` —
      *  and never fabricates a seam. Groups ordered by start; pure and deterministic. Mirrors Swift
      *  `bridgedNightGroups`. (#364) */
-    fun bridgedNightGroups(blocks: List<NightBlock>, offsetSec: Long): List<BridgedNightGroup> {
-        if (blocks.isEmpty()) return emptyList()
-        // Sort indices by onset so bridging sees neighbours, exactly as `bridgeAdjacent` sorts the blocks.
-        val order = blocks.indices.sortedBy { blocks[it].start }
-        val bridgeS = GAP_BRIDGE_MAX_MIN * 60L
-        val nightTailBridgeS = NIGHT_TAIL_BRIDGE_MAX_MIN * 60L
-        // Build the bridged spans AND the original indices that compose each one, in one pass over `order`.
-        val bridged = ArrayList<NightBlock>()
-        val groups = ArrayList<MutableList<Int>>()
-        val gaps = ArrayList<MutableList<Pair<Long, Long>>>()
-        for (idx in order) {
-            val b = blocks[idx]
-            val last = bridged.lastOrNull()
-            if (last != null) {
-                val gap = b.start - last.end
-                // Unconditional short-wake bridge (< GAP_BRIDGE_MAX_MIN), byte-identical to `bridgeAdjacent`.
-                // Then a WIDER bridge for a true overnight night-tail (#861): a gap in
-                // [GAP_BRIDGE_MAX_MIN, NIGHT_TAIL_BRIDGE_MAX_MIN) folds the fragment in ONLY when its onset is
-                // still in the overnight band: a real mid-night wake, not an isolated daytime nap. This stops
-                // one overnight sleep being split into a nap + a main sleep, while a daytime nap (daytime
-                // onset, or a gap >= NIGHT_TAIL_BRIDGE_MAX_MIN) still stands as its own block.
-                val bridges = gap >= 0 &&
-                    (gap < bridgeS ||
-                        (gap < nightTailBridgeS && isOvernightOnset(b.start, offsetSec)))
-                if (bridges) {
-                    if (gap > 0) gaps[gaps.size - 1].add(last.end to b.start)
-                    bridged[bridged.size - 1] = NightBlock(last.start, maxOf(last.end, b.end))
-                    groups[groups.size - 1].add(idx)
-                    continue
-                }
-            }
-            bridged.add(b)
-            groups.add(mutableListOf(idx))
-            gaps.add(mutableListOf())
-        }
-        return groups.zip(gaps).map { (g, gp) -> BridgedNightGroup(g.sorted(), gp) }
-    }
+    fun bridgedNightGroups(blocks: List<NightBlock>, offsetSec: Long): List<BridgedNightGroup> =
+        ffiBridgedNightGroups(blocks.map { MainNightBlock(it.start, it.end) }, offsetSec)
+            .map { g -> BridgedNightGroup(g.indices.map { it.toInt() }, g.gaps.map { it.start to it.end }) }
 
     /** The indices (into the ORIGINAL [blocks]) of the MAIN-NIGHT GROUP: the main night plus any adjacent
      *  fragments bridged into it. A biphasic / briefly-interrupted main sleep that reaches the selector still
@@ -315,17 +261,9 @@ object SleepStageTotals {
      *  [mainNightIndex] would pick — byte-identical to the old behaviour for the common case. Pure +
      *  deterministic; shares the [bridgedNightGroups] pass + [mainNightIndex] so the pick stays
      *  cross-platform stable. Mirrors Swift `mainNightGroupIndices`. (#561) */
-    fun mainNightGroupIndices(blocks: List<NightBlock>, offsetSec: Long, habitualMidsleepSec: Long? = null): List<Int>? {
-        if (blocks.isEmpty()) return null
-        val all = bridgedNightGroups(blocks, offsetSec)
-        // Rebuild each group's bridged span for scoring: sorted-ascending fragments make the span
-        // (first start, running-max end) — identical to the span the one-pass loop accumulated.
-        val bridgedSpans = all.map { g ->
-            NightBlock(g.indices.minOf { blocks[it].start }, g.indices.maxOf { blocks[it].end })
-        }
-        val winner = mainNightIndex(bridgedSpans, offsetSec, habitualMidsleepSec) ?: return null
-        return all[winner].indices
-    }
+    fun mainNightGroupIndices(blocks: List<NightBlock>, offsetSec: Long, habitualMidsleepSec: Long? = null): List<Int>? =
+        ffiMainNightGroupIndices(blocks.map { MainNightBlock(it.start, it.end) }, offsetSec, habitualMidsleepSec)
+            ?.map { it.toInt() }
 
     /** Index of the day's MAIN night among [blocks], by the LEARNED-TIMING SCORE (replaces the old hard
      *  overnight gate). score(block) = asleepMinutes + alignmentBonus, crediting a block whose midpoint
@@ -335,28 +273,8 @@ object SleepStageTotals {
      *  (stable across platforms). Null only for an empty list. This `NightBlock` overload has no decoded
      *  stages, so "asleep minutes" is the clock span — preserving the prior duration semantics for callers
      *  that rank by span (`analyzeDay`). Mirrors Swift `mainNightIndex`. (#525 / #547) */
-    fun mainNightIndex(blocks: List<NightBlock>, offsetSec: Long, habitualMidsleepSec: Long? = null): Int? {
-        if (blocks.isEmpty()) return null
-        val target = targetMidsleepSec(habitualMidsleepSec)
-        fun score(b: NightBlock): Double {
-            val asleepMin = b.durationS.toDouble() / 60.0
-            val midSec = localSecOfDay(b.midpointSec, offsetSec)
-            return asleepMin + alignmentBonusMinutes(midSec, target)
-        }
-        var bestIdx = 0
-        for (i in 1 until blocks.size) {
-            val cand = blocks[i]
-            val best = blocks[bestIdx]
-            val cs = score(cand)
-            val bs = score(best)
-            val candWins = when {
-                cs != bs -> cs > bs                    // higher score wins
-                else -> cand.start < best.start        // exact tie → earlier onset (stable)
-            }
-            if (candWins) bestIdx = i
-        }
-        return bestIdx
-    }
+    fun mainNightIndex(blocks: List<NightBlock>, offsetSec: Long, habitualMidsleepSec: Long? = null): Int? =
+        ffiMainNightIndex(blocks.map { MainNightBlock(it.start, it.end) }, offsetSec, habitualMidsleepSec)?.toInt()
 
     // ── Selection REASON (explainability — why THIS block won) ───────────────────────────────────────
 
@@ -399,34 +317,16 @@ object SleepStageTotals {
      *
      *  Mirrors Swift `mainNightSelection`. (#547 explainability) */
     fun mainNightSelection(blocks: List<NightBlock>, offsetSec: Long, habitualMidsleepSec: Long? = null): MainNightSelection? {
-        val idx = mainNightIndex(blocks, offsetSec, habitualMidsleepSec) ?: return null
-        val chosen = blocks[idx]
-        val asleepSec = chosen.durationS
-        val reason = if (blocks.size == 1) {
-            MainNightReason.onlyBlock
-        } else {
-            // The duration-only winner: highest asleep CLOCK SPAN, exact ties → earlier onset (the SAME
-            // tie-break the score uses), so "flipped vs duration-only" is a clean, deterministic comparison.
-            var durIdx = 0
-            for (i in 1 until blocks.size) {
-                val c = blocks[i]
-                val b = blocks[durIdx]
-                val cWins = when {
-                    c.durationS != b.durationS -> c.durationS > b.durationS
-                    else -> c.start < b.start
-                }
-                if (cWins) durIdx = i
-            }
-            val target = targetMidsleepSec(habitualMidsleepSec)
-            val chosenMidSec = localSecOfDay(chosen.midpointSec, offsetSec)
-            val chosenBonus = alignmentBonusMinutes(chosenMidSec, target)
-            when {
-                idx != durIdx -> MainNightReason.alignedToUsual                       // timing flipped the pick
-                habitualMidsleepSec != null && chosenBonus > MEANINGFUL_BONUS_EPSILON -> MainNightReason.longestNearUsual
-                else -> MainNightReason.longest                                       // incl. cold-start
-            }
+        val sel = ffiMainNightSelection(
+            blocks.map { MainNightBlock(it.start, it.end) }, offsetSec, habitualMidsleepSec,
+        ) ?: return null
+        val reason = when (sel.reason) {
+            uniffi.whoop_ffi.MainNightReason.ONLY_BLOCK -> MainNightReason.onlyBlock
+            uniffi.whoop_ffi.MainNightReason.LONGEST -> MainNightReason.longest
+            uniffi.whoop_ffi.MainNightReason.LONGEST_NEAR_USUAL -> MainNightReason.longestNearUsual
+            uniffi.whoop_ffi.MainNightReason.ALIGNED_TO_USUAL -> MainNightReason.alignedToUsual
         }
-        return MainNightSelection(idx, reason, asleepSec)
+        return MainNightSelection(sel.index.toInt(), reason, sel.asleepSec)
     }
 
     /** The night's daily sleep aggregate over these blocks' `stagesJSON`, or null if none decode.
@@ -725,51 +625,7 @@ object SleepStageTotals {
         history: List<HistoryBlock>,
         offsetSec: Long,
         minDays: Int = HABITUAL_MIN_DAYS,
-    ): Long? {
-        if (history.isEmpty()) return null
-        // Longest block per local day (selection-independent). Ties within a day → earlier onset (stable).
-        val longestByDay = HashMap<String, HistoryBlock>()
-        for (b in history) {
-            val cur = longestByDay[b.dayKey]
-            if (cur == null || b.durationS > cur.durationS || (b.durationS == cur.durationS && b.start < cur.start)) {
-                longestByDay[b.dayKey] = b
-            }
-        }
-        if (longestByDay.size < minDays) return null
-        // nil when the resultant vector is degenerate (antipodal/uniform midpoints) — falls back to cold-start.
-        val midSecs = longestByDay.values.map { localSecOfDay(it.midpointSec, offsetSec) }
-        return circularMeanSec(midSecs)
-    }
-
-    /** Minimum mean-resultant-vector length (R = |Σ(sin,cos)| / n, in [0, 1]) for a circular mean to be
-     *  meaningful. Below this the midpoint angles are antipodal/uniform: their resultant is ~0 so atan2
-     *  returns an arbitrary direction that Swift and Kotlin can disagree on (a parity break in the
-     *  degenerate case). Tiny and identical cross-platform so both sides reject the SAME inputs. Mirrors
-     *  Swift `circularMeanMinResultant`. (#547) */
-    const val CIRCULAR_MEAN_MIN_RESULTANT = 1e-9
-
-    /** Circular mean of times-of-day (seconds in [0, 86400)) via the mean unit vector (atan2 of summed
-     *  sin/cos). Returns the mean direction as seconds-of-day in [0, 86400), or null when the resultant
-     *  vector is degenerate (empty, or antipodal/uniform so its magnitude is below
-     *  [CIRCULAR_MEAN_MIN_RESULTANT] and the angle is meaningless). null makes [habitualMidsleepSec] fall
-     *  back to cold-start rather than emit a meaningless (and cross-platform-divergent) anchor. Mirrors
-     *  Swift `circularMeanSec`. (#547) */
-    internal fun circularMeanSec(secs: List<Long>): Long? {
-        if (secs.isEmpty()) return null
-        var sumSin = 0.0
-        var sumCos = 0.0
-        val k = 2.0 * Math.PI / SECONDS_PER_DAY.toDouble()
-        for (s in secs) {
-            val a = s.toDouble() * k
-            sumSin += Math.sin(a)
-            sumCos += Math.cos(a)
-        }
-        // Resultant length R = |(Σsin, Σcos)| / n. Below epsilon the direction is meaningless.
-        val resultant = Math.sqrt(sumSin * sumSin + sumCos * sumCos) / secs.size.toDouble()
-        if (resultant < CIRCULAR_MEAN_MIN_RESULTANT) return null
-        var ang = Math.atan2(sumSin, sumCos)          // [-π, π]
-        if (ang < 0) ang += 2.0 * Math.PI             // → [0, 2π)
-        val sec = Math.round(ang / k) % SECONDS_PER_DAY
-        return ((sec % SECONDS_PER_DAY) + SECONDS_PER_DAY) % SECONDS_PER_DAY
-    }
+    ): Long? = ffiHabitualMidsleepSec(
+        history.map { SleepHistoryBlock(it.start, it.end, it.dayKey) }, offsetSec, minDays.toUInt(),
+    )
 }
