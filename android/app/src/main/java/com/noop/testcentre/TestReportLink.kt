@@ -55,22 +55,6 @@ object TestReportLink {
             "```\n" + tail + "\n```\n</details>"
     }
 
-    /**
-     * CAPTURE-A: seed text for the `what_happens` textarea from the mode's questionnaire answers, so the
-     * body opens with the tester's own words instead of a blank box. Joins each answered prompt as
-     * "<prompt>: <answer>" in the questionnaire's declared order (deterministic). Blank answers are
-     * skipped; returns null when nothing was answered (no `what_happens` param is added). The prompts
-     * carry no PII; the strap log (the PII-shaped surface) is the already-redacted `log` block. Mirrors
-     * the Swift whatHappensSeed.
-     */
-    fun whatHappensSeed(questionnaire: List<Question>, answers: Map<String, String>): String? {
-        val parts = questionnaire.mapNotNull { q ->
-            val a = answers[q.id]?.trim()
-            if (a.isNullOrEmpty()) null else "${q.prompt}: $a"
-        }
-        return if (parts.isEmpty()) null else parts.joinToString("\n")
-    }
-
     /** The pure URL string (no Android types) so it is testable on the plain JVM. When [reportText] is
      *  supplied the `log` textarea is prefilled with its <details>-wrapped tail, and a non-blank
      *  [whatHappensSeed] seeds the `what_happens` field (#812). */

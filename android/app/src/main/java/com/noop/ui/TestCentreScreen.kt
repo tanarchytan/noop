@@ -3,7 +3,6 @@ package com.noop.ui
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
@@ -15,15 +14,12 @@ import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.IosShare
 import androidx.compose.material.icons.filled.Upload
-import androidx.compose.material.icons.filled.Vibration
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -38,32 +34,24 @@ import com.noop.BuildConfig
 import com.noop.ble.PuffinExperiment
 import com.noop.ble.WhoopModel
 import com.noop.ingest.RawSensorExport
-import com.noop.testcentre.CaptureAccumulator
-import com.noop.testcentre.CaptureKind
-import com.noop.testcentre.DisplayPerformanceMonitor
 import com.noop.testcentre.ReportReviewGate
 import com.noop.testcentre.TestBundleAssembler
 import com.noop.testcentre.TestCentre
-import com.noop.testcentre.TestCentreLayout
 import com.noop.testcentre.TestDomain
-import com.noop.testcentre.TestMode
 import com.noop.testcentre.TestReportFlow
 import kotlinx.coroutines.launch
 
 /**
- * Settings -> Test Centre (spec section 7), the Android twin of TestCentreView. Two sections: domain
- * test modes (rendered from the registry projection) and diagnostic tools. A NEW file because
- * SettingsScreen.kt (132 KB) cannot grow. Section 1 renders from TestCentreLayout.visibleModes; the
- * Diagnostic tools card now consolidates every diagnostic control in one place: the bug-report button,
- * strap-log / recalibrate / debug-logging, the raw-sensor CSV export, and (on a 5/MG) the raw-frame
- * capture + share, all on the same bindings the Settings cards used before the move. No em-dash.
+ * Settings -> Debug, the Android diagnostic-tools screen. One card consolidates every diagnostic control
+ * in one place: the bug-report button, the strap-log share, the debug-logging switch, the raw-sensor CSV
+ * export, and (on a 5/MG) the raw-frame capture + share, all on the same bindings the Settings cards used
+ * before the move. The bug report assembles the redacted whole-app bundle and opens the review-before-share
+ * gate. No em-dash.
  */
 @Composable
 fun TestCentreScreen(vm: AppViewModel) {
     val context = LocalContext.current
-    val testCentre = remember { TestCentre.from(context) }
-    // CAPTURE-D: a UI scope to emit the data-volume line off the toggle-on path (a store read, so it can't
-    // run inline in the non-suspend onToggle).
+    // A UI scope for the (suspend) bug-report build off the Report tap.
     val scope = rememberCoroutineScope()
 
     // The strap model the Settings #22 gate reads, mirrored here so the 5/MG block shows for a 5/MG only.
@@ -79,85 +67,19 @@ fun TestCentreScreen(vm: AppViewModel) {
     // review dialog; confirming runs TestReportFlow.run.
     var pendingReport by remember { mutableStateOf<PendingReport?>(null) }
 
-    // The Display frame monitor follows the screen: if the Display mode was already on when the screen
-    // appears, (re)start it; always tear it down when the screen leaves so no Choreographer callback
-    // survives a navigation away. The mode flag stays on (the user's test is still active); the monitor
-    // resumes next time this screen is shown. This keeps the perpetual-callback contract: a callback
-    // exists only while the Test Centre is on screen with the Display mode on.
-    DisposableEffect(Unit) {
-        if (testCentre.active(TestDomain.DISPLAY)) {
-            // CAPTURE-D (#797): wire the data-volume provider so the monitor can emit ONE `dataVolume` line
-            // read STRAIGHT from the store (not the reactive caches), against the registry's active strap id.
-            DisplayPerformanceMonitor.dataVolumeProvider = { vm.repo.dataVolumeSnapshot(vm.activeStrapId) }
-            DisplayPerformanceMonitor.start(context) { line ->
-                vm.ble.externalLog(line, TestDomain.DISPLAY)
-            }
-        }
-        onDispose { DisplayPerformanceMonitor.stop() }
-    }
-    // CAPTURE-D: emit the data-volume line once when the Display mode is active on entry. Kept off the
-    // (non-suspend) DisposableEffect: the read hits the store, so it runs from a coroutine.
-    LaunchedEffect(Unit) {
-        if (testCentre.active(TestDomain.DISPLAY)) DisplayPerformanceMonitor.emitDataVolume()
-    }
-
     ScreenScaffold(
-        title = "Test Centre",
-        subtitle = "Turn on a test for the thing that's wrong, wear the strap, then tap Report. Everything stays on this phone.",
+        title = "Debug",
+        subtitle = "Diagnostic tools for bug reports. Everything stays on this phone unless you share it.",
     ) {
-        // --- Section 1: Domain test modes ---
-        SettingsSectionTC(
-            icon = Icons.Filled.BugReport,
-            title = "Test modes",
-            blurb = "Each test logs extra detail for one part of the app while you wear the strap, then bundles it for a bug report.",
-        ) {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                TestCentreLayout.visibleModes(is5MG).forEach { mode ->
-                    TestModeRow(
-                        mode = mode,
-                        active = testCentre.active(mode.domain),
-                        startedAtSeconds = testCentre.startedAt(mode.domain),
-                        // #965: the shareable strap log the report exports, so the row's "K of N" is the
-                        // HONEST per-mode captured-day count (CaptureAccumulator), not an elapsed-clock proxy.
-                        // Recomputes with `live` (collected above) so the count updates as new days land.
-                        logText = vm.ble.exportLogText(),
-                        onToggle = { on ->
-                            if (on) testCentre.activate(mode.domain) else testCentre.deactivate(mode.domain)
-                            // Display & Performance owns a live frame monitor. It must run ONLY while the
-                            // mode is on: start it on toggle-on (wiring its sink to the redacting DISPLAY
-                            // log), tear it down on toggle-off so no Choreographer callback survives.
-                            // Zero-cost when off.
-                            if (mode.domain == TestDomain.DISPLAY) {
-                                if (on) {
-                                    // CAPTURE-D (#797): wire the data-volume provider (store-read, active id),
-                                    // start the monitor, then emit the upfront dataVolume line off a scope.
-                                    DisplayPerformanceMonitor.dataVolumeProvider =
-                                        { vm.repo.dataVolumeSnapshot(vm.activeStrapId) }
-                                    DisplayPerformanceMonitor.start(context) { line ->
-                                        vm.ble.externalLog(line, TestDomain.DISPLAY)
-                                    }
-                                    scope.launch { DisplayPerformanceMonitor.emitDataVolume() }
-                                } else {
-                                    DisplayPerformanceMonitor.stop()
-                                }
-                            }
-                        },
-                        onReport = {
-                            // Launched (#1002): buildPending is now suspend (storage probe reads the store).
-                            scope.launch { pendingReport = buildPending(context, mode, vm.ble.exportLogText(), vm) }
-                        },
-                    )
-                }
-            }
-        }
-
-        // --- Section 2: Diagnostic tools (now hosts the relocated bug-report + raw exports too) ---
+        // Diagnostic tools: the bug-report action plus the raw exports.
         DiagnosticToolsCard(
             vm,
             is5MG,
             onReport = {
                 // Launched (#1002): buildPending is now suspend (storage probe reads the store).
-                scope.launch { pendingReport = buildPending(context, MASTER_REPORT_MODE, vm.ble.exportLogText(), vm) }
+                scope.launch {
+                    pendingReport = buildPending(context, TestDomain.MASTER, "Bug report", vm.ble.exportLogText(), vm)
+                }
             },
         )
     }
@@ -198,21 +120,13 @@ private class PendingReport(
     val modeInactive: Boolean = false,
 )
 
-/** The "whole app" report profile for the section-3 manual Report button. MASTER is not a registry mode
- *  (it has no wear-and-capture flow), so the deep-link self-applies the test:all label via this. */
-private val MASTER_REPORT_MODE = TestMode(
-    domain = TestDomain.MASTER, title = "Bug report", blurb = "", icon = "ic_bug",
-    priority = com.noop.testcentre.TestPriority.HIGH, captures = emptyList(),
-    questionnaire = emptyList(), liveReadout = emptyList(),
-    capture = com.noop.testcentre.CaptureKind.Toggle, includesScreenshot = false, requires5MG = false,
-)
-
 /** Assemble the redacted, capped bundle for a profile and wrap it in the review gate. Suspend (#1002):
  *  the storage probe reads the store, so the callers launch it on the UI scope; the dialog presents off
  *  the same `pendingReport` state a beat after the tap. */
 private suspend fun buildPending(
     context: android.content.Context,
-    mode: TestMode,
+    profile: TestDomain,
+    title: String,
     logText: String,
     vm: AppViewModel,
 ): PendingReport {
@@ -250,60 +164,9 @@ private suspend fun buildPending(
     // it reflects the strap that actually linked; the display name matches the Swift wire value.
     val strapModel = NoopPrefs.of(context).getString("noop.selectedWhoopModel", null)
         ?.let { name -> runCatching { WhoopModel.valueOf(name).displayName }.getOrNull() }
-    val entries = TestBundleAssembler.assemble(context, mode.domain, logText, storage, strapModel)
-    val modeInactive = mode.domain != TestDomain.MASTER && !TestCentre.from(context).active(mode.domain)
-    return PendingReport(mode.domain, mode.title, entries, ReportReviewGate(entries), modeInactive)
-}
-
-@Composable
-private fun TestModeRow(
-    mode: TestMode,
-    active: Boolean,
-    startedAtSeconds: Long?,
-    logText: String,
-    onToggle: (Boolean) -> Unit,
-    onReport: () -> Unit,
-) {
-    var on by remember { mutableStateOf(active) }
-    val elapsed = startedAtSeconds?.let { (System.currentTimeMillis() / 1000.0) - it }
-    // #965: HONEST per-mode captured-day count for a guided row (distinct days THIS mode produced its own
-    // trace on), read from the same log the report exports, so each active mode accumulates its OWN count
-    // instead of every guided row sharing one elapsed number. null for a toggle mode (no "K of N") / when off.
-    val capturedUnits: Int? =
-        if (on && mode.capture is CaptureKind.Guided) {
-            CaptureAccumulator.capturedDays(
-                domain = mode.domain,
-                reportText = logText,
-                tzOffsetSeconds =
-                    (java.util.TimeZone.getDefault().getOffset(System.currentTimeMillis()) / 1000).toLong(),
-            )
-        } else {
-            null
-        }
-    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f)) {
-                Text(mode.title, style = NoopType.body, color = Palette.textPrimary)
-                Text(
-                    TestCentreLayout.statusText(mode, on, elapsed, capturedUnits),
-                    style = NoopType.footnote,
-                    color = Palette.textSecondary,
-                )
-            }
-            Switch(
-                checked = on,
-                onCheckedChange = { on = it; onToggle(it) },
-                colors = settingsSwitchColors(),
-            )
-        }
-        Text(mode.blurb, style = NoopType.footnote, color = Palette.textTertiary)
-        Row {
-            Spacer(Modifier.weight(1f))
-            TextButton(onClick = onReport) {
-                Text("Report", color = Palette.accent, style = NoopType.body)
-            }
-        }
-    }
+    val entries = TestBundleAssembler.assemble(context, profile, logText, storage, strapModel)
+    val modeInactive = profile != TestDomain.MASTER && !TestCentre.from(context).active(profile)
+    return PendingReport(profile, title, entries, ReportReviewGate(entries), modeInactive)
 }
 
 @Composable
@@ -320,7 +183,7 @@ private fun DiagnosticToolsCard(vm: AppViewModel, is5MG: Boolean, onReport: () -
     SettingsSectionTC(
         icon = Icons.Filled.Info,
         title = "Diagnostic tools",
-        blurb = "Report a bug, share your strap log, buzz the time on your strap, and export the raw sensor CSV (any strap) or the raw 5/MG capture. Nothing leaves the phone unless you share it.",
+        blurb = "Report a bug, share your strap log, and export the raw sensor CSV (any strap) or the raw 5/MG capture. Nothing leaves the phone unless you share it.",
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             // The master bug-report action (relocated from the old Export card): assembles the redacted
@@ -373,21 +236,6 @@ private fun DiagnosticToolsCard(vm: AppViewModel, is5MG: Boolean, onReport: () -
             )
             Text(
                 "Saves the last 24h of decoded sensor samples (heart rate, R-R, motion, steps and any 5/MG deep streams you've unlocked) as one CSV you can share, for tinkering with your own data. Nothing leaves the phone unless you share it.",
-                style = NoopType.caption,
-                color = Palette.textTertiary,
-            )
-            // Haptic clock (#460, moved here from Settings): buzz the current time on the strap as a
-            // sequence of buzzes. Works on any strap; no-ops safely when disconnected. 12/24h follows the
-            // phone's own clock setting.
-            NoopButton(
-                text = "Buzz the time on your strap",
-                leadingIcon = Icons.Filled.Vibration,
-                kind = NoopButtonKind.Secondary,
-                fullWidth = true,
-                onClick = { vm.ble.buzzTimeNow(is24h = android.text.format.DateFormat.is24HourFormat(context)) },
-            )
-            Text(
-                "Feel the current time as a sequence of buzzes (#460). Does nothing unless your strap is connected.",
                 style = NoopType.caption,
                 color = Palette.textTertiary,
             )
@@ -504,7 +352,7 @@ private fun SettingsSectionTC(
     NoopCard(padding = 20.dp, tint = Palette.accent) {
         Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
             Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Overline("Test Centre")
+                Overline("Debug")
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(10.dp),

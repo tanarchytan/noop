@@ -157,24 +157,4 @@ class ImportTraceTest {
         assertEquals("appleHealth", ImportTrace.kindWire("Apple Health"))
         assertEquals("xiaomiBand", ImportTrace.kindWire("Xiaomi Smart Band"))
     }
-
-    @Test fun lastImportSummaryParsesTaggedTail() {
-        val tail = listOf(
-            "import file kind=whoopExport ext=zip size=1-10MB",
-            "import parser=whoopExport v=1 traceV=1",
-            "import stage=cycles rowsIn=30 rowsOut=28 (2 not written)",
-            "import stage=sleeps rowsIn=31 rowsOut=31 (all written)",
-            "import dayDelta stage=cycles daysMapped=30 daysPersisted=28 (2 days not persisted)",
-        )
-        assertEquals(
-            "parser=whoopExport v=1 traceV=1 " +
-                "· stage=sleeps rowsIn=31 rowsOut=31 (all written) " +
-                "· stage=cycles daysMapped=30 daysPersisted=28 (2 days not persisted)",
-            ImportReadout.lastImportSummary(tail),
-        )
-    }
-
-    @Test fun lastImportSummaryNullWhenNoImportTraced() {
-        assertNull(ImportReadout.lastImportSummary(listOf("gate run kept", "connect up")))
-    }
 }

@@ -96,36 +96,3 @@ object DisplayTrace {
      *  locale-independent; String.format with Locale.US matches it). */
     private fun oneDecimal(v: Double): String = String.format(java.util.Locale.US, "%.1f", v)
 }
-
-/**
- * Pure values for the Display & Performance live-readout panel (Kotlin twin of the Swift DisplayReadout).
- * Each parses the DISPLAY-tagged log tail the emitters write. No state, no IO, no em-dashes.
- */
-object DisplayReadout {
-
-    /** The most recent device-metrics summary for the `deviceMetricsNow` id: everything after the
-     *  "deviceMetrics " marker on the last device-metrics line. null when none yet. Mirrors the Swift parser. */
-    fun deviceMetricsNow(taggedTail: List<String>): String? {
-        for (line in taggedTail.asReversed()) {
-            val i = line.indexOf("deviceMetrics ")
-            if (i >= 0) {
-                val frag = line.substring(i + "deviceMetrics ".length).trim()
-                if (frag.isNotEmpty()) return frag
-            }
-        }
-        return null
-    }
-
-    /** The most recent frame-summary fragment for an at-a-glance perf read, or null when the frame monitor
-     *  has not yet emitted a window. Mirrors the Swift parser. */
-    fun frameSummaryNow(taggedTail: List<String>): String? {
-        for (line in taggedTail.asReversed()) {
-            val i = line.indexOf("frameSummary ")
-            if (i >= 0) {
-                val frag = line.substring(i + "frameSummary ".length).trim()
-                if (frag.isNotEmpty()) return frag
-            }
-        }
-        return null
-    }
-}

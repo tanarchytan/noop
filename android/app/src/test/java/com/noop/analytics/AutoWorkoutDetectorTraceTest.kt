@@ -4,14 +4,13 @@ import com.noop.data.GravitySample
 import com.noop.data.HrSample
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
-import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
  * Twin of the Swift AutoWorkoutDetectorTraceTests: the Workouts & GPS test mode's pure traces. Proves the
  * auto-detect trace returns the SAME List<DetectedWorkout> detect(...) does (byte-identical) AND names why
- * each window was offered or dropped, plus the WorkoutsTrace line formatters and the WorkoutsReadout parser.
+ * each window was offered or dropped, plus the WorkoutsTrace line formatters.
  * No em-dashes. Pure-JVM, no Robolectric / Mockito.
  */
 class AutoWorkoutDetectorTraceTest {
@@ -103,17 +102,5 @@ class AutoWorkoutDetectorTraceTest {
                 verdict = "droppedOverlap", durMin = 42, avgBpm = 148, overlapSource = "manual",
             ),
         )
-    }
-
-    @Test fun workoutsReadoutParsesLastSession() {
-        val tail = listOf(
-            "[workouts] session event=start sport=running hrSamples=0",
-            "[workouts] session event=end sport=running hrSamples=1200 durationSec=1260 gpsPoints=240",
-        )
-        assertEquals(
-            "event=end sport=running hrSamples=1200 durationSec=1260 gpsPoints=240",
-            WorkoutsReadout.lastSessionSummary(tail),
-        )
-        assertNull(WorkoutsReadout.lastSessionSummary(emptyList()))
     }
 }

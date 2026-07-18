@@ -103,24 +103,6 @@ class TestReportLinkTest {
     }
 
     @Test
-    fun whatHappensSeedJoinsAnsweredPromptsInOrder() {
-        val qs = listOf(
-            Question(id = "q1", prompt = "When did it happen", kind = Question.Kind.TEXT),
-            Question(id = "q2", prompt = "Did you wear it", kind = Question.Kind.YES_NO),
-            Question(id = "q3", prompt = "Unanswered", kind = Question.Kind.TEXT),
-        )
-        val seed = TestReportLink.whatHappensSeed(qs, mapOf("q1" to "last night", "q2" to "yes"))
-        assertEquals("When did it happen: last night\nDid you wear it: yes", seed)
-    }
-
-    @Test
-    fun whatHappensSeedNullWhenNothingAnswered() {
-        val qs = listOf(Question(id = "q1", prompt = "p", kind = Question.Kind.TEXT))
-        assertNull(TestReportLink.whatHappensSeed(qs, emptyMap()))
-        assertNull(TestReportLink.whatHappensSeed(qs, mapOf("q1" to "  ")))
-    }
-
-    @Test
     fun whatHappensSeedAddsParamWhenSupplied() {
         val s = TestReportLink.reportUrlString(
             profile = TestDomain.SLEEP, title = "x",

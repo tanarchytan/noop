@@ -1,7 +1,6 @@
 package com.noop.analytics
 
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -88,32 +87,5 @@ class DisplayTraceTest {
             DataVolume(dbRows = 0, importedDays = 0, workouts = 0, lastRenderRows = null),
         )
         assertEquals("dataVolume dbRows=0 importedDays=0 workouts=0 lastRenderRows=n/a", line)
-    }
-
-    @Test
-    fun readoutParsesLatestDeviceMetricsAndFrameSummary() {
-        val tail = listOf(
-            "[display] deviceMetrics size=320x568pt @2.0x sizeClass=n/a/n/a safeArea=t0 b0 l0 r0 dynamicType=1.00 orientation=portrait theme=light",
-            "[display] frameSummary frames=60 mean=16.7ms p95=18.4ms hitches=0 worst=20.1ms threshold=33.0ms",
-            "[display] deviceMetrics size=390x844pt @3.0x sizeClass=n/a/n/a safeArea=t47 b34 l0 r0 dynamicType=1.30 orientation=portrait theme=dark",
-        )
-        assertEquals(
-            "size=390x844pt @3.0x sizeClass=n/a/n/a safeArea=t47 b34 l0 r0 dynamicType=1.30 orientation=portrait theme=dark",
-            DisplayReadout.deviceMetricsNow(tail),
-        )
-        assertEquals(
-            "frames=60 mean=16.7ms p95=18.4ms hitches=0 worst=20.1ms threshold=33.0ms",
-            DisplayReadout.frameSummaryNow(tail),
-        )
-    }
-
-    @Test
-    fun readoutNullWhenNoLine() {
-        assertNull(DisplayReadout.deviceMetricsNow(emptyList()))
-        assertNull(
-            DisplayReadout.frameSummaryNow(
-                listOf("[display] deviceMetrics size=1x1pt @1.0x sizeClass=n/a/n/a safeArea=t0 b0 l0 r0 dynamicType=1.00 orientation=portrait theme=light"),
-            ),
-        )
     }
 }

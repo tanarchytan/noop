@@ -13,9 +13,8 @@ import com.noop.data.HrSample
 // missing / auto-detect didn't fire" report shows exactly which gate kept or dropped each window.
 //
 // WorkoutsTrace adds the line formatters the app emitters use for the session lifecycle, the GPS-fix count
-// and the cross-source dedup decisions. WorkoutsReadout parses the WORKOUTS-tagged log tail back into the
-// lastSessionSummary id. Everything is pure, no clock, no IO, no PII. Byte-aligned with the Swift line
-// shapes so a shared report reads identically on either platform. No em-dashes.
+// and the cross-source dedup decisions. Everything is pure, no clock, no IO, no PII. Byte-aligned with the
+// Swift line shapes so a shared report reads identically on either platform. No em-dashes.
 
 object AutoWorkoutDetectorTrace {
 
@@ -136,9 +135,9 @@ object AutoWorkoutDetectorTrace {
 }
 
 /**
- * Pure line formatters + the live-readout parser for the Workouts & GPS test mode. Kotlin twin of the Swift
- * WorkoutsTrace / WorkoutsReadout. The app emitters own the live state; these own the line SHAPE so both
- * platforms read identically. No state, no IO, no PII. No em-dashes.
+ * Pure line formatters for the Workouts & GPS test mode. Kotlin twin of the Swift WorkoutsTrace. The app
+ * emitters own the live state; these own the line SHAPE so both platforms read identically. No state, no
+ * IO, no PII. No em-dashes.
  */
 object WorkoutsTrace {
 
@@ -197,26 +196,5 @@ object WorkoutsTrace {
         var line = "detectedBout verdict=$verdict durMin=$durMin avgBpm=$avgBpm"
         if (overlapSource != null) line += " overlapSource=$overlapSource"
         return line
-    }
-}
-
-/**
- * Pure values for the Workouts & GPS live-readout panel. Kotlin twin of the Swift WorkoutsReadout. Parses
- * the WORKOUTS-tagged log tail the emitters write. No state, no IO, no em-dashes. (Android defers the Compose
- * readout panel for ALL modes, matching the existing split; this twin exists for parity + tests.)
- */
-object WorkoutsReadout {
-
-    /** The last session summary for the `lastSessionSummary` id: the most recent session-lifecycle line's
-     *  fragment, or null when none is present. */
-    fun lastSessionSummary(taggedTail: List<String>): String? {
-        for (line in taggedTail.asReversed()) {
-            val i = line.indexOf("session ")
-            if (i >= 0) {
-                val frag = line.substring(i + "session ".length).trim()
-                if (frag.isNotEmpty()) return frag
-            }
-        }
-        return null
     }
 }

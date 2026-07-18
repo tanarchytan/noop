@@ -128,13 +128,12 @@ object TestBundleAssembler {
             crashWasCaptured = true
         }
 
-        // 1b. Display & Performance: capture a screenshot for the DISPLAY profile (or any mode that declares
-        //     includesScreenshot) as screenshot.png. The binary PNG is kept OUT of the redact pass (redaction
+        // 1b. Display & Performance: capture a screenshot for the DISPLAY profile as screenshot.png. The
+        //     binary PNG is kept OUT of the redact pass (redaction
         //     scrubs text identifiers, not pixels). The screenshot is still covered by the mandatory
         //     review-before-share gate, which names the attachment. A capture only happens for the gated
         //     profile, so a non-display report never grabs a shot. Mirrors the Swift assembler.
-        val wantsShot = profile == TestDomain.DISPLAY ||
-            (TestModeRegistry.mode(profile)?.includesScreenshot == true)
+        val wantsShot = profile == TestDomain.DISPLAY
         val shot: Pair<String, ByteArray>? = if (wantsShot) {
             DisplayScreenshot.capturePNG(context)?.let { png -> DisplayScreenshot.BUNDLE_NAME to png }
         } else {

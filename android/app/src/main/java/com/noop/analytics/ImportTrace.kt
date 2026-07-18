@@ -194,39 +194,3 @@ object ImportTrace {
         else -> source.lowercase().filter { it.isLetterOrDigit() }.ifEmpty { "unknown" }
     }
 }
-
-/**
- * Pure values for the Import & Data Ingest live-readout. Kotlin twin of the Swift ImportReadout. Parses
- * the IMPORT-tagged log tail the import emitters write. No state, no IO, no em-dashes. (The Compose readout
- * panel is deferred for ALL modes; this parser exists for parity + the shared report.)
- */
-object ImportReadout {
-
-    /** The last import summary for the `lastImportSummary` id: the most recent parser-identity fragment in
-     *  the tagged tail, enriched with the latest per-stage and day-delta fragment. null when no import has
-     *  been traced yet. Mirrors the Swift parser. */
-    fun lastImportSummary(taggedTail: List<String>): String? {
-        var parserFrag: String? = null
-        for (line in taggedTail.asReversed()) {
-            val i = line.indexOf("import parser=")
-            if (i >= 0) { parserFrag = line.substring(i + "import parser=".length).trim(); break }
-        }
-        val parser = parserFrag ?: return null
-
-        var stageFrag: String? = null
-        for (line in taggedTail.asReversed()) {
-            val i = line.indexOf("import stage=")
-            if (i >= 0) { stageFrag = line.substring(i + "import stage=".length).trim(); break }
-        }
-        var dayFrag: String? = null
-        for (line in taggedTail.asReversed()) {
-            val i = line.indexOf("import dayDelta ")
-            if (i >= 0) { dayFrag = line.substring(i + "import dayDelta ".length).trim(); break }
-        }
-
-        val sb = StringBuilder("parser=$parser")
-        if (stageFrag != null) sb.append(" · stage=").append(stageFrag)
-        if (dayFrag != null) sb.append(" · ").append(dayFrag)
-        return sb.toString()
-    }
-}

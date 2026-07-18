@@ -166,36 +166,4 @@ class StepsEstimateEngineTraceTest {
         assertTrue(fit.contains("manual=true"))
         assertTrue(fit.contains("k=9.5"))
     }
-
-    // MARK: readout parsers
-
-    @Test fun stepsReadoutParsesScaledStepsAndEstimate() {
-        assertEquals(
-            120,
-            StepsReadout.stepsToday(
-                listOf("[steps] stepsRaw total rawTicks=120 ticksPerStep=1.0 scaledSteps=120 (steps_est for the day)"),
-            ),
-        )
-        assertEquals(
-            8421,
-            StepsReadout.stepsToday(
-                listOf("[steps] stepsEst day=2026-01-02 steps=8421 motion=4123.5 (motion-volume estimate)"),
-            ),
-        )
-    }
-
-    @Test fun calibrationStateReadoutParsesFitAndWithheld() {
-        assertEquals(
-            "k=10.0 sampleDays=5 confidence=0.8 manual=false",
-            StepsReadout.calibrationState(
-                listOf("[steps] stepsCal fit k=10.0 sampleDays=5 confidence=0.8 manual=false (k = motion-weighted median of steps/motion)"),
-            ),
-        )
-        assertEquals(
-            "not calibrated (needsMoreDays have=2 need=3)",
-            StepsReadout.calibrationState(
-                listOf("[steps] stepsCal withheld reason=needsMoreDays have=2 need=3 (no usable auto-fit and no manual k)"),
-            ),
-        )
-    }
 }

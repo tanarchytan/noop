@@ -34,7 +34,7 @@
     <string name="nav_notifications">Mitteilungen</string>
     <string name="nav_support">Support</string>
     <string name="nav_settings">Einstellungen</string>
-    <string name="nav_test_centre">Testcenter</string>
+    <string name="nav_test_centre">Debug</string>
     <string name="nav_profile">Profil</string>
     <string name="nav_about">Über</string>
     <string name="nav_more">Mehr</string>
