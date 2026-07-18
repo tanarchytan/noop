@@ -239,6 +239,9 @@ fun TodayScreen(
     updateStore: UpdateStore? = null,
     onOpenUpdates: () -> Unit = {},
     onOpenSettings: () -> Unit = {},
+    // The leading avatar in the Today header opens the Profile menu (body profile + units). Defaults to
+    // onOpenSettings so an unbound caller keeps a sensible destination.
+    onOpenProfile: () -> Unit = onOpenSettings,
     onOpenHydration: () -> Unit = {},
     // #706/#684: the "Your cards" dashboard rows are tappable on iOS but only Hydration navigated on Android.
     // These push each card's detail (Stress card -> Stress; Sleep -> Sleep), matching the iOS pinnedCardRow
@@ -1062,7 +1065,7 @@ fun TodayScreen(
                 historySyncExperimental = liveSnap.historySyncExperimental,
                 onPickDay = { offset -> selectedDayOffset = offset },
                 onQuickActions = onQuickActions,
-                onOpenSettings = onOpenSettings,
+                onOpenProfile = onOpenProfile,
                 onOpenDevices = onOpenDevices,
             )
         }
@@ -1899,7 +1902,7 @@ private fun LiquidTodayHeader(
     historySyncExperimental: Boolean = false,
     onPickDay: (Int) -> Unit,
     onQuickActions: () -> Unit,
-    onOpenSettings: () -> Unit,
+    onOpenProfile: () -> Unit,
     onOpenDevices: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -1938,6 +1941,22 @@ private fun LiquidTodayHeader(
         verticalAlignment = Alignment.Top,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
+        // LEADING: the profile avatar (the photo set in Settings, or the NOOP loop mark) → Profile menu.
+        // Moved to the leading position so the avatar reads as "you" at the very start of the header.
+        Box(
+            modifier = Modifier
+                .size(34.dp)
+                .clip(CircleShape)
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null,
+                    onClick = onOpenProfile,
+                )
+                .semantics { contentDescription = "Profile" },
+            contentAlignment = Alignment.Center,
+        ) {
+            ProfileAvatar(size = 34.dp)
+        }
         // LEFT: the tappable title block — big rounded-bold day title over the human date line. Taps open the
         // day picker; a horizontal swipe across the dashboard still changes the day. weight(1f) so the title
         // claims the leading room and never pushes the trailing control cluster. Mirrors iOS's title Button.
@@ -1972,7 +1991,8 @@ private fun LiquidTodayHeader(
             )
         }
 
-        // RIGHT: the controls, in order — [sync chip] · avatar · + · battery ring. Each ~34dp, 8dp apart.
+        // RIGHT: the controls, in order — [sync chip] · + · battery ring. Each ~34dp, 8dp apart.
+        // (The profile avatar moved to the leading/left position above.)
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -1984,21 +2004,6 @@ private fun LiquidTodayHeader(
                 backfilling = backfilling, chunks = syncChunksThisSession,
                 lastSyncAt = lastSyncAt, historySyncExperimental = historySyncExperimental,
             )
-            // (a) Profile avatar (the photo set in Settings, or the NOOP loop mark) → Settings. Mirrors iOS.
-            Box(
-                modifier = Modifier
-                    .size(34.dp)
-                    .clip(CircleShape)
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null,
-                        onClick = onOpenSettings,
-                    )
-                    .semantics { contentDescription = "Profile and settings" },
-                contentAlignment = Alignment.Center,
-            ) {
-                ProfileAvatar(size = 34.dp)
-            }
             // (b) Quick-add (+), the accented primary. Mirrors iOS's LiquidAddButton (a glyph on a translucent
             // disc → the quick-actions menu). Sized 34dp to match the rest of the liquid cluster.
             QuickActionDisc(onClick = onQuickActions)

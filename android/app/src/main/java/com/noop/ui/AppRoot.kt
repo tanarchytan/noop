@@ -42,10 +42,12 @@ import androidx.compose.material.icons.filled.FitnessCenter
 import androidx.compose.material.icons.filled.HealthAndSafety
 import androidx.compose.material.icons.filled.Hexagon
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Insights
 import androidx.compose.material.icons.filled.MonitorHeart
 import androidx.compose.material.icons.filled.MoreHoriz
 import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Psychology
 import androidx.compose.material.icons.filled.Sensors
 import androidx.compose.material.icons.filled.Settings
@@ -160,6 +162,12 @@ private enum class Destination(
     Notifications("notifications", R.string.nav_notifications, Icons.Filled.Notifications),
     Settings("settings", R.string.nav_settings, Icons.Filled.Settings),
     TestCentre("test_centre", R.string.nav_test_centre, Icons.Filled.BugReport),
+    // Minimal About (name + version + GitHub link), listed in the More page's "App" group.
+    About("about", R.string.nav_about, Icons.Filled.Info),
+
+    // Profile menu (body profile + units) — reached ONLY from the Today header's leading avatar, so
+    // like [CoupledView] it is deliberately NOT in any [DrawerGroup].
+    ProfileMenu("profile_menu", R.string.nav_profile, Icons.Filled.Person),
 
     // The "More" tab: its own navigated page (mirroring the iOS More tab) that hosts the full
     // grouped destination list. It is NOT itself in any [DrawerGroup] — it's the door to them.
@@ -211,7 +219,7 @@ private val drawerGroups: List<DrawerGroup> = listOf(
     ), defaultExpanded = false),
     DrawerGroup("App", R.string.more_group_app, listOf(
         Destination.Automations, Destination.SmartAlarm, Destination.Notifications,
-        Destination.TestCentre, Destination.Settings,
+        Destination.TestCentre, Destination.Settings, Destination.About,
     ), defaultExpanded = false),
 )
 
@@ -313,9 +321,11 @@ fun AppRoot(viewModel: AppViewModel = viewModel()) {
                         // sheet AppRoot presents (it owns the nav for deep-links).
                         updateStore = updateStore,
                         onOpenUpdates = { showUpdatesInbox = true },
-                        // The leading profile avatar opens Settings (where the photo is set/changed),
-                        // mirroring iOS's avatar-leading Today header. The drawer hamburger is unchanged.
+                        // The leading profile avatar opens the Profile menu (body profile + units);
+                        // Settings stays reachable from the More page. The gear/Settings deep-links kept
+                        // for cards that still open Settings directly.
                         onOpenSettings = { nav.navigateTopLevel(Destination.Settings.route) },
+                        onOpenProfile = { nav.navigateTopLevel(Destination.ProfileMenu.route) },
                         // The opt-in Hydration card (only shown when Hydration tracking is on) pushes its
                         // detail. A normal push so the back-stack returns to Today.
                         onOpenHydration = { nav.navigate(Destination.Hydration.route) },
@@ -408,12 +418,11 @@ fun AppRoot(viewModel: AppViewModel = viewModel()) {
                 composable(Destination.BackupSync.route) { BackupSyncScreen(viewModel.repo, viewModel.activeStrapId) }
                 composable(Destination.Notifications.route) { NotificationsSettingsScreen(viewModel) }
                 composable(Destination.Settings.route) {
-                    SettingsScreen(
-                        viewModel,
-                        onOpenTestCentre = { nav.navigate(Destination.TestCentre.route) },
-                    )
+                    SettingsScreen(viewModel)
                 }
                 composable(Destination.TestCentre.route) { TestCentreScreen(viewModel) }
+                composable(Destination.About.route) { AboutScreen() }
+                composable(Destination.ProfileMenu.route) { ProfileMenuScreen(viewModel) }
                 // The "More" page — the iOS More tab's twin: a navigated ScreenScaffold page hosting the
                 // full grouped destination list (was a pull-up sheet). A row navigates top-level.
                 composable(Destination.More.route) {
