@@ -254,25 +254,6 @@ object HrvAnalyzer {
     // ── Windowed analysis ────────────────────────────────────────────────────
 
     /**
-     * Compute HRV (RMSSD/SDNN/meanNN/pNN50) over the RR intervals whose ts falls
-     * in [windowStart, windowEnd] (inclusive). Pass null bounds to use all rows.
-     *
-     * Applies the range filter, Malik ectopic rejection, then requires [MIN_BEATS]
-     * clean intervals; otherwise returns an empty result.
-     *
-     * Window bounds are unix SECONDS (Long), matching the com.noop.data layer.
-     */
-    fun analyze(rr: List<RrInterval>, windowStart: Long? = null, windowEnd: Long? = null): HrvResult {
-        val inWindow = rr.filter { sample ->
-            if (windowStart != null && sample.ts < windowStart) return@filter false
-            if (windowEnd != null && sample.ts > windowEnd) return@filter false
-            true
-        }
-        val raw = inWindow.map { it.rrMs.toDouble() }
-        return analyzeRaw(raw)
-    }
-
-    /**
      * Compute HRV from raw RR-interval values (ms), applying the full cleaning
      * pipeline. Returns an empty result when fewer than [MIN_BEATS] survive.
      *

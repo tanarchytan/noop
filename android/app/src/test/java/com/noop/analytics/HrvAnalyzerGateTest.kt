@@ -1,20 +1,15 @@
 package com.noop.analytics
 
-import com.noop.data.RrInterval
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Test
 
 /**
  * #585 — the spot honesty gate ([HrvAnalyzer.analyzeRaw]'s optional `maxRejectedFraction`).
  *
- * Swift parity twin of the gate tests in `StrandAnalytics/Tests/.../HRVAnalyzerTests.swift`. Two
- * guarantees:
- *  1. a spot reading is REFUSED when too large a fraction of input beats was rejected as noise, even
- *     though >= MIN_BEATS clean intervals survive;
- *  2. the NIGHTLY windowed `analyze(...)` passes NO ceiling, so it is byte-identical to the un-gated
- *     raw analysis on the same beats — overnight HRV must not move.
+ * Swift parity twin of the gate tests in `StrandAnalytics/Tests/.../HRVAnalyzerTests.swift`: a spot
+ * reading is REFUSED when too large a fraction of input beats was rejected as noise, even though
+ * >= MIN_BEATS clean intervals survive.
  */
 class HrvAnalyzerGateTest {
 
@@ -42,22 +37,5 @@ class HrvAnalyzerGateTest {
         val gated = HrvAnalyzer.analyzeRaw(rr, maxRejectedFraction = 0.35)
         assertEquals(30, gated.nClean)
         assertEquals(0.0, gated.rmssd!!, 1e-9)
-    }
-
-    @Test
-    fun nightlyWindowedRmssdUnchangedWithDefaultedGate() {
-        // The nightly windowed analyze(...) passes NO maxRejectedFraction, so the gate is skipped and the
-        // result is byte-identical to analyzeRaw(...) on the same beats — even when the series WOULD trip
-        // a spot gate (here 0.40 rejected). Overnight HRV must not move (#585).
-        val rr = (0 until 24).map { RrInterval(deviceId = "d", ts = (1000 + it).toLong(), rrMs = 800) } +
-            (0 until 16).map { RrInterval(deviceId = "d", ts = (1100 + it).toLong(), rrMs = 100) }
-        val windowed = HrvAnalyzer.analyze(rr, windowStart = 1000L, windowEnd = 2000L)
-        // The spot gate WOULD refuse this (0.40 > 0.35); the nightly path must NOT.
-        assertEquals(24, windowed.nClean)
-        assertNotNull(windowed.rmssd)
-        val raw = HrvAnalyzer.analyzeRaw(rr.map { it.rrMs.toDouble() })
-        assertEquals(raw.rmssd!!, windowed.rmssd!!, 1e-12)
-        assertEquals(raw.sdnn ?: Double.NaN, windowed.sdnn ?: Double.NaN, 1e-12)
-        assertEquals(raw.nClean, windowed.nClean)
     }
 }
