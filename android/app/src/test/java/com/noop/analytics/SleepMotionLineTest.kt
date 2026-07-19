@@ -5,9 +5,8 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 
 /**
- * #319 diagnostic: [AnalyticsEngine.sleepMotionLine] exposes the motion-coverage + staging context behind a
- * Rest score in the Sleep & Rest test-mode export. Pins the exact wire string as the byte-parity reference
- * for the Swift twin `AnalyticsEngine.sleepMotionLine` (StrandAnalytics), tested identically in swift-packages.
+ * Pins the exact wire strings [RestScorer] emits for the Sleep & Rest test-mode export: the
+ * motion-coverage/staging line and the onset trace.
  */
 class SleepMotionLineTest {
 
@@ -29,7 +28,7 @@ class SleepMotionLineTest {
                 family = DeviceFamily.WHOOP5))
     }
 
-    // #271 onset trace — byte-identical to the Swift RestSubScoreTraceTests.
+    // onset trace
 
     @Test
     fun `medianBpm sorted middle`() {

@@ -7,14 +7,9 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * #65 x #899 x #940 interaction (Kotlin twin of the Swift DismissedSleepDedupInteractionTests).
- *
- * A dismissed (deleted) sleep window must stay dismissed across a dedup/heal + rescore: the engine's
- * re-detection guard ([DismissedSleepGuard.keeping]) filters a re-detected overlapping session BEFORE it
- * is ever banked, so the #899 [SleepSessionDedup] heal (which only ever operates on rows that DID get
- * banked) can never resurrect a suppressed night. This models the exact engine sequence: filter the
- * re-detected sessions against the tombstones, upsert the survivors, then run the overlap-dedup heal over
- * the stored set, and asserts the suppressed window is gone at every step.
+ * A dismissed sleep window stays dismissed across a dedup/heal + rescore: [DismissedSleepGuard.keeping]
+ * filters a re-detected overlapping session before it's banked, so [SleepSessionDedup]'s heal (banked
+ * rows only) can never resurrect a suppressed night.
  */
 class DismissedSleepDedupInteractionTest {
 
@@ -22,8 +17,7 @@ class DismissedSleepDedupInteractionTest {
         SleepSession(deviceId = "my-whoop-noop", startTs = start, endTs = end, userEdited = edited)
 
     @Test fun dismissedWindowIsDroppedBeforeBankingAndStaysDroppedAfterDedup() {
-        // Night A (kept), Night B (DELETED). A re-detects clean; B re-detects with a drifted onset,
-        // still overlapping the tombstone (written under the imported "my-whoop" id, #65 3A).
+        // Night A kept; Night B deleted. B re-detects with a drifted onset but still overlaps its tombstone.
         val nightA = session(100_000, 128_000)
         val nightBReDetected = session(200_500, 228_000) // drifted 500s from the deleted onset
         val tombstones = listOf(200_000L to 228_000L)
@@ -35,8 +29,8 @@ class DismissedSleepDedupInteractionTest {
             listOf(nightA.startTs), survivors.map { it.startTs },
         )
 
-        // STEP 2 (the #899 heal) runs over the BANKED set (only the survivors were upserted). A stale,
-        // timebase-shifted duplicate of night A got banked on an earlier pass; the heal collapses it.
+        // STEP 2: the heal runs over the BANKED set. A stale timebase-shifted duplicate of night A
+        // is also banked; the heal collapses it.
         val staleADuplicate = session(100_500, 128_500) // overlaps A -> same night, drop it
         val banked = survivors + staleADuplicate
         val result = SleepSessionDedup.dedupe(banked, freshStarts = setOf(nightA.startTs))
@@ -65,8 +59,7 @@ class DismissedSleepDedupInteractionTest {
     }
 
     @Test fun editedNightIsNeverDroppedByTheDedupHeal() {
-        // A userEdited night is exempt from dedup drops (SleepSessionDedup keeps edited rows), and the
-        // delete path writes NO tombstone for it, so a userEdited night is never suppressed here.
+        // A userEdited night is exempt from dedup drops and gets no tombstone, so it's never suppressed here.
         val edited = session(300_000, 328_000, edited = true)
         val overlappingDetected = session(300_200, 328_000)
         val result = SleepSessionDedup.dedupe(listOf(edited, overlappingDetected), freshStarts = setOf(overlappingDetected.startTs))

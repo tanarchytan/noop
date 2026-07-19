@@ -8,13 +8,8 @@ import org.junit.Test
 import java.util.TimeZone
 
 /**
- * #304 — [WhoopRepository.mergeSleep] keys sleep sessions by the LOCAL wake-day, not UTC. A UTC+ user
- * who wakes early (after local midnight but BEFORE UTC midnight) had their night mis-attributed to
- * yesterday's UTC date, so the dashboard's local "today" read surfaced the previous night.
- *
- * Driven deterministically by pinning the JVM default zone (mergeSleep reads TimeZone.getDefault()).
- * Europe/Moscow is a fixed UTC+3 with no DST, so the offset is stable. Mirrors the Swift resolver/keying
- * intent; the keying itself is also pinned by LocalDayBucketingTest.dayString_eastOfUTC.
+ * [WhoopRepository.mergeSleep] keys sleep sessions by the LOCAL wake-day, not UTC. Pinned via a fixed
+ * JVM zone (Europe/Moscow, UTC+3, no DST) so the offset is stable.
  */
 class MergeSleepLocalDayTest {
 
@@ -30,9 +25,8 @@ class MergeSleepLocalDayTest {
     private val someStages = """[{"start":0,"end":3600,"stage":"deep"}]"""
 
     /**
-     * Two nights, each WAKING at 01:30 LOCAL (UTC+3) on consecutive days, must collapse to two DISTINCT
-     * day keys — one per local wake-day. Under the old UTC keying the 01:30-local wake (= 22:30 UTC the
-     * previous day) would key to the PRIOR date and two nights could collide on the wrong day.
+     * Two nights, each WAKING at 01:30 LOCAL (UTC+3) on consecutive days, must key to two DISTINCT
+     * local wake-days, not collide.
      */
     @Test
     fun mergeSleep_utcPlus3EarlyWake_producesTwoDistinctDayKeys() {
@@ -51,9 +45,8 @@ class MergeSleepLocalDayTest {
     }
 
     /**
-     * #715 — two sessions ending the SAME local day (a main night + a nap) must BOTH survive. The old
-     * LinkedHashMap<String, SleepSession> keyed by end-day overwrote on collision and silently dropped
-     * one, in the app and the CSV export. Mirrors the Swift WhoopStore.SleepMerge fix (SleepMergeTests).
+     * Two sessions ending the SAME local day (a main night + a nap) must BOTH survive, not collapse
+     * to one.
      */
     @Test
     fun mergeSleep_twoSessionsSameLocalEndDay_bothSurvive() {
@@ -66,17 +59,17 @@ class MergeSleepLocalDayTest {
     }
 
     /**
-     * The local wake-day key for an 01:30-local (UTC+3) wake is the LOCAL date — the date the dashboard's
-     * "today" read uses — not the previous UTC date. This is the exact mis-attribution #304 fixed.
+     * The wake-day key for an 01:30-local (UTC+3) wake is the LOCAL date (the dashboard's "today"),
+     * not the previous UTC date.
      */
     @Test
     fun mergeSleep_dedupKeyIsLocalWakeDayNotUtc() {
         // 2026-06-14 01:30 local (UTC+3) == 2026-06-13 22:30 UTC.
         val wake = 1_781_389_800L
         val offsetSec = (TimeZone.getDefault().getOffset(wake * 1000) / 1000).toLong()
-        // The keyer the fix relies on: local day is 2026-06-14, the UTC day would be 2026-06-13.
+        // Local day is 2026-06-14; the UTC day would be 2026-06-13.
         assertEquals("2026-06-14", com.noop.analytics.AnalyticsEngine.dayString(wake, offsetSec))
-        assertEquals("2026-06-13", com.noop.analytics.AnalyticsEngine.dayString(wake)) // old UTC behaviour
+        assertEquals("2026-06-13", com.noop.analytics.AnalyticsEngine.dayString(wake)) // UTC day (no offset)
 
         // An imported night on that local day wins over a computed night on the SAME local day.
         val imported = session(startUtc = wake - 6 * 3600L, endUtc = wake).copy(efficiency = 95.0)
@@ -87,8 +80,7 @@ class MergeSleepLocalDayTest {
         assertEquals(95.0, merged.first().efficiency!!, 1e-9)
     }
 
-    // Richness exception (Android twin of ryanbr/noop#241): a stage-less import must not blank a
-    // computed day that has stage data. Mirrors the Swift SleepMergeTests richness cases.
+    // Richness exception: a stage-less import must not blank a computed day that has stage data.
 
     private val wake = 1_781_389_800L // 2026-06-14 01:30 local (UTC+3)
 
@@ -130,7 +122,7 @@ class MergeSleepLocalDayTest {
     @Test
     fun mergeSleep_richnessExceptionKeepsEverySessionOfWinningDay() {
         // computed main night (with stages) + computed nap (no stages); import is stage-less.
-        // The WHOLE computed day survives — #715's keep-every-session guarantee still holds.
+        // The WHOLE computed day survives, including the stage-less nap.
         val night = session(wake - 8 * 3600L, wake, someStages)
         val nap = session(wake + 10 * 3600L, wake + 11 * 3600L, null) // same local day, no stages
         val imp = session(wake - 6 * 3600L, wake, null)

@@ -6,10 +6,9 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * Pins the smart-alarm light-sleep detector (#207). The detector only ADVISES the scheduler to move
- * the guaranteed alarm earlier — it can never cancel the hard deadline — so these tests just assert
- * the heuristic fires once on a real HR rise and stays quiet otherwise. The fallback guarantee itself
- * lives in SmartAlarmScheduler (the AlarmManager exact-alarm clamp), not here.
+ * The smart-alarm light-sleep detector only ADVISES the scheduler to move the alarm earlier; it never
+ * cancels the hard deadline (that clamp lives in SmartAlarmScheduler). These pin that the heuristic
+ * fires once on a real HR rise and stays quiet otherwise.
  */
 class SleepWindowWatcherTest {
 

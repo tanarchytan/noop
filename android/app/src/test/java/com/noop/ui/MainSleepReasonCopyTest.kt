@@ -10,15 +10,9 @@ import org.junit.Test
 import java.util.TimeZone
 
 /**
- * Pins the VERBATIM "why this is your main sleep" copy (COMPONENT 1) the Sleep screen renders for each
- * foundation [SleepStageTotals.MainNightReason] branch, and the {DUR} fill. The strings are a hard
- * cross-platform contract — they MUST be byte-identical to iOS SleepView.mainSleepReasonText, so this
- * guards against an accidental reword on the Kotlin side.
- *
- * [mainSleepReasonText] resolves the reason via [SleepStageTotals.mainNightSelection] using
- * `uiTzOffsetSec()` (the device default tz), so the timezone is pinned to UTC here — making the local
- * time-of-day of each block's midpoint equal its UTC time-of-day, exactly matching the `offsetSec = 0L`
- * foundation fixtures in MainNightConsistencyTest. One case per reason branch + the empty-day null.
+ * Pins the verbatim "why this is your main sleep" copy for each MainNightReason branch, plus the {DUR}
+ * fill. Timezone pinned to UTC so each block's local midpoint == UTC time-of-day, matching the
+ * `offsetSec = 0L` fixtures. One case per reason branch + the empty-day null.
  */
 class MainSleepReasonCopyTest {
 

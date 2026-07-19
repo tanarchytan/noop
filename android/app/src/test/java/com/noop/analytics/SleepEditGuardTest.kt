@@ -9,10 +9,8 @@ import java.time.LocalDateTime
 import java.time.ZoneId
 
 /**
- * #940 (Android twin of SleepEditGuardTests.swift): the sleep-time editor accepted an impossible bed
- * time. Rolling the bed TIME back across midnight (01:06 -> 23:00) kept the calendar date, so the
- * "corrected" bed landed on the coming evening: a future-dated (here, INVERTED, since Android keeps
- * the wake) night the Sleep tab could not render. These pin the three pure guard rules.
+ * Pins the three pure sleep-edit guard rules: cross-midnight bed auto-correct, disjoint-from-coverage
+ * detection, and the persistence clamp.
  */
 class SleepEditGuardTest {
 
@@ -23,9 +21,8 @@ class SleepEditGuardTest {
 
     // MARK: Rule 1: cross-midnight bed auto-correct
 
-    /** THE #940 SHAPE: night tracked late (bed 01:06, wake 05:00 on 2 Jul), user rolls the bed TIME
-     *  back to 23:00 at 05:03 the same morning. The picker kept the date on 2 Jul, so the candidate
-     *  is tonight (future, past the wake). The guard snaps it to 1 Jul 23:00: the evening meant. */
+    /** Bed 01:06 -> wake 05:00, user rolls bed back to 23:00 at 05:03. Date stays 2 Jul so the
+     *  candidate is future/past-wake; the guard snaps it to 1 Jul 23:00 (the evening meant). */
     @Test
     fun crossMidnightRollBackDecrementsDate() {
         val corrected = SleepEditGuard.autoCorrectedBed(
@@ -52,10 +49,9 @@ class SleepEditGuardTest {
         assertEquals(ts(2026, 7, 1, 23, 0), corrected)
     }
 
-    /** MOVE-LATER (the finding's missing case): a user drags a session's bed LATER, past its own wake,
-     *  on the SAME day (nap 14:00-15:00 -> bed 16:00 today, wake 15:00 today). The candidate is at/after
-     *  the wake but in the PAST, so the old rule shoved it back a full day into a ~23h wrong-day window.
-     *  Decrementing here would form an implausible 23h night, so the candidate must be left VERBATIM. */
+    /** MOVE-LATER: bed dragged later than its own wake, same day (nap 14:00-15:00 -> bed 16:00, wake
+     *  15:00). Candidate is at/after wake but in the PAST — decrementing would form an implausible
+     *  23h night, so it must be left VERBATIM. */
     @Test
     fun moveLaterPastWakeIsNotDecremented() {
         val candidate = ts(2026, 7, 2, 16, 0)      // rolled LATER, same day, after the 15:00 wake

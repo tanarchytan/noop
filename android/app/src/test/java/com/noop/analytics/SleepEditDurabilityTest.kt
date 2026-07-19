@@ -9,18 +9,9 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * Durable sleep bed/wake editing — Android port of iOS PR #395.
- *
- * Covers the two pure mechanisms the recompute relies on:
- *   1. the recompute OVERLAP GUARD (IntelligenceEngine `cachedSleepKept`/`sleepKept`): a freshly
- *      detected session that time-overlaps a user-edited window is DROPPED before the upsert, so the
- *      re-detected night can't re-insert over the edit; a non-overlapping one is KEPT;
- *   2. [SleepStageTotals.dailyAggregateHonoringEdits]: the daily sleep aggregate substitutes an
- *      edited block's reshaped stages for its detected twin (matched on the stable detected startTs)
- *      so Rest + recovery score the corrected sleep.
- *
- * Pure-function style (no Room/coroutines) so it runs under testFullDebugUnitTest. The overlap
- * predicate is the EXACT one used in IntelligenceEngine.analyzeRecent's sleepKept filter.
+ * Pins the recompute overlap guard (a detected session overlapping a user-edited window is dropped,
+ * non-overlapping kept) and [SleepStageTotals.dailyAggregateHonoringEdits] (an edited block's stages
+ * replace its detected twin, matched on startTs, in the daily aggregate).
  */
 class SleepEditDurabilityTest {
 
@@ -54,8 +45,7 @@ class SleepEditDurabilityTest {
 
     @Test
     fun overlappingDetectedSessionIsDropped() {
-        // User edited a night spanning [1000, 5000]. The strap re-detected the same night at a slightly
-        // drifted onset [1050, 4980] — it OVERLAPS the edited window, so it must be dropped.
+        // Edited window [1000, 5000]; re-detect drifts to [1050, 4980] but still overlaps → drop.
         val edited = computedSleep(start = 1000, end = 5000, userEdited = true)
         val reDetected = computedSleep(start = 1050, end = 4980)
 
@@ -75,9 +65,9 @@ class SleepEditDurabilityTest {
 
     @Test
     fun guardUsesEffectiveStartForOverlap() {
-        // The edit moved the bedtime EARLIER via startTsAdjusted (effectiveStartTs = 800, not the
-        // detected startTs = 2000). A re-detect at [820, 1900] overlaps the EFFECTIVE window [800,5000]
-        // but NOT the detected key 2000 — the guard must use effectiveStartTs and drop it.
+        // Edit moves bedtime earlier via startTsAdjusted (effectiveStartTs = 800, detected = 2000).
+        // Re-detect [820, 1900] overlaps the EFFECTIVE window [800,5000] but not the detected key —
+        // the guard must use effectiveStartTs and drop it.
         val edited = computedSleep(start = 2000, end = 5000, userEdited = true, startTsAdjusted = 800)
         assertEquals(800L, edited.effectiveStartTs)
         val reDetected = computedSleep(start = 820, end = 1900)
@@ -94,17 +84,16 @@ class SleepEditDurabilityTest {
         assertEquals(listOf(a, b), kept)
     }
 
-    // ── Durable DELETE tombstone (#33 / PR#46) ───────────────────────────────────────────────────
+    // ── Durable DELETE tombstone ─────────────────────────────────────────────────────────────────
     //
-    // A deleted night records a dismissedSleep(deviceId, startTs, endTs) marker; the recompute OR-s
-    // those windows into the same overlap filter (skipWindows = editedWindows + dismissedWindows), so
-    // a re-detected night that overlaps a tombstone is dropped and the delete stays durable. The helper
-    // below is the EXACT skipWindows predicate from IntelligenceEngine.analyzeRecent's sleepKept filter.
+    // A delete records a dismissedSleep marker; the recompute OR-s it into the overlap filter
+    // (skipWindows = editedWindows + dismissedWindows), so a re-detected night overlapping a
+    // tombstone is dropped and the delete stays durable.
 
     /** (startTs, endTs) tombstone span — the shape recorded by deleteSleepSession → dismissedSleeps. */
     private fun dismissedWindow(start: Long, end: Long): Pair<Long, Long> = start to end
 
-    /** The EXACT sleepKept predicate AFTER the #33 change: edited + dismissed windows both suppress. */
+    /** The EXACT sleepKept predicate: edited + dismissed windows both suppress. */
     private fun keptAfterGuardWithDismissed(
         detected: List<SleepSession>,
         edited: List<SleepSession>,
@@ -119,8 +108,8 @@ class SleepEditDurabilityTest {
 
     @Test
     fun deletedNightStaysGoneAfterRecompute() {
-        // User deleted last night [1000, 5000] → tombstone recorded. The next recompute re-detects the
-        // very same night and must DROP it (delete→recompute→stays-gone), not re-upsert it.
+        // Deleted [1000, 5000] → tombstone recorded. Recompute re-detects the same night and must
+        // drop it, not re-upsert.
         val tombstone = dismissedWindow(1000, 5000)
         val reDetected = computedSleep(start = 1000, end = 5000)
 
@@ -134,8 +123,8 @@ class SleepEditDurabilityTest {
 
     @Test
     fun deletedNightStaysGoneWhenReDetectedOnsetDrifts() {
-        // The re-detected onset drifts as more raw data arrives ([1050, 4980] vs the deleted [1000,5000]).
-        // Overlap (not exact startTs) is why the tombstone still suppresses it — mirrors dismissedWorkout.
+        // Re-detected onset drifts ([1050, 4980] vs deleted [1000, 5000]); overlap (not exact startTs)
+        // still suppresses it.
         val tombstone = dismissedWindow(1000, 5000)
         val reDetected = computedSleep(start = 1050, end = 4980)
 
@@ -163,8 +152,7 @@ class SleepEditDurabilityTest {
 
     @Test
     fun editAndDeleteWindowsBothSuppress() {
-        // Both guards compose: an edited night and a separately deleted night are each suppressed in one
-        // pass, while an untouched third night is kept.
+        // Both guards compose in one pass: edited + deleted nights suppressed, untouched one kept.
         val edited = computedSleep(start = 1000, end = 5000, userEdited = true)
         val editedReDetect = computedSleep(start = 1040, end = 4990)
         val deletedReDetect = computedSleep(start = 200_000, end = 230_000)
@@ -183,8 +171,8 @@ class SleepEditDurabilityTest {
 
     @Test
     fun dailyAggregateSubstitutesEditedStagesForDetectedTwin() {
-        // Detected twin: 6h light starting at 1000 (startTs is the match key). Edited: the user
-        // extended/reshaped it to 8h asleep. The aggregate must reflect the EDITED stages.
+        // Detected twin: 6h light at startTs 1000 (match key). Edited: reshaped to 8h asleep.
+        // Aggregate must reflect the EDITED stages.
         val detectedStart = 1000L
         val detected = listOf(detectedStart to stages(detectedStart, detectedStart + 6 * 3600, "light"))
         val edited = mapOf(detectedStart to stages(detectedStart, detectedStart + 8 * 3600, "deep"))
@@ -215,8 +203,8 @@ class SleepEditDurabilityTest {
 
     @Test
     fun editedToNullStagesFallsBackToDetected() {
-        // An edit that reshaped to null stages must NOT drop the block (which would collapse the
-        // night's sleep total) — it falls back to the detected stages and does NOT set editApplied.
+        // Edit reshaped to null stages must NOT drop the block (would collapse the sleep total);
+        // falls back to detected stages, does NOT set editApplied.
         val detected = listOf(1000L to stages(1000, 1000 + 6 * 3600, "light"))
         val edited = mapOf<Long, String?>(1000L to null)
 

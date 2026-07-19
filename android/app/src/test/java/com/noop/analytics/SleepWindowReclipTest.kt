@@ -8,12 +8,8 @@ import org.junit.Assert.assertNull
 import org.junit.Test
 
 /**
- * Pure-function tests for [SleepWindowReclip], the Android twin of
- * Packages/StrandAnalytics/Tests/StrandAnalyticsTests/SleepWindowReclipTests.swift.
- *
- * Covers both the segment-array (computed) and minute-dict (imported) paths, and the START-AWARE
- * reclip (#0): a pure bed-time (onset) edit must drop / clip the stages BEFORE the corrected bed time,
- * not just trim the tail.
+ * Pure-function tests for [SleepWindowReclip]. Covers the segment-array (computed) and minute-dict
+ * (imported) paths, and the start-aware reclip: an onset edit clips stages before the new bed time.
  */
 class SleepWindowReclipTest {
 
@@ -66,7 +62,7 @@ class SleepWindowReclipTest {
     @Test
     fun segmentTrimBeforeAllSegmentsReturnsWakeFillNotNull() {
         // Corrected wake lands before every stage → emit a single wake covering the corrected window so
-        // the store's COALESCE doesn't keep the OLD stages extending past the new wake time.
+        // the store's COALESCE doesn't keep stages extending past the new wake time.
         val json = """[{"start":2000,"end":3000,"stage":"light"},{"start":3000,"end":4000,"stage":"deep"}]"""
         val out = SleepWindowReclip.reclip(json, 1000, 4000, 1000, 1500)!!
         val segs = segments(out)
@@ -98,13 +94,11 @@ class SleepWindowReclipTest {
         assertEquals(200.0, m["light"]!!, 0.001)
     }
 
-    // ── bed (onset) edits: START-AWARE reclip (#0) ───────────────────────────────────────────────
+    // ── bed (onset) edits: START-AWARE reclip ────────────────────────────────────────────────────
 
     @Test
     fun bedOnlyEditSegmentsDropsStagesBeforeNewBed() {
-        // A pure onset edit: bed time moves FORWARD 1000 → 2000, wake unchanged at 4000. The "light"
-        // segment wholly before the new bed drops; the straddling "deep" clips its start UP to 2000; no
-        // segment starts before the corrected bed; stage total == the corrected window (4000-2000).
+        // A pure onset edit: bed time moves FORWARD 1000 → 2000, wake unchanged at 4000.
         val json = """
             [{"start":1000,"end":2000,"stage":"light"},
              {"start":1800,"end":3000,"stage":"deep"},
@@ -122,10 +116,8 @@ class SleepWindowReclipTest {
 
     @Test
     fun bedOnlyEditMinutesImportedNightShrinksByOnsetDelta() {
-        // An imported (minute-dict) night, pure onset edit: session 0..8h, bed moved forward 40 min so the
-        // window shrinks 40 min even though newEnd == oldEnd. The duration delta drives the trim
-        // (awake 30 to 0, then 10 off light); the total trims by the 40 min onset delta to 360, not the
-        // window (an imported minute-dict need not fill its whole window, so total != window here).
+        // Imported (minute-dict) night, pure onset edit: session 0..8h, bed moved forward 40 min, window
+        // shrinks 40 min though newEnd == oldEnd. Duration delta drives the trim (awake 30→0, 10 off light).
         val json = """{"awake":30,"light":200,"deep":80,"rem":90}"""
         val oldEnd = 8 * 3600L
         val newStart = 40 * 60L

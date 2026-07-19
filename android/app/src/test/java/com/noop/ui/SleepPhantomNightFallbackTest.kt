@@ -9,14 +9,9 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * #940 (Android twin of SleepPhantomNightFallbackTests.swift): an impossible hand-edit (bed rolled
- * across midnight onto the COMING evening) produced a future-dated, all-awake "phantom" night. It
- * owned the tab's newest day; [buildSleepModel] returned null for that day (no stage minutes), and
- * the screen then hid EVERY full-history tile / ledger / trend behind the null model even though the
- * user's data was intact. The fix: [fallbackSleepModel] re-anchors the full-history surfaces to the
- * newest stage-bearing day, and the hero keeps the phantom day (edit affordance reachable) with the
- * honest no-stage-data fallback. These feed the merge chain the impossible edited window and assert
- * the display output stays non-empty.
+ * An impossible hand-edit (bed rolled onto the coming evening) makes a future-dated, all-awake phantom
+ * night own the newest day, so [buildSleepModel] returns null. [fallbackSleepModel] re-anchors
+ * full-history surfaces to the newest stage-bearing day; the phantom day keeps a hero, edit-reachable.
  */
 class SleepPhantomNightFallbackTest {
 
@@ -31,8 +26,8 @@ class SleepPhantomNightFallbackTest {
         efficiency = if (stages) 90.0 else null,
     )
 
-    /** THE #940 PHANTOM: a userEdited row whose corrected window is future-dated and whose stages
-     *  are the deliberate all-wake fallback. Detected key stays at the real onset this morning. */
+    /** The phantom: a userEdited row whose corrected window is future-dated with all-wake stages;
+     *  the detected key stays at the real onset this morning. */
     private fun phantom(): SleepSession {
         val detected = now - 5 * 3_600                  // ~01:06 this morning (immutable key)
         val editedStart = now + 16 * 3_600              // tonight 23:00 (the impossible onset)
@@ -53,8 +48,7 @@ class SleepPhantomNightFallbackTest {
         )
     }
 
-    /** The defect trigger, pinned: the phantom's day carries no stage minutes in `days`, so the
-     *  selected-day model is null. (This is WHY the tab degraded; the fix must survive it.) */
+    /** The phantom's day carries no stage minutes in `days`, so the selected-day model is null. */
     @Test
     fun phantomSelectedDayModelIsNull() {
         val days = listOf(day("2026-06-30", true), day("2026-07-01", true))
@@ -64,8 +58,7 @@ class SleepPhantomNightFallbackTest {
         assertNull(buildSleepModel(days, n.session, selectedDay = n.dayKey))
     }
 
-    /** THE FIX: with intact history, the full-history surfaces re-anchor to the newest
-     *  stage-bearing day and stay up. Non-empty display output for a non-empty history. */
+    /** With intact history, full-history surfaces re-anchor to the newest stage-bearing day and stay up. */
     @Test
     fun fallbackModelKeepsHistoryVisible() {
         val days = listOf(day("2026-06-29", true), day("2026-06-30", true), day("2026-07-01", true))

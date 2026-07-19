@@ -12,26 +12,15 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * Post-sync self-heal of edit-before-sync stages — Android port of iOS PR #449
- * (Repository.restageFromRaw + selfHealEditedStages; MetricsCache.updateSleepStages;
- * AnalyticsEngine.encodeStages → sorted keys).
- *
- * THE BUG: a wake/bed correction made BEFORE (or while) the strap sync delivered the night's raw
- * fabricates [SleepWindowReclip] stages (a trailing "wake" block) and stamps `userEdited = 1`, which
- * then freezes that approximate breakdown against every later sync. The fix re-derives the REAL stages
- * from the now-available raw over the night's LOCKED bounds and rewrites the stage breakdown only.
- *
- * Pure-function style (no Room/coroutines/Robolectric), matching SleepEditDurabilityTest /
- * ManualWorkoutRescoreTest: the heal's decision kernel ([SleepStageHealer.restageFromSamples] +
- * [SleepStageHealer.isDense]) is exercised against synthetic streams, and the end-to-end
- * heal/no-op/idempotent flow is driven through an in-memory store using the EXACT loop body of
- * [SleepStageHealer.selfHealEditedStages].
+ * Pins the post-sync self-heal of edit-before-sync stages: an edit made before raw arrives freezes a
+ * fabricated [SleepWindowReclip] breakdown (a trailing "wake" block, `userEdited = 1`); once dense raw
+ * is available the heal re-derives REAL stages over the night's LOCKED bounds and rewrites stages only.
  */
 class SleepStageHealTest {
 
     private val dev = "test"
 
-    /** 2025-06-10 00:00:00 UTC — fixed midnight (ref % 86400 == 0), as in SleepStagerSparseGravityTest. */
+    /** 2025-06-10 00:00:00 UTC — fixed midnight (ref % 86400 == 0). */
     private val refMidnight = 1_749_513_600L
     private fun startAtHour(hourUTC: Int): Long = refMidnight + hourUTC * 3_600L
 
@@ -56,17 +45,16 @@ class SleepStageHealTest {
         val grav = stillGravity(start, dur)
         val hr = hrStream(start, dur, 50)
 
-        // The fabricated breakdown the user got at edit time (raw wasn't present yet): the production
-        // SleepWindowReclip path — a stored short "light" block extended to the corrected wake, which
-        // appends a trailing fabricated "wake" segment. This is EXACTLY what the heal must replace.
+        // Fabricated breakdown at edit time (raw not present yet): production SleepWindowReclip path
+        // extends a stored "light" block to the corrected wake, appending a trailing "wake" segment.
+        // This is EXACTLY what the heal must replace.
         val storedDetected = encoded(start, start + 3 * 60 * 60, "light") // a 3h detected block
         val fabricated = SleepWindowReclip.reclip(storedDetected, start, start + 3 * 60 * 60, start, end)!!
 
         val real = SleepStageHealer.restageFromSamples(start, end, grav, hr, emptyList(), emptyList())
         assertNotNull("dense raw over the locked window must re-derive real stages", real)
         assertNotEquals("real stages must differ from the fabricated reclip block", fabricated, real)
-        // The real re-derive is a genuine multi-segment hypnogram over the 6h window, not the 2-segment
-        // reclip approximation: a dense sleep night yields several stage transitions.
+        // Real re-derive is a multi-segment hypnogram, not the 2-segment reclip approximation.
         assertTrue("re-derived JSON must be a segment array", real!!.trimStart().startsWith("["))
         val realSegments = SleepStageTotals.minutes(real)
         assertNotNull("real stages must decode to stage minutes", realSegments)
@@ -121,10 +109,9 @@ class SleepStageHealTest {
     // ── End-to-end: drive selfHealEditedStages' exact loop over an in-memory store ───────────────────
 
     /**
-     * Replays the EXACT body of [SleepStageHealer.selfHealEditedStages] against an in-memory map keyed
-     * by detected startTs, with `restage` supplying the per-night re-derive (null = raw not dense). The
-     * userEdited=1 scoping the real DAO enforces in SQL is modelled by only ever passing edited rows in.
-     * Returns (refreshedRows, writeCount) so the test asserts both the heal write and the idempotent skip.
+     * Replays the EXACT body of [SleepStageHealer.selfHealEditedStages] over an in-memory map keyed by
+     * detected startTs (`restage` supplies the per-night re-derive; null = raw not dense). Returns
+     * (refreshedRows, writeCount) so callers assert both the heal write and the idempotent skip.
      */
     private fun runHealLoop(
         store: MutableMap<Long, SleepSession>,
@@ -200,7 +187,7 @@ class SleepStageHealTest {
             StageSegment(start = 200, end = 300, stage = "rem"),
         )
         val json = AnalyticsEngine.encodeStages(segs)!!
-        // Keys alphabetical (end, stage, start) — parity with Swift JSONEncoder.outputFormatting=.sortedKeys.
+        // Keys alphabetical (end, stage, start).
         assertEquals(
             """[{"end":200,"stage":"deep","start":100},{"end":300,"stage":"rem","start":200}]""",
             json,

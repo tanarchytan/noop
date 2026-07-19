@@ -9,12 +9,8 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * #525 — sleep numbers must agree across screens. A day can hold an overnight AND a daytime nap; the
- * day's canonical sleep total must be the MAIN night (the same block the Sleep tab's hero shows),
- * never the night + nap SUM. Naps stay their own session rows, labelled separately.
- *
- * Faithful Kotlin mirror of the #525 cases in SleepStageTotalsTests.swift / AnalyticsEngineTests.swift:
- * same selection rule (overnight-preferring, then longest), same fixtures, same invariant.
+ * The day's canonical sleep total is the MAIN night (the block the Sleep tab hero shows), never the
+ * night + nap sum. Naps stay their own session rows.
  */
 class MainNightConsistencyTest {
 
@@ -50,11 +46,8 @@ class MainNightConsistencyTest {
         assertEquals(1, SleepStageTotals.mainNightIndex(blocks, 0L))
     }
 
-    /** #555 regression: a biphasic / briefly-interrupted main night (fragments split by short wakes)
-     *  resolves to ONE bridged GROUP containing ALL its fragments, while a distant afternoon nap stays
-     *  OUTSIDE it. The Sleep tab classifies naps as "not in this group" and aggregates the group for the
-     *  hero, so the bridged siblings are no longer rendered as phantom naps ("three naps instead of a
-     *  continuous sleep"). Mirrors Swift testBiphasicNightGroupsAllFragmentsAndExcludesNap. */
+    /** A biphasic main night (fragments split by short wakes) resolves to one bridged group with all
+     *  fragments; a distant afternoon nap stays outside it. */
     @Test
     fun biphasicNightGroupsAllFragmentsAndExcludesNap() {
         val f1 = atHour(23) - 86_400L          // 23:00–01:00
@@ -83,9 +76,8 @@ class MainNightConsistencyTest {
     @Test
     fun mainNightEmptyAndTieAreDeterministic() {
         assertNull(SleepStageTotals.mainNightIndex(emptyList(), 0L))
-        // Two SCORE-TIED blocks (equal duration AND equal circular distance to the cold-start anchor,
-        // mirrored either side of 03:30) → the EARLIER onset breaks the tie (stable across platforms).
-        // early: 00:30 onset, 4h → mid 02:30 (1h before 03:30). late: 02:30 onset, 4h → mid 04:30 (1h after).
+        // Two score-tied blocks (equal duration + circular distance to the 03:30 anchor) → earlier onset
+        // breaks the tie. early: 00:30 onset, 4h → mid 02:30 (1h before); late: 02:30 onset, 4h → mid 04:30 (1h after).
         val early = atMin(0, 30)
         val late = atMin(2, 30)
         val blocks = listOf(
@@ -95,7 +87,7 @@ class MainNightConsistencyTest {
         assertEquals(1, SleepStageTotals.mainNightIndex(blocks, 0L))
     }
 
-    // ── the #525 seam invariant: total == main night, not the sum ────────────────────────────────
+    // ── seam invariant: total == main night, not the sum ────────────────────────────────
 
     @Test
     fun overnightPlusNapReportsConsistentTotalsNotTheSum() {
@@ -140,7 +132,7 @@ class MainNightConsistencyTest {
 
     @Test
     fun honoringEditsLegacySumWhenNoOnsets() {
-        // With NO onsets the seam keeps the legacy sum-of-all-blocks total (older callers unchanged).
+        // With no onsets the seam sums all blocks.
         val r = SleepStageTotals.dailyAggregateHonoringEdits(
             detected = listOf(
                 100L to """{"awake":2,"light":30,"deep":10,"rem":8}""",
@@ -152,16 +144,10 @@ class MainNightConsistencyTest {
         assertEquals(48.0 + 392.0, r!!.sleep.totalSleepMin, 1e-6)
     }
 
-    // The end-to-end analyzeDay variant (overnight + synthetic daytime nap, asserting 2 detected) was
-    // dropped on both platforms: it leaned on the SleepStager detecting a synthetic nap, which the
-    // daytime-false-sleep guard rejects by design, so it tested detection (a #508 concern), not #525's
-    // aggregation. The seam tests above cover the main-night-not-sum reconciliation deterministically.
+    // ── inter-fragment awake (out-of-bed gap between bridged fragments) ────────────────────
 
-    // ── #777/#705 inter-fragment awake (out-of-bed gap between bridged fragments) ────────────────────
-
-    /** The shared definition: sum only the POSITIVE gaps between consecutive (start,end) spans, sorted by
-     *  start. Abutting / overlapping fragments contribute 0; an unsorted input is sorted first. Mirrors
-     *  Swift testInterFragmentAwakeSecondsSumsPositiveGapsOnly. */
+    /** Sums only the positive gaps between consecutive (start,end) spans, sorted by start. Abutting or
+     *  overlapping fragments contribute 0. */
     @Test
     fun interFragmentAwakeSecondsSumsPositiveGapsOnly() {
         val f1 = 0L to 6 * 3600L
@@ -177,10 +163,8 @@ class MainNightConsistencyTest {
         assertEquals(100.0, SleepStageTotals.interFragmentAwakeSeconds(three), 1e-6)
     }
 
-    /** #777/#705 regression fixture: a main night bridged from two fragments split by a 20-min OUT-OF-BED
-     *  gap reports ~20 min AWAKE on the day's rollup (it read as ~0 before). The seam folds the gap into
-     *  AWAKE via the in-bed denominator with NO double-count. Mirrors Swift
-     *  testHonoringEditsFragmentedNightCountsGapAsAwake. */
+    /** A main night bridged from two fragments split by a 20-min out-of-bed gap reports ~20 min awake,
+     *  folded via the in-bed denominator with no double-count. */
     @Test
     fun honoringEditsFragmentedNightCountsGapAsAwake() {
         val f1Start = atHour(23) - 86_400L          // 23:00 onset, 180 min span
@@ -204,10 +188,8 @@ class MainNightConsistencyTest {
         assertEquals("efficiency reflects the gap", 400.0 / 420.0, r.sleep.efficiency, 1e-4)
     }
 
-    /** The seam definition and the standalone aggregate agree to the minute (no double-count): feeding the
-     *  SAME gap to dailyAggregate(_, interFragmentAwakeSeconds) yields the identical in-bed/awake the seam
-     *  reports. A zero gap reproduces the legacy behaviour exactly. Mirrors Swift
-     *  testInterFragmentAwakeFoldsConsistentlyNoDoubleCount. */
+    /** The seam and the standalone aggregate agree to the minute (no double-count): the same gap fed to
+     *  dailyAggregate yields identical in-bed/awake. A zero gap matches the no-gap path. */
     @Test
     fun interFragmentAwakeFoldsConsistentlyNoDoubleCount() {
         val f1 = """{"awake":0,"light":120,"deep":30,"rem":30}""" // 180 asleep
@@ -220,10 +202,10 @@ class MainNightConsistencyTest {
         assertEquals(legacy.efficiency, folded0.efficiency, 1e-12)
     }
 
-    // ── #547 learned-timing scored selector (the gate is gone) ───────────────────────────────────
+    // ── learned-timing scored selector ───────────────────────────────────
 
-    /** THE pikapik case: a genuinely LONG sleep whose onset is in the daytime gap [10:00, 20:00) beats a
-     *  SHORT overnight fragment. The old hard gate always picked the fragment; the score lets duration win. */
+    /** A long sleep with onset in the daytime gap [10:00, 20:00) beats a short overnight fragment;
+     *  duration wins. */
     @Test
     fun longDaytimeOnsetBeatsShortOvernightFragment() {
         val dayLong = atHour(11)               // daytime-gap onset, 7h
@@ -236,8 +218,8 @@ class MainNightConsistencyTest {
             SleepStageTotals.mainNightIndex(blocks, 0L))
     }
 
-    /** The reconciled window: a 10:30 onset is overnight under [20:00,11:00) (off-by-one fixed), so it no
-     *  longer disagrees with the detector. Equal-duration far-from-anchor blocks tie on score → earlier wins. */
+    /** A 10:30 onset is overnight under [20:00,11:00). Equal-duration far-from-anchor blocks tie on score →
+     *  earlier wins. */
     @Test
     fun tenThirtyOnsetIsTreatedAsOvernightNotDaytime() {
         assertTrue(SleepStageTotals.isOvernightOnset(atMin(10, 30), 0L))
@@ -267,7 +249,7 @@ class MainNightConsistencyTest {
             SleepStageTotals.mainNightIndex(blocks, 0L))
     }
 
-    /** #518 intent preserved via TIMING, not a gate: a 4h habitual-night block beats a 5h afternoon block. */
+    /** A 4h habitual-aligned night beats a 5h afternoon block (timing, not duration). */
     @Test
     fun habitualAlignedShorterNightBeatsLongerAfternoon() {
         val habitual = sod(3, 0)
@@ -281,14 +263,11 @@ class MainNightConsistencyTest {
             SleepStageTotals.mainNightIndex(blocks, 0L, habitual))
     }
 
-    // ── #518 invariant (R1): a realistic daytime nap can NEVER out-rank the real night ───────────────
+    // ── invariant: a realistic daytime nap can NEVER out-rank the real night ───────────────
 
-    // After the #547 gate removal the invariant "a nap can't out-rank the real night" is protected ONLY
-    // by the +90 min alignment margin (score = asleepMinutes + bonus, bonus in [0, 90]). A non-main block
-    // out-scores the night iff its asleep duration exceeds the night's by MORE than (night_bonus −
-    // nap_bonus) <= 90. Cold-start anchor 03:30: a real >=4h night scores >=240; a TRUE daytime doze
-    // (onset >=06:00, <=180 min) tops out at 210, so the night ALWAYS wins. Under a night-time learned
-    // habitual the margin is larger still (night +90, far-off nap +0). Mirrors the Swift R1 pins.
+    // The invariant is protected by the +90 min alignment margin (score = asleepMin + bonus, bonus [0,90]).
+    // Cold-start anchor 03:30: a >=4h night scores >=240; a true daytime doze (onset >=06:00, <=180 min)
+    // tops out at 210, so the night always wins.
 
     /** A realistic daytime nap (20–180 min) can NEVER beat a real 4h+ night, COLD-START. Exhaustive
      *  sweep over the realistic ranges; the night (index 1) must always be the pick. */
@@ -334,10 +313,9 @@ class MainNightConsistencyTest {
         }
     }
 
-    /** The tightest cold-start margin: a 4h night onset 20:00 (mid 22:00, bonus 0 → 240) vs the single
-     *  most-favourable TRUE-daytime doze (onset 06:00, 180 min, mid 07:30, bonus 30 → 210). Night wins by
-     *  30 — the worst case in the realistic range. Pin it so any future bonus change that erodes the
-     *  margin trips this test. */
+    /** Tightest cold-start margin: a 4h night (mid 22:00, bonus 0 → 240) vs the best-case true-daytime doze
+     *  (180min, mid 07:30, bonus 30 → 210) — night wins by 30. Pins the margin so a future bonus change
+     *  can't erode it. */
     @Test
     fun tightestColdStartMarginNightStillWins() {
         val night = atHour(20) - 86_400L   // 4h, mid 22:00 → bonus 0 → 240
@@ -350,10 +328,9 @@ class MainNightConsistencyTest {
             1, SleepStageTotals.mainNightIndex(blocks, 0L))
     }
 
-    /** The genuinely-ambiguous case is NOT a regression and is DEFENSIBLE: a short 4h night + a LONG 6h
-     *  daytime sleep → the 6h block is main (longest qualifying wins, per the research). The user can edit
-     *  and the guidance layer explains it. Pins the INTENTIONAL behaviour so a future "harden the night"
-     *  change can't silently flip it back to the short night. */
+    /** The genuinely-ambiguous case is intentional, not a regression: a short 4h night + a long 6h daytime
+     *  sleep → the 6h block wins (longest qualifying, user can edit). Pins this so a future "harden the
+     *  night" change can't silently flip it back. */
     @Test
     fun ambiguousLongDaytimeSleepBeatsShortNightByDesign() {
         val night = atHour(23) - 86_400L   // 4h overnight = 240, mid 01:00, cold-start bonus 75 → 315
@@ -404,7 +381,7 @@ class MainNightConsistencyTest {
         assertEquals(0L, SleepStageTotals.circularDistanceSec(sod(3, 30), sod(3, 30)))
     }
 
-    // ── #547 habitual midsleep (learned timing) ──────────────────────────────────────────────────
+    // ── habitual midsleep (learned timing) ──────────────────────────────────────────────────
 
     /** Cold-start: fewer than minDays of history → null (the scorer then uses the overnight band). */
     @Test
@@ -449,21 +426,10 @@ class MainNightConsistencyTest {
         assertTrue("circular mean of 23:30/00:30 ≈ midnight, not noon", dist < 120L)
     }
 
-    // ── #547 Caveat A: the UI selector and the engine selector agree for a SHIFT sleeper ───────────
+    // ── UI selector and engine selector agree for a shift sleeper ───────────
 
-    /** THE bug this fix closes: a shift/late sleeper whose LEARNED habitual midsleep is ~15:00. On a day
-     *  with BOTH an afternoon main sleep AND a shorter overnight block, the engine (which threads the
-     *  learned habitual into `analyzeDay`) tracked the AFTERNOON block, but the Sleep tab hero — which used
-     *  to call the selector with NO habitual (cold-start band only) — picked the OVERNIGHT block, breaking
-     *  the #525/#547 "hero == analytics total" invariant for that user.
-     *
-     *  This replays both seams over the EXACT same blocks: (1) the LEARNED habitual is computed from this
-     *  shift-sleeper's history via the same `habitualMidsleepSec` pure function the engine and the new
-     *  `WhoopRepository.habitualMidsleepSec` both use; (2) `mainNightIndex(..., habitualMidsleepSec)` — the
-     *  single shared selector both `mainSleepBlock` (UI, now fed the learned habitual) and `analyzeDay`
-     *  (engine) call — resolves to the SAME index. With the fix the UI passes the learned habitual, so it
-     *  picks the AFTERNOON block, matching the engine; the asserted contrast is the OLD cold-start UI call
-     *  (null habitual) picking the overnight block — the divergence the fix removes. Mirrors Swift. */
+    /** With a learned ~15:00 habitual midsleep for a shift sleeper, the UI hero and engine selectors both
+     *  pick the afternoon block; the cold-start selector (null habitual) instead picks overnight. */
     @Test
     fun shiftSleeperUIAndEngineSelectorPickSameAfternoonBlock() {
         // 1) Learn the habitual from 20 afternoon nights (onset 12:00, 6h → mid 15:00). Distinct day keys.
@@ -486,13 +452,12 @@ class MainNightConsistencyTest {
             SleepStageTotals.NightBlock(afternoon, afternoon + 6 * 3600),
         )
 
-        // The shared selector WITH the learned habitual (what BOTH the UI hero AND the engine now use).
+        // The shared selector WITH the learned habitual (used by both the UI hero and the engine).
         val withHabitual = SleepStageTotals.mainNightIndex(blocks, 0L, habitual)
         assertEquals("with the learned ~15:00 habitual, the afternoon block is main (engine + UI agree)",
             1, withHabitual)
 
-        // The OLD cold-start UI call (null habitual) diverged — it picked the overnight block. This is the
-        // exact bug Caveat A removes by feeding the same learned habitual to the UI selector.
+        // The cold-start call (null habitual) picks the overnight block.
         val coldStart = SleepStageTotals.mainNightIndex(blocks, 0L)
         assertEquals("cold-start band picks the overnight block — the pre-fix UI/engine divergence",
             0, coldStart)
@@ -500,11 +465,10 @@ class MainNightConsistencyTest {
             withHabitual, coldStart)
     }
 
-    // ── #547 Caveat B: circularMeanSec degenerate-vector guard ────────────────────────────────────
+    // ── circularMeanSec degenerate-vector guard ────────────────────────────────────
 
-    /** The guard also fires end-to-end: a 16-day history split evenly between two antipodal sleep times
-     *  (per-day midpoints 12h apart) clears the day-count threshold but yields null, NOT a bogus
-     *  midnight/noon anchor — so the scorer falls back to the cold-start band identically on both platforms. */
+    /** A 16-day history split evenly between two antipodal sleep times (midpoints 12h apart) clears the
+     *  day-count threshold but yields null, not a bogus midnight/noon anchor. */
     @Test
     fun habitualMidsleepNullWhenLearnedTimingIsAntipodal() {
         val hist = ArrayList<SleepStageTotals.HistoryBlock>()
@@ -518,13 +482,11 @@ class MainNightConsistencyTest {
             SleepStageTotals.habitualMidsleepSec(hist, 0L))
     }
 
-    // ── #547 wire-through: effective (edited) onset crosses the boundary (audit finding C / #8) ────
+    // ── effective (edited) onset crosses the boundary ────
 
-    /** Finding C: the seam must score on the EFFECTIVE (edited) onset, not the immutable detected key, so
-     *  the seam and the Sleep tab pick the SAME block. The main block (300 asleep) is detected at 09:30
-     *  (daytime → 0 bonus) but EDITED to 22:30 (overnight → ~75 bonus → ~375); a longer 340-asleep nap
-     *  with no bonus loses to the effective-onset main (375>340) but BEATS the detected-onset main
-     *  (340>300). The chosen block flips with the onset used — proving the fix. Mirrors Swift. */
+    /** The seam scores on the EFFECTIVE (edited) onset, not the detected key. Main (300 asleep) detected
+     *  09:30 (bonus 0) but edited to 22:30 (~75 bonus → ~375) beats a longer 340-asleep nap on effective
+     *  onset (375>340), while on the detected onset the nap mis-wins (340>300). */
     @Test
     fun editedOnsetCrossingBoundaryIsScoredOnTheEffectiveOnset() {
         val detectedStart = atMin(9, 30)            // detected daytime onset (bonus 0)
@@ -580,10 +542,8 @@ class MainNightConsistencyTest {
     }
 
     // ── selection REASON (explainability — one test per branch) ──────────────────────────────────
-    // mainNightSelection mirrors mainNightIndex (same score, same tie-break, same null-on-empty) and adds
-    // the MainNightReason + the chosen block's asleep duration so the UI can explain the pick. Each branch
-    // is pinned with the SAME fixtures the score uses, so a reason can never disagree with the chosen block.
-    // Mirrors the Swift mainNightSelection reason tests.
+    // mainNightSelection mirrors mainNightIndex (same score/tie-break/null-on-empty) + adds MainNightReason
+    // and the chosen block's asleep duration for UI copy. Each branch pinned with the same score fixtures.
 
     /** Empty → null, exactly like [SleepStageTotals.mainNightIndex]. */
     @Test
@@ -604,10 +564,9 @@ class MainNightConsistencyTest {
         assertEquals(432L, sel.asleepMin)  // 7h12m = 432 min
     }
 
-    /** REASON longest (cold-start): no learned habitual → the longest block wins on duration; the reason is
-     *  [SleepStageTotals.MainNightReason.longest] even though this chosen block ALSO earns a cold-start band
-     *  bonus (a null habitual short-circuits to longest, never longestNearUsual). Same fixture as
-     *  [mainNightLongestAmongOvernightBlocks] so the reason can't disagree with the pick. */
+    /** REASON longest (cold-start): null habitual → longest wins on duration and the reason is
+     *  [SleepStageTotals.MainNightReason.longest], even though this block also earns a cold-start bonus
+     *  (null habitual short-circuits to longest, never longestNearUsual). */
     @Test
     fun reasonLongestColdStart() {
         val a = atHour(22) - 86_400L
@@ -616,7 +575,7 @@ class MainNightConsistencyTest {
             SleepStageTotals.NightBlock(a, a + 3 * 3600),  // 3h
             SleepStageTotals.NightBlock(b, b + 6 * 3600),  // 6h longest
         )
-        // selector still picks index 1 (parity with mainNightIndex), and explains it cold-start.
+        // selector picks index 1 and explains it cold-start.
         assertEquals(1, SleepStageTotals.mainNightIndex(blocks, 0L))
         val sel = SleepStageTotals.mainNightSelection(blocks, 0L)   // null habitual = cold-start
         assertNotNull(sel)
@@ -626,10 +585,9 @@ class MainNightConsistencyTest {
         assertEquals(6 * 3600L, sel.asleepSec)
     }
 
-    /** REASON longestNearUsual: a LEARNED habitual is present, and the chosen block is BOTH the longest by
-     *  duration AND earns a non-zero alignment bonus (its midpoint sits within the bonus window of the
-     *  habitual). Habitual 03:00; night onset 23:00 6h (mid 02:00 → bonus > 0) beats a shorter 1h nap on
-     *  duration anyway, so the bonus did NOT flip the pick — it's "longest, near usual". */
+    /** REASON longestNearUsual: a learned habitual is present and the chosen block is both the longest by
+     *  duration AND alignment-bonus-eligible. Habitual 03:00; the 6h night (mid 02:00) beats a 1h nap on
+     *  duration alone, so the bonus didn't flip the pick — "longest, near usual". */
     @Test
     fun reasonLongestNearUsual() {
         val habitual = sod(3, 0)
@@ -649,10 +607,9 @@ class MainNightConsistencyTest {
         assertEquals(6 * 3600L, sel.asleepSec)
     }
 
-    /** REASON alignedToUsual: the alignment bonus (NOT raw duration) flipped the pick. Same fixture as
-     *  [habitualAlignedShorterNightBeatsLongerAfternoon]: habitual 03:00, a 5h afternoon (mid 15:30, bonus
-     *  0 → score 300) is LONGER, but a 4h habitual-aligned night (mid 03:00, bonus 90 → score 330) wins on
-     *  timing. Duration-only winner = the afternoon; score winner = the night → timing decided it. */
+    /** REASON alignedToUsual: the alignment bonus (not duration) flips the pick. Habitual 03:00; a 5h
+     *  afternoon (mid 15:30, bonus 0 → 300) is longer, but a 4h aligned night (mid 03:00, bonus 90 → 330)
+     *  wins on timing. */
     @Test
     fun reasonAlignedToUsual() {
         val habitual = sod(3, 0)
@@ -693,9 +650,9 @@ class MainNightConsistencyTest {
         }
     }
 
-    // ── #561 biphasic gap-bridge (mainNightGroupIndices) ─────────────────────────────────────────
+    // ── biphasic gap-bridge (mainNightGroupIndices) ─────────────────────────────────────────
 
-    /** Two overnight fragments split by a < 60-min wake gap → one group of BOTH. Mirrors Swift. */
+    /** Two overnight fragments split by a < 60-min wake gap → one group of both. */
     @Test
     fun groupIndicesBridgesTwoAdjacentFragments() {
         val a = atHour(23) - 86_400L
@@ -746,14 +703,11 @@ class MainNightConsistencyTest {
         assertEquals(listOf(0, 2), SleepStageTotals.mainNightGroupIndices(blocks, 0L))
     }
 
-    // ── #861 a real overnight night split by a 60–90 min wake is ONE sleep, not nap + sleep ──────────
+    // ── a real overnight night split by a 60–90 min wake is ONE sleep, not nap + sleep ──────────
 
-    /** The reported pattern (#861): one overnight sleep the detector left split into two fragments by a real
-     *  ~70-min mid-night wake, longer than the old 60-min bridge, so the later fragment lost the main-night
-     *  pick and was LABELLED A NAP. The wider overnight night-tail bridge (≤ NIGHT_TAIL_BRIDGE_MAX_MIN, onset
-     *  still in the overnight band) now folds both fragments into ONE main-night group, so neither is a nap.
-     *  Honest-data invariant: no stage is invented; the gap is folded into AWAKE by the aggregate. Mirrors
-     *  Swift `testOvernightNightSplitBySeventyMinuteWakeMergesIntoOneSleepNotNap`. */
+    /** A real overnight sleep split by a ~70-min mid-night wake folds into one main-night group via the
+     *  night-tail bridge (overnight-band onset, ≤ NIGHT_TAIL_BRIDGE_MAX_MIN); the gap folds into awake,
+     *  no stage invented. */
     @Test
     fun overnightNightSplitBySeventyMinuteWakeMergesIntoOneSleepNotNap() {
         val a = atMin(23, 30) - 86_400L              // overnight onset
@@ -767,9 +721,8 @@ class MainNightConsistencyTest {
         assertEquals(listOf(0, 1), SleepStageTotals.mainNightGroupIndices(blocks, 0L))
     }
 
-    /** The daytime guard the widening must NOT breach: a genuine afternoon nap (daytime onset) stays its OWN
-     *  block, because the wider bridge requires an overnight-band onset. Mirrors Swift
-     *  `testDaytimeNapWithSeventyMinuteGapStillStaysItsOwnBlock`. */
+    /** A genuine afternoon nap (daytime onset) stays its own block; the night-tail bridge requires an
+     *  overnight-band onset. */
     @Test
     fun daytimeNapStillStaysItsOwnBlockUnderWiderBridge() {
         val night = atHour(0)                         // 00:00 → 06:00 overnight
@@ -782,9 +735,8 @@ class MainNightConsistencyTest {
         assertEquals(listOf(0), SleepStageTotals.mainNightGroupIndices(blocks, 0L))
     }
 
-    /** The upper guard: a wake gap at/over NIGHT_TAIL_BRIDGE_MAX_MIN (90 min) is NOT a mid-night wake, so the
-     *  blocks stay separate even for an overnight-band onset. Mirrors Swift
-     *  `testOvernightGapAtOrAboveNinetyMinutesDoesNotBridge`. */
+    /** A wake gap at/over NIGHT_TAIL_BRIDGE_MAX_MIN (90 min) is not a mid-night wake, so the blocks stay
+     *  separate even for an overnight-band onset. */
     @Test
     fun overnightGapAtOrAboveNinetyMinutesDoesNotBridge() {
         val a = atHour(23) - 86_400L
@@ -798,11 +750,8 @@ class MainNightConsistencyTest {
     }
 
     /**
-     * IRON-RULE REGRESSION GUARD (#547 / #407 lanes): the 6.1.1 bridged main-night SELECTION must NOT move
-     * when the upstream ingest gate (#547) or the downstream motion trace (#407) change. Pins
-     * `mainNightGroupIndices` for a biphasic main night to a BYTE-IDENTICAL frozen golden so any edit that
-     * perturbs the bridge/selection is caught. Kotlin twin of the Swift
-     * `testMainNightGroupIndicesByteIdenticalForBiphasicNight`.
+     * Regression guard: pins `mainNightGroupIndices` for a biphasic main night to a byte-identical frozen
+     * golden, so an unrelated ingest/motion change can't move the selection.
      */
     @Test
     fun mainNightGroupIndicesByteIdenticalForBiphasicNight() {
@@ -817,8 +766,8 @@ class MainNightConsistencyTest {
             SleepStageTotals.NightBlock(b, bEnd),    // idx 1
             SleepStageTotals.NightBlock(nap, nap + 80 * 60), // idx 2
         )
-        // FROZEN GOLDEN: the two bridged night fragments are the group; the nap is excluded. A change here
-        // means the 6.1.1 main-night selection moved — STOP and investigate (the iron rule).
+        // Frozen golden: the two bridged night fragments are the group; the nap is excluded. A change here
+        // means the main-night selection moved.
         assertEquals(listOf(0, 1), SleepStageTotals.mainNightGroupIndices(blocks, 0L))
         // Cold-start and learned-habitual both land identically (duration dominates), proving neither path
         // perturbs the bridge.
@@ -827,7 +776,7 @@ class MainNightConsistencyTest {
         assertTrue(SleepStageTotals.mainNightIndex(blocks, 0L) in listOf(0, 1))
     }
 
-    /** The stages-path seam SUMS the bridged biphasic group (analyzeDay parity), not the longest fragment. */
+    /** The stages-path seam sums the bridged biphasic group, not the longest fragment. */
     @Test
     fun honoringEditsSumsBiphasicGroup() {
         val a = atHour(23) - 86_400L

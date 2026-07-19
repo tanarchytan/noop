@@ -7,11 +7,9 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * #65: deleting a DETECTED sleep writes a durable tombstone so the next analyze pass does not silently
- * re-detect + re-insert it. [DismissedSleepGuard] is the pure overlap-suppression logic behind the engine
- * guard (the JVM-testable twin of Swift `DismissedSleepSpans`), and this pins HAZARD 1: the read-side
- * UNION of the imported + computed id namespaces means a tombstone written under EITHER id suppresses a
- * re-detected night, with NO data migration.
+ * Deleting a DETECTED sleep writes a durable tombstone so the next analyze pass does not silently
+ * re-detect + re-insert it. [DismissedSleepGuard] is the overlap-suppression logic: a tombstone written
+ * under EITHER the imported or computed device id suppresses a re-detected night.
  */
 class DismissedSleepGuardTest {
 
@@ -41,10 +39,8 @@ class DismissedSleepGuardTest {
     // --- HAZARD 1: a tombstone written under EITHER namespace suppresses a computed re-detect ---
 
     @Test fun tombstoneUnderImportedIdSuppressesAComputedReDetect() {
-        // The exact bug: the user deleted an IMPORTED night, so the tombstone was written under
-        // "my-whoop". A later strap raw re-detection banks the SAME window under the COMPUTED source.
-        // The engine reads the UNION of both ids (WhoopRepository.dismissedSleeps), so this tombstone
-        // is now consulted and the computed re-detect is dropped.
+        // Bug: an IMPORTED night's tombstone ("my-whoop") must still suppress a later re-detect banked
+        // under the COMPUTED source — the engine reads the UNION of both ids (dismissedSleeps).
         val importedTombstone = DismissedSleep(deviceId = "my-whoop", startTs = 200_000, endTs = 228_000)
         val computedTombstone = DismissedSleep(deviceId = "my-whoop-noop", startTs = 100_000, endTs = 128_000)
         // The union the repository returns (dao.dismissedSleeps("my-whoop") + dao.dismissedSleeps("my-whoop-noop")).
@@ -60,15 +56,14 @@ class DismissedSleepGuardTest {
     }
 
     @Test fun readingOnlyTheComputedIdWouldMissTheImportedTombstone() {
-        // Regression witness for the pre-fix behaviour: if the read consulted ONLY the computed id, an
-        // imported night's tombstone would be invisible and the night would resurrect.
+        // Witness: a computed-id-only read would miss an imported tombstone and let the night resurrect.
         val importedOnly = listOf(DismissedSleep("my-whoop", 200_000, 228_000))
         val computedIdOnlyView = importedOnly.filter { it.deviceId == "my-whoop-noop" }.map { it.startTs to it.endTs }
         assertFalse(
             "the pre-fix computed-only read never saw the imported tombstone",
             DismissedSleepGuard.isSuppressed(200_500, 228_000, computedIdOnlyView),
         )
-        // The union view (the fix) DOES see it.
+        // The union view sees it.
         val unionView = importedOnly.map { it.startTs to it.endTs }
         assertTrue(DismissedSleepGuard.isSuppressed(200_500, 228_000, unionView))
     }

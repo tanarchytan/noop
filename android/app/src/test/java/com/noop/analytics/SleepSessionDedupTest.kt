@@ -7,13 +7,9 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * #899: an unstable strap clock re-banks the SAME night under a shifted timebase, so the store
- * accumulates two (or more) OVERLAPPING sleep sessions with different timestamps. The exact
- * (deviceId, startTs) primary-key upsert cannot catch them, day assignment then keys the stale
- * duplicate to the wrong day, and Charge/Rest pin to the old night. [SleepSessionDedup] is the
- * overlap-aware collapse applied before day assignment / scoring: overlapping copies of one night
- * resolve to a single canonical survivor, while genuinely distinct sessions (two real nights, a nap
- * grazing a night) are untouched. Mirrors the Swift SleepSessionDedupTests case-for-case.
+ * An unstable strap clock re-banks the SAME night under a shifted timebase, producing overlapping
+ * duplicate sessions that key day assignment to the wrong day. [SleepSessionDedup] collapses overlapping
+ * copies to one canonical survivor before day assignment/scoring; genuinely distinct sessions survive.
  */
 class SleepSessionDedupTest {
 
@@ -27,7 +23,7 @@ class SleepSessionDedupTest {
     /** A UTC midnight well inside a day so hour offsets stay on predictable day keys. */
     private val midnight = 1_750_032_000L // divisible by 86_400
 
-    // ── Failing case (#899): shifted-timebase duplicates of one night ────────────────────────────
+    // ── Shifted-timebase duplicates of one night ────────────────────────────────────────────────
 
     @Test
     fun shiftedTimebaseDuplicate_collapsesToOneSurvivorOnTheCorrectDay() {
@@ -116,9 +112,8 @@ class SleepSessionDedupTest {
 
     @Test
     fun overlapUsesTheEditedEffectiveOnset() {
-        // An edited onset moves the block's real span; the overlap test must honour it. The
-        // detected key says 20:00 but the user corrected the onset to 02:00, so a stale copy
-        // ending 01:30 no longer overlaps the edited block at all.
+        // Edited onset moves the block's real span; overlap test must honour it — the stale copy
+        // ending 01:30 no longer overlaps the corrected [02:00,...] window.
         val edited = session(midnight - 4 * 3600L, midnight + 6 * 3600L,
             edited = true, startAdjusted = midnight + 2 * 3600L)
         val earlier = session(midnight - 6 * 3600L, midnight + 3600L + 1800L)

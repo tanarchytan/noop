@@ -10,18 +10,16 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * Tests for [NapDetector] — the pure core of on-device short-nap detection (PR #569 reimpl under
- * NoopApp). Covers the dense-gravity eligibility gate, the tri-state verdict (NAP / NONE / INCONCLUSIVE),
- * the longest-quiet-run detection, the resting-HR settle gate, the min/max length bounds, and the
- * confidence ordering. Fixtures are DB-free + clock-free so they run under testFullDebugUnitTest and are
- * byte-identical to verify cross-platform.
+ * [NapDetector] — pure core of on-device short-nap detection: dense-gravity eligibility gate,
+ * tri-state verdict (NAP / NONE / INCONCLUSIVE), longest-quiet-run detection, resting-HR settle gate,
+ * min/max length bounds, and confidence ordering. Fixtures are DB-free + clock-free.
  */
 class NapDetectorTest {
 
     private val dev = "test-device"
     private val cad = 30L  // ~30 s offload cadence — dense by the engine's median-gap gate
 
-    /** A gravity sample at [sec] with x-delta [x] (y=0, z=1 — same shape as the sedentary tests). */
+    /** A gravity sample at [sec] with x-delta [x] (y=0, z=1). */
     private fun grav(sec: Long, x: Double) = GravitySample(deviceId = dev, ts = sec, x = x, y = 0.0, z = 1.0)
 
     /** A still window from [start]..[end] at cadence [cad]: alternating tiny 0.0/0.01 deltas → ~0 motion. */
@@ -329,8 +327,8 @@ class NapDetectorTest {
     }
 
     @Test fun confidence_neverNegativeWhenHrAboveBand() {
-        // meanHr above the band shouldn't drive confidence negative (the NONE path catches it, but the
-        // helper must still be bounded if called directly).
+        // meanHr above the band shouldn't drive confidence negative (helper must stay bounded even
+        // if called directly).
         val c = NapDetector.confidenceFor(45.0, restingHr = 55, meanHr = 100, config = on)
         assertTrue(c in 0.0..1.0)
     }

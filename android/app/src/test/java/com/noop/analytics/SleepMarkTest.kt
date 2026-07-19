@@ -7,11 +7,9 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * #461 Phase 1 — sleep-marks. Kotlin twin of StrandTests/SleepMarkTests.swift. Covers the pure
- * encode/decode logic and the persistence round-trip: write a mark through the SAME
- * (deviceId, day, key) upsert semantics the metricSeries table uses, read the "sleep_mark" series
- * back out, and decode it to the original type. No Room/Robolectric — a FakeSeries reproduces the
- * upsert + range-query contract exactly, mirroring MoodStoreTest.
+ * Sleep-marks: pure encode/decode plus the persistence round-trip — write a mark through the SAME
+ * (deviceId, day, key) upsert semantics metricSeries uses, then read + decode it back. A FakeSeries
+ * reproduces the upsert + range-query contract, no Room/Robolectric.
  */
 class SleepMarkTest {
 
@@ -103,9 +101,8 @@ class SleepMarkTest {
         val fake = FakeSeries()
         val deviceId = "my-whoop"
 
-        // Two marks the SAME calendar day: the natural key (deviceId, day, key) means the second
-        // upsert overwrites the first's value — last-wins, one row. (The strap log keeps the full
-        // sequence; this asserts the documented Phase-1 store behaviour.)
+        // Two marks the SAME calendar day: natural key (deviceId, day, key) → second upsert
+        // overwrites the first — last-wins, one row.
         val base = 1_710_000_000_000L
         val first = SleepMark(SleepMarkType.BEDTIME, base)
         val second = SleepMark(SleepMarkType.WAKE, base + 60_000L)  // 1 min later, same day

@@ -5,13 +5,9 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * Guards the additive v11 -> v12 Room migration (the per-epoch `sleepSession.motionJSON` /
- * `sleepSession.sleepStateJSON` columns) — the Android twin of the Swift WhoopStore v18 migration.
- * This environment has no Robolectric / Room-testing, so the migration's SQL is exposed as an internal
- * constant ([WhoopDatabase.SLEEP_MOTION_STATE_MIGRATION_SQL]) and pinned here to Room's generated shape:
- *
- *  - two ALTER ... ADD COLUMN statements, both nullable TEXT (a `String?` field): no NOT NULL, no DEFAULT.
- *  - ADDITIVE: only ALTER ADD COLUMN; no DROP/DELETE/UPDATE/INSERT/CREATE on existing data.
+ * Guards the additive v11 -> v12 Room migration (`sleepSession.motionJSON` / `sleepStateJSON` columns).
+ * The SQL is exposed as [WhoopDatabase.SLEEP_MOTION_STATE_MIGRATION_SQL] and pinned to Room's generated
+ * shape: two nullable-TEXT ADD COLUMN statements, additive only.
  */
 class SleepMotionStateMigrationTest {
 

@@ -5,18 +5,9 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * Guards the additive v14 -> v15 Room migration (the `sleepStateSample` table, #175), the Android twin of
- * the Swift WhoopStore v21 migration. This environment has no Robolectric / Room-testing, so the migration's
- * SQL is exposed as an internal constant ([WhoopDatabase.SLEEP_STATE_SAMPLE_MIGRATION_SQL]) and pinned here
- * to Room's generated shape for [SleepStateSampleEntity]:
- *
- *  - one CREATE TABLE IF NOT EXISTS statement — deviceId TEXT NOT NULL, ts INTEGER NOT NULL, state INTEGER
- *    NOT NULL, composite PRIMARY KEY (deviceId, ts) in declaration order.
- *  - ADDITIVE: CREATE TABLE only; no DROP/DELETE/UPDATE/INSERT/ALTER on existing data.
- *
- * The strap's OWN band sleep_state (0 wake/1 still/2 asleep/3 up) was DECODED but DROPPED at stream
- * extraction, so the band-state chain (the H7 re-onset CONFIRM guard + a Deep Timeline track) had no source.
- * This new raw per-sample table is that source. `state` is the raw 0-3 code carried verbatim.
+ * Guards the additive v14 -> v15 Room migration (`sleepStateSample` table). The SQL is exposed as
+ * [WhoopDatabase.SLEEP_STATE_SAMPLE_MIGRATION_SQL] and pinned to Room's generated CREATE-TABLE shape;
+ * additive only (no DROP/DELETE/UPDATE/INSERT/ALTER). `state` holds the band's raw 0-3 code.
  */
 class SleepStateSampleMigrationTest {
 
@@ -51,8 +42,8 @@ class SleepStateSampleMigrationTest {
     }
 
     /**
-     * The entity + the transient decode row carry the band's raw 0-3 code verbatim (incl. 0, a real wake
-     * reading, not "absent"). The DAO read is `SELECT *`, so once the table exists the entity round-trips.
+     * The entity + transient decode row carry the raw 0-3 code verbatim (incl. 0, a real wake reading)
+     * and round-trip once the table exists.
      */
     @Test
     fun sleepStateRow_andEntity_shape() {

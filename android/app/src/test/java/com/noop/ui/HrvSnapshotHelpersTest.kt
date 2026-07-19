@@ -5,9 +5,8 @@ import org.junit.Assert.assertNull
 import org.junit.Test
 
 /**
- * Pins the pure HRV-snapshot view helpers (#127): mean-HR derivation from the mean NN interval, the
- * null-safe formatter, and the capture-ring fraction. Mirrors the Swift HRVSnapshotView static
- * helpers (`meanHR`, `format`) and `captureFraction` case-for-case.
+ * Pins the pure HRV-snapshot view helpers: mean-HR from mean NN, the null-safe formatter, and the
+ * capture-ring fraction.
  */
 class HrvSnapshotHelpersTest {
 
@@ -69,8 +68,8 @@ class HrvSnapshotHelpersTest {
         )
     }
 
-    // The production `captureFraction` + `HrvPhase` are file-private to HrvSnapshotScreen; this test
-    // re-states the identical formula so the ring's mapping is pinned without widening visibility.
+    // captureFraction/HrvPhase are file-private to HrvSnapshotScreen; re-stated here to pin the
+    // mapping without widening visibility.
     private enum class HrvPhaseForTest { Idle, Capturing, Done }
 
     private fun captureFractionForTest(phase: HrvPhaseForTest, secondsRemaining: Int): Float =

@@ -8,12 +8,8 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * App-side golden + wiring guard for the sleep-engine swap. The 4-class hypnogram now lives only in
- * whoop-rs; this pins the app path ([RustSleepStager] bridge → uniffi → physio-algo) by replaying the
- * canonical crafted night (the same integer-only fixture the Rust `frozen_golden_hypnogram_v2` freezes)
- * through the bridge and asserting the frozen V2 segments, plus that V1 tiles the window contiguously.
- * Segment-for-segment parity with the (now deleted) Kotlin stagers was proven green over the DREAMT
- * fixtures before deletion. Loads the host libwhoop_ffi via JNA (see jna.library.path / buildRustHostDll).
+ * Pins the app sleep-staging path ([RustSleepStager] bridge -> uniffi -> physio-algo): replays a
+ * canonical crafted night and asserts the frozen V2 segments. Loads the host libwhoop_ffi via JNA.
  */
 class RustSleepStagerParityTest {
 

@@ -8,18 +8,8 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * Charge / Effort / Rest scoring redesign (2026-06-12).
- *
- * Mirrors the Swift StrandAnalytics scoring tests so cross-platform parity holds:
- *  - Effort (StrainScorer) now maps TRIMP onto 0–100 (maxStrain 21→100, D=7201 unchanged).
- *  - Charge (RecoveryScorer) folds in a symmetric skin-temp penalty (wHRV 0.60→0.55,
- *    wSkinTemp 0.05); the no-skin-temp path is byte-identical to the old model.
- *  - Rest (RestScorer) composite: duration 0.50 + efficiency 0.20 + restorative 0.20 +
- *    consistency 0.10, stored under the sleep_performance key (0–100).
- *  - ScoreConfidence tiers (calibrating / building / solid).
- *
- * Goldens are computed from the closed-form formulas (see the design spec) — keep every
- * constant byte-identical to the Swift source.
+ * Charge / Effort / Rest scoring: Effort maps TRIMP onto 0–100, Charge adds a symmetric skin-temp
+ * penalty, Rest is a duration/efficiency/restorative/consistency composite, plus ScoreConfidence tiers.
  */
 class ChargeEffortRestScoringTest {
 
@@ -29,7 +19,7 @@ class ChargeEffortRestScoringTest {
 
     @Test
     fun effort_scaleConstantsAreRescaled() {
-        // The whole rebrand is a pure linear rescale: maxStrain 21→100, denominator unchanged.
+        // Pure linear rescale: maxStrain 21→100, denominator unchanged.
         assertEquals(100.0, StrainScorer.maxStrain, 0.0)
         assertEquals(7201.0, StrainScorer.strainDenominator, 0.0)
     }
@@ -49,8 +39,8 @@ class ChargeEffortRestScoringTest {
 
     @Test
     fun effort_oldGoldensRescaledByHundredOverTwentyOne() {
-        // Every former 0–21 golden is the 0–100 value × 21/100 (within 2-dp rounding).
-        // trimp=1000 was 16.33 on the 0–21 scale → 16.33 × 100/21 ≈ 77.76, our 0–100 value is 77.78.
+        // A 0–21 golden × 100/21 equals the 0–100 value (within 2-dp);
+        // trimp=1000: 16.33 → 77.76 ≈ 77.78.
         val effort = StrainScorer.trimpToStrain(1000.0)
         val legacy21 = 21.0 * kotlin.math.ln(1001.0) / kotlin.math.ln(7201.0)
         assertEquals(legacy21 * (100.0 / 21.0), effort, 0.02)
@@ -89,7 +79,7 @@ class ChargeEffortRestScoringTest {
         assertNull(StrainScorer.strain(hrConstant(135), maxHR = 60.0, restingHR = 60.0)) // HRR ≤ 0
     }
 
-    // ── #482/#480 sparse-strap acceptance + honest-zero (parity with Swift StrainScorerTests) ──
+    // ── Sparse-strap acceptance + honest-zero ──
 
     /** n samples at a fixed cadence (default 30 s — the WHOOP 5/MG live-HR rate). */
     private fun hrEvery(bpm: Int, n: Int, stepS: Int = 30): List<HrSample> =
@@ -97,8 +87,8 @@ class ChargeEffortRestScoringTest {
 
     @Test
     fun effort_sparseStreamScoresOnceItSpansEnoughTime() {
-        // 5/MG: ~30 samples at 30 s — under minReadings (600) but spanning ~15 min, so it scores
-        // rather than returning null (which made the live gauge show a stale prior-day value).
+        // 5/MG: ~30 samples at 30 s — under minReadings (600) but spans ~15 min, so it scores
+        // rather than returning null.
         val sparse = hrEvery(155, 30) // 30 × 30 s = 870 s span; 155 bpm ≈ z5 on max 160
         assertTrue(sparse.last().ts - sparse.first().ts >= StrainScorer.minSpanSeconds)
         assertNotNull(StrainScorer.strain(sparse, maxHR = 160.0, restingHR = 60.0))
@@ -112,8 +102,8 @@ class ChargeEffortRestScoringTest {
 
     @Test
     fun effort_lightDayHonestlyScoresZeroNotFabricated() {
-        // HR below ~50% HRR earns ZERO, by design — the sparse path must not invent load. With
-        // max 184 / rest 60, zone 1 starts at 122 bpm; 105 bpm stays below it on both cadences.
+        // HR below ~50% HRR earns ZERO — the sparse path must not invent load. With max 184 /
+        // rest 60, zone 1 starts at 122 bpm; 105 bpm stays below it on both cadences.
         assertEquals(0.0, StrainScorer.strain(hrConstant(105, n = 1200), maxHR = 184.0, restingHR = 60.0))
         assertEquals(0.0, StrainScorer.strain(hrEvery(105, 40), maxHR = 184.0, restingHR = 60.0))
     }
@@ -134,8 +124,7 @@ class ChargeEffortRestScoringTest {
         assertEquals(0.15, RecoveryScorer.wSleep, 0.0)
         assertEquals(0.05, RecoveryScorer.wResp, 0.0)
         assertEquals(0.05, RecoveryScorer.wSkinTemp, 0.0)
-        // 1.0 °C per z-unit, matching the Swift reference (RecoveryScorer.skinTempScaleC = 1.0). A
-        // prior 0.5 here doubled the skin-temp penalty vs macOS/iOS — fixed for parity (#219 audit).
+        // 1.0 °C per z-unit.
         assertEquals(1.0, RecoveryScorer.skinTempDevScale, 0.0)
     }
 
@@ -156,8 +145,7 @@ class ChargeEffortRestScoringTest {
 
     @Test
     fun charge_nullSkinTempIsIdenticalToBefore() {
-        // Dropping the skin-temp term must renormalize the remaining weights so the score is
-        // unchanged from the pre-skin-temp model.
+        // Absent skin-temp renormalizes the remaining weights → same score as a zero deviation.
         val absent = chargeAt(null)!!
         val devZero = chargeAt(0.0)!! // present but zero deviation → same z, same renormalization
         assertNotNull(absent)
@@ -213,9 +201,8 @@ class ChargeEffortRestScoringTest {
 
     @Test
     fun rest_compositeWithoutConsistencyUsesNeutral() {
-        // 8h asleep (dur 100), eff 0.92 (92), deep 1.5h + REM 2h = 3.5h restorative,
-        // share 0.4375 / 0.50 → 87.5. No consistency → NEUTRAL 50 at full weight (Swift parity: the
-        // term is NOT dropped/renormalized). Weights 0.50/0.20/0.20/0.10 sum to 1.0.
+        // 8h asleep (dur 100), eff 0.92 (92), deep 1.5h + REM 2h = 3.5h restorative, share 0.4375/0.50
+        // → 87.5. No consistency → NEUTRAL 50 at full weight.
         val score = RestScorer.rest(
             asleepSeconds = 8 * 3600.0,
             efficiency = 0.92,
@@ -242,7 +229,7 @@ class ChargeEffortRestScoringTest {
     @Test
     fun rest_durationDominatesShortNight() {
         // 4h asleep against the 8h default → duration 50; eff 0.95 (95); restorative share 0.5 → 100.
-        // No consistency → neutral 50 at full weight (Swift parity). Weights sum to 1.0.
+        // No consistency → neutral 50 at full weight.
         val score = RestScorer.rest(
             asleepSeconds = 4 * 3600.0,
             efficiency = 0.95,
@@ -266,7 +253,7 @@ class ChargeEffortRestScoringTest {
         // 10h asleep against an 8h need does not over-credit: duration clamps at 100.
         val score = RestScorer.rest(10 * 3600.0, 0.90, 2.0 * 3600.0, 2.5 * 3600.0)!!
         val restShare = (2.0 + 2.5) / 10.0 // 0.45 → /0.5 → 90
-        // No consistency → neutral 50 at full weight (Swift parity). Weights sum to 1.0.
+        // No consistency → neutral 50 at full weight.
         val expected = 100.0 * 0.50 + 90.0 * 0.20 + (restShare / 0.50 * 100.0) * 0.20 + 50.0 * 0.10
         assertEquals(expected, score, EPS)
     }
@@ -309,8 +296,7 @@ class ChargeEffortRestScoringTest {
 
     @Test
     fun confidence_restTiers() {
-        // Mirrors Swift AnalyticsEngineTests: the tier depends on staged sleep for THIS night,
-        // not on sleep-need history length.
+        // Tier depends on staged sleep for THIS night, not on sleep-need history length.
         assertEquals(ScoreConfidence.CALIBRATING,
             ScoreConfidence.forRest(hasSession = false, hasStagedSleep = false))
         assertEquals(ScoreConfidence.BUILDING,
@@ -326,8 +312,8 @@ class ChargeEffortRestScoringTest {
         assertEquals("solid", ScoreConfidence.SOLID.raw)
     }
 
-    // H9: a high-efficiency night whose deep+REM share is implausibly low is flagged LOW-CONFIDENCE
-    // (downgraded SOLID → BUILDING) — honest "staging may be off", no faked stages. Mirrors Swift.
+    // A high-efficiency night with implausibly low deep+REM share is flagged low-confidence
+    // (SOLID → BUILDING), no faked stages.
     @Test
     fun confidence_restH9DowngradesLowRestorativeHighEfficiencyNight() {
         val asleep = 8.0 * 3600.0
@@ -377,10 +363,8 @@ class ChargeEffortRestScoringTest {
         )
     }
 
-    // #345: a night staged on SPARSE gravity (WHOOP 4.0 offload banks motion coarsely) is downgraded to
-    // low-confidence WHATEVER the engine filled in — this catches the #319 case H9 misses: high efficiency
-    // AND healthy restorative (V2 manufactured stages on too little motion) would read SOLID under H9, but
-    // the coarse motion can't support a confident 85–100.
+    // Sparse-gravity nights (coarse motion) downgrade regardless of staged values — high efficiency
+    // + healthy restorative can still be unsupported by coarse motion.
     @Test
     fun confidence_restSparseGravityDowngradesEvenHealthyLookingNight() {
         val asleep = 8.0 * 3600.0
@@ -396,7 +380,7 @@ class ChargeEffortRestScoringTest {
 
     @Test
     fun confidence_restSparseGravityDefaultsFalseSoDenseNightsUnchanged() {
-        // Default gravitySparse=false → a dense healthy night stays SOLID (byte-identical to old callers).
+        // Default gravitySparse=false → a dense healthy night stays SOLID.
         val asleep = 8.0 * 3600.0
         assertEquals(
             ScoreConfidence.SOLID,

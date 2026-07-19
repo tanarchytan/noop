@@ -8,9 +8,8 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * Pure-logic tests for [NapStore]'s id / dedup / retention contract (PR #569 reimpl). The
- * SharedPreferences + org.json I/O isn't unit-testable on plain JVM (org.json isn't mocked, matching the
- * CaffeineLog store), so the dedup + retention rules are exposed as pure functions and tested here.
+ * Pins [NapStore]'s id / dedup / retention contract. SharedPreferences + org.json I/O isn't
+ * unit-testable on plain JVM, so the dedup + retention rules are exposed as pure functions here.
  */
 class NapStoreTest {
 

@@ -5,13 +5,9 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * #65: the tombstone-WRITE policy on delete (pure), paired with the #899 heal invariant.
- *
- * A DETECTED night's delete writes a suppression tombstone so the recompute does not silently regenerate
- * it. A user-created/edited night (`userEdited`) is deleted WITHOUT one: it is never re-detected, so
- * suppressing its window would wrongly block a real future night. The #899 dedup heal deletes stale
- * timebase-shifted duplicates via a SEPARATE tombstone-free path ([WhoopRepository.deleteSleepSessionRowOnly]),
- * so a heal can never permanently suppress the surviving night. These pin the decision the repository makes.
+ * Pins the tombstone-WRITE policy on delete (pure). A detected night writes a suppression tombstone so
+ * recompute doesn't regenerate it; a `userEdited` night writes none, since it is never re-detected and
+ * tombstoning it would wrongly block a real future night.
  */
 class SleepDeleteTombstonePolicyTest {
 

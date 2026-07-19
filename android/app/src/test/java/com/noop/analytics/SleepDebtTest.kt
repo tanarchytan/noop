@@ -5,7 +5,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/** Kotlin parity for StrandAnalytics/SleepDebtTests.swift — same vectors, same results. */
+/** SleepDebt.ledger math — night deltas, surplus/deficit netting, window cap, away-from-zero rounding. */
 class SleepDebtTest {
 
     @Test
@@ -77,10 +77,8 @@ class SleepDebtTest {
     }
 
     /**
-     * A NEGATIVE EXACT half-tie balance must round AWAY from zero (−0.05 → −0.1) to match
-     * Swift's `round1`. Kotlin's old `roundToInt()` rounded half toward +∞ and produced 0.0 on
-     * this exact tie — the cross-platform divergence audit #6 called out. needMin = 0.1, slept
-     * 0.05 → delta −0.05 exactly → balance −0.1.
+     * A NEGATIVE EXACT half-tie balance must round AWAY from zero (−0.05 → −0.1).
+     * needMin = 0.1, slept 0.05 → delta −0.05 exactly → balance −0.1.
      */
     @Test
     fun negativeHalfTie_roundsAwayFromZero() {
@@ -96,8 +94,7 @@ class SleepDebtTest {
         assertEquals(0.1, l.balanceMin, 1e-9)
     }
 
-    /** round1 pinned directly (both signs + a non-tie + a larger tie), parity with Swift's
-     *  testRound1HalfTiesAwayFromZero. */
+    /** round1 pinned directly: both signs, a non-tie, and a larger tie. */
     @Test
     fun round1_halfTiesAwayFromZero() {
         assertEquals(-0.1, SleepDebt.round1(-0.05), 1e-9)

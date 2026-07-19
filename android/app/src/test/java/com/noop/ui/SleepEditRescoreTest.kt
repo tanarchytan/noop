@@ -8,45 +8,23 @@ import org.junit.Assert.fail
 import org.junit.Test
 
 /**
- * Audit #2/#3/#4 — Android sleep edits must RE-SCORE the day immediately, not wait up to 15 min.
- *
- * Swift's SleepView calls `intelligence.analyzeRecent()` straight after each of editSleepTimes /
- * deleteSleepSession / addManualNap, so Charge / Rest / recovery (and the persisted sleep_performance)
- * recompute and Today refreshes the same instant the Sleep tab does. Android previously only persisted
- * the row and left the staleness to the 15-min background loop, so Today disagreed with the Sleep tab.
- *
- * The fix wires AppViewModel.updateSleepSessionTimes / deleteSleepSession / addManualNap to call a private
- * `rescoreAfterSleepEdit()` after the repository persist. The VM itself is an [android.app.AndroidViewModel]
- * backed by the process-wide NoopApplication (Room + BLE), so it can't be constructed in the pure-JVM
- * testFullDebugUnitTest suite. These tests instead pin the CONTROL-FLOW contract the wiring relies on, in
- * the same pure-mirror style the rest of this suite uses (e.g. TodayResolverEffortScaleTest mirrors
- * resolveTodayRow): persist-then-rescore, best-effort persist, best-effort rescore, and cancellation
- * propagation (the #125 rule the 15-min loop already follows).
- *
- * The exact shapes mirrored from AppViewModel:
- *
- *   suspend fun updateSleepSessionTimes(...) { runCatching { repository.updateSleepSessionTimes(...) }; rescoreAfterSleepEdit() }
- *   suspend fun deleteSleepSession(...)      { runCatching { repository.deleteSleepSession(...) };      rescoreAfterSleepEdit() }
- *   suspend fun addManualNap(...)            { runCatching { repository.addManualNap(...) };            rescoreAfterSleepEdit() }
- *
- *   private suspend fun rescoreAfterSleepEdit() {
- *       runCatching { IntelligenceEngine.analyzeRecent(...) }
- *           .onFailure { if (it is CancellationException) throw it }
- *   }
+ * A sleep edit must RE-SCORE the day immediately (persist, then re-score), not wait for the background
+ * loop. The VM can't be constructed under testFullDebugUnitTest, so these pin the control-flow contract:
+ * persist-then-rescore, best-effort persist, best-effort rescore, and cancellation propagation.
  */
 class SleepEditRescoreTest {
 
     /** Records the order calls happened in, so a test can assert persist ran before re-score. */
     private class Recorder { val events = mutableListOf<String>() }
 
-    /** Pure mirror of `rescoreAfterSleepEdit`: swallow analyzeRecent failures, but rethrow a
-     *  CancellationException so a VM teardown mid-edit isn't masked (matches the launch loop's #125 rule). */
+    /** Swallow analyzeRecent failures, but rethrow CancellationException so a VM teardown
+     *  mid-edit isn't masked. */
     private suspend fun rescoreAfterSleepEdit(analyzeRecent: suspend () -> Unit) {
         runCatching { analyzeRecent() }
             .onFailure { if (it is CancellationException) throw it }
     }
 
-    /** Pure mirror of an edit method: best-effort persist, then unconditional re-score. */
+    /** Best-effort persist, then unconditional re-score. */
     private suspend fun editMethod(
         persist: suspend () -> Unit,
         analyzeRecent: suspend () -> Unit,
@@ -67,8 +45,8 @@ class SleepEditRescoreTest {
 
     @Test
     fun rescoreStillRunsWhenPersistThrows() = runTest {
-        // The Sleep screen already applied the edit optimistically, so a persist failure must NOT skip the
-        // re-score (the day still needs to recompute off whatever the persist managed / the prior state).
+        // Sleep screen applies the edit optimistically, so persist failure must not skip re-score (the
+        // day still needs to recompute off whatever state exists).
         val rec = Recorder()
         editMethod(
             persist = { throw IllegalStateException("DB write failed") },
@@ -91,8 +69,7 @@ class SleepEditRescoreTest {
 
     @Test
     fun rescorePropagatesCancellation() = runTest {
-        // A scope cancellation surfaces as CancellationException; it must propagate so a ViewModel teardown
-        // mid-edit actually stops, not get swallowed by the best-effort runCatching (the #125 rule).
+        // Cancellation must propagate (VM teardown mid-edit), not get swallowed by the best-effort runCatching.
         try {
             rescoreAfterSleepEdit(analyzeRecent = { throw CancellationException("VM cleared") })
             fail("CancellationException from the re-score must propagate, not be swallowed")

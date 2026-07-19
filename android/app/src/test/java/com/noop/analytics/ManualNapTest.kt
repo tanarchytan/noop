@@ -8,16 +8,9 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * Manually-added + editable NAPS — Android parity for iOS #508.
- *
- * A nap is stored as its OWN sleep session (never folded into main sleep). The persistence is iOS-parity:
- * `WhoopRepository.addManualNap` inserts a row under the computed source with `userEdited = true` and
- * `startTsAdjusted = null`, so the SAME recompute overlap guard that protects a hand-corrected night also
- * protects a manually-added nap and drops any re-detected overlapping session.
- *
- * Pure-function style (no Room/coroutines) so it runs under testFullDebugUnitTest. The overlap predicate
- * is the EXACT one used in IntelligenceEngine.analyzeRecent's `sleepKept` filter; the efficiency helper
- * mirrors WhoopRepository.sleepEfficiency byte-for-byte.
+ * A manually-added nap is its own sleep session, never folded into main sleep: `addManualNap` writes
+ * `userEdited = true` / `startTsAdjusted = null`, so the recompute overlap guard that protects a
+ * hand-corrected night protects it too. Pure checks of the overlap predicate and sleep-efficiency helper.
  */
 class ManualNapTest {
 
@@ -82,8 +75,7 @@ class ManualNapTest {
 
     @Test
     fun reDetectedSessionOverlappingAManualNapIsDropped() {
-        // The user added a daytime nap [48000, 49800]. A later recompute re-detects sleep at a slightly
-        // drifted window [48100, 49700] overlapping it — the guard must drop the twin (no duplicate).
+        // Nap [48000,49800]; re-detect drifts to [48100,49700] overlapping it — guard drops the twin.
         val nap = manualNap(start = 48_000, end = 49_800)
         val reDetected = detected(start = 48_100, end = 49_700)
         val kept = keptAfterGuard(detected = listOf(reDetected), edited = listOf(nap))
@@ -92,9 +84,8 @@ class ManualNapTest {
 
     @Test
     fun manualNapNeverFoldedIntoMainSleep() {
-        // Main sleep overnight + a daytime nap hours later. They are TWO separate windows: the guard keeps
-        // the main sleep (no overlap with the nap) and the nap stays its own row — the nap is never folded
-        // into main sleep, so the awake daytime gap between them is never mislabelled as light sleep.
+        // Main sleep + a daytime nap hours later are two separate windows: guard keeps both, nap never
+        // folded into main sleep (no mislabelled light-sleep gap).
         val mainSleep = detected(start = 1_000, end = 30_000)
         val nap = manualNap(start = 80_000, end = 82_400)
         val kept = keptAfterGuard(detected = listOf(mainSleep), edited = listOf(nap))
