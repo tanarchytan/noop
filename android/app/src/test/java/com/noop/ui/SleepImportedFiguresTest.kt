@@ -9,11 +9,8 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * Pins the Sleep screen's prefer-imported logic: where the WHOOP export carried a figure
- * verbatim (sleep_performance / sleep_consistency / sleep_need_min / sleep_debt_min in
- * metricSeries), the headline tiles must pass it through unscaled; days the export does
- * not cover fall back to the on-device RECOMPUTATION so sparklines stay continuous across
- * the import horizon.
+ * Pins the Sleep screen's prefer-imported logic: an exported figure passes through verbatim; days the
+ * export does not cover fall back to on-device recomputation so sparklines stay continuous.
  */
 class SleepImportedFiguresTest {
 
@@ -48,10 +45,8 @@ class SleepImportedFiguresTest {
 
     @Test
     fun uncoveredDaysUseTheRestComposite() {
-        // Imported covers only day 1; day 2 (the latest) must use the REAL Rest composite
-        // (RestScorer.restFromDaily) — the SAME single source of truth the Today Rest score,
-        // the metric-detail overlay and iOS SleepView read — NOT the old hours-vs-need proxy
-        // that ceilinged live 5.0 nights at ~100% while every other surface showed ~85% (#298).
+        // Imported covers only day 1; day 2 (latest) must use the REAL Rest composite
+        // (RestScorer.restFromDaily).
         val days = listOf(day("2026-06-01", 420.0), day("2026-06-02", 410.0))
         val imported = ImportedSleepSeries(performance = mapOf("2026-06-01" to 85.0))
         val m = buildSleepModel(days, session = null, imported = imported)!!
@@ -62,13 +57,12 @@ class SleepImportedFiguresTest {
         assertEquals(85.0, m.performance.series.first(), 1e-9)
     }
 
-    /** #298 regression: a live night long enough to CEILING the old asleep/need proxy at 100%
-     *  must instead show the Rest composite (< 100 once efficiency / restorative pull it down),
-     *  matching the tap-through metric-detail overlay and the Today Rest score. */
+    /** A live night long enough to ceiling a raw asleep/need ratio at 100% must instead show the
+     *  Rest composite (< 100 once efficiency / restorative pull it down). */
     @Test
     fun longLiveNightShowsCompositeNotCeilingedProxy() {
-        // 8 h asleep, 82% efficiency, modest deep+REM → asleep ≥ personal need, so the OLD proxy
-        // would read min(100, 480/450·100) = 100%. The composite scores the quality, landing < 100.
+        // 8 h asleep, 82% efficiency, modest deep+REM → asleep ≥ personal need, so a raw asleep/need
+        // ratio reads min(100, 480/450·100) = 100%; the composite scores quality and lands < 100.
         val night = DailyMetric(
             deviceId = "my-whoop", day = "2026-06-02", totalSleepMin = 480.0,
             deepMin = 70.0, remMin = 80.0, lightMin = 330.0, efficiency = 0.82,
@@ -107,13 +101,10 @@ class SleepImportedFiguresTest {
         assertEquals(a, b)
     }
 
-    // --- Cross-platform parity: ASLEEP, not in-bed; window is full history, not the browsed
-    //     night. Mirrors iOS SleepView, which reads totalSleepMin over repo.days for every tile,
-    //     the debt ledger, and the personal need. (#1/#5/#7)
+    // --- Tiles read ASLEEP (not in-bed) over the full history, not the browsed night.
 
     /** A session whose IN-BED window (600 min) dwarfs the night's ASLEEP total (410 min) must NOT
-     *  bleed time-in-bed into the per-tile passes. The old metricsWindow substituted the session's
-     *  (wake − onset) for totalSleepMin, inflating hours-vs-needed / debt; dropped for parity. */
+     *  bleed time-in-bed into the per-tile passes. */
     @Test
     fun sessionInBedWindowDoesNotSubstituteForAsleep() {
         val days = listOf(day("2026-06-01", 420.0), day("2026-06-02", 410.0))
@@ -126,12 +117,12 @@ class SleepImportedFiguresTest {
         assertEquals(410.0 / 450.0 * 100.0, m.hoursVsNeeded.latest!!, 1e-9)
         // Debt tile reads ASLEEP too: max(0, 450 − 410) = 40, never max(0, 450 − 600) = 0.
         assertEquals(40.0, m.sleepDebt.latest!!, 1e-9)
-        // The debt TILE and the LEDGER agree (both asleep over the full history) — the #5 symptom.
+        // The debt TILE and the LEDGER agree (both asleep over the full history).
         assertEquals(m.sleepDebt.latest!!, -m.sleepDebtLedger.nights.last().deltaMin, 1e-9)
     }
 
-    /** A passed session must give the SAME tiles/ledger as no session — there is no display-time
-     *  in-bed swap left. (Stage cards still update from the reclipped stagesJSON; tiles do not.) */
+    /** A passed session gives the SAME tiles/ledger as no session. (Stage cards still update from
+     *  the reclipped stagesJSON; tiles do not.) */
     @Test
     fun passingASessionDoesNotChangeTheTiles() {
         val days = listOf(day("2026-06-01", 420.0), day("2026-06-02", 410.0))
@@ -147,20 +138,25 @@ class SleepImportedFiguresTest {
         assertEquals(noSession.typicalTotalMin, withSession.typicalTotalMin)
     }
 
-    /** Browsing a PAST night (selectedDay = an earlier day) leaves the at-a-glance tiles and the
-     *  "Last 14 nights" ledger LATEST-anchored (full history) — only the hero re-points. The window
-     *  is one cross-platform definition: full history, exactly as iOS keeps repo.days. (#5) */
+    /** Browsing a PAST night leaves the at-a-glance tiles and the "Last 14 nights" ledger
+     *  LATEST-anchored (full history); only the hero re-points. */
     @Test
-    fun browsingAPastNightKeepsTilesLatestAnchored() {
+    fun browsingAPastNightRepointsPerNightTilesButKeepsTrendAnchored() {
         val days = listOf(day("2026-06-01", 420.0), day("2026-06-02", 410.0), day("2026-06-03", 400.0))
-        val latestView = buildSleepModel(days, session = null)!!                       // newest night
+        val latestView = buildSleepModel(days, session = null)!!                       // newest night (06-03)
         val browsedView = buildSleepModel(days, session = null, selectedDay = "2026-06-01")!!
-        // Tiles, need, typical and the ledger are identical regardless of which night is browsed.
-        assertEquals(latestView.performance, browsedView.performance)
-        assertEquals(latestView.sleepDebt, browsedView.sleepDebt)
+        // The per-night METRIC tiles re-point to the browsed night — its OWN reading, not the latest's.
+        assertNotEquals(latestView.performance.latest, browsedView.performance.latest)
+        assertEquals("browsed Rest = the SELECTED night's composite",
+            RestScorer.restFromDaily(days[0])!!, browsedView.performance.latest!!, 1e-9)
+        assertNotEquals(latestView.sleepDebt.latest, browsedView.sleepDebt.latest)
+        assertNotEquals(latestView.hoursVsNeeded.latest, browsedView.hoursVsNeeded.latest)
+        // The FULL-HISTORY context stays put regardless of which night is browsed: the ledger, the
+        // "typical" baselines, and each tile's `typical` mean (the "vs typical" reference).
         assertEquals(latestView.sleepDebtLedger, browsedView.sleepDebtLedger)
         assertEquals(latestView.typicalTotalMin, browsedView.typicalTotalMin)
-        // The HERO does follow the browsed night — its stages come from the selected day's row.
+        assertEquals(latestView.performance.typical, browsedView.performance.typical)
+        // The HERO also follows the browsed night — its stages come from the selected day's row.
         assertNotEquals(latestView.stages, browsedView.stages)
     }
 }
