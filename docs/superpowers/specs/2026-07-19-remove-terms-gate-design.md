@@ -17,6 +17,15 @@ Remove the mandatory first-run terms screen completely. New installs must open d
 
 `NoopRoot` initializes shared lifecycle handling and onboarding state. It then renders onboarding immediately when `noop.onboarded` is false. No terms version is read or persisted.
 
+The existing Bluetooth step becomes the welcome surface instead of adding another page. It shows:
+
+- `Welcome to NOOP`
+- `Your wearables. Your data.`
+- A Bluetooth card explaining device discovery and connection.
+- One `Begin setup` button.
+
+The first step has no Back button. Every later step keeps the existing Back and forward controls.
+
 ## Dead-Code Standard
 
 Removal includes every production and test reference to `Terms`, `TermsGateScreen`, `terms_*` resources, `KEY_ACCEPTED_TERMS_VERSION`, and `KEY_ACCEPTED_TERMS_AT`. Historic repository documentation remains outside runtime scope.
@@ -28,3 +37,4 @@ Removal includes every production and test reference to `Terms`, `TermsGateScree
 - Full unit suite passes.
 - Demo release assembles.
 - Fresh demo data opens Bluetooth onboarding directly.
+- The first screen contains the approved welcome copy and only one setup action.
