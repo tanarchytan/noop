@@ -24,6 +24,16 @@
 > - **Send fixes back:** clean, independent fixes/features → `ryanbr/noop` PRs when they help everyone;
 >   keep those PR branches cross-platform-correct (do the Swift twin) so the maintainer can take them.
 >
+> ### Comments (strict — noop-tan house rule, overrides the upstream "heavy" style below)
+>
+> Match whoop-rs. A comment is at most **3 lines**, only when it earns its place (a file/class-overview
+> header may run a little longer to orient). Say only **what it does** and **where it connects** in-tree —
+> no narration, no history ("used to", "old code", "dropped for parity"), no rationale essays. **Never refer
+> to external things** in code: no PR/issue numbers, URLs, spec/doc section refs, other repos, the Swift file
+> it was ported from, or firmware/version strings. Provenance goes in an `android/*.md` doc (or is dropped),
+> never in code; invariants, byte offsets, and scales are fine. Applies to a Kotlin change you PR back to
+> `ryanbr/noop` too (its Swift twin follows the same rule).
+>
 > Everything below is the upstream cross-platform guide, kept intact as reference for parity + PRs.
 
 Guidance for anyone (human or AI agent) submitting a pull request. This is the high-signal map;
