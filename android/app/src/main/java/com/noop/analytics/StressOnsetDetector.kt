@@ -30,30 +30,6 @@ package com.noop.analytics
  */
 object StressOnsetDetector {
 
-    // ── Tunables (evaluateStress parity + the new fast/gate pieces) ────────────
-    /** Slow-baseline EMA weight on the prior value (the shipped 0.98). New RMSSD gets `1 − this`. */
-    const val BASELINE_EMA_ALPHA: Double = 0.98
-
-    /** Fast RMSSD must drop below `baseline × this` to count as a dip (the shipped 0.6 threshold). */
-    const val DROP_RATIO: Double = 0.6
-
-    /** Resting HR band — outside it the dip is treated as metabolic (workout), not stress (shipped gate). */
-    const val RESTING_HR_LOW: Double = 55.0
-    const val RESTING_HR_HIGH: Double = 100.0
-
-    /** Beats in the FAST short window (the latest clean beats) used for the momentary RMSSD. */
-    const val FAST_WINDOW_BEATS: Int = 60
-
-    /** Minimum clean beats before either RMSSD is trusted (mirrors [HrvAnalyzer.MIN_BEATS]). */
-    val MIN_BEATS: Int = HrvAnalyzer.MIN_BEATS
-
-    /** Rate limit — at most one fire per this many seconds (the shipped 900 s = 15 min). */
-    const val MIN_SECONDS_BETWEEN_FIRES: Long = 900L
-
-    /** Recent smoothed wrist-motion (g) at/above this means "moving" → exercise gate suppresses the fire
-     *  (reuses the [SedentaryDetector] move threshold so the two gates agree on what "moving" is). */
-    val MOTION_GATE_G: Double = SedentaryDetector.DEFAULT_MOVE_THRESHOLD_G
-
     // ── Config ────────────────────────────────────────────────────────────────
 
     /**
