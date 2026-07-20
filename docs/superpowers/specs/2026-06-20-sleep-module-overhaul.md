@@ -2,7 +2,7 @@
 
 **Date:** 2026-06-20
 **Trigger:** pikapik487 (#525, #547) asked for a full sleep-pipeline hygiene check rather than more targeted patches. Confirmed by a 4-dimension consistency audit (9 findings), a focused root-cause of the two headline symptoms, and domain research on how main-sleep selection should actually work.
-**Status:** Diagnosis complete, design proposed, NOT yet built. Holding for approval of the approach.
+**Status:** Core fixes (A, C, D, G) BUILT + SHIPPED as part of the whoop-rs border refactor (2026-07-18). The scored main-night selector lives in `whoop-rs/crates/physio-algo/src/sleep/mainnight.rs` with the Kotlin mirror in `SleepStageTotals.kt`. The hard overnight gate is gone. B (Android edit → immediate re-score) remains outstanding — `analyzeDay` still calls the old Kotlin `SleepStager.detectSleep` instead of the unified `analyzeSleep` FFI. See `docs/superpowers/reports/2026-07-20-sleep-algorithm-data-audit.md` for the current state. F (test gaps) partially addressed by the Rust golden tests.
 
 ---
 

@@ -1,6 +1,6 @@
 # Sleep & Recovery Guidance / Explainability Layer — Design
 
-**Status:** APPROVED (2026-06-20). Scope = all five components. Ships together with the sleep overhaul as 6.0.2 once both are verified to 99%.
+**Status:** APPROVED (2026-06-20). Foundation (MainNightReason enum + score-state model) BUILT in whoop-rs `mainnight.rs` and wired to `SleepHero.kt`. Components 1 (main-sleep explainer) and 4 (provenance) are partially wired. Components 2 (explained score states), 3 (recording status), and 5 (How NOOP Works primer) are NOT yet built. The whoop-rs border refactor (2026-07-18) delivered the engine side; the UI explainability layer is pending. See `docs/superpowers/reports/2026-07-20-sleep-algorithm-data-audit.md` for the current state.
 
 ## Goal
 
