@@ -354,10 +354,8 @@ object AnalyticsEngine {
 
         // ── HRV & Autonomic nightly trace (#141) ──────────────────────────────
         // Per-5-min-window RMSSD tagged by the sleep stage at its center, then a night summary comparing
-        // NOOP's whole-night mean (what it reports) against a deep-only mean and a WHOOP-style
-        // last-slow-wave-sleep value — so an "HRV reads ~2x higher than WHOOP" report shows WHICH stages
-        // lift it, and lets a deep-sleep-windowed fix be validated before it ships. Reuses the SAME
-        // sessionHrvWindows the value is built from (can't diverge). Zero cost when the sink is null.
+        // Calls SleepStager.sessionHrvWindows for the stage-tagged diagnostic breakdown, comparing
+        // against the Rust-computed avgHRVDaily value above. Zero cost when the sink is null.
         if (hrvTraceSink != null) {
             // sessionHrvWindows requires ts-sorted rr (RMSSD = successive diffs); the value path passes the
             // stager's pre-sorted rrS, so sort our own copy of the day's raw rr once here for the re-window.

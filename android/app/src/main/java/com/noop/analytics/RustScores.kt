@@ -279,19 +279,6 @@ internal object RustScores {
     // ── Deep-sleep HRV window (#141) ────────────────────────────────────────────
 
     /** Session avgHrv (ms) from 5-min buckets whose centre falls in deep-sleep spans. */
-    fun windowedAvgHrvDeep(start: Long, end: Long, rr: List<RrInterval>, segments: List<SleepSegment>): Double? {
-        val runs = if (rr.isEmpty()) emptyList() else {
-            val ordered = rr.sortedBy { it.ts }
-            buildList {
-                var cur = ordered[0]; var buf = mutableListOf(cur.rrMs.toUShort())
-                for (i in 1 until ordered.size) {
-                    val n = ordered[i]
-                    if (n.ts > cur.ts + 600) { add(RrRun(unix = cur.ts.toUInt(), rr = buf.toList())); buf = mutableListOf() }
-                    buf.add(n.rrMs.toUShort()); cur = n
-                }
-                if (buf.isNotEmpty()) add(RrRun(unix = cur.ts.toUInt(), rr = buf.toList()))
-            }
-        }
-        return uniffi.whoop_ffi.hrvWindowedAvgDeep(start.toUInt(), end.toUInt(), runs, segments)
-    }
+    fun windowedAvgHrvDeep(start: Long, end: Long, rr: List<RrInterval>, segments: List<SleepSegment>): Double? =
+        uniffi.whoop_ffi.hrvWindowedAvgDeep(start.toUInt(), end.toUInt(), groupRuns(rr.sortedBy { it.ts }), segments)
 }

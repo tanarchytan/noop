@@ -264,18 +264,27 @@ object DataBackup {
         val shmFile = File(dbFile.path + "-shm")
         val rollbackFile = File(dbFile.path + ".import-bak")
 
-        // 4. Close the live Room singleton so the file handles are released.
-        WhoopDatabase.close()
-
-        // 5. Snapshot the current db so a failed copy can be rolled back.
+        // 4. Snapshot the current database BEFORE closing the Room singleton. Mirroring exportTo:
+        //    checkpoint the WAL, then hold a write transaction during the file copy so concurrent
+        //    commits cannot tear the snapshot and a stray get() cannot re-open the database between
+        //    the snapshot and the overwrite below.
+        val db = WhoopDatabase.get(appContext)
+        db.query("PRAGMA wal_checkpoint(TRUNCATE)", null).use { cursor ->
+            cursor.moveToFirst()
+        }
         try {
-            rollbackFile.delete()
-            if (dbFile.exists()) dbFile.copyTo(rollbackFile, overwrite = true)
+            db.runInTransaction {
+                rollbackFile.delete()
+                if (dbFile.exists()) dbFile.copyTo(rollbackFile, overwrite = true)
+            }
         } catch (e: IOException) {
             tempSqlite.delete()
             tempSettings.delete()
             return ImportResult.Failed("Could not back up the current data: ${e.message}")
         }
+
+        // 5. Close the live Room singleton so the file handles are released.
+        WhoopDatabase.close()
 
         // 6. Overwrite the db file with the extracted backup, then drop the stale sidecars.
         try {
