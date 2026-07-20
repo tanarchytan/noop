@@ -151,7 +151,7 @@ internal fun appLaunchIntent(context: Context): Intent =
 // Gate:
 //   !onboarded                              → OnboardingScreen. On finish, mark onboarded
 //                                             AND set lastSeen = CURRENT_VERSION, so a brand-new
-//                                             user who just read the expectations doesn't ALSO
+//                                             user who just completed setup doesn't ALSO
 //                                             get the changelog popped at them.
 //   onboarded && lastSeen != CURRENT_VERSION → existing user who updated: show WhatsNewSheet once,
 //                                             over the live AppRoot, until they dismiss it.
@@ -164,12 +164,6 @@ object NoopPrefs {
     const val NAME = "noop_prefs"
     const val KEY_ONBOARDED = "noop.onboarded"
     const val KEY_LAST_SEEN_CHANGELOG = "noop.lastSeenChangelogVersion"
-    /** Terms-of-use version the user last accepted. Empty until the first-run gate is accepted; a
-     *  material terms change bumps [Terms.CURRENT_VERSION] and re-prompts. Mirrors macOS @AppStorage. */
-    const val KEY_ACCEPTED_TERMS_VERSION = "noop.acceptedTermsVersion"
-    /** ISO-8601 timestamp of the last terms acceptance — the on-device consent record (version + when). */
-    const val KEY_ACCEPTED_TERMS_AT = "noop.acceptedTermsAt"
-
     /** "Keep connected in the background", drives [com.noop.ble.WhoopConnectionService]. Default on. */
     const val KEY_BACKGROUND_CONNECTION = "noop.backgroundConnection"
 
@@ -800,7 +794,7 @@ fun NoopRoot() {
 
     // #267: app-wide "came to foreground" hook, mirrors the iOS/macOS scenePhase == .active trigger.
     // requestSync(FOREGROUND) is a safe no-op when nothing's connected/bonded yet (e.g. during
-    // onboarding), so this is placed above the onboarding/terms gates rather than duplicated below them.
+    // onboarding), so this is placed above the onboarding gate rather than duplicated below it.
     val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
     androidx.compose.runtime.DisposableEffect(lifecycleOwner, appViewModel) {
         val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
@@ -826,27 +820,11 @@ fun NoopRoot() {
         if (onboarded) UpdateStore.from(context).seedWhatsNewIfNeeded()
     }
 
-    // Terms acknowledgment gate, over EVERYTHING (before onboarding/pairing/Bluetooth) until the
-    // current terms version is accepted; re-appears if the terms materially change. (clickwrap)
-    var acceptedTerms by remember {
-        mutableStateOf(prefs.getString(NoopPrefs.KEY_ACCEPTED_TERMS_VERSION, "") ?: "")
-    }
-    if (acceptedTerms != Terms.CURRENT_VERSION) {
-        TermsGateScreen(onAccept = {
-            prefs.edit()
-                .putString(NoopPrefs.KEY_ACCEPTED_TERMS_VERSION, Terms.CURRENT_VERSION)
-                .putString(NoopPrefs.KEY_ACCEPTED_TERMS_AT, java.time.Instant.now().toString())
-                .apply()
-            acceptedTerms = Terms.CURRENT_VERSION
-        })
-        return
-    }
-
     if (!onboarded) {
         OnboardingScreen(
             viewModel = appViewModel,
             onFinished = {
-                // A brand-new user just saw the expectations in onboarding, don't also pop the
+                // A brand-new user just completed onboarding, don't also pop the
                 // changelog at them; mark them current (mirrors macOS ContentView onFinished).
                 prefs.edit()
                     .putBoolean(NoopPrefs.KEY_ONBOARDED, true)

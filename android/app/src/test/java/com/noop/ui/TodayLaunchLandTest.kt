@@ -25,8 +25,6 @@ class TodayLaunchLandTest {
             launchDayOffset(
                 isFreshLaunch = true,
                 savedOffset = 0,
-                hasTodayData = false,
-                latestDataDayBack = 5,
             ),
         )
     }
@@ -39,8 +37,6 @@ class TodayLaunchLandTest {
             launchDayOffset(
                 isFreshLaunch = true,
                 savedOffset = 0,
-                hasTodayData = true,
-                latestDataDayBack = 0,
             ),
         )
     }
@@ -53,8 +49,6 @@ class TodayLaunchLandTest {
             launchDayOffset(
                 isFreshLaunch = true,
                 savedOffset = 7,
-                hasTodayData = false,
-                latestDataDayBack = 7,
             ),
         )
     }
@@ -68,8 +62,6 @@ class TodayLaunchLandTest {
             launchDayOffset(
                 isFreshLaunch = false,
                 savedOffset = 3,
-                hasTodayData = false,
-                latestDataDayBack = 5,
             ),
         )
     }
@@ -81,8 +73,6 @@ class TodayLaunchLandTest {
             launchDayOffset(
                 isFreshLaunch = false,
                 savedOffset = 0,
-                hasTodayData = true,
-                latestDataDayBack = 0,
             ),
         )
     }

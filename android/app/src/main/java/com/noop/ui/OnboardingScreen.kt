@@ -210,12 +210,11 @@ fun OnboardingScreen(viewModel: AppViewModel, onFinished: () -> Unit) {
     }
 }
 
-// Lean first-run flow. The marketing tour (Welcome / WhatItDoes / Expectations) and the "put your strap
-// on" (Wear) screens were cut; the legal gate is the Terms clickwrap that MainActivity shows BEFORE this.
+// Lean first-run flow. The marketing tour and Wear screens stay removed; setup starts at Bluetooth.
 // Order: Bluetooth (permission) → Connect (scan/pair) → [Bonded] → Profile → Import → Notifications →
 // Appearance → Done. Bonded is skipped by advance()/onBack when nothing is bonded.
 private enum class OnboardingPage(val cta: String) {
-    Bluetooth("Continue"),
+    Bluetooth("Begin setup"),
     Connect("Continue"),
     Bonded("Continue"),
     Profile("Save & continue"),
@@ -276,16 +275,14 @@ private fun OnboardingFooter(
         horizontalArrangement = Arrangement.spacedBy(Metrics.gap),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        OutlinedButton(
-            onClick = onBack,
-            enabled = canGoBack,
-            colors = ButtonDefaults.outlinedButtonColors(
-                contentColor = Palette.textPrimary,
-                disabledContentColor = Palette.textTertiary,
-            ),
-            modifier = Modifier.weight(0.9f),
-        ) {
-            Text("Back", style = NoopType.subhead)
+        if (canGoBack) {
+            OutlinedButton(
+                onClick = onBack,
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = Palette.textPrimary),
+                modifier = Modifier.weight(0.9f),
+            ) {
+                Text("Back", style = NoopType.subhead)
+            }
         }
         Button(
             onClick = onNext,
@@ -293,7 +290,7 @@ private fun OnboardingFooter(
                 containerColor = Palette.accent,
                 contentColor = Palette.surfaceBase,
             ),
-            modifier = Modifier.weight(1.4f),
+            modifier = if (canGoBack) Modifier.weight(1.4f) else Modifier.fillMaxWidth(),
         ) {
             Text(cta, style = NoopType.headline)
         }
@@ -345,8 +342,8 @@ private fun StepShell(
 @Composable
 private fun BluetoothStep() {
     StepShell(
-        title = "NOOP requires Bluetooth",
-        subtitle = "NOOP uses Bluetooth to find your strap. When you continue, allow the permission so it can scan.",
+        title = "Welcome to NOOP",
+        subtitle = "Your wearables. Your data.",
     ) {
         Column(
             modifier = Modifier.fillMaxWidth(),
@@ -355,13 +352,11 @@ private fun BluetoothStep() {
         ) {
             IconBadge(icon = Icons.Filled.Bluetooth, tint = Palette.accent, size = 86)
             InfoCard(
-                icon = Icons.Filled.Lock,
-                tint = Palette.statusPositive,
-                title = "Nothing leaves your phone",
-                message = "NOOP talks to your strap directly over Bluetooth Low Energy. There's no server in the middle. The connection is local, and so is every reading it pulls in.",
+                icon = Icons.Filled.Bluetooth,
+                tint = Palette.accent,
+                title = "Connect your wearable",
+                message = "NOOP uses Bluetooth to find and connect to your nearby devices.",
             )
-            Checkline("When Android asks, allow Bluetooth so NOOP can scan and connect.")
-            Checkline("WHOOP 5.0/MG may need pairing mode the first time, with the official WHOOP app closed.")
         }
     }
 }
@@ -779,8 +774,8 @@ private fun ImportStep(viewModel: AppViewModel) {
 @Composable
 private fun NotificationsStep() {
     StepShell(
-        title = "Stay in the loop",
-        subtitle = "NOOP keeps your strap connected in the background. When you continue, allow notifications so it can show that link and reach your wrist.",
+        title = "Notifications",
+        subtitle = "Get connection status and wrist alerts.",
     ) {
         Column(
             modifier = Modifier.fillMaxWidth(),
@@ -791,11 +786,11 @@ private fun NotificationsStep() {
             InfoCard(
                 icon = Icons.Filled.Bluetooth,
                 tint = Palette.statusPositive,
-                title = "A quiet, ongoing status",
-                message = "NOOP holds the Bluetooth link open in the background so your data stays current. One low-priority notification shows it's connected. Nothing noisy.",
+                title = "Stay connected",
+                message = "A quiet notification keeps NOOP connected. Your data stays current.",
             )
-            Checkline("Wrist alerts (strain nudges and your smart alarm) arrive as notifications too.")
-            Checkline("When Android asks, allow notifications so NOOP can keep you informed.")
+            Checkline("Strain nudges and smart alarms appear here.")
+            Checkline("When asked, allow notifications.")
         }
     }
 }

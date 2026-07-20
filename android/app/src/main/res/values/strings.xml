@@ -59,32 +59,6 @@
          "final", #34/#53 follow-up); wording mirrored on iOS in Localizable.xcstrings. -->
     <string name="today_latest_workouts">Latest Workouts</string>
 
-    <!-- First-run Terms gate (clickwrap). Moved out of TermsGate.kt string literals so the gate is
-         localizable (PR #984); English wording kept byte-identical to the macOS/iOS `Terms.points` /
-         `TermsGateView`. The binding text is TERMS.md — bump Terms.CURRENT_VERSION on material change. -->
-    <string name="terms_title">Before you use NOOP</string>
-    <string name="terms_subtitle">Please read the points below, then confirm each statement.</string>
-    <string name="terms_point_independent_head">Independent: not affiliated with WHOOP</string>
-    <string name="terms_point_independent_body">NOOP is an unofficial project: not affiliated with, endorsed by, or sponsored by WHOOP, Inc. \"WHOOP\" is their trademark, used only to name the hardware NOOP works with.</string>
-    <string name="terms_point_tos_head">Using NOOP may breach WHOOP\'s Terms of Service</string>
-    <string name="terms_point_tos_body">Use it only with a device you own, to read your own data. Whether to use it (and any effect on your WHOOP account, subscription, device, or warranty) is your decision, and your risk alone.</string>
-    <string name="terms_point_experimental_head">Experimental: at your own risk</string>
-    <string name="terms_point_experimental_body">NOOP talks to your strap\'s firmware over an unofficial, independently-mapped protocol. There is a residual risk to the device, its data, and its connection to official services. You assume that risk.</string>
-    <string name="terms_point_medical_head">Not a medical device, not medical advice</string>
-    <string name="terms_point_medical_body">Every metric is an unvalidated approximation. Don\'t use NOOP to diagnose, treat, or make any health decision. Always consult a qualified professional.</string>
-    <string name="terms_point_warranty_head">No warranty; liability limited</string>
-    <string name="terms_point_warranty_body">NOOP is free and provided \"as is\", with no warranty. Liability is limited to the maximum extent the law that applies to you allows, and nothing here removes protections your local law won\'t let us remove.</string>
-    <string name="terms_footer">The full terms are in TERMS.md, shipped with NOOP. This is not legal advice.</string>
-    <!-- Affirmative attestations: each is a SEPARATE tick, all required before Accept enables. English is
-         the binding wording (mirrors macOS `Terms.attestations`); TERMS.md is the full text. -->
-    <string name="terms_attest_head">Please confirm each of these:</string>
-    <string name="terms_attest_not_affiliated">I am not a WHOOP employee, contractor, or affiliate, and I am not using NOOP on WHOOP\'s behalf.</string>
-    <string name="terms_attest_own_device">I own the WHOOP device I will use with NOOP and will only use it to access my own data. Doing so is my decision and my risk, including any effect on my WHOOP account, subscription, device, or warranty, and it may breach WHOOP\'s Terms of Service.</string>
-    <string name="terms_attest_asis">I understand NOOP is unofficial and experimental, is provided free and \"as is\" with no warranty, and is not a medical device or medical advice.</string>
-    <string name="terms_attest_liability">To the fullest extent the law allows, I will not hold the NOOP project or its contributors liable for any loss or damage arising from my use of it.</string>
-    <string name="terms_checkbox">I have read and accept these terms, and I\'m using NOOP with my own device and my own data, at my own risk.</string>
-    <string name="terms_accept">Accept &amp; Continue</string>
-
     <!-- Trends / Explore / Deep Timeline (#448 follow-up): these three screens were built with
          hardcoded English literals throughout, never wired to stringResource() at all. This is a
          first pass covering every literal directly passed to a Compose call in TrendsScreen.kt,
