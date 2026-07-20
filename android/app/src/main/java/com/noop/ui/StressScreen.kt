@@ -173,11 +173,12 @@ private suspend fun loadDaytimeStress(vm: AppViewModel): DaytimeReadout {
     // offset so the bound is back on the wall clock the samples are stored in.
     val localNow = nowSeconds + tzOffsetSeconds
     val from = (localNow - Math.floorMod(localNow, 86_400L)) - tzOffsetSeconds
-    val hr = vm.repo.hrSamples("my-whoop", from, nowSeconds, limit = 200_000)
+    val activeId = vm.activeStrapId
+    val hr = vm.repo.hrSamples(activeId, from, nowSeconds, limit = 200_000)
     if (hr.size < DaytimeStress.minHourHrSamples) {
         return DaytimeReadout(DaytimeStress.Result.EMPTY, null, null)
     }
-    val rr = vm.repo.rrIntervals("my-whoop", from, nowSeconds, limit = 200_000)
+    val rr = vm.repo.rrIntervals(activeId, from, nowSeconds, limit = 200_000)
     val daytime = DaytimeStress.analyze(hr, rr, tzOffsetSeconds)
     // ADDITIVE advanced readouts from the SAME `rr`. Each engine self-gates and returns null when
     // its requirement is not met, in which case its row is simply hidden in the UI.
