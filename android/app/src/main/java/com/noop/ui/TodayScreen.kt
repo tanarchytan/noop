@@ -8,18 +8,21 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -62,6 +65,7 @@ import com.noop.ingest.HealthConnectImporter
 import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import java.time.temporal.ChronoUnit
 import java.util.Locale
 import kotlin.math.roundToInt
 
@@ -172,8 +176,6 @@ fun TodayScreen(
     // Optional Coupled view card (task #43): a tap-through to the WHOOP-style day screen. Defaulted to a
     // no-op so the call site stays compiling; AppRoot binds it to nav.navigate(CoupledView).
     onOpenCoupled: () -> Unit = {},
-    // The Effort ring tap opens Workouts. Defaulted to a no-op; AppRoot binds it.
-    onOpenWorkouts: () -> Unit = {},
     // The "workout in progress" indicator card routes to Workouts and re-opens the in-exercise overlay
     // (Live/Health fold). Defaulted to a no-op so the call site stays compiling; AppRoot binds it to
     // openActiveWorkout() + nav.navigateTopLevel(Workouts).
@@ -440,6 +442,7 @@ fun TodayScreen(
     // existing RecoveryDriversSection (gated to the calibration countdown when the night can't score) plus
     // the folded Readiness card (S4). Not persisted, so it reopens closed. Mirrors iOS showChargeBreakdown.
     var showChargeBreakdown by remember { mutableStateOf(false) }
+    var showEffortDetail by remember { mutableStateOf(false) }
     // LIVE SESSIONS (beta, default ON): the "Start session" entry under the hero + its full-screen Dialog
     // (the same presentation the live-workout overlay / Charge breakdown use — deliberately NOT a nav
     // destination, so dismissing it leaves the session's runner coaching and this entry is the way back
@@ -1072,7 +1075,7 @@ fun TodayScreen(
                 liveTodayStrain = if (selectedDayOffset == 0) liveTodayStrain else null,
                 heroSourceLabel = heroSourceLabel,
                 onChargeTap = { showChargeBreakdown = true },
-                onEffortTap = onOpenWorkouts,
+                onEffortTap = { showEffortDetail = true },
                 onRestTap = onOpenSleep,
             )
         }
@@ -1337,6 +1340,24 @@ fun TodayScreen(
         }
     }
 
+    // Effort detail sheet (WHOOP-style strain bubble), opened by tapping the Effort ring. Shows the
+    // score prominently + this week's daily-strain bar chart.
+    if (showEffortDetail) {
+        ModalBottomSheet(
+            onDismissRequest = { showEffortDetail = false },
+            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+            containerColor = Palette.surfaceBase,
+            contentColor = Palette.textPrimary,
+        ) {
+            EffortDetailSheet(
+                days = days,
+                displayDay = displayMetric,
+                effortScale = effortScale,
+                onClose = { showEffortDetail = false },
+            )
+        }
+    }
+
     // A1/S4: the Charge breakdown sheet, opened by tapping the hero Charge ring. Bottom-sheet
     // presentation (matches the WHOOP pattern — semi-transparent backdrop, dimmed Today behind).
     if (showChargeBreakdown) {
@@ -1398,5 +1419,110 @@ fun TodayScreen(
                 showDashboardEditor = false
             },
         )
+    }
+}
+
+// MARK: - EffortDetailSheet (WHOOP-style strain bubble bottom sheet)
+
+/** The Effort ring detail sheet: the score + this week's daily-strain bar chart, matching the WHOOP
+ *  strain-bubble design. Opened by tapping the Effort hero ring. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun EffortDetailSheet(
+    days: List<DailyMetric>,
+    displayDay: DailyMetric?,
+    effortScale: EffortScale,
+    onClose: () -> Unit,
+) {
+    val today = LocalDate.now()
+    // Last 7 days of strain, newest on the right (WHOOP shows day-by-day bars).
+    val recent = days
+        .filter { it.day.isNotBlank() && ChronoUnit.DAYS.between(LocalDate.parse(it.day), today) in 0..6 }
+        .sortedBy { it.day }
+    val effortMax = if (effortScale == EffortScale.WHOOP) 21.0 else 100.0
+    val strain = displayDay?.strain
+    val effortVal = strain?.let { UnitFormatter.effortValue(it, effortScale) } ?: 0.0
+    val dateFmt = DateTimeFormatter.ofPattern("MMM d", Locale.getDefault())
+
+    Surface(modifier = Modifier.fillMaxWidth(), color = Palette.surfaceBase) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            // Header row: title + close
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text("Effort", style = NoopType.headline, color = Palette.textPrimary)
+                    val displayDate = displayDay?.day?.let { LocalDate.parse(it) }
+                if (displayDate != null) {
+                    Text(
+                        "Today's Effort · ${dateFmt.format(displayDate)}",
+                        style = NoopType.caption,
+                        color = Palette.textTertiary,
+                    )
+                }
+            }
+                IconButton(onClick = onClose) {
+                    Icon(Icons.Filled.Close, contentDescription = "Close", tint = Palette.textSecondary)
+                }
+            }
+
+            // Big score
+            Text(
+                text = if (effortScale == EffortScale.WHOOP)
+                    String.format(Locale.US, "%.1f", effortVal)
+                else effortVal.toInt().toString(),
+                style = NoopType.display(48f),
+                color = Palette.effortTint((strain ?: 0.0) / 100.0),
+            )
+
+            Spacer(Modifier.height(16.dp))
+
+            // Day-by-day bar chart
+            if (recent.isNotEmpty()) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 20.dp),
+                    horizontalAlignment = Alignment.Start,
+                ) {
+                    Overline("Day strain", color = Palette.textTertiary)
+                    Spacer(Modifier.height(12.dp))
+                    // Scale each day's strain to a 0..effortMax range for the bar chart
+                    val barValues = recent.map {
+                        val s = it.strain ?: 0.0
+                        (UnitFormatter.effortValue(s, effortScale) / effortMax).coerceIn(0.0, 1.0)
+                    }
+                    BarChart(
+                        values = barValues,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(160.dp),
+                        color = Palette.effortTint(0.5),
+                    )
+                    // Day labels under bars
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                    ) {
+                        recent.forEach { dayMetric ->
+                            val d = dayMetric.day.let { LocalDate.parse(it) }
+                            Text(
+                                d.format(DateTimeFormatter.ofPattern("E", Locale.getDefault())).take(1),
+                                style = NoopType.caption,
+                                color = Palette.textTertiary,
+                            )
+                        }
+                    }
+                }
+            }
+        }
     }
 }
