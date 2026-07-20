@@ -542,7 +542,7 @@ private fun GlassBottomBar(
                     // Selected on the More page itself, and also kept lit whenever the current screen is
                     // one reached THROUGH More (i.e. not one of the bar's own three tabs) — so drilling
                     // into any grouped destination still reads as "you're in More", never "nowhere".
-                    active = current != Destination.Today && current != Destination.Trends &&
+                    active = current != Destination.Today && current != Destination.Health &&
                         current != Destination.Sleep,
                     modifier = Modifier.weight(1f),
                     onClick = { onTabSelected(Destination.More) },
