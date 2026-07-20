@@ -683,6 +683,10 @@ internal object IntegrityCheckingUniffiLib {
     ): Int
     external fun uniffi_whoop_ffi_checksum_func_bridged_night_groups(
     ): Int
+    external fun uniffi_whoop_ffi_checksum_func_calories_estimate_bout(
+    ): Int
+    external fun uniffi_whoop_ffi_checksum_func_calories_estimate_day(
+    ): Int
     external fun uniffi_whoop_ffi_checksum_func_daily_resting_hr(
     ): Int
     external fun uniffi_whoop_ffi_checksum_func_data_range_newest(
@@ -713,6 +717,8 @@ internal object IntegrityCheckingUniffiLib {
     ): Int
     external fun uniffi_whoop_ffi_checksum_func_hrv_windowed_avg(
     ): Int
+    external fun uniffi_whoop_ffi_checksum_func_hrv_windowed_avg_deep(
+    ): Int
     external fun uniffi_whoop_ffi_checksum_func_imu_features(
     ): Int
     external fun uniffi_whoop_ffi_checksum_func_main_night_group_indices(
@@ -741,6 +747,8 @@ internal object IntegrityCheckingUniffiLib {
     ): Int
     external fun uniffi_whoop_ffi_checksum_func_stage_sleep_refined(
     ): Int
+    external fun uniffi_whoop_ffi_checksum_func_steps_counter(
+    ): Int
     external fun uniffi_whoop_ffi_checksum_func_strain_default_denominator(
     ): Int
     external fun uniffi_whoop_ffi_checksum_func_strain_score(
@@ -752,6 +760,8 @@ internal object IntegrityCheckingUniffiLib {
     external fun uniffi_whoop_ffi_checksum_func_stress_onset_evaluate(
     ): Int
     external fun uniffi_whoop_ffi_checksum_func_vo2max_estimate(
+    ): Int
+    external fun uniffi_whoop_ffi_checksum_func_workout_detect(
     ): Int
     external fun uniffi_whoop_ffi_checksum_method_whoopcodec_advertising_name_frame(
     ): Int
@@ -909,6 +919,10 @@ internal object UniffiLib {
     ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_func_bridged_night_groups(`blocks`: RustBuffer.ByValue,`offsetS`: Long,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
+    external fun uniffi_whoop_ffi_fn_func_calories_estimate_bout(`hr`: RustBuffer.ByValue,`weightKg`: Double,`heightCm`: Double,`age`: Double,`sex`: RustBuffer.ByValue,`hrmax`: Double,`restingHr`: Double,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    external fun uniffi_whoop_ffi_fn_func_calories_estimate_day(`hr`: RustBuffer.ByValue,`weightKg`: Double,`heightCm`: Double,`age`: Double,`sex`: RustBuffer.ByValue,`hrmax`: Double,`restingHr`: Double,uniffi_out_err: UniffiRustCallStatus, 
+    ): Double
     external fun uniffi_whoop_ffi_fn_func_daily_resting_hr(`sessionFloors`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_func_data_range_newest(`frame`: RustBuffer.ByValue,`wallNowUnix`: Long,`futureSkewSeconds`: Long,uniffi_out_err: UniffiRustCallStatus, 
@@ -939,6 +953,8 @@ internal object UniffiLib {
     ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_func_hrv_windowed_avg(`start`: Int,`end`: Int,`runs`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
+    external fun uniffi_whoop_ffi_fn_func_hrv_windowed_avg_deep(`start`: Int,`end`: Int,`runs`: RustBuffer.ByValue,`segments`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_func_imu_features(`samples`: RustBuffer.ByValue,`sampleRateHz`: Int,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_func_main_night_group_indices(`blocks`: RustBuffer.ByValue,`offsetS`: Long,`habitualMidsleepSec`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
@@ -967,6 +983,8 @@ internal object UniffiLib {
     ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_func_stage_sleep_refined(`input`: RustBuffer.ByValue,`steps`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
+    external fun uniffi_whoop_ffi_fn_func_steps_counter(`samples`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_func_strain_default_denominator(uniffi_out_err: UniffiRustCallStatus, 
     ): Double
     external fun uniffi_whoop_ffi_fn_func_strain_score(`hr`: RustBuffer.ByValue,`maxHr`: RustBuffer.ByValue,`restingHr`: Double,`method`: RustBuffer.ByValue,`sex`: RustBuffer.ByValue,`denominator`: Double,uniffi_out_err: UniffiRustCallStatus, 
@@ -979,6 +997,8 @@ internal object UniffiLib {
     ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_func_vo2max_estimate(`age`: Double,`sex`: RustBuffer.ByValue,`waistCm`: Double,`restingHr`: Double,`paIndex`: Double,uniffi_out_err: UniffiRustCallStatus, 
     ): Double
+    external fun uniffi_whoop_ffi_fn_func_workout_detect(`hr`: RustBuffer.ByValue,`gravity`: RustBuffer.ByValue,`restingHr`: RustBuffer.ByValue,`maxHr`: RustBuffer.ByValue,`age`: RustBuffer.ByValue,`weightKg`: Double,`heightCm`: Double,`sex`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
     external fun ffi_whoop_ffi_rustbuffer_alloc(`size`: Long,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     external fun ffi_whoop_ffi_rustbuffer_from_bytes(`bytes`: ForeignBytes.ByValue,uniffi_out_err: UniffiRustCallStatus, 
@@ -1113,6 +1133,12 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_whoop_ffi_checksum_func_bridged_night_groups() != 55242) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_whoop_ffi_checksum_func_calories_estimate_bout() != 46916) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_whoop_ffi_checksum_func_calories_estimate_day() != 38796) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_whoop_ffi_checksum_func_daily_resting_hr() != 11457) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
@@ -1158,6 +1184,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_whoop_ffi_checksum_func_hrv_windowed_avg() != 17402) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_whoop_ffi_checksum_func_hrv_windowed_avg_deep() != 2094) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_whoop_ffi_checksum_func_imu_features() != 23396) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
@@ -1200,6 +1229,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_whoop_ffi_checksum_func_stage_sleep_refined() != 22122) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_whoop_ffi_checksum_func_steps_counter() != 43607) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_whoop_ffi_checksum_func_strain_default_denominator() != 31363) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
@@ -1216,6 +1248,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_whoop_ffi_checksum_func_vo2max_estimate() != 10792) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_whoop_ffi_checksum_func_workout_detect() != 708) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_whoop_ffi_checksum_method_whoopcodec_advertising_name_frame() != 25971) {
@@ -4879,6 +4914,138 @@ public object FfiConverterTypeTimeInZoneInfo: FfiConverterRustBuffer<TimeInZoneI
 
 
 /**
+ * A gravity/accel sample for workout detection.
+ */
+data class WorkoutGravitySample (
+    var `ts`: kotlin.Long
+    , 
+    var `x`: kotlin.Double
+    , 
+    var `y`: kotlin.Double
+    , 
+    var `z`: kotlin.Double
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeWorkoutGravitySample: FfiConverterRustBuffer<WorkoutGravitySample> {
+    override fun read(buf: ByteBuffer): WorkoutGravitySample {
+        return WorkoutGravitySample(
+            FfiConverterLong.read(buf),
+            FfiConverterDouble.read(buf),
+            FfiConverterDouble.read(buf),
+            FfiConverterDouble.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: WorkoutGravitySample) = (
+            FfiConverterLong.allocationSize(value.`ts`) +
+            FfiConverterDouble.allocationSize(value.`x`) +
+            FfiConverterDouble.allocationSize(value.`y`) +
+            FfiConverterDouble.allocationSize(value.`z`)
+    )
+
+    override fun write(value: WorkoutGravitySample, buf: ByteBuffer) {
+            FfiConverterLong.write(value.`ts`, buf)
+            FfiConverterDouble.write(value.`x`, buf)
+            FfiConverterDouble.write(value.`y`, buf)
+            FfiConverterDouble.write(value.`z`, buf)
+    }
+}
+
+
+
+/**
+ * One detected workout session.
+ */
+data class WorkoutSession (
+    var `start`: kotlin.Long
+    , 
+    var `end`: kotlin.Long
+    , 
+    var `avgHr`: kotlin.Double
+    , 
+    var `peakHr`: kotlin.Int
+    , 
+    var `strain`: kotlin.Double?
+    , 
+    var `durationS`: kotlin.Double
+    , 
+    var `zoneTime`: List<ZoneTimeEntry>
+    , 
+    var `avgHrrPct`: kotlin.Double?
+    , 
+    var `caloriesKcal`: kotlin.Double?
+    , 
+    var `caloriesKj`: kotlin.Double?
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeWorkoutSession: FfiConverterRustBuffer<WorkoutSession> {
+    override fun read(buf: ByteBuffer): WorkoutSession {
+        return WorkoutSession(
+            FfiConverterLong.read(buf),
+            FfiConverterLong.read(buf),
+            FfiConverterDouble.read(buf),
+            FfiConverterInt.read(buf),
+            FfiConverterOptionalDouble.read(buf),
+            FfiConverterDouble.read(buf),
+            FfiConverterSequenceTypeZoneTimeEntry.read(buf),
+            FfiConverterOptionalDouble.read(buf),
+            FfiConverterOptionalDouble.read(buf),
+            FfiConverterOptionalDouble.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: WorkoutSession) = (
+            FfiConverterLong.allocationSize(value.`start`) +
+            FfiConverterLong.allocationSize(value.`end`) +
+            FfiConverterDouble.allocationSize(value.`avgHr`) +
+            FfiConverterInt.allocationSize(value.`peakHr`) +
+            FfiConverterOptionalDouble.allocationSize(value.`strain`) +
+            FfiConverterDouble.allocationSize(value.`durationS`) +
+            FfiConverterSequenceTypeZoneTimeEntry.allocationSize(value.`zoneTime`) +
+            FfiConverterOptionalDouble.allocationSize(value.`avgHrrPct`) +
+            FfiConverterOptionalDouble.allocationSize(value.`caloriesKcal`) +
+            FfiConverterOptionalDouble.allocationSize(value.`caloriesKj`)
+    )
+
+    override fun write(value: WorkoutSession, buf: ByteBuffer) {
+            FfiConverterLong.write(value.`start`, buf)
+            FfiConverterLong.write(value.`end`, buf)
+            FfiConverterDouble.write(value.`avgHr`, buf)
+            FfiConverterInt.write(value.`peakHr`, buf)
+            FfiConverterOptionalDouble.write(value.`strain`, buf)
+            FfiConverterDouble.write(value.`durationS`, buf)
+            FfiConverterSequenceTypeZoneTimeEntry.write(value.`zoneTime`, buf)
+            FfiConverterOptionalDouble.write(value.`avgHrrPct`, buf)
+            FfiConverterOptionalDouble.write(value.`caloriesKcal`, buf)
+            FfiConverterOptionalDouble.write(value.`caloriesKj`, buf)
+    }
+}
+
+
+
+/**
  * An off-wrist `[start, end)` interval (unix seconds).
  */
 data class WristOffInterval (
@@ -4914,6 +5081,47 @@ public object FfiConverterTypeWristOffInterval: FfiConverterRustBuffer<WristOffI
     override fun write(value: WristOffInterval, buf: ByteBuffer) {
             FfiConverterLong.write(value.`start`, buf)
             FfiConverterLong.write(value.`end`, buf)
+    }
+}
+
+
+
+/**
+ * One detected workout session.
+ */
+data class ZoneTimeEntry (
+    var `zone`: kotlin.Int
+    , 
+    var `pct`: kotlin.Double
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeZoneTimeEntry: FfiConverterRustBuffer<ZoneTimeEntry> {
+    override fun read(buf: ByteBuffer): ZoneTimeEntry {
+        return ZoneTimeEntry(
+            FfiConverterInt.read(buf),
+            FfiConverterDouble.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: ZoneTimeEntry) = (
+            FfiConverterInt.allocationSize(value.`zone`) +
+            FfiConverterDouble.allocationSize(value.`pct`)
+    )
+
+    override fun write(value: ZoneTimeEntry, buf: ByteBuffer) {
+            FfiConverterInt.write(value.`zone`, buf)
+            FfiConverterDouble.write(value.`pct`, buf)
     }
 }
 
@@ -5987,6 +6195,38 @@ public object FfiConverterOptionalInt: FfiConverterRustBuffer<kotlin.Int?> {
         } else {
             buf.put(1)
             FfiConverterInt.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterOptionalULong: FfiConverterRustBuffer<kotlin.ULong?> {
+    override fun read(buf: ByteBuffer): kotlin.ULong? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterULong.read(buf)
+    }
+
+    override fun allocationSize(value: kotlin.ULong?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterULong.allocationSize(value)
+        }
+    }
+
+    override fun write(value: kotlin.ULong?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterULong.write(value, buf)
         }
     }
 }
@@ -7481,6 +7721,62 @@ public object FfiConverterSequenceTypeSpo2Span: FfiConverterRustBuffer<List<Spo2
 /**
  * @suppress
  */
+public object FfiConverterSequenceTypeWorkoutGravitySample: FfiConverterRustBuffer<List<WorkoutGravitySample>> {
+    override fun read(buf: ByteBuffer): List<WorkoutGravitySample> {
+        val len = buf.getInt()
+        return List<WorkoutGravitySample>(len) {
+            FfiConverterTypeWorkoutGravitySample.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<WorkoutGravitySample>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeWorkoutGravitySample.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<WorkoutGravitySample>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeWorkoutGravitySample.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeWorkoutSession: FfiConverterRustBuffer<List<WorkoutSession>> {
+    override fun read(buf: ByteBuffer): List<WorkoutSession> {
+        val len = buf.getInt()
+        return List<WorkoutSession>(len) {
+            FfiConverterTypeWorkoutSession.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<WorkoutSession>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeWorkoutSession.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<WorkoutSession>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeWorkoutSession.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterSequenceTypeWristOffInterval: FfiConverterRustBuffer<List<WristOffInterval>> {
     override fun read(buf: ByteBuffer): List<WristOffInterval> {
         val len = buf.getInt()
@@ -7499,6 +7795,34 @@ public object FfiConverterSequenceTypeWristOffInterval: FfiConverterRustBuffer<L
         buf.putInt(value.size)
         value.iterator().forEach {
             FfiConverterTypeWristOffInterval.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeZoneTimeEntry: FfiConverterRustBuffer<List<ZoneTimeEntry>> {
+    override fun read(buf: ByteBuffer): List<ZoneTimeEntry> {
+        val len = buf.getInt()
+        return List<ZoneTimeEntry>(len) {
+            FfiConverterTypeZoneTimeEntry.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<ZoneTimeEntry>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeZoneTimeEntry.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<ZoneTimeEntry>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeZoneTimeEntry.write(it, buf)
         }
     }
 }
@@ -7642,6 +7966,46 @@ public object FfiConverterSequenceOptionalDouble: FfiConverterRustBuffer<List<ko
         
         FfiConverterSequenceTypeMainNightBlock.lower(`blocks`),
         FfiConverterLong.lower(`offsetS`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Bout energy estimate (kcal, kJ) from HR samples. Each sample weighted by elapsed time to next.
+         */ fun `caloriesEstimateBout`(`hr`: List<HrTick>, `weightKg`: kotlin.Double, `heightCm`: kotlin.Double, `age`: kotlin.Double, `sex`: kotlin.String, `hrmax`: kotlin.Double, `restingHr`: kotlin.Double): List<kotlin.Double> {
+            return FfiConverterSequenceDouble.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_func_calories_estimate_bout(
+    
+        
+        FfiConverterSequenceTypeHrTick.lower(`hr`),
+        FfiConverterDouble.lower(`weightKg`),
+        FfiConverterDouble.lower(`heightCm`),
+        FfiConverterDouble.lower(`age`),
+        FfiConverterString.lower(`sex`),
+        FfiConverterDouble.lower(`hrmax`),
+        FfiConverterDouble.lower(`restingHr`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Whole-day energy estimate (kcal) from HR samples. Each sample = one second.
+         */ fun `caloriesEstimateDay`(`hr`: List<HrTick>, `weightKg`: kotlin.Double, `heightCm`: kotlin.Double, `age`: kotlin.Double, `sex`: kotlin.String, `hrmax`: kotlin.Double, `restingHr`: kotlin.Double): kotlin.Double {
+            return FfiConverterDouble.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_func_calories_estimate_day(
+    
+        
+        FfiConverterSequenceTypeHrTick.lower(`hr`),
+        FfiConverterDouble.lower(`weightKg`),
+        FfiConverterDouble.lower(`heightCm`),
+        FfiConverterDouble.lower(`age`),
+        FfiConverterString.lower(`sex`),
+        FfiConverterDouble.lower(`hrmax`),
+        FfiConverterDouble.lower(`restingHr`),_status)
 }
     )
     }
@@ -7876,6 +8240,25 @@ public object FfiConverterSequenceOptionalDouble: FfiConverterRustBuffer<List<ko
     
 
         /**
+         * Deep-sleep-windowed session avgHrv (ms): per-5min-bucket RMSSD like [hrv_windowed_avg], keeping only
+         * buckets whose center falls inside a deep-sleep (SWS/N3) span. Takes the full segment list; filters for
+         * `SleepStage::Deep` internally. `None` when no deep bucket yields a value.
+         */ fun `hrvWindowedAvgDeep`(`start`: kotlin.UInt, `end`: kotlin.UInt, `runs`: List<RrRun>, `segments`: List<SleepSegment>): kotlin.Double? {
+            return FfiConverterOptionalDouble.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_func_hrv_windowed_avg_deep(
+    
+        
+        FfiConverterUInt.lower(`start`),
+        FfiConverterUInt.lower(`end`),
+        FfiConverterSequenceTypeRrRun.lower(`runs`),
+        FfiConverterSequenceTypeSleepSegment.lower(`segments`),_status)
+}
+    )
+    }
+    
+
+        /**
          * Accel/gyro energy, jerk and gait-band cadence over IMU samples at `sample_rate_hz`.
          */ fun `imuFeatures`(`samples`: List<ImuSampleInfo>, `sampleRateHz`: kotlin.Int): ImuFeaturesInfo {
             return FfiConverterTypeImuFeaturesInfo.lift(
@@ -8082,6 +8465,21 @@ public object FfiConverterSequenceOptionalDouble: FfiConverterRustBuffer<List<ko
     
 
         /**
+         * Raw wrap-aware motion-tick total from step counter samples. None with fewer than 2 samples
+         * or no forward movement. The caller applies its stepTicksPerStep calibration.
+         */ fun `stepsCounter`(`samples`: List<SleepStepSample>): kotlin.ULong? {
+            return FfiConverterOptionalULong.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_func_steps_counter(
+    
+        
+        FfiConverterSequenceTypeSleepStepSample.lower(`samples`),_status)
+}
+    )
+    }
+    
+
+        /**
          * The default strain denominator (log-map scale onto 0–100).
          */ fun `strainDefaultDenominator`(): kotlin.Double {
             return FfiConverterDouble.lift(
@@ -8176,6 +8574,27 @@ public object FfiConverterSequenceOptionalDouble: FfiConverterRustBuffer<List<ko
         FfiConverterDouble.lower(`waistCm`),
         FfiConverterDouble.lower(`restingHr`),
         FfiConverterDouble.lower(`paIndex`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Detect workout sessions from HR + gravity streams. Returns one session per detected bout.
+         */ fun `workoutDetect`(`hr`: List<HrTick>, `gravity`: List<WorkoutGravitySample>, `restingHr`: kotlin.Double?, `maxHr`: kotlin.Double?, `age`: kotlin.Double?, `weightKg`: kotlin.Double, `heightCm`: kotlin.Double, `sex`: kotlin.String): List<WorkoutSession> {
+            return FfiConverterSequenceTypeWorkoutSession.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_func_workout_detect(
+    
+        
+        FfiConverterSequenceTypeHrTick.lower(`hr`),
+        FfiConverterSequenceTypeWorkoutGravitySample.lower(`gravity`),
+        FfiConverterOptionalDouble.lower(`restingHr`),
+        FfiConverterOptionalDouble.lower(`maxHr`),
+        FfiConverterOptionalDouble.lower(`age`),
+        FfiConverterDouble.lower(`weightKg`),
+        FfiConverterDouble.lower(`heightCm`),
+        FfiConverterString.lower(`sex`),_status)
 }
     )
     }

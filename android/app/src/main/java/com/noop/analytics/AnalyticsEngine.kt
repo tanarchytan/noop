@@ -324,16 +324,21 @@ object AnalyticsEngine {
         // Daily avg HRV = in-bed-weighted mean of per-session avg HRV.
         val avgHRVDaily: Double? = if (deepHrvWindow) {
             // #141: WHOOP-style HRV — pool RMSSD over DEEP-stage 5-min windows only (slow-wave sleep),
-            // instead of the whole-night mean below. Reuses the SAME sessionHrvWindows the HRV trace is
-            // built from, so the displayed value equals the `deepOnly` figure the trace logs. rr is sorted
-            // (RMSSD = successive diffs). null when the night has no detected deep sleep (WHOOP-4.0 staging
-            // can be sparse) — the caller then shows calibrating, never a fabricated number.
-            val rrSorted = rr.sortedBy { it.ts }
-            val deep = matched.flatMap { s ->
-                SleepStager.sessionHrvWindows(s.start, s.end, rrSorted, s.stages)
-                    .filter { it.stage == "deep" }.mapNotNull { it.rmssd }
+            // computed in whoop-rs (physio-algo::hrv). Per-session FFI call, then mean across sessions.
+            // null when no session has a deep bucket — caller shows calibrating, never a fabricated number.
+            val deepVals = matched.mapNotNull { s ->
+                val ffiSegments = s.stages.map { seg ->
+                    val stage = when (seg.stage) {
+                        "deep" -> uniffi.whoop_ffi.SleepStage.DEEP
+                        "rem" -> uniffi.whoop_ffi.SleepStage.REM
+                        "light" -> uniffi.whoop_ffi.SleepStage.LIGHT
+                        else -> uniffi.whoop_ffi.SleepStage.WAKE
+                    }
+                    uniffi.whoop_ffi.SleepSegment(start = seg.start, end = seg.end, stage = stage)
+                }
+                RustScores.windowedAvgHrvDeep(s.start, s.end, rr, ffiSegments)
             }
-            if (deep.isEmpty()) null else deep.sum() / deep.size
+            if (deepVals.isEmpty()) null else deepVals.sum() / deepVals.size
         } else run {
             val pairs = matched.mapNotNull { s ->
                 s.avgHRV?.let { it to (s.end - s.start).toDouble() }

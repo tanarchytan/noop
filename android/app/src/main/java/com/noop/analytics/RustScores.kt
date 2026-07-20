@@ -10,11 +10,15 @@ import uniffi.whoop_ffi.HrZoneSetInfo
 import uniffi.whoop_ffi.RecoveryDrivers
 import uniffi.whoop_ffi.RrBeat
 import uniffi.whoop_ffi.RrRun
+import uniffi.whoop_ffi.SleepSegment
+import uniffi.whoop_ffi.SleepStepSample
 import uniffi.whoop_ffi.Spo2RawSample
 import uniffi.whoop_ffi.Spo2Span
 import uniffi.whoop_ffi.StrainMethod
 import uniffi.whoop_ffi.StressComponentsInfo
 import uniffi.whoop_ffi.TimeInZoneInfo
+import uniffi.whoop_ffi.WorkoutGravitySample
+import uniffi.whoop_ffi.WorkoutSession
 
 /**
  * Bridge from the app's Room/stream types to the whoop-rs Tier-1 derived-score FFI (physio-algo, via
@@ -246,4 +250,48 @@ internal object RustScores {
         rrBuffer.map { it.toUShort() }, currentHr, recentMotionG, sessionActive,
         state, enabled, autoNudge, quietHoursEnabled, quietStartMin, quietEndMin, nowSec, tzOffsetSec,
     )
+
+    // ── Steps / calories / workout (whoop-rs physio-algo) ───────────────────────
+
+    /** Wrap-aware step delta sum over [samples]; null for <2 or zero movement. */
+    fun stepsCounter(samples: List<SleepStepSample>): Long? =
+        uniffi.whoop_ffi.stepsCounter(samples)?.toLong()
+
+    /** Whole-day energy estimate (kcal) from per-second HR samples. */
+    fun caloriesEstimateDay(
+        hr: List<HrTick>, weightKg: Double, heightCm: Double, age: Double,
+        sex: String, hrmax: Double, restingHr: Double,
+    ): Double = uniffi.whoop_ffi.caloriesEstimateDay(hr, weightKg, heightCm, age, sex, hrmax, restingHr)
+
+    /** Bout energy estimate (kcal, kJ) from per-second HR, elapsed-time-weighted. */
+    fun caloriesEstimateBout(
+        hr: List<HrTick>, weightKg: Double, heightCm: Double, age: Double,
+        sex: String, hrmax: Double, restingHr: Double,
+    ): List<Double> = uniffi.whoop_ffi.caloriesEstimateBout(hr, weightKg, heightCm, age, sex, hrmax, restingHr)
+
+    /** Full workout detection from HR + gravity streams. */
+    fun workoutDetect(
+        hr: List<HrTick>, gravity: List<WorkoutGravitySample>,
+        restingHr: Double?, maxHr: Double?, age: Double?,
+        weightKg: Double, heightCm: Double, sex: String,
+    ): List<WorkoutSession> = uniffi.whoop_ffi.workoutDetect(hr, gravity, restingHr, maxHr, age, weightKg, heightCm, sex)
+
+    // ── Deep-sleep HRV window (#141) ────────────────────────────────────────────
+
+    /** Session avgHrv (ms) from 5-min buckets whose centre falls in deep-sleep spans. */
+    fun windowedAvgHrvDeep(start: Long, end: Long, rr: List<RrInterval>, segments: List<SleepSegment>): Double? {
+        val runs = if (rr.isEmpty()) emptyList() else {
+            val ordered = rr.sortedBy { it.ts }
+            buildList {
+                var cur = ordered[0]; var buf = mutableListOf(cur.rrMs.toUShort())
+                for (i in 1 until ordered.size) {
+                    val n = ordered[i]
+                    if (n.ts > cur.ts + 600) { add(RrRun(unix = cur.ts.toUInt(), rr = buf.toList())); buf = mutableListOf() }
+                    buf.add(n.rrMs.toUShort()); cur = n
+                }
+                if (buf.isNotEmpty()) add(RrRun(unix = cur.ts.toUInt(), rr = buf.toList()))
+            }
+        }
+        return uniffi.whoop_ffi.hrvWindowedAvgDeep(start.toUInt(), end.toUInt(), runs, segments)
+    }
 }
