@@ -4,6 +4,7 @@ import android.content.Context
 import android.database.sqlite.SQLiteDatabase
 import android.net.Uri
 import android.util.Log
+import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import androidx.sqlite.db.SupportSQLiteOpenHelper
 import androidx.sqlite.db.framework.FrameworkSQLiteOpenHelperFactory
@@ -219,6 +220,25 @@ object DataBackup {
                     )
                 }
             BackupOrigin.ANDROID -> Unit // our own backup, proceed.
+        }
+
+        // 3b-mid. If the backup carries an older Room schema, migrate it to [targetVersion] before
+        //         the integrity gate and the destructive overwrite. Room's [version] in the SQLite
+        //         header is at byte 64 of every SQLite 3 database; runs the same [WhoopDatabase] Room
+        //         migrations the app normally uses on its own open. On failure the backup is rejected
+        //         early, before anything touches the live DB.
+        val migrationError = migrateBackupIfNeeded(
+            appContext,
+            tempSqlite,
+            WhoopDatabase.SCHEMA_VERSION,
+            WhoopDatabase.ALL_MIGRATIONS,
+        )
+        if (migrationError != null) {
+            tempSqlite.delete()
+            tempSettings.delete()
+            return ImportResult.Failed(
+                "The backup could not be migrated to the current NOOP schema: $migrationError"
+            )
         }
 
         // 3c. #1014 defence-in-depth: gates 3 and 3b read only the FIRST pages of the file — the
@@ -570,6 +590,112 @@ object DataBackup {
             "quick_check failed: ${e.message}"
         } finally {
             runCatching { db.close() }
+        }
+    }
+
+    /**
+     * Byte offset of `PRAGMA user_version` in the SQLite 3 database header (100-byte header,
+     * big-endian 32-bit integer at offset 64). Verified against the SQLite source.
+     */
+    private const val USER_VERSION_OFFSET = 64
+
+    /** Bytes of the SQLite header needed to extract [USER_VERSION_OFFSET]. */
+    private const val HEADER_READ_SIZE = 68
+
+    /**
+     * Read the Room schema version (`PRAGMA user_version`) from a SQLite file's database header,
+     * at [USER_VERSION_OFFSET]. Pure file I/O — no Android SQLite API needed, so it's testable on
+     * the plain JVM alongside [isValidSqliteHeader] and the other byte-level functions.
+     *
+     * Returns null when the file is not (or is too small to be) a valid SQLite database.
+     */
+    fun readUserVersion(file: File): Int? {
+        val buf = ByteArray(HEADER_READ_SIZE)
+        val read = runCatching {
+            file.inputStream().use { readFully(it, buf) }
+        }.getOrNull() ?: return null
+        if (read < HEADER_READ_SIZE) return null
+        if (!buf.copyOf(SQLITE_MAGIC.size).contentEquals(SQLITE_MAGIC)) return null
+        return ((buf[USER_VERSION_OFFSET].toInt() and 0xFF) shl 24) or
+            ((buf[USER_VERSION_OFFSET + 1].toInt() and 0xFF) shl 16) or
+            ((buf[USER_VERSION_OFFSET + 2].toInt() and 0xFF) shl 8) or
+            (buf[USER_VERSION_OFFSET + 3].toInt() and 0xFF)
+    }
+
+    /**
+     * Migrate a staged backup SQLite file to the current Room schema version. Called from
+     * [importFrom] after staging and origin validation, but BEFORE the integrity gate
+     * ([sqliteQuickCheckFailure]), so the migrated file is verified before it touches the live DB.
+     *
+     * Opens [stagedFile] through [FrameworkSQLiteOpenHelperFactory], which accepts an absolute path
+     * as the database name (SQLiteOpenHelper passes it through to [Context.getDatabasePath], which
+     * handles absolute paths as-is). The callback version matches the file's current [user_version]
+     * so the helper opens without triggering its own [onUpgrade]; we then run the applicable Room
+     * [Migration] objects in sequence and set [targetVersion] directly. The helper is closed before
+     * returning, so the migrated file is consistent on disk.
+     *
+     * Returns null on success, or an error message string on failure. On failure the caller must
+     * delete [stagedFile] and return an [ImportResult.Failed] — the file's schema is not safe to
+     * restore.
+     */
+    fun migrateBackupIfNeeded(
+        appContext: Context,
+        stagedFile: File,
+        targetVersion: Int,
+        migrations: List<Migration>,
+    ): String? {
+        val currentVersion = readUserVersion(stagedFile)
+            ?: return "Could not read the backup's schema version."
+
+        // v0 = fresh/empty database, no existing schema to migrate.
+        if (currentVersion <= 0) return null
+        if (currentVersion >= targetVersion) return null
+
+        val applicable = migrations
+            .filter { it.startVersion >= currentVersion && it.endVersion <= targetVersion }
+            .sortedBy { it.startVersion }
+
+        if (applicable.isEmpty()) {
+            return "No migration path from schema v$currentVersion to v$targetVersion."
+        }
+
+        var expected = currentVersion
+        for (m in applicable) {
+            if (m.startVersion != expected) {
+                return "Migration gap: schema v$expected to v${m.startVersion}."
+            }
+            expected = m.endVersion
+        }
+        if (expected != targetVersion) {
+            return "Migration chain ends at v$expected, target is v$targetVersion."
+        }
+
+        // Open the staged file read-write through FrameworkSQLiteOpenHelper, which wraps a raw
+        // SQLiteDatabase as a SupportSQLiteDatabase — exactly what Migration.migrate() expects.
+        return runCatching {
+            val config = SupportSQLiteOpenHelper.Configuration.builder(appContext)
+                .name(stagedFile.absolutePath)
+                .callback(object : SupportSQLiteOpenHelper.Callback(currentVersion) {
+                    override fun onCreate(db: SupportSQLiteDatabase) {}
+                    override fun onUpgrade(db: SupportSQLiteDatabase, oldVersion: Int, newVersion: Int) {}
+                })
+                .allowDataLossOnRecovery(false)
+                .build()
+
+            val factory = FrameworkSQLiteOpenHelperFactory()
+            val helper = factory.create(config)
+            try {
+                val db = helper.writableDatabase
+                for (migration in applicable) {
+                    migration.migrate(db)
+                }
+                db.execSQL("PRAGMA user_version = $targetVersion")
+            } finally {
+                helper.close()
+            }
+            null // success
+        }.getOrElse { e ->
+            "Migration from v$currentVersion to v$targetVersion failed: ${e.message}"
         }
     }
 }

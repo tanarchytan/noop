@@ -59,6 +59,24 @@ abstract class WhoopDatabase : RoomDatabase() {
     companion object {
         const val DB_NAME = "noop_whoop.db"
 
+        /** Current Room schema version. Must match [Database.version]. Exposed for backup migration. */
+        const val SCHEMA_VERSION = 21
+
+        /**
+         * Ordered list of all Room migrations, from earliest to latest. Used by
+         * [DataBackup.migrateBackupIfNeeded] to bring an older backup's SQLite file
+         * to the current schema before it replaces the live database.
+         */
+        val ALL_MIGRATIONS: List<Migration> by lazy {
+            listOf(
+            MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5,
+            MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10,
+            MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14,
+            MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18,
+            MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21,
+        )
+        }
+
         @Volatile
         private var instance: WhoopDatabase? = null
 
@@ -585,13 +603,7 @@ abstract class WhoopDatabase : RoomDatabase() {
                 // Real additive migration, NO destructive fallback (see the class doc): with
                 // exportSchema=false a silent rebuild would lose already-acked, non-resendable strap
                 // history on any schema mismatch. Room throws loudly instead; CI guards the SQL.
-                .addMigrations(
-                    MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5,
-                    MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10,
-                    MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14,
-                    MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18,
-                    MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21,
-                )
+                .addMigrations(*ALL_MIGRATIONS.toTypedArray())
                 // #1037: a FRESH install builds the schema straight at the current version and runs NO
                 // migrations, so the MIGRATION_7_8 "my-whoop" registry seed never fires and the WHOOP,
                 // though paired and streaming fine, never appears in the Devices list. Seed the canonical
