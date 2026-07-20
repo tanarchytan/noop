@@ -346,10 +346,10 @@ worn — a night on the charger still banks a hypnogram + skin-temp but essentia
 banked window sits inside a `"chg. detected"`→`"chg. stopped"` interval, §6.15), so overnight HR exists
 only on worn nights. (b) A banked IBI must be persisted at its OWN anchored ring-time
 (`unixSeconds(forRingTimestamp:)`), never the drain-arrival wall-clock: because a night is drained the next
-day, stamping the beat at arrival misfiled every overnight beat to the daytime sync moment — the deep-night
-hours (00–06 local) came out empty while the sync hour piled up an implausible density. So the `oura-ibihr`
-sidecar (anchored correctly) was right, but the datastore's `rrInterval` was not until `.ibi` was anchored
-like its sibling banked streams (`.hrv`/`.temp`/`.spo2`/`.sleepPhase`).
+day, stamping the beat at arrival misfiles every overnight beat to the daytime sync moment — the deep-night
+hours (00–06 local) come out empty while the sync hour piles up an implausible density. So the `oura-ibihr`
+sidecar (anchored correctly) is right, but the datastore's `rrInterval` is not, until `.ibi` is anchored
+like its sibling banked streams (`.hrv`/`.temp`/`.spo2`/`.sleepPhase`) — the fix in PR #677 (pending merge).
 
 ### 6.5 SpO2 per-sample - `0x6F` `spo2_event` (5–18 B, 1 s spacing)
 - Byte 6: bits `[7:4]` = SpO2 base (<<7); bits `[3:0]` = status flag. [ringverse]
@@ -503,5 +503,12 @@ Tags that appear in the banked stream but NOOP does not decode. Payloads are the
 | `0x5c` | 6 | 4 | `284b02b0` | **constant** across every occurrence — a fixed marker / config |
 | `0x56` | 1 | 1 | `01` | singleton |
 
-(Full-notification hex including the `type/len/rt` header is in the capture; e.g. `0x76`'s first record is
-`760cc2cf71004c876b00c0667000`.)
+Full-notification hex including the `type/len/rt` header is in the capture. For the highest-rate tags,
+several full records are reproduced below (`type len rt(u32LE) | payload`) so a future RE pass sees the
+record framing and cross-sample variation directly — a single stripped example once hid a truncated
+prefix and tail fields. Note `0x61`'s payload length is **not fixed** (the `len` byte moves 0x10/0x11/0x12).
+
+- `0x61` (highest-rate): `6110 ff756600 | 1a18009c3700007c150000cb` · `6111 00766600 | 23230000090000fd02003a0000` · `6112 f9766600 | 095b914700e9e00000fe81010005`
+- `0x72` (`len` 0x10, 6×int16-LE): `7210 499b6b00 | 120027000100150018000200` · `7210 729c6b00 | 130029000100150018000200` · `7210 9c9d6b00 | 05000e000200160019000500`
+- `0x6d` (`len` 0x11, leading `00` + 4×int16-LE negatives): `6d11 ec856600 | 00c4ffffb5ffffd2ffffeaffff` · `6d11 98976600 | 00b2fffffaffffeeffffd9ffff` · `6d11 419d6600 | 00a1fffffaffffd9fffff5ffff`
+- `0x76`: `760c c2cf7100 | 4c876b00c0667000`

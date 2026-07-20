@@ -121,7 +121,8 @@ ring's raw signals and **never** reads Oura's encrypted readiness/sleep scores. 
 [`OURA_PROTOCOL.md`](OURA_PROTOCOL.md); this is the where-we-stand summary.
 
 **Working (validated on a live Gen 3):** app-auth handshake (nonce → AES-128 proof), live HR + IBI stream,
-SyncTime (`0x12`/`0x13`) UTC anchoring, and a history drain aligned with open_oura `drain_events` (per-batch
+SyncTime (`0x12`/`0x13`) handshake plus the ring-emitted `0x42` time-sync event as the UTC anchor (§6.11),
+and a history drain aligned with open_oura `drain_events` (per-batch
 cursor advance + quiet window → converges to `bytes_left 0`, no re-serve loop). Decoded signals: HR/IBI, HRV
 (`0x5D` + reconstructed), skin temp (`0x46`), SpO₂, battery. Own central/GATT — never the WHOOP path.
 
