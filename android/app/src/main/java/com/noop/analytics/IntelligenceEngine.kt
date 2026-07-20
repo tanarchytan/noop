@@ -659,40 +659,25 @@ object IntelligenceEngine {
         mergeNightlyIntoHistory(histHrvByDay, nightlyHrvByDay)
         mergeNightlyIntoHistory(histRhrByDay, nightlyRhrByDay)
         mergeNightlyIntoHistory(histRespByDay, nightlyRespByDay)
-        // Sort once so the HRV values + their "yyyy-MM-dd" day keys stay parallel (same order/length) for
-        // the recalibration-aware foldHistory below.
-        val hrvSorted = histHrvByDay.entries.sortedBy { it.key }
-        val hrvSeq = hrvSorted.map { it.value }
-        val hrvDayKeys = hrvSorted.map { it.key }
-        val rhrSorted = histRhrByDay.entries.sortedBy { it.key }
-        val rhrSeq = rhrSorted.map { it.value }
-        val rhrDayKeys = rhrSorted.map { it.key }
-        val respSorted = histRespByDay.entries.sortedBy { it.key }
-        val respSeq = respSorted.map { it.value }
-        val respDayKeys = respSorted.map { it.key }
-        // HRV baseline honours noop.hrvBaselineEpoch; rhr/resp/skin honour noop.recoveryBaselineEpoch via
-        // their parallel day keys, so the manual Recalibrate restarts the whole Charge build-up together.
-        // A 0.0 epoch is byte-identical to the plain fold, so scoring is unchanged until the user taps it.
-        val hrvBase2 = Baselines.foldHistory(hrvSeq, hrvDayKeys, hrvCfg, baselineEpoch)
-        val rhrBase2 = Baselines.foldHistory(rhrSeq, rhrDayKeys, rhrCfg, recoveryEpoch)
-        // Resp baseline mixes imported (cloud) values with on-device RSA estimates , acceptable: the
-        // z-score is scale-tolerant, foldHistory winsorizes, and respRateBpm already carries no source
-        // flag anywhere else (the illness gate treats it the same way). Gated on `usable` because
-        // RecoveryScorer includes the resp term whenever a baseline object is present , a CALIBRATING
-        // (<4-night) baseline would let one noisy RSA night move recovery (mirrors the skin-temp
-        // use-site gate; honest cold-start).
-        val respBase2 = Baselines.foldHistory(respSeq, respDayKeys, respCfg, recoveryEpoch).takeIf { it.usable }
-        // Skin-temp baseline is on-device-only (imported rows carry skinTempDevC, not the raw mean),
-        // so fold purely over the pass-1 nightly means in chronological order. (PR #85)
-        // Gated on `usable` for consistency with the resp baseline above AND the Swift reference
-        // (IntelligenceEngine.swift:162 `skinFold.usable ? skinFold : nil`) , the use-site re-checks
-        // `usable` too, so this is belt-and-suspenders, but it keeps the platforms byte-aligned.
-        val skinSorted = nightlySkinByDay.entries.sortedBy { it.key }
-        val skinSeq = skinSorted.map { it.value }
-        val skinDayKeys = skinSorted.map { it.key }
-        val skinBase2 = Baselines.foldHistory(skinSeq, skinDayKeys, skinCfg, recoveryEpoch).takeIf { it.usable }
-        val baselines2 = ProfileBaselines(
-            hrv = hrvBase2, restingHR = rhrBase2, resp = respBase2, skinTemp = skinBase2,
+        // Seed baseline state from IMPORTED history only (represents state BEFORE any pass-1 night).
+        // Pass-1 nightly values are folded INCREMENTALLY in the pass-2 loop below: each night is
+        // scored against strictly prior state, then its values fold in for the next night. This
+        // prevents a day from contributing to its own baseline (the old shared-baseline bug).
+        val hrvImported = histHrvByDay.entries.sortedBy { it.key }.map { it.value }
+        val hrvImportedKeys = histHrvByDay.entries.sortedBy { it.key }.map { it.key }
+        val rhrImported = histRhrByDay.entries.sortedBy { it.key }.map { it.value }
+        val rhrImportedKeys = histRhrByDay.entries.sortedBy { it.key }.map { it.key }
+        val respImported = histRespByDay.entries.sortedBy { it.key }.map { it.value }
+        val respImportedKeys = histRespByDay.entries.sortedBy { it.key }.map { it.key }
+        var hrvState = Baselines.foldHistory(hrvImported, hrvImportedKeys, hrvCfg, baselineEpoch)
+        var rhrState = Baselines.foldHistory(rhrImported, rhrImportedKeys, rhrCfg, recoveryEpoch)
+        var respState = Baselines.foldHistory(respImported, respImportedKeys, respCfg, recoveryEpoch)
+        // Skin-temp baseline is on-device-only; seed from nothing (imported rows carry skinTempDevC, not raw mean).
+        var skinState: BaselineState? = null
+        fun currentBaselines() = ProfileBaselines(
+            hrv = hrvState, restingHR = rhrState,
+            resp = respState.takeIf { it.usable },
+            skinTemp = skinState?.takeIf { it.usable },
         )
 
         // Real (non-detected) workouts in the scored window, used to de-duplicate detected bouts so a
@@ -780,12 +765,19 @@ object IntelligenceEngine {
             )
             // Skin temp deviation must be attached BEFORE Charge scoring, so the skin-temp term actually
             // enters the formula (was after, making the 5 %-weighted term always absent).
-            val skinTempDevC = recomputeSkinTempDev(res.nightlySkinTempC, baselines2.skinTemp)
+            val bl = currentBaselines()
+            val skinTempDevC = recomputeSkinTempDev(res.nightlySkinTempC, bl.skinTemp)
             val dailyWithSkin = if (skinTempDevC != null) daily.copy(skinTempDevC = skinTempDevC) else daily
-            val recovery = recomputeRecovery(dailyWithSkin, baselines2)
+            val recovery = recomputeRecovery(dailyWithSkin, bl)
             if (recoveryTraceSink != null) {
-                for (line in recoveryTraceLines(dailyWithSkin, baselines2)) recoveryTraceSink(line)
+                for (line in recoveryTraceLines(dailyWithSkin, bl)) recoveryTraceSink(line)
             }
+            // Fold this night's values into the running baseline so the NEXT night scores against
+            // strictly prior state (chronological, not shared).
+            res.daily.avgHrv?.let { hrvState = Baselines.update(hrvState, it, hrvCfg) }
+            res.daily.restingHr?.let { rhrState = Baselines.update(rhrState, it.toDouble(), rhrCfg) }
+            res.daily.respRateBpm?.let { respState = Baselines.update(respState, it, respCfg) }
+            res.nightlySkinTempC?.let { skinState = Baselines.update(skinState, it, skinCfg) }
             RestScorer.restFromDaily(daily)?.let { rest ->
                 restRows.add(MetricSeriesRow(deviceId = computedId, day = daily.day, key = "sleep_performance", value = rest))
             }
