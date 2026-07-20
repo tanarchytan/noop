@@ -693,9 +693,17 @@ internal object IntegrityCheckingUniffiLib {
     ): Int
     external fun uniffi_whoop_ffi_checksum_func_hr_zones_for_age(
     ): Int
+    external fun uniffi_whoop_ffi_checksum_func_hrv_range_filter(
+    ): Int
     external fun uniffi_whoop_ffi_checksum_func_hrv_readiness(
     ): Int
+    external fun uniffi_whoop_ffi_checksum_func_hrv_rmssd(
+    ): Int
     external fun uniffi_whoop_ffi_checksum_func_hrv_rmssd_gap_aware(
+    ): Int
+    external fun uniffi_whoop_ffi_checksum_func_hrv_rmssd_plain(
+    ): Int
+    external fun uniffi_whoop_ffi_checksum_func_hrv_sdnn(
     ): Int
     external fun uniffi_whoop_ffi_checksum_func_hrv_windowed_avg(
     ): Int
@@ -903,9 +911,17 @@ internal object UniffiLib {
     ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_func_hr_zones_for_age(`age`: Double,`maxHrOverride`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
+    external fun uniffi_whoop_ffi_fn_func_hrv_range_filter(`rrMs`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_func_hrv_readiness(`nightlyRmssd`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
+    external fun uniffi_whoop_ffi_fn_func_hrv_rmssd(`rrMs`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_func_hrv_rmssd_gap_aware(`runs`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    external fun uniffi_whoop_ffi_fn_func_hrv_rmssd_plain(`rrMs`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    external fun uniffi_whoop_ffi_fn_func_hrv_sdnn(`rrMs`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_func_hrv_windowed_avg(`start`: Int,`end`: Int,`runs`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
@@ -1096,10 +1112,22 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_whoop_ffi_checksum_func_hr_zones_for_age() != 34437) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_whoop_ffi_checksum_func_hrv_range_filter() != 26959) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_whoop_ffi_checksum_func_hrv_readiness() != 20540) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_whoop_ffi_checksum_func_hrv_rmssd() != 43228) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_whoop_ffi_checksum_func_hrv_rmssd_gap_aware() != 21845) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_whoop_ffi_checksum_func_hrv_rmssd_plain() != 21702) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_whoop_ffi_checksum_func_hrv_sdnn() != 1620) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_whoop_ffi_checksum_func_hrv_windowed_avg() != 17402) {
@@ -7443,6 +7471,20 @@ public object FfiConverterSequenceOptionalDouble: FfiConverterRustBuffer<List<ko
     
 
         /**
+         * Range-filter R-R values, keeping only 300–2000 ms.
+         */ fun `hrvRangeFilter`(`rrMs`: List<kotlin.UShort>): List<kotlin.UShort> {
+            return FfiConverterSequenceUShort.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_func_hrv_range_filter(
+    
+        
+        FfiConverterSequenceUShort.lower(`rrMs`),_status)
+}
+    )
+    }
+    
+
+        /**
          * HRV-readiness over a nightly RMSSD series (oldest → newest; `None` slots = missing nights).
          */ fun `hrvReadiness`(`nightlyRmssd`: List<kotlin.Double?>): HrvReadinessInfo? {
             return FfiConverterOptionalTypeHrvReadinessInfo.lift(
@@ -7457,6 +7499,20 @@ public object FfiConverterSequenceOptionalDouble: FfiConverterRustBuffer<List<ko
     
 
         /**
+         * RMSSD (ms) of raw R-R values. `None` for <2 beats (filtered, drops deltas >200ms).
+         */ fun `hrvRmssd`(`rrMs`: List<kotlin.UShort>): kotlin.Double? {
+            return FfiConverterOptionalDouble.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_func_hrv_rmssd(
+    
+        
+        FfiConverterSequenceUShort.lower(`rrMs`),_status)
+}
+    )
+    }
+    
+
+        /**
          * Gap-aware, artifact-corrected nightly RMSSD (ms) from per-record R-R runs.
          */ fun `hrvRmssdGapAware`(`runs`: List<RrRun>): kotlin.Double? {
             return FfiConverterOptionalDouble.lift(
@@ -7465,6 +7521,34 @@ public object FfiConverterSequenceOptionalDouble: FfiConverterRustBuffer<List<ko
     
         
         FfiConverterSequenceTypeRrRun.lower(`runs`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Plain unfiltered RMSSD, matching Kotlin HrvAnalyzer.rmssdRaw exactly.
+         */ fun `hrvRmssdPlain`(`rrMs`: List<kotlin.UShort>): kotlin.Double? {
+            return FfiConverterOptionalDouble.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_func_hrv_rmssd_plain(
+    
+        
+        FfiConverterSequenceUShort.lower(`rrMs`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Standard deviation of NN intervals (ms), sample std (ddof=1). `None` for <2 values.
+         */ fun `hrvSdnn`(`rrMs`: List<kotlin.UShort>): kotlin.Double? {
+            return FfiConverterOptionalDouble.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_func_hrv_sdnn(
+    
+        
+        FfiConverterSequenceUShort.lower(`rrMs`),_status)
 }
     )
     }

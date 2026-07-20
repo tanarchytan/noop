@@ -147,6 +147,15 @@ internal object RustScores {
 
     fun rmssdGapAware(rr: List<RrInterval>): Double? = uniffi.whoop_ffi.hrvRmssdGapAware(groupRuns(rr))
 
+    fun rmssd(rrMs: List<Int>): Double? = uniffi.whoop_ffi.hrvRmssd(rrMs.map { it.toUShort() })
+
+    fun rangeFilterRR(rrMs: List<Int>): List<Int> =
+        uniffi.whoop_ffi.hrvRangeFilter(rrMs.map { it.toUShort() }).map { it.toInt() }
+
+    fun sdnn(rrMs: List<Int>): Double? = uniffi.whoop_ffi.hrvSdnn(rrMs.map { it.toUShort() })
+
+    fun rmssdRaw(nn: List<Double>): Double? = uniffi.whoop_ffi.hrvRmssdPlain(nn.map { it.toInt().toUShort() })
+
     /** Windowed session avgHrv (ms): mean of per-5-min-bucket gap-aware RMSSD over [start, end] — the stored
      *  DailyMetric.avgHrv/SleepSession.avgHrv (twin of SleepStager.sessionAvgHRV). `rr` must be ts-sorted. */
     fun windowedAvgHrv(start: Long, end: Long, rr: List<RrInterval>): Double? =
