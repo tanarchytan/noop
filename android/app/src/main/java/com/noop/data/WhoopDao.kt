@@ -249,9 +249,12 @@ interface WhoopDao : DeviceRegistryDao {
     suspend fun hrWindowStats(deviceId: String, from: Long, to: Long): HrWindowStats
 
     @Query(
-        // ts, rrMs matches Swift Reads.swift; seq only tiebreaks the rare EQUAL same-second beats (v18).
+        // ORDER BY ts, seq preserves the decoder's emission order (seq = insertion counter).
+        // Sorting by rrMs between same-second beats reorders physiologically — RMSSD depends on
+        // successive-beat order. The old ts,rrMs,seq order was a bug: same-second distinct intervals
+        // sorted by magnitude instead of true beat sequence.
         "SELECT * FROM rrInterval WHERE deviceId = :deviceId AND ts >= :from AND ts <= :to " +
-            "ORDER BY ts ASC, rrMs ASC, seq ASC LIMIT :limit"
+            "ORDER BY ts ASC, seq ASC LIMIT :limit"
     )
     suspend fun rrIntervals(deviceId: String, from: Long, to: Long, limit: Int): List<RrInterval>
 
