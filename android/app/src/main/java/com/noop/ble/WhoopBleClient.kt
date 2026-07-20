@@ -1431,13 +1431,17 @@ class WhoopBleClient(
         }
     }
 
+    /** Per-connection GET_CLOCK state shared with historical decode. */
+    private val clockReference = ClockReference()
+
     /** The offload state machine. Ack callback writes HISTORICAL_DATA_RESULT (with response). */
     private val backfiller = Backfiller(
         repository = repository,
         deviceId = deviceId,
         cursorStore = cursorStore,
+        clockReference = clockReference,
         ackTrim = { trim, endData -> ackHistoricalChunk(trim, endData) },
-        onChunkCommitted = { batch -> onBackfillChunkCommitted(batch) },
+        onChunkCommitted = { onBackfillChunkCommitted() },
         onConsoleChunk = { consoleChunksThisSession += 1 },
         // #77/#91: archive undecodable frames before the ack. append() returns ok=true (written, or
         // archive-full → still safe to ack) and THROWS only on a genuine write failure → return false
@@ -1472,7 +1476,7 @@ class WhoopBleClient(
      * UI's 15-min analysis tick (which also doesn't run at all with the app UI closed and only the
      * foreground service alive). Mirrors the AppViewModel loop's profile + writeback behaviour. (#78 fork)
      */
-    private fun onBackfillChunkCommitted(batch: StreamBatch) {
+    private fun onBackfillChunkCommitted() {
         decodedChunksThisSession += 1   // invoked once per non-empty decoded chunk (#77 family tally)
         if (!analyzeAfterBackfillScheduled.compareAndSet(false, true)) return
         ioScope.launch {
@@ -3336,7 +3340,7 @@ class WhoopBleClient(
     /** Start service discovery exactly once per connection, whichever path (onMtuChanged or the
      *  fallback timeout) reaches here first. Idempotent via [serviceDiscoveryKicked]. */
     @SuppressLint("MissingPermission")
-    private fun kickServiceDiscovery(g: BluetoothGatt, reason: String) {
+    private fun kickServiceDiscovery(reason: String) {
         if (!serviceDiscoveryKicked.compareAndSet(false, true)) return
         val ops = gattOps ?: return
         log("Discovering services ($reason)")
@@ -3470,11 +3474,11 @@ class WhoopBleClient(
                         safeGatt("requestMtu") { mtuOps.requestMtuCompat(GATT_MTU) }
                     if (mtuOk) {
                         log("Connected — requesting MTU $GATT_MTU before discovery")
-                        handler.postDelayed({ kickServiceDiscovery(g, "mtu timeout") }, MTU_FALLBACK_MS)
+                        handler.postDelayed({ kickServiceDiscovery("mtu timeout") }, MTU_FALLBACK_MS)
                     } else if (gatt != null) {
                         // requestMtu returned false (stack ignored it) but the link is still alive —
                         // discover directly. If safeGatt tore down (dead binder), gatt is null: skip.
-                        kickServiceDiscovery(g, "requestMtu rejected")
+                        kickServiceDiscovery("requestMtu rejected")
                     }
                 }
                 BluetoothProfile.STATE_DISCONNECTED -> {
@@ -3501,7 +3505,7 @@ class WhoopBleClient(
             // Whatever the strap granted (≤ requested). Log it, then discover. kickServiceDiscovery is
             // idempotent, so a late callback after the fallback timeout already fired is a no-op. (PR #85)
             log("MTU negotiated: $mtu (status=$status)")
-            kickServiceDiscovery(g, "mtu=$mtu")
+            kickServiceDiscovery("mtu=$mtu")
         }
 
         override fun onReadRemoteRssi(g: BluetoothGatt, rssi: Int, status: Int) {
@@ -3691,6 +3695,7 @@ class WhoopBleClient(
             characteristic: BluetoothGattCharacteristic,
             value: ByteArray,
         ) {
+            if (g !== this@WhoopBleClient.gatt) return
             onInbound(characteristic.uuid, value)
         }
 
@@ -3699,6 +3704,7 @@ class WhoopBleClient(
             g: BluetoothGatt,
             characteristic: BluetoothGattCharacteristic,
         ) {
+            if (g !== this@WhoopBleClient.gatt) return
             @Suppress("DEPRECATION")
             val value = characteristic.value ?: return
             onInbound(characteristic.uuid, value)
@@ -3975,6 +3981,13 @@ class WhoopBleClient(
 
             "COMMAND_RESPONSE" -> {
                 doubleValue(parsed.parsed["battery_pct"])?.let { setBattery(it) }
+                // WHOOP 4 serves GET_CLOCK and needs a device↔wall pair for stale-clock fallback.
+                // WHOOP 5/MG timestamps are already unix and intentionally keep an identity reference.
+                if (connectedFamily == DeviceFamily.WHOOP4) {
+                    clockReference.accept(parsed)?.let { ref ->
+                        log("Clock correlated: device=${ref.device} wall=${ref.wall}")
+                    }
+                }
                 // Firmware version from the handshake: 4.0 reports fw_harvard (REPORT_VERSION_INFO),
                 // 5/MG reports fw_version (GET_HELLO). Keyed on whichever field decoded rather than
                 // resp_cmd, so a single branch covers both families. Stable for the connection, so we
@@ -4702,7 +4715,7 @@ class WhoopBleClient(
      * mirroring how the Swift code writes the bond frame inline in didDiscoverCharacteristicsFor.
      */
     @SuppressLint("MissingPermission")
-    private fun writeBondFrame(g: BluetoothGatt, ch: BluetoothGattCharacteristic) {
+    private fun writeBondFrame(ch: BluetoothGattCharacteristic) {
         val ops = gattOps ?: return
         val s = seq.incrementAndGet() and 0xFF
         val bondFrame = RustCodec.getBatteryFrame(isGen5 = false, seq = s)
@@ -4727,7 +4740,7 @@ class WhoopBleClient(
      * notify subscriptions). Unverified on real MG hardware.
      */
     @SuppressLint("MissingPermission")
-    private fun writeClientHello(g: BluetoothGatt, ch: BluetoothGattCharacteristic) {
+    private fun writeClientHello(ch: BluetoothGattCharacteristic) {
         val hello = DeviceFamily.WHOOP5.clientHello ?: return
         val ops = gattOps ?: return
         // CONFIRMED (with-response) write — mirrors the macOS v1.5 fix and the hardware-verified finding
@@ -4753,8 +4766,7 @@ class WhoopBleClient(
      * onCharacteristicWrite); WHOOP 5/MG sends CLIENT_HELLO (which itself fires the puffin probe when
      * the experiment is enabled). Guarded so it runs exactly once per connection.
      */
-    @SuppressLint("MissingPermission")
-    private fun startSession(g: BluetoothGatt) {
+    private fun startSession() {
         if (sessionStarted) return
         sessionStarted = true
         val cmd = cmdCharacteristic
@@ -4763,8 +4775,8 @@ class WhoopBleClient(
             return
         }
         when (connectedFamily) {
-            DeviceFamily.WHOOP4 -> writeBondFrame(g, cmd)
-            DeviceFamily.WHOOP5 -> writeClientHello(g, cmd)
+            DeviceFamily.WHOOP4 -> writeBondFrame(cmd)
+            DeviceFamily.WHOOP5 -> writeClientHello(cmd)
         }
     }
 
@@ -4806,7 +4818,7 @@ class WhoopBleClient(
             // Every notification is enabled — now it's safe to write the first command, one GATT
             // operation at a time. This is the fix for issue #12: the bond/hello no longer races the
             // CCCD descriptor writes (which had silently dropped every subscription).
-            startSession(g)
+            startSession()
             return
         }
         val ops = gattOps ?: return
@@ -5763,6 +5775,7 @@ class WhoopBleClient(
     private fun reset() {
         didBond = false
         connectHandshakeDone = false
+        clockReference.reset()
         seq.set(0)
         writeQueue.clear()
         cccdQueue.clear()

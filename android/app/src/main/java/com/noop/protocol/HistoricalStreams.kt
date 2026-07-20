@@ -181,6 +181,9 @@ fun extractHistoricalStreams(
     deviceClockRef: Int,
     wallClockRef: Int,
     family: DeviceFamily = DeviceFamily.WHOOP4,
+    // A live GET_CLOCK reply follows SET_CLOCK, so its offset cannot safely rewrite records banked
+    // before that set. Disable correction for that path while retaining it for captured pre-set refs.
+    applyStaleClockCorrection: Boolean = true,
     // #547 ingest gate "now": the true wall clock used ONLY to reject future-dated records. NOT
     // wallClockRef — that arg is the (device,wall) correlation and is 0 on the RawHistoryArchive replay
     // path (which would otherwise reject everything). Take the LATER of the supplied correlation wall and
@@ -244,7 +247,7 @@ fun extractHistoricalStreams(
     // bad-clock log. Mirrors the Swift correctedWall returning nil.
     fun correctedWall(rawTs: Long): Long? {
         val candidate: Long = run {
-            if (kotlin.math.abs(clockOffset) <= staleThreshold) return@run rawTs
+            if (!applyStaleClockCorrection || kotlin.math.abs(clockOffset) <= staleThreshold) return@run rawTs
             val snapped = (if (clockOffset >= 0) clockOffset + snapGranularity / 2
                            else clockOffset - snapGranularity / 2) / snapGranularity * snapGranularity
             val corrected = rawTs + snapped.toLong()

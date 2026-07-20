@@ -56,6 +56,19 @@ class HistoricalStreamsClockCorrectionTest {
         assertEquals(1_780_916_150L, drift.hr.first().ts)
     }
 
+    @Test fun liveClockCorrelationCanPreserveRecordedHistoricalUnix() {
+        val rawTs = 1_780_916_150L
+        val device = 1_780_920_000
+        val wall = device + 60 * 86_400
+
+        val st = extractHistoricalStreams(
+            listOf(bytes(wornV18)), device, wall, DeviceFamily.WHOOP5,
+            applyStaleClockCorrection = false,
+        )
+
+        assertEquals(rawTs, st.hr.first().ts)
+    }
+
     // ── #547 ingest gate ────────────────────────────────────────────────────────────────────────────
     // A bad strap clock/flash (pikapik) emits records whose `unix` decodes to scattered garbage — far-past
     // (year 2024/2019/…), a 2027 spike (1_827_642_881), and even a FUTURE date — which entered the DB

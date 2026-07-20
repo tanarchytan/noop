@@ -90,13 +90,10 @@ class Backfiller(
      */
     private val rejectedSink: (frames: List<ByteArray>, trim: Long) -> Boolean = { _, _ -> true },
     /**
-     * The (device, wall) clock reference. type-47 records carry their OWN real unix timestamp so
-     * the offset is a no-op for them; this is supplied only for the REALTIME_RAW_DATA fallback and
-     * to mirror the Swift signature. Defaults to an identity ref (device == wall == now): the Swift
-     * Backfiller falls back to exactly this when GET_CLOCK is silent, and type-47 still decodes to
-     * correct wall time. Settable by [WhoopBleClient] if a real correlation lands.
+     * Shared GET_CLOCK correlation. Type-47 records retain their own unix timestamps; this only
+     * supplies gross stale-clock correction and the REALTIME_RAW_DATA fallback.
      */
-    var clockRef: ClockRef = ClockRef.identityNow(),
+    private val clockReference: ClockReference = ClockReference(),
     /**
      * Connection & Sync test mode (Test Centre): the cheap gate + tagged sink for the .connection
      * diagnostic lines (offload progress / firmware layout / trim sentinel). [connectionActive] is one
@@ -349,9 +346,10 @@ class Backfiller(
 
         var committed: StreamBatch? = null
         if (frames.isNotEmpty()) {
-            val ref = clockRef
+            val ref = clockReference.current
             val decoded = extractHistoricalStreams(
                 frames, ref.device, ref.wall, family,
+                applyStaleClockCorrection = false,
                 sessionOldestUnix = sessionOldestUnix, sessionNewestUnix = sessionNewestUnix,
                 ppgHrSubLagInterp = ppgHrSubLagInterp(),
             )
@@ -666,21 +664,6 @@ class Backfiller(
                 "its clock (RTC) is corrupt, not a NOOP problem. Those records can't be filed onto the " +
                 "right day. Fully charge the strap to 100% and reconnect so it re-syncs its clock; if it " +
                 "persists, forget and re-pair the strap."
-        }
-    }
-}
-
-/**
- * A (device-epoch, wall-clock) correlation in unix seconds. Android analog of the Swift `ClockRef`.
- * type-47 historical records carry real unix timestamps, so the identity ref (device == wall) makes
- * the offset math a no-op while still decoding correct wall time — the same fallback the Swift
- * Backfiller uses when GET_CLOCK is silent.
- */
-data class ClockRef(val device: Int, val wall: Int) {
-    companion object {
-        fun identityNow(): ClockRef {
-            val now = (System.currentTimeMillis() / 1000L).toInt()
-            return ClockRef(device = now, wall = now)
         }
     }
 }
