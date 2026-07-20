@@ -675,6 +675,12 @@ internal object IntegrityCheckingUniffiLib {
     }
     external fun uniffi_whoop_ffi_checksum_func_analyze_sleep(
     ): Int
+    external fun uniffi_whoop_ffi_checksum_func_baseline_fold_history(
+    ): Int
+    external fun uniffi_whoop_ffi_checksum_func_baseline_metric_cfg_hrv(
+    ): Int
+    external fun uniffi_whoop_ffi_checksum_func_baseline_update(
+    ): Int
     external fun uniffi_whoop_ffi_checksum_func_bridged_night_groups(
     ): Int
     external fun uniffi_whoop_ffi_checksum_func_daily_resting_hr(
@@ -895,6 +901,12 @@ internal object UniffiLib {
     ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_func_analyze_sleep(`streams`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
+    external fun uniffi_whoop_ffi_fn_func_baseline_fold_history(`values`: RustBuffer.ByValue,`cfg`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    external fun uniffi_whoop_ffi_fn_func_baseline_metric_cfg_hrv(uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    external fun uniffi_whoop_ffi_fn_func_baseline_update(`state`: RustBuffer.ByValue,`value`: RustBuffer.ByValue,`cfg`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_func_bridged_night_groups(`blocks`: RustBuffer.ByValue,`offsetS`: Long,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_func_daily_resting_hr(`sessionFloors`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
@@ -1087,6 +1099,15 @@ private fun uniffiCheckContractApiVersion(lib: IntegrityCheckingUniffiLib) {
 @Suppress("UNUSED_PARAMETER")
 private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_whoop_ffi_checksum_func_analyze_sleep() != 45131) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_whoop_ffi_checksum_func_baseline_fold_history() != 44616) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_whoop_ffi_checksum_func_baseline_metric_cfg_hrv() != 7721) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_whoop_ffi_checksum_func_baseline_update() != 58890) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_whoop_ffi_checksum_func_bridged_night_groups() != 55242) {
@@ -2757,6 +2778,59 @@ public object FfiConverterTypeBandStateSample: FfiConverterRustBuffer<BandStateS
 
 
 
+data class BaselineStateInfo (
+    var `baseline`: kotlin.Double
+    , 
+    var `spread`: kotlin.Double
+    , 
+    var `nValid`: kotlin.Int
+    , 
+    var `nightsSinceUpdate`: kotlin.Int
+    , 
+    var `status`: kotlin.String
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeBaselineStateInfo: FfiConverterRustBuffer<BaselineStateInfo> {
+    override fun read(buf: ByteBuffer): BaselineStateInfo {
+        return BaselineStateInfo(
+            FfiConverterDouble.read(buf),
+            FfiConverterDouble.read(buf),
+            FfiConverterInt.read(buf),
+            FfiConverterInt.read(buf),
+            FfiConverterString.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: BaselineStateInfo) = (
+            FfiConverterDouble.allocationSize(value.`baseline`) +
+            FfiConverterDouble.allocationSize(value.`spread`) +
+            FfiConverterInt.allocationSize(value.`nValid`) +
+            FfiConverterInt.allocationSize(value.`nightsSinceUpdate`) +
+            FfiConverterString.allocationSize(value.`status`)
+    )
+
+    override fun write(value: BaselineStateInfo, buf: ByteBuffer) {
+            FfiConverterDouble.write(value.`baseline`, buf)
+            FfiConverterDouble.write(value.`spread`, buf)
+            FfiConverterInt.write(value.`nValid`, buf)
+            FfiConverterInt.write(value.`nightsSinceUpdate`, buf)
+            FfiConverterString.write(value.`status`, buf)
+    }
+}
+
+
+
 /**
  * A personal baseline driver (mean + spread) for recovery z-scoring.
  */
@@ -3478,6 +3552,59 @@ public object FfiConverterTypeMetadataInfo: FfiConverterRustBuffer<MetadataInfo>
             FfiConverterUInt.write(value.`unix`, buf)
             FfiConverterUInt.write(value.`trimCursor`, buf)
             FfiConverterBoolean.write(value.`crcOk`, buf)
+    }
+}
+
+
+
+data class MetricCfgInfo (
+    var `minVal`: kotlin.Double
+    , 
+    var `maxVal`: kotlin.Double
+    , 
+    var `floorSpread`: kotlin.Double
+    , 
+    var `halfLifeB`: kotlin.Double
+    , 
+    var `halfLifeS`: kotlin.Double
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeMetricCfgInfo: FfiConverterRustBuffer<MetricCfgInfo> {
+    override fun read(buf: ByteBuffer): MetricCfgInfo {
+        return MetricCfgInfo(
+            FfiConverterDouble.read(buf),
+            FfiConverterDouble.read(buf),
+            FfiConverterDouble.read(buf),
+            FfiConverterDouble.read(buf),
+            FfiConverterDouble.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: MetricCfgInfo) = (
+            FfiConverterDouble.allocationSize(value.`minVal`) +
+            FfiConverterDouble.allocationSize(value.`maxVal`) +
+            FfiConverterDouble.allocationSize(value.`floorSpread`) +
+            FfiConverterDouble.allocationSize(value.`halfLifeB`) +
+            FfiConverterDouble.allocationSize(value.`halfLifeS`)
+    )
+
+    override fun write(value: MetricCfgInfo, buf: ByteBuffer) {
+            FfiConverterDouble.write(value.`minVal`, buf)
+            FfiConverterDouble.write(value.`maxVal`, buf)
+            FfiConverterDouble.write(value.`floorSpread`, buf)
+            FfiConverterDouble.write(value.`halfLifeB`, buf)
+            FfiConverterDouble.write(value.`halfLifeS`, buf)
     }
 }
 
@@ -6062,6 +6189,38 @@ public object FfiConverterOptionalByteArray: FfiConverterRustBuffer<kotlin.ByteA
 /**
  * @suppress
  */
+public object FfiConverterOptionalTypeBaselineStateInfo: FfiConverterRustBuffer<BaselineStateInfo?> {
+    override fun read(buf: ByteBuffer): BaselineStateInfo? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterTypeBaselineStateInfo.read(buf)
+    }
+
+    override fun allocationSize(value: BaselineStateInfo?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterTypeBaselineStateInfo.allocationSize(value)
+        }
+    }
+
+    override fun write(value: BaselineStateInfo?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterTypeBaselineStateInfo.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterOptionalTypeDriverBaselineInfo: FfiConverterRustBuffer<DriverBaselineInfo?> {
     override fun read(buf: ByteBuffer): DriverBaselineInfo? {
         if (buf.get().toInt() == 0) {
@@ -7436,6 +7595,41 @@ public object FfiConverterSequenceOptionalDouble: FfiConverterRustBuffer<List<ko
     
         
         FfiConverterTypeSleepStreams.lower(`streams`),_status)
+}
+    )
+    }
+    
+ fun `baselineFoldHistory`(`values`: List<kotlin.Double?>, `cfg`: MetricCfgInfo): BaselineStateInfo {
+            return FfiConverterTypeBaselineStateInfo.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_func_baseline_fold_history(
+    
+        
+        FfiConverterSequenceOptionalDouble.lower(`values`),
+        FfiConverterTypeMetricCfgInfo.lower(`cfg`),_status)
+}
+    )
+    }
+    
+ fun `baselineMetricCfgHrv`(): MetricCfgInfo {
+            return FfiConverterTypeMetricCfgInfo.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_func_baseline_metric_cfg_hrv(
+    
+        _status)
+}
+    )
+    }
+    
+ fun `baselineUpdate`(`state`: BaselineStateInfo?, `value`: kotlin.Double?, `cfg`: MetricCfgInfo): BaselineStateInfo {
+            return FfiConverterTypeBaselineStateInfo.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_func_baseline_update(
+    
+        
+        FfiConverterOptionalTypeBaselineStateInfo.lower(`state`),
+        FfiConverterOptionalDouble.lower(`value`),
+        FfiConverterTypeMetricCfgInfo.lower(`cfg`),_status)
 }
     )
     }

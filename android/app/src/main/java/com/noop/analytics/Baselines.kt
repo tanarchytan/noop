@@ -162,93 +162,19 @@ object Baselines {
      * - otherwise: Winsorized EWMA center + EWMA-abs-dev spread update.
      */
     fun update(state: BaselineState?, value: Double?, cfg: MetricCfg): BaselineState {
-        val lb = lambda(cfg.halfLifeB)
-        val ls = lambda(cfg.halfLifeS)
-
-        // First night ever.
-        if (state == null) {
-            if (value != null && cfg.minVal <= value && value <= cfg.maxVal) {
-                return BaselineState(
-                    baseline = value, spread = cfg.floorSpread, nValid = 1,
-                    nightsSinceUpdate = 0, status = BaselineStatus.CALIBRATING,
-                )
-            }
-            val seed = (cfg.minVal + cfg.maxVal) / 2.0
-            return BaselineState(
-                baseline = seed, spread = cfg.floorSpread, nValid = 0,
-                nightsSinceUpdate = 1, status = BaselineStatus.CALIBRATING,
-            )
-        }
-
-        // Missing night: skip-and-hold.
-        if (value == null) {
-            val m = state.nightsSinceUpdate + 1
-            return BaselineState(
-                baseline = state.baseline, spread = state.spread,
-                nValid = state.nValid, nightsSinceUpdate = m,
-                status = computeStatus(state.nValid, m),
-            )
-        }
-
-        // Step 0: sanity gate — physiologically implausible → skip-and-hold.
-        if (!(cfg.minVal <= value && value <= cfg.maxVal)) {
-            val m = state.nightsSinceUpdate + 1
-            return BaselineState(
-                baseline = state.baseline, spread = state.spread,
-                nValid = state.nValid, nightsSinceUpdate = m,
-                status = computeStatus(state.nValid, m),
-            )
-        }
-
-        // Is the baseline still "young"? While young we adapt faster and suspend the hard-outlier
-        // gate so genuine lower nights are never discarded before the spread reflects them. Tied to
-        // the valid-night count (NOT spread): a long flat history is settled even though its spread
-        // never lifted off the floor, and must still reject a wild one-off outlier.
-        val isYoung = state.nValid < earlyAdaptNights
-
-        // Hard outlier rejection (only once seeded AND no longer young): seen, but not folded.
-        // Suspending this during early life is the core anti-anchoring fix — a high seed with a
-        // floor-tight spread would otherwise reject the user's real, lower readings as "outliers"
-        // (a true 54ms vs an anchored ~90ms baseline is >5× the floor spread).
-        if (state.nValid >= minNightsSeed && !isYoung) {
-            val dev = abs(value - state.baseline)
-            if (dev > hardOutlierK * state.spread) {
-                return BaselineState(
-                    baseline = state.baseline, spread = state.spread,
-                    nValid = state.nValid, nightsSinceUpdate = 0,
-                    status = computeStatus(state.nValid, 0),
-                )
-            }
-        }
-
-        // First real value after a None-placeholder seed: treat as clean first night.
-        if (state.nValid == 0) {
-            return BaselineState(
-                baseline = value, spread = cfg.floorSpread, nValid = 1,
-                nightsSinceUpdate = 0, status = BaselineStatus.CALIBRATING,
-            )
-        }
-
-        // Step 1: Winsorized EWMA update.
-        // While young, widen the clamp band (inflate the effective spread) so an honest lower night
-        // isn't clamped flat against a floor-tight band, and use the faster early center half-life so
-        // the center tracks reality in days. Both relax to the normal values once settled.
-        val effSpread = if (isYoung) state.spread * earlySpreadInflate else state.spread
-        val effLb = if (isYoung) lambda(earlyHalfLifeB) else lb
-        val lo = state.baseline - winsorK * effSpread
-        val hi = state.baseline + winsorK * effSpread
-        val clamped = max(lo, min(hi, value))
-        val newBaseline = effLb * clamped + (1.0 - effLb) * state.baseline
-
-        // Spread uses the UNCLAMPED value so true deviations are tracked.
-        val absDev = abs(value - newBaseline)
-        val newSpread = max(cfg.floorSpread, ls * absDev + (1.0 - ls) * state.spread)
-        val newN = state.nValid + 1
-
+        val ffiState = state?.let { uniffi.whoop_ffi.BaselineStateInfo(
+            baseline = it.baseline, spread = it.spread, nValid = it.nValid,
+            nightsSinceUpdate = it.nightsSinceUpdate, status = it.status.raw,
+        ) }
+        val ffiCfg = uniffi.whoop_ffi.MetricCfgInfo(
+            minVal = cfg.minVal, maxVal = cfg.maxVal, floorSpread = cfg.floorSpread,
+            halfLifeB = cfg.halfLifeB, halfLifeS = cfg.halfLifeS,
+        )
+        val r = uniffi.whoop_ffi.baselineUpdate(ffiState, value, ffiCfg)
         return BaselineState(
-            baseline = newBaseline, spread = newSpread, nValid = newN,
-            nightsSinceUpdate = 0,
-            status = computeStatus(newN, 0),
+            baseline = r.baseline, spread = r.spread, nValid = r.nValid,
+            nightsSinceUpdate = r.nightsSinceUpdate,
+            status = BaselineStatus.entries.first { it.raw == r.status },
         )
     }
 
