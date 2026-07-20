@@ -1,7 +1,6 @@
 package com.noop.analytics
 
 import com.noop.data.HrSample
-import kotlin.math.abs
 import kotlin.math.exp
 import kotlin.math.ln
 import kotlin.math.roundToLong
@@ -107,9 +106,6 @@ object StrainScorer {
     /** Tanaka (2001): HRmax = 208 − 0.7 × age (gender-independent). */
     fun tanakaHRmax(age: Double): Double = 208.0 - 0.7 * age
 
-    /** Classic 220 − age. Last-resort fallback only. */
-    fun defaultMaxHR(age: Int = defaultAge): Int = 220 - age
-
     /** Linear-interpolated percentile of an already-sorted sequence (numpy-style). */
     fun percentile(sortedValues: List<Double>, pct: Double): Double {
         val n = sortedValues.size
@@ -161,52 +157,8 @@ object StrainScorer {
         return 0
     }
 
-    // ---- TRIMP accumulation ----
+    // ---- Logarithmic map (kept for test compatibility) ----
 
-    /**
-     * Infer per-sample duration (minutes) from the first two timestamps. Falls
-     * back to 1 s when fewer than two samples or coincident timestamps.
-     */
-    fun sampleDurationMinutes(hr: List<HrSample>): Double {
-        if (hr.size < 2) return fallbackSampleMin
-        val deltaS = abs((hr[1].ts - hr[0].ts).toDouble())
-        return if (deltaS > 0) deltaS / 60.0 else fallbackSampleMin
-    }
-
-    fun edwardsTRIMP(
-        hr: List<HrSample>,
-        restingHR: Double,
-        hrReserve: Double,
-        sampleDurationMin: Double,
-    ): Double {
-        var weighted = 0
-        for (s in hr) {
-            weighted += zoneWeight(s.bpm.toDouble(), restingHR, hrReserve)
-        }
-        return weighted.toDouble() * sampleDurationMin
-    }
-
-    fun banisterTRIMP(
-        hr: List<HrSample>,
-        restingHR: Double,
-        hrReserve: Double,
-        sampleDurationMin: Double,
-        b: Double,
-    ): Double {
-        var acc = 0.0
-        for (s in hr) {
-            val x = pctHRR(s.bpm.toDouble(), restingHR, hrReserve) / 100.0
-            if (x > 0) acc += sampleDurationMin * x * banisterScale * exp(b * x)
-        }
-        return acc
-    }
-
-    // ---- Logarithmic map ----
-
-    /**
-     * Map accumulated TRIMP onto [0, 100] via 100 × ln(TRIMP+1) / ln(D), 2 dp.
-     * TRIMP ≤ 0 → 0.
-     */
     fun trimpToStrain(trimp: Double, denominator: Double = strainDenominator): Double {
         if (trimp <= 0) return 0.0
         val value = maxStrain * ln(trimp + 1.0) / ln(denominator)
@@ -259,19 +211,6 @@ object StrainScorer {
         sex: String = "male",
         denominator: Double = strainDenominator,
     ): Double? {
-        val effMax = maxHR ?: defaultMaxHR().toDouble()
-        // Enough data to trust the score: a dense stream (≥ minReadings) OR a sparse-but-sustained
-        // one spanning ≥ minSpanSeconds with a sample floor (#482 — the 5/MG's ~30 s HR cadence).
-        val enoughData = when {
-            hr.size >= minReadings -> true
-            hr.size >= minSparseReadings -> {
-                val tss = hr.map { it.ts }
-                (tss.maxOrNull() ?: 0L) - (tss.minOrNull() ?: 0L) >= minSpanSeconds
-            }
-            else -> false
-        }
-        if (!enoughData || effMax <= restingHR) return null
-
         // Delegated to whoop-rs (per-interval integration since 2026-07-20).
         return RustScores.strain(hr, maxHR, restingHR, method, sex, denominator)
     }
