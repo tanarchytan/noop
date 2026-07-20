@@ -426,12 +426,12 @@ private val SOURCE_FILTER_OPTIONS = listOf(
 
 /** The Source-filter menu label for an origin class. */
 private fun sourceFilterLabel(c: WorkoutSource): String = when (c) {
-    WorkoutSource.WHOOP -> "Whoop"
-    WorkoutSource.APPLE -> "Apple"
-    WorkoutSource.DETECTED -> "Detected"
-    WorkoutSource.MANUAL -> "Manual"
-    WorkoutSource.LIFTING -> "Lifting"
-    WorkoutSource.ACTIVITY_FILE -> "File"
+    WorkoutSource.WHOOP -> "WHP"
+    WorkoutSource.APPLE -> "APL"
+    WorkoutSource.DETECTED -> "AUTO"
+    WorkoutSource.MANUAL -> "MAN"
+    WorkoutSource.LIFTING -> "LIFT"
+    WorkoutSource.ACTIVITY_FILE -> "FILE"
 }
 
 /**

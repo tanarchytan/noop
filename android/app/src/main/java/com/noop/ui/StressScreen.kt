@@ -880,6 +880,7 @@ private fun StressTiles(model: StressModel) {
                 delta = model.rhrDelta,
                 accent = Palette.metricRose,
                 higherIsStress = true,
+                compactDelta = true,
             )
         },
         { m ->
@@ -891,6 +892,7 @@ private fun StressTiles(model: StressModel) {
                 delta = model.hrvDelta,
                 accent = Palette.metricPurple,
                 higherIsStress = false,
+                compactDelta = true,
             )
         },
         { m ->
@@ -926,13 +928,14 @@ private fun MarkerTile(
     accent: Color,
     higherIsStress: Boolean,
     modifier: Modifier = Modifier,
+    compactDelta: Boolean = false,
 ) {
     val deltaText: String
     val deltaColor: Color
     if (delta != null && kotlin.math.abs(delta) >= 0.5) {
         val up = delta > 0
         val isStressful = (up == higherIsStress)
-        deltaText = "${if (up) "+" else "−"}${kotlin.math.abs(delta).roundToInt()} vs base"
+        deltaText = "${if (up) "+" else "−"}${kotlin.math.abs(delta).roundToInt()}${if (compactDelta) "" else " vs base"}"
         deltaColor = if (isStressful) Palette.statusWarning else Palette.statusPositive
     } else {
         deltaText = "at baseline"

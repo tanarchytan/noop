@@ -110,7 +110,7 @@ internal fun MetricGrid(
         KeyMetric.EFFORT to KeyTileData(
             label = "Strain",
             value = d?.strain?.let { UnitFormatter.effortDisplay(it, effortScale) } ?: NO_DATA,
-            unit = if (d?.strain != null) "%" else "",
+            unit = "", // Strain is a 0–21 load index, not a percentage (#496)
             tint = d?.strain?.let { Palette.effortTint(it / StrainScorer.maxStrain) } ?: Palette.effortColor,
             frac = d?.strain?.let { (it / 100.0).coerceIn(0.0, 1.0) },
         ),
