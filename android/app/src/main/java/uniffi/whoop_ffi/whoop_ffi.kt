@@ -743,6 +743,8 @@ internal object IntegrityCheckingUniffiLib {
     ): Int
     external fun uniffi_whoop_ffi_checksum_func_stress_index(
     ): Int
+    external fun uniffi_whoop_ffi_checksum_func_stress_onset_evaluate(
+    ): Int
     external fun uniffi_whoop_ffi_checksum_func_vo2max_estimate(
     ): Int
     external fun uniffi_whoop_ffi_checksum_method_whoopcodec_advertising_name_frame(
@@ -960,6 +962,8 @@ internal object UniffiLib {
     external fun uniffi_whoop_ffi_fn_func_stress_components(`rrMs`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_func_stress_index(`rrMs`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    external fun uniffi_whoop_ffi_fn_func_stress_onset_evaluate(`rrBuffer`: RustBuffer.ByValue,`currentHr`: RustBuffer.ByValue,`recentMotionG`: RustBuffer.ByValue,`sessionActive`: Byte,`state`: RustBuffer.ByValue,`enabled`: Byte,`autoNudge`: Byte,`quietHoursEnabled`: Byte,`quietStartMin`: Int,`quietEndMin`: Int,`nowSec`: Long,`tzOffsetSec`: Long,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_func_vo2max_estimate(`age`: Double,`sex`: RustBuffer.ByValue,`waistCm`: Double,`restingHr`: Double,`paIndex`: Double,uniffi_out_err: UniffiRustCallStatus, 
     ): Double
@@ -1185,6 +1189,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_whoop_ffi_checksum_func_stress_index() != 62115) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_whoop_ffi_checksum_func_stress_onset_evaluate() != 55523) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_whoop_ffi_checksum_func_vo2max_estimate() != 10792) {
@@ -3471,6 +3478,108 @@ public object FfiConverterTypeMetadataInfo: FfiConverterRustBuffer<MetadataInfo>
             FfiConverterUInt.write(value.`unix`, buf)
             FfiConverterUInt.write(value.`trimCursor`, buf)
             FfiConverterBoolean.write(value.`crcOk`, buf)
+    }
+}
+
+
+
+/**
+ * Stress-onset evaluation result.
+ */
+data class OnsetDecisionInfo (
+    var `shouldNudge`: kotlin.Boolean
+    , 
+    var `reason`: kotlin.String
+    , 
+    var `fastRmssd`: kotlin.Double?
+    , 
+    var `baselineRmssd`: kotlin.Double?
+    , 
+    var `nextState`: OnsetStateInfo
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeOnsetDecisionInfo: FfiConverterRustBuffer<OnsetDecisionInfo> {
+    override fun read(buf: ByteBuffer): OnsetDecisionInfo {
+        return OnsetDecisionInfo(
+            FfiConverterBoolean.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterOptionalDouble.read(buf),
+            FfiConverterOptionalDouble.read(buf),
+            FfiConverterTypeOnsetStateInfo.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: OnsetDecisionInfo) = (
+            FfiConverterBoolean.allocationSize(value.`shouldNudge`) +
+            FfiConverterString.allocationSize(value.`reason`) +
+            FfiConverterOptionalDouble.allocationSize(value.`fastRmssd`) +
+            FfiConverterOptionalDouble.allocationSize(value.`baselineRmssd`) +
+            FfiConverterTypeOnsetStateInfo.allocationSize(value.`nextState`)
+    )
+
+    override fun write(value: OnsetDecisionInfo, buf: ByteBuffer) {
+            FfiConverterBoolean.write(value.`shouldNudge`, buf)
+            FfiConverterString.write(value.`reason`, buf)
+            FfiConverterOptionalDouble.write(value.`fastRmssd`, buf)
+            FfiConverterOptionalDouble.write(value.`baselineRmssd`, buf)
+            FfiConverterTypeOnsetStateInfo.write(value.`nextState`, buf)
+    }
+}
+
+
+
+/**
+ * Persisted state for the onset detector, serializable across FFI.
+ */
+data class OnsetStateInfo (
+    var `baselineRmssd`: kotlin.Double
+    , 
+    var `wasBelow`: kotlin.Boolean
+    , 
+    var `lastFireAt`: kotlin.Long
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeOnsetStateInfo: FfiConverterRustBuffer<OnsetStateInfo> {
+    override fun read(buf: ByteBuffer): OnsetStateInfo {
+        return OnsetStateInfo(
+            FfiConverterDouble.read(buf),
+            FfiConverterBoolean.read(buf),
+            FfiConverterLong.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: OnsetStateInfo) = (
+            FfiConverterDouble.allocationSize(value.`baselineRmssd`) +
+            FfiConverterBoolean.allocationSize(value.`wasBelow`) +
+            FfiConverterLong.allocationSize(value.`lastFireAt`)
+    )
+
+    override fun write(value: OnsetStateInfo, buf: ByteBuffer) {
+            FfiConverterDouble.write(value.`baselineRmssd`, buf)
+            FfiConverterBoolean.write(value.`wasBelow`, buf)
+            FfiConverterLong.write(value.`lastFireAt`, buf)
     }
 }
 
@@ -7833,6 +7942,28 @@ public object FfiConverterSequenceOptionalDouble: FfiConverterRustBuffer<List<ko
     
         
         FfiConverterSequenceDouble.lower(`rrMs`),_status)
+}
+    )
+    }
+    
+ fun `stressOnsetEvaluate`(`rrBuffer`: List<kotlin.UShort>, `currentHr`: kotlin.Double?, `recentMotionG`: kotlin.Double?, `sessionActive`: kotlin.Boolean, `state`: OnsetStateInfo, `enabled`: kotlin.Boolean, `autoNudge`: kotlin.Boolean, `quietHoursEnabled`: kotlin.Boolean, `quietStartMin`: kotlin.Int, `quietEndMin`: kotlin.Int, `nowSec`: kotlin.Long, `tzOffsetSec`: kotlin.Long): OnsetDecisionInfo {
+            return FfiConverterTypeOnsetDecisionInfo.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_func_stress_onset_evaluate(
+    
+        
+        FfiConverterSequenceUShort.lower(`rrBuffer`),
+        FfiConverterOptionalDouble.lower(`currentHr`),
+        FfiConverterOptionalDouble.lower(`recentMotionG`),
+        FfiConverterBoolean.lower(`sessionActive`),
+        FfiConverterTypeOnsetStateInfo.lower(`state`),
+        FfiConverterBoolean.lower(`enabled`),
+        FfiConverterBoolean.lower(`autoNudge`),
+        FfiConverterBoolean.lower(`quietHoursEnabled`),
+        FfiConverterInt.lower(`quietStartMin`),
+        FfiConverterInt.lower(`quietEndMin`),
+        FfiConverterLong.lower(`nowSec`),
+        FfiConverterLong.lower(`tzOffsetSec`),_status)
 }
     )
     }

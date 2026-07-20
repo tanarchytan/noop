@@ -226,4 +226,24 @@ internal object RustScores {
         waistCm: Double? = null,
         lowerConfidence: Boolean = false,
     ): FitnessAgeInfo? = uniffi.whoop_ffi.fitnessAgeCompute(age, sex, restingHr, paIndex, waistCm, lowerConfidence)
+
+    // ── Stress onset detector ──────────────────────────────────────────────────
+
+    fun stressOnsetEvaluate(
+        rrBuffer: List<Int>,
+        currentHr: Double?,
+        recentMotionG: Double?,
+        sessionActive: Boolean,
+        state: uniffi.whoop_ffi.OnsetStateInfo,
+        enabled: Boolean,
+        autoNudge: Boolean,
+        quietHoursEnabled: Boolean,
+        quietStartMin: Int,
+        quietEndMin: Int,
+        nowSec: Long,
+        tzOffsetSec: Long,
+    ): uniffi.whoop_ffi.OnsetDecisionInfo = uniffi.whoop_ffi.stressOnsetEvaluate(
+        rrBuffer.map { it.toUShort() }, currentHr, recentMotionG, sessionActive,
+        state, enabled, autoNudge, quietHoursEnabled, quietStartMin, quietEndMin, nowSec, tzOffsetSec,
+    )
 }

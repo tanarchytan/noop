@@ -172,74 +172,38 @@ object StressOnsetDetector {
         nowSec: Long,
         tzOffsetSec: Long,
     ): Decision {
-
-        // 1) Master gates: off / auto-nudge off → never nudge, state untouched.
-        if (!config.enabled || !config.autoNudge) {
-            return Decision(
-                shouldNudge = false, reason = Reason.DISABLED, buzzLoops = config.buzzLoops,
-                fastRMSSD = null, baselineRMSSD = state.baselineRMSSD.takeIf { it > 0.0 },
-                nextState = state,
-            )
-        }
-
-        // 2) Fast RMSSD over the latest clean beats. Clean first (range + Malik), then take the tail.
-        val cleanAll = HrvAnalyzer.cleanRR(rrBuffer.map { it.toDouble() })
-        val fastWindow = if (cleanAll.size > FAST_WINDOW_BEATS) cleanAll.takeLast(FAST_WINDOW_BEATS) else cleanAll
-        val fast = if (fastWindow.size >= MIN_BEATS) HrvAnalyzer.rmssdRaw(fastWindow) else null
-        if (fast == null || fast <= 0.0) {
-            // Not enough signal — report, don't guess. Edge state is preserved (no crossing observed).
-            return Decision(
-                shouldNudge = false, reason = Reason.INSUFFICIENT_DATA, buzzLoops = config.buzzLoops,
-                fastRMSSD = null, baselineRMSSD = state.baselineRMSSD.takeIf { it > 0.0 },
-                nextState = state,
-            )
-        }
-
-        // 3) Advance the slow baseline EMA (seed on first trusted value), exactly like evaluateStress.
-        val newBaseline = if (state.baselineRMSSD == 0.0) {
-            fast
-        } else {
-            state.baselineRMSSD * BASELINE_EMA_ALPHA + fast * (1.0 - BASELINE_EMA_ALPHA)
-        }
-        var next = state.copy(baselineRMSSD = newBaseline)
-        val baseline = newBaseline
-
-        // 4) Is the fast RMSSD below the drop threshold? (the dip test)
-        val threshold = baseline * DROP_RATIO
-        val isBelow = fast < threshold
-        // The edge: a FRESH crossing (above on the previous tick → below now). Always record the new
-        // below-state so the NEXT tick can edge-detect, regardless of whether we fire.
-        val isEdge = isBelow && !state.wasBelow
-        next = next.copy(wasBelow = isBelow)
-
-        fun decide(nudge: Boolean, reason: Reason) = Decision(
-            shouldNudge = nudge, reason = reason, buzzLoops = config.buzzLoops,
-            fastRMSSD = fast, baselineRMSSD = baseline, nextState = next,
+        val ffiState = uniffi.whoop_ffi.OnsetStateInfo(
+            baselineRmssd = state.baselineRMSSD,
+            wasBelow = state.wasBelow,
+            lastFireAt = state.lastFireAt,
         )
+        val d = RustScores.stressOnsetEvaluate(
+            rrBuffer, currentHR, recentMotionG, sessionActive, ffiState,
+            config.enabled, config.autoNudge, config.quietHoursEnabled,
+            config.quietStartMinutes, config.quietEndMinutes, nowSec, tzOffsetSec,
+        )
+        return Decision(
+            shouldNudge = d.shouldNudge,
+            reason = reasonFromString(d.reason),
+            buzzLoops = config.buzzLoops,
+            fastRMSSD = d.fastRmssd,
+            baselineRMSSD = d.baselineRmssd,
+            nextState = State(
+                baselineRMSSD = d.nextState.baselineRmssd,
+                wasBelow = d.nextState.wasBelow,
+                lastFireAt = d.nextState.lastFireAt,
+            ),
+        )
+    }
 
-        if (!isBelow) return decide(false, Reason.NO_DIP)
-        if (!isEdge) return decide(false, Reason.NOT_AN_EDGE)
-
-        // 5) Exercise gate (the credibility line). HR out of the resting band (or unknown) → metabolic.
-        //    Recent motion at/above the gate → metabolic. Either suppresses.
-        val hrInBand = currentHR != null && currentHR >= RESTING_HR_LOW && currentHR <= RESTING_HR_HIGH
-        val moving = recentMotionG != null && recentMotionG >= MOTION_GATE_G
-        if (!hrInBand || moving) return decide(false, Reason.EXERCISE_GATED)
-
-        // 6) Suppressors: a manual session is running, the rate limit, or quiet hours.
-        if (sessionActive) return decide(false, Reason.SUPPRESSED)
-        if (state.lastFireAt != 0L && (nowSec - state.lastFireAt) < MIN_SECONDS_BETWEEN_FIRES) {
-            return decide(false, Reason.SUPPRESSED)
-        }
-        if (config.quietHoursEnabled) {
-            val mod = SedentaryDetector.localMinuteOfDay(nowSec, tzOffsetSec)
-            if (SedentaryDetector.windowContains(mod, config.quietStartMinutes, config.quietEndMinutes)) {
-                return decide(false, Reason.SUPPRESSED)
-            }
-        }
-
-        // 7) Fire — a fresh, non-metabolic HRV dip while still. Stamp the rate-limit clock.
-        next = next.copy(lastFireAt = nowSec)
-        return decide(true, Reason.ONSET)
+    private fun reasonFromString(s: String): Reason = when (s) {
+        "onset" -> Reason.ONSET
+        "disabled" -> Reason.DISABLED
+        "insufficient_data" -> Reason.INSUFFICIENT_DATA
+        "no_dip" -> Reason.NO_DIP
+        "not_an_edge" -> Reason.NOT_AN_EDGE
+        "exercise_gated" -> Reason.EXERCISE_GATED
+        "suppressed" -> Reason.SUPPRESSED
+        else -> Reason.DISABLED
     }
 }
