@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -163,10 +162,9 @@ fun ScoringGuideScreen(
         if (highlighted == section) highlighted = null
     }
 
-    Surface(modifier = Modifier.fillMaxSize(), color = Palette.surfaceBase) {
-        Column(modifier = Modifier.fillMaxSize()) {
-            // Design Reset: a FLAT opaque WHOOP-grey title surface — no scenic hero, no bloom, no
-            // domain tint. The header reads as a clean raised card edge, matching the Today look.
+    Surface(modifier = Modifier.fillMaxWidth(), color = Palette.surfaceBase) {
+        Column {
+            // A flat WHOOP-grey title surface — no scenic hero, no bloom, no domain tint.
             Box(modifier = Modifier.background(Palette.surfaceRaised)) {
                 Header(onClose = onClose)
             }
@@ -174,8 +172,8 @@ fun ScoringGuideScreen(
 
             Column(
                 modifier = Modifier
-                    .weight(1f)
                     .fillMaxWidth()
+                    .weight(1f, fill = false)
                     .onGloballyPositioned {
                         if (viewportTop == null) viewportTop = it.positionInRoot().y.toInt()
                     }

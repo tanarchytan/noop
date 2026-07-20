@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -76,8 +75,8 @@ internal fun ChargeBreakdownSheet(
     onClose: () -> Unit,
     onHowCalculated: () -> Unit,
 ) {
-    Surface(modifier = Modifier.fillMaxSize(), color = Palette.surfaceBase) {
-        Column(modifier = Modifier.fillMaxSize()) {
+    Surface(modifier = Modifier.fillMaxWidth(), color = Palette.surfaceBase) {
+        Column {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()

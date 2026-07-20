@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
@@ -44,6 +43,9 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -144,6 +146,7 @@ private data class TodayLiveSnapshot(
     val charging: Boolean?,
 )
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TodayScreen(
     viewModel: AppViewModel,
@@ -1339,30 +1342,30 @@ fun TodayScreen(
         }
     }
 
-    // Scoring guide sheet, full-screen Dialog, mirroring Settings' What's-new presentation. Opened
-    // by the per-score ⓘ (deep-linked via guideSection) and the first-run card (guideSection = null).
+    // Scoring guide sheet (full-height bottom sheet, matches the WHOOP "How your scores work" design:
+    // slides up with the Today screen visible behind a semi-transparent backdrop).
     if (showGuide) {
-        Dialog(
+        ModalBottomSheet(
             onDismissRequest = { showGuide = false },
-            properties = DialogProperties(usePlatformDefaultWidth = false),
+            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+            containerColor = Palette.surfaceBase,
+            contentColor = Palette.textPrimary,
         ) {
-            Surface(modifier = Modifier.fillMaxSize(), color = Palette.surfaceBase) {
-                ScoringGuideScreen(
-                    onClose = { showGuide = false },
-                    initialSection = guideSection,
-                )
-            }
+            ScoringGuideScreen(
+                onClose = { showGuide = false },
+                initialSection = guideSection,
+            )
         }
     }
 
-    // A1/S4: the Charge breakdown sheet, opened by tapping the hero Charge ring. A full-screen Dialog
-    // (mirroring the scoring guide's presentation) hosting the existing What-shaped-it breakdown, the
-    // Contributors bars and the Readiness card, built only when shown (#819 lazy). A calibrating night
-    // (empty drivers) falls through to the existing countdown inside RecoveryDriversSection's own gate.
+    // A1/S4: the Charge breakdown sheet, opened by tapping the hero Charge ring. Bottom-sheet
+    // presentation (matches the WHOOP pattern — semi-transparent backdrop, dimmed Today behind).
     if (showChargeBreakdown) {
-        Dialog(
+        ModalBottomSheet(
             onDismissRequest = { showChargeBreakdown = false },
-            properties = DialogProperties(usePlatformDefaultWidth = false),
+            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+            containerColor = Palette.surfaceBase,
+            contentColor = Palette.textPrimary,
         ) {
             ChargeBreakdownSheet(
                 days = days,
