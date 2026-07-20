@@ -172,6 +172,8 @@ fun TodayScreen(
     // Optional Coupled view card (task #43): a tap-through to the WHOOP-style day screen. Defaulted to a
     // no-op so the call site stays compiling; AppRoot binds it to nav.navigate(CoupledView).
     onOpenCoupled: () -> Unit = {},
+    // The Effort ring tap opens Workouts. Defaulted to a no-op; AppRoot binds it.
+    onOpenWorkouts: () -> Unit = {},
     // The "workout in progress" indicator card routes to Workouts and re-opens the in-exercise overlay
     // (Live/Health fold). Defaulted to a no-op so the call site stays compiling; AppRoot binds it to
     // openActiveWorkout() + nav.navigateTopLevel(Workouts).
@@ -434,14 +436,6 @@ fun TodayScreen(
         if (!hydrationEnabled) 0 else HydrationGoal.dailyGoalMl(profileStore.sex, displayMetric?.strain)
     }
 
-    // "How your scores work" guide, opened from score info affordances.
-    // `guideSection` carries the deep-link target; null opens the top.
-    var showGuide by remember { mutableStateOf(false) }
-    var guideSection by remember { mutableStateOf<ScoreSection?>(null) }
-    val openGuide: (ScoreSection?) -> Unit = { section ->
-        guideSection = section
-        showGuide = true
-    }
     // A1 (#514/#706): the Charge breakdown sheet, opened by tapping the hero Charge ring. Hosts the
     // existing RecoveryDriversSection (gated to the calibration countdown when the night can't score) plus
     // the folded Readiness card (S4). Not persisted, so it reopens closed. Mirrors iOS showChargeBreakdown.
@@ -1077,8 +1071,9 @@ fun TodayScreen(
                 effortScale = effortScale,
                 liveTodayStrain = if (selectedDayOffset == 0) liveTodayStrain else null,
                 heroSourceLabel = heroSourceLabel,
-                onScoreInfo = openGuide,
                 onChargeTap = { showChargeBreakdown = true },
+                onEffortTap = onOpenWorkouts,
+                onRestTap = onOpenSleep,
             )
         }
         }
@@ -1342,22 +1337,6 @@ fun TodayScreen(
         }
     }
 
-    // Scoring guide sheet (full-height bottom sheet, matches the WHOOP "How your scores work" design:
-    // slides up with the Today screen visible behind a semi-transparent backdrop).
-    if (showGuide) {
-        ModalBottomSheet(
-            onDismissRequest = { showGuide = false },
-            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
-            containerColor = Palette.surfaceBase,
-            contentColor = Palette.textPrimary,
-        ) {
-            ScoringGuideScreen(
-                onClose = { showGuide = false },
-                initialSection = guideSection,
-            )
-        }
-    }
-
     // A1/S4: the Charge breakdown sheet, opened by tapping the hero Charge ring. Bottom-sheet
     // presentation (matches the WHOOP pattern — semi-transparent backdrop, dimmed Today behind).
     if (showChargeBreakdown) {
@@ -1373,13 +1352,6 @@ fun TodayScreen(
                 carriedDay = lastScoredRecoveryDay,
                 showReadiness = selectedDayOffset == 0,
                 onClose = { showChargeBreakdown = false },
-                // "How Charge is calculated" → close the breakdown and open the scoring guide at the Charge
-                // section, the same target the per-ring ⓘ buttons use. Mirrors the iOS NavigationLink to
-                // ScoringGuideView(initialSection: .charge) whose onClose dismisses the breakdown.
-                onHowCalculated = {
-                    showChargeBreakdown = false
-                    openGuide(ScoreSection.CHARGE)
-                },
             )
         }
     }

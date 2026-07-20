@@ -9,7 +9,9 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -17,7 +19,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material3.Icon
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -39,8 +40,6 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.noop.analytics.Baselines
 import com.noop.analytics.ReadinessEngine
@@ -81,6 +80,7 @@ private const val COUPLED_NO_DATA = "No Data"
 private val LIQUID_HERO_FILL: Color = Color(red = 13f / 255f, green = 14f / 255f, blue = 20f / 255f, alpha = 0.80f)
 private val LIQUID_HERO_RADIUS: Dp = 26.dp
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CoupledScreen(
     vm: AppViewModel,
@@ -162,11 +162,9 @@ fun CoupledScreen(
         recoveryCalibrationNights(days, hasRecovery = todayRow?.recovery != null, hrvBaselineEpoch = hrvEpoch)
     }
 
-    // The Charge breakdown (the hero's tap target, the EXISTING Today sheet) + the scoring guide it
-    // links on to. Both are full-screen Dialogs, TodayScreen's own presentation, built only when shown
+    // The Charge breakdown (the hero's tap target, the EXISTING Today sheet), built only when shown
     // (#819 lazy). Not persisted, so a return visit reopens closed.
     var showChargeBreakdown by remember { mutableStateOf(false) }
-    var showGuide by remember { mutableStateOf(false) }
 
     ScreenScaffold(
         title = "Day",
@@ -214,12 +212,13 @@ fun CoupledScreen(
     }
 
     // The hero's tap target: the EXISTING Today Charge breakdown sheet (What shaped it + Contributors +
-    // the folded Readiness card), reading the SAME carried/today row the hero ring shows, so the two
-    // screens can never disagree. Same full-screen Dialog presentation TodayScreen uses.
+    // the folded Readiness card), presented as a ModalBottomSheet (matching Today's presentation).
     if (showChargeBreakdown) {
-        Dialog(
+        ModalBottomSheet(
             onDismissRequest = { showChargeBreakdown = false },
-            properties = DialogProperties(usePlatformDefaultWidth = false),
+            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+            containerColor = Palette.surfaceBase,
+            contentColor = Palette.textPrimary,
         ) {
             ChargeBreakdownSheet(
                 days = days,
@@ -227,26 +226,7 @@ fun CoupledScreen(
                 carriedDay = carriedRecoveryDay,
                 showReadiness = true,
                 onClose = { showChargeBreakdown = false },
-                onHowCalculated = {
-                    showChargeBreakdown = false
-                    showGuide = true
-                },
             )
-        }
-    }
-    // "How Charge is calculated" from the breakdown opens the scoring guide at the Charge section, the
-    // same target the Today per-ring info buttons use.
-    if (showGuide) {
-        Dialog(
-            onDismissRequest = { showGuide = false },
-            properties = DialogProperties(usePlatformDefaultWidth = false),
-        ) {
-            Surface(modifier = Modifier.fillMaxSize(), color = Palette.surfaceBase) {
-                ScoringGuideScreen(
-                    onClose = { showGuide = false },
-                    initialSection = ScoreSection.CHARGE,
-                )
-            }
         }
     }
 }

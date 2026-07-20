@@ -19,7 +19,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -45,8 +44,8 @@ import kotlin.math.roundToInt
 
 // MARK: - Score hero row, three Charge / Effort / Rest score vessels
 //
-// The liquid Today hero: three equal daily-score vessels in Charge / Effort / Rest order, with a tappable
-// label beneath each one and one card-level provenance badge aligned to the Rest vessel's trailing edge.
+// The liquid Today hero: three equal daily-score vessels in Charge / Effort / Rest order, each tappable.
+// The RING opens the detail (Charge breakdown / Workouts / Sleep); labels are plain text underneath.
 
 @Composable
 internal fun ScoreHeroRow(
@@ -58,10 +57,12 @@ internal fun ScoreHeroRow(
     liveTodayStrain: Double? = null,
     // One card-level provenance label derived from the three REAL per-metric merge winners upstream.
     heroSourceLabel: String? = null,
-    onScoreInfo: (ScoreSection) -> Unit,
-    // A1 (#514/#706): tapping the Charge ring opens the breakdown sheet. A small chevron cue overlays the
-    // ring's bottom edge INSIDE the ring frame, so it adds no stacked height (the #762 self-sizing parity).
+    // Charge ring tap opens the breakdown sheet.
     onChargeTap: (() -> Unit)? = null,
+    // Effort ring tap opens Workouts.
+    onEffortTap: (() -> Unit)? = null,
+    // Rest ring tap opens Sleep.
+    onRestTap: (() -> Unit)? = null,
 ) {
     val recovery = day?.recovery
     // Prefer the live in-progress Effort for today, but never BELOW the day's already-earned strain
@@ -104,11 +105,9 @@ internal fun ScoreHeroRow(
                 horizontalArrangement = Arrangement.spacedBy(ringGap, Alignment.CenterHorizontally),
                 verticalAlignment = Alignment.Top,
             ) {
-                // CHARGE, recovery 0–100, as a GlowRing arc with the value counting up in the ring centre. Honest
-                // empty / calibrating overlay; badges its recovery winner.
+                // CHARGE ring — tap opens the breakdown sheet. Ring is clickable, label is plain text.
                 HeroRingColumn(
                     domain = DomainTheme.Charge,
-                    onInfo = { onScoreInfo(ScoreSection.CHARGE) },
                     onRingTap = onChargeTap,
                 ) {
                     Box(contentAlignment = Alignment.Center) {
@@ -142,8 +141,8 @@ internal fun ScoreHeroRow(
                         // the vessel (HeroRingColumn), matching iOS where the in-ring cue was removed.
                     }
                 }
-                // EFFORT, strain on the gauge, on the user's selected scale, as a GlowRing arc.
-                HeroRingColumn(domain = DomainTheme.Effort, onInfo = { onScoreInfo(ScoreSection.EFFORT) }) {
+                // EFFORT ring — tap opens Workouts. Ring is clickable, label is plain text.
+                HeroRingColumn(domain = DomainTheme.Effort, onRingTap = onEffortTap) {
                     Box(contentAlignment = Alignment.Center) {
                         HeroScoreVessel(
                             fraction = if (effortOutOf > 0) effortVal / effortOutOf else 0.0,
@@ -156,11 +155,10 @@ internal fun ScoreHeroRow(
                         if (strain == null) RingNoData()
                     }
                 }
-                // REST, sleep composite 0–100, as a GlowRing arc — symmetric with Charge/Effort now that
-                // the source label is one centred badge beneath the whole row (below), not anchored here.
+                // REST ring — tap opens Sleep. Ring is clickable, label is plain text.
                 HeroRingColumn(
                     domain = DomainTheme.Rest,
-                    onInfo = { onScoreInfo(ScoreSection.REST) },
+                    onRingTap = onRestTap,
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         HeroScoreVessel(
@@ -200,16 +198,13 @@ internal fun ScoreHeroRow(
 }
 
 /**
- * One hero ring column: the ring, with a tappable UPPERCASE domain label + chevron beneath it (the
- * WHOOP affordance) that opens the matching scoring-guide section. Provenance belongs to the whole hero
- * card and is rendered once by [ScoreHeroRow], so this column only owns score content and navigation.
+ * One hero ring column: the (optionally tappable) ring, with a plain UPPERCASE domain label beneath.
+ * No ⓘ, no scoring guide — the ring is the tap target. Provenance belongs to the whole hero card and
+ * is rendered once by [ScoreHeroRow], so this column only owns score content.
  */
 @Composable
 private fun HeroRingColumn(
     domain: DomainTheme,
-    onInfo: () -> Unit,
-    // A1: when non-null (Charge), the ring is tappable and opens the breakdown sheet. The chevron cue is
-    // overlaid by the caller INSIDE the ring box so it adds no stacked height (#762 self-sizing parity).
     onRingTap: (() -> Unit)? = null,
     ring: @Composable () -> Unit,
 ) {
@@ -218,8 +213,6 @@ private fun HeroRingColumn(
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         if (onRingTap != null) {
-            // liquidPress on the tappable Charge vessel so it settles inward on press (the vessel itself
-            // also splashes via LiquidVessel's own tap). Same interactionSource on the clickable + press.
             val ringInteraction = remember { MutableInteractionSource() }
             Box(
                 modifier = Modifier
@@ -228,47 +221,20 @@ private fun HeroRingColumn(
                     .clickable(
                         interactionSource = ringInteraction,
                         indication = null,
-                        onClickLabel = "See what shaped your ${domain.label}",
+                        onClickLabel = domain.label,
                         onClick = onRingTap,
                     ),
             ) { ring() }
         } else {
             ring()
         }
-        Row(
-            modifier = Modifier
-                .clip(RoundedCornerShape(50))
-                .clickable { onInfo() }
-                .padding(horizontal = 6.dp, vertical = 2.dp),
-            horizontalArrangement = Arrangement.spacedBy(3.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            // #937 parity: an invisible LEADING twin of the trailing chevron. The word + chevron used to
-            // centre as ONE block, which sat the word visibly off the ring's axis (worst on short labels
-            // like REST). Balancing the row with a same-sized alpha-0 chevron re-centres the WORD itself
-            // under the ring while the real chevron stays on the trailing side. alpha(0f) keeps its layout
-            // slot, the clickable Row (the tap target) only ever grows, and the Row stays plain
-            // start-to-end content, no offset maths, so RTL mirrors identically (the icon is AutoMirrored
-            // anyway). Null description keeps it out of TalkBack: it is a spacer, not content.
-            Icon(
-                Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                contentDescription = null,
-                tint = Palette.textSecondary.copy(alpha = 0.6f),
-                modifier = Modifier
-                    .size(14.dp)
-                    .alpha(0f),
-            )
-            // #74: never wrap the hero label onto a second line — at a larger font/screen-zoom (Samsung
-            // One UI defaults) "REST" could wrap, growing the whole hero card. One line, ellipsis if forced.
-            Text(domain.label.uppercase(), style = NoopType.overline, color = Palette.textSecondary,
-                 maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Icon(
-                Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                contentDescription = "How ${domain.label} is calculated",
-                tint = Palette.textSecondary.copy(alpha = 0.6f),
-                modifier = Modifier.size(14.dp),
-            )
-        }
+        Text(
+            domain.label.uppercase(),
+            style = NoopType.overline,
+            color = Palette.textSecondary,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
     }
 }
 

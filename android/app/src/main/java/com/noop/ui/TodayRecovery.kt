@@ -73,7 +73,6 @@ internal fun ChargeBreakdownSheet(
     carriedDay: DailyMetric?,
     showReadiness: Boolean,
     onClose: () -> Unit,
-    onHowCalculated: () -> Unit,
 ) {
     Surface(modifier = Modifier.fillMaxWidth(), color = Palette.surfaceBase) {
         Column {
@@ -108,54 +107,6 @@ internal fun ChargeBreakdownSheet(
                 // S4: the SEPARATE Readiness block now lives here behind the Charge-ring tap (today-only,
                 // matching the old inline gate). A one-word read (Push / Maintain / Rest) stays on the hero.
                 if (showReadiness) ReadinessSection(days, carriedDay = carriedDay)
-                // Everything above is what shaped YOUR Charge today; this opens the general METHOD behind the
-                // score, so the two are clearly separated, not conflated. Opens the scoring guide at the
-                // Charge section, the same target the per-ring ⓘ buttons use. Mirrors the iOS chargeBreakdown
-                // "How Charge is calculated" NavigationLink to ScoringGuideView(initialSection: .charge).
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(14.dp))
-                        .clickable(
-                            onClickLabel = "How Charge is calculated",
-                            onClick = onHowCalculated,
-                        )
-                        .background(Palette.surfaceInset)
-                        .padding(14.dp)
-                        .semantics {
-                            contentDescription = "How Charge is calculated. The method behind the score."
-                        },
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                ) {
-                    Icon(
-                        Icons.Filled.Functions,
-                        contentDescription = null,
-                        tint = DomainTheme.Charge.color,
-                        modifier = Modifier.size(14.dp),
-                    )
-                    Column(
-                        modifier = Modifier.weight(1f),
-                        verticalArrangement = Arrangement.spacedBy(1.dp),
-                    ) {
-                        Text(
-                            "How Charge is calculated",
-                            style = NoopType.subhead,
-                            color = Palette.textPrimary,
-                        )
-                        Text(
-                            "The method behind the score, not today's values.",
-                            style = NoopType.caption,
-                            color = Palette.textTertiary,
-                        )
-                    }
-                    Icon(
-                        Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                        contentDescription = null,
-                        tint = Palette.textTertiary,
-                        modifier = Modifier.size(12.dp),
-                    )
-                }
             }
         }
     }
