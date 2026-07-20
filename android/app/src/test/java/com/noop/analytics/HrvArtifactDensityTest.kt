@@ -6,6 +6,7 @@ import org.junit.Test
 import java.util.Random
 import kotlin.math.PI
 import kotlin.math.abs
+import kotlin.math.roundToInt
 import kotlin.math.sin
 
 /**
@@ -28,7 +29,8 @@ class HrvArtifactDensityTest {
      *  [300, 2000] and within 20% beat-to-beat, so cleaning leaves it untouched -> a known true RMSSD. */
     private fun trueRhythm(n: Int, seed: Long): List<Double> {
         val r = Random(seed)
-        return (0 until n).map { i -> 800.0 + 35.0 * sin(2.0 * PI * i / 12.0) + r.nextGaussian() * 8.0 }
+        // Round to integer ms — real R-R data is always whole milliseconds.
+        return (0 until n).map { i -> (800.0 + 35.0 * sin(2.0 * PI * i / 12.0) + r.nextGaussian() * 8.0).roundToInt().toDouble() }
     }
 
     /** Replace interior beats (never the two ends) with an out-of-range spike at [density]. Each spike is

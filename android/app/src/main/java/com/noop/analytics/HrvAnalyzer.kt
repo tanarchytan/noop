@@ -94,20 +94,8 @@ object HrvAnalyzer {
      * Task Force (1996) RMSSD over already-clean NN intervals (ms). Returns null
      * when fewer than 2 values (no successive differences). No filtering applied.
      */
-    fun rmssdRaw(nn: List<Double>): Double? {
-        if (nn.size < 2) return null
-        var sumSq = 0.0
-        for (i in 1 until nn.size) {
-            val d = nn[i] - nn[i - 1]
-            sumSq += d * d
-        }
-        return sqrt(sumSq / (nn.size - 1).toDouble())
-    }
+    fun rmssdRaw(nn: List<Double>): Double? = RustScores.rmssdRaw(nn)
 
-    /**
-     * Sample standard deviation (ddof = 1) of NN intervals (ms). Returns null for
-     * fewer than 2 values. Matches neurokit2 HRV_SDNN. No filtering applied.
-     */
     fun sdnnRaw(nn: List<Double>): Double? {
         if (nn.size < 2) return null
         val mean = nn.sum() / nn.size.toDouble()
@@ -121,9 +109,9 @@ object HrvAnalyzer {
 
     // ── Cleaning ─────────────────────────────────────────────────────────────
 
-    /** Range filter: keep only intervals in [RR_MIN_MS, RR_MAX_MS], preserving order. */
+    /** Range filter: keep only intervals in [300, 2000] ms, preserving order. */
     fun rangeFilter(rr: List<Double>): List<Double> =
-        rr.filter { it >= RR_MIN_MS && it <= RR_MAX_MS }
+        RustScores.rangeFilterRR(rr.map { it.toInt() }).map { it.toDouble() }
 
     /**
      * Malik-style ectopic rejection: drop any beat that deviates from its local
