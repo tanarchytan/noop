@@ -272,18 +272,7 @@ object StrainScorer {
         }
         if (!enoughData || effMax <= restingHR) return null
 
-        val sampleDur = sampleDurationMinutes(hr)
-        val hrReserve = effMax - restingHR
-
-        val trimp: Double = when (method) {
-            Method.BANISTER -> {
-                val b = if (sex.lowercase().startsWith("f")) banisterBWomen else banisterBMen
-                banisterTRIMP(hr, restingHR, hrReserve, sampleDur, b)
-            }
-            Method.EDWARDS -> {
-                edwardsTRIMP(hr, restingHR, hrReserve, sampleDur)
-            }
-        }
-        return trimpToStrain(trimp, denominator)
+        // Delegated to whoop-rs (per-interval integration since 2026-07-20).
+        return RustScores.strain(hr, maxHR, restingHR, method, sex, denominator)
     }
 }

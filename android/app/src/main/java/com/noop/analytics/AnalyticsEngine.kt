@@ -244,7 +244,7 @@ object AnalyticsEngine {
         // ── Sleep detection + staging ─────────────────────────────────────────
         // Detection + staging + the motion-aware wake refinement now all run in whoop-rs (physio-algo)
         // behind one FFI call; `steps` feeds the refinement, which self-gates on the observed density.
-        val allSessions = SleepStager.detectSleep(
+        val allSessions = RustSleepStager.analyze(
             hr = hr, rr = rr, resp = resp, gravity = gravity, steps = steps,
             tzOffsetSeconds = tzOffsetSeconds, wristOff = wristOff, bandSleepState = bandSleepState,
         )

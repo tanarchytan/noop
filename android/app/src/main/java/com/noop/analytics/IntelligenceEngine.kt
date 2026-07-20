@@ -778,16 +778,14 @@ object IntelligenceEngine {
                 res.daily, res.sleepSessions, editsByStart, editOnsetByStart,
                 tzOffsetSeconds, habitualMidsleepSec,
             )
-            val recovery = recomputeRecovery(daily, baselines2)
-            // Charge term-breakdown trace (Test Centre Group G): only when the Recovery test mode is on
-            // (recoveryTraceSink non-null). Emits which term moved Charge and which was nil and forced the
-            // renorm, tagged .recovery. The trace's score is RecoveryScorer.recovery verbatim, so the
-            // `recovery` written above is unchanged. Zero cost when off (the sink stays null, this branch
-            // is skipped, recoveryTraceLines is never built). Mirrors the Swift recoveryTraceActive wiring.
-            if (recoveryTraceSink != null) {
-                for (line in recoveryTraceLines(daily, baselines2)) recoveryTraceSink(line)
-            }
+            // Skin temp deviation must be attached BEFORE Charge scoring, so the skin-temp term actually
+            // enters the formula (was after, making the 5 %-weighted term always absent).
             val skinTempDevC = recomputeSkinTempDev(res.nightlySkinTempC, baselines2.skinTemp)
+            val dailyWithSkin = if (skinTempDevC != null) daily.copy(skinTempDevC = skinTempDevC) else daily
+            val recovery = recomputeRecovery(dailyWithSkin, baselines2)
+            if (recoveryTraceSink != null) {
+                for (line in recoveryTraceLines(dailyWithSkin, baselines2)) recoveryTraceSink(line)
+            }
             RestScorer.restFromDaily(daily)?.let { rest ->
                 restRows.add(MetricSeriesRow(deviceId = computedId, day = daily.day, key = "sleep_performance", value = rest))
             }
