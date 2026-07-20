@@ -94,6 +94,4 @@ object RustCodec {
     fun setConfigFrame(seq: Int, name: String, value: Int): ByteArray =
         gen5.setConfigFrame(seq.toUByte(), name, value.toUByte())
 
-    /** SET_DEVICE_CONFIG for the 5/MG Broadcast-HR flag. */
-    fun broadcastHrFrame(seq: Int, on: Boolean): ByteArray = gen5.broadcastHrFrame(seq.toUByte(), on)
 }

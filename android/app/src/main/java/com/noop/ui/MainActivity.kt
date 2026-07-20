@@ -167,19 +167,6 @@ object NoopPrefs {
     /** "Keep connected in the background", drives [com.noop.ble.WhoopConnectionService]. Default on. */
     const val KEY_BACKGROUND_CONNECTION = "noop.backgroundConnection"
 
-    /** "Continuous HRV capture", when on (AND background connection is on), NOOP holds the dense
-     *  realtime HR stream armed even with no Live screen open, so the strap banks beat-to-beat R-R 24/7
-     *  for far better overnight HRV/recovery/sleep. Uses more battery (continuous HR streaming). Default
-     *  OFF. Drives [com.noop.ble.WhoopBleClient.setKeepStreamForData] via [AppViewModel]. */
-    const val KEY_CONTINUOUS_HRV = "noop.continuousHrv"
-
-    /** "Overnight only" refinement of Continuous HRV capture (#927): when on (with [KEY_CONTINUOUS_HRV]),
-     *  the dense realtime stream is armed only inside the nightly quiet-hours window (22:00 to 07:00 by
-     *  default, wrap-aware, local wall time) instead of 24/7, roughly halving the battery cost. Default
-     *  OFF, so existing Continuous HRV users keep the always-on behaviour with no migration. Read by
-     *  [com.noop.ble.WhoopBleClient] at every arm site (re-derived at arm time, never cached). */
-    const val KEY_CONTINUOUS_HRV_OVERNIGHT = "noop.continuousHrvOvernight"
-
     /** The calendar day (yyyy-MM-dd) on which the morning-journal nudge was last shown, keeps the
      *  Sleep screen's "Good morning" sheet to at most once per day. */
     const val KEY_LAST_JOURNAL_PROMPT = "noop.lastJournalPromptDay"
@@ -188,12 +175,6 @@ object NoopPrefs {
      *  normal user never emits the connection log to the system log; the in-app ring buffer (and the
      *  "Share strap log" export) work regardless. See [com.noop.ble.WhoopBleClient.debugLogcat]. */
     const val KEY_DEBUG_LOGGING = "noop.debugLogging"
-
-    /** "Broadcast heart rate", when on, NOOP acts as a standard BLE Heart Rate peripheral (0x180D /
-     *  0x2A37) and re-broadcasts the live strap HR so a gym treadmill / Zwift / Peloton can read it.
-     *  LOCAL Bluetooth only, nothing leaves the device. Default OFF. Drives [com.noop.ble.HrBroadcaster]
-     *  via [AppViewModel]. Distinct from the WHOOP strap's own "broadcast HR" firmware config. */
-    const val KEY_HR_BROADCAST = "noop.hrBroadcast"
 
     const val KEY_ANALYZE_WATERMARK = "noop.analyzeWatermark"
 
@@ -204,13 +185,6 @@ object NoopPrefs {
     const val KEY_POWER_SAVING = "noop.powerSaving"
     /** Battery-% threshold for [KEY_POWER_SAVING] (10/15/20/25/30). Default 20. */
     const val KEY_POWER_SAVING_BATTERY_PCT = "noop.powerSavingBatteryPct"
-    /** "Pause HRV capture in Battery Saver" (#477): when on, NOOP releases the held-open background
-     *  continuous-HRV stream while the OS Battery Saver is on (a Live screen still arms it on demand).
-     *  A sub-option of [KEY_POWER_SAVING] — only effective while the master is on. Default ON (so enabling
-     *  Power saving pauses capture by default; the user can turn it off). Drives
-     *  [com.noop.ble.WhoopBleClient.setPauseCaptureOnPowerSave] via [AppViewModel]. */
-    const val KEY_PAUSE_HRV_ON_POWER_SAVE = "noop.pauseHrvOnPowerSave"
-
     fun of(context: Context): SharedPreferences =
         context.getSharedPreferences(NAME, Context.MODE_PRIVATE)
 
@@ -228,14 +202,6 @@ object NoopPrefs {
 
     fun setPowerSavingBatteryPct(context: Context, pct: Int) {
         of(context).edit().putInt(KEY_POWER_SAVING_BATTERY_PCT, pct).apply()
-    }
-
-    /** Pause continuous-HRV capture while Battery Saver is on (sub-option of Power saving). Default ON. */
-    fun pauseHrvOnPowerSave(context: Context): Boolean =
-        of(context).getBoolean(KEY_PAUSE_HRV_ON_POWER_SAVE, true)
-
-    fun setPauseHrvOnPowerSave(context: Context, enabled: Boolean) {
-        of(context).edit().putBoolean(KEY_PAUSE_HRV_ON_POWER_SAVE, enabled).apply()
     }
 
     /** #836, the raw-HR fingerprint ("count:maxTs") the last COMPLETED idle rescore scored against. The
@@ -256,38 +222,12 @@ object NoopPrefs {
         of(context).edit().putBoolean(KEY_BACKGROUND_CONNECTION, enabled).apply()
     }
 
-    /** Whether NOOP keeps the dense realtime HR stream armed 24/7 for continuous HRV capture. Default
-     *  false. Only takes effect while [backgroundConnection] is also on. */
-    fun continuousHrv(context: Context): Boolean =
-        of(context).getBoolean(KEY_CONTINUOUS_HRV, false)
-
-    fun setContinuousHrv(context: Context, enabled: Boolean) {
-        of(context).edit().putBoolean(KEY_CONTINUOUS_HRV, enabled).apply()
-    }
-
-    /** Whether Continuous HRV capture arms the stream only inside the nightly window (#927). Default
-     *  false = always-on, the pre-#927 behaviour. */
-    fun continuousHrvOvernight(context: Context): Boolean =
-        of(context).getBoolean(KEY_CONTINUOUS_HRV_OVERNIGHT, false)
-
-    fun setContinuousHrvOvernight(context: Context, enabled: Boolean) {
-        of(context).edit().putBoolean(KEY_CONTINUOUS_HRV_OVERNIGHT, enabled).apply()
-    }
-
     /** Whether the strap log is mirrored to logcat. Default false (normal users don't log to adb). */
     fun debugLogging(context: Context): Boolean =
         of(context).getBoolean(KEY_DEBUG_LOGGING, false)
 
     fun setDebugLogging(context: Context, enabled: Boolean) {
         of(context).edit().putBoolean(KEY_DEBUG_LOGGING, enabled).apply()
-    }
-
-    /** Whether NOOP re-broadcasts its live HR as a standard BLE Heart Rate peripheral. Default OFF. */
-    fun hrBroadcast(context: Context): Boolean =
-        of(context).getBoolean(KEY_HR_BROADCAST, false)
-
-    fun setHrBroadcast(context: Context, enabled: Boolean) {
-        of(context).edit().putBoolean(KEY_HR_BROADCAST, enabled).apply()
     }
 
     /** "Buzz WHOOP 4" (#536): arm the strap's firmware alarm at the phone smart alarm's earliest wake

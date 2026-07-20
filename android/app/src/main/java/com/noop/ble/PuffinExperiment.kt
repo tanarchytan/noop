@@ -38,14 +38,6 @@ class PuffinExperiment(private val prefs: SharedPreferences) {
         get() = prefs.getBoolean(KEY_DEEP_DATA, false)
         set(v) = prefs.edit().putBoolean(KEY_DEEP_DATA, v).apply()
 
-    /** True if the user opted in to "Broadcast heart rate": NOOP writes the device-config flag
-     *  whoop_live_hr_in_adv_ind_pkt="1" so the strap advertises the standard Heart Rate Service
-     *  (0x180D) + its live HR, pairable by a Garmin/Zwift/gym HR client. Reversible. Default false.
-     *  Mirrors the macOS `PuffinExperiment.broadcastHrKey`. (#181) */
-    var broadcastHr: Boolean
-        get() = prefs.getBoolean(KEY_BROADCAST_HR, false)
-        set(v) = prefs.edit().putBoolean(KEY_BROADCAST_HR, v).apply()
-
     /** HR-from-PPG sub-lag interpolation always runs: the v26 optical-PPG gap-fill HR estimator (now
      *  whoop-rs's adjudicated sub-lag estimator) refines its integer autocorrelation lag with a parabolic
      *  interpolation of the ACF peak, removing the ~+-8 bpm lag-quantization near a high HR. It only ever
@@ -65,9 +57,6 @@ class PuffinExperiment(private val prefs: SharedPreferences) {
 
         /** 5/MG R22 deep-data unlock opt-in (mirrors macOS `PuffinExperiment.deepDataKey`). */
         const val KEY_DEEP_DATA = "noopWhoop5DeepData"
-
-        /** "Broadcast heart rate" opt-in (mirrors macOS `PuffinExperiment.broadcastHrKey`). */
-        const val KEY_BROADCAST_HR = "noopBroadcastHr"
 
         fun from(context: Context): PuffinExperiment =
             PuffinExperiment(context.getSharedPreferences(PREFS, Context.MODE_PRIVATE))

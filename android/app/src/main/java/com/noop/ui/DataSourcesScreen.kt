@@ -27,7 +27,6 @@ import androidx.compose.material.icons.filled.FitnessCenter
 import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.MonitorHeart
 import androidx.compose.material.icons.filled.Restaurant
-import androidx.compose.material.icons.filled.SettingsInputAntenna
 import androidx.compose.material.icons.filled.Watch
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
@@ -106,10 +105,6 @@ fun DataSourcesScreen(vm: AppViewModel, onOpenAppleHealth: () -> Unit = {}) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val live by vm.live.collectAsStateWithLifecycle()
-    val hrBroadcast by vm.hrBroadcast.collectAsStateWithLifecycle()
-    val hrBroadcastAdvertising by vm.hrBroadcastAdvertising.collectAsStateWithLifecycle()
-    val hrBroadcastSubscribers by vm.hrBroadcastSubscribers.collectAsStateWithLifecycle()
-    val hrBroadcastStatus by vm.hrBroadcastStatus.collectAsStateWithLifecycle()
     val hcAutoSync by vm.hcAutoSync.collectAsStateWithLifecycle()
     val hcSyncHours by vm.hcSyncHours.collectAsStateWithLifecycle()
     val hcLastSync by vm.hcLastSync.collectAsStateWithLifecycle()
@@ -282,11 +277,6 @@ fun DataSourcesScreen(vm: AppViewModel, onOpenAppleHealth: () -> Unit = {}) {
     val healthConnectAvailable = remember {
         HealthConnectImporter.sdkStatus(context) == HealthConnectClient.SDK_AVAILABLE
     }
-
-    // "Broadcast heart rate": flip the toggle on only AFTER the BLUETOOTH_ADVERTISE (+ CONNECT) runtime
-    // permission is granted on Android 12+ — otherwise advertising silently no-ops. On grant (or pre-12,
-    // where it's install-time) the VM starts the HR peripheral.
-    val requestAdvertise = rememberRequestAdvertise(onGranted = { vm.setHrBroadcast(true) })
 
     // Import directly if permissions already granted, otherwise request them first.
     fun startHealthConnect() {
@@ -695,101 +685,6 @@ fun DataSourcesScreen(vm: AppViewModel, onOpenAppleHealth: () -> Unit = {}) {
                 enabled = !busy,
                 modifier = Modifier.fillMaxWidth(),
             ) { wearableImportLauncher.launch(arrayOf("*/*")) }
-        }
-        }
-
-        // --- Broadcast heart rate (NOOP as a standard BLE HR peripheral) ---
-        item {
-        SourceCard(
-            title = "Broadcast HR from this phone",
-            icon = Icons.Filled.MonitorHeart,
-            tint = DomainTheme.Effort.color,
-            subtitle = "Re-share your live strap heart rate over Bluetooth as a standard heart-rate " +
-                "sensor, so a gym treadmill, bike, Zwift, Peloton or any fitness app nearby can read " +
-                "it. Works on any WHOOP (4.0 or 5.0/MG) because your phone does the broadcasting. " +
-                "Local Bluetooth only. Nothing leaves your phone. Off by default.",
-        ) {
-            if (hrBroadcast) {
-                val (label, tone) =
-                    if (hrBroadcastAdvertising) "Broadcasting" to StrandTone.Positive
-                    else "Starting…" to StrandTone.Warning
-                StatePill(title = label, tone = tone, showsDot = true, pulsing = !hrBroadcastAdvertising)
-                CountLine(
-                    primary = if (hrBroadcastAdvertising) "Standard HR sensor (0x180D)" else "—",
-                    secondary = when {
-                        hrBroadcastSubscribers > 0 ->
-                            "$hrBroadcastSubscribers ${if (hrBroadcastSubscribers == 1) "device" else "devices"} reading"
-                        live.heartRate != null -> "Sharing ${live.heartRate} bpm · waiting for a device"
-                        else -> "No live heart rate yet · open Live to pair your strap"
-                    },
-                )
-            } else {
-                // Parity with the Swift card, which shows an explicit "Off" pill when the toggle is off
-                // (DataSourcesView.broadcastHrCard: StatePill("Off", tone: .neutral, showsDot: false)).
-                StatePill(title = "Off", tone = StrandTone.Neutral, showsDot = false)
-            }
-            hrBroadcastStatus?.let { note ->
-                Text(note, style = NoopType.footnote, color = Palette.statusWarning)
-            }
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text("Broadcast HR from this phone", style = NoopType.subhead, color = Palette.textPrimary)
-                    Text(
-                        "Acts as a standard Bluetooth heart-rate strap. Pair NOOP from your treadmill, " +
-                            "bike or app to see your strap's heart rate there.",
-                        style = NoopType.footnote,
-                        color = Palette.textTertiary,
-                    )
-                }
-                Switch(
-                    checked = hrBroadcast,
-                    onCheckedChange = { on ->
-                        // Turning ON requests BLUETOOTH_ADVERTISE first (the VM flips on once granted);
-                        // turning OFF stops the peripheral immediately.
-                        if (on) requestAdvertise() else vm.setHrBroadcast(false)
-                    },
-                    colors = SwitchDefaults.colors(
-                        checkedThumbColor = Palette.surfaceBase,
-                        checkedTrackColor = Palette.accent,
-                        uncheckedThumbColor = Palette.textSecondary,
-                        uncheckedTrackColor = Palette.surfaceInset,
-                        uncheckedBorderColor = Palette.hairline,
-                    ),
-                    modifier = Modifier.semantics {
-                        contentDescription = "Broadcast heart rate as a Bluetooth sensor"
-                    },
-                )
-            }
-
-            // #573: leaving broadcast on keeps the radio advertising continuously, which drains the
-            // battery faster — make that visible and persistent so it isn't left on by accident. Mirrors
-            // the Swift broadcast-HR warning (SettingsView).
-            if (hrBroadcast) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .semantics(mergeDescendants = true) {},
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    Icon(
-                        Icons.Filled.SettingsInputAntenna,
-                        contentDescription = null,
-                        tint = Palette.statusWarning,
-                        modifier = Modifier.size(16.dp),
-                    )
-                    Text(
-                        "Broadcast HR is ON. Your strap is advertising its heart rate continuously, " +
-                            "which keeps its radio hot and drains the battery faster. Turn it off when " +
-                            "you're not using it with another device.",
-                        style = NoopType.caption,
-                        color = Palette.statusWarning,
-                    )
-                }
-            }
         }
         }
 

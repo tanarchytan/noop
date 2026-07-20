@@ -1038,36 +1038,6 @@ class WhoopBleClient(
             return rowsPersistedThisSession > 0
         }
 
-        // #927: Continuous HRV "overnight only" window (pure, unit-tested in ContinuousHrvWindowTest).
-        //
-        // The window reuses the app's quiet-hours convention byte-for-byte (NotifPrefs.inQuietHours /
-        // SedentaryDetector.windowContains): minutes since LOCAL midnight, inclusive start, exclusive
-        // end, and the window may wrap midnight (22:00 → 07:00 by default). Local wall time keeps it
-        // DST-agnostic the same way quiet hours are: a DST jump moves the wall clock, the window
-        // definition never changes.
-
-        /** Wrap-aware membership: is [minuteOfDay] inside `[startMin, endMin)`, where the window may
-         *  cross midnight? Byte-for-byte the quiet-hours semantics. Mirrors the Swift
-         *  `ContinuousHrvSchedule.windowContains`. */
-        fun overnightWindowContains(minuteOfDay: Int, startMin: Int, endMin: Int): Boolean =
-            if (startMin <= endMin) minuteOfDay >= startMin && minuteOfDay < endMin
-            else minuteOfDay >= startMin || minuteOfDay < endMin
-
-        /** The composed continuous-capture mode (#927): false when the feature is off; true 24/7 when
-         *  [overnightOnly] is off (ALWAYS, the pre-#927 behaviour, so existing users read it with no
-         *  migration since the new key defaults to false); window-gated when both are on. Mirrors the
-         *  Swift `ContinuousHrvSchedule.streamWanted`. */
-        fun continuousHrvStreamWanted(
-            continuousHrv: Boolean,
-            overnightOnly: Boolean,
-            minuteOfDay: Int,
-            startMin: Int,
-            endMin: Int,
-        ): Boolean {
-            if (!continuousHrv) return false
-            if (!overnightOnly) return true
-            return overnightWindowContains(minuteOfDay, startMin, endMin)
-        }
     }
 
     // MARK: Published state — the single source of truth the UI observes. Seeded with the PERSISTED
@@ -1213,18 +1183,6 @@ class WhoopBleClient(
      *  in flight is never interrupted. */
     fun setLowBatteryOffloadThrottle(thresholdPct: Int) {
         lowBatteryOffloadPct = thresholdPct
-    }
-
-    /** #477: pause BACKGROUND continuous-HRV capture while the OS Battery Saver is on (own toggle,
-     *  DEFAULT OFF). A visible Live screen is unaffected — only the held-open background stream is
-     *  released. Gated through [continuousCaptureWantsNow]. */
-    @Volatile private var pauseCaptureOnPowerSave: Boolean = false
-
-    /** Opt into pausing continuous capture under Battery Saver (#477). Reconciles immediately so the
-     *  change takes effect without waiting for the next keep-alive tick. */
-    fun setPauseCaptureOnPowerSave(enabled: Boolean) {
-        pauseCaptureOnPowerSave = enabled
-        handler.post { reconcileRealtime() }
     }
 
     /** The delay before the next periodic offload — normally [BACKFILL_INTERVAL_MS], stretched when low on
@@ -1716,18 +1674,8 @@ class WhoopBleClient(
     /** True while a Live/Health screen is on-screen and wants the realtime HR stream (ref-counted in
      *  [com.noop.ui.AppViewModel]). One of the two inputs to [wantsRealtime]. */
     @Volatile private var screenWantsRealtime = false
-    /** True while the "Continuous HRV capture" preference wants the realtime stream held open even with
-     *  no Live screen visible, so the strap banks dense beat-to-beat R-R 24/7 (better overnight
-     *  HRV/recovery/sleep). The second input to [wantsRealtime]. Default off; set by
-     *  [setKeepStreamForData]. Mirrors the Swift `keepRealtimeForData`. #927: this is the RAW preference
-     *  intent; the effective want is window-gated through [continuousCaptureWantsNow] when "overnight
-     *  only" is on, re-derived at every arm site. */
-    @Volatile private var keepStreamForData = false
-    /** Derived want: the realtime stream should be armed while EITHER a screen wants it OR the
-     *  continuous-capture preference wants it. The keep-alive re-arms it so it can't lapse, and the
-     *  post-bond branch arms it on connect. Recomputed inside [reconcileRealtime] and RE-DERIVED at the
-     *  post-bond arm sites (#927): a cached value can be a keep-alive tick stale, and a reconnect outside
-     *  the overnight window must never arm the stream from it. */
+    /** Derived want: the realtime stream should be armed while a screen wants it. The keep-alive
+     *  re-arms it so it can't lapse, and the post-bond branch arms it on connect. */
     @Volatile private var wantsRealtime = false
     /** What we last told the strap (armed = TOGGLE_REALTIME_HR 1). Lets [reconcileRealtime] send the
      *  toggle only on the false↔true edge instead of on every input change. */
@@ -2348,7 +2296,7 @@ class WhoopBleClient(
         CommandNumber.SET_ALARM_TIME, CommandNumber.DISABLE_ALARM, CommandNumber.GET_ALARM_TIME,
         CommandNumber.REBOOT_STRAP -> true
         CommandNumber.SET_CONFIG -> puffinExperiment.isDeepDataEnabled
-        CommandNumber.SET_DEVICE_CONFIG -> puffinExperiment.broadcastHr
+        CommandNumber.SET_DEVICE_CONFIG -> false
         else -> false
     }
 
@@ -3642,7 +3590,7 @@ class WhoopBleClient(
                 // #927: RE-DERIVE the want at arm time, never the precomputed [wantsRealtime]: that value
                 // can be up to a keep-alive tick (30 s) stale, and a reconnect just OUTSIDE the overnight
                 // window would re-arm the stream from it and stay armed until the next tick.
-                val realtimeWantNow = screenWantsRealtime || continuousCaptureWantsNow()
+                val realtimeWantNow = screenWantsRealtime
                 wantsRealtime = realtimeWantNow
                 if (realtimeWantNow) { realtimeArmed = true; send(CommandNumber.TOGGLE_REALTIME_HR, byteArrayOf(1)) }
             } else if (!didBond && connectedFamily == DeviceFamily.WHOOP4) {
@@ -4322,7 +4270,7 @@ class WhoopBleClient(
         // edge correctly (the strap forgot the toggle across the disconnect; reset() cleared realtimeArmed).
         // #927: RE-DERIVE the want at arm time (same reasoning as the 5/MG post-bond arm): a reconnect
         // outside the overnight window must not arm the stream from a stale precomputed [wantsRealtime].
-        val realtimeWantNow = screenWantsRealtime || continuousCaptureWantsNow()
+        val realtimeWantNow = screenWantsRealtime
         wantsRealtime = realtimeWantNow
         if (realtimeWantNow) { realtimeArmed = true; send(CommandNumber.TOGGLE_REALTIME_HR, byteArrayOf(1)) }
     }
@@ -4391,20 +4339,6 @@ class WhoopBleClient(
                     resubscribedSinceData = true
                     enableLiveNotifications()
                 }
-                // #927: continuous capture can be overnight-only, which makes the want TIME-dependent;
-                // nothing else re-evaluates it while the app just sits connected, so the keep-alive tick
-                // re-derives it. A window-close tick DISARMS (TOGGLE 0 rides the reconciler's true→false
-                // edge; Android never arms the R10/R11 flood, so the toggle is the whole stop). A
-                // window-open tick re-arms on the false→true edge. Runs for BOTH families: send() routes
-                // the 5/MG toggle with puffin framing. Mirrors the iOS keep-alive re-derivation.
-                val captureWantNow = screenWantsRealtime || continuousCaptureWantsNow()
-                if (wantsRealtime != captureWantNow && keepStreamForData && !screenWantsRealtime) {
-                    log(
-                        if (captureWantNow) "Continuous HRV: overnight window opened; arming the realtime stream (#927)"
-                        else "Continuous HRV: overnight window closed; realtime stream disarmed until tonight (#927)",
-                    )
-                }
-                reconcileRealtime()   // recomputes wantsRealtime from the fresh predicate; toggles only on an edge
                 // WHOOP 4.0 only: re-arm realtime HR so the firmware can't let it lapse (while the Live
                 // screen wants it), and poll battery (~60s) — which also keeps the link warm. A 5/MG
                 // strap rejects WHOOP4-framed commands, so we skip them and rely on re-subscribe + bounce.
@@ -4459,8 +4393,7 @@ class WhoopBleClient(
         reconcileRealtime()
     }
 
-    /** The Live screen no longer needs realtime HR; clear its want and reconcile. The stream stays armed
-     *  if the continuous-capture preference ([keepStreamForData]) still wants it. Port of
+    /** The Live screen no longer needs realtime HR; clear its want and reconcile. Port of
      *  `BLEManager.stopRealtime`. */
     fun stopRealtime() {
         screenWantsRealtime = false
@@ -4470,52 +4403,18 @@ class WhoopBleClient(
     /** The "Continuous HRV capture" preference flipped: hold the realtime stream open with no Live screen
      *  visible (true) or release it (false), then reconcile. Wired from [com.noop.ui.AppViewModel] and
      *  gated there on the background-connection preference. Mirrors the Swift `setKeepRealtimeForData`.
-     *  #927: also called with the UNCHANGED preference when "overnight only" flips, purely to re-run the
-     *  reconciler with the fresh window gate. */
-    fun setKeepStreamForData(keep: Boolean) {
-        keepStreamForData = keep
-        reconcileRealtime()
-    }
-
-    /** #927: the continuous-capture side of the realtime want, window-gated. True while the "Continuous
-     *  HRV capture" preference wants the stream held open AND, when "overnight only" is on, the local
-     *  wall clock sits inside the nightly window (the reused quiet-hours window, 22:00 → 07:00 by
-     *  default). RE-DERIVED at every arm site (reconcile / keep-alive tick / post-bond arm) instead of
-     *  precomputed, so a reconnect outside the window can never arm the stream from a stale value.
-     *  Mirrors the Swift `continuousCaptureWantsNow`. */
-    private fun continuousCaptureWantsNow(): Boolean {
-        if (!keepStreamForData) return false
-        // #477: optional power-saving pause — while the OS Battery Saver is on, release the held-open
-        // continuous-capture stream (its own toggle, default off). The realtime stream is one of the
-        // larger drains; a Live screen still arms it on demand (screenWantsRealtime is checked separately
-        // in reconcileRealtime), so this only drops the BACKGROUND capture the user opted into. Re-arms
-        // automatically when Battery Saver turns off.
-        if (pauseCaptureOnPowerSave && powerSaveActive()) return false
-        val cal = java.util.Calendar.getInstance()
-        val minuteOfDay = cal.get(java.util.Calendar.HOUR_OF_DAY) * 60 + cal.get(java.util.Calendar.MINUTE)
-        return continuousHrvStreamWanted(
-            continuousHrv = true,
-            overnightOnly = NoopPrefs.continuousHrvOvernight(context),
-            minuteOfDay = minuteOfDay,
-            startMin = NotifPrefs.getInt(context, NotifPrefs.QUIET_START, 22 * 60),
-            endMin = NotifPrefs.getInt(context, NotifPrefs.QUIET_END, 7 * 60),
-        )
-    }
-
+     */
     /**
-     * Single reconciler for the realtime-HR stream. The stream should be armed while EITHER a screen
-     * wants it ([screenWantsRealtime]) OR the continuous-capture preference wants it ([keepStreamForData],
-     * window-gated by #927 overnight-only via [continuousCaptureWantsNow]).
-     * We arm (TOGGLE_REALTIME_HR 1) / disarm (TOGGLE_REALTIME_HR 0) ONLY on the false↔true edge of that
-     * derived want — so a Live screen closing while the preference still wants it does NOT disarm, and
-     * turning the preference off with no screen open DOES disarm. The toggle only reaches the strap once
-     * it's a WHOOP4 (custom channels are open immediately) or a bonded 5/MG (puffin framing); otherwise
-     * the want is remembered and the post-bond branch arms it. Port of `BLEManager.reconcileRealtime`.
+     * Single reconciler for the realtime-HR stream. The stream should be armed while a screen
+     * wants it ([screenWantsRealtime]). We arm (TOGGLE_REALTIME_HR 1) / disarm (TOGGLE_REALTIME_HR 0)
+     * ONLY on the false↔true edge. The toggle only reaches the strap once it's a WHOOP4 (custom channels
+     * are open immediately) or a bonded 5/MG (puffin framing); otherwise the want is remembered and the
+     * post-bond branch arms it. Port of `BLEManager.reconcileRealtime`.
      */
     private fun reconcileRealtime() {
         // Confine to the GATT looper (main), exactly like [drainWriteQueue]/[drainCccdQueue]. This does an
         // order-sensitive check-then-set on [realtimeArmed] and is reachable from ViewModel callers
-        // (startRealtime / stopRealtime / setKeepStreamForData) as well as the main-looper keep-alive tick
+        // (startRealtime / stopRealtime) as well as the main-looper keep-alive tick
         // and post-bond arm. Every caller runs on Main today, so this is a no-op pass-through — but it makes
         // the battery-critical stream toggle self-enforcing: a future off-main caller is deferred onto the
         // looper instead of silently racing the keep-alive tick on [realtimeArmed]. iOS gets this for free
@@ -4526,7 +4425,7 @@ class WhoopBleClient(
             handler.post { reconcileRealtime() }
             return
         }
-        val want = screenWantsRealtime || continuousCaptureWantsNow()
+        val want = screenWantsRealtime
         wantsRealtime = want   // the keep-alive + post-bond arm-on-connect read this derived value
         if (want == realtimeArmed) return                          // no edge — nothing to send
         if (connectedFamily != DeviceFamily.WHOOP4 && !_state.value.bonded) return   // can't reach the strap yet
@@ -4537,38 +4436,7 @@ class WhoopBleClient(
         refreshConnectionPriority()   // #477: live-HR on → HIGH, off → back to idle. No-op unless enabled.
     }
 
-    /**
-     * EXPERIMENTAL (#181): make the strap advertise its heart rate as a standard BLE HR sensor by
-     * writing the device-config flag whoop_live_hr_in_adv_ind_pkt = "1" (on) / "0" (off) via
-     * SET_DEVICE_CONFIG (0x77). Validated on real hardware: with it on, the strap advertises 0x180D +
-     * the live HR in its manufacturer data, so a Garmin (Edge/watch), Zwift or gym HR client pairs to it
-     * directly. Reversible; opt-in. Mirrors `BLEManager.setBroadcastHr`. (Broadcast HR)
-     */
-    fun setBroadcastHr(on: Boolean) {
-        if (connectedFamily != DeviceFamily.WHOOP5) {
-            log("Broadcast HR: needs a WHOOP 5.0/MG strap — ignored."); return
-        }
-        val s = _state.value
-        if (!s.connected || !s.bonded) {
-            log("Broadcast HR: connect and bond a 5/MG strap first — ignored."); return
-        }
-        sendCommand(CommandNumber.SET_DEVICE_CONFIG, withResponse = true) { sq ->
-            RustCodec.broadcastHrFrame(sq, on)
-        }
-        log("Broadcast HR: wrote whoop_live_hr_in_adv_ind_pkt=" + (if (on) "1" else "0"))
-    }
-
-    /**
-     * EXPERIMENTAL (#174): write the official app's `enable_r22_*` SET_CONFIG sequence to a bonded
-     * WHOOP 5/MG to switch on the deep biometric (type-0x2F "R22") streams the strap withholds from a
-     * fresh third-party connection. Exact 15-flag sequence + values built byte-for-byte by
-     * [Whoop5Config] (documented by judes.club + Asherlc/dofek). Port of `BLEManager.enableWhoop5DeepData`.
-     *
-     * Safety: only runs when the deep-data experiment is opted in AND the strap is a bonded, worn 5/MG.
-     * The R22 stream is on-wrist gated. Each flag is one SET_CONFIG write WITH RESPONSE, spaced ~80 ms.
-     * Reversible — it only changes which data the strap emits. After it runs, wear + sync and share the
-     * strap log so we can confirm the deeper records start flowing.
-     */
+    
     fun enableWhoop5DeepData() {
         if (connectedFamily != DeviceFamily.WHOOP5) {
             log("Deep-data: needs a WHOOP 5.0/MG strap — ignored."); return
@@ -4990,8 +4858,7 @@ class WhoopBleClient(
             startWhoop5BackfillCapture()
         }
         if (connectedFamily == DeviceFamily.WHOOP5) {
-            // Re-apply the Broadcast-HR device-config flag if the user opted in (#181).
-            if (PuffinExperiment.from(context).broadcastHr) setBroadcastHr(true)
+
             // Goose parity, hardware-validated (#78 fork): query the strap's stored range first and
             // fire the transfer on its SUCCESS response (PENDING precedes it). FAIL-OPEN: real
             // hardware sometimes swallows the first GET_DATA_RANGE entirely, so a 2s fallback fires
@@ -5795,8 +5662,8 @@ class WhoopBleClient(
         lastMtuValue = -1
         lastMtuAtMs = 0L
         // The strap forgets the realtime-HR toggle across a disconnect; the post-bond branch re-arms it
-        // from [wantsRealtime]. Clear only the "what we last sent" flag — the screen/preference WANTS
-        // ([screenWantsRealtime]/[keepStreamForData]/[wantsRealtime]) are intent and must survive a
+        // from [wantsRealtime]. Clear only the "what we last sent" flag — the screen WANTS
+        // ([screenWantsRealtime]/[wantsRealtime]) are intent and must survive a
         // reconnect so the stream comes back automatically.
         realtimeArmed = false
 

@@ -356,9 +356,8 @@ fun SettingsScreen(
     val puffinExperiment = remember { PuffinExperiment.from(context) }
     var puffinExperiments by remember { mutableStateOf(puffinExperiment.isEnabled) }
     var deepData by remember { mutableStateOf(puffinExperiment.isDeepDataEnabled) }
-    var broadcastHr by remember { mutableStateOf(puffinExperiment.broadcastHr) }
 
-    // Whether to surface the WHOOP 5/MG-only probes (puffin / R22 / broadcast-HR / frame-capture). Gated
+    // Whether to surface the WHOOP 5/MG-only probes (puffin / R22 / frame-capture). Gated
     // so a confident 4.0 owner never sees 5/MG controls that can't touch their strap (#22). The model
     // preference DEFAULTS to WHOOP4, so we deliberately do NOT hide on the raw default alone — the same
     // "noop.selectedWhoopModel" key is rewritten to the family that actually advertised when a strap
@@ -415,7 +414,6 @@ fun SettingsScreen(
     // #477 Power saving: battery-adaptive strap-sync cadence + optional HRV-capture pause. Local mirrors.
     var powerSaving by remember { mutableStateOf(NoopPrefs.powerSaving(context)) }
     var powerSavingBatteryPct by remember { mutableStateOf(NoopPrefs.powerSavingBatteryPct(context)) }
-    var pauseHrvOnPowerSave by remember { mutableStateOf(NoopPrefs.pauseHrvOnPowerSave(context)) }
 
     ScreenScaffold(
         title = "Settings",
@@ -776,36 +774,6 @@ fun SettingsScreen(
                         ),
                     )
                 }
-                RowDivider()
-                // HRV pause: a sub-option of power saving, ON by default when the master is on.
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(16.dp),
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(stringResource(R.string.power_saving_hrv_pause), style = NoopType.subhead, color = Palette.textPrimary)
-                        Text(
-                            stringResource(R.string.power_saving_hrv_pause_desc),
-                            style = NoopType.footnote,
-                            color = Palette.textTertiary,
-                        )
-                    }
-                    Switch(
-                        checked = pauseHrvOnPowerSave,
-                        onCheckedChange = {
-                            pauseHrvOnPowerSave = it
-                            vm.setPauseHrvOnPowerSave(it)
-                        },
-                        colors = SwitchDefaults.colors(
-                            checkedThumbColor = Palette.surfaceBase,
-                            checkedTrackColor = Palette.accent,
-                            uncheckedThumbColor = Palette.textSecondary,
-                            uncheckedTrackColor = Palette.surfaceInset,
-                            uncheckedBorderColor = Palette.hairline,
-                        ),
-                    )
-                }
             }
         }
 
@@ -859,43 +827,6 @@ fun SettingsScreen(
                 }
                 Text(
                     "On a 5/MG connection NOOP will send a puffin realtime-stream request after the handshake, and log what comes back. If you have a 5/MG strap, turning this on and sharing your strap log helps map the protocol. No effect on WHOOP 4.0.",
-                    style = NoopType.caption,
-                    color = Palette.textTertiary,
-                )
-
-                // --- Broadcast heart rate (turn the strap into a standard BLE HR sensor). (#181) ---
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(16.dp),
-                ) {
-                    Text(
-                        "Broadcast strap HR (Garmin/ANT)",
-                        style = NoopType.subhead,
-                        color = Palette.textPrimary,
-                        modifier = Modifier.weight(1f),
-                    )
-                    Switch(
-                        checked = broadcastHr,
-                        onCheckedChange = {
-                            broadcastHr = it
-                            puffinExperiment.broadcastHr = it
-                            vm.ble.setBroadcastHr(it)
-                        },
-                        colors = SwitchDefaults.colors(
-                            checkedThumbColor = Palette.surfaceBase,
-                            checkedTrackColor = Palette.accent,
-                            uncheckedThumbColor = Palette.textSecondary,
-                            uncheckedTrackColor = Palette.surfaceInset,
-                            uncheckedBorderColor = Palette.hairline,
-                        ),
-                        modifier = Modifier.semantics {
-                            contentDescription = "Broadcast heart rate"
-                        },
-                    )
-                }
-                Text(
-                    "Makes your WHOOP 5.0/MG advertise its heart rate as a standard Bluetooth HR sensor, so a Garmin (Edge/watch), Zwift or gym equipment can use it during a workout. Applied on the next connection (and immediately if connected); writes the strap's whoop_live_hr_in_adv_ind_pkt flag. Reversible. 5/MG only.",
                     style = NoopType.caption,
                     color = Palette.textTertiary,
                 )

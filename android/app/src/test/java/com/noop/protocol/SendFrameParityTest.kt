@@ -67,12 +67,6 @@ class SendFrameParityTest {
         assertEquals("aa0130000001eb1123077801656e61626c655f7232325f7061636b6574730000000000000000000000000000320000000000000089dea9fe", h(RustCodec.setConfigFrame(seq, flag.name, flag.value)))
     }
 
-    @Test
-    fun `gen5 broadcast hr frame on and off`() {
-        assertEquals("aa012c000001ec812307770177686f6f705f6c6976655f68725f696e5f6164765f696e645f706b74000000003100000084eb4989", h(RustCodec.broadcastHrFrame(seq, true)))
-        assertEquals("aa012c000001ec812307770177686f6f705f6c6976655f68725f696e5f6164765f696e645f706b740000000030000000e18cf531", h(RustCodec.broadcastHrFrame(seq, false)))
-    }
-
     // --- Ground-truth vectors carried over from the deleted Kotlin-builder tests: real-hardware-acked
     //     WHOOP 5 offload commands (Goose) and the judes.club / Swift-parity goldens, at their original
     //     seq. The FFI now reproduces these exact bytes. ---

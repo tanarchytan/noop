@@ -53,43 +53,6 @@ fun rememberRequestScan(onGranted: () -> Unit): () -> Unit {
 }
 
 /**
- * The runtime permissions needed to BROADCAST as a BLE peripheral on this OS version. Android 12+
- * (API 31) needs BLUETOOTH_ADVERTISE (to advertise) plus BLUETOOTH_CONNECT (to run the GATT server);
- * API <= 30 used the install-time BLUETOOTH/BLUETOOTH_ADMIN perms, so there's nothing to request.
- */
-fun bleAdvertisePermissions(): Array<String> =
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S)
-        arrayOf(Manifest.permission.BLUETOOTH_ADVERTISE, Manifest.permission.BLUETOOTH_CONNECT)
-    else
-        emptyArray()
-
-/**
- * Returns a callback that enables HR broadcasting, first requesting BLUETOOTH_ADVERTISE (+ CONNECT) on
- * Android 12+ if they aren't already granted. Mirrors [rememberRequestScan]: the launcher must live in
- * the Compose layer so it can raise the system dialog, and the "Broadcast heart rate" toggle calls this
- * before turning the peripheral on. On grant (or on pre-12, where the perms are install-time) it calls
- * [onGranted]; on denial the toggle stays off and the broadcaster surfaces a status note rather than
- * failing silently.
- */
-@Composable
-fun rememberRequestAdvertise(onGranted: () -> Unit): () -> Unit {
-    val context = LocalContext.current
-    val perms = remember { bleAdvertisePermissions() }
-    val launcher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestMultiplePermissions(),
-    ) { results ->
-        // Enable only if every requested permission was granted; otherwise leave the toggle off.
-        if (results.values.all { it }) onGranted()
-    }
-    return {
-        val granted = perms.all {
-            ContextCompat.checkSelfPermission(context, it) == PackageManager.PERMISSION_GRANTED
-        }
-        if (granted) onGranted() else launcher.launch(perms)
-    }
-}
-
-/**
  * Requests ACCESS_FINE_LOCATION (needed for GPS-tracked workouts) and reports the outcome. Unlike
  * the BLE permissions, fine location is NOT implicitly granted on Android 12+ — BLE uses the granular
  * Bluetooth permissions there — so a GPS workout must request it explicitly before starting, or

@@ -25,9 +25,7 @@ import com.noop.analytics.UserProfile
 import com.noop.analytics.WorkoutSport
 import com.noop.location.GpsSession
 import kotlinx.coroutines.Job
-import com.noop.ble.HrBroadcaster
 import com.noop.ble.LiveState
-import com.noop.ble.PuffinExperiment
 import com.noop.ble.WhoopConnectionService
 import com.noop.ble.WhoopModel
 import androidx.health.connect.client.HealthConnectClient
@@ -830,12 +828,6 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             }
         }
 
-        // Apply the persisted "Continuous HRV capture" intent so the BLE client holds the dense realtime
-        // stream armed once bonded (the reconciler arms it post-bond). Only effective with background
-        // connection on — without it there's nothing keeping the link up to stream over, so a continuous
-        // want would be meaningless. Pushed BEFORE autoReconnectOnLaunch so a launch reconnect arms it.
-        ble.setKeepStreamForData(continuousHrvEffective())
-
         // #477: push the persisted Power-saving prefs so the battery-adaptive levers apply from launch.
         applyPowerSaving()
 
@@ -845,14 +837,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     /** Push the persisted #477 Power-saving prefs to the BLE client. The offload-cadence stretch uses the
-     *  battery-% threshold (0 = off when the master is off); the HRV pause is its own Battery-Saver toggle.
-     *  The riskier connection-priority idle throttle is deliberately NOT exposed here — it stays dormant
-     *  pending on-strap validation (#478). */
+     *  battery-% threshold (0 = off when the master is off). The riskier connection-priority idle throttle
+     *  is deliberately NOT exposed here — it stays dormant pending on-strap validation (#478). */
     private fun applyPowerSaving() {
         val on = NoopPrefs.powerSaving(appContext)
         ble.setLowBatteryOffloadThrottle(if (on) NoopPrefs.powerSavingBatteryPct(appContext) else 0)
-        // HRV pause is a sub-option: only effective while the master is on (defaults on when it is).
-        ble.setPauseCaptureOnPowerSave(on && NoopPrefs.pauseHrvOnPowerSave(appContext))
     }
 
     /** Flip "Power saving" (Settings). Persists + applies immediately. */
@@ -866,18 +855,6 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         NoopPrefs.setPowerSavingBatteryPct(appContext, pct)
         applyPowerSaving()
     }
-
-    /** Flip "Pause HRV capture in Battery Saver" (Settings). Persists + applies immediately. */
-    fun setPauseHrvOnPowerSave(enabled: Boolean) {
-        NoopPrefs.setPauseHrvOnPowerSave(appContext, enabled)
-        applyPowerSaving()
-    }
-
-    /** The effective continuous-HRV want: the user's "Continuous HRV capture" preference AND
-     *  "Keep connected in the background" — the latter is what holds the link up for the stream to ride,
-     *  so continuous capture is meaningless without it. */
-    private fun continuousHrvEffective(): Boolean =
-        NoopPrefs.continuousHrv(appContext) && NoopPrefs.backgroundConnection(appContext)
 
     /**
      * On launch, reconnect DIRECTLY to the strap we last bonded to (no scan), so the connection
@@ -1570,34 +1547,6 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         } else {
             WhoopConnectionService.stop(appContext)
         }
-        // Continuous HRV capture is gated on background connection (it has nothing to stream over without
-        // it), so a change here re-reconciles the keep-stream want: turning background off disarms the
-        // continuous stream when no Live screen wants it; turning it back on re-arms it if the pref is on.
-        ble.setKeepStreamForData(continuousHrvEffective())
-    }
-
-    /**
-     * Flip "Continuous HRV capture" (driven by Settings → Strap). Persists the preference and pushes the
-     * effective want to the BLE client so it takes effect immediately: turning it on while bonded +
-     * backgrounded arms the dense realtime stream now; turning it off disarms it unless a Live screen
-     * still wants it (the reconciler only sends the toggle on the false↔true edge). Gated on background
-     * connection — it does nothing while that's off (there'd be no background link to stream over).
-     */
-    fun setContinuousHrv(enabled: Boolean) {
-        NoopPrefs.setContinuousHrv(appContext, enabled)
-        ble.setKeepStreamForData(continuousHrvEffective())
-    }
-
-    /**
-     * Flip "Overnight only" for Continuous HRV capture (#927, driven by Settings → Strap). Persists the
-     * preference and re-pushes the UNCHANGED keep-stream want, purely so the BLE reconciler re-derives
-     * the window gate immediately: flipping it on outside the window disarms the stream now, flipping it
-     * off re-arms it. The BLE client re-reads this preference at every arm site, so no stale value can
-     * keep the stream armed outside the window between reconciles.
-     */
-    fun setContinuousHrvOvernight(enabled: Boolean) {
-        NoopPrefs.setContinuousHrvOvernight(appContext, enabled)
-        ble.setKeepStreamForData(continuousHrvEffective())
     }
 
     /**
@@ -1610,49 +1559,6 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun setDebugLogging(enabled: Boolean) {
         NoopPrefs.setDebugLogging(appContext, enabled)
         ble.debugLogcat = enabled
-    }
-
-    // --- Broadcast heart rate (NOOP acts as a standard BLE HR peripheral; gym kit reads the strap HR) ---
-    //
-    // OPT-IN, OFF BY DEFAULT, OFFLINE. When on, [HrBroadcaster] advertises the standard Heart Rate Service
-    // (0x180D) and notifies 0x2A37 with each live strap HR, so a treadmill / Zwift / Peloton can read the
-    // WHOOP HR NOOP receives. LOCAL Bluetooth only — nothing leaves the device. The broadcaster is a pure
-    // CONSUMER of [ble.state].heartRate (fed in the state-collect loop in init); it never writes back into
-    // the WHOOP path, so the strap connection and scoring can't regress.
-    private val broadcaster = HrBroadcaster(appContext, log = { ble.externalLog(it) })
-
-    private val _hrBroadcast = MutableStateFlow(NoopPrefs.hrBroadcast(appContext))
-    /** Whether the "Broadcast heart rate" toggle is on. Default OFF. */
-    val hrBroadcast: StateFlow<Boolean> = _hrBroadcast.asStateFlow()
-    /** True while NOOP is actually advertising as an HR peripheral (radio on + permission granted). */
-    val hrBroadcastAdvertising: StateFlow<Boolean> = broadcaster.advertising
-    /** How many centrals (gym kit / apps) are subscribed to the broadcast right now. */
-    val hrBroadcastSubscribers: StateFlow<Int> = broadcaster.subscriberCount
-    /** A human-readable reason the broadcast can't run (Bluetooth off / no permission), or null. */
-    val hrBroadcastStatus: StateFlow<String?> = broadcaster.statusNote
-
-    init {
-        // Re-broadcast the live strap HR whenever it changes, but only while the toggle is on. Kept as its
-        // own collector so it's a clean pure-consumer of LiveState; [HrBroadcaster.update] itself no-ops
-        // when broadcasting isn't wanted, so this is harmless when the toggle is off.
-        viewModelScope.launch {
-            ble.state.collect { state -> broadcaster.update(state.heartRate) }
-        }
-        // Resume broadcasting on launch if the user had it on (and the OS permission survives). If the
-        // permission was revoked, [HrBroadcaster.start] degrades to a status note rather than crashing.
-        if (_hrBroadcast.value) broadcaster.start()
-    }
-
-    /**
-     * Flip "Broadcast heart rate" (driven by Data Sources). Persists the preference and starts/stops the
-     * HR peripheral immediately. The Compose layer requests BLUETOOTH_ADVERTISE + BLUETOOTH_CONNECT before
-     * calling this with `enabled = true` (Android 12+); if those aren't held, [HrBroadcaster.start]
-     * surfaces a status note instead of broadcasting. Default OFF.
-     */
-    fun setHrBroadcast(enabled: Boolean) {
-        _hrBroadcast.value = enabled
-        NoopPrefs.setHrBroadcast(appContext, enabled)
-        if (enabled) broadcaster.start() else broadcaster.stop()
     }
 
     // --- Health Connect periodic auto-sync (Samsung Health → Health Connect → NOOP) ---
@@ -2125,10 +2031,6 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         if (!NoopPrefs.backgroundConnection(appContext)) {
             ble.disconnect()
         }
-        // Release the HR-broadcast radio when this ViewModel goes away — the broadcast is a foreground
-        // convenience (read your strap HR on nearby gym kit), not a background service. A relaunch
-        // re-resumes it from the persisted toggle.
-        broadcaster.stop()
     }
 
     private companion object {

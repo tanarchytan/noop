@@ -20,14 +20,6 @@
     <uses-permission
         android:name="android.permission.BLUETOOTH_CONNECT"
         tools:targetApi="s" />
-    <!-- Android 12+ (API 31+): broadcasting NOOP's live HR back out as a standard BLE Heart Rate
-         peripheral (0x180D) so gym kit can read it needs the advertise permission. Opt-in only:
-         the "Broadcast heart rate" toggle in Data Sources is OFF by default, and the permission is
-         requested at runtime right before the broadcast starts (see rememberRequestAdvertise). -->
-    <uses-permission
-        android:name="android.permission.BLUETOOTH_ADVERTISE"
-        tools:targetApi="s" />
-
     <!-- Android 8-11 (API 26-30): legacy Bluetooth perms are install-time. -->
     <uses-permission
         android:name="android.permission.BLUETOOTH"
