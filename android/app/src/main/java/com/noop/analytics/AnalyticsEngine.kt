@@ -124,7 +124,8 @@ object AnalyticsEngine {
             }
             sb.append(']')
             sb.toString()
-        } catch (_: Throwable) {
+        } catch (e: Throwable) {
+            android.util.Log.w("AnalyticsEngine", "sleepStageTotalsJSON: stages-to-JSON failed, dropping stage data", e)
             null
         }
     }
@@ -403,9 +404,6 @@ object AnalyticsEngine {
             if (perSession.isEmpty()) null else HrvAnalyzer.median(perSession)
         }
 
-        // sleepStart/sleepEnd available for callers wiring sleep_start/end columns.
-        @Suppress("UNUSED_VARIABLE") val sleepStart = matched.minOfOrNull { it.start }
-        @Suppress("UNUSED_VARIABLE") val sleepEnd = matched.maxOfOrNull { it.end }
 
         // ── Skin-temperature deviation (offline) ──────────────────────────────
         // Wear-gated in-bed mean (baseline-independent, harvested every pass) + the deviation against

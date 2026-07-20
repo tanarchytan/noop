@@ -37,7 +37,8 @@ object SleepWindowReclip {
                     reclipMinutes(JSONObject(stagesJSON), (newEnd - newStart) - (oldEnd - sessionStart))
                 else -> null
             }
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            android.util.Log.w("SleepReclip", "reclipFromEpoch: parse failed, returning null", e)
             null
         }
     }

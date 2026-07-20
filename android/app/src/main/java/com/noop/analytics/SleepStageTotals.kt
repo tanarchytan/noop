@@ -62,11 +62,12 @@ object SleepStageTotals {
         val json = stagesJSON ?: return null
         val arr = try {
             JSONArray(json)
-        } catch (_: Throwable) {
+        } catch (e: Throwable) {
+            android.util.Log.w("SleepStages", "minutes: failed to parse stages JSONArray, returning null", e)
             // Object/dict shape {"awake":N,"light":N,"deep":N,"rem":N} of minute totals (imported
             // sessions). Mirrors Swift minutes(fromStagesJSON:)'s dict branch so imported sleep decodes
             // on Android too, not just the segment-array shapes.
-            val dict = try { JSONObject(json) } catch (_: Throwable) { return null }
+            val dict = try { JSONObject(json) } catch (e: Throwable) { android.util.Log.w("SleepStages", "minutes: failed JSONObject parse, returning null", e); return null }
             val md = Minutes()
             md.awake = dict.optDouble("awake", 0.0)
             md.light = dict.optDouble("light", 0.0)
@@ -111,7 +112,7 @@ object SleepStageTotals {
      */
     internal fun clampStagesToOnset(stagesJSON: String?, onsetSec: Long): String? {
         val json = stagesJSON ?: return null
-        val arr = try { JSONArray(json) } catch (_: Throwable) { return stagesJSON }
+        val arr = try { JSONArray(json) } catch (e: Throwable) { android.util.Log.w("SleepStages", "stage breakdown: failed JSONArray parse, skipping reclip", e); return stagesJSON }
         val out = JSONArray()
         for (i in 0 until arr.length()) {
             val seg = arr.optJSONObject(i) ?: continue

@@ -1324,7 +1324,6 @@ class WhoopBleClient(
      *  [debugLogcat]. Android's `Log.d` isn't reachable by a normal user, which is why the in-app
      *  buffer + "Share strap log" exist (issues #17/#18). */
     private val logBuffer = ArrayDeque<String>()
-    private val logTimeFmt = java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.US)
     // PII scrubbers for the shareable strap log (#445) live at file scope as [redactStrapLogPii]
     // so they're unit-testable without constructing this Android-only client (#421).
 
@@ -5900,9 +5899,9 @@ class WhoopBleClient(
             // emit the strap log to the system log. The in-app ring buffer below always records.
             if (debugLogcat) Log.d(TAG, safe)
             // Mirror into the in-app ring buffer (format under the lock — SimpleDateFormat isn't
-            // thread-safe and log() is called from both the GATT binder thread and the main looper).
+            // thread-safe, created per-call so no field is shared across threads).
             synchronized(logBuffer) {
-                logBuffer.addLast("${logTimeFmt.format(System.currentTimeMillis())}  $safe")
+                logBuffer.addLast("${java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.US).format(System.currentTimeMillis())}  $safe")
                 while (logBuffer.size > LOG_BUFFER_MAX) logBuffer.removeFirst()
             }
         } catch (t: Throwable) {
