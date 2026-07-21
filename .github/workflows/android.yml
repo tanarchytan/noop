@@ -1,9 +1,8 @@
 # Compile-and-test verification for the Android app.
 #
 # Debug build + unit tests. No signing/keystore/publishing (release APKs are built + signed by hand).
-# The analytics/decode unit tests run through the Rust whoop-rs core via the whoop-ffi host lib (JNA), so
-# the job checks out whoop-rs + its btleplug [patch] sibling and builds that lib. It needs one repo secret,
-# WHOOP_RS_TOKEN = a read-only PAT for the private tanarchytan/whoop-rs (the debug APK build needs nothing).
+# The analytics/decode unit tests run through the Rust whoop-rs core via the whoop-ffi host lib (JNA).
+# whoop-rs is public — no auth tokens needed.
 name: Android CI
 
 on:
@@ -60,16 +59,14 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
 
       - name: Build debug APK
-        run: ./gradlew assembleFullDebug
+        run: ./gradlew assembleFullDebug --no-daemon -Dorg.gradle.jvmargs="-Xmx2048m -Dfile.encoding=UTF-8"
 
-      # The analytics/decode unit tests exercise the real Rust core through the whoop-ffi host lib (JNA):
-      # check out whoop-rs (private) + its btleplug [patch] sibling, build the host lib (buildRustHostDll),
-      # and point the test JVM at it via WHOOP_RS_DIR.
-      - name: Checkout whoop-rs (Rust core)
+      # The analytics/decode unit tests exercise the real Rust core through the whoop-ffi host lib (JNA).
+      # whoop-rs is public (no token needed). The btleplug [patch] sibling is needed for the JNA lib build.
+      - name: Checkout whoop-rs (Rust core, public)
         uses: actions/checkout@v4
         with:
           repository: tanarchytan/whoop-rs
-          token: ${{ secrets.WHOOP_RS_TOKEN }}
           path: .ci/whoop-rs
       - name: Checkout btleplug fork (whoop-rs [patch] sibling)
         uses: actions/checkout@v4
@@ -83,4 +80,4 @@ jobs:
       - name: Run unit tests
         env:
           WHOOP_RS_DIR: ${{ github.workspace }}/.ci/whoop-rs
-        run: ./gradlew testFullDebugUnitTest
+        run: ./gradlew testFullDebugUnitTest --no-daemon -Dorg.gradle.jvmargs="-Xmx2048m -Dfile.encoding=UTF-8"
