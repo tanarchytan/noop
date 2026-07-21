@@ -12,7 +12,7 @@ import org.junit.Test
  */
 class HealthConnectSelfWriteSkipTest {
 
-    private val self = "com.noop.whoop"
+    private val self = "com.noop.tan"
 
     @Test fun skipsRecordsNoopWroteItself() {
         assertTrue(HealthConnectImporter.isSelfWritten(self, self))
@@ -21,7 +21,7 @@ class HealthConnectSelfWriteSkipTest {
     @Test fun keepsRecordsFromOtherSources() {
         assertFalse(HealthConnectImporter.isSelfWritten("com.google.android.apps.fitness", self))
         assertFalse(HealthConnectImporter.isSelfWritten("com.sec.android.app.shealth", self))
-        assertFalse(HealthConnectImporter.isSelfWritten("com.noop.whoop.demo", self)) // different pkg
+        assertFalse(HealthConnectImporter.isSelfWritten("com.noop.tan.demo", self)) // different pkg
     }
 
     @Test fun keepsWhenOriginUnknownOrSelfBlank() {

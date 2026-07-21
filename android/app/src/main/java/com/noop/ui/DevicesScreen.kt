@@ -217,8 +217,9 @@ fun DevicesScreen(
             )
         }
 
- // PowerPack (5.0 only) — tap to expand/collapse pack info.
-        item { PowerPackCard() }
+ // PowerPack — tap to expand/collapse. One card per supported generation.
+        item { PowerPackCard(generation = 5) }
+        item { PowerPackCard(generation = 4) }
 
  // Prominent "+ Add a device" button.
         item { AddDeviceButton(onClick = { showAddWizard = true }) }
@@ -1155,7 +1156,7 @@ private fun syncHelperText(live: LiveState): String = when {
 /** A card in the Devices list for the WHOOP 5.0 PowerPack. Tapping toggles
  *  the info section. Shows "No PowerPack connected" when no pack is found. */
 @Composable
-private fun PowerPackCard() {
+private fun PowerPackCard(generation: Int = 5) {
     var expanded by remember { mutableStateOf(false) }
     NoopCard(padding = 20.dp, tint = Palette.metricAmber) {
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
