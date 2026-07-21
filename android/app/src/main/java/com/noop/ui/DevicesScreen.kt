@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.BatteryStd
 import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.material.icons.filled.Circle
@@ -27,6 +28,8 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material.icons.filled.Refresh
@@ -213,6 +216,9 @@ fun DevicesScreen(
                 ) { { probeTarget = device } } else null,
             )
         }
+
+ // PowerPack (5.0 only) — tap to expand/collapse pack info.
+        item { PowerPackCard() }
 
  // Prominent "+ Add a device" button.
         item { AddDeviceButton(onClick = { showAddWizard = true }) }
@@ -1142,4 +1148,63 @@ private fun syncHelperText(live: LiveState): String = when {
         "shows here."
     !live.bonded -> "Finishing the pairing handshake. Sync now becomes available once the strap is paired."
     else -> "Syncs your strap's stored history right away, instead of waiting for the next automatic sync."
+}
+
+// MARK: - PowerPack card (5.0 wireless charging pack)
+
+/** A card in the Devices list for the WHOOP 5.0 PowerPack. Tapping toggles
+ *  the info section. Shows "No PowerPack connected" when no pack is found. */
+@Composable
+private fun PowerPackCard() {
+    var expanded by remember { mutableStateOf(false) }
+    NoopCard(padding = 20.dp, tint = Palette.metricAmber) {
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(14.dp))
+                    .clickable(onClickLabel = "PowerPack") { expanded = !expanded },
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(14.dp),
+            ) {
+                Icon(
+                    Icons.Filled.BatteryStd,
+                    contentDescription = null,
+                    tint = Palette.accent,
+                    modifier = Modifier.size(24.dp),
+                )
+                Column(modifier = Modifier.weight(1f)) {
+                    Text("PowerPack", style = NoopType.subhead, color = Palette.textPrimary)
+                    Text(
+                        "5.0 wireless charging pack",
+                        style = NoopType.caption,
+                        color = Palette.textTertiary,
+                    )
+                }
+                Icon(
+                    if (expanded) Icons.Filled.KeyboardArrowUp else Icons.Filled.KeyboardArrowDown,
+                    contentDescription = if (expanded) "Collapse" else "Expand",
+                    tint = Palette.textTertiary,
+                    modifier = Modifier.size(20.dp),
+                )
+            }
+            if (expanded) {
+                Column(
+                    modifier = Modifier.padding(top = 4.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    StatePill(
+                        title = "No PowerPack connected",
+                        tone = StrandTone.Neutral,
+                        showsDot = false,
+                    )
+                    Text(
+                        "Slide a WHOOP 5.0 PowerPack over your strap. It talks directly to your phone over BLE — no bond needed for info. Requires pack firmware 3.30+.",
+                        style = NoopType.footnote,
+                        color = Palette.textSecondary,
+                    )
+                }
+            }
+        }
+    }
 }
