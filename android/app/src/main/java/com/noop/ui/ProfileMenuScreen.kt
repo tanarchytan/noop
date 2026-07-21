@@ -47,6 +47,9 @@ import kotlin.math.roundToInt
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.noop.analytics.CalibrationMilestones
+import com.noop.analytics.RecoveryScorer
 
 // MARK: - Profile menu (the top-left avatar destination)
 //
@@ -417,6 +420,15 @@ fun ProfileMenuScreen(vm: AppViewModel) {
                     )
                 }
             }
+        }
+
+        // --- Calibration milestones ---
+        val allDays by vm.recentDays.collectAsStateWithLifecycle()
+        val bankedNights = remember(allDays) {
+            RecoveryScorer.bankedNights(allDays.map { it.avgHrv })
+        }
+        if (CalibrationMilestones.isCalibrating(bankedNights)) {
+            CalibrationMilestonesCard(progress = CalibrationMilestones.progress(bankedNights))
         }
 
         // Steps-estimate calibration, opened from the Profile card's "Steps estimate" row. Same

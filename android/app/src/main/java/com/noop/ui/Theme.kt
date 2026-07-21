@@ -323,8 +323,8 @@ enum class DomainTheme {
             else -> Palette.recoveryStops
         }
 
-    /** A short upper-case label for the world (CHARGE / EFFORT / REST / STRESS). */
-    val label: String get() = name
+    /** A short upper-case label for the world (CHARGE / STRAIN / REST / STRESS). */
+    val label: String get() = if (this == Effort) "Strain" else name
 }
 
 // MARK: - Motion (ported from StrandDesign/Motion.swift §9.6)

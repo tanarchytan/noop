@@ -86,6 +86,8 @@ private const val CARD_CALIBRATING = "calibratingBaseline"
 // 30-night run; a "Restore to Today" tap brings it back. Same id on both platforms so it round-trips an
 // export/import. Presentation only — the targets never touch the Baselines math (CalibrationMilestones).
 private const val CARD_CALIBRATION_MILESTONES = "calibrationMilestones"
+// Date-based dismissal key for calibration milestones — stores "yyyy-MM-dd" of last dismiss.
+private const val MILESTONES_DISMISSED_DATE = "calibrationMilestones_dismissedDate"
 // The "Latest sleep · <date>" / "Last night · <date>" carry-over note (ScoreState.CarriedLastNight). iOS
 // has nothing in this slot, so on Android it's dismissible-into-the-inbox like the other Today info-cards:
 // a small × tucks it into Updates (restorable), so it never sits permanently between the header and the
@@ -465,10 +467,11 @@ fun TodayScreen(
     var calibratingDismissed by remember {
         mutableStateOf(TodayCardDismissal.isDismissed(context, CARD_CALIBRATING))
     }
-    // The calibration-milestone countdown stack's dismissed flag, read once from the same shared store.
-    var milestonesDismissed by remember {
-        mutableStateOf(TodayCardDismissal.isDismissed(context, CARD_CALIBRATION_MILESTONES))
+    // Calibration milestones: date-based dismissal so the card reappears daily until complete.
+    var milestonesDismissedDate by remember {
+        mutableStateOf(NoopPrefs.of(context).getString(MILESTONES_DISMISSED_DATE, "") ?: "")
     }
+    val milestonesDismissedToday = milestonesDismissedDate == LocalDate.now().toString()
     // The carried "Latest sleep · <date>" note's dismissed flag (iOS has no such card; on Android it's
     // dismissible so it doesn't sit permanently above the hero and break the compact look). Read once.
     var carriedSleepDismissed by remember {
@@ -482,7 +485,11 @@ fun TodayScreen(
             CARD_SCORES_BUILDING -> scoresBuildingDismissed = true
             CARD_NEW_HERE -> newHereDismissed = true
             CARD_CALIBRATING -> calibratingDismissed = true
-            CARD_CALIBRATION_MILESTONES -> milestonesDismissed = true
+            CARD_CALIBRATION_MILESTONES -> {
+                val dismissedDay = LocalDate.now().toString()
+                milestonesDismissedDate = dismissedDay
+                NoopPrefs.of(context).edit().putString(MILESTONES_DISMISSED_DATE, dismissedDay).apply()
+            }
             CARD_CARRIED_SLEEP -> carriedSleepDismissed = true
         }
         updateStore?.post(
@@ -504,7 +511,10 @@ fun TodayScreen(
                 CARD_SCORES_BUILDING -> scoresBuildingDismissed = false
                 CARD_NEW_HERE -> newHereDismissed = false
                 CARD_CALIBRATING -> calibratingDismissed = false
-                CARD_CALIBRATION_MILESTONES -> milestonesDismissed = false
+                CARD_CALIBRATION_MILESTONES -> {
+                    milestonesDismissedDate = ""
+                    NoopPrefs.of(context).edit().putString(MILESTONES_DISMISSED_DATE, "").apply()
+                }
                 CARD_CARRIED_SLEEP -> carriedSleepDismissed = false
             }
             updateStore.restoreRequest = null
@@ -1077,7 +1087,7 @@ fun TodayScreen(
         // rings so a new user sees their (still-calibrating) score and then exactly how many nights until
         // each milestone unlocks. Today only, only while unreached, and dismissible into the inbox so it
         // never nags across the full 30-night run. Presentation-only; the Baselines math is untouched.
-        if (calibrationMilestones != null && !milestonesDismissed) {
+        if (calibrationMilestones != null && !milestonesDismissedToday) {
             item {
                 Box(modifier = Modifier.fillMaxWidth().staggeredAppear(3)) {
                     CalibrationMilestonesCard(progress = calibrationMilestones)
