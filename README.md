@@ -150,30 +150,20 @@ There is also a first-run **onboarding wizard** that sets expectations
 
 ## Strap support
 
-NOOP is an independent, **experimental** project — capable, but a work in progress.
+NOOP is an independent project with mature, hardware-verified decode for both generations.
 
 | Strap | Status |
 |---|---|
-| **WHOOP 4.0** | ✅ The tested, supported path. Live HR, recovery, strain, sleep, history offload — the full experience. |
-| **WHOOP 5.0 / MG** | 🧪 **Live heart rate works** (confirmed on real hardware). Pick "WHOOP 5.0 / MG" before connecting — and see the pairing note below, because you can't just scan for it. Deeper 5/MG metrics (recovery, strain, sleep) are still being mapped; there's an opt-in **Settings → Experimental** toggle for 5/MG owners who want to help document the protocol. |
+| **WHOOP 4.0** | ✅ Live HR, recovery, strain, sleep, history offload — the full experience. SpO₂ with raw red/IR from the v24 record. |
+| **WHOOP 5.0 / MG** | ✅ Full support: live HR, recovery, Strain, Rest, sleep staging (V2), skin temperature, **sleep SpO₂**, HRV, respiratory rate, battery, firmware/hardware info, history offload, and R22 opt-in deep IMU buffers. Pick "WHOOP 5.0 / MG" before connecting. |
 
-> ### WHOOP 5.0 / MG analysis limits
->
-> NOOP's analysis screens and algorithms can only be as complete as the sensor inputs it can
-> reliably decode. On WHOOP 5.0 / MG, important overnight inputs remain unavailable or incomplete:
->
-> | Input / output | Current direct-from-strap status |
-> |---|---|
-> | Sleep duration / detection | Experimental; can fall back to heart rate when motion is sparse |
-> | Sleep stages | Approximate and not reliable while full overnight motion and cardiorespiratory inputs remain incomplete |
-> | Skin temperature | Raw values decode on supported historical layouts; not available consistently across 5/MG firmware |
-> | Blood oxygen / SpO₂ | Not recoverable offline from current time-multiplexed PPG data |
-> | Overnight HRV and respiratory rate | Incomplete unless sufficient R-R intervals are captured |
->
-> In short: seeing the Sleep, Health, Readiness, or Insights screens doesn't mean their deepest
-> analysis is available from a WHOOP 5.0 / MG alone yet — scoring and correlations can't conjure a
-> measurement the strap hasn't given up. Decoding these inputs reliably is what we're working on, and
-> it's the prerequisite for the full 5/MG picture. We'd always rather tell you that straight.
+**The one gap:** **ECG** — it requires the MG electrode (absent on the 5.0), and even on MG the
+firmware gate is unreachable in software. Everything else the strap measures is decoded and fed into
+the on-device scoring pipeline.
+
+The metrics are computed locally from the strap's own sensor streams — no WHOOP account, no cloud,
+no proprietary algorithms. Each score is an honest, documented approximation grounded in published
+sports science, never a reproduction of WHOOP's private models.
 >
 > ### Pairing a WHOOP 5.0 / MG — read this first
 >
@@ -200,10 +190,9 @@ NOOP is an independent, **experimental** project — capable, but a work in prog
 > isn't truly bonded to this device. Free it from everything else, then pair here.
 >
 > Bonding to NOOP may take the strap's bond away from the WHOOP app, so the official app might need to
-> re-pair afterwards. This is the **hardest part of 5/MG support** — if it refuses, you're almost
-> certainly still bonded to the WHOOP app (or another device); free the strap and retry.
+> re-pair afterwards.
 
-The app always tells you what's live now versus still building, both in onboarding and on each screen.
+The app always tells you what's live now, both in onboarding and on each screen.
 
 ### What to expect when you start
 
