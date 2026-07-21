@@ -1783,6 +1783,7 @@ class WhoopRepository(private val dao: WhoopDao) {
                     exerciseCount = d.exerciseCount ?: c.exerciseCount,
                     spo2Pct = d.spo2Pct ?: c.spo2Pct,
                     skinTempDevC = d.skinTempDevC ?: c.skinTempDevC,
+                    skinTempAbsC = d.skinTempAbsC ?: c.skinTempAbsC,
                     respRateBpm = d.respRateBpm ?: c.respRateBpm,
                     steps = d.steps ?: c.steps,
                     activeKcalEst = d.activeKcalEst ?: c.activeKcalEst,

@@ -251,6 +251,7 @@ data class DailyMetric(
     // v7 in-sleep signal aggregates (nullable; computed server-side).
     val spo2Pct: Double? = null,        // mean SpO2 (%) during sleep
     val skinTempDevC: Double? = null,   // skin-temperature deviation (°C) from baseline
+    val skinTempAbsC: Double? = null,   // absolute skin temperature (°C) during sleep
     val respRateBpm: Double? = null,    // mean respiration rate (breaths/min) during sleep
     // On-device derived daily step total from the WHOOP5 step_motion_counter@57 (sum of positive
     // consecutive u16-counter deltas over the day). APPROXIMATE, not cloud/clinical parity. (#78)

@@ -1,5 +1,12 @@
 package com.noop.ui
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.ContentTransform
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -35,7 +42,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.ui.platform.LocalContext
@@ -56,6 +67,7 @@ import com.noop.analytics.StrainScorer
 import com.noop.data.DailyMetric
 import com.noop.data.WhoopRepository
 import com.noop.ingest.HealthConnectImporter
+import android.widget.Toast
 import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -871,7 +883,57 @@ fun TodayScreen(
         )
     }
 
-    LazyScreenScaffold(
+    // Pull down from the top of the day content to force a strap sync. A nested scroll connection
+    // intercepts unconsumed scroll at the top overscroll (positive Y = content wants to scroll past
+    // the top), accumulating the pull distance. Past 100dp it fires syncNow() and shows a brief toast.
+    val syncThresholdPx = with(LocalDensity.current) { 100.dp.toPx() }
+    var syncPullAccumulated by remember { mutableStateOf(0f) }
+    val syncNestedScroll = remember {
+        object : NestedScrollConnection {
+            override fun onPostScroll(consumed: Offset, available: Offset, source: NestedScrollSource): Offset {
+                if (source == NestedScrollSource.Drag) {
+                    if (available.y > 0) {
+                        syncPullAccumulated += available.y
+                        if (syncPullAccumulated >= syncThresholdPx) {
+                            syncPullAccumulated = 0f
+                            viewModel.syncNow()
+                            Toast.makeText(context, "Syncing…", Toast.LENGTH_SHORT).show()
+                        }
+                    } else {
+                        syncPullAccumulated = 0f
+                    }
+                }
+                return Offset.Zero
+            }
+
+            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                if (available.y < 0) syncPullAccumulated = 0f
+                return Offset.Zero
+            }
+        }
+    }
+    val combinedModifier = daySwipeModifier
+
+    AnimatedContent(
+        targetState = selectedDayOffset,
+        modifier = Modifier.nestedScroll(syncNestedScroll),
+        transitionSpec = {
+            val direction = targetState - initialState
+            if (direction > 0) {
+                ContentTransform(
+                    slideInHorizontally { -it } + fadeIn(tween(300)),
+                    slideOutHorizontally { it } + fadeOut(tween(300)),
+                )
+            } else {
+                ContentTransform(
+                    slideInHorizontally { it } + fadeIn(tween(300)),
+                    slideOutHorizontally { -it } + fadeOut(tween(300)),
+                )
+            }
+        },
+        label = "dayTransition",
+    ) { _ ->
+        LazyScreenScaffold(
         modifier = daySwipeModifier,
         // title = null suppresses the big scaffold header (the nullable-title path); the compact
         // WHOOP-style top bar below replaces it, mirroring the iOS Today screen (todayTopBar).
@@ -1340,6 +1402,7 @@ fun TodayScreen(
                 onToggle = { sourcesExpanded = !sourcesExpanded },
             )
         }
+    }
     }
 
     // LIVE SESSIONS (beta): the full-screen session dialog — the same presentation the live-workout

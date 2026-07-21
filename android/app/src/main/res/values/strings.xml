@@ -9,7 +9,7 @@
     <!-- Navigation: bottom-bar tabs, the More page rows, and the top-bar screen titles. These are the
          localized display labels for the Destination enum; the underlying route ids stay English and
          are never translated. -->
-    <string name="nav_today">Today</string>
+    <string name="nav_today">Home</string>
     <string name="nav_intelligence">Scores</string>
     <string name="nav_coupled_view">Coupled view</string>
     <string name="nav_intervals">Intervals</string>

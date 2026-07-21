@@ -50,7 +50,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         LiveSessionRow::class,
         PpgWaveformSampleEntity::class,
     ],
-    version = 21,
+    version = 22,
     exportSchema = false,
 )
 abstract class WhoopDatabase : RoomDatabase() {
@@ -60,7 +60,7 @@ abstract class WhoopDatabase : RoomDatabase() {
         const val DB_NAME = "noop_whoop.db"
 
         /** Current Room schema version. Must match [Database.version]. Exposed for backup migration. */
-        const val SCHEMA_VERSION = 21
+        const val SCHEMA_VERSION = 22
 
         /**
          * Ordered list of all Room migrations, from earliest to latest. Used by
@@ -73,7 +73,7 @@ abstract class WhoopDatabase : RoomDatabase() {
             MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10,
             MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14,
             MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18,
-            MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21,
+            MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21, MIGRATION_21_22,
         )
         }
 
@@ -590,6 +590,18 @@ abstract class WhoopDatabase : RoomDatabase() {
         internal val MIGRATION_20_21 = object : Migration(20, 21) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 for (stmt in SPO2_PCT_SAMPLE_MIGRATION_SQL) db.execSQL(stmt)
+            }
+        }
+
+        /**
+         * v21 -> v22: ADDITIVE, adds [DailyMetric.skinTempAbsC] — absolute skin temperature (°C) computed
+         * from raw SkinTempSample data during the nightly analytics pass. The column was formerly computed
+         * as deviation from baseline only; this stores the absolute value for direct display on Health.
+         * ALTER TABLE only (no existing data changed), nullable REAL.
+         */
+        internal val MIGRATION_21_22 = object : Migration(21, 22) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE dailyMetric ADD COLUMN skinTempAbsC REAL")
             }
         }
 

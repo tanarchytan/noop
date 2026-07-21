@@ -32,6 +32,12 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
@@ -45,6 +51,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -52,6 +59,7 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -91,6 +99,7 @@ import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
+import kotlin.math.min
 import kotlin.math.roundToInt
 import kotlinx.coroutines.delay
 
@@ -188,7 +197,7 @@ fun HealthScreen(
                     title = "Vital Signs",
                     overline = "Latest readings",
                     trailing = null,
-                    vitals = latestVitals(days, UnitPrefs.temperature(LocalContext.current)),
+                    vitals = latestVitals(days, UnitPrefs.temperature(LocalContext.current), selectedModel),
                     onVitalClick = onVitalClick,
                     captionMode = VitalCaptionMode.AS_OF,
                 )
@@ -407,14 +416,6 @@ private fun SkinTempSuiteSection(
 
         // Body clock: only when the engine produced an estimate (no faked card while the input pipe is empty).
         signals?.bodyClock?.let { BodyClockCard(estimate = it) }
-
-        Text(
-            "Cycle phase, body-clock and illness heads-up are approximations computed on your device from " +
-                "your own nightly temperature, heart rate and HRV: observations about your own numbers, " +
-                "never a diagnosis. They never leave this phone.",
-            style = NoopType.footnote,
-            color = Palette.textTertiary,
-        )
     }
 }
 
@@ -1205,8 +1206,8 @@ private fun HeartRateSection(vm: AppViewModel, hrMax: Int) {
                     )
                 }
 
-                // Hero chart: a tall HR line tinted to the current zone, with a status
-                // pill floated top-trailing. Falls back to a big number when R-R is sparse.
+                // Hero chart: a pulsing heart with the trend line inside, tinted to the current
+                // HR zone. Paces the beat to the user's BPM. Falls back to a big number when no HR.
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -1219,20 +1220,32 @@ private fun HeartRateSection(vm: AppViewModel, hrMax: Int) {
                             }
                         },
                 ) {
-                    if (series.size > 1) {
-                        LiveHrTimeChart(
-                            samples = series,
+                    if (hasLiveHr && series.size > 1) {
+                        BeatingHeart(
+                            bpm = displayHr ?: 72,
+                            series = series,
                             color = zoneColor,
                             modifier = Modifier.fillMaxWidth().height(Metrics.chartHeight),
                         )
+                    } else if (hasLiveHr && series.size <= 1) {
+                        Column(
+                            modifier = Modifier.fillMaxWidth().height(Metrics.chartHeight),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center,
+                        ) {
+                            BeatingHeart(
+                                bpm = displayHr ?: 72,
+                                series = emptyList(),
+                                color = zoneColor,
+                                modifier = Modifier.size(180.dp),
+                            )
+                        }
                     } else {
                         Column(
                             modifier = Modifier.fillMaxWidth().height(Metrics.chartHeight),
                             horizontalAlignment = Alignment.CenterHorizontally,
                             verticalArrangement = Arrangement.Center,
                         ) {
-                            // The big fallback numeral ticks up to the live value (mirrors HealthView.swift's
-                            // CountUpText); a crisp em-dash when there's no HR yet.
                             if (displayHr != null) {
                                 CountUpText(
                                     value = displayHr.toDouble(),
@@ -1268,6 +1281,92 @@ private fun HeartRateSection(vm: AppViewModel, hrMax: Int) {
                     state = if (hasLiveHr) "STREAMING" else "IDLE",
                 )
             }
+        }
+    }
+}
+
+// MARK: - Beating heart composable (Live HR hero)
+//
+// A pulsing heart shape with the trend sparkline inside, timed to the user's BPM.
+// Each beat scales the heart 1.0->1.15->1.0 over 60000/bpm ms. The trend line remains
+// visible through the semi-transparent heart fill.
+
+/** A heart-shaped canvas path centered in the given width/height. Uses bezier curves to
+ *  form the classic heart silhouette with a top dip and pointed bottom. */
+private fun DrawScope.beatHeartPath(): Path = Path().apply {
+    val w = size.width; val h = size.height
+    val cx = w / 2f; val cy = h / 2f
+    val s = min(w, h) * 0.45f
+    // Start at bottom tip
+    moveTo(cx, cy + s * 0.85f)
+    // Right lobe: bottom to top-right
+    cubicTo(
+        cx + s * 0.95f, cy + s * 0.40f,
+        cx + s * 0.75f, cy - s * 0.35f,
+        cx + s * 0.25f, cy - s * 0.15f,
+    )
+    // Top-right to center dip
+    cubicTo(
+        cx + s * 0.08f, cy - s * 0.08f,
+        cx + s * 0.08f, cy + s * 0.05f,
+        cx,             cy + s * 0.05f,
+    )
+    // Center dip to top-left
+    cubicTo(
+        cx - s * 0.08f, cy + s * 0.05f,
+        cx - s * 0.08f, cy - s * 0.08f,
+        cx - s * 0.25f, cy - s * 0.15f,
+    )
+    // Left lobe: top-left down to bottom
+    cubicTo(
+        cx - s * 0.75f, cy - s * 0.35f,
+        cx - s * 0.95f, cy + s * 0.40f,
+        cx,             cy + s * 0.85f,
+    )
+    close()
+}
+
+@Composable
+private fun BeatingHeart(
+    bpm: Int,
+    series: List<LiveHrSample>,
+    color: Color,
+    modifier: Modifier = Modifier,
+) {
+    // One full beat cycle = 60000/bpm ms. Split into half for scale up + scale down.
+    val beatMs = (60000 / bpm.coerceAtLeast(30)).coerceAtMost(2000)
+    val halfBeat = (beatMs / 2).coerceAtLeast(150)
+
+    val infiniteTransition = rememberInfiniteTransition()
+    val scale by infiniteTransition.animateFloat(
+        initialValue = 1f,
+        targetValue = 1.15f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = halfBeat, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse,
+        ),
+    )
+
+    Box(
+        modifier = modifier.scale(scale),
+        contentAlignment = Alignment.Center,
+    ) {
+        // Trend sparkline rendered first, visible through the semi-transparent heart fill
+        if (series.size > 1) {
+            LiveHrTimeChart(
+                samples = series, color = color,
+                modifier = Modifier.fillMaxSize(),
+            )
+        }
+        // Heart shape overlay — translucent fill so trend shows through, tinted outline
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            val heartPath = beatHeartPath()
+            drawPath(heartPath, color = color.copy(alpha = 0.10f))
+            drawPath(
+                path = heartPath,
+                color = color.copy(alpha = 0.50f),
+                style = Stroke(width = 2.5f, cap = StrokeCap.Round, join = StrokeJoin.Round),
+            )
         }
     }
 }
@@ -1548,6 +1647,7 @@ private fun vitalsFor(
     d: DailyMetric?,
     days: List<DailyMetric>,
     tempUnit: TemperatureUnit = TemperatureUnit.CELSIUS,
+    connectedModel: WhoopModel? = null,
 ): List<Vital> {
     val todayKey = d?.day
     // History strictly before the displayed day, oldest→newest (recentDays is already
@@ -1582,7 +1682,7 @@ private fun vitalsFor(
     // config + population fallback (±0.6 °C mirrors the illness watch's flag threshold).
     // This also fixes the live bug where a strap-computed +0.2 °C deviation read
     // "Out of range" against the 33–36 absolute band.
-    val skin = d?.skinTempDevC
+    val skin = d?.skinTempAbsC ?: d?.skinTempDevC
     // Track which kind the value is so the temperature converter picks the right rule: an ABSOLUTE
     // reading uses the full C→F formula (×9/5 + 32); a ±DEVIATION must omit the offset.
     val skinIsAbsolute = skin?.let { VitalBands.isAbsoluteSkinTemp(it) } ?: true
@@ -1640,35 +1740,32 @@ private fun vitalsFor(
             metricColor = Palette.metricCyan,
             sparkline = trail(d?.respRateBpm) { it.respRateBpm },
         ),
-        Vital(
-            key = "spo2", label = "Blood O₂", unit = "%",
-            value = d?.spo2Pct, format = { String.format("%.0f", it) },
-            deltaText = deltaText(d?.spo2Pct, previous { it.spo2Pct }, decimals = 0),
-            readingDay = todayKey,
-            asOfLabel = asOfLabel(todayKey),
-            rangeCaption = spo2RangeCaption,
-            // Population-only on purpose: an absolute <95% floor is meaningful regardless
-            // of personal baseline (no "spo2" MetricCfg exists).
-            banding = VitalBands.band(d?.spo2Pct, emptyList(), 95.0..100.0, null),
-            metricColor = Palette.metricCyan,
-            sparkline = trail(d?.spo2Pct) { it.spo2Pct },
-        ),
-        Vital(
-            // Issue #93: WHOOP 4.0 raw SpO₂ PPG ADC mean (red+IR)/2 per night. NOT a calibrated
-            // blood-oxygen % — that needs WHOOP's proprietary curve. Shown as RAW ADC so users can SEE
-            // the sensor data decoded, without fabricating a clinical-looking number. Banding over the
-            // full u16 span just keeps the tile cyan (never "off range"); `stateCaption` labels it
-            // uncalibrated, so we never assert an in/out-of-range clinical judgment on raw sensor data.
-            key = "spo2raw", label = "Raw SpO₂", unit = "ADC",
-            value = d?.let(spo2RawMean), format = { String.format("%.0f", it) },
-            deltaText = deltaText(d?.let(spo2RawMean), previous(spo2RawMean), decimals = 0),
-            readingDay = todayKey,
-            asOfLabel = asOfLabel(todayKey),
-            rangeCaption = spo2rawRangeCaption,
-            banding = VitalBands.band(d?.let(spo2RawMean), emptyList(), 0.0..65535.0, null),
-            metricColor = Palette.metricCyan,
-            sparkline = trail(d?.let(spo2RawMean)) { spo2RawMean(it) },
-        ),
+        // Dual-mode SpO₂: 4.0 shows raw red/IR ADC mean; 5.0/MG shows calculated %.
+        // Single card flips label + unit based on connected band family.
+        when (connectedModel) {
+            WhoopModel.WHOOP4 -> Vital(
+                key = "spo2", label = "Raw SpO₂", unit = "ADC",
+                value = d?.let(spo2RawMean), format = { String.format("%.0f", it) },
+                deltaText = deltaText(d?.let(spo2RawMean), previous(spo2RawMean), decimals = 0),
+                readingDay = todayKey,
+                asOfLabel = asOfLabel(todayKey),
+                rangeCaption = spo2rawRangeCaption,
+                banding = VitalBands.band(d?.let(spo2RawMean), emptyList(), 0.0..65535.0, null),
+                metricColor = Palette.metricCyan,
+                sparkline = trail(d?.let(spo2RawMean)) { spo2RawMean(it) },
+            )
+            else -> Vital(
+                key = "spo2", label = "Blood O₂", unit = "%",
+                value = d?.spo2Pct, format = { String.format("%.0f", it) },
+                deltaText = deltaText(d?.spo2Pct, previous { it.spo2Pct }, decimals = 0),
+                readingDay = todayKey,
+                asOfLabel = asOfLabel(todayKey),
+                rangeCaption = spo2RangeCaption,
+                banding = VitalBands.band(d?.spo2Pct, emptyList(), 95.0..100.0, null),
+                metricColor = Palette.metricCyan,
+                sparkline = trail(d?.spo2Pct) { it.spo2Pct },
+            )
+        },
         Vital(
             key = "rhr", label = "Resting HR", unit = "bpm",
             value = d?.restingHr?.toDouble(), format = { it.roundToInt().toString() },
@@ -1704,7 +1801,7 @@ private fun vitalsFor(
             banding = skinResult, metricColor = Palette.metricAmber,
             // Keep the trail on the displayed value's kind — absolute °C and ±deviation must not mix.
             sparkline = trail(skin) { row ->
-                row.skinTempDevC?.takeIf { VitalBands.isAbsoluteSkinTemp(it) == skinIsAbsolute }
+                (row.skinTempAbsC ?: row.skinTempDevC)?.takeIf { VitalBands.isAbsoluteSkinTemp(it) == skinIsAbsolute }
             },
         ),
     )
@@ -2198,15 +2295,23 @@ private fun VitalReadingsTable(rows: List<VitalReadingRow>) {
     }
 }
 
-private fun latestVitals(days: List<DailyMetric>, tempUnit: TemperatureUnit): List<Vital> {
-    val emptyByKey = vitalsFor(null, days, tempUnit).associateBy { it.key }
+private fun latestVitals(
+    days: List<DailyMetric>,
+    tempUnit: TemperatureUnit,
+    connectedModel: WhoopModel? = null,
+): List<Vital> {
+    val emptyByKey = vitalsFor(null, days, tempUnit, connectedModel).associateBy { it.key }
+    // For merged SpO₂ card: check band-appropriate field. 4.0 = raw, else = calculated %.
+    val spo2Check: (DailyMetric) -> Boolean = { row ->
+        if (connectedModel == WhoopModel.WHOOP4) row.spo2Red != null && row.spo2Ir != null
+        else row.spo2Pct != null
+    }
     return listOf(
-        latestVital("resp", days, tempUnit, emptyByKey) { it.respRateBpm != null },
-        latestVital("spo2", days, tempUnit, emptyByKey) { it.spo2Pct != null },
-        latestVital("spo2raw", days, tempUnit, emptyByKey) { it.spo2Red != null && it.spo2Ir != null },
-        latestVital("rhr", days, tempUnit, emptyByKey) { it.restingHr != null },
-        latestVital("hrv", days, tempUnit, emptyByKey) { it.avgHrv != null },
-        latestVital("skin", days, tempUnit, emptyByKey) { it.skinTempDevC != null },
+        latestVital("resp", days, tempUnit, emptyByKey, { it.respRateBpm != null }, connectedModel),
+        latestVital("spo2", days, tempUnit, emptyByKey, spo2Check, connectedModel),
+        latestVital("rhr", days, tempUnit, emptyByKey, { it.restingHr != null }, connectedModel),
+        latestVital("hrv", days, tempUnit, emptyByKey, { it.avgHrv != null }, connectedModel),
+        latestVital("skin", days, tempUnit, emptyByKey, { it.skinTempDevC != null || it.skinTempAbsC != null }, connectedModel),
     )
 }
 
@@ -2216,10 +2321,11 @@ private fun latestVital(
     tempUnit: TemperatureUnit,
     emptyByKey: Map<String, Vital>,
     hasValue: (DailyMetric) -> Boolean,
+    connectedModel: WhoopModel? = null,
 ): Vital {
     val row = days.asReversed().firstOrNull(hasValue)
     return row
-        ?.let { latestRow -> vitalsFor(latestRow, days, tempUnit).firstOrNull { it.key == key } }
+        ?.let { latestRow -> vitalsFor(latestRow, days, tempUnit, connectedModel).firstOrNull { it.key == key } }
         ?.copy(asOfLabel = asOfLabel(row.day))
         ?: emptyByKey.getValue(key)
 }
@@ -2360,7 +2466,8 @@ private fun buildVitalDetail(
         format = { it.roundToInt().toString() },
     )
     "skin" -> {
-        val latest = days.asReversed().asSequence().mapNotNull { it.skinTempDevC }.firstOrNull() ?: return null
+        val latest = days.asReversed().asSequence()
+            .mapNotNull { it.skinTempAbsC ?: it.skinTempDevC }.firstOrNull() ?: return null
         val absolute = VitalBands.isAbsoluteSkinTemp(latest)
         val unit = UnitFormatter.temperatureUnit(tempUnit)
         val format: (Double) -> String = { c ->
@@ -2377,7 +2484,7 @@ private fun buildVitalDetail(
             unit = unit,
             color = Palette.metricAmber,
             readings = days.mapNotNull { row ->
-                row.skinTempDevC
+                (row.skinTempAbsC ?: row.skinTempDevC)
                     ?.takeIf { VitalBands.isAbsoluteSkinTemp(it) == absolute }
                     ?.let { value -> VitalReading(row.day, value, row.deviceId) }
             },

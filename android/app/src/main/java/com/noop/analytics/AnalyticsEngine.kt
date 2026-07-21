@@ -605,6 +605,7 @@ object AnalyticsEngine {
             exerciseCount = workouts.size,
             spo2Pct = nightlySpo2Pct,
             skinTempDevC = skinTempDevC,
+            skinTempAbsC = nightlySkinTempC,
             respRateBpm = respRateDaily,
             steps = stepsTotal,
             activeKcalEst = activeKcalEst,

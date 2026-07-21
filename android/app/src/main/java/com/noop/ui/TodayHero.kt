@@ -1,5 +1,7 @@
 package com.noop.ui
 
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -23,17 +25,24 @@ import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import com.noop.analytics.Baselines
 import com.noop.analytics.ReadinessEngine
 import com.noop.data.DailyMetric
@@ -208,6 +217,14 @@ private fun HeroRingColumn(
     onRingTap: (() -> Unit)? = null,
     ring: @Composable () -> Unit,
 ) {
+    var animating by remember { mutableStateOf(false) }
+    val scale by animateFloatAsState(
+        targetValue = if (animating) 0.85f else 1f,
+        animationSpec = tween(durationMillis = 150),
+        label = "heroRingScale",
+    )
+    val scope = rememberCoroutineScope()
+
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -216,13 +233,23 @@ private fun HeroRingColumn(
             val ringInteraction = remember { MutableInteractionSource() }
             Box(
                 modifier = Modifier
+                    .scale(scale)
                     .liquidPress(ringInteraction)
                     .clip(CircleShape)
                     .clickable(
                         interactionSource = ringInteraction,
                         indication = null,
                         onClickLabel = domain.label,
-                        onClick = onRingTap,
+                        onClick = {
+                            if (!animating) {
+                                animating = true
+                                scope.launch {
+                                    delay(150)
+                                    animating = false
+                                    onRingTap()
+                                }
+                            }
+                        },
                     ),
             ) { ring() }
         } else {
