@@ -32,8 +32,6 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -157,19 +155,19 @@ fun AutomationsScreen(viewModel: AppViewModel) {
             overline = "Automation",
             active = zoneCoaching,
         ) {
-            ToggleRow(
-                label = "HR-zone coaching",
-                help = "A triple-buzz when you climb into your top zone (Zone 5, ≥ $zone5Bpm bpm), a cue to ease off. Max HR comes from Settings.",
+            NoopToggleRow(
+                title = "HR-zone coaching",
+                detail = "A triple-buzz when you climb into your top zone (Zone 5, ≥ $zone5Bpm bpm), a cue to ease off. Max HR comes from Settings.",
                 checked = zoneCoaching,
-                onChange = { viewModel.setZoneCoaching(it) },
+                onCheckedChange = { viewModel.setZoneCoaching(it) },
             )
             if (zoneCoaching) {
                 RowDivider()
-                ToggleRow(
-                    label = "Recovery buzz",
-                    help = "Also buzz once when your heart rate drops back to Zone 1, a cue that you've recovered.",
+                NoopToggleRow(
+                    title = "Recovery buzz",
+                    detail = "Also buzz once when your heart rate drops back to Zone 1, a cue that you've recovered.",
                     checked = zoneCoachRecovery,
-                    onChange = { viewModel.setZoneCoachRecovery(it) },
+                    onCheckedChange = { viewModel.setZoneCoachRecovery(it) },
                 )
             }
         }
@@ -188,11 +186,11 @@ fun AutomationsScreen(viewModel: AppViewModel) {
             overline = "Automation",
             active = inactivityEnabled,
         ) {
-            ToggleRow(
-                label = "Enable inactivity reminder",
-                help = "Buzzes after you've been sitting past your threshold.",
+            NoopToggleRow(
+                title = "Enable inactivity reminder",
+                detail = "Buzzes after you've been sitting past your threshold.",
                 checked = inactivityEnabled,
-                onChange = {
+                onCheckedChange = {
                     inactivityEnabled = it
                     InactivityPrefs.setBool(ctx, InactivityPrefs.ENABLED, it)
                 },
@@ -237,11 +235,11 @@ fun AutomationsScreen(viewModel: AppViewModel) {
                     },
                 )
                 RowDivider()
-                ToggleRow(
-                    label = "Only during active hours",
-                    help = "Only nudge during your active hours.",
+                NoopToggleRow(
+                    title = "Only during active hours",
+                    detail = "Only nudge during your active hours.",
                     checked = inactivityActiveHours,
-                    onChange = {
+                    onCheckedChange = {
                         inactivityActiveHours = it
                         InactivityPrefs.setBool(ctx, InactivityPrefs.ACTIVE_HOURS_ENABLED, it)
                     },
@@ -290,11 +288,11 @@ fun AutomationsScreen(viewModel: AppViewModel) {
             overline = "Automation",
             active = illnessWatch,
         ) {
-            ToggleRow(
-                label = "Watch for early-illness signs",
-                help = "Needs at least 14 days of history. When two or more signals drift together you get a banner on Today and a notification, at most once a day.",
+            NoopToggleRow(
+                title = "Watch for early-illness signs",
+                detail = "Needs at least 14 days of history. When two or more signals drift together you get a banner on Today and a notification, at most once a day.",
                 checked = illnessWatch,
-                onChange = { viewModel.setIllnessWatchEnabled(it) },
+                onCheckedChange = { viewModel.setIllnessWatchEnabled(it) },
             )
         }
         }
@@ -308,18 +306,18 @@ fun AutomationsScreen(viewModel: AppViewModel) {
             overline = "Automation",
             active = batteryAlerts,
         ) {
-            ToggleRow(
-                label = "Notify on low and full battery",
-                help = "Sends a notification when the strap drops to 15% or reaches a full charge, at most once per charge cycle.",
+            NoopToggleRow(
+                title = "Notify on low and full battery",
+                detail = "Sends a notification when the strap drops to 15% or reaches a full charge, at most once per charge cycle.",
                 checked = batteryAlerts,
-                onChange = { viewModel.setBatteryAlertsEnabled(it) },
+                onCheckedChange = { viewModel.setBatteryAlertsEnabled(it) },
             )
             if (batteryAlerts) {
-                ToggleRow(
-                    label = "Predictive runtime warning",
-                    help = "An early \"recharge tonight\" heads-up when the strap has about a day of estimated runtime left, at most once per discharge cycle. Turn off to keep only the 15% warning.",
+                NoopToggleRow(
+                    title = "Predictive runtime warning",
+                    detail = "An early \"recharge tonight\" heads-up when the strap has about a day of estimated runtime left, at most once per discharge cycle. Turn off to keep only the 15% warning.",
                     checked = predictiveBatteryAlerts,
-                    onChange = { viewModel.setPredictiveBatteryAlertsEnabled(it) },
+                    onCheckedChange = { viewModel.setPredictiveBatteryAlertsEnabled(it) },
                 )
             }
         }
@@ -351,11 +349,11 @@ private fun NapDetectionSection(viewModel: AppViewModel) {
         overline = "Automation",
         active = enabled,
     ) {
-        ToggleRow(
-            label = "Detect short naps",
-            help = "When a sync shows a quiet, settled stretch in the day, NOOP offers it here for you to keep or skip.",
+        NoopToggleRow(
+            title = "Detect short naps",
+            detail = "When a sync shows a quiet, settled stretch in the day, NOOP offers it here for you to keep or skip.",
             checked = enabled,
-            onChange = {
+            onCheckedChange = {
                 viewModel.setNapDetectionEnabled(it)
                 if (it) pending = viewModel.pendingNaps()
             },
@@ -521,44 +519,6 @@ private fun DoubleTapActionPicker(
     }
 }
 
-@Composable
-private fun ToggleRow(
-    label: String,
-    help: String,
-    checked: Boolean,
-    onChange: (Boolean) -> Unit,
-) {
-    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(label, style = NoopType.body, color = Palette.textPrimary)
-            Text(help, style = NoopType.footnote, color = Palette.textTertiary)
-        }
-        Spacer(Modifier.width(16.dp))
-        Switch(
-            checked = checked,
-            onCheckedChange = onChange,
-            colors = SwitchDefaults.colors(
-                checkedThumbColor = Palette.surfaceBase,
-                checkedTrackColor = Palette.accent,
-                uncheckedThumbColor = Palette.textSecondary,
-                uncheckedTrackColor = Palette.surfaceInset,
-                uncheckedBorderColor = Palette.hairline,
-            ),
-        )
-    }
-}
-
-@Composable
-private fun RowDivider() {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(1.dp)
-            .padding(vertical = 4.dp)
-            .background(Palette.hairline),
-    )
-}
-
 /**
  * Weekday selector for the smart alarm (#539). One tappable circle per weekday, Monday-first. An empty
  * [selected] set means "every day" (all circles read as on). Mirrors the macOS AutomationsView picker.
@@ -682,4 +642,15 @@ private fun StepButton(icon: ImageVector, contentDescription: String, enabled: B
             tint = if (enabled) Palette.accent else Palette.textTertiary,
         )
     }
+}
+
+@Composable
+private fun RowDivider() {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(1.dp)
+            .padding(vertical = 4.dp)
+            .background(Palette.hairline),
+    )
 }

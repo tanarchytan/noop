@@ -24,7 +24,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Tune
-import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
@@ -912,8 +911,6 @@ fun TodayScreen(
             }
         }
     }
-    val combinedModifier = daySwipeModifier
-
     AnimatedContent(
         targetState = selectedDayOffset,
         modifier = Modifier.nestedScroll(syncNestedScroll),

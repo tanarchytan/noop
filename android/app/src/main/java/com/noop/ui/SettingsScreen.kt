@@ -26,7 +26,6 @@ import androidx.compose.material.icons.filled.Brightness6
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Science
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
@@ -1066,8 +1065,6 @@ private fun SettingsDisclosure(
 }
 
 // MARK: - Section card (ports SettingsView's private SettingsSection)
-
-
 
 
 // MARK: - Two-column form row (ports SettingsView's private FormRow)
