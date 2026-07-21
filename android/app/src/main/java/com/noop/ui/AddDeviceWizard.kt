@@ -447,63 +447,30 @@ fun AddDeviceWizard(
 
     // After adding, offer to make the new device active.
     if (askMakeActive) {
-        AlertDialog(
-            onDismissRequest = { askMakeActive = false; finishAdd(makeActive = false) },
-            containerColor = Palette.surfaceOverlay,
-            title = { Text("Make this your active device?", style = NoopType.title2, color = Palette.textPrimary) },
-            text = {
-                Text(
-                    "Make $confirmName your active device now? It will provide your live data. You can change " +
-                        "this any time.",
-                    style = NoopType.subhead,
-                    color = Palette.textSecondary,
-                )
-            },
-            confirmButton = {
-                TextButton(onClick = { askMakeActive = false; finishAdd(makeActive = true) }) {
-                    Text("Make active", style = NoopType.body, color = Palette.accent)
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { askMakeActive = false; finishAdd(makeActive = false) }) {
-                    Text("Not now", style = NoopType.body, color = Palette.textSecondary)
-                }
-            },
+        NoopConfirmDialog(
+            title = "Make this your active device?",
+            text = "Make $confirmName your active device now? It will provide your live data. You can change this any time.",
+            confirmLabel = "Make active",
+            onConfirm = { askMakeActive = false; finishAdd(makeActive = true) },
+            onDismiss = { askMakeActive = false; finishAdd(makeActive = false) },
+            cancelLabel = "Not now",
         )
     }
 
     // Final destructive confirm before the Oura key install (Step D's system alert). Tapping "Take over"
     // moves to the honest Adopting progress, then registers the ring. Mirrors the macOS adopt confirm.
     if (ouraConfirmAdopt) {
-        AlertDialog(
-            onDismissRequest = { ouraConfirmAdopt = false },
-            containerColor = Palette.surfaceOverlay,
-            title = { Text("Take over this ring?", style = NoopType.title2, color = Palette.textPrimary) },
-            text = {
-                Text(
-                    "NOOP will install its own key on the ring and become its owner. The Oura app will no " +
-                        "longer control this ring. This is intended and it cannot be undone from NOOP.",
-                    style = NoopType.subhead,
-                    color = Palette.textSecondary,
-                )
+        NoopConfirmDialog(
+            title = "Take over this ring?",
+            text = "NOOP will install its own key on the ring and become its owner. The Oura app will no longer control this ring. This is intended and it cannot be undone from NOOP.",
+            confirmLabel = "Take over",
+            destructive = true,
+            onConfirm = {
+                ouraConfirmAdopt = false
+                ouraStep = OuraStep.Adopting
+                finishAddOura(closeAfter = false)
             },
-            confirmButton = {
-                TextButton(onClick = {
-                    ouraConfirmAdopt = false
-                    ouraStep = OuraStep.Adopting
-                    // The honest key-install handshake runs in the live [OuraLiveSource] once the ring is
-                    // active. Register it now (active) but DO NOT close: stay on Adopting so the observed
-                    // adoptPhase / needs-pairing drives it to success (close) or a REACHABLE honest Failed.
-                    finishAddOura(closeAfter = false)
-                }) {
-                    Text("Take over", style = NoopType.body, color = Palette.statusCritical)
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { ouraConfirmAdopt = false }) {
-                    Text("Cancel", style = NoopType.body, color = Palette.textSecondary)
-                }
-            },
+            onDismiss = { ouraConfirmAdopt = false },
         )
     }
 

@@ -180,10 +180,11 @@ private fun DiagnosticToolsCard(vm: AppViewModel, is5MG: Boolean, onReport: () -
     val live by vm.live.collectAsStateWithLifecycle()
     val puffinExperiment = remember { PuffinExperiment.from(context) }
     var puffinCapture by remember { mutableStateOf(puffinExperiment.isCaptureEnabled) }
-    SettingsSectionTC(
+    NoopSettingsSection(
         icon = Icons.Filled.Info,
         title = "Diagnostic tools",
         blurb = "Report a bug, share your strap log, and export the raw sensor CSV (any strap) or the raw 5/MG capture. Nothing leaves the phone unless you share it.",
+        overline = "Test Centre",
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             // The master bug-report action (relocated from the old Export card): assembles the redacted
@@ -339,36 +340,7 @@ private fun ReportReviewDialog(
     )
 }
 
-// MARK: - Local section + toggle wrappers (Test Centre owns its own so it never reaches into the private
-// SettingsScreen.kt helpers; same NoopCard idiom).
 
-@Composable
-private fun SettingsSectionTC(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    title: String,
-    blurb: String,
-    content: @Composable () -> Unit,
-) {
-    NoopCard(padding = 20.dp, tint = Palette.accent) {
-        Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Overline("Debug")
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                ) {
-                    androidx.compose.material3.Icon(
-                        icon, contentDescription = null, tint = Palette.accent,
-                        modifier = Modifier.size(18.dp),
-                    )
-                    Text(title, style = NoopType.title2, color = Palette.textPrimary)
-                }
-            }
-            Text(blurb, style = NoopType.subhead, color = Palette.textSecondary)
-            content()
-        }
-    }
-}
 
 @Composable
 private fun settingsSwitchColors() = SwitchDefaults.colors(

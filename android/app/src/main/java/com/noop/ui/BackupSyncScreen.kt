@@ -517,31 +517,16 @@ fun BackupSyncScreen(repo: WhoopRepository, activeStrapId: String) {
 
     // Must-fix #2: explicit in-app confirm BEFORE any destructive restore call, on every restore path.
     pendingRestore?.let { (label, uri) ->
-        AlertDialog(
-            onDismissRequest = { pendingRestore = null },
-            containerColor = Palette.surfaceOverlay,
-            title = {
-                Text("Replace all current data?", style = NoopType.title2, color = Palette.textPrimary)
+        NoopConfirmDialog(
+            title = "Replace all current data?",
+            text = "Replace all current data with $label? This cannot be undone.",
+            confirmLabel = "Replace",
+            destructive = true,
+            onConfirm = {
+                pendingRestore = null
+                runRestore(uri)
             },
-            text = {
-                Text(
-                    "Replace all current data with $label? This cannot be undone.",
-                    style = NoopType.subhead, color = Palette.textSecondary,
-                )
-            },
-            confirmButton = {
-                TextButton(onClick = {
-                    pendingRestore = null
-                    runRestore(uri)
-                }) {
-                    Text("Replace", style = NoopType.body, color = Palette.statusCritical)
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { pendingRestore = null }) {
-                    Text("Cancel", style = NoopType.body, color = Palette.textSecondary)
-                }
-            },
+            onDismiss = { pendingRestore = null },
         )
     }
 }

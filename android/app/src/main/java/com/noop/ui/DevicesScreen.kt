@@ -250,9 +250,9 @@ fun DevicesScreen(
 
     // --- Switch confirm ---
     switchTarget?.let { device ->
-        ConfirmDialog(
+        NoopConfirmDialog(
             title = "Make this your active strap?",
-            message = "Make ${displayName(device)} your active strap? From now on it provides your live data. " +
+            text = "Make ${displayName(device)} your active strap? From now on it provides your live data. " +
                 "$currentActiveName's history stays exactly as it is. Only new days come from ${displayName(device)}.",
             confirmLabel = "Make active",
             onConfirm = {
@@ -277,9 +277,9 @@ fun DevicesScreen(
 
     // --- Remove confirm ---
     removeTarget?.let { device ->
-        ConfirmDialog(
+        NoopConfirmDialog(
             title = "Remove this device?",
-            message = "Remove ${displayName(device)}? NOOP will stop connecting to it. Its recorded data is " +
+            text = "Remove ${displayName(device)}? NOOP will stop connecting to it. Its recorded data is " +
                 "kept and you can re-add it any time.",
             confirmLabel = "Remove",
             destructive = true,
@@ -302,9 +302,9 @@ fun DevicesScreen(
 
     // --- Restart strap confirm (#166) ---
     rebootTarget?.let { device ->
-        ConfirmDialog(
+        NoopConfirmDialog(
             title = "Restart this strap?",
-            message = "Restart ${displayName(device)}? It disconnects for about 30 seconds while it " +
+            text = "Restart ${displayName(device)}? It disconnects for about 30 seconds while it " +
                 "reboots, then reconnects on its own. Your recorded data is kept.",
             confirmLabel = "Restart",
             destructive = false,
@@ -324,9 +324,9 @@ fun DevicesScreen(
 
     // --- Second, strongly-worded delete-data confirm (from the Removed card's secondary control) ---
     deleteDataTarget?.let { device ->
-        ConfirmDialog(
+        NoopConfirmDialog(
             title = "Delete all of this device's data?",
-            message = "This permanently deletes all data recorded from ${displayName(device)}. This can't be undone.",
+            text = "This permanently deletes all data recorded from ${displayName(device)}. This can't be undone.",
             confirmLabel = "Delete data",
             destructive = true,
             onConfirm = {
@@ -732,38 +732,6 @@ private fun WhoopFirstFooter() {
 }
 
 // MARK: - Shared dialogs
-
-@Composable
-private fun ConfirmDialog(
-    title: String,
-    message: String,
-    confirmLabel: String,
-    cancelLabel: String = "Cancel",
-    destructive: Boolean = false,
-    onConfirm: () -> Unit,
-    onDismiss: () -> Unit,
-) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        containerColor = Palette.surfaceOverlay,
-        title = { Text(title, style = NoopType.title2, color = Palette.textPrimary) },
-        text = { Text(message, style = NoopType.subhead, color = Palette.textSecondary) },
-        confirmButton = {
-            TextButton(onClick = onConfirm) {
-                Text(
-                    confirmLabel,
-                    style = NoopType.body,
-                    color = if (destructive) Palette.statusCritical else Palette.accent,
-                )
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text(cancelLabel, style = NoopType.body, color = Palette.textSecondary)
-            }
-        },
-    )
-}
 
 /** WHOOP 4.0 reboot probe (#235): a candidate list, one button per unconfirmed reboot frame. Gated to
  *  Test Centre → Connection + a live 4.0 at the call site. Twin of the macOS DevicesView confirmationDialog. */

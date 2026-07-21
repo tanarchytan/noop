@@ -204,9 +204,7 @@ private fun Header(onClose: () -> Unit) {
             Text("Calibrate your steps", style = NoopType.display(26f), color = Palette.textPrimary)
             Text("WHOOP 4.0 · motion → steps", style = NoopType.caption, color = Palette.textSecondary)
         }
-        IconButton(onClick = onClose, modifier = Modifier.size(36.dp)) {
-            Icon(Icons.Filled.Close, contentDescription = "Close", tint = Palette.textTertiary, modifier = Modifier.size(22.dp))
-        }
+        CloseButton(onClick = onClose)
     }
 }
 

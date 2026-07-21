@@ -113,10 +113,11 @@ fun AutomationsScreen(viewModel: AppViewModel) {
         // Test action button. Mirrors AutomationsView.swift's Picker (Apple-applicable subset only; no
         // lockScreen / runShortcut on Android).
         item {
-        SettingsSection(
+        NoopSettingsSection(
             icon = Icons.Filled.TouchApp,
             title = "Double-tap",
             blurb = "Double-tap the strap to trigger an action on this device. (The strap exposes a single double-tap gesture.)",
+            overline = "Automation",
             active = doubleTapAction != DoubleTapAction.NONE,
         ) {
             Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -149,10 +150,11 @@ fun AutomationsScreen(viewModel: AppViewModel) {
 
         // Haptic coaching.
         item {
-        SettingsSection(
+        NoopSettingsSection(
             icon = Icons.Filled.Bolt,
             title = "Haptic coaching",
             blurb = "Train by feel. The strap buzzes so you don't have to watch a screen.",
+            overline = "Automation",
             active = zoneCoaching,
         ) {
             ToggleRow(
@@ -179,10 +181,11 @@ fun AutomationsScreen(viewModel: AppViewModel) {
 
         // Inactivity reminder (#419) — real + persisted via InactivityPrefs; opt-in, default OFF.
         item {
-        SettingsSection(
+        NoopSettingsSection(
             icon = Icons.Filled.Timer,
             title = "Inactivity reminder",
             blurb = "A gentle wrist buzz when you've been sitting too long, a nudge to get up and move. Inferred from the strap's motion on each history sync, so it lags real time by a sync or two.",
+            overline = "Automation",
             active = inactivityEnabled,
         ) {
             ToggleRow(
@@ -280,10 +283,11 @@ fun AutomationsScreen(viewModel: AppViewModel) {
 
         // Illness early-warning (real + persisted; opt-OUT — the watch has always run on Android).
         item {
-        SettingsSection(
+        NoopSettingsSection(
             icon = Icons.Filled.MonitorHeart,
             title = "Illness early-warning",
             blurb = "Watches your resting HR, HRV, skin temperature and respiration against your own 28-day baseline. On-device and approximate: informational only, not a diagnosis.",
+            overline = "Automation",
             active = illnessWatch,
         ) {
             ToggleRow(
@@ -297,10 +301,11 @@ fun AutomationsScreen(viewModel: AppViewModel) {
 
         // Battery alerts (real + persisted; opt-OUT, default ON — #368, thanks @ujix).
         item {
-        SettingsSection(
+        NoopSettingsSection(
             icon = Icons.Filled.BatteryStd,
             title = "Battery alerts",
             blurb = "A heads-up when the strap battery gets low so you can recharge before bed, and a note when it's finished charging.",
+            overline = "Automation",
             active = batteryAlerts,
         ) {
             ToggleRow(
@@ -337,12 +342,13 @@ private fun NapDetectionSection(viewModel: AppViewModel) {
     // The queue isn't a reactive flow (it's written from the BLE layer); re-read it on each toggle/action.
     var pending by remember { mutableStateOf(viewModel.pendingNaps()) }
 
-    SettingsSection(
+    NoopSettingsSection(
         icon = Icons.Filled.Bedtime,
         title = "Nap detection",
         blurb = "Spots a likely daytime nap from the strap's motion and heart rate on each history sync, " +
             "then asks you to confirm it. Inferred and approximate: NOOP never adds a nap to your sleep " +
             "without your OK.",
+        overline = "Automation",
         active = enabled,
     ) {
         ToggleRow(
@@ -470,38 +476,7 @@ internal fun AlarmDayOverridePicker(
     }
 }
 
-// MARK: - Section + rows (mirror the settings idiom from AutomationsView.swift)
 
-@Composable
-private fun SettingsSection(
-    icon: ImageVector,
-    title: String,
-    blurb: String,
-    active: Boolean = false,
-    content: @Composable () -> Unit,
-) {
-    NoopCard(padding = 20.dp, tint = Palette.accent) {
-        Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Overline("Automation")
-                    if (active) Overline("ON", color = Palette.accent)
-                }
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        icon,
-                        contentDescription = null,
-                        tint = if (active) Palette.accent else Palette.textSecondary,
-                    )
-                    Spacer(Modifier.width(10.dp))
-                    Text(title, style = NoopType.title2, color = Palette.textPrimary)
-                }
-            }
-            Text(blurb, style = NoopType.subhead, color = Palette.textSecondary)
-            content()
-        }
-    }
-}
 
 /** A compact dropdown that mirrors the iOS double-tap Picker: a tappable label + chevron that opens a
  *  menu of [DoubleTapAction]s. Labels come from [DoubleTapAction.label] so both clients read the same. */

@@ -426,10 +426,11 @@ fun SettingsScreen(
         topBackground = if (showDayCycleBackground) { { LiquidScreenSky() } } else null,
     ) {
         // --- Appearance (Theme) ---
-        SettingsSection(
+        NoopSettingsSection(
             icon = Icons.Filled.Brightness6,
             title = "Appearance",
             blurb = "Choose Light, Dark, or follow your system. Dark is the signature near-black; Light keeps the same clean look on a bright canvas.",
+            overline = "Settings",
         ) {
             FormRow(label = "Theme") {
                 SegmentedPillControl(
@@ -571,13 +572,14 @@ fun SettingsScreen(
         }
 
         // --- Health & wellness (v5 opt-in toggles) ---
-        SettingsSection(
+        NoopSettingsSection(
             icon = Icons.Filled.Science,
             title = "Health & wellness",
             blurb = "Optional, on-device wellness signals. Each is off by default, computed only on this phone from data you already have, and never a medical diagnosis.",
+            overline = "Settings",
         ) {
             Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                ToggleRow(
+                NoopToggleRow(
                     title = "Illness heads-up",
                     detail = "Watches your resting heart rate, HRV and skin temperature for the pattern that often shows up before you feel unwell, and surfaces a gentle heads-up. An observation about your own numbers, not a diagnosis.",
                     checked = illnessWatch,
@@ -593,7 +595,7 @@ fun SettingsScreen(
                 // sister surfaces (Health opt-in, the card's off-control) were sex-gated in v7.3.2; this
                 // Settings toggle was the one surface that was missed, so a male profile could enable it here.
                 if (cycleTracking || cycleOptInApplies(profile.sex)) {
-                    ToggleRow(
+                    NoopToggleRow(
                         title = "Cycle awareness",
                         detail = "Reads a coarse menstrual-cycle phase from your nightly skin-temperature shift, on this device only. Awareness only: not contraception, not a fertility predictor, not a medical service.",
                         checked = cycleTracking,
@@ -604,7 +606,7 @@ fun SettingsScreen(
                     )
                     RowDivider()
                 }
-                ToggleRow(
+                NoopToggleRow(
                     title = "Hydration tracking",
                     detail = "Adds a simple fluid log with a daily goal that adjusts to your effort. Tap to add a sip, cup or bottle and watch a progress ring fill. On this phone only. Nothing is synced.",
                     checked = hydrationTracking,
@@ -614,7 +616,7 @@ fun SettingsScreen(
                     },
                 )
                 RowDivider()
-                ToggleRow(
+                NoopToggleRow(
                     title = "Auto-detect workouts",
                     detail = "After a sync, NOOP looks over your recent heart rate for a sustained, raised stretch that looks like exercise and offers to save it. It only ever suggests. Nothing is saved until you tap Save, and you can dismiss any suggestion. Deliberately conservative, so the odd workout may be missed. On this phone only.",
                     checked = autoDetectWorkouts,
@@ -624,7 +626,7 @@ fun SettingsScreen(
                     },
                 )
                 RowDivider()
-                ToggleRow(
+                NoopToggleRow(
                     title = "Keep screen on during a workout",
                     detail = "Holds the screen awake while you're recording a workout, so your live heart rate stays visible without the phone dimming. Only applies during a recording. The screen sleeps normally the rest of the time. Leaving it on does use a bit more battery, and means your unlocked screen stays visible for the whole workout, so flip it off if that's a concern.",
                     checked = workoutKeepScreenOn,
@@ -636,7 +638,7 @@ fun SettingsScreen(
                 RowDivider()
                 // BETA + default ON (the one exception to this section's off-by-default rule): the flag
                 // gates the Today entry so anyone can wave the beta away here with one flip.
-                ToggleRow(
+                NoopToggleRow(
                     title = "Live Sessions (beta)",
                     detail = "Silence-first strap coaching during workouts.",
                     checked = liveSessionsBeta,
@@ -646,7 +648,7 @@ fun SettingsScreen(
                     },
                 )
                 RowDivider()
-                ToggleRow(
+                NoopToggleRow(
                     title = "Stress check-ins (haptic)",
                     detail = "Lets NOOP notice a fresh HRV dip while you're still and offer a minute to breathe. \"Stress\" here is an autonomic proxy from your own baseline, never a diagnosis. The strap gives one light confirming buzz; no push notification.",
                     checked = stressCheckIn,
@@ -658,7 +660,7 @@ fun SettingsScreen(
                     },
                 )
                 if (stressCheckIn) {
-                    ToggleRow(
+                    NoopToggleRow(
                         title = "Offer a breath automatically",
                         detail = "When a dip is detected, surface the check-in card on its own (rate-limited, quiet-hours aware). Off keeps it manual.",
                         checked = stressAutoNudge,
@@ -669,7 +671,7 @@ fun SettingsScreen(
                     )
                 }
                 RowDivider()
-                ToggleRow(
+                NoopToggleRow(
                     title = "Share on-device signals with the Coach",
                     detail = "When the opt-in Coach is set up with your own key, also include a short summary of your strongest on-device patterns and Lab Book markers in its context. Summary only; no raw data leaves your phone. Requires the Coach's own data consent first.",
                     checked = coachSignals,
@@ -688,10 +690,11 @@ fun SettingsScreen(
         // Recalibrate re-learns it from tonight onward. Writes now-seconds to BOTH noop.hrvBaselineEpoch
         // and noop.recoveryBaselineEpoch (so HRV plus resting HR / respiration / skin temp re-anchor);
         // foldHistory drops every night before that epoch and re-seeds. Mirrors the iOS/Mac button.
-        SettingsSection(
+        NoopSettingsSection(
             icon = Icons.Filled.Favorite,
             title = "Charge",
             blurb = "Charge is NOOP's daily readiness score, learned from your own HRV, resting heart rate and more over time. Your history stays.",
+            overline = "Settings",
         ) {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
@@ -716,10 +719,11 @@ fun SettingsScreen(
         // #477 Power saving. Two BENIGN battery levers only: the offload-cadence stretch (%-gated) and
         // the HRV-capture pause (Battery-Saver-gated). The riskier connection-priority idle throttle is
         // deliberately not surfaced here — it stays dormant pending on-strap validation (#478).
-        SettingsSection(
+        NoopSettingsSection(
             icon = Icons.Filled.BatteryStd,
             title = stringResource(R.string.power_saving),
             blurb = stringResource(R.string.power_saving_blurb),
+            overline = "Settings",
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -790,10 +794,11 @@ fun SettingsScreen(
         Column(verticalArrangement = Arrangement.spacedBy(Metrics.screenRowSpacing)) {
         // --- Experimental · WHOOP 5 / MG --- (hidden when the user is confidently on a 4.0, #22)
         if (showFiveMGControls) {
-        SettingsSection(
+        NoopSettingsSection(
             icon = Icons.Filled.Science,
             title = "Experimental · WHOOP 5 / MG",
             blurb = "Live heart rate already works on a WHOOP 5/MG strap. These probes go further and try to coax more out of it. They are guesses, off by default, and only ever touch a 5/MG strap. WHOOP 4.0 is never affected.",
+            overline = "Settings",
         ) {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Row(
@@ -917,48 +922,24 @@ fun SettingsScreen(
         } // end SettingsDisclosure("Advanced")
 
         if (showRecalibrateConfirm) {
-            AlertDialog(
-                onDismissRequest = { showRecalibrateConfirm = false },
-                containerColor = Palette.surfaceOverlay,
-                title = { Text("Recalibrate your Charge baseline?", style = NoopType.title2, color = Palette.textPrimary) },
-                text = {
-                    Text(
-                        "This restarts the roughly 4-night build-up for Charge and your HRV baseline. Your history stays. Use it if a bad first week, like wearing it while sick, set your baseline off.",
-                        style = NoopType.subhead,
-                        color = Palette.textSecondary,
-                    )
+            NoopConfirmDialog(
+                title = "Recalibrate your Charge baseline?",
+                text = "This restarts the roughly 4-night build-up for Charge and your HRV baseline. Your history stays. Use it if a bad first week, like wearing it while sick, set your baseline off.",
+                confirmLabel = "Recalibrate",
+                onConfirm = {
+                    val nowSeconds = System.currentTimeMillis() / 1000L
+                    val editor = NoopPrefs.of(context).edit()
+                    Baselines.recalibrateRecoveryBaselines(editor, nowSeconds)
+                    editor.apply()
+                    showRecalibrateConfirm = false
+                    vm.syncNow()
+                    Toast.makeText(
+                        context,
+                        "Charge baseline reset. NOOP will re-learn it from tonight. Your history stays, and it takes a few nights to settle.",
+                        Toast.LENGTH_LONG,
+                    ).show()
                 },
-                confirmButton = {
-                    TextButton(
-                        onClick = {
-                            // Re-anchor EVERY baseline that feeds Charge — HRV plus resting HR /
-                            // respiration / skin temp — by writing now-seconds to BOTH shared epoch keys
-                            // (the EXACT same keys the iOS/Mac button + Baselines.foldHistory use), via
-                            // the single cross-platform source of truth. Stored as whole epoch SECONDS in
-                            // a Long (SharedPreferences has no putDouble; the readers do getLong→toDouble),
-                            // matching the "epoch SECONDS" the keys document. No stored day is deleted.
-                            val nowSeconds = System.currentTimeMillis() / 1000L
-                            val editor = NoopPrefs.of(context).edit()
-                            Baselines.recalibrateRecoveryBaselines(editor, nowSeconds)
-                            editor.apply()
-                            showRecalibrateConfirm = false
-                            // Nudge an immediate re-analyze so the change is felt now; the standing
-                            // 15-min analyze loop also re-runs foldHistory regardless. No-ops cleanly
-                            // when the strap isn't connected.
-                            vm.syncNow()
-                            Toast.makeText(
-                                context,
-                                "Charge baseline reset. NOOP will re-learn it from tonight. Your history stays, and it takes a few nights to settle.",
-                                Toast.LENGTH_LONG,
-                            ).show()
-                        },
-                    ) { Text("Recalibrate", style = NoopType.body, color = Palette.accent) }
-                },
-                dismissButton = {
-                    TextButton(onClick = { showRecalibrateConfirm = false }) {
-                        Text("Cancel", style = NoopType.body, color = Palette.textSecondary)
-                    }
-                },
+                onDismiss = { showRecalibrateConfirm = false },
             )
         }
 
@@ -1086,71 +1067,8 @@ private fun SettingsDisclosure(
 
 // MARK: - Section card (ports SettingsView's private SettingsSection)
 
-/**
- * A grouped settings card: a "Settings" overline + icon + title header, an explanatory blurb, then
- * content. A faint brand-green wash anchors the card to NOOP's neutral chrome (mirrors macOS).
- */
-@Composable
-private fun SettingsSection(
-    icon: ImageVector,
-    title: String,
-    blurb: String,
-    content: @Composable () -> Unit,
-) {
-    NoopCard(padding = 20.dp, tint = Palette.accent) {
-        Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Overline("Settings")
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                ) {
-                    Icon(icon, contentDescription = null, tint = Palette.accent, modifier = Modifier.size(18.dp))
-                    Text(title, style = NoopType.title2, color = Palette.textPrimary)
-                }
-            }
-            Text(blurb, style = NoopType.subhead, color = Palette.textSecondary)
-            content()
-        }
-    }
-}
 
-// MARK: - Labelled toggle row (title + detail + trailing Switch)
 
-/**
- * A title + explanatory detail on the left with a trailing [Switch], matching the in-section toggle idiom
- * the Strap/Health Connect sections already use. Used by the v5 Health & wellness group so every opt-in
- * reads consistently. The switch colours mirror the rest of Settings (gold track when on).
- */
-@Composable
-private fun ToggleRow(
-    title: String,
-    detail: String,
-    checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit,
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(16.dp),
-    ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(title, style = NoopType.subhead, color = Palette.textPrimary)
-            Text(detail, style = NoopType.footnote, color = Palette.textTertiary)
-        }
-        Switch(
-            checked = checked,
-            onCheckedChange = onCheckedChange,
-            colors = SwitchDefaults.colors(
-                checkedThumbColor = Palette.surfaceBase,
-                checkedTrackColor = Palette.accent,
-                uncheckedThumbColor = Palette.textSecondary,
-                uncheckedTrackColor = Palette.surfaceInset,
-                uncheckedBorderColor = Palette.hairline,
-            ),
-        )
-    }
-}
 
 // MARK: - Two-column form row (ports SettingsView's private FormRow)
 

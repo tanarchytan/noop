@@ -42,8 +42,14 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoGraph
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -75,6 +81,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.graphics.vector.ImageVector
 import kotlin.math.cos
 import kotlin.math.min
 import kotlin.math.sin
@@ -1417,3 +1424,122 @@ private fun Modifier.clickableNoRipple(onClick: () -> Unit): Modifier =
         interactionSource = remember { MutableInteractionSource() },
         onClick = onClick,
     )
+
+// MARK: - Shared reusable components (deduplicated from Settings/Automations/TestCentre)
+
+/** A settings section card — the one shared wrapper for every settings-group card across the app.
+ *  Replaces the identical private composables that lived in SettingsScreen, AutomationsScreen and
+ *  TestCentreScreen. */
+@Composable
+fun NoopSettingsSection(
+    icon: ImageVector,
+    title: String,
+    blurb: String,
+    overline: String = "",
+    active: Boolean = false,
+    modifier: Modifier = Modifier,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    NoopCard(padding = 20.dp, tint = Palette.accent, modifier = modifier) {
+        Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            if (overline.isNotEmpty()) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    Overline(overline)
+                    if (active) Overline("ON", color = Palette.accent)
+                }
+            }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    icon,
+                    contentDescription = null,
+                    tint = if (active) Palette.accent else Palette.textSecondary,
+                    modifier = Modifier.size(18.dp),
+                )
+                Spacer(Modifier.width(10.dp))
+                Text(title, style = NoopType.title2, color = Palette.textPrimary)
+            }
+            Text(blurb, style = NoopType.subhead, color = Palette.textSecondary)
+            content()
+        }
+    }
+}
+
+/** A labelled toggle row — title + optional detail + Switch. The single source for every settings
+ *  toggle across the app. */
+@Composable
+fun NoopToggleRow(
+    title: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+    detail: String? = null,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(title, style = NoopType.subhead, color = Palette.textPrimary)
+            if (detail != null) {
+                Text(detail, style = NoopType.footnote, color = Palette.textTertiary)
+            }
+        }
+        Switch(
+            checked = checked,
+            onCheckedChange = onCheckedChange,
+            colors = SwitchDefaults.colors(
+                checkedThumbColor = Palette.surfaceBase,
+                checkedTrackColor = Palette.accent,
+                uncheckedThumbColor = Palette.textSecondary,
+                uncheckedTrackColor = Palette.surfaceInset,
+                uncheckedBorderColor = Palette.hairline,
+            ),
+        )
+    }
+}
+
+/** The one confirm/cancel dialog used across the app. 18 call sites consolidated into a single
+ *  composable matching the existing style (surfaceOverlay container, title2 title, subhead body). */
+@Composable
+fun NoopConfirmDialog(
+    title: String,
+    text: String,
+    confirmLabel: String,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+    cancelLabel: String = "Cancel",
+    destructive: Boolean = false,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = Palette.surfaceOverlay,
+        title = { Text(title, style = NoopType.title2, color = Palette.textPrimary) },
+        text = { Text(text, style = NoopType.subhead, color = Palette.textSecondary) },
+        confirmButton = {
+            TextButton(onClick = onConfirm) {
+                Text(
+                    confirmLabel,
+                    style = NoopType.body,
+                    color = if (destructive) Palette.statusCritical else Palette.accent,
+                )
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(cancelLabel, style = NoopType.body, color = Palette.textSecondary)
+            }
+        },
+    )
+}
+
+/** The one close [IconButton] used across header rows in the app. */
+@Composable
+fun CloseButton(onClick: () -> Unit, modifier: Modifier = Modifier.size(36.dp)) {
+    IconButton(onClick = onClick, modifier = modifier) {
+        Icon(Icons.Filled.Close, contentDescription = "Close", tint = Palette.textSecondary)
+    }
+}

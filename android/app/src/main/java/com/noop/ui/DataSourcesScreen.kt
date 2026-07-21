@@ -710,43 +710,26 @@ fun DataSourcesScreen(vm: AppViewModel, onOpenAppleHealth: () -> Unit = {}) {
     // deletes every Apple-Health-sourced row (deviceId-keyed tables) in one transaction via the registry,
     // re-counts so the card flips back to "Nothing imported", and toasts the result.
     if (confirmDeleteApple) {
-        AlertDialog(
-            onDismissRequest = { confirmDeleteApple = false },
-            containerColor = Palette.surfaceOverlay,
-            title = {
-                Text("Remove Apple Health imported data?", style = NoopType.title2, color = Palette.textPrimary)
-            },
-            text = {
-                Text(
-                    "This permanently deletes everything imported from Apple Health: heart rate, HRV, " +
-                        "sleep, steps, workouts and more. Your live strap data is untouched. This can't be undone.",
-                    style = NoopType.subhead,
-                    color = Palette.textSecondary,
-                )
-            },
-            confirmButton = {
-                TextButton(onClick = {
-                    confirmDeleteApple = false
-                    busy = true
-                    scope.launch {
-                        runCatching {
-                            withContext(Dispatchers.IO) { vm.deletePairedDeviceData("apple-health") }
-                        }
-                        vm.ble.externalLog("Import apple-health: imported data removed")
-                        refreshCounts()
-                        vm.loadWorkouts()
-                        busy = false
-                        Toast.makeText(context, "Removed Apple Health imported data.", Toast.LENGTH_LONG).show()
+        NoopConfirmDialog(
+            title = "Remove Apple Health imported data?",
+            text = "This permanently deletes everything imported from Apple Health: heart rate, HRV, sleep, steps, workouts and more. Your live strap data is untouched. This can't be undone.",
+            confirmLabel = "Remove",
+            destructive = true,
+            onConfirm = {
+                confirmDeleteApple = false
+                busy = true
+                scope.launch {
+                    runCatching {
+                        withContext(Dispatchers.IO) { vm.deletePairedDeviceData("apple-health") }
                     }
-                }) {
-                    Text("Remove", style = NoopType.body, color = Palette.statusCritical)
+                    vm.ble.externalLog("Import apple-health: imported data removed")
+                    refreshCounts()
+                    vm.loadWorkouts()
+                    busy = false
+                    Toast.makeText(context, "Removed Apple Health imported data.", Toast.LENGTH_LONG).show()
                 }
             },
-            dismissButton = {
-                TextButton(onClick = { confirmDeleteApple = false }) {
-                    Text("Cancel", style = NoopType.body, color = Palette.textSecondary)
-                }
-            },
+            onDismiss = { confirmDeleteApple = false },
         )
     }
 }

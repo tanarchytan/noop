@@ -502,33 +502,6 @@ internal fun RecoveryHistoryCard(days: List<DailyMetric>, range: TrendsRange) {
 
 // MARK: - Shared bits
 
-/**
- * A glowing dot pinned to a LineChart's latest sample , the Bevel "now" end-cap (a soft halo + bright
- * core + white centre), matching Today's OverviewHRChart. Drawn as a sibling overlay so the shared
- * LineChart stays untouched; it reproduces that chart's point geometry exactly (strokePx 2.5, top/
- * bottom pad strokePx+4, finite-value min/max) so the cap sits on the curve's final point.
- */
-@Composable
-private fun GlowEndCap(values: List<Double>, tipColor: Color) {
-    val clean = remember(values) { values.filter { it.isFinite() } }
-    if (clean.size < 2) return
-    Canvas(modifier = Modifier.fillMaxSize()) {
-        val strokePx = 2.5f
-        val topPad = strokePx + 4f
-        val bottomPad = strokePx + 4f
-        val minV = clean.min()
-        val maxV = clean.max()
-        val span = (maxV - minV).takeIf { it > 0.0 } ?: 1.0
-        val usableH = (size.height - topPad - bottomPad).coerceAtLeast(1f)
-        val x = size.width  // the latest point sits at the right edge
-        val norm = ((clean.last() - minV) / span).toFloat().coerceIn(0f, 1f)
-        val y = topPad + (1f - norm) * usableH
-        val center = Offset(x, y)
-        drawCircle(color = tipColor.copy(alpha = 0.30f), radius = 9f, center = center)
-        drawCircle(color = tipColor.copy(alpha = 0.65f), radius = 5.5f, center = center)
-        drawCircle(color = Palette.tipCore, radius = 2.4f, center = center)
-    }
-}
 
 /** Inset well shown when a window has too few points to plot, mirroring sparsePlaceholder. */
 @Composable

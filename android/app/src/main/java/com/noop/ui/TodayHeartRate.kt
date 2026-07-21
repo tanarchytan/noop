@@ -744,18 +744,9 @@ private fun OverviewHRChart(
                         pathEffect = dash,
                     )
                 }
-
-                // Glowing endpoint at the latest HR sample (right edge), a Bevel chart end-cap:
-                // a soft rose halo + white core sitting on the line's final point.
-                if (n >= 2) {
-                    val lastX = size.width
-                    val lastY = yForBpm(bpm.last())
-                    val end = Offset(lastX.coerceIn(0f, size.width), lastY)
-                    drawCircle(color = Palette.metricRose.copy(alpha = 0.30f), radius = 9f, center = end)
-                    drawCircle(color = Palette.metricRose.copy(alpha = 0.65f), radius = 5.5f, center = end)
-                    drawCircle(color = Palette.tipCore, radius = 2.4f, center = end)
-                }
             }
+
+            GlowEndCap(values = bpm, tipColor = Palette.metricRose)
 
             // 3) Marker labels + sport glyphs, positioned composables (crisp text/icons vs Canvas).
             val topPadDp = 10.dp

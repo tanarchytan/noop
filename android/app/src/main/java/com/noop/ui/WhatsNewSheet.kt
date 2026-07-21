@@ -98,14 +98,7 @@ private fun Header(onClose: () -> Unit) {
             Text("NOOP ${AppChangelog.CURRENT_VERSION}", style = NoopType.display(26f), color = Palette.textPrimary)
             Text("Release notes", style = NoopType.caption, color = Palette.textSecondary)
         }
-        IconButton(onClick = onClose, modifier = Modifier.size(36.dp)) {
-            Icon(
-                Icons.Filled.Close,
-                contentDescription = "Close",
-                tint = Palette.textTertiary,
-                modifier = Modifier.size(22.dp),
-            )
-        }
+        CloseButton(onClick = onClose)
     }
 }
 

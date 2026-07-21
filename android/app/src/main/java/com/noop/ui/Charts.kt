@@ -983,3 +983,32 @@ fun TimelineChart(
         }
     }
 }
+
+// MARK: - GlowEndCap (shared three-layer sparkline end-cap dot, deduplicated from Trends/Explore)
+
+/** A three-layer glow end-cap dot drawn at the last data point's position on a sparkline or trend
+ *  chart. Consolidates the identical copies that lived in TrendsScreen, TrendsExploreScreen, and
+ *  inline in TodayScreen. */
+@Composable
+fun GlowEndCap(
+    values: List<Double>,
+    tipColor: Color,
+    modifier: Modifier = Modifier,
+) {
+    val clean = remember(values) { values.filter { it.isFinite() } }
+    if (clean.size < 2) return
+    Canvas(modifier = modifier.fillMaxSize()) {
+        val strokePx = 2.5f
+        val topPad = strokePx + 4f
+        val bottomPad = strokePx + 4f
+        val minV = clean.min()
+        val maxV = clean.max()
+        val span = (maxV - minV).takeIf { it > 0.0 } ?: 1.0
+        val usableH = (size.height - topPad - bottomPad).coerceAtLeast(1f)
+        val norm = ((clean.last() - minV) / span).toFloat().coerceIn(0f, 1f)
+        val center = Offset(size.width, topPad + (1f - norm) * usableH)
+        drawCircle(color = tipColor.copy(alpha = 0.30f), radius = 9f, center = center)
+        drawCircle(color = tipColor.copy(alpha = 0.65f), radius = 5.5f, center = center)
+        drawCircle(color = Palette.tipCore, radius = 2.4f, center = center)
+    }
+}
