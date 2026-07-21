@@ -63,7 +63,6 @@ import com.noop.ingest.HealthConnectImporter
 import com.noop.ingest.HealthConnectWriter
 import com.noop.ingest.ActivityFileImporter
 import com.noop.ingest.WhoopCsvImporter
-import com.noop.ingest.WearableExportImporter
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -162,44 +161,6 @@ fun DataSourcesScreen(vm: AppViewModel, onOpenAppleHealth: () -> Unit = {}) {
     val appleImportLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.OpenDocument(),
     ) { uri -> if (uri != null) runImport { AppleHealthImporter.importExport(context, uri, vm.repo) } }
-
- // Workout file (GPX / TCX / FIT): one imported activity → one workout; reload the Workouts list too.
-    val activityFileImportLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.OpenDocument(),
-    ) { uri ->
-        if (uri != null) runImport {
-            ActivityFileImporter.importExport(context, uri, vm.repo).also { summary ->
-                vm.loadWorkouts()
- // (B1): on a SUCCESSFUL import, register `activity-file` as an `activityFile` device
- // so the per-day owner resolver can pick it as the day owner on a strap-less day (it
- // iterates the registry's paired devices — an unregistered source is invisible to it). The
- // distinct kind ranks it at priority 3 — below whole-day imports (2) — so a full-day WHOOP
- // import always wins a day it has HR for. status `paired`, NEVER `active` (makeActive =
- // false), so it can never displace the live strap; capability `hr` marks what the source
- // CAN provide (per-day presence is still gated by an actual HR read in the resolver).
- // Idempotent (OnConflict.REPLACE). Twin of the Swift DataSourcesView `model.registerDevice`
- // call. See ActivityFileImporter (A) for the matching per-sample HR persist.
-                if (summary.totalRows > 0) {
-                    val now = System.currentTimeMillis() / 1000
-                    vm.registerDevice(
-                        PairedDeviceRow(
-                            id = ActivityFileImporter.SOURCE_ID,
-                            brand = "Workout files",
-                            model = "",
-                            nickname = null,
-                            peripheralId = null,
-                            sourceKind = SourceKind.activityFile.name,
-                            capabilities = Metric.hr.name,
-                            status = DeviceStatus.paired.name,
-                            addedAt = now,
-                            lastSeenAt = now,
-                        ),
-                        makeActive = false,
-                    )
-                }
-            }
-        }
-    }
 
  // Health Connect permission request → import once granted.
     val hcPermissionLauncher = rememberLauncherForActivityResult(

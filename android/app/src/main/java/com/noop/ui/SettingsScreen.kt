@@ -374,7 +374,6 @@ fun SettingsScreen(
  // drives a local mirror that writes straight through to the same keys the v5 engine readers use.
  // Illness watch routes through the ViewModel so the banner recomputes live; the rest are pref writes
  // the engines pick up on the next analytics pass / offload. All opt-in / safe-default per spec.
-    var illnessWatch by remember { mutableStateOf(NoopPrefs.illnessWatch(context)) }
     var cycleTracking by remember { mutableStateOf(NoopPrefs.cycleTracking(context)) }
     var hydrationTracking by remember { mutableStateOf(NoopPrefs.hydrationTracking(context)) }
     var stressCheckIn by remember { mutableStateOf(BiofeedbackPrefs.checkInEnabled(context)) }
@@ -578,15 +577,6 @@ fun SettingsScreen(
             overline = "Settings",
         ) {
             Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                NoopToggleRow(
-                    title = "Illness heads-up",
-                    detail = "Watches your resting heart rate, HRV and skin temperature for the pattern that often shows up before you feel unwell, and surfaces a gentle heads-up. An observation about your own numbers, not a diagnosis.",
-                    checked = illnessWatch,
-                    onCheckedChange = {
-                        illnessWatch = it
-                        vm.setIllnessWatchEnabled(it)
-                    },
-                )
                 RowDivider()
  // — not offered on a male profile (it would just sit at "Learning your pattern"). Hidden
  // when off for a male profile so it can't be enabled here; still shown when already on so it

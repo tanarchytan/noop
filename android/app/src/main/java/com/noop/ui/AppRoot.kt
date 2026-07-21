@@ -344,7 +344,7 @@ fun AppRoot(viewModel: AppViewModel = viewModel()) {
  // The "More" page — the iOS More tab's twin: a navigated ScreenScaffold page hosting the
  // full grouped destination list (was a pull-up sheet). A row navigates top-level.
                 composable(Destination.More.route) {
-                    MoreScreen(onNavigate = { nav.navigateTopLevel(it) })
+                    MoreScreen(onNavigate = { nav.navigate(it) })
                 }
             }
         }
