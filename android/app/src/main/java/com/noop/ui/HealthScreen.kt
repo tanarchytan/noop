@@ -1198,11 +1198,6 @@ private fun HeartRateSection(vm: AppViewModel, hrMax: Int) {
                             color = Palette.textSecondary,
                         )
                     }
-                    Text(
-                        text = if (hasLiveHr) "$displayHr bpm" else "—",
-                        style = NoopType.metricInline,
-                        color = if (hasLiveHr) zoneColor else Palette.textTertiary,
-                    )
                 }
 
  // Hero chart: a pulsing heart with the trend line inside, tinted to the current
@@ -1347,18 +1342,22 @@ private fun BeatingHeart(
     )
 
     Box(
-        modifier = modifier.scale(scale),
+        modifier = modifier,
         contentAlignment = Alignment.Center,
     ) {
- // Trend sparkline rendered first, visible through the semi-transparent heart fill
+        // Trend sparkline — static, never animated. Sits under the beating heart.
         if (series.size > 1) {
             LiveHrTimeChart(
                 samples = series, color = color,
                 modifier = Modifier.fillMaxSize(),
             )
         }
- // Heart shape overlay — translucent fill so trend shows through, tinted outline
-        Canvas(modifier = Modifier.fillMaxSize()) {
+        // Heart shape — ONLY this pulses. Translucent fill so trend shows through.
+        Canvas(
+            modifier = Modifier
+                .fillMaxSize()
+                .scale(scale),
+        ) {
             val heartPath = beatHeartPath()
             drawPath(heartPath, color = color.copy(alpha = 0.10f))
             drawPath(
@@ -1367,6 +1366,12 @@ private fun BeatingHeart(
                 style = Stroke(width = 2.5f, cap = StrokeCap.Round, join = StrokeJoin.Round),
             )
         }
+        // BPM number centered inside the heart, over the trend + heart shape.
+        Text(
+            text = "$bpm",
+            style = NoopType.display(28f),
+            color = color,
+        )
     }
 }
 
