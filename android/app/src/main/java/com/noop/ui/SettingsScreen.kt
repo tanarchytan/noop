@@ -477,7 +477,7 @@ fun SettingsScreen(
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                horizontalArrangement = Arrangement.spacedBy(Metrics.space16),
             ) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
@@ -509,11 +509,11 @@ fun SettingsScreen(
 
  // Card transparency: scale every frosted card's glass toward the background. Live-preview (the
  // cards on THIS screen update as you drag) via CardAppearance; saved on release. Default solid.
-            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(Metrics.space2)) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(Metrics.space16),
                 ) {
                     Text(
                         "Card transparency",
@@ -576,7 +576,7 @@ fun SettingsScreen(
             blurb = "Optional, on-device wellness signals. Each is off by default, computed only on this phone from data you already have, and never a medical diagnosis.",
             overline = "Settings",
         ) {
-            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(Metrics.space16)) {
                 RowDivider()
  // — not offered on a male profile (it would just sit at "Learning your pattern"). Hidden
  // when off for a male profile so it can't be enabled here; still shown when already on so it
@@ -685,8 +685,8 @@ fun SettingsScreen(
             blurb = "Charge is NOOP's daily readiness score, learned from your own HRV, resting heart rate and more over time. Your history stays.",
             overline = "Settings",
         ) {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(Metrics.space10)) {
+                Column(verticalArrangement = Arrangement.spacedBy(Metrics.space2)) {
                     Text("Recalibrate Charge baseline", style = NoopType.subhead, color = Palette.textPrimary)
                     Text(
                         "Restarts the roughly 4-night build-up for Charge and your HRV baseline from tonight. Use it if a bad first week set your baseline off. Your history stays.",
@@ -717,7 +717,7 @@ fun SettingsScreen(
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                horizontalArrangement = Arrangement.spacedBy(Metrics.space16),
             ) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(stringResource(R.string.power_saving_mode), style = NoopType.subhead, color = Palette.textPrimary)
@@ -789,11 +789,11 @@ fun SettingsScreen(
             blurb = "Live heart rate already works on a WHOOP 5/MG strap. These probes go further and try to coax more out of it. They are guesses, off by default, and only ever touch a 5/MG strap. WHOOP 4.0 is never affected.",
             overline = "Settings",
         ) {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(Metrics.space10)) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(Metrics.space16),
                 ) {
                     Text(
                         "Try WHOOP 5/MG protocol probes",
@@ -829,7 +829,7 @@ fun SettingsScreen(
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(Metrics.space16),
                 ) {
                     Text(
                         "Unlock WHOOP 5/MG deep data (R22)",
@@ -1035,9 +1035,9 @@ private fun SettingsDisclosure(
                     stateDescription = if (expanded) "Expanded" else "Collapsed"
                 },
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(Metrics.space12),
         ) {
-            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(Metrics.space2)) {
                 Text(title, style = NoopType.title2, color = Palette.textPrimary)
                 Text(subtitle, style = NoopType.subhead, color = Palette.textSecondary)
             }
@@ -1066,9 +1066,9 @@ private fun FormRow(label: String, control: @Composable () -> Unit) {
         modifier = Modifier
             .fillMaxWidth()
             .heightIn(min = 44.dp)
-            .padding(vertical = 4.dp),
+            .padding(vertical = Metrics.space4),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(16.dp),
+        horizontalArrangement = Arrangement.spacedBy(Metrics.space16),
     ) {
         Text(
             label,

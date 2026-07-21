@@ -157,7 +157,7 @@ fun StepsCalibrationScreen(
                     .weight(1f)
                     .fillMaxWidth()
                     .verticalScroll(scroll)
-                    .padding(20.dp),
+                    .padding(Metrics.screenRowSpacing),
                 verticalArrangement = Arrangement.spacedBy(Metrics.sectionGap),
             ) {
                 ExplainerCard()
@@ -195,11 +195,11 @@ fun StepsCalibrationScreen(
 @Composable
 private fun Header(onClose: () -> Unit) {
     Row(
-        modifier = Modifier.fillMaxWidth().padding(20.dp),
+        modifier = Modifier.fillMaxWidth().padding(Metrics.screenRowSpacing),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        horizontalArrangement = Arrangement.spacedBy(Metrics.space12),
     ) {
-        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(Metrics.space4)) {
             Overline("Steps estimate", color = Palette.textTertiary)
             Text("Calibrate your steps", style = NoopType.display(26f), color = Palette.textPrimary)
             Text("WHOOP 4.0 · motion → steps", style = NoopType.caption, color = Palette.textSecondary)
@@ -210,12 +210,12 @@ private fun Header(onClose: () -> Unit) {
 
 @Composable
 private fun Footer(onClose: () -> Unit) {
-    Row(modifier = Modifier.fillMaxWidth().padding(16.dp), horizontalArrangement = Arrangement.End) {
+    Row(modifier = Modifier.fillMaxWidth().padding(Metrics.space16), horizontalArrangement = Arrangement.End) {
         Button(
             onClick = onClose,
             colors = ButtonDefaults.buttonColors(containerColor = Palette.accent, contentColor = Palette.surfaceBase),
         ) {
-            Text("Done", modifier = Modifier.padding(horizontal = 24.dp))
+            Text("Done", modifier = Modifier.padding(horizontal = Metrics.space24))
         }
     }
 }
@@ -225,7 +225,7 @@ private fun Hairline() {
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .height(1.dp)
+            .height(Metrics.divider)
             .background(Palette.hairline),
     )
 }
@@ -236,8 +236,8 @@ private fun Hairline() {
 @Composable
 private fun ExplainerCard() {
     NoopCard(padding = 20.dp) {
-        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(Metrics.space10)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Metrics.space8)) {
                 Icon(Icons.AutoMirrored.Filled.DirectionsWalk, contentDescription = null, tint = Palette.accent, modifier = Modifier.size(20.dp))
                 Text("How this works", style = NoopType.headline, color = Palette.textPrimary)
             }
@@ -264,8 +264,8 @@ private fun ExplainerCard() {
 @Composable
 private fun NoMotionNote() {
     NoopCard(padding = 20.dp, tint = Palette.metricAmber) {
-        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(Metrics.space10)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Metrics.space8)) {
                 Icon(Icons.Filled.SyncProblem, contentDescription = null, tint = Palette.metricAmber, modifier = Modifier.size(20.dp))
                 Text("No motion synced yet", style = NoopType.headline, color = Palette.textPrimary)
             }
@@ -292,7 +292,7 @@ private fun NoMotionNote() {
 @Composable
 private fun CurrentFitCard(profile: ProfileStore, matchedDays: Int) {
     NoopCard(padding = 20.dp, tint = Palette.accent) {
-        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(Metrics.space12)) {
             Overline("Current calibration")
             if (profile.stepsCalibrationCoefficient > 0 || profile.stepsManualCoefficient > 0) {
                 val coeff = if (profile.stepsManualCoefficient > 0) {
@@ -300,7 +300,7 @@ private fun CurrentFitCard(profile: ProfileStore, matchedDays: Int) {
                 } else {
                     profile.stepsCalibrationCoefficient
                 }
-                Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(Metrics.space8)) {
                     Text(String.format(Locale.US, "%.1f", coeff), style = NoopType.number(30f), color = Palette.accent)
                     Text("steps per motion unit", style = NoopType.footnote, color = Palette.textTertiary, modifier = Modifier.padding(bottom = 4.dp))
                 }
@@ -342,7 +342,7 @@ private fun CurrentFitCard(profile: ProfileStore, matchedDays: Int) {
 @Composable
 private fun ComparisonCard(rows: List<StepsComparisonRow>) {
     NoopCard(padding = 20.dp) {
-        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(Metrics.space12)) {
             Overline("Estimated vs your phone")
             if (rows.isEmpty()) {
                 Text(
@@ -403,7 +403,7 @@ private fun ManualAdjustCard(
     onCommit: () -> Unit,
 ) {
     NoopCard(padding = 20.dp) {
-        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(Metrics.space12)) {
             Overline("Adjust manually")
             Text(
                 "Override the automatic fit with your own steps-per-motion value. Useful if your phone " +
@@ -412,7 +412,7 @@ private fun ManualAdjustCard(
                 style = NoopType.footnote,
                 color = Palette.textTertiary,
             )
-            Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(Metrics.space8)) {
                 Text(
                     if (draftManual > 0) String.format(Locale.US, "%.1f", draftManual) else "Auto",
                     style = NoopType.number(24f),
@@ -425,7 +425,7 @@ private fun ManualAdjustCard(
                     modifier = Modifier.padding(bottom = 4.dp),
                 )
             }
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Metrics.space8)) {
                 Text("Auto", style = NoopType.caption, color = Palette.textTertiary)
                 Slider(
                     // Continuous (no discrete `steps`): the coefficient range can be large, so a 0.5-tick
@@ -478,7 +478,7 @@ private fun ManualAdjustCard(
 private fun StatLine(label: String, value: String) {
     Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
         Text(label, style = NoopType.footnote, color = Palette.textTertiary, modifier = Modifier.weight(1f))
-        Spacer(Modifier.width(12.dp))
+        Spacer(Modifier.width(Metrics.space12))
         Text(value, style = NoopType.footnote, color = Palette.textSecondary, textAlign = TextAlign.End)
     }
 }

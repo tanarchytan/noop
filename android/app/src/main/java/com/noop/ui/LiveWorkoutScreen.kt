@@ -106,12 +106,12 @@ fun LiveWorkoutScreen(vm: AppViewModel, onClose: () -> Unit) {
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
                 .navigationBarsPadding()
-                .padding(28.dp),
-            verticalArrangement = Arrangement.spacedBy(20.dp),
+                .padding(Metrics.sectionGap),
+            verticalArrangement = Arrangement.spacedBy(Metrics.screenRowSpacing),
         ) {
             // Header — sport + elapsed clock.
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(Metrics.space2)) {
                     Overline("Recording workout", color = Palette.effortColor)
                     Text(w.sport.name, style = NoopType.title1, color = Palette.textPrimary)
                 }
@@ -145,7 +145,7 @@ fun LiveWorkoutScreen(vm: AppViewModel, onClose: () -> Unit) {
             // share out, but the column is now scrollable (unbounded), so a weighted Spacer can't size and
             // the End button would no longer be separated from the stats. A constant gap keeps the spacing
             // and the button stays reachable by scrolling when the content overflows.
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(Metrics.space12))
 
             Button(
                 onClick = { vm.endWorkout(); onClose() },
@@ -165,7 +165,7 @@ private fun EffortGauge(liveStrain: Double, effortScale: EffortScale) {
         Column(
             modifier = Modifier.fillMaxWidth(),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(10.dp),
+            verticalArrangement = Arrangement.spacedBy(Metrics.space10),
         ) {
             Overline("Effort building", color = Palette.effortColor)
             StrainGauge(
@@ -190,7 +190,7 @@ private fun HeroHeartRate(bpm: Int?, zone: Int) {
         Column(
             modifier = Modifier.fillMaxWidth(),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(6.dp),
+            verticalArrangement = Arrangement.spacedBy(Metrics.space6),
         ) {
             Overline("Heart rate")
             Box(contentAlignment = Alignment.Center) {
@@ -216,9 +216,9 @@ private fun HeroHeartRate(bpm: Int?, zone: Int) {
 
 @Composable
 private fun ZoneRail(zone: Int, zoneSet: com.noop.analytics.HrZoneSet) {
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(Metrics.space8)) {
         Overline("HR zone")
-        Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth()) {
+        Row(horizontalArrangement = Arrangement.spacedBy(Metrics.space6), modifier = Modifier.fillMaxWidth()) {
             (1..5).forEach { z ->
                 val active = z == zone
                 val color = Palette.hrZoneColor(z)

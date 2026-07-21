@@ -276,7 +276,7 @@ private fun HrvSnapshotButton(enabled: Boolean, onClick: () -> Unit) {
         Icon(
             Icons.Filled.MonitorHeart,
             contentDescription = null,
-            modifier = Modifier.size(18.dp).padding(end = 4.dp),
+            modifier = Modifier.size(Metrics.iconSmall).padding(end = 4.dp),
         )
         Text(
             "Take an HRV reading",
@@ -349,7 +349,7 @@ private fun RecordRow(
                     .background(tint.copy(alpha = 0.14f)),
                 contentAlignment = Alignment.Center,
             ) {
-                Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(18.dp))
+                Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(Metrics.iconSmall))
             }
             Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(Metrics.space2)) {
                 Text(title, style = NoopType.headline, color = Palette.textPrimary)
@@ -359,7 +359,7 @@ private fun RecordRow(
                 Icons.Filled.ChevronRight,
                 contentDescription = null,
                 tint = Palette.textTertiary,
-                modifier = Modifier.size(18.dp),
+                modifier = Modifier.size(Metrics.iconSmall),
             )
         }
     }
@@ -685,7 +685,7 @@ private fun VitalityHero(
     val worst = sorted.lastOrNull()
  // The frosted liquid hero-card wrapper floats the vessel + white count-up over the sky (the pilot).
     LiquidHeroCard {
-        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(Metrics.space12)) {
             Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
                 Column(modifier = Modifier.weight(1f)) {
                     Overline("Vitality")
@@ -750,7 +750,7 @@ private fun LiquidHeroCard(content: @Composable () -> Unit) {
             .fillMaxWidth()
             .clip(RoundedCornerShape(HEALTH_HERO_RADIUS))
             .background(HEALTH_HERO_FILL)
-            .border(1.dp, Color.White.copy(alpha = 0.11f), RoundedCornerShape(HEALTH_HERO_RADIUS))
+            .border(Metrics.divider, Color.White.copy(alpha = 0.11f), RoundedCornerShape(HEALTH_HERO_RADIUS))
             .padding(Metrics.cardPadding),
     ) {
         content()
@@ -826,7 +826,7 @@ private fun FitnessAgeHero(
 
  // The frosted liquid hero-card wrapper floats the vessel + white count-up over the sky (the pilot).
     LiquidHeroCard {
-        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(Metrics.space12)) {
             Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
                 Column(modifier = Modifier.weight(1f)) {
                     Overline("Fitness Age")
@@ -1180,7 +1180,7 @@ private fun HeartRateSection(vm: AppViewModel, hrMax: Int) {
  // the Fitness Age / Vitality heroes. No circular bpm vessel gauge is added — trend + data unchanged;
  // LiquidHeroCard supplies the translucent near-black fill, radius, hairline and card padding.
         LiquidHeroCard {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(Metrics.space12)) {
  // Card header: title + subtitle on the left, live bpm read-out right.
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -1835,74 +1835,6 @@ private fun VitalTile(
     }
 }
 
-/**
- * A compact metric-tinted sparkline for a tile trail: a soft gradient fill under a coloured line,
- * capped with a glowing end-cap (a halo + white core) at the latest point so it reads as "now".
- * Built locally with Canvas + Palette colours (there is no shared tile-spark composable), mirroring
- * the Bevel chart end-cap used on the macOS sparkline and the Today HR chart. Decorative — the tile
- * already carries a combined contentDescription, so the spark is not separately announced.
- */
-@Composable
-private fun TileSparkline(values: List<Double>, color: Color, modifier: Modifier = Modifier) {
-    Canvas(modifier = modifier.clipToBounds()) {
-        if (values.size < 2 || size.width <= 0f || size.height <= 0f) return@Canvas
-        val strokePx = 2f
-        val pad = strokePx + 2f
-        val usableH = (size.height - pad * 2).coerceAtLeast(1f)
-        val lo = values.min()
-        val hi = values.max()
-        val span = (hi - lo).takeIf { it > 0.0 } ?: 1.0
-        val n = values.size
-        fun xFor(i: Int): Float = if (n > 1) size.width * i / (n - 1) else 0f
-        fun yFor(v: Double): Float {
-            val norm = ((v - lo) / span).toFloat().coerceIn(0f, 1f)
-            return pad + (1f - norm) * usableH
-        }
-        val pts = values.mapIndexed { i, v -> Offset(xFor(i), yFor(v)) }
-
- // Soft gradient fill under the curve.
-        val fillPath = Path().apply {
-            moveTo(pts.first().x, size.height)
-            lineTo(pts.first().x, pts.first().y)
-            for (i in 1 until pts.size) lineTo(pts[i].x, pts[i].y)
-            lineTo(pts.last().x, size.height)
-            close()
-        }
-        drawPath(
-            path = fillPath,
-            brush = Brush.verticalGradient(
-                colors = listOf(
-                    color.copy(alpha = StrandAlpha.chartFillSoft),
-                    Color.Transparent,
-                ),
-                startY = 0f,
-                endY = size.height,
-            ),
-        )
-
- // The line, tinted lighter → full at the leading edge so it reads as building toward "now".
-        val linePath = Path().apply {
-            moveTo(pts.first().x, pts.first().y)
-            for (i in 1 until pts.size) lineTo(pts[i].x, pts[i].y)
-        }
-        drawPath(
-            path = linePath,
-            brush = Brush.horizontalGradient(
-                colors = listOf(color.copy(alpha = 0.5f), color),
-                startX = 0f,
-                endX = size.width,
-            ),
-            style = Stroke(width = strokePx, cap = StrokeCap.Round, join = StrokeJoin.Round),
-        )
-
- // Glowing "now" end-cap at the latest point: a soft halo + white core.
-        val end = pts.last()
-        drawCircle(color = color.copy(alpha = 0.30f), radius = 6f, center = end)
-        drawCircle(color = color.copy(alpha = 0.65f), radius = 3.5f, center = end)
-        drawCircle(color = Palette.tipCore, radius = 1.6f, center = end)
-    }
-}
-
 /** One windowed reading behind a vital's detail chart: its day ("YYYY-MM-DD"), the value, and the RAW
  * source id it came from (a strap id, the "-noop" computed sibling, "apple-health", or "health-connect").
  * The readings TABLE and the "N readings" header both derive from this ONE list, so they can never
@@ -2027,7 +1959,7 @@ fun VitalDetailScreen(vm: AppViewModel, key: String) {
             if (detail != null && detail.points.size == 1) {
                 val one = detail.points.last()   // size 1: the single reading (last == the latest)
                 NoopCard {
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Column(verticalArrangement = Arrangement.spacedBy(Metrics.space8)) {
                         Overline("Latest")
                         Text(
                             text = "${detail.format(one.second)} ${detail.unit}".trim(),
@@ -2082,7 +2014,7 @@ fun VitalDetailScreen(vm: AppViewModel, key: String) {
 
         SectionHeader(detail.title, overline = "Vital Signs", trailing = "${filteredReadings.size} readings")
         NoopCard {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(Metrics.space12)) {
                 Row(verticalAlignment = Alignment.Top) {
                     Column(modifier = Modifier.weight(1f)) {
                         Overline("Latest")
@@ -2214,7 +2146,7 @@ internal fun vitalReadingDateLabel(day: String): String {
 private fun VitalReadingsTable(rows: List<VitalReadingRow>) {
     if (rows.isEmpty()) return
     NoopCard {
-        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(Metrics.space10)) {
             Overline("Readings")
  // Slim column header naming the three columns — SAME weights as the data rows below so each
  // label sits over its column. Swift twin (MetricExplorerView.readingsTable) mirrors this.

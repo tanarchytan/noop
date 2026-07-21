@@ -121,11 +121,11 @@ fun SmartAlarmScreen(vm: AppViewModel) {
             if (enabled) {
                 RowDividerLocal()
                 Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(Metrics.space2)) {
                         Text("Wake me no earlier than", style = NoopType.body, color = Palette.textPrimary)
                         Text("The earliest NOOP will wake you.", style = NoopType.footnote, color = Palette.textTertiary)
                     }
-                    Spacer(Modifier.width(16.dp))
+                    Spacer(Modifier.width(Metrics.space16))
                     TimeChip(
                         minutes = targetMinutes,
                         accessibilityLabel = "Earliest wake time",
@@ -135,14 +135,14 @@ fun SmartAlarmScreen(vm: AppViewModel) {
 
                 RowDividerLocal()
                 Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(Metrics.space2)) {
                         Text("Window length", style = NoopType.body, color = Palette.textPrimary)
                         Text(
                             "The guaranteed alarm fires this long after your earliest time.",
                             style = NoopType.footnote, color = Palette.textTertiary,
                         )
                     }
-                    Spacer(Modifier.width(16.dp))
+                    Spacer(Modifier.width(Metrics.space16))
                     WindowStepper(
                         windowMinutes = windowMinutes,
                         onChange = { vm.setPhoneAlarmWindowMinutes(it) },
@@ -201,12 +201,12 @@ private fun StrapAlarmCard(vm: AppViewModel) {
     val experimentalOn = PuffinExperiment.from(context).isEnabled
 
     NoopCard(padding = 20.dp, tint = if (smartAlarm) Palette.accent else null) {
-        Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(Metrics.space16)) {
+            Column(verticalArrangement = Arrangement.spacedBy(Metrics.space2)) {
                 Overline("Morning")
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(Icons.Filled.Alarm, contentDescription = null, tint = Palette.accent)
-                    Spacer(Modifier.width(10.dp))
+                    Spacer(Modifier.width(Metrics.space10))
                     Text("Strap wake-alarm", style = NoopType.title2, color = Palette.textPrimary)
                 }
             }
@@ -293,13 +293,13 @@ private fun WindowCard(enabled: Boolean, targetMinutes: Int, windowMinutes: Int)
             .clip(RoundedCornerShape(Metrics.cardRadius)),
     ) {
         ScenicHeroBackground(modifier = Modifier.matchParentSize(), domain = DomainTheme.Rest)
-        Row(modifier = Modifier.padding(20.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(modifier = Modifier.padding(Metrics.screenRowSpacing), verticalAlignment = Alignment.CenterVertically) {
             Icon(Icons.Filled.Shield, contentDescription = null, tint = DomainTheme.Rest.color)
-            Spacer(Modifier.width(12.dp))
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Spacer(Modifier.width(Metrics.space12))
+            Column(verticalArrangement = Arrangement.spacedBy(Metrics.space4)) {
                 Overline("Guaranteed wake")
                 if (enabled) {
-                    Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(Metrics.space8)) {
                         Text(hhmm(targetMinutes), style = NoopType.number(28f), color = DomainTheme.Rest.color)
                         Text("→", style = NoopType.title2, color = Palette.textTertiary)
                         Text(hhmm(deadline), style = NoopType.number(28f), color = DomainTheme.Rest.bright)
@@ -323,10 +323,10 @@ private fun WindowCard(enabled: Boolean, targetMinutes: Int, windowMinutes: Int)
 @Composable
 private fun AlarmSettingsCard(content: @Composable () -> Unit) {
     NoopCard(padding = 20.dp) {
-        Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(Metrics.space16)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Filled.Alarm, contentDescription = null, tint = Palette.accent)
-                Spacer(Modifier.width(10.dp))
+                Spacer(Modifier.width(Metrics.space10))
                 Text("Wake alarm", style = NoopType.headline, color = Palette.textPrimary)
             }
             content()
@@ -339,12 +339,12 @@ private fun AlarmSettingsCard(content: @Composable () -> Unit) {
 private fun WindDownCard(vm: AppViewModel) {
     val enabled by vm.windDownEnabled.collectAsStateWithLifecycle()
     NoopCard(padding = 20.dp, tint = if (enabled) DomainTheme.Rest.color else null) {
-        Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(Metrics.space16)) {
+            Column(verticalArrangement = Arrangement.spacedBy(Metrics.space2)) {
                 Overline("Evening")
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(Icons.Filled.Bedtime, contentDescription = null, tint = DomainTheme.Rest.color)
-                    Spacer(Modifier.width(10.dp))
+                    Spacer(Modifier.width(Metrics.space10))
                     Text("Wind-down nudge", style = NoopType.title2, color = Palette.textPrimary)
                 }
             }
@@ -361,10 +361,10 @@ private fun WindDownCard(vm: AppViewModel) {
 @Composable
 private fun ExplanationCard() {
     NoopCard(padding = 20.dp) {
-        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(Metrics.space10)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Filled.Bedtime, contentDescription = null, tint = Palette.accent)
-                Spacer(Modifier.width(10.dp))
+                Spacer(Modifier.width(Metrics.space10))
                 Text("How the smart wake works", style = NoopType.headline, color = Palette.textPrimary)
             }
             Text(
@@ -390,7 +390,7 @@ private fun ExplanationCard() {
 private fun WindowStepper(windowMinutes: Int, onChange: (Int) -> Unit) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        horizontalArrangement = Arrangement.spacedBy(Metrics.space8),
     ) {
         StepperButton(symbol = "−", onClick = { onChange((windowMinutes - 5).coerceAtLeast(5)) }, label = "Shorten window")
         Text("$windowMinutes min", style = NoopType.bodyNumber, color = Palette.textPrimary)
@@ -403,11 +403,11 @@ private fun WindowStepper(windowMinutes: Int, onChange: (Int) -> Unit) {
 @Composable
 private fun ToggleRowLocal(label: String, help: String, checked: Boolean, onChange: (Boolean) -> Unit) {
     Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(Metrics.space2)) {
             Text(label, style = NoopType.body, color = Palette.textPrimary)
             Text(help, style = NoopType.footnote, color = Palette.textTertiary)
         }
-        Spacer(Modifier.width(16.dp))
+        Spacer(Modifier.width(Metrics.space16))
         Switch(
             checked = checked,
             onCheckedChange = onChange,
@@ -427,7 +427,7 @@ private fun RowDividerLocal() {
     Spacer(
         modifier = Modifier
             .fillMaxWidth()
-            .height(1.dp)
+            .height(Metrics.divider)
             .background(Palette.hairline),
     )
 }

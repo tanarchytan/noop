@@ -170,7 +170,7 @@ fun HrvSnapshotScreen(
                 HrvPhase.Capturing -> StatePill("Capturing", tone = StrandTone.Accent, pulsing = true)
                 HrvPhase.Done -> StatePill("Reading complete", tone = StrandTone.Positive)
             }
-            Spacer(Modifier.width(8.dp))
+            Spacer(Modifier.width(Metrics.space8))
             if (bonded) {
                 StatePill("Strap live", tone = StrandTone.Positive)
             } else {
@@ -192,7 +192,7 @@ fun HrvSnapshotScreen(
         NoopCard(padding = 24.dp, tint = Palette.restColor) {
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(18.dp),
+                verticalArrangement = Arrangement.spacedBy(Metrics.space18),
             ) {
                 Box(
                     modifier = Modifier
@@ -301,7 +301,7 @@ fun HrvSnapshotScreen(
         // comparable to your overnight figure.
         item {
         NoopCard(tint = Palette.restColor) {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(Metrics.space8)) {
                 Overline("How this is measured")
                 Text(
                     "A 60-second snapshot of your beat-to-beat (R-R) intervals from the strap, cleaned " +
@@ -394,12 +394,12 @@ private fun CaptureDial(fraction: Float, value: String, unit: String, sub: Strin
 @Composable
 private fun ResultCard(result: HrvAnalyzer.HrvResult) {
     NoopCard(padding = 18.dp, tint = Palette.restColor) {
-        Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(Metrics.space14)) {
             Overline("Your reading")
 
             if (result.rmssd == null) {
                 Row(
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    horizontalArrangement = Arrangement.spacedBy(Metrics.space10),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Icon(Icons.Filled.WarningAmber, contentDescription = null, tint = Palette.statusWarning)
@@ -454,9 +454,9 @@ private fun NotBondedHint() {
         modifier = Modifier
             .fillMaxWidth()
             .background(Palette.statusWarning.copy(alpha = 0.08f), shape)
-            .border(1.dp, Palette.statusWarning.copy(alpha = 0.25f), shape)
-            .padding(14.dp),
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
+            .border(Metrics.divider, Palette.statusWarning.copy(alpha = 0.25f), shape)
+            .padding(Metrics.space14),
+        horizontalArrangement = Arrangement.spacedBy(Metrics.space10),
     ) {
         Icon(Icons.Filled.MonitorHeart, contentDescription = null, tint = Palette.statusWarning)
         Text(

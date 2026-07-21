@@ -186,7 +186,7 @@ private fun DiagnosticToolsCard(vm: AppViewModel, is5MG: Boolean, onReport: () -
         blurb = "Report a bug, share your strap log, and export the raw sensor CSV (any strap) or the raw 5/MG capture. Nothing leaves the phone unless you share it.",
         overline = "Test Centre",
     ) {
-        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(Metrics.space12)) {
             // The master bug-report action (relocated from the old Export card): assembles the redacted
             // whole-app bundle and opens the review-before-share gate. The primary action, so it leads.
             NoopButton(
@@ -209,7 +209,7 @@ private fun DiagnosticToolsCard(vm: AppViewModel, is5MG: Boolean, onReport: () -
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                horizontalArrangement = Arrangement.spacedBy(Metrics.space16),
             ) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text("Debug logging", style = NoopType.subhead, color = Palette.textPrimary)
@@ -247,7 +247,7 @@ private fun DiagnosticToolsCard(vm: AppViewModel, is5MG: Boolean, onReport: () -
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(Metrics.space16),
                 ) {
                     Text(
                         "Record 5/MG raw capture (research)",

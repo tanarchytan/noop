@@ -207,7 +207,7 @@ private fun RangeControl(data: AppleData, range: AppleRange, onSelect: (AppleRan
     val base = "$n $unit · ${range.windowName}"
     val caption = if (anyWidened) "$base · some sparse series widened" else base
 
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(Metrics.space8)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             SegmentedPillControl(
                 items = AppleRange.entries.toList(),
@@ -231,7 +231,7 @@ private fun RangeControl(data: AppleData, range: AppleRange, onSelect: (AppleRan
 @Composable
 private fun LoadingCard() {
     NoopCard(tint = Palette.metricCyan) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Metrics.space10)) {
             ConnectionDot(tone = StrandTone.Accent, pulsing = true)
             Text(
                 "Reading your Apple Health history…",
@@ -494,7 +494,7 @@ private fun SinglePoint(value: Double, accent: Color, fmt: (Double) -> String) {
         modifier = Modifier.fillMaxWidth().height(Metrics.chartHeight),
         contentAlignment = Alignment.CenterStart,
     ) {
-        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(Metrics.space6)) {
             Overline("Latest reading")
             Text(fmt(value), style = NoopType.number(34f), color = accent)
         }

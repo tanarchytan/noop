@@ -320,7 +320,7 @@ private data class DialogTarget(val editing: WorkoutRow?)
 
 @Composable
 private fun EmptyWorkouts(loaded: Boolean, onAdd: () -> Unit) {
-    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(Metrics.space16)) {
         DataPendingNote(
             title = "No workouts yet",
             body = "No workouts yet. They come from your WHOOP and Apple Health history. " +
@@ -343,8 +343,8 @@ private fun PostLogNoteBanner(text: String) {
             .fillMaxWidth()
             .clip(shape)
             .background(Palette.effortColor.copy(alpha = 0.10f))
-            .border(1.dp, Palette.effortColor.copy(alpha = 0.22f), shape)
-            .padding(12.dp)
+            .border(Metrics.divider, Palette.effortColor.copy(alpha = 0.22f), shape)
+            .padding(Metrics.space12)
             .semantics { contentDescription = text },
         verticalAlignment = Alignment.Top,
     ) {
@@ -354,7 +354,7 @@ private fun PostLogNoteBanner(text: String) {
             tint = Palette.effortColor,
             modifier = Modifier.size(16.dp),
         )
-        Spacer(Modifier.width(10.dp))
+        Spacer(Modifier.width(Metrics.space10))
         Text(text, style = NoopType.footnote, color = Palette.textSecondary)
     }
 }
@@ -368,11 +368,11 @@ private fun AddWorkoutButton(onAdd: () -> Unit) {
             .clip(RoundedCornerShape(50))
             .background(Palette.accentMuted)
             .clickable(onClick = onAdd)
-            .padding(horizontal = 14.dp, vertical = 8.dp),
+            .padding(horizontal = Metrics.space14, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(Icons.Filled.Add, contentDescription = null, tint = Palette.accent, modifier = Modifier.size(16.dp))
-        Spacer(Modifier.width(6.dp))
+        Spacer(Modifier.width(Metrics.space6))
         Text("Add workout", style = NoopType.subhead, color = Palette.accent)
     }
 }
@@ -389,7 +389,7 @@ private fun RangeBar(
     onSelect: (WorkoutRange) -> Unit,
     onAdd: () -> Unit,
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(Metrics.space8)) {
  // Phone width can't fit the labelled Add button beside the 5-segment range pill without
  // crushing/clipping one — stack them (button, then pill), matching the iPhone fix.
         AddWorkoutButton(onAdd)
@@ -448,9 +448,9 @@ private fun FilterBar(
     onSearch: (String) -> Unit,
     onClear: () -> Unit,
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(Metrics.space8)) {
         Row(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalArrangement = Arrangement.spacedBy(Metrics.space8),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             FilterPillMenu(
@@ -490,12 +490,12 @@ private fun FilterBar(
                     modifier = Modifier
                         .clip(RoundedCornerShape(50))
                         .clickable(onClick = onClear)
-                        .padding(horizontal = 8.dp, vertical = 6.dp)
+                        .padding(horizontal = Metrics.space8, vertical = 6.dp)
                         .semantics { contentDescription = "Clear filters" },
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Icon(Icons.Filled.Close, contentDescription = null, tint = Palette.textSecondary, modifier = Modifier.size(14.dp))
-                    Spacer(Modifier.width(4.dp))
+                    Spacer(Modifier.width(Metrics.space4))
                     Text("Clear", style = NoopType.footnote, color = Palette.textSecondary)
                 }
             }
@@ -503,7 +503,7 @@ private fun FilterBar(
         OutlinedTextField(
             value = filter.search,
             onValueChange = onSearch,
-            leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null, tint = Palette.textTertiary, modifier = Modifier.size(18.dp)) },
+            leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null, tint = Palette.textTertiary, modifier = Modifier.size(Metrics.iconSmall)) },
             trailingIcon = {
                 if (filter.search.isNotEmpty()) {
                     IconButton(onClick = { onSearch("") }) {
@@ -534,7 +534,7 @@ private fun FilterPillMenu(
                 .clip(RoundedCornerShape(50))
                 .background(if (active) Palette.effortColor.copy(alpha = 0.14f) else Palette.surfaceInset.copy(alpha = 0.6f))
                 .clickable { open = true }
-                .padding(horizontal = 10.dp, vertical = 6.dp)
+                .padding(horizontal = Metrics.space10, vertical = 6.dp)
                 .semantics { this.contentDescription = "$contentDescription: $title" },
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -544,7 +544,7 @@ private fun FilterPillMenu(
                 color = if (active) Palette.effortColor else Palette.textSecondary,
                 maxLines = 1,
             )
-            Spacer(Modifier.width(4.dp))
+            Spacer(Modifier.width(Metrics.space4))
             Icon(
                 Icons.Filled.KeyboardArrowDown,
                 contentDescription = null,
@@ -567,7 +567,7 @@ private fun MergeSportDialog(onDismiss: () -> Unit, onPick: (String) -> Unit) {
         containerColor = Palette.surfaceOverlay,
         title = { Text("Name the merged session", style = NoopType.title2, color = Palette.textPrimary) },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(Metrics.space12)) {
                 Text(
                     "These sessions have no sport label yet. Pick one for the merged session.",
                     style = NoopType.footnote,
@@ -642,13 +642,13 @@ private fun EffortHero(
             .fillMaxWidth()
             .clip(RoundedCornerShape(LIQUID_HERO_RADIUS))
             .background(LIQUID_HERO_FILL.copy(alpha = LIQUID_HERO_FILL.alpha * CardAppearance.opacity))
-            .border(1.dp, Color.White.copy(alpha = 0.11f * CardAppearance.opacity), RoundedCornerShape(LIQUID_HERO_RADIUS))
-            .padding(20.dp),
+            .border(Metrics.divider, Color.White.copy(alpha = 0.11f * CardAppearance.opacity), RoundedCornerShape(LIQUID_HERO_RADIUS))
+            .padding(Metrics.screenRowSpacing),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(18.dp),
+                verticalArrangement = Arrangement.spacedBy(Metrics.space18),
             ) {
                 Overline("Typical effort", color = Palette.effortColor)
                 Box(modifier = Modifier.size(140.dp), contentAlignment = Alignment.Center) {
@@ -675,10 +675,10 @@ private fun EffortHero(
                     }
                 }
             }
-            Spacer(Modifier.width(20.dp))
+            Spacer(Modifier.width(Metrics.screenRowSpacing))
             Column(
                 modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
+                verticalArrangement = Arrangement.spacedBy(Metrics.space10),
             ) {
                 Text(
                     "Effort this ${effectiveRange.heroWord}",
@@ -702,7 +702,7 @@ private fun EffortHero(
 
 @Composable
 private fun HeroStat(title: String, value: String, tint: Color, modifier: Modifier = Modifier) {
-    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(2.dp)) {
+    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(Metrics.space2)) {
         Overline(title)
         Text(value, style = NoopType.number(20f), color = tint, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
@@ -804,16 +804,16 @@ private fun SportCard(g: SportGroup, zones: ZoneSummary?) {
  // Frosted Effort-tinted card with the sport glyph in the Effort world, plus an HR-zone mini-bar
  // when the sessions carry imported zones.
     NoopCard(tint = Palette.effortColor) {
-        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(Metrics.space12)) {
  // Identical header for every card.
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(
                     sportIcon(g.sport),
                     contentDescription = null,
                     tint = Palette.effortColor,
-                    modifier = Modifier.size(18.dp),
+                    modifier = Modifier.size(Metrics.iconSmall),
                 )
-                Spacer(Modifier.width(10.dp))
+                Spacer(Modifier.width(Metrics.space10))
                 Text(
                     WorkoutEditing.displaySport(g.sport),
                     style = NoopType.headline,
@@ -871,7 +871,7 @@ private fun ZonesSection(rows: List<WorkoutRow>) {
             trailing = "${z.sessionsWithZones} of ${rows.size} session${if (rows.size == 1) "" else "s"}",
         )
         NoopCard(tint = Palette.effortColor) {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(Metrics.space12)) {
  // Proportional stacked bar — the Hypnogram geometry with zone colors.
                 SegmentBar(
                     segments = z.minutes.mapIndexed { i, m ->
@@ -989,7 +989,7 @@ private fun SessionsSection(
                             .fillMaxWidth()
                             .clickable { shownCount += SESSIONS_PAGE_SIZE }
                             .semantics { contentDescription = "Show $more more sessions" }
-                            .padding(vertical = 14.dp),
+                            .padding(vertical = Metrics.space14),
                         contentAlignment = Alignment.Center,
                     ) {
                         Text(
@@ -1016,7 +1016,7 @@ private fun SelectPill(selectionMode: Boolean, onToggle: () -> Unit) {
             .clip(RoundedCornerShape(50))
             .background(if (selectionMode) Palette.effortColor.copy(alpha = 0.14f) else Palette.surfaceInset.copy(alpha = 0.6f))
             .clickable(onClick = onToggle)
-            .padding(horizontal = 12.dp, vertical = 6.dp)
+            .padding(horizontal = Metrics.space12, vertical = 6.dp)
             .semantics {
                 contentDescription = if (selectionMode) "Finish selecting" else "Select sessions to merge or delete"
             },
@@ -1045,9 +1045,9 @@ private fun SelectionToolbar(
             .fillMaxWidth()
             .clip(RoundedCornerShape(Metrics.cardRadius))
             .background(Palette.effortColor.copy(alpha = 0.08f))
-            .padding(horizontal = 12.dp, vertical = 12.dp),
+            .padding(horizontal = Metrics.space12, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        horizontalArrangement = Arrangement.spacedBy(Metrics.space12),
     ) {
         ToolbarAction(
             "Merge (${chosen.size})", Icons.AutoMirrored.Filled.MergeType,
@@ -1064,7 +1064,7 @@ private fun SelectionToolbar(
             "Cancel",
             style = NoopType.subhead,
             color = Palette.textSecondary,
-            modifier = Modifier.clickable(onClick = onCancel).padding(4.dp),
+            modifier = Modifier.clickable(onClick = onCancel).padding(Metrics.space4),
         )
     }
 }
@@ -1075,12 +1075,12 @@ private fun ToolbarAction(label: String, icon: ImageVector, tint: Color, enabled
         modifier = Modifier
             .clip(RoundedCornerShape(50))
             .then(if (enabled) Modifier.clickable(onClick = onClick) else Modifier)
-            .padding(horizontal = 4.dp, vertical = 4.dp)
+            .padding(horizontal = Metrics.space4, vertical = 4.dp)
             .semantics { contentDescription = label },
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(18.dp))
-        Spacer(Modifier.width(6.dp))
+        Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(Metrics.iconSmall))
+        Spacer(Modifier.width(Metrics.space6))
         Text(label, style = NoopType.subhead, color = tint)
     }
 }
@@ -1186,7 +1186,7 @@ private fun SessionRow(
                     modifier = Modifier.size(16.dp),
                 )
             }
-            Spacer(Modifier.width(8.dp))
+            Spacer(Modifier.width(Metrics.space8))
         }
  // Date + time range. The 0.3f comes out of Sport: "HH:mm–HH:mm" clips at footnote
  // size in the old 1.4f, while sport names already ellipsize gracefully.
@@ -1273,9 +1273,9 @@ private fun WorkoutDetailSheet(vm: AppViewModel, row: WorkoutRow, onDismiss: () 
             modifier = Modifier
                 .fillMaxWidth()
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 20.dp)
+                .padding(horizontal = Metrics.screenRowSpacing)
                 .padding(bottom = 32.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp),
+            verticalArrangement = Arrangement.spacedBy(Metrics.space14),
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(
@@ -1284,7 +1284,7 @@ private fun WorkoutDetailSheet(vm: AppViewModel, row: WorkoutRow, onDismiss: () 
                     tint = Palette.effortColor,
                     modifier = Modifier.size(22.dp),
                 )
-                Spacer(Modifier.width(10.dp))
+                Spacer(Modifier.width(Metrics.space10))
                 Column(modifier = Modifier.weight(1f)) {
                     Text(WorkoutEditing.displaySport(row.sport), style = NoopType.title2, color = Palette.textPrimary)
                     Text(dateLabel(row.startTs), style = NoopType.footnote, color = Palette.textTertiary)
@@ -1327,7 +1327,7 @@ private fun WorkoutDetailSheet(vm: AppViewModel, row: WorkoutRow, onDismiss: () 
                     color = Palette.effortColor,
                     fill = true,
                 )
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(Metrics.space12)) {
                     val lo = hrCurve.minOrNull()?.roundToInt() ?: 0
                     val hi = hrCurve.maxOrNull()?.roundToInt() ?: 0
                     MiniStat("Avg", row.avgHr?.let { "$it bpm" } ?: "–", Modifier.weight(1f))
@@ -1398,7 +1398,7 @@ private fun SessionEffortCard(strain: Double, effortScale: EffortScale) {
         NoopCard(tint = Palette.effortColor) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(18.dp),
+                horizontalArrangement = Arrangement.spacedBy(Metrics.space18),
             ) {
                 Column(
                     verticalArrangement = Arrangement.spacedBy(Metrics.space2),
@@ -1470,7 +1470,7 @@ private fun RowActionsMenu(
     Box {
         IconButton(onClick = { open = true }, modifier = Modifier.size(32.dp)) {
             Icon(Icons.Filled.MoreVert, contentDescription = "Workout actions",
-                tint = Palette.textTertiary, modifier = Modifier.size(18.dp))
+                tint = Palette.textTertiary, modifier = Modifier.size(Metrics.iconSmall))
         }
         DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
             when (WorkoutEditing.classify(row.source)) {
@@ -1604,16 +1604,16 @@ private fun ManualWorkoutDialog(
                         Icons.AutoMirrored.Filled.DirectionsRun,
                         contentDescription = null,
                         tint = Palette.effortColor,
-                        modifier = Modifier.size(18.dp),
+                        modifier = Modifier.size(Metrics.iconSmall),
                     )
                 }
-                Spacer(Modifier.width(10.dp))
+                Spacer(Modifier.width(Metrics.space10))
                 Text(if (editing == null) "Add Workout" else "Edit Workout",
                     style = NoopType.title2, color = Palette.textPrimary)
             }
         },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(Metrics.space12)) {
                 SportPickerField(sport, onChange = { sport = it })
                 StartTimeField(startMillis, onPick = { startMillis = it })
                 DialogField("Duration (minutes)", durationMin, onChange = { durationMin = it }, numeric = true)
@@ -1683,14 +1683,14 @@ private fun ManualWorkoutDialog(
 private fun StartTimeField(millis: Long, onPick: (Long) -> Unit) {
     val context = LocalContext.current
     val label = remember(millis) { SimpleDateFormat("d MMM yyyy, h:mm a", Locale.US).format(java.util.Date(millis)) }
-    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(Metrics.space6)) {
         Text("Started", style = NoopType.footnote, color = Palette.textSecondary)
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(10.dp))
                 .background(Palette.surfaceInset)
-                .border(1.dp, Palette.hairline, RoundedCornerShape(10.dp))
+                .border(Metrics.divider, Palette.hairline, RoundedCornerShape(10.dp))
                 .clickable {
                     val cal = Calendar.getInstance().apply { timeInMillis = millis }
                     DatePickerDialog(
@@ -1712,9 +1712,9 @@ private fun StartTimeField(millis: Long, onPick: (Long) -> Unit) {
                         cal.get(Calendar.YEAR), cal.get(Calendar.MONTH), cal.get(Calendar.DAY_OF_MONTH),
                     ).apply { datePicker.maxDate = System.currentTimeMillis() }.show()
                 }
-                .padding(horizontal = 12.dp, vertical = 11.dp),
+                .padding(horizontal = Metrics.space12, vertical = 11.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalArrangement = Arrangement.spacedBy(Metrics.space8),
         ) {
             Icon(Icons.Filled.CalendarMonth, contentDescription = null, tint = Palette.textTertiary, modifier = Modifier.width(16.dp))
             Text(label, style = NoopType.body, color = Palette.textPrimary)
@@ -1745,7 +1745,7 @@ private fun SportPickerField(value: String, onChange: (String) -> Unit) {
                 .fillMaxWidth()
                 .heightIn(max = 168.dp)
                 .verticalScroll(sportScroll),
-            verticalArrangement = Arrangement.spacedBy(2.dp),
+            verticalArrangement = Arrangement.spacedBy(Metrics.space2),
         ) {
             if (recents.isNotEmpty()) {
                 Overline("Recent", modifier = Modifier.padding(top = 6.dp))
@@ -1774,11 +1774,11 @@ private fun SportSuggestionRow(name: String, isDistance: Boolean, onPick: () -> 
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onPick)
-            .padding(vertical = 8.dp),
+            .padding(vertical = Metrics.space8),
     ) {
         Text(name, style = NoopType.body, color = Palette.textPrimary)
         if (isDistance) {
-            Spacer(Modifier.width(6.dp))
+            Spacer(Modifier.width(Metrics.space6))
             Text("· GPS", style = NoopType.footnote, color = Palette.textTertiary)
         }
     }
@@ -1821,12 +1821,12 @@ private fun workoutFieldColors() = OutlinedTextFieldDefaults.colors(
 
 @Composable
 private fun CardDivider() {
-    Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(Palette.hairline))
+    Box(modifier = Modifier.fillMaxWidth().height(Metrics.divider).background(Palette.hairline))
 }
 
 @Composable
 private fun FullDivider(alpha: Float = 1f) {
-    Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(Palette.hairline.copy(alpha = alpha)))
+    Box(modifier = Modifier.fillMaxWidth().height(Metrics.divider).background(Palette.hairline.copy(alpha = alpha)))
 }
 
 // MARK: - Range model

@@ -538,7 +538,7 @@ private fun WhatMovesYouLink(onOpen: () -> Unit) {
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(Metrics.space12),
         ) {
             Box(
                 modifier = Modifier
@@ -554,7 +554,7 @@ private fun WhatMovesYouLink(onOpen: () -> Unit) {
                     modifier = Modifier.size(16.dp),
                 )
             }
-            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(Metrics.space4)) {
                 // WHOOP tappable-card title: UPPERCASE tracked WHITE label + a trailing "›" chevron
                 // glyph (mirrors the iOS "WHAT MOVES YOU ›" overline). The descriptive line sits beneath.
                 Overline("What moves you ›", color = Palette.textPrimary)
@@ -659,9 +659,9 @@ private fun ActivityCostCard(cost: com.noop.analytics.ActivityCost) {
                     sportIcon(cost.sport),
                     contentDescription = null,
                     tint = accent,
-                    modifier = Modifier.size(18.dp),
+                    modifier = Modifier.size(Metrics.iconSmall),
                 )
-                Spacer(Modifier.width(8.dp))
+                Spacer(Modifier.width(Metrics.space8))
                 Text(
                     cost.sport,
                     style = NoopType.headline,
@@ -791,7 +791,7 @@ private fun EffectCard(e: BehaviorEffect, outcome: Outcome) {
                 Row(
                     modifier = Modifier.weight(1f),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(Metrics.space8),
                 ) {
                     Box(
                         modifier = Modifier
@@ -850,7 +850,7 @@ private fun EffectCard(e: BehaviorEffect, outcome: Outcome) {
                     style = NoopType.captionNumber,
                     color = tintColor,
                 )
-                Spacer(Modifier.width(6.dp))
+                Spacer(Modifier.width(Metrics.space6))
                 Text(
                     effectMagnitudeWord(e.cohensD),
                     style = NoopType.caption,
@@ -972,7 +972,7 @@ private fun ExperimentSetupCard(
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text("Run a clean personal test", style = NoopType.headline, color = Palette.textPrimary)
-                Spacer(Modifier.height(4.dp))
+                Spacer(Modifier.height(Metrics.space4))
                 Text(
                     "Pick one behaviour you log, one outcome, and a short window. NOOP " +
                         "compares the days you log the behaviour against your behaviour-free " +
@@ -981,7 +981,7 @@ private fun ExperimentSetupCard(
                     color = Palette.textSecondary,
                 )
             }
-            Spacer(Modifier.width(12.dp))
+            Spacer(Modifier.width(Metrics.space12))
             StatePill("LOCAL ONLY", tone = StrandTone.Neutral, showsDot = false)
         }
 
@@ -1049,14 +1049,14 @@ private fun ActiveExperimentCard(
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                 )
-                Spacer(Modifier.height(4.dp))
+                Spacer(Modifier.height(Metrics.space4))
                 Text(
                     "Started ${snapshot.startDay} · testing ${snapshot.outcome.outcomeName.lowercase(Locale.US)}",
                     style = NoopType.footnote,
                     color = Palette.textTertiary,
                 )
             }
-            Spacer(Modifier.width(12.dp))
+            Spacer(Modifier.width(Metrics.space12))
             StatePill(
                 snapshot.phaseLabel,
                 tone = snapshot.phaseTone,
@@ -1105,7 +1105,7 @@ private fun ActiveExperimentCard(
         }
 
         // Progress bar + day count + confidence pill.
-        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(Metrics.space6)) {
             // LiquidTube: a genuine SINGLE-value goal bar (day N of the window), so it liquid-fills to
             // `snapshot.progress` in the accent tint. Static (animated = false) — a scrolling explorer must
             // not carry a live Canvas clock. Same fraction, same tint, same accessibility label as the
@@ -1140,7 +1140,7 @@ private fun ActiveExperimentCard(
         // NoopButtonStyle(.primary / .secondary / .destructive) with leading icons).
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            horizontalArrangement = Arrangement.spacedBy(Metrics.space10),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             NoopButton(
@@ -1181,9 +1181,9 @@ private fun ExperimentField(title: String, content: @Composable () -> Unit) {
             .fillMaxWidth()
             .clip(RoundedCornerShape(8.dp))
             .background(Palette.surfaceInset)
-            .border(1.dp, Palette.hairline, RoundedCornerShape(8.dp))
-            .padding(12.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+            .border(Metrics.divider, Palette.hairline, RoundedCornerShape(8.dp))
+            .padding(Metrics.space12),
+        verticalArrangement = Arrangement.spacedBy(Metrics.space8),
     ) {
         Overline(title, color = Palette.textTertiary)
         content()
@@ -1204,9 +1204,9 @@ private fun ExperimentMeasure(
             .heightIn(min = 92.dp)
             .clip(RoundedCornerShape(8.dp))
             .background(Palette.surfaceInset)
-            .border(1.dp, Palette.hairline, RoundedCornerShape(8.dp))
-            .padding(12.dp),
-        verticalArrangement = Arrangement.spacedBy(6.dp),
+            .border(Metrics.divider, Palette.hairline, RoundedCornerShape(8.dp))
+            .padding(Metrics.space12),
+        verticalArrangement = Arrangement.spacedBy(Metrics.space6),
     ) {
         Text(label, style = NoopType.caption, color = Palette.textTertiary, maxLines = 1)
         Text(
@@ -1237,10 +1237,10 @@ private fun ExperimentBehaviourPicker(
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(6.dp))
                 .background(Palette.surfaceBase)
-                .border(1.dp, Palette.hairline, RoundedCornerShape(6.dp))
+                .border(Metrics.divider, Palette.hairline, RoundedCornerShape(6.dp))
                 .clickable(interactionSource = interaction, indication = null) { expanded = true }
                 .liquidPress(interaction)
-                .padding(horizontal = 12.dp, vertical = 8.dp)
+                .padding(horizontal = Metrics.space12, vertical = 8.dp)
                 .semantics { contentDescription = "Experiment behaviour: $selection" },
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -1478,12 +1478,12 @@ private fun RelationshipRow(rel: Relationship) {
             .fillMaxWidth()
             .padding(vertical = 11.dp)
             .clearAndSetSemantics { contentDescription = sentence },
-        verticalArrangement = Arrangement.spacedBy(10.dp),
+        verticalArrangement = Arrangement.spacedBy(Metrics.space10),
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalArrangement = Arrangement.spacedBy(Metrics.space8),
         ) {
             Text(
                 rel.title,
@@ -1524,7 +1524,7 @@ private fun RBar(r: Double, color: Color) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .height(8.dp)
+            .height(Metrics.space8)
             .clip(CircleShape)
             .drawBehind {
                 val half = size.width / 2f

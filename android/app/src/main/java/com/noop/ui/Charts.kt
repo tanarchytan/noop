@@ -4,20 +4,27 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectTransformGestures
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
@@ -30,7 +37,10 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -38,26 +48,13 @@ import java.util.Locale
 import kotlin.math.abs
 import kotlin.math.roundToInt
 
-// MARK: - Charts (pure Compose Canvas — dark, instrument-grade, no external library)
+// MARK: - Charts (pure Compose Canvas, no external library)
 //
-// Implements the shared chart contract used across the port. Every chart is
-// null/empty-safe: with no usable data it renders nothing but a faint baseline
-// (or, for the hypnogram, the inset well) so layouts never collapse or crash.
-//
-//   Sparkline  — tiny inline trend line, no axes
-//   LineChart  — line with optional soft gradient fill, height driven by Modifier
-//   BarChart   — vertical bars from a zero baseline
-//   Hypnogram  — proportional sleep-stage strip (deep / rem / light / awake)
+// Every chart is null/empty-safe: by default renders a faint baseline so layouts never collapse.
+// Each primitive contributes ONE semantics node (clearAndSetSemantics), avoiding per-element a11y trees.
 
 // MARK: - Accessibility summaries
-//
-// Each chart primitive contributes exactly ONE semantics node via `Modifier.clearAndSetSemantics`, so the
-// Compose accessibility delegate never walks a per-bar/per-band/per-point subtree (the giant semantics
-// tree the a11y walk re-copied on every scroll was a contributor to the #707 OOM). The node carries a
-// concise spoken summary (count + latest/low/high, or per-stage totals) — O(1) instead of O(elements).
-// These are pure helpers; they change NO drawing.
 
-/** One-line spoken summary of a numeric series: count + latest + low/high. Empty → "No data". */
 private fun seriesSummary(values: List<Double>, noun: String): String {
     val clean = values.filter { it.isFinite() }
     if (clean.isEmpty()) return "$noun, no data"
@@ -68,10 +65,8 @@ private fun seriesSummary(values: List<Double>, noun: String): String {
         "low ${formatLineValue(lo)}, high ${formatLineValue(hi)}"
 }
 
-/** Per-stage total summary for the Hypnogram (deep · REM · light · awake, naming only stages present). */
 private fun hypnogramSummary(stages: List<Pair<String, Float>>): String {
     if (stages.isEmpty()) return "Sleep stages, no data"
-    // Weights are relative widths, not minutes, so report the share of the night in each stage.
     val total = stages.map { if (it.second.isFinite() && it.second > 0f) it.second else 0f }.sum()
     if (total <= 0f) return "Sleep stages, no data"
     val order = listOf("deep", "rem", "light", "awake")
@@ -97,9 +92,6 @@ private fun hypnogramSummary(stages: List<Pair<String, Float>>): String {
 
 // MARK: - Shared geometry helpers
 
-/** Map a list of values into evenly-spaced points within [bounds], scaling y to the
- *  value range. A flat series (min == max) is centered vertically. Returns an empty
- *  list when there are fewer than two finite points. */
 private fun pointsFor(
     values: List<Double>,
     width: Float,
@@ -122,11 +114,9 @@ private fun pointsFor(
     maxV: Double,
 ): List<Offset> {
     if (values.size < 2 || width <= 0f || height <= 0f) return emptyList()
-
     val span = (maxV - minV)
     val usableH = (height - topPad - bottomPad).coerceAtLeast(1f)
     val stepX = if (values.size > 1) width / (values.size - 1) else width
-
     return values.mapIndexed { i, v ->
         val x = stepX * i
         val norm = if (span > 0.0) ((v - minV) / span).toFloat() else 0.5f
@@ -135,7 +125,6 @@ private fun pointsFor(
     }
 }
 
-/** Draw the faint zero/empty baseline used when there is nothing to plot. */
 private fun DrawScope.drawBaseline(color: Color = Palette.hairline) {
     val y = size.height / 2f
     drawLine(
@@ -149,23 +138,12 @@ private fun DrawScope.drawBaseline(color: Color = Palette.hairline) {
 
 // MARK: - Sparkline
 
-/**
- * Tiny inline line, no axes — for use inside tiles and list rows. Draws a single
- * smooth-capped stroke spanning the full width. Empty/flat data renders a baseline.
- */
 @Composable
 fun Sparkline(
     values: List<Double>,
     modifier: Modifier = Modifier,
     color: Color = Palette.accent,
 ) {
-    // PERF (#scroll-jank): the point mapping + Path were rebuilt inside the Canvas draw lambda EVERY
-    // frame. drawWithCache tessellates the Path ONCE (keyed on the values + size — the cache block
-    // re-runs only when those change) and the cached draw lambda just replays it on every scroll frame.
-    // Pixel-identical: same pointsFor geometry, same strokePx/cap/join, same empty→drawBaseline state.
-    // ONE collapsed semantics node (see "Accessibility summaries"): the delegate reads a single trend
-    // summary instead of walking the canvas. clearAndSetSemantics drops any child nodes (there are none
-    // here) and contributes exactly this contentDescription. Changes no drawing.
     val axSummary = seriesSummary(values, "Trend")
     Box(
         modifier = modifier
@@ -194,35 +172,18 @@ fun Sparkline(
 
 // MARK: - LineChart
 
-/**
- * Line chart with an optional soft vertical gradient fill under the curve. Height is
- * taken from [modifier] (e.g. `Modifier.height(Metrics.chartHeight)`). A faint
- * baseline shows when data is empty. No axes/labels — the surrounding card supplies
- * context, keeping the chart instrument-grade.
- */
 @Composable
 fun LineChart(
     values: List<Double>,
     modifier: Modifier,
     color: Color = Palette.accent,
     fill: Boolean = true,
-    // Default OFF so the long-standing static LineCharts across the app (Today HR, Stress, Apple
-    // Health, Trends Explore, the Health HR section) stay static; the screens that want the new
-    // tap/swipe-to-inspect interaction opt in explicitly (Sleep, Trends, the Vital Signs detail).
     selectionEnabled: Boolean = false,
     dragSelectionEnabled: Boolean = true,
-    // Selection-label formatter (#463): the tap/drag pinpoint read-out draws the RAW plotted value by
-    // default; screens whose surrounding chrome converts values for display (Trends' Effort chart on
-    // the 0-21 scale) pass their axis formatter so the label can't leak the stored scale as a bare
-    // unconverted number. Default null keeps every other caller byte-identical.
     formatValue: ((Double) -> String)? = null,
-    // Optional per-point unix-second timestamps, index-aligned with [values]: when supplied, the
-    // tap/drag pinpoint read-out prefixes the selected sample's local clock time ("14:32 · 87 bpm").
     timestamps: List<Long>? = null,
 ) {
     val cleanValues = remember(values) { values.filter { it.isFinite() } }
-    // Timestamps filtered by the SAME finiteness cut as cleanValues so indices stay aligned;
-    // dropped entirely on a length mismatch rather than mislabelling times.
     val cleanTimestamps = remember(values, timestamps) {
         if (timestamps == null || timestamps.size != values.size) null
         else values.indices.filter { values[it].isFinite() }.map { timestamps[it] }
@@ -274,28 +235,14 @@ fun LineChart(
         Modifier
     }
 
-    // ONE collapsed semantics node for the whole chart (line + fill + selection marker subtree) so the
-    // accessibility delegate reads a single trend summary rather than descending into the canvas. The
-    // summary uses the same finite-filtered values the line draws. Changes no drawing or interaction.
     val axSummary = seriesSummary(cleanValues, "Trend")
     Box(
         modifier = modifier
             .fillMaxWidth()
-            // Clip drawing to the chart bounds so the gradient fill (which runs to
-            // size.height with no bottom pad) and the round-capped stroke can't bleed
-            // past the edges. Compose Canvas does NOT clip by default — macOS parity for
-            // TrendChart.swift's `.chartPlotStyle { $0.clipped() }` + `.clipped()`.
             .clipToBounds()
             .clearAndSetSemantics { contentDescription = axSummary }
             .then(interactiveModifier),
     ) {
-        // PERF (#scroll-jank): the fill Path, the line Path AND the verticalGradient Brush were all
-        // rebuilt inside the draw lambda every frame. Hoist the whole STATIC chart (baseline / fill /
-        // line) into drawWithCache, keyed on (cleanValues, color, fill) + the implicit size — it
-        // tessellates once and replays on scroll. The fast-moving SELECTION marker stays in a thin
-        // separate drawWithContent overlay so a cursor drag re-issues only the marker, never the chart.
-        // The pre-laid Paint for the value label is remembered, not allocated per draw. Pixel-identical:
-        // same pointsFor geometry, same strokePx/pads, same gradient stops, same marker + label drawing.
         val markerPaint = remember(color) {
             android.graphics.Paint().apply {
                 isAntiAlias = true
@@ -348,17 +295,13 @@ fun LineChart(
                         }
                         val lineStroke = Stroke(width = strokePx, cap = StrokeCap.Round, join = StrokeJoin.Round)
                         onDrawBehind {
-                            // Soft gradient fill under the curve.
                             if (fillPath != null && fillBrush != null) {
                                 drawPath(path = fillPath, brush = fillBrush)
                             }
-                            // The line itself.
                             drawPath(path = linePath, color = color, style = lineStroke)
                         }
                     }
                 }
-                // Tap-to-pinpoint marker — a thin per-frame overlay so a drag rebuilds only this, not
-                // the chart. Recomputes the single selected point from the same pointsFor geometry.
                 .drawWithContent {
                     drawContent()
                     if (selectionEnabled && selectedIndex >= 0) {
@@ -408,8 +351,6 @@ fun MultiLineChart(
             .filter { it.values.size >= 2 }
     }
 
-    // ONE collapsed semantics node: summarise across all series (count of lines + overall low/high) so
-    // the a11y delegate reads a single line rather than walking the canvas. Changes no drawing.
     val axSummary = run {
         val all = cleanSeries.flatMap { it.values }
         if (all.isEmpty()) "Trends, no data"
@@ -453,10 +394,6 @@ private fun nearestIndexForX(count: Int, width: Float, x: Float): Int {
     return raw.coerceIn(0, count - 1)
 }
 
-/** The tap/drag pinpoint label: the caller's display formatter when supplied (#463), else the raw
- *  near-integer-collapsing default. When the caller also supplies the sample's [epochSec] the local
- *  clock time PREFIXES the formatted value ("14:32 · 87 bpm"). Split out so both choices are
- *  JVM-testable. */
 internal fun lineChartSelectionLabel(
     value: Double,
     formatValue: ((Double) -> String)?,
@@ -488,11 +425,6 @@ private fun nearestBarIndexForX(count: Int, width: Float, x: Float): Int {
 
 // MARK: - BarChart
 
-/**
- * Vertical bars from a zero baseline. Bars are scaled to the maximum value so the
- * tallest fills the plot height. Negative/non-finite values are treated as zero.
- * Empty data renders a faint baseline.
- */
 @Composable
 fun BarChart(
     values: List<Double>,
@@ -502,8 +434,6 @@ fun BarChart(
 ) {
     val cleanValues = remember(values) { values.map { if (it.isFinite() && it > 0.0) it else 0.0 } }
     var selectedIndex by remember(cleanValues) { mutableIntStateOf(-1) }
-    // Pre-laid value-label Paint, remembered rather than allocated inside the draw block (the old code
-    // built a fresh android.graphics.Paint every draw). Keyed on color so it tracks a tint change.
     val barLabelPaint = remember(color) {
         android.graphics.Paint().apply {
             isAntiAlias = true
@@ -517,8 +447,6 @@ fun BarChart(
     }
     val unselectedColor = remember(color) { color.copy(alpha = StrandAlpha.unselectedBar) }
 
-    // ONE collapsed semantics node so the a11y delegate reads a single bar-series summary instead of
-    // walking every bar. Summarises the (zeroed-non-finite) source values the bars are scaled from.
     val axSummary = seriesSummary(cleanValues, "Bars")
     Box(
         modifier = modifier
@@ -543,23 +471,9 @@ fun BarChart(
                     Modifier
                 },
             )
-            // PERF (#scroll-jank): the per-bar geometry (max, slot, bar width/height, x positions) was
-            // recomputed inside the Canvas draw lambda every frame. Hoist the geometry into
-            // drawWithCache (keyed on cleanValues + the implicit size) into a list of bar segments; the
-            // onDrawBehind just replays them — and reads selectedIndex per-frame so a tap re-tints one
-            // bar without rebuilding geometry. When values can exceed the pixel width the source is
-            // mean-bucket-downsampled to ~one bar per horizontal pixel first (visually identical: a 0.64×
-            // bar at sub-pixel slots was an unreadable smear; the bucket mean preserves the silhouette).
             .drawWithCache {
                 val w = size.width
                 val h = size.height
-                // Mean-bucket-downsample so there is at most ~one bar per horizontal pixel. Above that the
-                // 0.64×-slot bars overlap into a solid block anyway, so the bucket mean is pixel-identical
-                // while cutting the bar count (and the per-frame work) to the visible resolution.
-                // Only downsample when selection is OFF: an interactive BarChart maps the user's tapped
-                // selectedIndex against the FULL-resolution cleanValues, so collapsing the drawn bars
-                // would desync the highlight + label. Interactive charts carry small bounded counts
-                // (days), so they never hit this path anyway; the downsample targets dense static bars.
                 val maxBars = w.toInt().coerceAtLeast(1)
                 val clean = if (!selectionEnabled && cleanValues.size > maxBars && maxBars >= 1) {
                     meanBucketDownsample(cleanValues, maxBars)
@@ -575,7 +489,6 @@ fun BarChart(
                     val slot = w / clean.size
                     val barWidth = (slot * 0.64f).coerceAtLeast(1f)
                     val capRadius = (barWidth / 2f)
-                    // Precompute each bar's x centre + top y once.
                     data class BarSeg(val cx: Float, val top: Float)
                     val bars = ArrayList<BarSeg>(clean.size)
                     clean.forEachIndexed { i, v ->
@@ -607,9 +520,6 @@ fun BarChart(
     )
 }
 
-/** Mean-bucket-downsample [values] to about [target] buckets, averaging each contiguous run. Used so a
- *  BarChart with more values than horizontal pixels collapses to ~one bar per pixel without changing the
- *  visible silhouette. Returns the input unchanged when it already fits. */
 private fun meanBucketDownsample(values: List<Double>, target: Int): List<Double> {
     val n = values.size
     if (target < 1 || n <= target) return values
@@ -627,29 +537,11 @@ private fun meanBucketDownsample(values: List<Double>, target: Int): List<Double
 
 // MARK: - Hypnogram
 
-/**
- * Proportional sleep-stage strip. [stages] is an ordered list of (stageName,
- * fractionOfWidth) where fractions are taken as relative weights and normalized to
- * fill the available width. Stage names are matched case-insensitively to the
- * design-system sleep palette:
- *
- *   "deep"  → Palette.sleepDeep      "rem"   → Palette.sleepREM
- *   "light" → Palette.sleepLight     "awake" → Palette.sleepAwake
- *
- * Unknown names fall back to the light tone. Empty/zero-weight input renders the
- * inset well so the row keeps its height.
- */
 @Composable
 fun Hypnogram(
     stages: List<Pair<String, Float>>,
     modifier: Modifier,
 ) {
-    // PERF (#scroll-jank): the weights sum + per-segment fraction/width geometry was recomputed inside
-    // the Canvas draw lambda every frame. Hoist it into drawWithCache (keyed on stages + the implicit
-    // size) as a list of (color,left,width) segments; the onDrawBehind just replays them. The inset
-    // well + the empty/zero-weight state are preserved exactly.
-    // ONE collapsed semantics node (per-stage share) so the a11y delegate reads a single sleep-stage
-    // summary instead of walking each band — the Android twin of the iOS Hypnogram's single node.
     val axSummary = hypnogramSummary(stages)
     Box(
         modifier = modifier
@@ -662,7 +554,6 @@ fun Hypnogram(
                 val weights = stages.map { it.second }.map { if (it.isFinite() && it > 0f) it else 0f }
                 val total = weights.sum()
                 if (w <= 0f || h <= 0f || stages.isEmpty() || total <= 0f) {
-                    // Inset well only (or nothing if degenerate) — matches the old baseline-only state.
                     onDrawBehind {
                         if (w > 0f && h > 0f) drawRoundedTrack(Palette.surfaceInset)
                     }
@@ -679,7 +570,6 @@ fun Hypnogram(
                         x += segW
                     }
                     onDrawBehind {
-                        // Inset well background so the strip reads as a recessed track.
                         drawRoundedTrack(Palette.surfaceInset)
                         segs.forEach { (c, left, width) ->
                             drawSegment(color = c, left = left, width = width, height = h)
@@ -692,22 +582,12 @@ fun Hypnogram(
 
 // MARK: - SegmentBar
 
-/**
- * Generic proportional color strip (the Hypnogram geometry with caller-supplied colors).
- * [segments] is an ordered list of (color, weight); weights are normalized to fill the
- * width. Zero/NaN weights are skipped. Empty/zero input renders the inset well so rows
- * keep their height.
- */
 @Composable
 fun SegmentBar(
     segments: List<Pair<Color, Float>>,
     modifier: Modifier,
     height: Dp = Metrics.segmentBarHeight,
 ) {
-    // PERF (#scroll-jank): same hoist as Hypnogram — the weight sum + per-segment widths move into
-    // drawWithCache (keyed on segments + the implicit size); the draw lambda replays the segment list.
-    // ONE collapsed semantics node so the a11y delegate doesn't walk each segment. The segments are a
-    // caller-supplied colour breakdown with no inherent label, so the summary is just the segment count.
     val axSummary = if (segments.isEmpty()) "Breakdown, no data" else "Breakdown, ${segments.size} segments"
     Box(modifier = modifier.fillMaxWidth().height(height).clearAndSetSemantics { contentDescription = axSummary }.drawWithCache {
         val w = size.width
@@ -759,8 +639,7 @@ private fun DrawScope.drawSegment(color: Color, left: Float, width: Float, heigh
     )
 }
 
-/** Map a stage name to its design-system sleep tone (case-insensitive). */
-private fun stageColor(name: String): Color = when (name.trim().lowercase()) {
+internal fun stageColor(name: String): Color = when (name.trim().lowercase()) {
     "deep" -> Palette.sleepDeep
     "rem" -> Palette.sleepREM
     "light" -> Palette.sleepLight
@@ -768,23 +647,107 @@ private fun stageColor(name: String): Color = when (name.trim().lowercase()) {
     else -> Palette.sleepLight
 }
 
-// MARK: - Deep Timeline chart (#575) — time-indexed, zoom + pan
-//
-// A time-aware line (each point carries its own unix-second timestamp, unlike the evenly-spaced
-// LineChart) over a visible [windowStart, windowEnd] window, with pinch-to-zoom + drag-to-pan via
-// detectTransformGestures. The Swift twin is OverviewHRChart's zoom binding. The point COUNT stays low
-// because the read layer downsamples to the zoom window (TimelinePoint list is ~targetPoints) — the
-// chart never receives ~86k points. Mirrors macOS OverviewHRChart's gesture-driven x-domain.
+// MARK: - HypnogramWithAxis (proportional strip with time hairlines and clock labels)
 
-/** One timeline sample: a unix-second timestamp + a value (bpm, °C, ms, …). */
+@Composable
+fun HypnogramWithAxis(
+    stages: List<Pair<String, Float>>,
+    onsetTs: Long?,
+    wakeTs: Long?,
+) {
+    val showsAxis = onsetTs != null && wakeTs != null
+    Column(verticalArrangement = Arrangement.spacedBy(Metrics.space6)) {
+        Canvas(modifier = Modifier.fillMaxWidth().height(Metrics.stageStripHeight)) {
+            val w = size.width
+            val h = size.height
+            if (w <= 0f || h <= 0f) return@Canvas
+
+            drawLine(
+                color = Palette.surfaceInset,
+                start = Offset(0f, h / 2f),
+                end = Offset(w, h / 2f),
+                strokeWidth = h,
+                cap = StrokeCap.Round,
+            )
+
+            val weights = stages.map { it.second }.map { if (it.isFinite() && it > 0f) it else 0f }
+            val total = weights.sum()
+            if (stages.isEmpty() || total <= 0f) return@Canvas
+
+            val minSegW = h / 2f
+            val floored = weights.map { wt -> if (wt > 0f) maxOf(w * (wt / total), minSegW) else 0f }
+            val flooredSum = floored.sum()
+            val scale = if (flooredSum > w) w / flooredSum else 1f
+            val radius = CornerRadius(2.dp.toPx(), 2.dp.toPx())
+            var x = 0f
+            stages.forEachIndexed { i, (name, _) ->
+                val segW = floored[i] * scale
+                if (segW <= 0f) return@forEachIndexed
+                drawRoundRect(
+                    color = stageColor(name),
+                    topLeft = Offset(x, 0f),
+                    size = Size(segW.coerceAtMost(w - x), h),
+                    cornerRadius = radius,
+                )
+                x += segW
+            }
+
+            if (showsAxis) {
+                listOf(0f, 0.5f, 1f).forEach { frac ->
+                    val hx = w * frac
+                    drawLine(
+                        color = Palette.hairline,
+                        start = Offset(hx, 0f),
+                        end = Offset(hx, h),
+                        strokeWidth = 1f,
+                    )
+                }
+            }
+        }
+        if (showsAxis && onsetTs != null && wakeTs != null) {
+            ClockLabelRow(onsetTs, wakeTs)
+        }
+    }
+}
+
+@Composable
+fun ClockLabelRow(onsetTs: Long, wakeTs: Long) {
+    val onset = clockTimeLabel(onsetTs)
+    val mid = clockTimeLabel((onsetTs + wakeTs) / 2L)
+    val wake = clockTimeLabel(wakeTs)
+    Row(modifier = Modifier.fillMaxWidth()) {
+        Text(
+            onset,
+            style = NoopType.footnote,
+            color = Palette.textTertiary,
+            textAlign = TextAlign.Start,
+            maxLines = 1,
+            modifier = Modifier.weight(1f),
+        )
+        Text(
+            mid,
+            style = NoopType.footnote,
+            color = Palette.textTertiary,
+            textAlign = TextAlign.Center,
+            overflow = TextOverflow.Ellipsis,
+            maxLines = 1,
+            modifier = Modifier.weight(1f),
+        )
+        Text(
+            wake,
+            style = NoopType.footnote,
+            color = Palette.textTertiary,
+            textAlign = TextAlign.End,
+            maxLines = 1,
+            modifier = Modifier.weight(1f),
+        )
+    }
+}
+
+// MARK: - Deep Timeline chart (time-indexed, zoom + pan)
+
 data class TimelinePoint(val ts: Long, val value: Double)
 
-/**
- * Pure adaptive-resolution decision shared with the macOS `Repository.timelineBucketSeconds`: the bucket
- * width (seconds) to read for a `[from, to]` window that should yield ABOUT [targetPoints] points. A
- * bucket of 1 means "read raw per-second rows". A day-scale window picks a coarse bucket (never raw); a
- * few-minute zoom drops to 1. Kept in Charts.kt so it's unit-testable without Room or a clock.
- */
 fun timelineBucketSeconds(spanSeconds: Long, targetPoints: Int): Long {
     val span = spanSeconds.coerceAtLeast(1L)
     val target = targetPoints.coerceAtLeast(1)
@@ -795,10 +758,6 @@ fun timelineBucketSeconds(spanSeconds: Long, targetPoints: Int): Long {
     return steps.last()
 }
 
-/**
- * Scale [base] window about [anchorFraction] (0…1) by [scale] (>1 zooms in), clamped into [bounds] and
- * floored at [minSpan] seconds. Pure — the Compose twin of OverviewHRChart.zoomed.
- */
 fun zoomedWindow(
     base: LongRange,
     scale: Float,
@@ -819,24 +778,13 @@ fun zoomedWindow(
     return newLo..(newLo + newSpan).coerceAtLeast(newLo + 1)
 }
 
-// MARK: - Round-time x-axis ticks (prototype hr-chart-time-axis)
+// MARK: - Round-time x-axis ticks
 
-/** Shared "HH:mm" tick/readout clock format — one instance, DateTimeFormatter is thread-safe. */
 private val chartTickTimeFormat = DateTimeFormatter.ofPattern("HH:mm", Locale.US)
 
-/**
- * Round wall-clock x-axis ticks for a `[startEpochSec, endEpochSec]` window: (epochSec, "HH:mm")
- * pairs at fixed round intervals chosen by the visible span (a full day ticks every 6h, a 1h zoom
- * every 15min). Ticks step in LOCAL wall-clock time from the window's local midnight — a window
- * crossing midnight labels "00:00" and DST labels stay round; java.time resolves the spring-forward
- * gap to a valid time and the epoch-dedupe drops the resulting double tick. Pure and clock-free
- * (ChartTimeTicksTest).
- */
 fun chartTimeTicks(startEpochSec: Long, endEpochSec: Long, zone: ZoneId): List<Pair<Long, String>> {
     if (endEpochSec <= startEpochSec) return emptyList()
     val spanHours = (endEpochSec - startEpochSec) / 3600.0
-    // Thresholds sit below the nominal Today-card windows (24h/12h/6h/3h/1h) so a window whose
-    // banked data covers slightly less than nominal still lands on its intended interval.
     val stepMinutes = when {
         spanHours >= 20.0 -> 360L
         spanHours >= 10.0 -> 180L
@@ -847,7 +795,6 @@ fun chartTimeTicks(startEpochSec: Long, endEpochSec: Long, zone: ZoneId): List<P
     var tick = Instant.ofEpochSecond(startEpochSec).atZone(zone).toLocalDate().atStartOfDay()
     val out = ArrayList<Pair<Long, String>>()
     var lastEpoch = Long.MIN_VALUE
-    // Bounded walk: even a multi-day window at 15-min steps stays well under the guard.
     var guard = 0
     while (guard++ < 4096) {
         val zoned = tick.atZone(zone)
@@ -862,12 +809,6 @@ fun chartTimeTicks(startEpochSec: Long, endEpochSec: Long, zone: ZoneId): List<P
     return out
 }
 
-/**
- * Where wall-clock [ts] falls (0…1) across an INDEX-spaced line, interpolating between the
- * per-point [timestamps] exactly like OverviewHRChart's marker mapping — so a tick's gridline and
- * its axis label land on the same pixel even when the series has gaps. Null when [ts] is outside
- * the plotted extent (an off-window tick draws nothing rather than pinning to an edge).
- */
 fun timestampFraction(timestamps: List<Long>, ts: Long): Float? {
     val n = timestamps.size
     if (n < 2) return null
@@ -881,7 +822,6 @@ fun timestampFraction(timestamps: List<Long>, ts: Long): Float? {
     return (lo + f) / (n - 1)
 }
 
-/** Pan [base] by [deltaSeconds], clamped into [bounds] (span preserved). Pure — twin of OverviewHRChart.panned. */
 fun pannedWindow(base: LongRange, deltaSeconds: Long, bounds: LongRange): LongRange {
     val span = base.last - base.first
     var newLo = base.first + deltaSeconds
@@ -889,11 +829,6 @@ fun pannedWindow(base: LongRange, deltaSeconds: Long, bounds: LongRange): LongRa
     return newLo..(newLo + span)
 }
 
-/**
- * The Deep Timeline chart: a line over [points] within the visible [windowStart, windowEnd], pinch to
- * zoom + drag to pan (both clamped to [bounds]). Reports the settled window via [onWindowChange] so the
- * host can re-read at the new resolution. Empty-safe: with no points it draws a faint baseline.
- */
 @Composable
 fun TimelineChart(
     points: List<TimelinePoint>,
@@ -909,8 +844,6 @@ fun TimelineChart(
         points.filter { it.ts in windowStart..windowEnd && it.value.isFinite() }
     }
 
-    // ONE collapsed semantics node (summary of the VISIBLE window) so the a11y delegate reads a single
-    // line instead of walking the canvas; recomputes as the zoom/pan window changes. Changes no drawing.
     val axSummary = seriesSummary(vis.map { it.value }, "Timeline")
     Box(
         modifier = modifier
@@ -921,7 +854,6 @@ fun TimelineChart(
                 detectTransformGestures { centroid, pan, zoom, _ ->
                     val width = size.width.toFloat().coerceAtLeast(1f)
                     var window = windowStart..windowEnd
-                    // Pinch zooms about the gesture centroid; pan shifts the window.
                     if (zoom != 1f) {
                         val frac = (centroid.x / width).coerceIn(0f, 1f)
                         window = zoomedWindow(window, zoom, frac, bounds)
@@ -955,7 +887,6 @@ fun TimelineChart(
                 moveTo(px(vis.first().ts), py(vis.first().value))
                 for (i in 1 until vis.size) lineTo(px(vis[i].ts), py(vis[i].value))
             }
-            // Soft gradient fill under the curve.
             val fillPath = Path().apply {
                 moveTo(px(vis.first().ts), size.height)
                 lineTo(px(vis.first().ts), py(vis.first().value))
@@ -984,11 +915,8 @@ fun TimelineChart(
     }
 }
 
-// MARK: - GlowEndCap (shared three-layer sparkline end-cap dot, deduplicated from Trends/Explore)
+// MARK: - GlowEndCap (three-layer sparkline end-cap dot)
 
-/** A three-layer glow end-cap dot drawn at the last data point's position on a sparkline or trend
- *  chart. Consolidates the identical copies that lived in TrendsScreen, TrendsExploreScreen, and
- *  inline in TodayScreen. */
 @Composable
 fun GlowEndCap(
     values: List<Double>,
@@ -1010,5 +938,65 @@ fun GlowEndCap(
         drawCircle(color = tipColor.copy(alpha = 0.30f), radius = 9f, center = center)
         drawCircle(color = tipColor.copy(alpha = 0.65f), radius = 5.5f, center = center)
         drawCircle(color = Palette.tipCore, radius = 2.4f, center = center)
+    }
+}
+
+// MARK: - TileSparkline (compact filled sparkline with glow end-cap)
+
+@Composable
+fun TileSparkline(values: List<Double>, color: Color, modifier: Modifier = Modifier) {
+    Canvas(modifier = modifier.clipToBounds()) {
+        if (values.size < 2 || size.width <= 0f || size.height <= 0f) return@Canvas
+        val strokePx = 2f
+        val pad = strokePx + 2f
+        val usableH = (size.height - pad * 2).coerceAtLeast(1f)
+        val lo = values.min()
+        val hi = values.max()
+        val span = (hi - lo).takeIf { it > 0.0 } ?: 1.0
+        val n = values.size
+        fun xFor(i: Int): Float = if (n > 1) size.width * i / (n - 1) else 0f
+        fun yFor(v: Double): Float {
+            val norm = ((v - lo) / span).toFloat().coerceIn(0f, 1f)
+            return pad + (1f - norm) * usableH
+        }
+        val pts = values.mapIndexed { i, v -> Offset(xFor(i), yFor(v)) }
+
+        val fillPath = Path().apply {
+            moveTo(pts.first().x, size.height)
+            lineTo(pts.first().x, pts.first().y)
+            for (i in 1 until pts.size) lineTo(pts[i].x, pts[i].y)
+            lineTo(pts.last().x, size.height)
+            close()
+        }
+        drawPath(
+            path = fillPath,
+            brush = Brush.verticalGradient(
+                colors = listOf(
+                    color.copy(alpha = StrandAlpha.chartFillSoft),
+                    Color.Transparent,
+                ),
+                startY = 0f,
+                endY = size.height,
+            ),
+        )
+
+        val linePath = Path().apply {
+            moveTo(pts.first().x, pts.first().y)
+            for (i in 1 until pts.size) lineTo(pts[i].x, pts[i].y)
+        }
+        drawPath(
+            path = linePath,
+            brush = Brush.horizontalGradient(
+                colors = listOf(color.copy(alpha = 0.5f), color),
+                startX = 0f,
+                endX = size.width,
+            ),
+            style = Stroke(width = strokePx, cap = StrokeCap.Round, join = StrokeJoin.Round),
+        )
+
+        val end = pts.last()
+        drawCircle(color = color.copy(alpha = 0.30f), radius = 6f, center = end)
+        drawCircle(color = color.copy(alpha = 0.65f), radius = 3.5f, center = end)
+        drawCircle(color = Palette.tipCore, radius = 1.6f, center = end)
     }
 }

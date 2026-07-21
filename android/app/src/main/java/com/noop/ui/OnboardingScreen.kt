@@ -234,7 +234,7 @@ private fun OnboardingTopBar(page: Int, total: Int, progress: Float) {
         label = "onboardingProgress",
     )
 
-    Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(Metrics.space14)) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
@@ -306,13 +306,13 @@ private fun StepShell(
     Column(
         modifier = Modifier.fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(20.dp),
+        verticalArrangement = Arrangement.spacedBy(Metrics.screenRowSpacing),
     ) {
         if (title != null || subtitle != null) {
             Column(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(Metrics.space8),
             ) {
                 title?.let {
                     // Big SF-Rounded hero headline — the onboarding's first-impression voice.
@@ -348,7 +348,7 @@ private fun BluetoothStep() {
         Column(
             modifier = Modifier.fillMaxWidth(),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(18.dp),
+            verticalArrangement = Arrangement.spacedBy(Metrics.space18),
         ) {
             IconBadge(icon = Icons.Filled.Bluetooth, tint = Palette.accent, size = 86)
             InfoCard(
@@ -432,7 +432,7 @@ private fun ConnectStep(viewModel: AppViewModel) {
         Column(
             modifier = Modifier.fillMaxWidth(),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(16.dp),
+            verticalArrangement = Arrangement.spacedBy(Metrics.space16),
         ) {
             IconBadge(
                 icon = if (live.bonded) Icons.Filled.CheckCircle else Icons.Filled.Bluetooth,
@@ -518,14 +518,14 @@ private fun BondedStep(viewModel: AppViewModel) {
                     modifier = Modifier.size(54.dp),
                 )
             }
-            Spacer(Modifier.height(24.dp))
+            Spacer(Modifier.height(Metrics.space24))
             Text(
                 "You're connected.",
                 style = NoopType.title1,
                 color = Palette.textPrimary,
                 textAlign = TextAlign.Center,
             )
-            Spacer(Modifier.height(10.dp))
+            Spacer(Modifier.height(Metrics.space10))
             Text(
                 live.batteryPct?.let { "Your strap is bonded · ${it.toInt()}% battery." }
                     ?: "Your strap is bonded and ready to stream.",
@@ -568,7 +568,7 @@ private fun ProfileStep() {
         subtitle = "So your zones, calories and on-device scoring start from the right numbers.",
     ) {
         NoopCard(padding = 18.dp) {
-            Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(Metrics.space14)) {
                 ProfileFieldRow(label = "Age") {
                     WheelPickerField(
                         value = "${profile.age}",
@@ -582,7 +582,7 @@ private fun ProfileStep() {
                     )
                 }
                 ThinDivider()
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(Metrics.space8)) {
                     Overline("Sex", color = Palette.textTertiary)
                     SegmentedPillControl(
                         items = ONBOARDING_SEX_OPTIONS,
@@ -598,7 +598,7 @@ private fun ProfileStep() {
                 // had no way to set it, so US users were locked to kg/cm until they found Settings →
                 // Units. Mirror the Sex picker idiom; the stored profile stays SI either way, only the
                 // displayed labels re-format (lb / ft-in). Same key Settings → Units writes.
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(Metrics.space8)) {
                     Overline("Units", color = Palette.textTertiary)
                     SegmentedPillControl(
                         items = listOf(UnitSystem.METRIC, UnitSystem.IMPERIAL),
@@ -640,7 +640,7 @@ private fun ProfileStep() {
         Row(
             modifier = Modifier.semantics { contentDescription = "Estimated max heart rate ${profile.hrMax} bpm" },
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalArrangement = Arrangement.spacedBy(Metrics.space8),
         ) {
             Icon(Icons.Filled.FavoriteBorder, contentDescription = null, tint = Palette.accent, modifier = Modifier.size(17.dp))
             Text(
@@ -721,7 +721,7 @@ private fun ImportStep(viewModel: AppViewModel) {
         Column(
             modifier = Modifier.fillMaxWidth(),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(14.dp),
+            verticalArrangement = Arrangement.spacedBy(Metrics.space14),
         ) {
             IconBadge(icon = Icons.Filled.Storage, tint = Palette.accent, size = 82)
             InfoCard(
@@ -732,7 +732,7 @@ private fun ImportStep(viewModel: AppViewModel) {
             )
 
             NoopCard(padding = 16.dp) {
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(Metrics.space10)) {
                     OnboardingActionButton(
                         label = "Import WHOOP export (.zip)",
                         icon = Icons.Filled.FileUpload,
@@ -780,7 +780,7 @@ private fun NotificationsStep() {
         Column(
             modifier = Modifier.fillMaxWidth(),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(18.dp),
+            verticalArrangement = Arrangement.spacedBy(Metrics.space18),
         ) {
             IconBadge(icon = Icons.Filled.Notifications, tint = Palette.accent, size = 86)
             InfoCard(
@@ -811,7 +811,7 @@ private fun AppearanceStep() {
         Column(
             modifier = Modifier.fillMaxWidth(),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(18.dp),
+            verticalArrangement = Arrangement.spacedBy(Metrics.space18),
         ) {
             // Two mini look-swatches so the choice is concrete: warm-paper Light and dark blue-grey.
             // The one matching the live theme carries an accent (blue) rim; System shows whichever
@@ -835,7 +835,7 @@ private fun AppearanceStep() {
             }
 
             NoopCard(padding = 18.dp) {
-                Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(Metrics.space14)) {
                     ProfileFieldRow(label = "Theme") {
                         SegmentedPillControl(
                             items = listOf(AppearanceMode.SYSTEM, AppearanceMode.LIGHT, AppearanceMode.DARK),
@@ -851,7 +851,7 @@ private fun AppearanceStep() {
                     }
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        horizontalArrangement = Arrangement.spacedBy(Metrics.space10),
                     ) {
                         Icon(
                             Icons.Filled.Palette,
@@ -888,7 +888,7 @@ private fun ThemeSwatch(
     Column(
         modifier = modifier,
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(6.dp),
+        verticalArrangement = Arrangement.spacedBy(Metrics.space6),
     ) {
         Box(
             modifier = Modifier
@@ -901,12 +901,12 @@ private fun ThemeSwatch(
                     color = if (selected) Palette.accent else tokens.hairline,
                     shape = RoundedCornerShape(14.dp),
                 )
-                .padding(12.dp),
+                .padding(Metrics.space12),
             contentAlignment = Alignment.CenterStart,
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                horizontalArrangement = Arrangement.spacedBy(Metrics.space10),
             ) {
                 // A mini score bead in the live accent (reset blue — gold is killed), on the theme's
                 // raised card. Uses the live Palette.accent, not tokens.gold (whose LIGHT value is still
@@ -961,7 +961,7 @@ private fun DoneStep() {
                 color = Palette.textPrimary,
                 textAlign = TextAlign.Center,
             )
-            Spacer(Modifier.height(10.dp))
+            Spacer(Modifier.height(Metrics.space10))
             Text(
                 "Every beat, every night, every day, woven into one quiet picture of you. Welcome to NOOP.",
                 style = NoopType.body,
@@ -978,7 +978,7 @@ private fun DoneStep() {
 private fun InfoCard(icon: ImageVector, tint: Color, title: String, message: String) {
     NoopCard(padding = 16.dp) {
         Row(
-            horizontalArrangement = Arrangement.spacedBy(14.dp),
+            horizontalArrangement = Arrangement.spacedBy(Metrics.space14),
             verticalAlignment = Alignment.Top,
         ) {
             IconSquare(icon = icon, tint = tint)
@@ -1008,8 +1008,8 @@ private fun OnboardingActionButton(
             disabledContentColor = Palette.textTertiary,
         ),
     ) {
-        Icon(icon, contentDescription = null, modifier = Modifier.size(18.dp))
-        Spacer(Modifier.width(8.dp))
+        Icon(icon, contentDescription = null, modifier = Modifier.size(Metrics.iconSmall))
+        Spacer(Modifier.width(Metrics.space8))
         Text(label, style = NoopType.body)
     }
 }
@@ -1018,7 +1018,7 @@ private fun OnboardingActionButton(
 private fun Checkline(text: String) {
     Row(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        horizontalArrangement = Arrangement.spacedBy(Metrics.space10),
         verticalAlignment = Alignment.Top,
     ) {
         Icon(Icons.Filled.Check, contentDescription = null, tint = Palette.statusPositive, modifier = Modifier.size(17.dp))
@@ -1033,7 +1033,7 @@ private fun IconBadge(icon: ImageVector, tint: Color, size: Int) {
             .size(size.dp)
             .clip(CircleShape)
             .background(tint.copy(alpha = 0.13f))
-            .border(1.dp, tint.copy(alpha = 0.28f), CircleShape),
+            .border(Metrics.divider, tint.copy(alpha = 0.28f), CircleShape),
         contentAlignment = Alignment.Center,
     ) {
         Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size((size * 0.42f).dp))
@@ -1047,7 +1047,7 @@ private fun IconSquare(icon: ImageVector, tint: Color) {
             .size(42.dp)
             .clip(RoundedCornerShape(11.dp))
             .background(tint.copy(alpha = 0.13f))
-            .border(1.dp, tint.copy(alpha = 0.22f), RoundedCornerShape(11.dp)),
+            .border(Metrics.divider, tint.copy(alpha = 0.22f), RoundedCornerShape(11.dp)),
         contentAlignment = Alignment.Center,
     ) {
         Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(20.dp))
@@ -1062,7 +1062,7 @@ private fun ProfileFieldRow(label: String, control: @Composable () -> Unit) {
             .fillMaxWidth()
             .heightIn(min = 44.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(16.dp),
+        horizontalArrangement = Arrangement.spacedBy(Metrics.space16),
     ) {
         Text(label, style = NoopType.body, color = Palette.textPrimary, modifier = Modifier.weight(1f))
         control()
@@ -1074,7 +1074,7 @@ private fun ThinDivider() {
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .height(1.dp)
+            .height(Metrics.divider)
             .background(Palette.hairline),
     )
 }

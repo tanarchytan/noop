@@ -120,7 +120,7 @@ fun InsightsHubScreen(vm: AppViewModel) {
         // --- Method / honesty note --------------------------------------------
         item {
         NoopCard {
-            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(Metrics.space6)) {
                 Overline("How to read this", color = Palette.textTertiary)
                 Text(
                     "Everything here is a pattern in your own logged days: an association with an " +
@@ -201,7 +201,7 @@ private fun MoverCard(r: RankedEffect, outcome: InsightsOutcome) {
                 Row(
                     modifier = Modifier.weight(1f),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(Metrics.space8),
                 ) {
                     Box(
                         modifier = Modifier
@@ -218,7 +218,7 @@ private fun MoverCard(r: RankedEffect, outcome: InsightsOutcome) {
                     )
                 }
                 StatePill(r.leadLagText, tone = StrandTone.Accent, showsDot = false)
-                Spacer(Modifier.width(6.dp))
+                Spacer(Modifier.width(Metrics.space6))
                 ConfidencePill(r.confidence)
             }
 
@@ -253,7 +253,7 @@ private fun MoverCard(r: RankedEffect, outcome: InsightsOutcome) {
                     style = NoopType.captionNumber,
                     color = tintColor,
                 )
-                Spacer(Modifier.width(6.dp))
+                Spacer(Modifier.width(Metrics.space6))
                 Text(effectMagnitudeWord(e.cohensD), style = NoopType.caption, color = Palette.textTertiary)
             }
         }
@@ -296,8 +296,8 @@ private fun DoseResponseCard(card: DoseCardData) {
         Column(verticalArrangement = Arrangement.spacedBy(Metrics.gap)) {
             // Header.
             Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Icon(card.icon, contentDescription = null, tint = domain.color, modifier = Modifier.size(18.dp))
-                Spacer(Modifier.width(8.dp))
+                Icon(card.icon, contentDescription = null, tint = domain.color, modifier = Modifier.size(Metrics.iconSmall))
+                Spacer(Modifier.width(Metrics.space8))
                 Text(card.title, style = NoopType.headline, color = Palette.textPrimary, modifier = Modifier.weight(1f))
                 ConfidencePill(r.confidence)
             }
@@ -398,8 +398,8 @@ private fun HonestyBanner(text: String, accent: Color) {
             .fillMaxWidth()
             .clip(RoundedCornerShape(8.dp))
             .background(Palette.surfaceInset)
-            .padding(10.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+            .padding(Metrics.space10),
+        horizontalArrangement = Arrangement.spacedBy(Metrics.space8),
         verticalAlignment = Alignment.Top,
     ) {
         Box(modifier = Modifier.size(8.dp).clip(CircleShape).drawBehind { drawCircle(accent) })

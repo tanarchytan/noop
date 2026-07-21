@@ -268,12 +268,12 @@ private fun StressHeroCard(model: StressModel, modifier: Modifier = Modifier) {
             .fillMaxWidth()
             .clip(RoundedCornerShape(LIQUID_HERO_RADIUS))
             .background(LIQUID_HERO_FILL.copy(alpha = LIQUID_HERO_FILL.alpha * CardAppearance.opacity))
-            .border(1.dp, Color.White.copy(alpha = 0.11f * CardAppearance.opacity), RoundedCornerShape(LIQUID_HERO_RADIUS))
+            .border(Metrics.divider, Color.White.copy(alpha = 0.11f * CardAppearance.opacity), RoundedCornerShape(LIQUID_HERO_RADIUS))
             .padding(Metrics.cardPadding),
     ) {
         Column(
             modifier = Modifier.fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
+            verticalArrangement = Arrangement.spacedBy(Metrics.space16),
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -287,7 +287,7 @@ private fun StressHeroCard(model: StressModel, modifier: Modifier = Modifier) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(18.dp),
+                horizontalArrangement = Arrangement.spacedBy(Metrics.space18),
             ) {
  // The band-tinted vessel with a WHITE count-up number over it — the HeroScoreVessel idiom.
  // `animated` only once a real score is loaded (model != null here, so always a real value).
@@ -320,7 +320,7 @@ private fun StressHeroCard(model: StressModel, modifier: Modifier = Modifier) {
 
                 Column(
                     modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                    verticalArrangement = Arrangement.spacedBy(Metrics.space4),
                 ) {
                     Row(verticalAlignment = Alignment.Bottom) {
                         Text(
@@ -380,7 +380,7 @@ private fun StressAdvancedCard(
     modifier: Modifier = Modifier,
 ) {
     NoopCard(tint = Palette.stressColor, modifier = modifier) {
-        Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(Metrics.space14)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
@@ -465,7 +465,7 @@ private fun StressDaytimeSection(
         SectionHeader("Today's Timeline", overline = "Intraday", trailing = timelineTrailing(day))
 
         NoopCard(tint = Palette.stressColor) {
-            Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(Metrics.space14)) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
@@ -750,7 +750,7 @@ private fun StressTotalsBar(day: DaytimeStress.Result) {
     val total = scored.size.toDouble()
 
     NoopCard(tint = Palette.stressColor) {
-        Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(Metrics.space14)) {
             Overline("Time in band")
 
             TimeInBandRow(StressTotalsBand.Calm, calm, total)
@@ -776,7 +776,7 @@ private fun TimeInBandRow(band: StressTotalsBand, hours: Int, total: Double) {
             .fillMaxWidth()
             .semantics { contentDescription = "${band.title} ${hours} hours" },
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        horizontalArrangement = Arrangement.spacedBy(Metrics.space10),
     ) {
         Box(
             modifier = Modifier
@@ -821,11 +821,11 @@ private fun timelineTrailing(day: DaytimeStress.Result): String {
 @Composable
 private fun SustainedBreatheCard(day: DaytimeStress.Result, onBreathe: () -> Unit) {
     NoopCard(tint = Palette.stressColor) {
-        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(Metrics.space12)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                horizontalArrangement = Arrangement.spacedBy(Metrics.space10),
             ) {
                 Overline("Sustained high stress", modifier = Modifier.weight(1f))
                 StatePill("${day.sustainedRun}h elevated", tone = StrandTone.Warning, showsDot = true)
@@ -963,7 +963,7 @@ private fun StressTrendSection(model: StressModel, modifier: Modifier = Modifier
         if (points.size >= 2) {
             val avg = points.average()
             NoopCard(tint = Palette.stressColor) {
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(Metrics.space12)) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.Top,
@@ -1040,7 +1040,7 @@ private fun androidx.compose.foundation.layout.RowScope.TrendFooterItem(label: S
 @Composable
 private fun StressMethodologyCard(model: StressModel, modifier: Modifier = Modifier) {
     NoopCard(tint = Palette.stressColor, modifier = modifier) {
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(Metrics.space8)) {
             Overline("How this is computed")
             Text(
                 if (model.usingStored) {
@@ -1083,7 +1083,7 @@ private fun androidx.compose.foundation.layout.RowScope.BandLegend(range: String
                 .clip(CircleShape)
                 .background(color),
         )
-        Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(Metrics.divider)) {
             Text(label, style = NoopType.captionNumber, color = Palette.textPrimary)
             Text(range, style = NoopType.footnote, color = Palette.textTertiary)
         }

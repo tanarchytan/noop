@@ -330,7 +330,7 @@ private fun WeeklyDigestNav(
         buildWeeklyDigest(days, anchorDay, effortDisplayFactor = factor)
     }
 
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(Metrics.space12)) {
         WeekNavBar(weekOffset = weekOffset, minWeekOffset = minWeekOffset, onStep = onStep)
         if (digest.isEmpty) {
             DataPendingNote(
@@ -379,7 +379,7 @@ private fun WeekNavBar(weekOffset: Int, minWeekOffset: Int, onStep: (Int) -> Uni
         Spacer(Modifier.weight(1f))
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(2.dp),
+            verticalArrangement = Arrangement.spacedBy(Metrics.space2),
         ) {
             Text(label, style = NoopType.headline, color = Palette.textPrimary)
             Overline(stringResource(R.string.trends_week_in_review), color = Palette.textSecondary)
@@ -421,7 +421,7 @@ private fun WeekInReviewCard(
     if (chargeAvg == null && effortAvg == null && restAvg == null) return
 
     NoopCard(modifier = modifier, tint = Palette.chargeColor) {
-        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(Metrics.space12)) {
             SectionHeader(stringResource(R.string.trends_week_in_review), overline = stringResource(R.string.trends_charge_effort_rest))
             if (chargeAvg != null) {
                 PipScoreRow(

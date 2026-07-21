@@ -265,7 +265,7 @@ private fun HeroCard(
             .liquidPress(interaction)
             .clip(RoundedCornerShape(LIQUID_HERO_RADIUS))
             .background(LIQUID_HERO_FILL.copy(alpha = LIQUID_HERO_FILL.alpha * CardAppearance.opacity))
-            .border(1.dp, Color.White.copy(alpha = 0.11f * CardAppearance.opacity), RoundedCornerShape(LIQUID_HERO_RADIUS))
+            .border(Metrics.divider, Color.White.copy(alpha = 0.11f * CardAppearance.opacity), RoundedCornerShape(LIQUID_HERO_RADIUS))
             .clickable(
                 interactionSource = interaction,
                 indication = null,
@@ -274,11 +274,11 @@ private fun HeroCard(
             )
             .semantics { contentDescription = a11y },
     ) {
-        Box(modifier = Modifier.fillMaxWidth().padding(20.dp)) {
+        Box(modifier = Modifier.fillMaxWidth().padding(Metrics.screenRowSpacing)) {
             Column(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(12.dp),
+                verticalArrangement = Arrangement.spacedBy(Metrics.space12),
             ) {
                 Box(modifier = Modifier.size(232.dp), contentAlignment = Alignment.Center) {
                     // The recovery ring becomes a liquid VESSEL filled to the recovery fraction in the sampled
@@ -321,7 +321,7 @@ private fun HeroCentre(recovery: Double?, readinessLevel: ReadinessEngine.Level)
     val sampled = recovery?.let { Palette.recoveryColor(it) } ?: Palette.textTertiary
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(4.dp),
+        verticalArrangement = Arrangement.spacedBy(Metrics.space4),
     ) {
         if (recovery != null) {
             // Count-up number over the vessel — white, tabular, a soft shadow for legibility, hit-transparent
@@ -357,8 +357,8 @@ private fun ReadinessPill(word: String, level: ReadinessEngine.Level) {
             .padding(top = 2.dp)
             .clip(RoundedCornerShape(999.dp))
             .background(tint.copy(alpha = 0.12f))
-            .border(1.dp, tint.copy(alpha = 0.32f), RoundedCornerShape(999.dp))
-            .padding(horizontal = 12.dp, vertical = 5.dp),
+            .border(Metrics.divider, tint.copy(alpha = 0.32f), RoundedCornerShape(999.dp))
+            .padding(horizontal = Metrics.space12, vertical = 5.dp),
     )
 }
 
@@ -378,7 +378,7 @@ private fun StrainCard(dayStrain21: Double?, recovery: Double?, calories: Double
     NoopCard(padding = 20.dp, tint = Palette.effortColor) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            horizontalArrangement = Arrangement.spacedBy(Metrics.space16),
         ) {
             // Left: the effort gauge on the 0-21 axis as a liquid VESSEL (the Today HeroScoreVessel idiom),
             // with the band word as an overline above it (the Swift StrainGauge's LIGHT/MODERATE/STRENUOUS/
@@ -424,7 +424,7 @@ private fun StrainCard(dayStrain21: Double?, recovery: Double?, calories: Double
             // Right: the coupled stat stack.
             Column(
                 modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(14.dp),
+                verticalArrangement = Arrangement.spacedBy(Metrics.space14),
             ) {
                 HeroStat("Day Strain", dayStrain21?.let { String.format(Locale.US, "%.1f", it) } ?: COUPLED_NO_DATA, Palette.effortColor)
                 HeroStat("Optimal", optimalStrainRangeText(recovery), Palette.chargeColor)
@@ -440,7 +440,7 @@ private fun StrainCard(dayStrain21: Double?, recovery: Double?, calories: Double
 private fun HeroStat(title: String, value: String, tint: Color) {
     Column(
         modifier = Modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(2.dp),
+        verticalArrangement = Arrangement.spacedBy(Metrics.space2),
     ) {
         Text(title.uppercase(), style = NoopType.overline, color = Palette.textSecondary)
         Text(value, style = NoopType.number(20f), color = tint)
@@ -474,7 +474,7 @@ private fun SleepCard(
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            horizontalArrangement = Arrangement.spacedBy(Metrics.space16),
         ) {
             Box(modifier = Modifier.size(96.dp), contentAlignment = Alignment.Center) {
                 // The sleep-performance ring becomes a liquid VESSEL filled to the performance fraction in the
@@ -500,7 +500,7 @@ private fun SleepCard(
 
             Column(
                 modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(4.dp),
+                verticalArrangement = Arrangement.spacedBy(Metrics.space4),
             ) {
                 Text("SLEEP PERFORMANCE", style = NoopType.overline, color = Palette.textSecondary)
                 if (asleepMin != null && asleepMin > 0) {
@@ -518,7 +518,7 @@ private fun SleepCard(
                 Icons.AutoMirrored.Filled.KeyboardArrowRight,
                 contentDescription = null,
                 tint = Palette.textTertiary,
-                modifier = Modifier.size(18.dp),
+                modifier = Modifier.size(Metrics.iconSmall),
             )
         }
     }

@@ -133,8 +133,8 @@ fun AutomationsScreen(viewModel: AppViewModel) {
                     enabled = doubleTapAction != DoubleTapAction.NONE,
                     colors = ButtonDefaults.outlinedButtonColors(contentColor = Palette.accent),
                 ) {
-                    Icon(Icons.Filled.PlayArrow, contentDescription = null, modifier = Modifier.size(18.dp))
-                    Spacer(Modifier.width(8.dp))
+                    Icon(Icons.Filled.PlayArrow, contentDescription = null, modifier = Modifier.size(Metrics.iconSmall))
+                    Spacer(Modifier.width(Metrics.space8))
                     Text("Test action", style = NoopType.body)
                 }
                 Spacer(Modifier.weight(1f))
@@ -257,9 +257,9 @@ fun AutomationsScreen(viewModel: AppViewModel) {
                                 InactivityPrefs.setInt(ctx, InactivityPrefs.ACTIVE_START_MIN, it)
                             },
                         )
-                        Spacer(Modifier.width(8.dp))
+                        Spacer(Modifier.width(Metrics.space8))
                         Text("to", style = NoopType.body, color = Palette.textSecondary)
-                        Spacer(Modifier.width(8.dp))
+                        Spacer(Modifier.width(Metrics.space8))
                         TimeChip(
                             minutes = inactivityActiveEnd,
                             accessibilityLabel = "Active hours end",
@@ -385,13 +385,13 @@ private fun NapDetectionSection(viewModel: AppViewModel) {
 private fun NapReviewRow(nap: NapCandidate, onAccept: () -> Unit, onDismiss: () -> Unit) {
     val ctx = LocalContext.current
     Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(Metrics.space2)) {
             Text(napWindowLabel(nap, ctx), style = NoopType.body, color = Palette.textPrimary)
             Text(napDetailLabel(nap), style = NoopType.footnote, color = Palette.textTertiary)
         }
-        Spacer(Modifier.width(8.dp))
+        Spacer(Modifier.width(Metrics.space8))
         NapActionButton(Icons.Filled.Check, "Keep this nap", Palette.statusPositive, onAccept)
-        Spacer(Modifier.width(8.dp))
+        Spacer(Modifier.width(Metrics.space8))
         NapActionButton(Icons.Filled.Close, "Skip this nap", Palette.textTertiary, onDismiss)
     }
 }
@@ -406,7 +406,7 @@ private fun NapActionButton(icon: ImageVector, contentDescription: String, tint:
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
-        Icon(icon, contentDescription = contentDescription, tint = tint, modifier = Modifier.size(18.dp))
+        Icon(icon, contentDescription = contentDescription, tint = tint, modifier = Modifier.size(Metrics.iconSmall))
     }
 }
 
@@ -440,7 +440,7 @@ internal fun AlarmDayOverridePicker(
     onSetOverride: (Int, Int?) -> Unit,
 ) {
     val fireDays = SMART_ALARM_WEEKDAY_ORDER.filter { smartAlarmWeekdayIsSelected(it, enabledDays) }
-    Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(Metrics.space8)) {
         Text("Per-day wake time", style = NoopType.caption, color = Palette.textTertiary)
         fireDays.forEach { dow ->
             val effective = overrides[dow] ?: defaultMinutes
@@ -456,9 +456,9 @@ internal fun AlarmDayOverridePicker(
                         modifier = Modifier
                             .clip(CircleShape)
                             .clickable { onSetOverride(dow, null) }
-                            .padding(horizontal = 10.dp, vertical = 4.dp),
+                            .padding(horizontal = Metrics.space10, vertical = 4.dp),
                     )
-                    Spacer(Modifier.width(8.dp))
+                    Spacer(Modifier.width(Metrics.space8))
                 }
                 TimeChip(
                     minutes = effective,
@@ -490,16 +490,16 @@ private fun DoubleTapActionPicker(
                 .clip(CircleShape)
                 .clickable { expanded = true }
                 .background(Palette.surfaceInset)
-                .padding(horizontal = 12.dp, vertical = 6.dp),
+                .padding(horizontal = Metrics.space12, vertical = 6.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(selected.label, style = NoopType.body, color = Palette.textPrimary)
-            Spacer(Modifier.width(4.dp))
+            Spacer(Modifier.width(Metrics.space4))
             Icon(
                 Icons.Filled.ArrowDropDown,
                 contentDescription = "Choose double-tap action",
                 tint = Palette.textSecondary,
-                modifier = Modifier.size(18.dp),
+                modifier = Modifier.size(Metrics.iconSmall),
             )
         }
         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
@@ -527,10 +527,10 @@ private fun DoubleTapActionPicker(
 @Composable
 internal fun AlarmWeekdayPicker(selected: Set<Int>, onToggle: (Int) -> Unit) {
     Column(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
-        verticalArrangement = Arrangement.spacedBy(6.dp),
+        modifier = Modifier.fillMaxWidth().padding(vertical = Metrics.space6),
+        verticalArrangement = Arrangement.spacedBy(Metrics.space6),
     ) {
-        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(Metrics.space6)) {
             for (dow in SMART_ALARM_WEEKDAY_ORDER) {
                 val on = smartAlarmWeekdayIsSelected(dow, selected)
                 Box(
@@ -605,11 +605,11 @@ private fun StepperRow(
     onChange: (Int) -> Unit,
 ) {
     Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(Metrics.space2)) {
             Text(label, style = NoopType.body, color = Palette.textPrimary)
             Text(help, style = NoopType.footnote, color = Palette.textTertiary)
         }
-        Spacer(Modifier.width(12.dp))
+        Spacer(Modifier.width(Metrics.space12))
         StepButton(Icons.Filled.Remove, "Decrease $label", enabled = value > range.first) {
             onChange((value - step).coerceAtLeast(range.first))
         }
@@ -618,7 +618,7 @@ private fun StepperRow(
             style = NoopType.body,
             color = Palette.textPrimary,
             textAlign = TextAlign.Center,
-            modifier = Modifier.padding(horizontal = 8.dp).widthIn(min = 56.dp),
+            modifier = Modifier.padding(horizontal = Metrics.space8).widthIn(min = 56.dp),
         )
         StepButton(Icons.Filled.Add, "Increase $label", enabled = value < range.last) {
             onChange((value + step).coerceAtMost(range.last))

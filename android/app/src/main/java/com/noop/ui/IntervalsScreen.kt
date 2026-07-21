@@ -235,7 +235,7 @@ fun IntervalsScreen(vm: AppViewModel) {
         ) {
             ScenicHeroBackground(modifier = Modifier.matchParentSize(), domain = DomainTheme.Effort)
             NoopCard(padding = 24.dp, tint = phaseColor) {
-                Column(verticalArrangement = Arrangement.spacedBy(18.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(Metrics.space18)) {
                     // Phase chip + round chip line — both frosted.
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -265,7 +265,7 @@ fun IntervalsScreen(vm: AppViewModel) {
                     // Controls.
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        horizontalArrangement = Arrangement.spacedBy(Metrics.space12),
                     ) {
                         Button(
                             onClick = {
@@ -320,7 +320,7 @@ fun IntervalsScreen(vm: AppViewModel) {
                                 tint = Palette.textTertiary,
                                 modifier = Modifier.size(14.dp),
                             )
-                            Spacer(Modifier.width(6.dp))
+                            Spacer(Modifier.width(Metrics.space6))
                             Text(
                                 "Bond your strap on the Live screen to feel the transitions hands-free.",
                                 style = NoopType.footnote,
@@ -337,7 +337,7 @@ fun IntervalsScreen(vm: AppViewModel) {
         // --- Overview card: elapsed / planned ---
         item {
         NoopCard {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(Metrics.space12)) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.Bottom,
@@ -360,7 +360,7 @@ fun IntervalsScreen(vm: AppViewModel) {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(8.dp)
+                        .height(Metrics.space8)
                         .clip(RoundedCornerShape(50))
                         .background(Palette.surfaceInset),
                 ) {
@@ -368,7 +368,7 @@ fun IntervalsScreen(vm: AppViewModel) {
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth(animatedSession)
-                                .height(8.dp)
+                                .height(Metrics.space8)
                                 .clip(RoundedCornerShape(50))
                                 .background(
                                     Brush.horizontalGradient(*Palette.effortGradientStops.toTypedArray()),
@@ -393,7 +393,7 @@ fun IntervalsScreen(vm: AppViewModel) {
         // --- Config card ---
         item {
         NoopCard {
-            Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(Metrics.space14)) {
                 Overline("Configure")
                 ConfigStepper(
                     title = "Work", unit = "sec", value = workSeconds,
@@ -439,8 +439,8 @@ private fun PhaseChip(label: String, color: Color) {
         modifier = Modifier
             .clip(shape)
             .background(color.copy(alpha = 0.16f))
-            .border(1.dp, color.copy(alpha = 0.35f), shape)
-            .padding(horizontal = 12.dp, vertical = 6.dp),
+            .border(Metrics.divider, color.copy(alpha = 0.35f), shape)
+            .padding(horizontal = Metrics.space12, vertical = 6.dp),
     )
 }
 
@@ -453,13 +453,13 @@ private fun RoundChip(currentRound: Int, rounds: Int) {
         modifier = Modifier
             .clip(shape)
             .background(Palette.surfaceInset)
-            .border(1.dp, Palette.hairline, shape)
-            .padding(horizontal = 12.dp, vertical = 7.dp),
+            .border(Metrics.divider, Palette.hairline, shape)
+            .padding(horizontal = Metrics.space12, vertical = 7.dp),
     ) {
         Overline("Round")
-        Spacer(Modifier.width(6.dp))
+        Spacer(Modifier.width(Metrics.space6))
         Text(currentRound.toString(), style = NoopType.number(18f), color = Palette.textPrimary)
-        Spacer(Modifier.width(2.dp))
+        Spacer(Modifier.width(Metrics.space2))
         Text("/ $rounds", style = NoopType.number(18f), color = Palette.textTertiary)
     }
 }
@@ -500,7 +500,7 @@ private fun ConfigStepper(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(Metrics.space2)) {
             Text(title, style = NoopType.headline, color = Palette.textPrimary.copy(alpha = dim))
             Text(
                 "${range.first} - ${range.last}${unit?.let { " $it" } ?: ""} · step $step",
@@ -517,7 +517,7 @@ private fun ConfigStepper(
                 modifier = Modifier.width(44.dp),
             )
             if (unit != null) {
-                Spacer(Modifier.width(4.dp))
+                Spacer(Modifier.width(Metrics.space4))
                 Text(
                     unit,
                     style = NoopType.caption,
@@ -525,14 +525,14 @@ private fun ConfigStepper(
                 )
             }
         }
-        Spacer(Modifier.width(12.dp))
+        Spacer(Modifier.width(Metrics.space12))
         StepperButton(
             icon = Icons.Filled.Remove,
             description = "Decrease $title",
             enabled = enabled && value > range.first,
             tint = tint,
         ) { onChange((value - step).coerceIn(range.first, range.last)) }
-        Spacer(Modifier.width(8.dp))
+        Spacer(Modifier.width(Metrics.space8))
         StepperButton(
             icon = Icons.Filled.Add,
             description = "Increase $title",
@@ -565,7 +565,7 @@ private fun StepperButton(
             .size(40.dp)
             .semantics { contentDescription = description },
     ) {
-        Icon(icon, contentDescription = null, modifier = Modifier.size(18.dp))
+        Icon(icon, contentDescription = null, modifier = Modifier.size(Metrics.iconSmall))
     }
 }
 
@@ -576,7 +576,7 @@ private fun Divider() {
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .height(1.dp)
+            .height(Metrics.divider)
             .background(Palette.hairline),
     )
 }

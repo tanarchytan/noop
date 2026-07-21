@@ -414,9 +414,9 @@ private fun DeviceCard(
  // 26, white@0.11 hairline) so it floats over the day-of-sky, matching the liquid Today hero. Every other
  // card (paired / removed) keeps the crisp neutral NoopCard frosted surface.
     val body: @Composable () -> Unit = {
-        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(Metrics.space12)) {
             Row(
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                horizontalArrangement = Arrangement.spacedBy(Metrics.space12),
                 verticalAlignment = Alignment.Top,
             ) {
                 Icon(
@@ -435,7 +435,7 @@ private fun DeviceCard(
  // Locally-adopted Oura is Beta: a non-dot Beta chip sits beside the usual state pill.
                 if (device.sourceKind == SourceKind.oura.name) {
                     StatePill("Beta", tone = StrandTone.Warning, showsDot = false)
-                    Spacer(Modifier.width(6.dp))
+                    Spacer(Modifier.width(Metrics.space6))
                 }
                 StatePill(device, isActive, isLiveConnected, bondRefused, isReconnecting)
             }
@@ -510,8 +510,8 @@ private fun DeviceCard(
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(LIQUID_HERO_RADIUS))
                 .background(LIQUID_HERO_FILL.copy(alpha = LIQUID_HERO_FILL.alpha * CardAppearance.opacity))
-                .border(1.dp, Color.White.copy(alpha = 0.11f * CardAppearance.opacity), RoundedCornerShape(LIQUID_HERO_RADIUS))
-                .padding(18.dp),
+                .border(Metrics.divider, Color.White.copy(alpha = 0.11f * CardAppearance.opacity), RoundedCornerShape(LIQUID_HERO_RADIUS))
+                .padding(Metrics.space18),
         ) {
             body()
         }
@@ -535,7 +535,7 @@ private fun BatteryTube(pct: Int) {
     val clamped = pct.coerceIn(0, 100)
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        horizontalArrangement = Arrangement.spacedBy(Metrics.space10),
         modifier = Modifier.semantics { contentDescription = "Battery $clamped%" },
     ) {
         Text("Battery", style = NoopType.footnote, color = Palette.textTertiary)
@@ -686,7 +686,7 @@ private fun MenuItem(
     val color = if (destructive) Palette.statusCritical else Palette.textPrimary
     DropdownMenuItem(
         text = { Text(label, style = NoopType.body, color = color) },
-        leadingIcon = { Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(18.dp)) },
+        leadingIcon = { Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(Metrics.iconSmall)) },
         onClick = onClick,
     )
 }
@@ -712,7 +712,7 @@ private fun AddDeviceButton(onClick: () -> Unit) {
 private fun WhoopFirstFooter() {
     Row(
         modifier = Modifier.padding(top = 8.dp),
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        horizontalArrangement = Arrangement.spacedBy(Metrics.space10),
         verticalAlignment = Alignment.Top,
     ) {
         Icon(
@@ -745,7 +745,7 @@ private fun RebootProbeDialog(
         containerColor = Palette.surfaceOverlay,
         title = { Text("WHOOP 4.0 reboot probe", style = NoopType.title2, color = Palette.textPrimary) },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(Metrics.space12)) {
                 Text(
                     "The WHOOP 4.0 reboot frame isn't confirmed — a normal Restart is ignored (#235). " +
                         "Send each candidate and watch BOTH the strap log and the strap itself. " +
@@ -790,7 +790,7 @@ private fun RenameDialog(
         containerColor = Palette.surfaceOverlay,
         title = { Text("Rename device", style = NoopType.title2, color = Palette.textPrimary) },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(Metrics.space12)) {
                 Text(
                     "Give ${device.brand} ${device.model} a name you'll recognise.",
                     style = NoopType.subhead,
@@ -830,14 +830,14 @@ private fun PickActiveDialog(
         containerColor = Palette.surfaceOverlay,
         title = { Text("Pick a new active strap", style = NoopType.title2, color = Palette.textPrimary) },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(Metrics.space4)) {
                 Text(
                     "You removed your active strap. Choose which paired band provides your live data, or " +
                         "leave none active and pair one later.",
                     style = NoopType.subhead,
                     color = Palette.textSecondary,
                 )
-                Spacer(Modifier.height(4.dp))
+                Spacer(Modifier.height(Metrics.space4))
                 devices.forEach { device ->
                     Text(
                         displayName(device),
@@ -847,7 +847,7 @@ private fun PickActiveDialog(
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(8.dp))
                             .clickable { onPick(device) }
-                            .padding(vertical = 10.dp),
+                            .padding(vertical = Metrics.space10),
                     )
                 }
             }
@@ -871,7 +871,7 @@ internal fun SignalBars(rssi: Int) {
     val level = SignalBars.level(rssi)
     Row(
         verticalAlignment = Alignment.Bottom,
-        horizontalArrangement = Arrangement.spacedBy(2.dp),
+        horizontalArrangement = Arrangement.spacedBy(Metrics.space2),
         modifier = Modifier.height(18.dp),
     ) {
         for (i in 0 until 4) {
@@ -1018,7 +1018,7 @@ private fun deviceProfile(device: PairedDeviceRow): DeviceCapabilityProfile {
 @Composable
 private fun CapabilityInfoRow(icon: androidx.compose.ui.graphics.vector.ImageVector, text: String) {
     Row(
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        horizontalArrangement = Arrangement.spacedBy(Metrics.space6),
         verticalAlignment = Alignment.Top,
     ) {
         Icon(icon, contentDescription = null, tint = Palette.textTertiary, modifier = Modifier.size(14.dp))
@@ -1034,7 +1034,7 @@ private fun CapabilityInfoRow(icon: androidx.compose.ui.graphics.vector.ImageVec
 @Composable
 private fun OuraLocalStateNote() {
     Row(
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        horizontalArrangement = Arrangement.spacedBy(Metrics.space6),
         verticalAlignment = Alignment.Top,
     ) {
         Icon(Icons.Filled.Info, contentDescription = null, tint = Palette.statusWarning, modifier = Modifier.size(14.dp))
@@ -1077,7 +1077,7 @@ private fun SyncStatusSection(vm: AppViewModel, onSyncNow: () -> Unit) {
         )
 
         NoopCard(tint = Palette.chargeColor) {
-            Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(Metrics.space14)) {
                 when {
                     live.backfilling -> SyncingHistoryNote(chunks = live.syncChunksThisSession)
                     !live.connected -> StatePill(

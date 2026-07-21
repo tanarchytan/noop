@@ -44,10 +44,10 @@ fun AboutScreen() {
         subtitle = "NOOP: all your data, none of the cloud.",
     ) {
         NoopCard(padding = 20.dp, tint = Palette.accent) {
-            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(Metrics.space16)) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    horizontalArrangement = Arrangement.spacedBy(Metrics.space10),
                 ) {
                     Text("NOOP", style = NoopType.title2, color = Palette.textPrimary)
                     StatePill("v${BuildConfig.VERSION_NAME}", tone = StrandTone.Neutral, showsDot = false)
@@ -61,7 +61,7 @@ fun AboutScreen() {
                         .liquidPress(projectHomeInteraction)
                         .clip(RoundedCornerShape(10.dp))
                         .background(Palette.accent.copy(alpha = 0.10f))
-                        .border(1.dp, Palette.accent.copy(alpha = 0.25f), RoundedCornerShape(10.dp))
+                        .border(Metrics.divider, Palette.accent.copy(alpha = 0.25f), RoundedCornerShape(10.dp))
                         .clickable(
                             interactionSource = projectHomeInteraction,
                             indication = null,
@@ -73,10 +73,10 @@ fun AboutScreen() {
                                 Toast.makeText(context, GITHUB_LABEL, Toast.LENGTH_LONG).show()
                             }
                         }
-                        .padding(horizontal = 14.dp, vertical = 12.dp)
+                        .padding(horizontal = Metrics.space14, vertical = 12.dp)
                         .semantics { contentDescription = "Project source on GitHub, $GITHUB_LABEL" },
                 ) {
-                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Column(verticalArrangement = Arrangement.spacedBy(Metrics.space2)) {
                         Text("Source on GitHub", style = NoopType.body, color = Palette.textPrimary)
                         Text(GITHUB_LABEL, style = NoopType.caption, color = Palette.textTertiary)
                     }

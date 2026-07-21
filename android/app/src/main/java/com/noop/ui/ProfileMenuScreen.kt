@@ -119,12 +119,12 @@ fun ProfileMenuScreen(vm: AppViewModel) {
 
         // Header: the large avatar (the photo set below in the Profile menu, or the NOOP loop mark) + name/age.
         Row(
-            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+            modifier = Modifier.fillMaxWidth().padding(vertical = Metrics.space4),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            horizontalArrangement = Arrangement.spacedBy(Metrics.space16),
         ) {
             ProfileAvatar(size = 72.dp, contentDescription = "Profile photo")
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(Metrics.space4)) {
                 Text("Profile", style = NoopType.title2, color = Palette.textPrimary)
                 Text("Age ${profile.age}", style = NoopType.subhead, color = Palette.textSecondary)
             }
@@ -141,16 +141,16 @@ fun ProfileMenuScreen(vm: AppViewModel) {
             blurb = "Optional. Add a photo for the avatar in the top-left. Stored only on this phone. NOOP is offline, so it's never uploaded.",
         ) {
             Row(
-                modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                modifier = Modifier.fillMaxWidth().padding(vertical = Metrics.space4),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                horizontalArrangement = Arrangement.spacedBy(Metrics.space16),
             ) {
                 ProfileAvatar(size = 64.dp, contentDescription = "Profile photo")
                 Column(
                     modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(Metrics.space8),
                 ) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(Metrics.space12)) {
                         NoopButton(
                             text = if (ProfileAvatarStore.hasAvatar) "Change photo" else "Choose photo",
                             kind = NoopButtonKind.Secondary,
@@ -260,7 +260,7 @@ fun ProfileMenuScreen(vm: AppViewModel) {
                                 onPlus = { mutate { profile.waistCm = waistCmStep(profile.waistCm, up = true) } },
                             )
                         }
-                        Spacer(Modifier.height(6.dp))
+                        Spacer(Modifier.height(Metrics.space6))
                         Text(
                             text = if (hasWaist) "Adds your VO₂max estimate" else "Optional · adds your VO₂max estimate",
                             style = NoopType.footnote,
@@ -283,7 +283,7 @@ fun ProfileMenuScreen(vm: AppViewModel) {
                             onMinus = { mutate { profile.hrMaxOverride -= 1 } },
                             onPlus = { mutate { profile.hrMaxOverride += 1 } },
                         )
-                        Spacer(Modifier.height(6.dp))
+                        Spacer(Modifier.height(Metrics.space6))
                         Text(
                             text = if (profile.hrMaxOverride > 0) {
                                 "Manual override"
@@ -340,9 +340,9 @@ fun ProfileMenuScreen(vm: AppViewModel) {
                             contentDescription =
                                 "Steps estimate calibration. $stepsSummary. Opens the calibration screen."
                         }
-                        .padding(vertical = 4.dp),
+                        .padding(vertical = Metrics.space4),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(Metrics.space16),
                 ) {
                     Text("Steps estimate", style = NoopType.body, color = Palette.textPrimary, modifier = Modifier.weight(1f))
                     Text(
@@ -354,7 +354,7 @@ fun ProfileMenuScreen(vm: AppViewModel) {
                         Icons.AutoMirrored.Filled.KeyboardArrowRight,
                         contentDescription = null,
                         tint = Palette.textTertiary,
-                        modifier = Modifier.size(18.dp),
+                        modifier = Modifier.size(Metrics.iconSmall),
                     )
                 }
                 Text(
@@ -468,14 +468,14 @@ private fun ProfileSection(
     content: @Composable () -> Unit,
 ) {
     NoopCard(padding = 20.dp, tint = Palette.accent) {
-        Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(Metrics.space16)) {
+            Column(verticalArrangement = Arrangement.spacedBy(Metrics.space2)) {
                 Overline("Settings")
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    horizontalArrangement = Arrangement.spacedBy(Metrics.space10),
                 ) {
-                    Icon(icon, contentDescription = null, tint = Palette.accent, modifier = Modifier.size(18.dp))
+                    Icon(icon, contentDescription = null, tint = Palette.accent, modifier = Modifier.size(Metrics.iconSmall))
                     Text(title, style = NoopType.title2, color = Palette.textPrimary)
                 }
             }
@@ -492,9 +492,9 @@ private fun FormRow(label: String, control: @Composable () -> Unit) {
         modifier = Modifier
             .fillMaxWidth()
             .heightIn(min = 44.dp)
-            .padding(vertical = 4.dp),
+            .padding(vertical = Metrics.space4),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(16.dp),
+        horizontalArrangement = Arrangement.spacedBy(Metrics.space16),
     ) {
         Text(
             label,

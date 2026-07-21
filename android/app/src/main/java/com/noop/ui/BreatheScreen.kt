@@ -344,7 +344,7 @@ fun BreatheScreen(viewModel: AppViewModel) {
                 tone = if (running) StrandTone.Accent else StrandTone.Neutral,
                 pulsing = running,
             )
-            Spacer(Modifier.width(8.dp))
+            Spacer(Modifier.width(Metrics.space8))
             if (live.bonded) {
                 StatePill("Haptics on", tone = StrandTone.Positive)
             } else {
@@ -352,7 +352,7 @@ fun BreatheScreen(viewModel: AppViewModel) {
             }
             Spacer(Modifier.weight(1f))
             Text(timeString(sessionSeconds), style = NoopType.number(15f), color = Palette.textPrimary)
-            Spacer(Modifier.width(6.dp))
+            Spacer(Modifier.width(Metrics.space6))
             Text("$breathCount breaths", style = NoopType.captionNumber, color = Palette.textSecondary)
         }
 
@@ -364,12 +364,12 @@ fun BreatheScreen(viewModel: AppViewModel) {
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(LIQUID_HERO_RADIUS))
                 .background(LIQUID_HERO_FILL.copy(alpha = LIQUID_HERO_FILL.alpha * CardAppearance.opacity))
-                .border(1.dp, Color.White.copy(alpha = 0.11f * CardAppearance.opacity), RoundedCornerShape(LIQUID_HERO_RADIUS))
-                .padding(24.dp),
+                .border(Metrics.divider, Color.White.copy(alpha = 0.11f * CardAppearance.opacity), RoundedCornerShape(LIQUID_HERO_RADIUS))
+                .padding(Metrics.space24),
         ) {
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(18.dp),
+                verticalArrangement = Arrangement.spacedBy(Metrics.space18),
             ) {
                 Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     Overline(pace.label)
@@ -614,7 +614,7 @@ private fun ReadoutTile(
             Spacer(Modifier.weight(1f))
             Row(verticalAlignment = Alignment.Bottom) {
                 Text(value, style = NoopType.number(26f), color = accent, maxLines = 1)
-                Spacer(Modifier.width(4.dp))
+                Spacer(Modifier.width(Metrics.space4))
                 Text(unit, style = NoopType.caption, color = Palette.textTertiary)
             }
             Text(
@@ -632,7 +632,7 @@ private fun CoherenceCard(rmssd: Double?) {
     val frac = (rmssd?.let { (it / 120.0).coerceIn(0.0, 1.0) } ?: 0.0).toFloat()
     val (label, tone) = coherenceState(rmssd)
     NoopCard {
-        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(Metrics.space10)) {
             Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Overline("Coherence estimate")
                 Spacer(Modifier.weight(1f))
@@ -710,9 +710,9 @@ private fun HapticHint() {
         modifier = Modifier
             .fillMaxWidth()
             .background(Palette.statusWarning.copy(alpha = 0.08f), shape)
-            .border(1.dp, Palette.statusWarning.copy(alpha = 0.25f), shape)
-            .padding(14.dp),
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
+            .border(Metrics.divider, Palette.statusWarning.copy(alpha = 0.25f), shape)
+            .padding(Metrics.space14),
+        horizontalArrangement = Arrangement.spacedBy(Metrics.space10),
     ) {
         Icon(Icons.Filled.GraphicEq, contentDescription = null, tint = Palette.statusWarning)
         Text(
@@ -748,7 +748,7 @@ private fun StressCheckInCard(onBreatheNow: () -> Unit) {
     val n = nudge ?: return
 
     NoopCard(tint = Palette.restColor) {
-        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(Metrics.space12)) {
             Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Filled.Air, contentDescription = null, tint = Palette.restBright,
                     modifier = Modifier.size(16.dp).padding(end = 8.dp))
@@ -763,7 +763,7 @@ private fun StressCheckInCard(onBreatheNow: () -> Unit) {
             honestNudgeLine(n)?.let {
                 Text(it, style = NoopType.footnote, color = Palette.textTertiary)
             }
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
+            Row(horizontalArrangement = Arrangement.spacedBy(Metrics.space10), modifier = Modifier.fillMaxWidth()) {
                 Button(
                     onClick = { StressNudgeCenter.dismiss(); onBreatheNow() },
                     colors = ButtonDefaults.buttonColors(
@@ -863,7 +863,7 @@ private fun ResonanceMode(
     Column(verticalArrangement = Arrangement.spacedBy(Metrics.gap)) {
         // Explainer.
         NoopCard(tint = Palette.restColor) {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(Metrics.space8)) {
                 Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     Overline("Find your resonance pace")
                     Spacer(Modifier.weight(1f))
@@ -884,7 +884,7 @@ private fun ResonanceMode(
         if (sweeping) {
             // Live sweep progress.
             NoopCard(tint = Palette.restColor) {
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(Metrics.space12)) {
                     Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                         Text(sweepLabel ?: "Sweeping…", style = NoopType.headline, color = Palette.textPrimary)
                         Spacer(Modifier.weight(1f))
@@ -904,7 +904,7 @@ private fun ResonanceMode(
         } else {
             // Start controls.
             NoopCard {
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(Metrics.space10)) {
                     Button(
                         onClick = { quick = false; result = null; sweeping = true },
                         colors = ButtonDefaults.buttonColors(
@@ -944,7 +944,7 @@ private fun ResonanceMode(
 @Composable
 private fun ResonanceResultCard(result: ResonanceEngine.SweepResult, context: android.content.Context) {
     NoopCard(tint = Palette.restColor) {
-        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(Metrics.space12)) {
             Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Overline(if (result.didLock) "Your resonance pace" else "Couldn't lock today")
                 Spacer(Modifier.weight(1f))
@@ -954,7 +954,7 @@ private fun ResonanceResultCard(result: ResonanceEngine.SweepResult, context: an
             Row(verticalAlignment = Alignment.Bottom) {
                 Text(String.format(Locale.US, "%.1f", result.lockedBpm),
                     style = NoopType.number(40f), color = Palette.restBright)
-                Spacer(Modifier.width(6.dp))
+                Spacer(Modifier.width(Metrics.space6))
                 Text("br/min", style = NoopType.subhead, color = Palette.textTertiary,
                     modifier = Modifier.padding(bottom = 6.dp))
             }
@@ -977,7 +977,7 @@ private fun ResonanceResultCard(result: ResonanceEngine.SweepResult, context: an
 @Composable
 private fun LockedPaceCard(bpm: Double, context: android.content.Context) {
     NoopCard(tint = Palette.restColor) {
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(Metrics.space8)) {
             Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Overline("Your locked pace")
                 Spacer(Modifier.weight(1f))
@@ -985,7 +985,7 @@ private fun LockedPaceCard(bpm: Double, context: android.content.Context) {
             }
             Row(verticalAlignment = Alignment.Bottom) {
                 Text(String.format(Locale.US, "%.1f", bpm), style = NoopType.number(34f), color = Palette.restBright)
-                Spacer(Modifier.width(6.dp))
+                Spacer(Modifier.width(Metrics.space6))
                 Text("br/min", style = NoopType.subhead, color = Palette.textTertiary,
                     modifier = Modifier.padding(bottom = 4.dp))
             }
@@ -1002,17 +1002,17 @@ private fun LockedPaceCard(bpm: Double, context: android.content.Context) {
 @Composable
 private fun RsaCurve(scores: List<ResonanceEngine.PaceScore>) {
     val maxRsa = scores.mapNotNull { it.rsaAmplitude }.maxOrNull() ?: 1.0
-    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(Metrics.space6)) {
         Overline("RSA response by pace")
         scores.forEach { s ->
             Row(verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                horizontalArrangement = Arrangement.spacedBy(Metrics.space8)) {
                 Text(String.format(Locale.US, "%.1f", s.bpm), style = NoopType.captionNumber,
                     color = Palette.textSecondary, modifier = Modifier.width(34.dp))
                 Box(
                     modifier = Modifier
                         .weight(1f)
-                        .height(8.dp)
+                        .height(Metrics.space8)
                         .clip(RoundedCornerShape(50))
                         .background(Palette.surfaceInset),
                 ) {
@@ -1020,7 +1020,7 @@ private fun RsaCurve(scores: List<ResonanceEngine.PaceScore>) {
                     Box(
                         modifier = Modifier
                             .fillMaxWidth(frac.coerceIn(0.04f, 1f))
-                            .height(8.dp)
+                            .height(Metrics.space8)
                             .clip(RoundedCornerShape(50))
                             .background(Palette.restBright.copy(alpha = if (s.scored) 0.9f else 0.25f)),
                     )
@@ -1084,7 +1084,7 @@ private fun CalmMode(viewModel: AppViewModel, live: com.noop.ble.LiveState, bpm:
     Column(verticalArrangement = Arrangement.spacedBy(Metrics.gap)) {
         // Explainer.
         NoopCard(tint = Palette.restColor) {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(Metrics.space8)) {
                 Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     Overline("Calm me")
                     Spacer(Modifier.weight(1f))
@@ -1104,14 +1104,14 @@ private fun CalmMode(viewModel: AppViewModel, live: com.noop.ble.LiveState, bpm:
 
         if (running) {
             NoopCard(tint = Palette.restColor) {
-                Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(Metrics.space14)) {
                     Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                         Overline("Settling")
                         Spacer(Modifier.weight(1f))
                         StatePill("Live", tone = StrandTone.Accent, pulsing = true)
                     }
                     Row(verticalAlignment = Alignment.Bottom,
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        horizontalArrangement = Arrangement.spacedBy(Metrics.space10)) {
                         Text(bpm?.toString() ?: "—", style = NoopType.number(48f), color = Palette.metricRose)
                         Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null,
                             tint = Palette.textTertiary, modifier = Modifier.padding(bottom = 8.dp))
@@ -1138,7 +1138,7 @@ private fun CalmMode(viewModel: AppViewModel, live: com.noop.ble.LiveState, bpm:
             }
         } else {
             NoopCard {
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(Metrics.space10)) {
                     Button(
                         onClick = {
                             startHr = bpm; outcome = null; didNotFall = false; targetBpm = null
@@ -1167,9 +1167,9 @@ private fun CalmMode(viewModel: AppViewModel, live: com.noop.ble.LiveState, bpm:
         val o = outcome
         if (o != null && !running) {
             NoopCard(tint = Palette.restColor) {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(Metrics.space8)) {
                     Row(verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        horizontalArrangement = Arrangement.spacedBy(Metrics.space10)) {
                         Icon(
                             if (didNotFall) Icons.Filled.Remove else Icons.Filled.Check,
                             contentDescription = null,

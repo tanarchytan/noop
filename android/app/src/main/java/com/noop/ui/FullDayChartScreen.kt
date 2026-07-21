@@ -199,13 +199,13 @@ fun FullDayChartScreen(vm: AppViewModel, onBack: () -> Unit) {
         // DAY STEPPER — move the whole timeline back/forward a day (#597). Forward clamps at today.
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = Metrics.space4),
         ) {
             Text(
                 "‹", style = NoopType.title2, color = Palette.accent,
                 modifier = Modifier
                     .clickable { dayStartSec -= 86_400; window = null }
-                    .padding(horizontal = 12.dp, vertical = 2.dp),
+                    .padding(horizontal = Metrics.space12, vertical = 2.dp),
             )
             Spacer(Modifier.weight(1f))
             Text(dayLabel(dayStartSec, todayStart), style = NoopType.headline, color = Palette.textPrimary)
@@ -215,12 +215,12 @@ fun FullDayChartScreen(vm: AppViewModel, onBack: () -> Unit) {
                 "›", style = NoopType.title2, color = if (onLatest) Palette.textTertiary else Palette.accent,
                 modifier = Modifier
                     .then(if (onLatest) Modifier else Modifier.clickable { dayStartSec += 86_400; window = null })
-                    .padding(horizontal = 12.dp, vertical = 2.dp),
+                    .padding(horizontal = Metrics.space12, vertical = 2.dp),
             )
         }
 
         NoopCard(tint = Palette.metricRose) {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(Metrics.space12)) {
                 Row(verticalAlignment = Alignment.Top) {
                     Column(modifier = Modifier.weight(1f)) {
                         Overline(metric.title)
@@ -284,8 +284,8 @@ fun FullDayChartScreen(vm: AppViewModel, onBack: () -> Unit) {
 private fun EmptyTimelineState(metric: TimelineMetric, ownedOnly: Boolean) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(6.dp),
-        modifier = Modifier.padding(horizontal = 24.dp),
+        verticalArrangement = Arrangement.spacedBy(Metrics.space6),
+        modifier = Modifier.padding(horizontal = Metrics.space24),
     ) {
         Text(stringResource(R.string.timeline_empty_metric, metric.title.lowercase(Locale.US)),
             style = NoopType.body, color = Palette.textSecondary)

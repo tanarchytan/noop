@@ -114,115 +114,6 @@ private fun StageBreakdownRow(stage: String, minutes: Double, total: Double, col
     }
 }
 
-/**
- * The hero hypnogram strip plus an optional onset · midpoint · wake time axis. A proportional stage strip
- * with a per-segment WIDTH floor (so a brief stage reads as a rounded block, not a hairline), faint
- * hairlines at frac 0 / 0.5 / 1.0, and a clock-label row. The axis appears only when onset/wake are supplied.
- */
-@Composable
-internal fun HypnogramWithAxis(
-    stages: List<Pair<String, Float>>,
-    onsetTs: Long?,
-    wakeTs: Long?,
-) {
-    val showsAxis = onsetTs != null && wakeTs != null
-    Column(verticalArrangement = Arrangement.spacedBy(Metrics.space6)) {
-        Canvas(modifier = Modifier.fillMaxWidth().height(Metrics.stageStripHeight)) {
-            val w = size.width
-            val h = size.height
-            if (w <= 0f || h <= 0f) return@Canvas
-
-            // Inset well so the strip reads as a recessed track.
-            drawLine(
-                color = Palette.surfaceInset,
-                start = Offset(0f, h / 2f),
-                end = Offset(w, h / 2f),
-                strokeWidth = h,
-                cap = StrokeCap.Round,
-            )
-
-            val weights = stages.map { it.second }.map { if (it.isFinite() && it > 0f) it else 0f }
-            val total = weights.sum()
-            if (stages.isEmpty() || total <= 0f) return@Canvas
-
-            // WIDTH floor: floor short stages to a legible block so they don't vanish as a hairline. If the
-            // floored widths overflow the canvas on a fragmented night, scale them ALL to fit so the strip
-            // stays one continuous bar. Rounded RECTS advance by the same width they draw, so `x` stays on-canvas.
-            val minSegW = h / 2f
-            val floored = weights.map { wt -> if (wt > 0f) maxOf(w * (wt / total), minSegW) else 0f }
-            val flooredSum = floored.sum()
-            val scale = if (flooredSum > w) w / flooredSum else 1f
-            val radius = CornerRadius(2.dp.toPx(), 2.dp.toPx())
-            var x = 0f
-            stages.forEachIndexed { i, (name, _) ->
-                val segW = floored[i] * scale
-                if (segW <= 0f) return@forEachIndexed
-                drawRoundRect(
-                    color = stageColorFor(name),
-                    topLeft = Offset(x, 0f),
-                    size = Size(segW.coerceAtMost(w - x), h),
-                    cornerRadius = radius,
-                )
-                x += segW
-            }
-
-            // Time-axis vertical hairlines: onset · midpoint · wake.
-            if (showsAxis) {
-                listOf(0f, 0.5f, 1f).forEach { frac ->
-                    val hx = w * frac
-                    drawLine(
-                        color = Palette.hairline,
-                        start = Offset(hx, 0f),
-                        end = Offset(hx, h),
-                        strokeWidth = 1f,
-                    )
-                }
-            }
-        }
-        if (showsAxis && onsetTs != null && wakeTs != null) {
-            ClockLabelRow(onsetTs, wakeTs)
-        }
-    }
-}
-
-/**
- * The onset · midpoint · wake clock-label row under a night timeline. Extracted from [HypnogramWithAxis] so
- * the stage-timeline rows share the same axis rendering.
- */
-@Composable
-private fun ClockLabelRow(onsetTs: Long, wakeTs: Long) {
-    val onset = clockTimeLabel(onsetTs)
-    val mid = clockTimeLabel((onsetTs + wakeTs) / 2L)
-    val wake = clockTimeLabel(wakeTs)
-    Row(modifier = Modifier.fillMaxWidth()) {
-        Text(
-            onset,
-            style = NoopType.footnote,
-            color = Palette.textTertiary,
-            textAlign = TextAlign.Start,
-            maxLines = 1,
-            modifier = Modifier.weight(1f),
-        )
-        Text(
-            mid,
-            style = NoopType.footnote,
-            color = Palette.textTertiary,
-            textAlign = TextAlign.Center,
-            overflow = TextOverflow.Ellipsis,
-            maxLines = 1,
-            modifier = Modifier.weight(1f),
-        )
-        Text(
-            wake,
-            style = NoopType.footnote,
-            color = Palette.textTertiary,
-            textAlign = TextAlign.End,
-            maxLines = 1,
-            modifier = Modifier.weight(1f),
-        )
-    }
-}
-
 /** 90s display floor for the stage rows — rows tolerate finer texture than the staircase's 300s. */
 private const val STAGE_ROW_SMOOTH_SEC = 90.0
 
@@ -464,14 +355,6 @@ private fun MotionStrip(epochs: List<Double>) {
     }
 }
 
-/** Map a stage name to its design-system sleep tone (case-insensitive), local to this screen. */
-private fun stageColorFor(name: String): Color = when (name.trim().lowercase()) {
-    "deep" -> Palette.sleepDeep
-    "rem" -> Palette.sleepREM
-    "light" -> Palette.sleepLight
-    "awake", "wake" -> Palette.sleepAwake
-    else -> Palette.sleepLight
-}
 
 /**
  * "Asleep / Woke" — the fell-asleep and woke clock times for the navigated night, each with a moon / sun
@@ -593,7 +476,7 @@ internal fun displaySmoothed(
     return ivs
 }
 
-/** Canonical stage key: trims, lowercases, and folds the "wake"/"awake" alias (stageColorFor parity). */
+/** Canonical stage key: trims, lowercases, and folds "wake"/"awake" alias (Charts.stageColor parity). */
 internal fun canonicalStage(name: String): String {
     val n = name.trim().lowercase()
     return if (n == "wake") "awake" else n

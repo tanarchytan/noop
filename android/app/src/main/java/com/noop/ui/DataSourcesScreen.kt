@@ -343,7 +343,7 @@ fun DataSourcesScreen(vm: AppViewModel, onOpenAppleHealth: () -> Unit = {}) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(Metrics.space16),
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
                         Text("Auto-sync periodically", style = NoopType.subhead, color = Palette.textPrimary)
@@ -378,7 +378,7 @@ fun DataSourcesScreen(vm: AppViewModel, onOpenAppleHealth: () -> Unit = {}) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        horizontalArrangement = Arrangement.spacedBy(Metrics.space12),
                     ) {
                         Text("Every", style = NoopType.footnote, color = Palette.textSecondary)
                         SegmentedPillControl(
@@ -400,7 +400,7 @@ fun DataSourcesScreen(vm: AppViewModel, onOpenAppleHealth: () -> Unit = {}) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(Metrics.space16),
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
                         Text("Share back to Health Connect", style = NoopType.subhead, color = Palette.textPrimary)
@@ -483,9 +483,9 @@ private fun SourceCard(
  // A frosted, domain-tinted card: a tinted source glyph chip + title, the explainer line, then
  // the source's status pill + connect/import action(s). Replaces the old flat surface.
     NoopCard(padding = 18.dp, tint = tint) {
-        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(Metrics.space12)) {
             Row(
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                horizontalArrangement = Arrangement.spacedBy(Metrics.space10),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Box(
@@ -544,15 +544,15 @@ private fun BackupButton(
             .height(48.dp)
             .clip(shape)
             .background(tint.copy(alpha = 0.14f))
-            .border(1.dp, ink.copy(alpha = 0.4f), shape)
+            .border(Metrics.divider, ink.copy(alpha = 0.4f), shape)
             .let { if (enabled) it.clickable(onClick = onClick) else it }
-            .padding(horizontal = 14.dp)
+            .padding(horizontal = Metrics.space14)
             .semantics { contentDescription = label },
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(icon, contentDescription = null, tint = ink, modifier = Modifier.size(18.dp))
-        Spacer(Modifier.width(8.dp))
+        Icon(icon, contentDescription = null, tint = ink, modifier = Modifier.size(Metrics.iconSmall))
+        Spacer(Modifier.width(Metrics.space8))
         Text(label, style = NoopType.headline, color = ink)
     }
 }

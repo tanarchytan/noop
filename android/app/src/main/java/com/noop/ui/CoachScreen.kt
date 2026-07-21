@@ -106,9 +106,9 @@ private fun CoachSetup(vm: CoachViewModel) {
     val isCustom = provider == AiProvider.CUSTOM
 
     NoopCard(padding = 20.dp) {
-        Column(verticalArrangement = Arrangement.spacedBy(18.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Icon(Icons.Filled.Lock, contentDescription = null, tint = Palette.accent, modifier = Modifier.size(18.dp))
+        Column(verticalArrangement = Arrangement.spacedBy(Metrics.space18)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Metrics.space8)) {
+                Icon(Icons.Filled.Lock, contentDescription = null, tint = Palette.accent, modifier = Modifier.size(Metrics.iconSmall))
                 Text("Connect a provider", style = NoopType.headline, color = Palette.textPrimary)
             }
             Text(
@@ -122,7 +122,7 @@ private fun CoachSetup(vm: CoachViewModel) {
             )
 
             // Provider choice.
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(Metrics.space8)) {
                 Overline("Provider")
                 SegmentedPillControl(
                     items = AiProvider.entries,
@@ -134,7 +134,7 @@ private fun CoachSetup(vm: CoachViewModel) {
 
             // Server URL, Custom (local LLM) only.
             if (isCustom) {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(Metrics.space8)) {
                     Overline("Server URL")
                     OutlinedTextField(
                         value = customBaseUrl,
@@ -153,7 +153,7 @@ private fun CoachSetup(vm: CoachViewModel) {
             }
 
             // Model dropdown + live-list refresh.
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(Metrics.space8)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Overline("Model")
                     Spacer(Modifier.weight(1f))
@@ -172,7 +172,7 @@ private fun CoachSetup(vm: CoachViewModel) {
             }
 
             // Masked key field, optional for a local Custom server.
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(Metrics.space8)) {
                 Overline(if (isCustom) "API Key (optional)" else "API Key")
                 CoachKeyField(
                     value = keyInput,
@@ -218,7 +218,7 @@ private fun CoachChat(vm: CoachViewModel) {
     val model by vm.model.collectAsStateWithLifecycle()
     var input by remember { mutableStateOf("") }
 
-    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(Metrics.space16)) {
 
         // Active-provider strip + reset-key affordance.
         NoopCard(padding = 14.dp, tint = Palette.chargeColor) {
@@ -234,7 +234,7 @@ private fun CoachChat(vm: CoachViewModel) {
                         .clip(RoundedCornerShape(50))
                         .liquidPress(disconnectInteraction)
                         .clickable(interactionSource = disconnectInteraction, indication = null) { vm.disconnect(context) }
-                        .padding(horizontal = 10.dp, vertical = 6.dp)
+                        .padding(horizontal = Metrics.space10, vertical = 6.dp)
                         .semantics { contentDescription = "Disconnect provider" },
                 )
             }
@@ -244,7 +244,7 @@ private fun CoachChat(vm: CoachViewModel) {
         val consent by vm.consent.collectAsStateWithLifecycle()
         NoopCard(padding = 14.dp, tint = Palette.chargeColor) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(Metrics.space2)) {
                     Text("Let the coach use my data", style = NoopType.subhead, color = Palette.textPrimary)
                     Text(
                         if (consent) "On: your recovery, sleep, HRV and workouts are shared with the provider for tailored coaching."
@@ -266,7 +266,7 @@ private fun CoachChat(vm: CoachViewModel) {
         // Transcript or empty-state with suggested prompts.
         if (messages.isEmpty()) {
             NoopCard(padding = 18.dp) {
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(Metrics.space12)) {
                     Text(
                         "Ask anything about your recent recovery, strain, sleep or HRV.",
                         style = NoopType.subhead, color = Palette.textSecondary,
@@ -275,7 +275,7 @@ private fun CoachChat(vm: CoachViewModel) {
                 }
             }
         } else {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(Metrics.space10)) {
                 messages.forEach { msg -> ChatBubble(msg) }
                 if (sending) ThinkingBubble()
             }
@@ -297,10 +297,10 @@ private fun CoachChat(vm: CoachViewModel) {
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(18.dp))
                 .background(Palette.surfaceOverlay)
-                .border(1.dp, Palette.hairline, RoundedCornerShape(18.dp))
-                .padding(8.dp),
+                .border(Metrics.divider, Palette.hairline, RoundedCornerShape(18.dp))
+                .padding(Metrics.space8),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            horizontalArrangement = Arrangement.spacedBy(Metrics.space10),
         ) {
             OutlinedTextField(
                 value = input,
@@ -358,7 +358,7 @@ private fun CoachInstructions(vm: CoachViewModel) {
                     },
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(Metrics.space2)) {
                     Text("Coach instructions", style = NoopType.subhead, color = Palette.textPrimary)
                     Text(
                         if (hasCustom) "Customised. Your edited instructions frame every reply."
@@ -420,7 +420,7 @@ private fun ChatBubble(msg: ChatMsg) {
             Modifier
                 .clip(bubbleShape)
                 .background(Palette.accentMuted)
-                .border(1.dp, Palette.accent.copy(alpha = 0.35f), bubbleShape)
+                .border(Metrics.divider, Palette.accent.copy(alpha = 0.35f), bubbleShape)
         } else {
             Modifier
                 .clip(bubbleShape)
@@ -430,9 +430,9 @@ private fun ChatBubble(msg: ChatMsg) {
             modifier = Modifier
                 .widthIn(max = 320.dp)
                 .then(bubbleModifier)
-                .padding(horizontal = 14.dp, vertical = 10.dp),
+                .padding(horizontal = Metrics.space14, vertical = 10.dp),
         ) {
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(Metrics.space4)) {
                 Overline(
                     if (isUser) "You" else "Coach",
                     color = if (isUser) Palette.accentHover else Palette.textTertiary,
@@ -455,10 +455,10 @@ private fun ThinkingBubble() {
             modifier = Modifier
                 .clip(RoundedCornerShape(16.dp))
                 .frostedCardSurface(tint = Palette.chargeColor, cornerRadius = 16.dp)
-                .padding(horizontal = 14.dp, vertical = 12.dp)
+                .padding(horizontal = Metrics.space14, vertical = 12.dp)
                 .semantics { contentDescription = "Coach is thinking" },
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            horizontalArrangement = Arrangement.spacedBy(Metrics.space10),
         ) {
             CircularProgressIndicator(
                 modifier = Modifier.size(16.dp),
@@ -481,7 +481,7 @@ private val SUGGESTED_PROMPTS = listOf(
 
 @Composable
 private fun SuggestedPrompts(onPick: (String) -> Unit) {
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(Metrics.space8)) {
         Overline("Try asking")
         // Simple wrapped column of chips (one per row keeps long prompts readable).
         SUGGESTED_PROMPTS.forEach { prompt ->
@@ -495,10 +495,10 @@ private fun SuggestedPrompts(onPick: (String) -> Unit) {
                     .wrapContentWidth()
                     .clip(shape)
                     .background(Palette.surfaceInset)
-                    .border(1.dp, Palette.hairline, shape)
+                    .border(Metrics.divider, Palette.hairline, shape)
                     .liquidPress(chipInteraction)
                     .clickable(interactionSource = chipInteraction, indication = null) { onPick(prompt) }
-                    .padding(horizontal = 12.dp, vertical = 8.dp)
+                    .padding(horizontal = Metrics.space12, vertical = 8.dp)
                     .semantics { contentDescription = "Suggested prompt: $prompt" },
             )
         }
@@ -523,10 +523,10 @@ private fun ModelDropdown(
                 .fillMaxWidth()
                 .clip(shape)
                 .background(Palette.surfaceInset)
-                .border(1.dp, Palette.hairline, shape)
+                .border(Metrics.divider, Palette.hairline, shape)
                 .liquidPress(triggerInteraction)
                 .clickable(interactionSource = triggerInteraction, indication = null) { expanded = true }
-                .padding(horizontal = 14.dp, vertical = 12.dp)
+                .padding(horizontal = Metrics.space14, vertical = 12.dp)
                 .semantics { contentDescription = "Model: $selected. Tap to change." },
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -590,7 +590,7 @@ private fun CustomModelDialog(
         containerColor = Palette.surfaceOverlay,
         title = { Text("Custom model", style = NoopType.headline, color = Palette.textPrimary) },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(Metrics.space10)) {
                 Text(
                     "Enter any model id the provider accepts.",
                     style = NoopType.subhead,
@@ -641,7 +641,7 @@ private fun RefreshModelsButton(
         modifier = Modifier
             .clip(shape)
             .background(Palette.surfaceInset)
-            .border(1.dp, Palette.hairline, shape)
+            .border(Metrics.divider, Palette.hairline, shape)
             .let {
                 if (active)
                     it
@@ -649,10 +649,10 @@ private fun RefreshModelsButton(
                         .clickable(interactionSource = refreshInteraction, indication = null, onClick = onClick)
                 else it
             }
-            .padding(horizontal = 10.dp, vertical = 6.dp)
+            .padding(horizontal = Metrics.space10, vertical = 6.dp)
             .semantics { contentDescription = "Fetch models from provider" },
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        horizontalArrangement = Arrangement.spacedBy(Metrics.space6),
     ) {
         if (refreshing) {
             CircularProgressIndicator(modifier = Modifier.size(13.dp), strokeWidth = 2.dp, color = Palette.accent)
@@ -732,7 +732,7 @@ private fun SendButton(enabled: Boolean, sending: Boolean, onClick: () -> Unit) 
             .size(52.dp)
             .clip(RoundedCornerShape(14.dp))
             .background(bg)
-            .border(1.dp, if (enabled) Color.Transparent else Palette.hairline, RoundedCornerShape(14.dp))
+            .border(Metrics.divider, if (enabled) Color.Transparent else Palette.hairline, RoundedCornerShape(14.dp))
             .let {
                 if (enabled)
                     it
@@ -763,7 +763,7 @@ private fun PrivacyNote(local: Boolean = false) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        horizontalArrangement = Arrangement.spacedBy(Metrics.space6),
     ) {
         Icon(Icons.Filled.Lock, contentDescription = null, tint = Palette.textTertiary, modifier = Modifier.size(13.dp))
         Text(

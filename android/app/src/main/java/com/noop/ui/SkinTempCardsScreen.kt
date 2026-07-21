@@ -73,7 +73,7 @@ private const val SKIN_TEMP_PRIVACY_LINE =
 private fun PrivacyNote(text: String = SKIN_TEMP_PRIVACY_LINE) {
     Row(
         verticalAlignment = Alignment.Top,
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        horizontalArrangement = Arrangement.spacedBy(Metrics.space6),
         modifier = Modifier.semantics { contentDescription = text },
     ) {
         Icon(
@@ -133,7 +133,7 @@ fun CycleAwarenessCard(
             }
 
             // Headline phase + cycle-day RANGE.
-            Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(Metrics.space8)) {
                 Text(
                     cyclePhaseTitle(result.phase),
                     style = NoopType.title2,
@@ -150,7 +150,7 @@ fun CycleAwarenessCard(
 
             // Probabilistic next-period WINDOW, never a single date.
             result.nextPeriodWindow?.let { w ->
-                Row(verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.spacedBy(Metrics.space8)) {
                     Icon(Icons.Filled.CalendarMonth, contentDescription = null, tint = hue, modifier = Modifier.size(16.dp))
                     Text(
                         "A period is likely between ${prettyDay(w.earliestDay)} and " +
@@ -197,8 +197,8 @@ fun CycleAwarenessCard(
 fun CycleAwarenessOptInCard(onEnable: () -> Unit) {
     NoopCard(tint = Palette.restColor) {
         Column(verticalArrangement = Arrangement.spacedBy(Metrics.gap)) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Icon(Icons.Filled.Thermostat, contentDescription = null, tint = Palette.restColor, modifier = Modifier.size(18.dp))
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Metrics.space8)) {
+                Icon(Icons.Filled.Thermostat, contentDescription = null, tint = Palette.restColor, modifier = Modifier.size(Metrics.iconSmall))
                 Text("Cycle awareness", style = NoopType.headline, color = Palette.textPrimary)
             }
             Text(
@@ -241,7 +241,7 @@ fun BodyClockCard(
 
             Text(estimate.note, style = NoopType.subhead, color = Palette.textSecondary)
 
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Metrics.space6)) {
                 Icon(Icons.Filled.NightsStay, contentDescription = null, tint = hue, modifier = Modifier.size(14.dp))
                 Text(
                     "Estimated body-clock low around ${clockString(estimate.tempMinHour)}",
@@ -253,7 +253,7 @@ fun BodyClockCard(
             val firstDay = plan?.days?.firstOrNull()
             if (plan != null && plan.direction != CircadianEngine.ShiftDirection.NONE && firstDay != null) {
                 HorizontalDivider(color = Palette.hairline)
-                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(Metrics.space6)) {
                     Overline("Plan · ${plan.estimatedDays}-day shift")
                     Text(
                         "Day 1: bright light ${clockString(firstDay.brightLightStartHour)} - " +
@@ -294,7 +294,7 @@ fun HeadsUpCard(
     val hue = headsUpHue(result.level)
     NoopCard(padding = 14.dp, tint = hue) {
         Column(verticalArrangement = Arrangement.spacedBy(Metrics.gap)) {
-            Row(verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Row(verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.spacedBy(Metrics.space12)) {
                 Box(
                     modifier = Modifier
                         .size(30.dp)
@@ -304,7 +304,7 @@ fun HeadsUpCard(
                 ) {
                     Icon(headsUpGlyph(result.level), contentDescription = null, tint = hue, modifier = Modifier.size(15.dp))
                 }
-                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(Metrics.space4)) {
                     Text(headsUpTitle(result.level), style = NoopType.headline, color = Palette.textPrimary)
                     Text(result.copy, style = NoopType.subhead, color = Palette.textSecondary)
                 }
@@ -363,14 +363,14 @@ private fun illnessConfidenceFormatted(distance: Double): String =
 private fun WhyRow(label: String, values: List<String>, tint: Color) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        horizontalArrangement = Arrangement.spacedBy(Metrics.space8),
         modifier = Modifier.semantics { contentDescription = "$label: ${values.joinToString(", ")}" },
     ) {
         Overline(label)
         // Chips wrap to the next line rather than overflowing the card on a long confounder list.
         FlowRow(
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp),
+            horizontalArrangement = Arrangement.spacedBy(Metrics.space6),
+            verticalArrangement = Arrangement.spacedBy(Metrics.space6),
         ) {
             values.forEach { WhyChip(it, tint) }
         }

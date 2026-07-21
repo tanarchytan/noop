@@ -190,13 +190,13 @@ fun HydrationScreen(viewModel: AppViewModel) {
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(LIQUID_HERO_RADIUS))
                     .background(LIQUID_HERO_FILL.copy(alpha = LIQUID_HERO_FILL.alpha * CardAppearance.opacity))
-                    .border(1.dp, Color.White.copy(alpha = 0.11f * CardAppearance.opacity), RoundedCornerShape(LIQUID_HERO_RADIUS))
-                    .padding(20.dp),
+                    .border(Metrics.divider, Color.White.copy(alpha = 0.11f * CardAppearance.opacity), RoundedCornerShape(LIQUID_HERO_RADIUS))
+                    .padding(Metrics.screenRowSpacing),
             ) {
                 Column(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(14.dp),
+                    verticalArrangement = Arrangement.spacedBy(Metrics.space14),
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         // The vessel fills to the goal fraction in the hydration accent. It runs LIVE (per-frame
@@ -261,7 +261,7 @@ fun HydrationScreen(viewModel: AppViewModel) {
         // interactionSource wired to BOTH its clickable and liquidPress, so the whole tile settles inward on
         // press (the iOS LiquidPressStyle feel), routing the SAME `log(...)` amounts as before.
         item {
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
+            Row(horizontalArrangement = Arrangement.spacedBy(Metrics.space10), modifier = Modifier.fillMaxWidth()) {
                 LiquidLogTile(
                     label = "Sip",
                     icon = Icons.Filled.WaterDrop,
@@ -305,7 +305,7 @@ fun HydrationScreen(viewModel: AppViewModel) {
         // (one bar per day), not a single-value progress bar, so a tube would flatten it — leave it as-is.
         item {
             NoopCard(padding = 18.dp) {
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(Metrics.space12)) {
                     Overline("Last 7 days")
                     HydrationHistoryBars(history = history, goalMl = goalMl, accent = accent)
                 }
@@ -316,7 +316,7 @@ fun HydrationScreen(viewModel: AppViewModel) {
         // sum the store banks; per-tap rows aren't separately persisted, so we show the honest day figure).
         item {
             NoopCard(padding = 18.dp) {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(Metrics.space8)) {
                     Overline("Today")
                     if (totalMl <= 0.0) {
                         Text(
@@ -333,9 +333,9 @@ fun HydrationScreen(viewModel: AppViewModel) {
                                 Icons.Filled.WaterDrop,
                                 contentDescription = null,
                                 tint = accent,
-                                modifier = Modifier.size(18.dp),
+                                modifier = Modifier.size(Metrics.iconSmall),
                             )
-                            Spacer(Modifier.width(10.dp))
+                            Spacer(Modifier.width(Metrics.space10))
                             Text(
                                 "Logged today",
                                 style = NoopType.subhead,
@@ -352,7 +352,7 @@ fun HydrationScreen(viewModel: AppViewModel) {
                         // this session and removes exactly that container from the day total. "Clear today" zeroes
                         // the day's total outright (the delete-everything correction). Both route through the
                         // store's clamped remove/set, so the total never goes negative.
-                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(Metrics.space10), modifier = Modifier.fillMaxWidth()) {
                             lastLoggedMl?.let { last ->
                                 NoopButton(
                                     text = "Undo last ($last ml)",
@@ -411,9 +411,9 @@ private fun LiquidLogTile(
                 onClickLabel = "Log $label",
                 onClick = onLog,
             )
-            .padding(vertical = 14.dp),
+            .padding(vertical = Metrics.space14),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(Metrics.space8),
     ) {
         Box(
             modifier = Modifier
@@ -455,7 +455,7 @@ private fun HydrationHistoryBars(
     // Scale the bars to the LARGER of the goal and the biggest day, so an over-goal day doesn't clip.
     val ceiling = kotlin.math.max(goal, maxMl).coerceAtLeast(1.0)
 
-    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(Metrics.space6)) {
         Canvas(modifier = Modifier.fillMaxWidth().height(96.dp)) {
             val n = history.size
             val gap = 10.dp.toPx()
@@ -473,7 +473,7 @@ private fun HydrationHistoryBars(
                 }
             }
         }
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(Metrics.space10)) {
             history.forEach { (dayKey, _) ->
                 Text(
                     weekdayInitial(dayKey),
@@ -535,12 +535,12 @@ private fun CustomAmountDialog(
                     tint = accent,
                     modifier = Modifier.size(20.dp),
                 )
-                Spacer(Modifier.width(10.dp))
+                Spacer(Modifier.width(Metrics.space10))
                 Text("Custom amount", style = NoopType.title2, color = Palette.textPrimary)
             }
         },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(Metrics.space8)) {
                 OutlinedTextField(
                     value = text,
                     onValueChange = { new -> text = new.filter { it.isDigit() }.take(5) },

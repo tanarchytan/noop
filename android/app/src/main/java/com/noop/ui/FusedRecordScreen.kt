@@ -153,10 +153,10 @@ private fun DayBadgeRow(owner: FusionSource?) {
     }
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        horizontalArrangement = Arrangement.spacedBy(Metrics.space8),
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 4.dp)
+            .padding(horizontal = Metrics.space4)
             .semantics { contentDescription = text },
     ) {
         Icon(
@@ -177,10 +177,10 @@ private fun DayBadgeRow(owner: FusionSource?) {
 private fun PrivacyNote(deviceNoun: String) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        horizontalArrangement = Arrangement.spacedBy(Metrics.space8),
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 4.dp),
+            .padding(horizontal = Metrics.space4),
     ) {
         Icon(
             Icons.Outlined.Lock,
@@ -203,7 +203,7 @@ private fun DisclaimerNote() {
         "NOOP picks the best-sourced number and shows you where each came from. It's for wellness and curiosity. It doesn't diagnose or replace medical advice.",
         style = NoopType.footnote,
         color = Palette.textTertiary,
-        modifier = Modifier.padding(horizontal = 4.dp),
+        modifier = Modifier.padding(horizontal = Metrics.space4),
     )
 }
 
@@ -234,7 +234,7 @@ private fun FusedMetricRow(
     Column(
         modifier = rowModifier
             .padding(horizontal = Metrics.cardPadding, vertical = 14.dp),
-        verticalArrangement = Arrangement.spacedBy(6.dp),
+        verticalArrangement = Arrangement.spacedBy(Metrics.space6),
     ) {
         // Top line: metric label + the best-sourced value, right-aligned.
         Row(
@@ -247,7 +247,7 @@ private fun FusedMetricRow(
                 color = Palette.textPrimary,
                 modifier = Modifier.weight(1f),
             )
-            Spacer(Modifier.width(8.dp))
+            Spacer(Modifier.width(Metrics.space8))
             AutoSizeValue(
                 FusionFormat.value(point.value, point.metric),
                 style = NoopType.number(20f),
@@ -259,7 +259,7 @@ private fun FusedMetricRow(
             // Provenance: a source badge + the published one-line reason.
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                horizontalArrangement = Arrangement.spacedBy(Metrics.space8),
             ) {
                 SourceBadge("from ${point.winningSource.displayName}", tint = Palette.accent)
                 point.contributors.firstOrNull()?.reason?.let { reason ->
@@ -289,7 +289,7 @@ private fun AgreementLine(point: FusedMetricPoint, onCompare: () -> Unit) {
         AgreementState.MINOR_DELTA -> if (other != null) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                horizontalArrangement = Arrangement.spacedBy(Metrics.space6),
             ) {
                 StatePill("Differs slightly", tone = StrandTone.Neutral, showsDot = false)
                 Text(
@@ -306,7 +306,7 @@ private fun AgreementLine(point: FusedMetricPoint, onCompare: () -> Unit) {
                 indication = null,
             ) { onCompare() },
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            horizontalArrangement = Arrangement.spacedBy(Metrics.space6),
         ) {
             StatePill("Sources differ", tone = StrandTone.Warning)
             Text(
@@ -372,7 +372,7 @@ private fun ConflictCompareDialog(row: FusedRow, onDismiss: () -> Unit) {
 
                 point.contributors.firstOrNull()?.let { winner ->
                     Row(
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        horizontalArrangement = Arrangement.spacedBy(Metrics.space10),
                         verticalAlignment = Alignment.Top,
                     ) {
                         Icon(
@@ -411,22 +411,22 @@ private fun ContributorRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 12.dp)
+            .padding(vertical = Metrics.space12)
             .semantics {
                 contentDescription =
                     "${contrib.source.displayName}, ${FusionFormat.value(contrib.value, metricKey)}" +
                     if (isWinner) ", in use" else ""
             },
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        horizontalArrangement = Arrangement.spacedBy(Metrics.space12),
     ) {
         Column(
             modifier = Modifier.weight(1f),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
+            verticalArrangement = Arrangement.spacedBy(Metrics.space4),
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                horizontalArrangement = Arrangement.spacedBy(Metrics.space8),
             ) {
                 SourceBadge(
                     contrib.source.displayName,

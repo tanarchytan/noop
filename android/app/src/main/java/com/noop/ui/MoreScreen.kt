@@ -142,7 +142,7 @@ internal fun MoreScreen(onNavigate: (String) -> Unit) {
  // chevron) and separated by inset hairlines (NOT loose navigation-drawer items on the bare surface).
         drawerGroups.forEach { group ->
             val isOpen = expanded[group.header] ?: group.defaultExpanded
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(Metrics.space10)) {
                 MoreGroupHeader(
                     title = stringResource(group.headerRes),
                     expanded = isOpen,
@@ -215,11 +215,11 @@ private fun MoreRow(dest: Destination, onClick: () -> Unit) {
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 14.dp),
+            .padding(horizontal = Metrics.space16, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(dest.icon, contentDescription = null, tint = Palette.accent, modifier = Modifier.size(20.dp))
-        Spacer(Modifier.width(14.dp))
+        Spacer(Modifier.width(Metrics.space14))
         Text(stringResource(dest.titleRes), style = NoopType.body, color = Palette.textPrimary, modifier = Modifier.weight(1f))
         Icon(
             Icons.Filled.ChevronRight,

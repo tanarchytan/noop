@@ -184,14 +184,14 @@ private fun LiveSessionBody(
         modifier = Modifier
             .fillMaxSize()
             .navigationBarsPadding()
-            .padding(28.dp),
+            .padding(Metrics.sectionGap),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         // Header — title + BETA pill (the contract labels the feature BETA at every surface).
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            horizontalArrangement = Arrangement.spacedBy(Metrics.space10),
         ) {
             Text("Live Session", style = NoopType.title1, color = Palette.textPrimary)
             StatePill("BETA", tone = StrandTone.Accent, showsDot = false)
@@ -208,7 +208,7 @@ private fun LiveSessionBody(
             onLongPress = { revealTick = System.currentTimeMillis() },
         )
 
-        Spacer(Modifier.height(24.dp))
+        Spacer(Modifier.height(Metrics.space24))
 
         // The one line of copy. STALE says so honestly (coaching paused, nothing accrues); otherwise the
         // guarding promise — the whole design is that this screen has nothing to watch.
@@ -403,15 +403,15 @@ private fun LiveSessionSummary(
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
             .navigationBarsPadding()
-            .padding(28.dp),
-        verticalArrangement = Arrangement.spacedBy(20.dp),
+            .padding(Metrics.sectionGap),
+        verticalArrangement = Arrangement.spacedBy(Metrics.screenRowSpacing),
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            horizontalArrangement = Arrangement.spacedBy(Metrics.space10),
         ) {
-            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(Metrics.space2)) {
                 Overline("Live Session", color = teal)
                 Text("Session summary", style = NoopType.title1, color = Palette.textPrimary)
             }
@@ -469,7 +469,7 @@ private fun LiveSessionSummary(
             Text(sessions + run, style = NoopType.subhead, color = teal)
         }
 
-        Spacer(Modifier.height(12.dp))
+        Spacer(Modifier.height(Metrics.space12))
 
         Button(
             onClick = onDone,

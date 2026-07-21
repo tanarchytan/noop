@@ -219,7 +219,7 @@ fun BackupSyncScreen(repo: WhoopRepository, activeStrapId: String) {
         // 1 · Destination folder
         item {
             NoopCard(padding = 20.dp) {
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(Metrics.space10)) {
                     Text("Backup location", style = NoopType.headline, color = Palette.textPrimary)
                     Text(
                         "Backups are saved to ${BackupSync.backupDir().path}",
@@ -253,11 +253,11 @@ fun BackupSyncScreen(repo: WhoopRepository, activeStrapId: String) {
         // 2 · Auto-backup + back up now
         item {
             NoopCard(padding = 20.dp, tint = if (auto && hasAccess) Palette.accent else null) {
-                Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(Metrics.space14)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Column(
                             modifier = Modifier.weight(1f),
-                            verticalArrangement = Arrangement.spacedBy(2.dp),
+                            verticalArrangement = Arrangement.spacedBy(Metrics.space2),
                         ) {
                             Text("Daily auto-backup", style = NoopType.body, color = Palette.textPrimary)
                             Text(
@@ -266,7 +266,7 @@ fun BackupSyncScreen(repo: WhoopRepository, activeStrapId: String) {
                                 style = NoopType.footnote, color = Palette.textTertiary,
                             )
                         }
-                        Spacer(Modifier.width(16.dp))
+                        Spacer(Modifier.width(Metrics.space16))
                         Switch(
                             checked = auto,
                             enabled = hasAccess && !busy,
@@ -289,7 +289,7 @@ fun BackupSyncScreen(repo: WhoopRepository, activeStrapId: String) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Column(
                             modifier = Modifier.weight(1f),
-                            verticalArrangement = Arrangement.spacedBy(2.dp),
+                            verticalArrangement = Arrangement.spacedBy(Metrics.space2),
                         ) {
                             Text("Keep last snapshots", style = NoopType.body, color = Palette.textPrimary)
                             Text(
@@ -298,7 +298,7 @@ fun BackupSyncScreen(repo: WhoopRepository, activeStrapId: String) {
                                 style = NoopType.footnote, color = Palette.textTertiary,
                             )
                         }
-                        Spacer(Modifier.width(16.dp))
+                        Spacer(Modifier.width(Metrics.space16))
                         Box {
                             TextButton(
                                 enabled = hasAccess && !busy,
@@ -334,7 +334,7 @@ fun BackupSyncScreen(repo: WhoopRepository, activeStrapId: String) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Column(
                             modifier = Modifier.weight(1f),
-                            verticalArrangement = Arrangement.spacedBy(2.dp),
+                            verticalArrangement = Arrangement.spacedBy(Metrics.space2),
                         ) {
                             Text("Backup time", style = NoopType.body, color = Palette.textPrimary)
                             Text(
@@ -342,7 +342,7 @@ fun BackupSyncScreen(repo: WhoopRepository, activeStrapId: String) {
                                 style = NoopType.footnote, color = Palette.textTertiary,
                             )
                         }
-                        Spacer(Modifier.width(16.dp))
+                        Spacer(Modifier.width(Metrics.space16))
                         TimeChip(
                             minutes = backupMinute,
                             accessibilityLabel = "Daily backup time",
@@ -391,7 +391,7 @@ fun BackupSyncScreen(repo: WhoopRepository, activeStrapId: String) {
         // 3 · Restore (must-fix #1: from the chosen folder, newest-first)
         item {
             NoopCard(padding = 20.dp) {
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(Metrics.space10)) {
                     Text("Restore", style = NoopType.headline, color = Palette.textPrimary)
                     Text(
                         "Replace this device's data with one of your backups. This overwrites current data, " +
@@ -430,14 +430,14 @@ fun BackupSyncScreen(repo: WhoopRepository, activeStrapId: String) {
         // 4 · Export a copy (moved here from Settings) - a portable file to move to another phone or share.
         item {
             NoopCard(padding = 20.dp) {
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(Metrics.space10)) {
                     Text("Export a copy", style = NoopType.headline, color = Palette.textPrimary)
                     Text(
                         "Save a one-off file to move your data to another phone or share it. The .noopbak is the " +
                             "lossless restore file; the CSV is a WHOOP-format zip that re-imports on Android or Mac.",
                         style = NoopType.footnote, color = Palette.textTertiary,
                     )
-                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(Metrics.space12)) {
                         NoopButton(
                             text = if (busy) "Working…" else "Export backup file…",
                             kind = NoopButtonKind.Secondary,
@@ -473,7 +473,7 @@ fun BackupSyncScreen(repo: WhoopRepository, activeStrapId: String) {
                 Text("Choose a backup", style = NoopType.title2, color = Palette.textPrimary)
             },
             text = {
-                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(Metrics.space4)) {
                     Text(
                         "Newest first. Restoring replaces this device's data.",
                         style = NoopType.footnote, color = Palette.textSecondary,
@@ -502,7 +502,7 @@ fun BackupSyncScreen(repo: WhoopRepository, activeStrapId: String) {
                                         snap.name
                                     } to Uri.fromFile(snap.file)
                                 }
-                                .padding(vertical = 10.dp),
+                                .padding(vertical = Metrics.space10),
                         )
                     }
                 }

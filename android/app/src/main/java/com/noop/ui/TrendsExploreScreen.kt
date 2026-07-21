@@ -469,7 +469,7 @@ private fun DeepTimelineEntry(onClick: () -> Unit) {
     NoopCard(modifier = Modifier.clickable(onClick = onClick)) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(14.dp),
+            horizontalArrangement = Arrangement.spacedBy(Metrics.space14),
         ) {
             Box(
                 modifier = Modifier
@@ -521,9 +521,9 @@ private fun MetricDropdown(
                 .clip(shape)
                 .background(Palette.surfaceInset)
                 .border(Metrics.divider, Palette.accent.copy(alpha = StrandAlpha.selectedBorder), shape)
-                .padding(horizontal = 14.dp, vertical = 12.dp),
+                .padding(horizontal = Metrics.space14, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            horizontalArrangement = Arrangement.spacedBy(Metrics.space10),
         ) {
             Box(modifier = Modifier.size(10.dp).clip(CircleShape).background(selected.accent))
             Column(modifier = Modifier.weight(1f)) {
@@ -548,16 +548,16 @@ private fun MetricDropdown(
                 if (groupIdx > 0) {
                     HorizontalDivider(
                         color = Palette.hairline,
-                        modifier = Modifier.padding(vertical = 4.dp),
+                        modifier = Modifier.padding(vertical = Metrics.space4),
                     )
                 }
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .background(Palette.surfaceRaised)
-                        .padding(horizontal = 16.dp, vertical = 6.dp),
+                        .padding(horizontal = Metrics.space16, vertical = 6.dp),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(Metrics.space8),
                 ) {
                     Box(modifier = Modifier.size(6.dp).clip(CircleShape).background(Palette.accent))
                     Overline(category, color = Palette.accent)
@@ -569,7 +569,7 @@ private fun MetricDropdown(
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                horizontalArrangement = Arrangement.spacedBy(Metrics.space10),
                             ) {
                                 Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(metric.accent))
                                 Text(
@@ -643,10 +643,10 @@ private fun HeroChartCard(
                 val avgV = values.average()
                 val minV = values.min()
                 val fmtY: (Double) -> String = { v -> metric.format(v).substringBefore(' ').take(7) }
-                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(Metrics.space4)) {
                     Row(
                         modifier = Modifier.height(IntrinsicSize.Min),
-                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        horizontalArrangement = Arrangement.spacedBy(Metrics.space4),
                     ) {
                         Column(
                             modifier = Modifier.height(Metrics.chartHeight),

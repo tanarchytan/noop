@@ -182,7 +182,7 @@ private fun ForecastCard(f: RecoveryForecast) {
             Column(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(14.dp),
+                verticalArrangement = Arrangement.spacedBy(Metrics.space14),
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     GlowRing(
@@ -207,7 +207,7 @@ private fun ForecastCard(f: RecoveryForecast) {
                 }
                 Column(
                     modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalArrangement = Arrangement.spacedBy(Metrics.space10),
                 ) {
                     Text(
                         "You'll likely wake around $charge ± $band Charge if you sleep about " +
@@ -241,9 +241,9 @@ private fun sleepHoursLabel(hours: Double): String {
 @Composable
 private fun ExplainerCard(effortScale: EffortScale) {
     NoopCard(padding = 20.dp, tint = Palette.chargeColor) {
-        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(Metrics.space10)) {
             Row(
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                horizontalArrangement = Arrangement.spacedBy(Metrics.space10),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Icon(
@@ -274,14 +274,14 @@ private fun ExplainerCard(effortScale: EffortScale) {
 private fun EmptyNote() {
     NoopCard(padding = 20.dp, tint = Palette.chargeColor) {
         Row(
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            horizontalArrangement = Arrangement.spacedBy(Metrics.space10),
             verticalAlignment = Alignment.Top,
         ) {
             Icon(
                 Icons.Filled.AutoAwesome,
                 contentDescription = null,
                 tint = Palette.chargeColor,
-                modifier = Modifier.size(18.dp),
+                modifier = Modifier.size(Metrics.iconSmall),
             )
             Text(
                 "No scored days yet. Sync your strap to collect raw streams. Effort and Rest are " +
@@ -306,7 +306,7 @@ private fun EmptyNote() {
 @Composable
 private fun ModelBreakdownCard(effortScale: EffortScale) {
     NoopCard(padding = 20.dp, tint = Palette.chargeColor) {
-        Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(Metrics.space14)) {
             Overline("Charge model")
             WeightRow("Heart-rate variability", "~55%", 0.55f, Palette.metricPurple)
             WeightRow("Resting heart rate", "~20%", 0.20f, Palette.metricRose)
@@ -336,7 +336,7 @@ private fun ModelBreakdownCard(effortScale: EffortScale) {
 
 @Composable
 private fun WeightRow(label: String, percent: String, fraction: Float, color: Color) {
-    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(Metrics.space6)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
                 label,
@@ -357,14 +357,14 @@ private fun Meter(fraction: Float, color: Color) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .height(6.dp)
+            .height(Metrics.space6)
             .clip(shape)
             .background(Palette.surfaceInset),
     ) {
         Box(
             modifier = Modifier
                 .fillMaxWidth(fraction.coerceIn(0f, 1f))
-                .height(6.dp)
+                .height(Metrics.space6)
                 .clip(shape)
                 .background(color),
         )
@@ -380,7 +380,7 @@ private fun Meter(fraction: Float, color: Color) {
 @Composable
 private fun DayCard(d: DailyMetric, effortScale: EffortScale) {
     NoopCard(padding = 18.dp, tint = Palette.chargeColor) {
-        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(Metrics.space12)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     prettyDay(d.day),

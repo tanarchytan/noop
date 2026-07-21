@@ -98,14 +98,10 @@ import kotlin.math.sin
 // NoopCard / ad-hoc surfaces all share it. Pass a domain tint (or null for neutral).
 
 /**
- * Paint the frosted-card surface (navy fill + faint diagonal accent wash + flat hairline
- * border, no shadow) behind the content. [tint] colours the wash + border bias; null uses a
- * near-neutral gold wash. Drawn with `drawBehind` so the animation/recomposition of the card's
- * content never reaches this surface subtree.
+ * Paint the frosted-card surface (navy fill + diagonal accent wash + hairline border)
+ * behind content. [tint] colours the wash + border bias; null uses neutral gold wash.
  */
-/** App-wide card-surface opacity (0f = fully see-through, 1f = solid), driven by the "Card transparency"
- *  setting. Initialised from NoopPrefs at app start via [init]. Only the card SURFACE fades — the card's
- *  CONTENT is drawn above and stays readable over the background. */
+/** App-wide card-surface opacity. Only the card surface fades — content stays readable. */
 object CardAppearance {
     var opacity by mutableStateOf(1f)
     fun init(context: Context) {
@@ -162,6 +158,7 @@ fun Modifier.frostedCardSurface(
 
 // MARK: - NoopCard — the one card surface
 
+/** The one card surface: frosted, rounded, with optional domain tint. */
 @Composable
 fun NoopCard(
     modifier: Modifier = Modifier,
@@ -181,12 +178,11 @@ fun NoopCard(
     }
 }
 
-// MARK: - DataPendingNote — the shared "what shows now vs what needs an import" banner
+// MARK: - DataPendingNote — "what shows now vs what needs import" banner
 //
-// A NoopCard with a leading AutoGraph glyph, a bold title and a body line. Every data
-// screen drops one of these in its empty/partial state so the user always knows what is
-// live now and what an import will backfill. Copy is passed verbatim by the call site.
+// NoopCard with AutoGraph glyph, title and body. Used in empty/partial data screens.
 
+/** Banner for empty/partial data state: AutoGraph icon + title + body. */
 @Composable
 fun DataPendingNote(title: String, body: String, modifier: Modifier = Modifier) {
     NoopCard(modifier = modifier, padding = 18.dp) {
@@ -210,10 +206,9 @@ fun DataPendingNote(title: String, body: String, modifier: Modifier = Modifier) 
 
 // MARK: - SyncingHistoryNote — pulsing "history sync in progress" line
 //
-// Shown above a screen's empty state while the strap's historical offload runs, so a half-loaded
-// screen reads as in-progress rather than final. Shows the honest live signal — chunks pulled so
-// far — never a percent (total pending is unknowable from the protocol).
+// Shown during strap historical offload so a half-loaded screen reads as in-progress.
 
+/** Pulsing status row shown during strap history offload. */
 @Composable
 fun SyncingHistoryNote(chunks: Int, modifier: Modifier = Modifier) {
     Row(
@@ -234,6 +229,7 @@ fun SyncingHistoryNote(chunks: Int, modifier: Modifier = Modifier) {
 
 // MARK: - Overline label (ALL-CAPS, semibold, +0.8 tracking, secondary)
 
+/** ALL-CAPS semibold label in secondary color. */
 @Composable
 fun Overline(text: String, modifier: Modifier = Modifier, color: Color = Palette.textSecondary) {
     Text(
@@ -246,6 +242,7 @@ fun Overline(text: String, modifier: Modifier = Modifier, color: Color = Palette
 
 // MARK: - Section header
 
+/** Screen section header with optional overline and trailing text. */
 @Composable
 fun SectionHeader(
     title: String,
@@ -279,6 +276,7 @@ enum class StrandTone(val color: Color) {
 
 // MARK: - ConnectionDot — status dot with optional breathing pulse halo
 
+/** Status dot with optional breathing pulse halo. */
 @Composable
 fun ConnectionDot(
     tone: StrandTone = StrandTone.Positive,
@@ -349,6 +347,7 @@ private fun DrawScope.drawCircleScaled(
 // The status chip behind SOLID / BUILDING / CALIBRATING / LIVE. The tone owns the hue.
 // Fill .12 / border .32 / text full-strength.
 
+/** Rounded status pill with optional leading dot. Used for SOLID/BUILDING/LIVE states. */
 @Composable
 fun StatePill(
     title: String,
@@ -375,6 +374,7 @@ fun StatePill(
 
 // MARK: - SourceBadge
 
+/** Compact source-origin pill (e.g. ON-DEVICE). */
 @Composable
 fun SourceBadge(text: String, tint: Color = Palette.accent, modifier: Modifier = Modifier) {
     val shape = RoundedCornerShape(50)
@@ -407,6 +407,7 @@ fun SourceBadge(text: String, tint: Color = Palette.accent, modifier: Modifier =
 // A compact trend pill: an up/down/flat arrow + the delta text, tinted to [color].
 // Inferred direction comes from a leading +/− in the text (else flat).
 
+/** Tinted delta pill with direction arrow. */
 @Composable
 fun TrendChip(text: String, color: Color = Palette.textTertiary, modifier: Modifier = Modifier) {
     val t = text.trim()
@@ -462,6 +463,7 @@ internal fun AutoSizeValue(
     )
 }
 
+/** Fixed-height metric tile: label, auto-sizing value, optional caption and delta. */
 @Composable
 fun StatTile(
     label: String,
@@ -517,6 +519,7 @@ fun StatTile(
 
 // MARK: - InsightCard
 
+/** Domain insight card: category overline, status, detail body. */
 @Composable
 fun InsightCard(
     category: String,
@@ -600,17 +603,10 @@ fun <T> SegmentedPillControl(
 
 // MARK: - BevelGauge — the layered ring gauge primitive
 //
-// The shared instrument behind RecoveryRing and StrainGauge: an open gauge with
-// a frosted inner disc, full-span track ring, gradient-stroked progress arc, outer bloom,
-// end-cap dot, and centred number with optional wordmark/caption/state word.
-//
-// It owns no domain logic — callers pass the fraction, the ramp stops, the tip colour
-// and the centre read-out strings. RecoveryRing / StrainGauge delegate here.
-//
-// Default geometry: Bevel 240° instrument (gap at bottom). Optional [startDeg]/[spanDeg]
-// override the arc, [coreDot] paints a solid gold core dot, [wordmark] stamps a micro
-// "NOOP" above the number.
+// Open gauge with frosted inner disc, track ring, gradient-stroked progress arc, end-cap
+// dot, and centred number. Domain-agnostic — RecoveryRing / StrainGauge delegate here.
 
+/** Open gauge primitive: track ring, gradient progress arc, centred number. Domain-agnostic. */
 @Composable
 fun BevelGauge(
     fraction: Double,
@@ -648,9 +644,7 @@ fun BevelGauge(
         Box(
             modifier = Modifier
                 .size(diameter)
-                // PERF: hoist the static disc + rim into drawWithCache so they rasterise once and
-                // replay as a texture. The track stays in the per-frame layer (bloom sits between
-                // rim and track in z-order, so caching the track above it would change pixels).
+                // PERF: hoist static disc + rim into drawWithCache (rasterise once, replay as texture).
                 .drawWithCache {
                     val stroke = lineWidth.toPx()
                     val radius = (min(size.width, size.height) - stroke) / 2f
@@ -687,10 +681,7 @@ fun BevelGauge(
                     val arcSize = Size(radius * 2f, radius * 2f)
                     val sweepStroke = Stroke(width = stroke, cap = StrokeCap.Round)
 
-                    // Outer bloom — a soft, lower-opacity wide arc (drawn first, under the track).
-                    // A glow only reads on the dark canvas; on the white light card it just smears the
-                    // edge, so it's suppressed there (the deepened arc carries the ring on its own).
-                    // Drawn at the restrained, static [bloomOpacity] (≈0.05–0.18) — crisp, not glowing.
+                    // Outer bloom — soft wide arc under the track. Suppressed on light canvas.
                     if (animatedFraction > 0.001f && !Palette.isLight) {
                         drawArc(
                             brush = sweep,
@@ -806,24 +797,19 @@ fun BevelGauge(
     }
 }
 
-// MARK: - RecoveryRing — THE signature Charge / Rest component
+// MARK: - RecoveryRing — Charge / Rest hero component
 //
-// Delegates to BevelGauge. Draws the brand glyph: an open ~80% ring starting at 12 o'clock
-// clockwise, a solid gold centre core dot and a micro "NOOP" wordmark.
+// Delegates to BevelGauge with brand glyph (core dot + NOOP wordmark).
 
-// MARK: - GlowRing — crisp WHOOP-style score ring
+// MARK: - GlowRing — crisp score ring
 //
-// Clean solid arc over a full-circle track, bold centred number counting up from 0,
-// and a tight low-alpha glow hugging the arc. Arc springs from 12 o'clock.
+// Solid arc over full-circle track with centred number. Arc springs from 12 o'clock.
 
-/**
- * The centre-number text style for a ring of the given [diameter] — the house numeral at `diameter * 0.36`,
- * Bold. Shared by [GlowRing]'s live label and the carried-value overlay on the Today hero so a carried
- * Charge, a clean value and "No Data" read with one consistent size + weight.
- */
+/** Centre-number text style at `diameter * 0.36`. Bold numeral. */
 fun glowRingCenterTextStyle(diameter: Dp, color: Color = Palette.textPrimary): TextStyle =
     TextStyle(fontWeight = FontWeight.Bold, fontSize = (diameter.value * 0.36f).sp, color = color)
 
+/** Crisp score ring: solid arc over full-circle track with centred number. */
 @Composable
 fun GlowRing(
     fraction: Float,
@@ -908,6 +894,7 @@ fun GlowRing(
     }
 }
 
+/** Charge/Rest hero gauge. Delegates to BevelGauge with brand glyph. */
 @Composable
 fun RecoveryRing(
     score: Double,
@@ -928,8 +915,7 @@ fun RecoveryRing(
         diameter = diameter,
         lineWidth = lineWidth,
         showsLabel = showsLabel,
-        // Brand-glyph geometry: open ~80% ring (288° of 360°), 12-o'clock start, clockwise,
-        // plus the solid gold core dot + micro NOOP wordmark that mark the recovery hero.
+        // Brand-glyph geometry: open ~80% ring from 12 o'clock, gold core dot + NOOP wordmark.
         startDeg = -90f,
         spanDeg = 288f,
         coreDot = Palette.gold,
@@ -938,11 +924,11 @@ fun RecoveryRing(
     )
 }
 
-// MARK: - StrainGauge — the Effort hero gauge
+// MARK: - StrainGauge — Effort hero gauge
 //
-// The Effort sibling of RecoveryRing: a BevelGauge over the amber strain ramp.
-// Caller owns the scale conversion; outOf defaults to 21 (WHOOP's Day-Strain axis).
+// BevelGauge over the amber strain ramp. Caller owns scale conversion.
 
+/** Effort hero gauge over the amber strain ramp. */
 @Composable
 fun StrainGauge(
     strain: Double,
@@ -973,10 +959,9 @@ fun StrainGauge(
 
 // MARK: - ScenicHeroBackground — premium hero backdrop
 //
-// Canvas-drawn radial deep blue-black gradient with a faint deterministic starfield
-// (fixed star positions so it never flickers), optionally tinted toward a domain's
-// glow, with a bottom fade so content sits cleanly over it.
+// Canvas-drawn radial gradient with deterministic starfield and optional domain tint.
 
+/** Radial gradient hero backdrop with deterministic starfield and optional domain tint. */
 @Composable
 fun ScenicHeroBackground(
     modifier: Modifier = Modifier,
@@ -1048,9 +1033,9 @@ fun ScenicHeroBackground(
 
 // MARK: - ScreenScaffold
 //
-// Standard scrollable screen container: a title + optional subtitle header over the
-// dark surface, then a left-aligned content column with 28dp screen padding.
+// Scrollable screen container: title + optional subtitle header, content column with screen padding.
 
+/** Scrollable screen container: header + content column with screen padding. */
 @Composable
 fun ScreenScaffold(
     title: String?,
@@ -1066,9 +1051,7 @@ fun ScreenScaffold(
     topBackground: (@Composable () -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    // The scrolling content column. Its outer modifier differs by path:
-    // - No topBackground: root Column with opaque-canvas background
-    // - With topBackground: transparent column so the scene shows through behind scroll content.
+    // Column outer modifier differs by path: opaque canvas vs transparent for scene-backed.
     val columnModifier: Modifier =
         if (topBackground == null) {
             modifier.fillMaxWidth().background(Palette.surfaceBase)
@@ -1113,10 +1096,7 @@ fun ScreenScaffold(
         // No scene path: the column is the root, with the caller's modifier and opaque canvas background.
         column()
     } else {
-        // Scene-backed path: the wrapping Box paints the flat canvas, then the screen-level scene
-        // backdrop over it, anchored to the top and bled behind the status bar; the transparent
-        // scroll content floats over both. The scene is offset by the status-bar inset so it
-        // bleeds behind the status bar rather than starting under it.
+        // Scene-backed path: canvas + top-anchored backdrop bled behind status bar, transparent scroll content.
         val statusBarTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
         Box(modifier = modifier.fillMaxSize().background(Palette.surfaceBase)) {
             Box(
@@ -1124,8 +1104,7 @@ fun ScreenScaffold(
                     .fillMaxWidth()
                     .align(Alignment.TopCenter)
                     .offset(y = -statusBarTop)
-                    // PERF: promote the static scene backdrop to its own compositing layer so it
-                    // rasterises once and replays as a texture on every scroll frame.
+                    // PERF: promote static scene backdrop to compositing layer (rasterise once).
                     .graphicsLayer { },
             ) {
                 topBackground()
@@ -1137,12 +1116,9 @@ fun ScreenScaffold(
 
 // MARK: - LazyScreenScaffold
 //
-// A lazy twin of [ScreenScaffold] for screens with long lists. LazyColumn builds only
-// the rows on screen instead of every child up-front.
-//
-// Content slot is a [LazyListScope] so callers stay explicit about headers vs the
-// lazily-built list. Header, 28dp screen padding and inter-item gap match ScreenScaffold.
+// LazyColumn twin of ScreenScaffold for long lists. Content slot is [LazyListScope].
 
+/** LazyColumn twin of ScreenScaffold for long lists. */
 @Composable
 fun LazyScreenScaffold(
     title: String?,
@@ -1155,8 +1131,7 @@ fun LazyScreenScaffold(
     rowSpacing: Dp = Metrics.screenRowSpacing,
     leading: (@Composable () -> Unit)? = null,
     trailing: (@Composable () -> Unit)? = null,
-    // Optional full-bleed scene behind the scroll content — same slot contract as ScreenScaffold.topBackground.
-    // Null draws nothing; when supplied the LazyColumn is transparent so the scene shows through.
+    // Optional full-bleed scene behind scroll content. Null draws nothing.
     topBackground: (@Composable () -> Unit)? = null,
     // When true, the [topBackground] fills the whole scaffold viewport instead of the top band.
     fullBleedBackground: Boolean = false,
@@ -1189,8 +1164,7 @@ fun LazyScreenScaffold(
             null
         }
 
-    // The lazy list itself. Its background + contentPadding differ by path so the scene-backed list
-    // is transparent while keeping the same 28dp inset + row spacing as ScreenScaffold.
+    // Lazy list background + padding differ by path (transparent for scene-backed).
     val listModifier: Modifier =
         if (topBackground == null) {
             modifier.fillMaxWidth().background(Palette.surfaceBase)
@@ -1240,6 +1214,7 @@ fun LazyScreenScaffold(
 //
 // The canonical profile editor used by both Settings and onboarding.
 
+/** Tabular value with round -/+ buttons for profile editing. */
 @Composable
 fun StepperField(
     value: String,
@@ -1268,6 +1243,7 @@ fun StepperField(
     }
 }
 
+/** Round −/+ button used inside [StepperField]. */
 @Composable
 fun StepperButton(symbol: String, onClick: () -> Unit, label: String) {
     Box(

@@ -606,9 +606,9 @@ private fun AddMetricMenu(
             modifier = Modifier
                 .clip(RoundedCornerShape(50))
                 .clickableNoRippleLocal(enabled = !atMax) { expanded = true }
-                .padding(horizontal = 8.dp, vertical = 6.dp),
+                .padding(horizontal = Metrics.space8, vertical = 6.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            horizontalArrangement = Arrangement.spacedBy(Metrics.space6),
         ) {
             Icon(
                 Icons.Filled.Add,
@@ -635,7 +635,7 @@ private fun AddMetricMenu(
                         category.uppercase(),
                         style = NoopType.overline,
                         color = Palette.textTertiary,
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                        modifier = Modifier.padding(horizontal = Metrics.space12, vertical = 6.dp),
                     )
                     metrics.forEach { metric ->
                         val on = isSelected(metric)
@@ -689,9 +689,9 @@ private fun FlowChips(
     onRemove: (CompareMetric) -> Unit,
 ) {
     // Two-up rows keep the chips readable on phone widths (mirrors the adaptive grid).
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(Metrics.space8)) {
         metrics.chunked(2).forEach { rowChips ->
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(Metrics.space8)) {
                 rowChips.forEach { metric ->
                     MetricChip(
                         modifier = Modifier.weight(1f),
@@ -723,7 +723,7 @@ private fun MetricChip(
             .clip(shape)
             .liquidPress(interaction)
             .background(Palette.surfaceOverlay)
-            .border(1.dp, color.copy(alpha = 0.4f), shape)
+            .border(Metrics.divider, color.copy(alpha = 0.4f), shape)
             .padding(horizontal = 11.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(7.dp),
@@ -772,7 +772,7 @@ private fun OverlaySection(
         // Anchor the overlay card to the brand-green chrome world; each line keeps its own categorical
         // series colour so the overlaid lines stay distinguishable against the wash.
         NoopCard(tint = Palette.accent) {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(Metrics.space12)) {
                 Overline("Normalized overlay")
                 Text(
                     if (anyWidened) {
@@ -935,7 +935,7 @@ private fun Legend(series: List<CompareSeries>) {
                     .fillMaxWidth()
                     .padding(vertical = 7.dp),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                horizontalArrangement = Arrangement.spacedBy(Metrics.space10),
             ) {
                 Box(
                     modifier = Modifier
@@ -1028,10 +1028,10 @@ private fun PairCard(p: PairResult) {
     // Frosted card washed by the relationship's own colour (green positive / rose negative), with a
     // TrendChip surfacing the signed direction at a glance — Today's delta idiom, applied to r.
     NoopCard(tint = tint) {
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(Metrics.space8)) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                horizontalArrangement = Arrangement.spacedBy(Metrics.space10),
             ) {
                 Row(horizontalArrangement = Arrangement.spacedBy(3.dp)) {
                     Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(p.a.color))

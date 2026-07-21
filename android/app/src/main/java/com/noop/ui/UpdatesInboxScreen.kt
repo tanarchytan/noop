@@ -83,12 +83,12 @@ fun UpdatesInboxScreen(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 20.dp)
+            .padding(horizontal = Metrics.screenRowSpacing)
             .padding(bottom = 24.dp),
         verticalArrangement = Arrangement.spacedBy(Metrics.sectionGap),
     ) {
         // Header — "INBOX" overline + "Updates" title + a live subtitle.
-        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(Metrics.space4)) {
             Overline("Inbox", color = Palette.textTertiary)
             Text("Updates", style = NoopType.title1, color = Palette.textPrimary)
             Text(subtitle(store), style = NoopType.caption, color = Palette.textSecondary)
@@ -133,7 +133,7 @@ fun UpdatesInboxScreen(
                         tint = Palette.textSecondary,
                         modifier = Modifier.size(Metrics.iconSmall),
                     )
-                    Spacer(Modifier.width(6.dp))
+                    Spacer(Modifier.width(Metrics.space6))
                     Text("Clear all", style = NoopType.subhead, color = Palette.textSecondary)
                 }
                 Spacer(Modifier.weight(1f))
@@ -156,7 +156,7 @@ fun UpdatesInboxScreen(
                         contentDescription = null,
                         modifier = Modifier.size(Metrics.iconSmall),
                     )
-                    Spacer(Modifier.width(6.dp))
+                    Spacer(Modifier.width(Metrics.space6))
                     Text("Mark all read", style = NoopType.subhead)
                 }
             }
@@ -256,12 +256,12 @@ private fun SwipeBackground(direction: SwipeToDismissBoxValue) {
             .fillMaxSize()
             .clip(RoundedCornerShape(Metrics.cardRadius))
             .background(washColor)
-            .padding(horizontal = 24.dp),
+            .padding(horizontal = Metrics.space24),
         contentAlignment = alignment,
     ) {
         if (direction != SwipeToDismissBoxValue.Settled) {
             Row(
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                horizontalArrangement = Arrangement.spacedBy(Metrics.space6),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Icon(
@@ -301,9 +301,9 @@ private fun UpdateRow(
                 }
             },
     ) {
-        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(Metrics.space10)) {
             Row(
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                horizontalArrangement = Arrangement.spacedBy(Metrics.space12),
                 verticalAlignment = Alignment.Top,
             ) {
                 Icon(
@@ -353,7 +353,7 @@ private fun UpdateRow(
                             tint = Palette.accent,
                             modifier = Modifier.size(Metrics.iconSmall),
                         )
-                        Spacer(Modifier.width(6.dp))
+                        Spacer(Modifier.width(Metrics.space6))
                         Text("Restore to Today", style = NoopType.subhead, color = Palette.accent)
                     }
                 }
@@ -369,7 +369,7 @@ private fun EmptyInboxState() {
             .fillMaxWidth()
             .padding(vertical = 40.dp, horizontal = 12.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        verticalArrangement = Arrangement.spacedBy(Metrics.space12),
     ) {
         Icon(
             Icons.Outlined.NotificationsOff,

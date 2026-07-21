@@ -285,7 +285,7 @@ fun NotificationsSettingsScreen(vm: AppViewModel) {
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                horizontalArrangement = Arrangement.spacedBy(Metrics.space10),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 StatePill(strapPillTitle(live), tone = strapPillTone(live), pulsing = live.connected)
@@ -414,7 +414,7 @@ fun NotificationsSettingsScreen(vm: AppViewModel) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(Metrics.space12),
                 ) {
                     Text("From", style = NoopType.body, color = Palette.textPrimary)
                     TimeChip(
@@ -516,9 +516,9 @@ private fun CallsCard(
                     .fillMaxWidth()
                     .height(48.dp),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                horizontalArrangement = Arrangement.spacedBy(Metrics.space12),
             ) {
-                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(Metrics.space2)) {
                     Text("Buzz on incoming calls", style = NoopType.body, color = Palette.textPrimary)
                     Text(
                         "Uses the same quiet-hours and worn-only rules.",
@@ -578,11 +578,11 @@ private fun DeliveryNote() {
             .fillMaxWidth()
             .clip(shape)
             .background(Palette.surfaceInset)
-            .border(1.dp, Palette.accent.copy(alpha = 0.22f), shape)
-            .padding(12.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
+            .border(Metrics.divider, Palette.accent.copy(alpha = 0.22f), shape)
+            .padding(Metrics.space12),
+        verticalArrangement = Arrangement.spacedBy(Metrics.space10),
     ) {
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(Metrics.space10)) {
             Icon(
                 Icons.Filled.Info,
                 contentDescription = null,
@@ -608,10 +608,10 @@ private fun DeliveryNote() {
                         )
                     }
                 }
-                .padding(horizontal = 2.dp, vertical = 2.dp)
+                .padding(horizontal = Metrics.space2, vertical = 2.dp)
                 .semantics { contentDescription = "Open Notification Access settings" },
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            horizontalArrangement = Arrangement.spacedBy(Metrics.space6),
         ) {
             Icon(
                 Icons.AutoMirrored.Filled.OpenInNew,
@@ -676,9 +676,9 @@ private fun AppRow(
             // An enabled app reads as a selected row: a soft accentMuted wash behind it.
             .clip(RoundedCornerShape(10.dp))
             .then(if (enabled) Modifier.background(Palette.accentMuted) else Modifier)
-            .padding(horizontal = 8.dp),
+            .padding(horizontal = Metrics.space8),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        horizontalArrangement = Arrangement.spacedBy(Metrics.space12),
     ) {
         // App glyph in a rounded inset tile (stand-in for the real macOS app icon).
         Box(
@@ -688,10 +688,10 @@ private fun AppRow(
                 .background(Palette.surfaceInset),
             contentAlignment = Alignment.Center,
         ) {
-            Icon(app.glyph, contentDescription = null, tint = Palette.textSecondary, modifier = Modifier.size(18.dp))
+            Icon(app.glyph, contentDescription = null, tint = Palette.textSecondary, modifier = Modifier.size(Metrics.iconSmall))
         }
 
-        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(Metrics.space2)) {
             Text(app.name, style = NoopType.body, color = Palette.textPrimary)
             Text(
                 if (enabled) "Buzzes your wrist" else "Off",
@@ -735,9 +735,9 @@ private fun PatternMenu(
             modifier = Modifier
                 .clip(shape)
                 .background(Palette.surfaceInset)
-                .border(1.dp, Palette.hairline, shape)
+                .border(Metrics.divider, Palette.hairline, shape)
                 .clickable(enabled = enabled) { expanded = true }
-                .padding(horizontal = 10.dp, vertical = 5.dp)
+                .padding(horizontal = Metrics.space10, vertical = 5.dp)
                 .semantics { contentDescription = "Buzz pattern for $appName" },
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(5.dp),
@@ -785,7 +785,7 @@ private fun TestIconButton(enabled: Boolean, appName: String, onClick: () -> Uni
             .size(28.dp)
             .clip(shape)
             .background(Palette.accent.copy(alpha = if (enabled) 0.12f else 0.04f))
-            .border(1.dp, tint.copy(alpha = 0.30f), shape)
+            .border(Metrics.divider, tint.copy(alpha = 0.30f), shape)
             .clickable(enabled = enabled, onClick = onClick)
             .semantics { contentDescription = "Test $appName buzz" },
         contentAlignment = Alignment.Center,
@@ -802,11 +802,11 @@ private fun PillButton(label: String, icon: ImageVector, enabled: Boolean, onCli
         modifier = Modifier
             .clip(shape)
             .background(Palette.accent.copy(alpha = if (enabled) 0.12f else 0.04f))
-            .border(1.dp, tint.copy(alpha = 0.30f), shape)
+            .border(Metrics.divider, tint.copy(alpha = 0.30f), shape)
             .clickable(enabled = enabled, onClick = onClick)
-            .padding(horizontal = 12.dp, vertical = 6.dp),
+            .padding(horizontal = Metrics.space12, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        horizontalArrangement = Arrangement.spacedBy(Metrics.space6),
     ) {
         Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(14.dp))
         Text(label, style = NoopType.caption, color = tint)
@@ -833,9 +833,9 @@ internal fun TimeChip(
         modifier = Modifier
             .clip(shape)
             .background(Palette.surfaceInset)
-            .border(1.dp, Palette.hairline, shape)
+            .border(Metrics.divider, Palette.hairline, shape)
             .clickable { showPicker = true }
-            .padding(horizontal = 12.dp, vertical = 6.dp)
+            .padding(horizontal = Metrics.space12, vertical = 6.dp)
             .semantics { contentDescription = accessibilityLabel },
     )
 
@@ -852,10 +852,10 @@ internal fun TimeChip(
                 modifier = Modifier
                     .clip(RoundedCornerShape(20.dp))
                     .background(Palette.surfaceOverlay)
-                    .border(1.dp, Palette.hairline, RoundedCornerShape(20.dp))
-                    .padding(20.dp),
+                    .border(Metrics.divider, Palette.hairline, RoundedCornerShape(20.dp))
+                    .padding(Metrics.screenRowSpacing),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(16.dp),
+                verticalArrangement = Arrangement.spacedBy(Metrics.space16),
             ) {
                 Text(accessibilityLabel, style = NoopType.headline, color = Palette.textPrimary)
                 TimePicker(
@@ -883,7 +883,7 @@ internal fun TimeChip(
                         modifier = Modifier
                             .clip(RoundedCornerShape(50))
                             .clickable { showPicker = false }
-                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                            .padding(horizontal = Metrics.space16, vertical = 8.dp),
                     )
                     Text(
                         "Set",
@@ -895,7 +895,7 @@ internal fun TimeChip(
                                 onPicked(state.hour * 60 + state.minute)
                                 showPicker = false
                             }
-                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                            .padding(horizontal = Metrics.space16, vertical = 8.dp),
                     )
                 }
             }
@@ -914,11 +914,11 @@ private fun AlertSection(
     content: @Composable () -> Unit,
 ) {
     NoopCard(padding = 20.dp, tint = Palette.accent) {
-        Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(Metrics.space16)) {
+            Column(verticalArrangement = Arrangement.spacedBy(Metrics.space2)) {
                 Overline(overline)
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Icon(icon, contentDescription = null, tint = Palette.accent, modifier = Modifier.size(18.dp))
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Metrics.space10)) {
+                    Icon(icon, contentDescription = null, tint = Palette.accent, modifier = Modifier.size(Metrics.iconSmall))
                     Text(title, style = NoopType.title2, color = Palette.textPrimary)
                 }
             }
@@ -946,11 +946,11 @@ private fun FormToggleRow(
             .height(48.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(Metrics.space2)) {
             Text(label, style = NoopType.body, color = Palette.textPrimary)
             Text(help, style = NoopType.footnote, color = Palette.textTertiary)
         }
-        Spacer(Modifier.width(16.dp))
+        Spacer(Modifier.width(Metrics.space16))
         NoopSwitch(checked = checked, onChange = onChange, enabled = enabled, label = label)
     }
 }

@@ -1199,8 +1199,8 @@ fun TodayScreen(
         } else null
         if (todayEffort != null && todayEffort < 1.0) {
             Row(
-                modifier = Modifier.padding(horizontal = 2.dp),
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                modifier = Modifier.padding(horizontal = Metrics.space2),
+                horizontalArrangement = Arrangement.spacedBy(Metrics.space6),
                 verticalAlignment = Alignment.Top,
             ) {
                 Icon(
@@ -1247,7 +1247,7 @@ fun TodayScreen(
                     contentDescription = "Edit Key Metrics",
                     modifier = Modifier.size(Metrics.iconSmall),
                 )
-                Spacer(Modifier.width(4.dp))
+                Spacer(Modifier.width(Metrics.space4))
                 Text("Edit", style = NoopType.footnote)
             }
         }
@@ -1279,7 +1279,7 @@ fun TodayScreen(
  // Box overlaid them. Stack them in a spaced Column.
         Column(
             modifier = Modifier.fillMaxWidth().staggeredAppear(4),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(Metrics.space8),
         ) {
             TodayWorkoutsSection(footer.recentWorkouts)
         }
@@ -1293,7 +1293,7 @@ fun TodayScreen(
  // (the header showed THROUGH the card in the v8 layout). A spaced Column stacks them instead.
         Column(
             modifier = Modifier.fillMaxWidth().staggeredAppear(5),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(Metrics.space8),
         ) {
             HeartRateTrendCard(viewModel, days, selectedDay, todayDate, displayMetric, effortScale)
         }
