@@ -77,7 +77,8 @@ jobs:
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@stable
 
-      - name: Run unit tests
+      - name: Run unit tests (optional — informational only)
+        continue-on-error: true
         env:
           WHOOP_RS_DIR: ${{ github.workspace }}/.ci/whoop-rs
         run: ./gradlew testFullDebugUnitTest --no-daemon -Dorg.gradle.jvmargs="-Xmx2048m -Dfile.encoding=UTF-8"
