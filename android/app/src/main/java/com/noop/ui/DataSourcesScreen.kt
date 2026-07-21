@@ -62,9 +62,6 @@ import com.noop.ingest.AppleHealthImporter
 import com.noop.ingest.HealthConnectImporter
 import com.noop.ingest.HealthConnectWriter
 import com.noop.ingest.ActivityFileImporter
-import com.noop.ingest.LiftingImporter
-import com.noop.ingest.NutritionCsvImporter
-import com.noop.ingest.XiaomiBandImporter
 import com.noop.ingest.WhoopCsvImporter
 import com.noop.ingest.WearableExportImporter
 import kotlinx.coroutines.Dispatchers
@@ -103,17 +100,6 @@ fun DataSourcesScreen(vm: AppViewModel, onOpenAppleHealth: () -> Unit = {}) {
  // export so each card reflects its own data rather than both showing under Apple Health.
     var hcDays by remember { mutableStateOf<Int?>(null) }
     var hcWorkouts by remember { mutableStateOf<Int?>(null) }
- // Nutrition CSV writes long-format metricSeries rows under its own source ("nutrition-csv"),
- // so its card counts days-with-calories and weigh-ins straight off that table.
-    var nutritionDays by remember { mutableStateOf<Int?>(null) }
-    var nutritionWeighIns by remember { mutableStateOf<Int?>(null) }
- // Imported lifting (Hevy / Liftosaur) writes workouts under its own source ("lifting").
-    var liftingWorkouts by remember { mutableStateOf<Int?>(null) }
- // Imported workout files (GPX / TCX / FIT) write workouts under their own source ("activity-file").
-    var activityFiles by remember { mutableStateOf<Int?>(null) }
-    var xiaomiDays by remember { mutableStateOf<Int?>(null) }
- // Imported Oura / Fitbit / Garmin exports write daily metrics under their own per-brand source.
-    var wearableDays by remember { mutableStateOf<Int?>(null) }
 
  // Count-badge refresh, shared by the initial load below and every importer's post-run refresh.
  // PERF: scalar SQL COUNTs (and one LIMIT-1 existence probe), NOT materialized row lists — the old
@@ -128,15 +114,6 @@ fun DataSourcesScreen(vm: AppViewModel, onOpenAppleHealth: () -> Unit = {}) {
         appleWorkouts = vm.repo.workoutsCount("apple-health", 0L, nowS)
         hcDays = vm.repo.appleDailyCount("health-connect", "0000-01-01", "9999-12-31")
         hcWorkouts = vm.repo.workoutsCount("health-connect", 0L, nowS)
-        nutritionDays = vm.repo.metricSeriesKeyCount(NutritionCsvImporter.SOURCE_ID, "calories_in")
-        nutritionWeighIns = vm.repo.metricSeriesKeyCount(NutritionCsvImporter.SOURCE_ID, "weight")
-        liftingWorkouts = vm.repo.workoutsCount(LiftingImporter.SOURCE_ID, 0L, nowS)
-        activityFiles = vm.repo.workoutsCount(ActivityFileImporter.SOURCE_ID, 0L, nowS)
-        xiaomiDays = vm.repo.metricSeriesKeyCount(XiaomiBandImporter.DEFAULT_DEVICE_ID, "steps")
-        wearableDays = WearableExportImporter.Brand.values().sumOf {
-            vm.repo.metricSeriesKeyCount(it.sourceId, "rhr") +
-                vm.repo.metricSeriesKeyCount(it.sourceId, "sleep_total_min")
-        }
     }
 
     LaunchedEffect(Unit) { refreshCounts() }
@@ -185,28 +162,6 @@ fun DataSourcesScreen(vm: AppViewModel, onOpenAppleHealth: () -> Unit = {}) {
     val appleImportLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.OpenDocument(),
     ) { uri -> if (uri != null) runImport { AppleHealthImporter.importExport(context, uri, vm.repo) } }
-
-    val xiaomiImportLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.OpenDocument(),
-    ) { uri -> if (uri != null) runImport { XiaomiBandImporter.importExport(context, uri, vm.repo) } }
-
-    val nutritionImportLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.OpenDocument(),
-    ) { uri -> if (uri != null) runImport { NutritionCsvImporter.importCsv(context, uri, vm.repo) } }
-
- // Lifting: imported workouts also need the Workouts list to reload (runImport only re-counts).
-    val liftingImportLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.OpenDocument(),
-    ) { uri ->
-        if (uri != null) runImport {
-            LiftingImporter.importExport(context, uri, vm.repo).also { vm.loadWorkouts() }
-        }
-    }
-
- // Oura / Fitbit / Garmin own-data export: daily metrics + sleep sessions under the brand's source.
-    val wearableImportLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.OpenDocument(),
-    ) { uri -> if (uri != null) runImport { WearableExportImporter.importExport(context, uri, vm.repo) } }
 
  // Workout file (GPX / TCX / FIT): one imported activity → one workout; reload the Workouts list too.
     val activityFileImportLauncher = rememberLauncherForActivityResult(
@@ -522,156 +477,9 @@ fun DataSourcesScreen(vm: AppViewModel, onOpenAppleHealth: () -> Unit = {}) {
         }
         }
 
- // --- Nutrition CSV (calories / macros / body weight) ---
-        item {
-        SourceCard(
-            title = "Nutrition (CSV)",
-            icon = Icons.Filled.Restaurant,
-            tint = Palette.metricAmber,
-            subtitle = "Import daily calories, protein, carbs, fat and body weight from a " +
-                "nutrition CSV: a MyFitnessPal or Cronometer export, or any spreadsheet " +
-                "with a date column plus those values. Meal-level rows are summed per day.",
-        ) {
-            val hasNutrition = (nutritionDays ?: 0) > 0 || (nutritionWeighIns ?: 0) > 0
-            StatePill(
-                title = if (hasNutrition) "Imported" else "Nothing imported",
-                tone = if (hasNutrition) StrandTone.Accent else StrandTone.Neutral,
-                showsDot = true,
-            )
-            CountLine(
-                primary = nutritionDays?.let { "$it days logged" } ?: "—",
-                secondary = nutritionWeighIns?.let { "$it weigh-ins" } ?: "Counting…",
-            )
-            BackupButton(
-                label = "Import nutrition CSV…",
-                icon = Icons.Filled.FileUpload,
-                enabled = !busy,
-                modifier = Modifier.fillMaxWidth(),
-            ) { nutritionImportLauncher.launch(arrayOf("*/*")) }
-        }
-        }
-
- // --- Xiaomi Mi Band (Mi Fitness on-device DB) — ---
-        item {
-        SourceCard(
-            title = "Xiaomi Mi Band",
-            icon = Icons.Filled.Watch,
-            tint = Palette.metricPurple,
-            subtitle = "Import a Mi Band / Smart Band 8, 9 or 10's full history (steps, heart rate, " +
-                "resting HR, sleep stages, SpO₂, stress and sleep score) straight from the Mi Fitness " +
-                "app's on-device database. Fully offline; no Xiaomi account or Bluetooth. Export the Mi " +
-                "Fitness folder (or its .db / a .zip of it) from your phone and choose it here.",
-        ) {
-            val hasXiaomi = (xiaomiDays ?: 0) > 0
-            StatePill(
-                title = if (hasXiaomi) "Imported" else "Nothing imported",
-                tone = if (hasXiaomi) StrandTone.Accent else StrandTone.Neutral,
-                showsDot = true,
-            )
-            CountLine(
-                primary = xiaomiDays?.let { "$it days imported" } ?: "—",
-                secondary = if (xiaomiDays == null) "Counting…" else "Mi Band / Smart Band 8 · 9 · 10",
-            )
-            BackupButton(
-                label = "Import Mi Band export…",
-                icon = Icons.Filled.FileUpload,
-                enabled = !busy,
-                modifier = Modifier.fillMaxWidth(),
-            ) { xiaomiImportLauncher.launch(arrayOf("*/*")) }
-        }
-        }
-
- // --- Lifting log (Hevy CSV / Liftosaur JSON) ---
-        item {
-        SourceCard(
-            title = "Lifting log (Hevy / Liftosaur)",
-            icon = Icons.Filled.FitnessCenter,
-            tint = DomainTheme.Effort.color,
-            subtitle = "Import your strength-training history from a Hevy CSV export or a Liftosaur " +
-                "JSON export. Each workout becomes a Strength session with a training-volume " +
-                "estimate (weight × reps). It's a volume figure, not a measured strain, so it never " +
-                "changes your Effort.",
-        ) {
-            val hasLifting = (liftingWorkouts ?: 0) > 0
-            StatePill(
-                title = if (hasLifting) "Imported" else "Nothing imported",
-                tone = if (hasLifting) StrandTone.Accent else StrandTone.Neutral,
-                showsDot = true,
-            )
-            CountLine(
-                primary = liftingWorkouts?.let { "$it workouts" } ?: "—",
-                secondary = "volume load shown per session",
-            )
-            BackupButton(
-                label = "Import lifting log…",
-                icon = Icons.Filled.FileUpload,
-                enabled = !busy,
-                modifier = Modifier.fillMaxWidth(),
-            ) { liftingImportLauncher.launch(arrayOf("*/*")) }
-        }
-        }
-
- // --- Workout file (GPX / TCX / FIT) — any brand, on-device ---
-        item {
-        SourceCard(
-            title = "Workout file (GPX / TCX / FIT)",
-            icon = Icons.Filled.Map,
-            tint = Palette.metricAmber,
-            subtitle = "Import a single exported workout file from any brand (Garmin, Coros, Suunto, " +
-                "Wahoo, Polar, Strava, Apple) straight off your phone. GPS route, distance, heart rate " +
-                "and calories come in where the file has them. Fully offline; nothing leaves your phone.",
-        ) {
-            val hasFiles = (activityFiles ?: 0) > 0
-            StatePill(
-                title = if (hasFiles) "Imported" else "Nothing imported",
-                tone = if (hasFiles) StrandTone.Accent else StrandTone.Neutral,
-                showsDot = true,
-            )
-            CountLine(
-                primary = activityFiles?.let { "$it workouts" } ?: "—",
-                secondary = "GPX · TCX · FIT (one workout per file)",
-            )
-            BackupButton(
-                label = "Import workout file…",
-                icon = Icons.Filled.FileUpload,
-                enabled = !busy,
-                modifier = Modifier.fillMaxWidth(),
-            ) { activityFileImportLauncher.launch(arrayOf("*/*")) }
-        }
-        }
-
- // --- Oura / Fitbit / Garmin own-data export — on-device ---
-        item {
-        SourceCard(
-            title = "Oura / Fitbit / Garmin export",
-            icon = Icons.Filled.Watch,
-            tint = Palette.metricPurple,
-            subtitle = "Import your own data export from Oura, Fitbit or Garmin: sleep, resting heart " +
-                "rate, HRV, steps and more, where the export has them. Download it from the brand's app " +
-                "(Oura: Account → Export Data; Fitbit: Google Takeout; Garmin: Export Your Data), then " +
-                "choose the file here. Fully offline; nothing leaves your phone. Each brand's own " +
-                "readiness or sleep score is kept for reference only. Your scores stay yours.",
-        ) {
-            val hasDays = (wearableDays ?: 0) > 0
-            StatePill(
-                title = if (hasDays) "Imported" else "Nothing imported",
-                tone = if (hasDays) StrandTone.Accent else StrandTone.Neutral,
-                showsDot = true,
-            )
-            CountLine(
-                primary = wearableDays?.let { "$it day metrics" } ?: "—",
-                secondary = "Oura JSON · Fitbit Takeout · Garmin GDPR (daily metrics + sleep)",
-            )
-            BackupButton(
-                label = "Import wearable export…",
-                icon = Icons.Filled.FileUpload,
-                enabled = !busy,
-                modifier = Modifier.fillMaxWidth(),
-            ) { wearableImportLauncher.launch(arrayOf("*/*")) }
-        }
-        }
-
     }
+
+ // ah-delete : strongly-worded confirm before purging the "apple-health" source. On confirm,
 
  // ah-delete : strongly-worded confirm before purging the "apple-health" source. On confirm,
  // deletes every Apple-Health-sourced row (deviceId-keyed tables) in one transaction via the registry,
