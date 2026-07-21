@@ -9,9 +9,9 @@ import java.time.ZonedDateTime
 /**
  * The "logical day" key the dashboard treats as Today.
  *
- * A naive `LocalDate.now()` rolls the moment the clock passes midnight, so between 00:00 and the
+ * A naive `LocalDate.now` rolls the moment the clock passes midnight, so between 00:00 and the
  * morning the dashboard would look up a brand-new calendar day that has no banked row yet and blank
- * out — even though the user is still in the same wear/sleep cycle as the previous evening (#144).
+ * out — even though the user is still in the same wear/sleep cycle as the previous evening.
  *
  * The logical day rolls at [rolloverHour] (04:00 LOCAL) instead: it is the calendar date of
  * `now - rolloverHour hours`, so the small hours after midnight still resolve to the PRIOR calendar
@@ -21,9 +21,9 @@ import java.time.ZonedDateTime
  * date label stays visible under the header so the remap is always honest.
  *
  * Pure + injectable so [LogicalDayTest] can pin the boundaries:
- *  - 23:59 → same calendar day (still the evening's logical day)
- *  - 01:00 → previous calendar day (the night still belongs to yesterday)
- *  - 04:01 → the new calendar day (a fresh logical day has begun)
+ * - 23:59 → same calendar day (still the evening's logical day)
+ * - 01:00 → previous calendar day (the night still belongs to yesterday)
+ * - 04:01 → the new calendar day (a fresh logical day has begun)
  */
 internal fun logicalDay(
     now: ZonedDateTime,
@@ -45,7 +45,7 @@ internal fun logicalDayKeyNow(
 /**
  * Start-of-logical-day as an epoch second in [zone] — the anchor for the Today HR-trend window so it
  * spans from the logical day's 00:00 (its real calendar midnight) rather than restarting at the new
- * calendar midnight while we're still showing yesterday's logical day in the small hours. (#144)
+ * calendar midnight while we're still showing yesterday's logical day in the small hours.
  */
 internal fun logicalDayStartEpochSecond(
     now: ZonedDateTime,
@@ -54,11 +54,11 @@ internal fun logicalDayStartEpochSecond(
 ): Long = logicalDay(now, rolloverHour).atStartOfDay(zone).toEpochSecond()
 
 /**
- * Pure resolver behind the dashboard's "today" row (#304), extracted so the boundary is testable
+ * Pure resolver behind the dashboard's "today" row , extracted so the boundary is testable
  * without a live clock. Prefer the LOCAL-calendar-day row when it differs from the logical day AND has a
  * banked night (totalSleepMin != null) — the non-UTC pre-04:00 case, where the just-finished night is
  * banked under the new local calendar day while [logicalKey] still points at yesterday. Otherwise fall
- * back to the logical-day row, preserving the #144 anti-blank guard (never blank when a night isn't
+ * back to the logical-day row, preserving the anti-blank guard (never blank when a night isn't
  * banked yet). [localKey] == [logicalKey] (the common daytime case) collapses to the plain logical
  * lookup. Mirrors Swift Repository.resolveToday.
  */
@@ -70,17 +70,17 @@ internal fun resolveTodayRow(days: List<DailyMetric>, logicalKey: String, localK
 }
 
 /**
- * #911: the SINGLE anchor the home-screen widget push resolves the row it describes through, from BOTH
+ * : the SINGLE anchor the home-screen widget push resolves the row it describes through, from BOTH
  * producers (the in-app republish in AppViewModel AND the background-service producer in
  * WhoopConnectionService), so the two can never drift apart. Pure + testable without a live clock.
  *
- * It is exactly what the dashboard does: resolve today's row ([resolveTodayRow], which carries the #304
- * pre-04:00 local-day carve-out and the #144 anti-blank guard), then use that row when it's scored, else
+ * It is exactly what the dashboard does: resolve today's row ([resolveTodayRow], which carries the
+ * pre-04:00 local-day carve-out and the anti-blank guard), then use that row when it's scored, else
  * carry over the freshest STRICTLY-PRIOR scored day for the recovery-derived fields. Anchoring on today's
  * row (not "the newest row with any recovery score") is what fixes the rollover drift: the new logical
  * day exists but isn't scored yet, so a naive `days.lastOrNull { recovery != null }` kept pointing at
  * yesterday's scored row while Today had already moved on. The `it.day < anchorKey` bound ([anchorKey] =
- * today's own key) mirrors [lastScoredRecoveryDay] + its #547 future-day guard, so a stale or stray
+ * today's own key) mirrors [lastScoredRecoveryDay] + its future-day guard, so a stale or stray
  * future-dated scored row can never re-surface AS today. Mirrors Swift Repository.widgetAnchor.
  */
 internal fun widgetAnchorRow(days: List<DailyMetric>, logicalKey: String, localKey: String): DailyMetric? {

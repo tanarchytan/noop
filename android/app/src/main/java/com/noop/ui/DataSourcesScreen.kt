@@ -19,7 +19,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Bluetooth
 import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.FileUpload
@@ -73,69 +72,53 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /**
- * Data Sources — ports the macOS DataSourcesView (Strand/Screens/DataSourcesView.swift)
- * onto the locked Android component system (ScreenScaffold / NoopCard / StatePill /
- * Overline / NoopType / Palette).
+ * Data Sources — on-device import and export hub for health history. Sources shown:
  *
- * The macOS screen is built around "bring your history in once, then it's yours": three
- * source cards (WHOOP Export, Apple Health, Live BLE) plus on-device file import. On
- * Android the on-device store is a single Room/SQLite file, and the real, working
- * migration path is whole-store export/import via [DataBackup] (a SAF document the user
- * picks). So this screen keeps the macOS structure but maps each card to what Android
- * actually has:
- *
- *   - WHOOP data    — live counts of the cached "my-whoop" history, plus a working import
- *                     of a WHOOP .zip/.csv export (app.whoop.com → Data Management) via
- *                     [com.noop.ingest.WhoopCsvImporter].
- *   - Apple Health  — live counts of cached "apple-health" data, plus a working streaming
- *                     import of an Apple Health export.zip/export.xml via
- *                     [com.noop.ingest.AppleHealthImporter].
- *   - Health Connect— native Android import (steps/HR/HRV/sleep/SpO₂/weight/workouts) via
- *                     [com.noop.ingest.HealthConnectImporter], gated on runtime permission.
- *   - Nutrition CSV — daily calories / macros / body weight from a nutrition CSV
- *                     (MyFitnessPal, Cronometer, or any date+columns spreadsheet) via
- *                     [com.noop.ingest.NutritionCsvImporter], stored as metricSeries rows
- *                     under source "nutrition-csv".
- *   - WHOOP Strap   — the live BLE bond/stream status, straight from the LiveState flow.
- *   - Backup        — Export / Import the whole on-device database through [DataBackup],
- *                     wired to ActivityResult document launchers.
+ * - WHOOP History — cached "my-whoop" data with counts, plus import from a WHOOP
+ * .zip/.csv export via [com.noop.ingest.WhoopCsvImporter].
+ * - Apple Health — cached "apple-health" data with counts, plus import from an
+ * Apple Health export.zip/export.xml via [com.noop.ingest.AppleHealthImporter].
+ * - Health Connect — native Android import (steps/HR/HRV/sleep/SpO₂/weight/workouts)
+ * via [com.noop.ingest.HealthConnectImporter], gated on runtime permission,
+ * plus optional computed-metric writeback.
+ * - Backup — Export / Import the whole on-device database through [DataBackup],
+ * wired to ActivityResult document launchers.
  */
 @Composable
 fun DataSourcesScreen(vm: AppViewModel, onOpenAppleHealth: () -> Unit = {}) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    val live by vm.live.collectAsStateWithLifecycle()
     val hcAutoSync by vm.hcAutoSync.collectAsStateWithLifecycle()
     val hcSyncHours by vm.hcSyncHours.collectAsStateWithLifecycle()
     val hcLastSync by vm.hcLastSync.collectAsStateWithLifecycle()
     val hcWriteback by vm.hcWriteback.collectAsStateWithLifecycle()
 
-    // Cached-store counts, loaded once from the repo (newest data is fine to recount).
+ // Cached-store counts, loaded once from the repo (newest data is fine to recount).
     var whoopDays by remember { mutableStateOf<Int?>(null) }
     var whoopWorkouts by remember { mutableStateOf<Int?>(null) }
     var whoopHasHr by remember { mutableStateOf(false) }
     var appleDays by remember { mutableStateOf<Int?>(null) }
     var appleWorkouts by remember { mutableStateOf<Int?>(null) }
-    // Health Connect has its OWN source ("health-connect"), counted separately from an Apple Health
-    // export so each card reflects its own data rather than both showing under Apple Health (issue #34).
+ // Health Connect has its OWN source ("health-connect"), counted separately from an Apple Health
+ // export so each card reflects its own data rather than both showing under Apple Health.
     var hcDays by remember { mutableStateOf<Int?>(null) }
     var hcWorkouts by remember { mutableStateOf<Int?>(null) }
-    // Nutrition CSV writes long-format metricSeries rows under its own source ("nutrition-csv"),
-    // so its card counts days-with-calories and weigh-ins straight off that table.
+ // Nutrition CSV writes long-format metricSeries rows under its own source ("nutrition-csv"),
+ // so its card counts days-with-calories and weigh-ins straight off that table.
     var nutritionDays by remember { mutableStateOf<Int?>(null) }
     var nutritionWeighIns by remember { mutableStateOf<Int?>(null) }
-    // Imported lifting (Hevy / Liftosaur) writes workouts under its own source ("lifting").
+ // Imported lifting (Hevy / Liftosaur) writes workouts under its own source ("lifting").
     var liftingWorkouts by remember { mutableStateOf<Int?>(null) }
-    // Imported workout files (GPX / TCX / FIT) write workouts under their own source ("activity-file").
+ // Imported workout files (GPX / TCX / FIT) write workouts under their own source ("activity-file").
     var activityFiles by remember { mutableStateOf<Int?>(null) }
     var xiaomiDays by remember { mutableStateOf<Int?>(null) }
-    // Imported Oura / Fitbit / Garmin exports write daily metrics under their own per-brand source.
+ // Imported Oura / Fitbit / Garmin exports write daily metrics under their own per-brand source.
     var wearableDays by remember { mutableStateOf<Int?>(null) }
 
-    // Count-badge refresh, shared by the initial load below and every importer's post-run refresh.
-    // PERF: scalar SQL COUNTs (and one LIMIT-1 existence probe), NOT materialized row lists — the old
-    // shape loaded every row of every source's history just to call `.size` on it, ~14 full-range
-    // reads per screen visit. Workout counts are now exact (the row read was capped at DEFAULT_LIMIT).
+ // Count-badge refresh, shared by the initial load below and every importer's post-run refresh.
+ // PERF: scalar SQL COUNTs (and one LIMIT-1 existence probe), NOT materialized row lists — the old
+ // shape loaded every row of every source's history just to call `.size` on it, ~14 full-range
+ // reads per screen visit. Workout counts are now exact (the row read was capped at DEFAULT_LIMIT).
     suspend fun refreshCounts() {
         val nowS = System.currentTimeMillis() / 1000
         whoopDays = vm.repo.daysCount("my-whoop")
@@ -158,35 +141,35 @@ fun DataSourcesScreen(vm: AppViewModel, onOpenAppleHealth: () -> Unit = {}) {
 
     LaunchedEffect(Unit) { refreshCounts() }
 
-    // Busy flag shared by every importer's Export/Import buttons.
+ // Busy flag shared by every importer's Export/Import buttons.
     var busy by remember { mutableStateOf(false) }
-    // ah-delete (#616): drives the "Remove Apple Health imported data" confirm dialog.
+ // ah-delete : drives the "Remove Apple Health imported data" confirm dialog.
     var confirmDeleteApple by remember { mutableStateOf(false) }
 
-    // Run an importer off the main thread, refresh the counts, then toast the result.
+ // Run an importer off the main thread, refresh the counts, then toast the result.
     fun runImport(block: suspend () -> ImportSummary) {
         busy = true
         scope.launch {
             val summary = withContext(Dispatchers.IO) {
                 runCatching { block() }.getOrElse { ImportSummary.failure("Import", it.message ?: "failed") }
             }
-            // Mirror the import into the SAME exported strap log the WHOOP path uses (issue #421 parity),
-            // so a tester's file import is captured in a shared debug bundle. On success: brand label +
-            // per-table COUNTS only (e.g. "dailyMetric=120, sleepSession=88"). On a zero-row/failed import:
-            // the brand label + the human reason from the summary. Never a file name, a path, or any health
-            // value. Prefixed "Import: " so it's distinguishable from WHOOP / generic-HR lines. The Swift
-            // twin logs the same in DataSourcesView's import handlers.
+ // Mirror the import into the SAME exported strap log the WHOOP path uses ( parity),
+ // so a tester's file import is captured in a shared debug bundle. On success: brand label +
+ // per-table COUNTS only (e.g. "dailyMetric=120, sleepSession=88"). On a zero-row/failed import:
+ // the brand label + the human reason from the summary. Never a file name, a path, or any health
+ // value. Prefixed "Import: " so it's distinguishable from WHOOP / generic-HR lines. The Swift
+ // twin logs the same in DataSourcesView's import handlers.
             if (summary.totalRows > 0) {
                 val countsText = summary.counts.entries.joinToString(", ") { "${it.key}=${it.value}" }
                 vm.ble.externalLog("Import ${summary.source}: $countsText")
             } else {
                 vm.ble.externalLog("Import ${summary.source} failed: ${summary.message}")
             }
-            // Import & Data Ingest test mode (Test Centre): emit the parser / per-stage / day-delta trace,
-            // tagged IMPORT, iff the mode is on. Gated zero-cost when off (one SharedPreferences bool read).
-            // The numbers are the SAME per-table counts the summary carries (Room upserts are fire-and-forget,
-            // so the persisted count equals the mapped count at this seam); emission changes nothing saved. No
-            // file name, path, or health value is in any line. Twin of the macOS DataSourcesView handlers.
+ // Import & Data Ingest test mode (Test Centre): emit the parser / per-stage / day-delta trace,
+ // tagged IMPORT, iff the mode is on. Gated zero-cost when off (one SharedPreferences bool read).
+ // The numbers are the SAME per-table counts the summary carries (Room upserts are fire-and-forget,
+ // so the persisted count equals the mapped count at this seam); emission changes nothing saved. No
+ // file name, path, or health value is in any line. Twin of the macOS DataSourcesView handlers.
             emitImportTrace(context, vm, summary)
             refreshCounts()
             busy = false
@@ -194,7 +177,7 @@ fun DataSourcesScreen(vm: AppViewModel, onOpenAppleHealth: () -> Unit = {}) {
         }
     }
 
-    // SAF pickers — the importers auto-detect zip vs csv/xml from the file's content.
+ // SAF pickers — the importers auto-detect zip vs csv/xml from the file's content.
     val whoopImportLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.OpenDocument(),
     ) { uri -> if (uri != null) runImport { WhoopCsvImporter.importZip(context, uri, vm.repo) } }
@@ -211,7 +194,7 @@ fun DataSourcesScreen(vm: AppViewModel, onOpenAppleHealth: () -> Unit = {}) {
         ActivityResultContracts.OpenDocument(),
     ) { uri -> if (uri != null) runImport { NutritionCsvImporter.importCsv(context, uri, vm.repo) } }
 
-    // Lifting: imported workouts also need the Workouts list to reload (runImport only re-counts).
+ // Lifting: imported workouts also need the Workouts list to reload (runImport only re-counts).
     val liftingImportLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.OpenDocument(),
     ) { uri ->
@@ -220,27 +203,27 @@ fun DataSourcesScreen(vm: AppViewModel, onOpenAppleHealth: () -> Unit = {}) {
         }
     }
 
-    // Oura / Fitbit / Garmin own-data export: daily metrics + sleep sessions under the brand's source.
+ // Oura / Fitbit / Garmin own-data export: daily metrics + sleep sessions under the brand's source.
     val wearableImportLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.OpenDocument(),
     ) { uri -> if (uri != null) runImport { WearableExportImporter.importExport(context, uri, vm.repo) } }
 
-    // Workout file (GPX / TCX / FIT): one imported activity → one workout; reload the Workouts list too.
+ // Workout file (GPX / TCX / FIT): one imported activity → one workout; reload the Workouts list too.
     val activityFileImportLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.OpenDocument(),
     ) { uri ->
         if (uri != null) runImport {
             ActivityFileImporter.importExport(context, uri, vm.repo).also { summary ->
                 vm.loadWorkouts()
-                // #137 (B1): on a SUCCESSFUL import, register `activity-file` as an `activityFile` device
-                // so the per-day owner resolver can pick it as the day owner on a strap-less day (it
-                // iterates the registry's paired devices — an unregistered source is invisible to it). The
-                // distinct kind ranks it at priority 3 — below whole-day imports (2) — so a full-day WHOOP
-                // import always wins a day it has HR for. status `paired`, NEVER `active` (makeActive =
-                // false), so it can never displace the live strap; capability `hr` marks what the source
-                // CAN provide (per-day presence is still gated by an actual HR read in the resolver).
-                // Idempotent (OnConflict.REPLACE). Twin of the Swift DataSourcesView `model.registerDevice`
-                // call. See ActivityFileImporter (A) for the matching per-sample HR persist.
+ // (B1): on a SUCCESSFUL import, register `activity-file` as an `activityFile` device
+ // so the per-day owner resolver can pick it as the day owner on a strap-less day (it
+ // iterates the registry's paired devices — an unregistered source is invisible to it). The
+ // distinct kind ranks it at priority 3 — below whole-day imports (2) — so a full-day WHOOP
+ // import always wins a day it has HR for. status `paired`, NEVER `active` (makeActive =
+ // false), so it can never displace the live strap; capability `hr` marks what the source
+ // CAN provide (per-day presence is still gated by an actual HR read in the resolver).
+ // Idempotent (OnConflict.REPLACE). Twin of the Swift DataSourcesView `model.registerDevice`
+ // call. See ActivityFileImporter (A) for the matching per-sample HR persist.
                 if (summary.totalRows > 0) {
                     val now = System.currentTimeMillis() / 1000
                     vm.registerDevice(
@@ -263,7 +246,7 @@ fun DataSourcesScreen(vm: AppViewModel, onOpenAppleHealth: () -> Unit = {}) {
         }
     }
 
-    // Health Connect permission request → import once granted.
+ // Health Connect permission request → import once granted.
     val hcPermissionLauncher = rememberLauncherForActivityResult(
         PermissionController.createRequestPermissionResultContract(),
     ) { granted ->
@@ -278,7 +261,7 @@ fun DataSourcesScreen(vm: AppViewModel, onOpenAppleHealth: () -> Unit = {}) {
         HealthConnectImporter.sdkStatus(context) == HealthConnectClient.SDK_AVAILABLE
     }
 
-    // Import directly if permissions already granted, otherwise request them first.
+ // Import directly if permissions already granted, otherwise request them first.
     fun startHealthConnect() {
         scope.launch {
             val granted = runCatching {
@@ -292,8 +275,8 @@ fun DataSourcesScreen(vm: AppViewModel, onOpenAppleHealth: () -> Unit = {}) {
         }
     }
 
-    // Writeback (computed metrics → Health Connect): WRITE permissions, requested only when the
-    // user opts in. Denial flips the toggle back off so the UI never claims it's writing.
+ // Writeback (computed metrics → Health Connect): WRITE permissions, requested only when the
+ // user opts in. Denial flips the toggle back off so the UI never claims it's writing.
     val hcWritePermissionLauncher = rememberLauncherForActivityResult(
         PermissionController.createRequestPermissionResultContract(),
     ) { granted ->
@@ -305,36 +288,36 @@ fun DataSourcesScreen(vm: AppViewModel, onOpenAppleHealth: () -> Unit = {}) {
         }
     }
 
-    // Write immediately if the write permissions are already granted, otherwise request them first.
+ // Write immediately if the write permissions are already granted, otherwise request them first.
     fun startWriteback() {
         scope.launch {
             val granted = runCatching {
                 HealthConnectImporter.client(context).permissionController.getGrantedPermissions()
             }.getOrDefault(emptySet())
-            // Gate on vitals AND exercise perms so a user who enabled writeback before exercise
-            // writeback shipped (vitals-only grant) still gets re-prompted for WRITE_EXERCISE/
-            // WRITE_DISTANCE — otherwise their workouts silently never reach Health Connect (#412).
+ // Gate on vitals AND exercise perms so a user who enabled writeback before exercise
+ // writeback shipped (vitals-only grant) still gets re-prompted for WRITE_EXERCISE/
+ // WRITE_DISTANCE — otherwise their workouts silently never reach Health Connect.
             if (granted.containsAll(HealthConnectWriter.PERMISSIONS + HealthConnectWriter.EXERCISE_PERMISSIONS)) {
                 vm.writebackHealthConnectNow()
             } else {
-                // Request vitals + exercise-session write perms together so GPS workouts can write
-                // back too (the launcher-result handler stays keyed on the vital PERMISSIONS, so
-                // exercise writeback is opt-in + non-fatal if the user declines it). v1.71 / #412.
+ // Request vitals + exercise-session write perms together so GPS workouts can write
+ // back too (the launcher-result handler stays keyed on the vital PERMISSIONS, so
+ // exercise writeback is opt-in + non-fatal if the user declines it). v1.71 /.
                 hcWritePermissionLauncher.launch(HealthConnectWriter.PERMISSIONS + HealthConnectWriter.EXERCISE_PERMISSIONS)
             }
         }
     }
 
-    // PERF (#707): lazy scaffold — each SourceCard is an unconditional top-level child, so each becomes one
-    // `item { }` in the same order. There are no standalone Spacers (the eager column relied on
-    // `spacedBy(20.dp)`, which the LazyColumn reproduces), so spacing is byte-identical. Only the on-screen
-    // cards now compose + get accessibility-walked on scroll — this list of 11 source cards is long. The
-    // confirm dialogs below the scaffold are untouched.
+ // PERF : lazy scaffold — each SourceCard is an unconditional top-level child, so each becomes one
+ // `item { }` in the same order. There are no standalone Spacers (the eager column relied on
+ // `spacedBy(20.dp)`, which the LazyColumn reproduces), so spacing is byte-identical. Only the on-screen
+ // cards now compose + get accessibility-walked on scroll — this list of 11 source cards is long. The
+ // confirm dialogs below the scaffold are untouched.
     LazyScreenScaffold(
         title = "Data Sources",
         subtitle = "Everything stays on this phone. Bring your history in once, then it's yours.",
     ) {
-        // --- WHOOP data (cached history) ---
+ // --- WHOOP data (cached history) ---
         item {
         SourceCard(
             title = "WHOOP History",
@@ -361,7 +344,7 @@ fun DataSourcesScreen(vm: AppViewModel, onOpenAppleHealth: () -> Unit = {}) {
         }
         }
 
-        // --- Apple Health ---
+ // --- Apple Health ---
         item {
         SourceCard(
             title = "Apple Health",
@@ -388,9 +371,9 @@ fun DataSourcesScreen(vm: AppViewModel, onOpenAppleHealth: () -> Unit = {}) {
                 tint = Palette.metricCyan,
                 modifier = Modifier.fillMaxWidth(),
             ) { appleImportLauncher.launch(arrayOf("*/*")) }
-            // Apple Health lost its top-level nav entry; its full view (charts + import detail) is reached
-            // HERE now — this button drills into AppleHealthScreen. Always shown so the view is openable
-            // even before the first import.
+ // Apple Health lost its top-level nav entry; its full view (charts + import detail) is reached
+ // HERE now — this button drills into AppleHealthScreen. Always shown so the view is openable
+ // even before the first import.
             BackupButton(
                 label = "View Apple Health data",
                 icon = Icons.Filled.MonitorHeart,
@@ -398,9 +381,9 @@ fun DataSourcesScreen(vm: AppViewModel, onOpenAppleHealth: () -> Unit = {}) {
                 tint = Palette.metricCyan,
                 modifier = Modifier.fillMaxWidth(),
             ) { onOpenAppleHealth() }
-            // ah-delete (#616): a destructive "Remove imported data" action wired to
-            // DeviceRegistry.deleteDeviceData("apple-health") (via vm.deletePairedDeviceData), mirroring
-            // the Swift card. Shown only once there's something to remove; a confirm dialog gates it.
+ // ah-delete : a destructive "Remove imported data" action wired to
+ // DeviceRegistry.deleteDeviceData("apple-health") (via vm.deletePairedDeviceData), mirroring
+ // the Swift card. Shown only once there's something to remove; a confirm dialog gates it.
             if (hasApple) {
                 BackupButton(
                     label = "Remove imported data",
@@ -413,7 +396,7 @@ fun DataSourcesScreen(vm: AppViewModel, onOpenAppleHealth: () -> Unit = {}) {
         }
         }
 
-        // --- Health Connect (native Android health data) ---
+ // --- Health Connect (native Android health data) ---
         item {
         SourceCard(
             title = "Health Connect",
@@ -438,9 +421,9 @@ fun DataSourcesScreen(vm: AppViewModel, onOpenAppleHealth: () -> Unit = {}) {
                     modifier = Modifier.fillMaxWidth(),
                 ) { startHealthConnect() }
 
-                // Auto-sync: pull new Health Connect data when you open NOOP, if it's been longer than
-                // the chosen interval — no manual taps. On-open only (no background worker): it avoids a
-                // sensitive background-health permission and is reliable, and opening the app is enough.
+ // Auto-sync: pull new Health Connect data when you open NOOP, if it's been longer than
+ // the chosen interval — no manual taps. On-open only (no background worker): it avoids a
+ // sensitive background-health permission and is reliable, and opening the app is enough.
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
@@ -460,7 +443,7 @@ fun DataSourcesScreen(vm: AppViewModel, onOpenAppleHealth: () -> Unit = {}) {
                         checked = hcAutoSync,
                         onCheckedChange = { on ->
                             vm.setHcAutoSync(on)
-                            // Ensure permissions (and an immediate first sync) when turning it on.
+ // Ensure permissions (and an immediate first sync) when turning it on.
                             if (on) startHealthConnect()
                         },
                         colors = SwitchDefaults.colors(
@@ -497,7 +480,7 @@ fun DataSourcesScreen(vm: AppViewModel, onOpenAppleHealth: () -> Unit = {}) {
                     )
                 }
 
-                // Writeback: the inverse direction. Opt-in, default OFF, computed metrics only.
+ // Writeback: the inverse direction. Opt-in, default OFF, computed metrics only.
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
@@ -518,7 +501,7 @@ fun DataSourcesScreen(vm: AppViewModel, onOpenAppleHealth: () -> Unit = {}) {
                         checked = hcWriteback,
                         onCheckedChange = { on ->
                             vm.setHcWriteback(on)
-                            // Ensure write permissions (and an immediate first write) when turning on.
+ // Ensure write permissions (and an immediate first write) when turning on.
                             if (on) startWriteback()
                         },
                         colors = SwitchDefaults.colors(
@@ -539,7 +522,7 @@ fun DataSourcesScreen(vm: AppViewModel, onOpenAppleHealth: () -> Unit = {}) {
         }
         }
 
-        // --- Nutrition CSV (calories / macros / body weight) ---
+ // --- Nutrition CSV (calories / macros / body weight) ---
         item {
         SourceCard(
             title = "Nutrition (CSV)",
@@ -568,7 +551,7 @@ fun DataSourcesScreen(vm: AppViewModel, onOpenAppleHealth: () -> Unit = {}) {
         }
         }
 
-        // --- Xiaomi Mi Band (Mi Fitness on-device DB) — #35 ---
+ // --- Xiaomi Mi Band (Mi Fitness on-device DB) — ---
         item {
         SourceCard(
             title = "Xiaomi Mi Band",
@@ -598,7 +581,7 @@ fun DataSourcesScreen(vm: AppViewModel, onOpenAppleHealth: () -> Unit = {}) {
         }
         }
 
-        // --- Lifting log (Hevy CSV / Liftosaur JSON) ---
+ // --- Lifting log (Hevy CSV / Liftosaur JSON) ---
         item {
         SourceCard(
             title = "Lifting log (Hevy / Liftosaur)",
@@ -628,7 +611,7 @@ fun DataSourcesScreen(vm: AppViewModel, onOpenAppleHealth: () -> Unit = {}) {
         }
         }
 
-        // --- Workout file (GPX / TCX / FIT) — any brand, on-device ---
+ // --- Workout file (GPX / TCX / FIT) — any brand, on-device ---
         item {
         SourceCard(
             title = "Workout file (GPX / TCX / FIT)",
@@ -657,7 +640,7 @@ fun DataSourcesScreen(vm: AppViewModel, onOpenAppleHealth: () -> Unit = {}) {
         }
         }
 
-        // --- Oura / Fitbit / Garmin own-data export — on-device ---
+ // --- Oura / Fitbit / Garmin own-data export — on-device ---
         item {
         SourceCard(
             title = "Oura / Fitbit / Garmin export",
@@ -688,27 +671,11 @@ fun DataSourcesScreen(vm: AppViewModel, onOpenAppleHealth: () -> Unit = {}) {
         }
         }
 
-        // --- Live WHOOP strap over BLE ---
-        item {
-        SourceCard(
-            title = "WHOOP Strap (Live BLE)",
-            icon = Icons.Filled.Bluetooth,
-            subtitle = "Pairs directly with your strap over Bluetooth: no WHOOP app, no cloud.",
-        ) {
-            val (label, tone) = when {
-                live.bonded -> "Bonded, streaming." to StrandTone.Positive
-                live.connected -> "Connected, pairing…" to StrandTone.Warning
-                else -> "Not connected. Open Live to pair." to StrandTone.Critical
-            }
-            StatePill(title = label, tone = tone, showsDot = true, pulsing = live.connected && !live.bonded)
-        }
-        }
-
     }
 
-    // ah-delete (#616): strongly-worded confirm before purging the "apple-health" source. On confirm,
-    // deletes every Apple-Health-sourced row (deviceId-keyed tables) in one transaction via the registry,
-    // re-counts so the card flips back to "Nothing imported", and toasts the result.
+ // ah-delete : strongly-worded confirm before purging the "apple-health" source. On confirm,
+ // deletes every Apple-Health-sourced row (deviceId-keyed tables) in one transaction via the registry,
+ // re-counts so the card flips back to "Nothing imported", and toasts the result.
     if (confirmDeleteApple) {
         NoopConfirmDialog(
             title = "Remove Apple Health imported data?",
@@ -744,8 +711,8 @@ private fun SourceCard(
     tint: Color = Palette.accent,
     content: @Composable () -> Unit,
 ) {
-    // A frosted, domain-tinted card: a tinted source glyph chip + title, the explainer line, then
-    // the source's status pill + connect/import action(s). Replaces the old flat surface.
+ // A frosted, domain-tinted card: a tinted source glyph chip + title, the explainer line, then
+ // the source's status pill + connect/import action(s). Replaces the old flat surface.
     NoopCard(padding = 18.dp, tint = tint) {
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Row(
@@ -828,7 +795,7 @@ private fun BackupButton(
  * macOS ImportTrace shapes (parser / per-stage / reject / day-delta), built from the ImportSummary the
  * importer already returned. Never a file name, a path, or any health value.
  *
- * HONESTY (the whole point of this mode, tied to the #601/#749/#754 "didn't save" cluster): unlike the
+ * HONESTY (the whole point of this mode, tied to the // "didn't save" cluster): unlike the
  * Swift store, which returns the summed SQLite changes from each upsert, Room's @Upsert reports no
  * store-write count at this layer. So Android does NOT claim "(all written)" / "(all days persisted)" - it
  * emits rowsIn / daysMapped with rowsOut / daysPersisted marked UNVERIFIED. A line never asserts a save it
@@ -847,26 +814,26 @@ internal fun emitImportTrace(
         com.noop.analytics.ImportTrace.parserVersionLine(kind, importerVersion = 1),
         com.noop.testcentre.TestDomain.IMPORT,
     )
-    // Reject keys are NOT writes: they are rows/spans the import dropped (the opposite of "written"), so
-    // they must never become a stage line. skippedSpans is the only one an Android importer emits today.
+ // Reject keys are NOT writes: they are rows/spans the import dropped (the opposite of "written"), so
+ // they must never become a stage line. skippedSpans is the only one an Android importer emits today.
     val skippedSpans = summary.counts["skippedSpans"] ?: 0
     for ((rawKey, count) in summary.counts) {
         if (rawKey == "skippedSpans") continue   // routed through the reject line below, not as a stage
         val category = com.noop.analytics.ImportTrace.categoryWire(summary.source, rawKey)
-        // rowsOut is UNVERIFIED on Android (Room reports no store-write count); never claim "(all written)".
+ // rowsOut is UNVERIFIED on Android (Room reports no store-write count); never claim "(all written)".
         vm.ble.externalLog(
             com.noop.analytics.ImportTrace.stageLineUnverified(category, rowsIn = count),
             com.noop.testcentre.TestDomain.IMPORT,
         )
     }
-    // The reject line mirrors AppleHealthImport.swift: the app map drops nothing further here, so
-    // droppedRows = 0; skippedSpans carries the tolerant-import scrubbed-span count (0 on non-Apple).
+ // The reject line mirrors AppleHealthImport.swift: the app map drops nothing further here, so
+ // droppedRows = 0; skippedSpans carries the tolerant-import scrubbed-span count (0 on non-Apple).
     vm.ble.externalLog(
         com.noop.analytics.ImportTrace.rejectLine(droppedRows = 0, skippedSpans = skippedSpans),
         com.noop.testcentre.TestDomain.IMPORT,
     )
-    // Day delta: pick the source's day-keyed table (Apple -> appleDaily, WHOOP/others -> dailyMetric) so a
-    // real Apple import reports the right day count, and label the stage with the Swift category vocabulary.
+ // Day delta: pick the source's day-keyed table (Apple -> appleDaily, WHOOP/others -> dailyMetric) so a
+ // real Apple import reports the right day count, and label the stage with the Swift category vocabulary.
     val dayKey = if (summary.counts.containsKey("appleDaily")) "appleDaily" else "dailyMetric"
     val days = summary.counts[dayKey] ?: summary.counts["days"] ?: 0
     val dayCategory = com.noop.analytics.ImportTrace.categoryWire(summary.source, dayKey)

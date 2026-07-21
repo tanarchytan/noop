@@ -34,7 +34,7 @@ import androidx.compose.ui.unit.dp
 import com.noop.R
 
 /** More-page groups, mirroring the iOS More tab exactly: Insights · Body · Data · App. `defaultExpanded`
- *  mirrors the iOS S2 default: Insights + Body open at rest, Data + App collapsed to just their header. */
+ * mirrors the iOS S2 default: Insights + Body open at rest, Data + App collapsed to just their header. */
 // [header] is the STABLE persistence key (stored in SharedPreferences and kept byte-identical to iOS's
 // `more.expandedSections` CSV — see [MoreSectionPrefs]); it must NEVER be localized. [headerRes] is the
 // localized DISPLAY label the More page shows. Decoupling the two lets the label translate without
@@ -53,8 +53,8 @@ private val drawerGroups: List<DrawerGroup> = listOf(
     DrawerGroup("Insights", R.string.more_group_insights, listOf(
         Destination.Insights, Destination.Intelligence, Destination.Coach,
     ), defaultExpanded = true),
-    // Metric-exploration tools (single-metric Explorer + multi-metric Compare/correlate) — trend drills,
-    // not behaviour insights, so they sit in their own Trends group rather than under Insights.
+ // Metric-exploration tools (single-metric Explorer + multi-metric Compare/correlate) — trend drills,
+ // not behaviour insights, so they sit in their own Trends group rather than under Insights.
     DrawerGroup("Trends", R.string.more_group_trends, listOf(
         Destination.Explore, Destination.Compare,
     ), defaultExpanded = true),
@@ -73,12 +73,12 @@ private val drawerGroups: List<DrawerGroup> = listOf(
 )
 
 /** The headers open by default at first run, derived from [drawerGroups.defaultExpanded] (Insights +
- *  Trends + Body), so the seed lives in one place and the persistence default can't drift from the UI default. */
+ * Trends + Body), so the seed lives in one place and the persistence default can't drift from the UI default. */
 private fun defaultExpandedHeaders(): Set<String> =
     drawerGroups.filter { it.defaultExpanded }.map { it.header }.toSet()
 
 /**
- * Persisted open/closed state of the More page's collapsible groups (#860 item 2) - the Android twin of
+ * Persisted open/closed state of the More page's collapsible groups ( item 2) - the Android twin of
  * the iOS `MoreSectionPrefs`. The set of EXPANDED group headers is stored as one sorted comma-joined
  * string under a single SharedPreferences key, encoded identically to iOS (same `more.expandedSections`
  * suffix, same CSV-of-headers, same Insights+Body default) so the two platforms behave the same. An empty
@@ -120,12 +120,12 @@ internal object MoreSectionPrefs {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun MoreScreen(onNavigate: (String) -> Unit) {
-    // S2 parity: each group's open/closed state, seeded from `defaultExpanded` (Insights + Body open,
-    // Data + App collapsed). PERSISTED (#860 item 2): the user's open/closed choice must survive leaving
-    // and re-entering the More page (and relaunch), not reset to the seed every visit. Backed by
-    // [MoreSectionPrefs] (a CSV of expanded headers in SharedPreferences), mirroring the iOS
-    // @AppStorage("more.expandedSections"). Seeded ONCE from the stored value so first run still shows the
-    // Insights+Body default; every toggle writes through so the next visit reflects the saved state.
+ // S2 parity: each group's open/closed state, seeded from `defaultExpanded` (Insights + Body open,
+ // Data + App collapsed). PERSISTED ( item 2): the user's open/closed choice must survive leaving
+ // and re-entering the More page (and relaunch), not reset to the seed every visit. Backed by
+ // [MoreSectionPrefs] (a CSV of expanded headers in SharedPreferences), mirroring the iOS
+ // @AppStorage("more.expandedSections"). Seeded ONCE from the stored value so first run still shows the
+ // Insights+Body default; every toggle writes through so the next visit reflects the saved state.
     val context = androidx.compose.ui.platform.LocalContext.current
     val expanded = remember {
         val stored = MoreSectionPrefs.read(NoopPrefs.of(context), defaultExpandedHeaders())
@@ -137,9 +137,9 @@ internal fun MoreScreen(onNavigate: (String) -> Unit) {
         title = "More",
         subtitle = "Everything else, one tap away",
     ) {
-        // Mirror the iOS More page: each group is a tappable UPPERCASE overline header (with a disclosure
-        // chevron) over a single grouped white NoopCard whose rows are tight (accent icon + title +
-        // chevron) and separated by inset hairlines (NOT loose navigation-drawer items on the bare surface).
+ // Mirror the iOS More page: each group is a tappable UPPERCASE overline header (with a disclosure
+ // chevron) over a single grouped white NoopCard whose rows are tight (accent icon + title +
+ // chevron) and separated by inset hairlines (NOT loose navigation-drawer items on the bare surface).
         drawerGroups.forEach { group ->
             val isOpen = expanded[group.header] ?: group.defaultExpanded
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -148,8 +148,8 @@ internal fun MoreScreen(onNavigate: (String) -> Unit) {
                     expanded = isOpen,
                     onToggle = {
                         expanded[group.header] = !isOpen
-                        // Persist the new open set so the choice survives leaving + re-entering the page
-                        // and relaunch (#860 item 2), mirroring the iOS @AppStorage write.
+ // Persist the new open set so the choice survives leaving + re-entering the page
+ // and relaunch ( item 2), mirroring the iOS @AppStorage write.
                         val open = drawerGroups.map { it.header }.filter { expanded[it] == true }.toSet()
                         MoreSectionPrefs.write(NoopPrefs.of(context), open)
                     },
@@ -175,8 +175,8 @@ internal fun MoreScreen(onNavigate: (String) -> Unit) {
 }
 
 /** A tappable group header for the More page (S2): the same UPPERCASE [Overline] label as before, now
- *  with a trailing chevron that rotates between open (0deg) and closed (-90deg), mirroring the iOS
- *  collapsible More sections. Tapping toggles the group; the whole row is the tap target. */
+ * with a trailing chevron that rotates between open (0deg) and closed (-90deg), mirroring the iOS
+ * collapsible More sections. Tapping toggles the group; the whole row is the tap target. */
 @Composable
 private fun MoreGroupHeader(title: String, expanded: Boolean, onToggle: () -> Unit) {
     val rotation by animateFloatAsState(
@@ -208,7 +208,7 @@ private fun MoreGroupHeader(title: String, expanded: Boolean, onToggle: () -> Un
 }
 
 /** One tappable destination row in the More page — accent icon + title + trailing chevron in a
- *  comfortable tap target, mirroring the iOS MoreRow. */
+ * comfortable tap target, mirroring the iOS MoreRow. */
 @Composable
 private fun MoreRow(dest: Destination, onClick: () -> Unit) {
     Row(

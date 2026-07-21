@@ -61,33 +61,33 @@ import kotlin.math.roundToInt
 fun AutomationsScreen(viewModel: AppViewModel) {
     val live by viewModel.live.collectAsStateWithLifecycle()
 
-    // Double-tap action (parity since 4.2.8) — real + persisted via the ViewModel (NoopPrefs). The
-    // dispatch runs in the ViewModel on a fresh strap DOUBLE_TAP event; this card just edits the choice.
+ // Double-tap action (parity since 4.2.8) — real + persisted via the ViewModel (NoopPrefs). The
+ // dispatch runs in the ViewModel on a fresh strap DOUBLE_TAP event; this card just edits the choice.
     val doubleTapAction by viewModel.doubleTapAction.collectAsStateWithLifecycle()
 
-    // (#766) The strap firmware wake-alarm state used to be read here; it moved to SmartAlarmScreen with
-    // the rest of the alarm UI.
-    // Illness watch is real + persisted (opt-OUT — the watch has always run on Android).
+ // The strap firmware wake-alarm state used to be read here; it moved to SmartAlarmScreen with
+ // the rest of the alarm UI.
+ // Illness watch is real + persisted (opt-OUT — the watch has always run on Android).
     val illnessWatch by viewModel.illnessWatchEnabled.collectAsStateWithLifecycle()
-    // Battery alerts are real + persisted (opt-OUT, default ON; #368, thanks @ujix).
+ // Battery alerts are real + persisted (opt-OUT, default ON; , thanks @ujix).
     val batteryAlerts by viewModel.batteryAlertsEnabled.collectAsStateWithLifecycle()
     val predictiveBatteryAlerts by viewModel.predictiveBatteryAlertsEnabled.collectAsStateWithLifecycle()
     val ctx = LocalContext.current
 
-    // HR-zone coaching is real + persisted (zone-based, mirrors macOS): the ViewModel owns the toggle +
-    // recovery option and buzzes the strap on entering the top zone (and Zone 1 if recovery is on).
+ // HR-zone coaching is real + persisted (zone-based, mirrors macOS): the ViewModel owns the toggle +
+ // recovery option and buzzes the strap on entering the top zone (and Zone 1 if recovery is on).
     val profile = remember { ProfileStore.from(ctx.applicationContext) }
     val zoneCoaching by viewModel.zoneCoaching.collectAsStateWithLifecycle()
     val zoneCoachRecovery by viewModel.zoneCoachRecovery.collectAsStateWithLifecycle()
-    // The Zone 5 entry threshold (≥ 90% of HR-max), from the same HrZones model used everywhere.
+ // The Zone 5 entry threshold (≥ 90% of HR-max), from the same HrZones model used everywhere.
     val zone5Bpm = remember(profile.hrMax) {
         HrZones.zones(maxHR = profile.hrMax.toDouble()).zones.firstOrNull { it.number == 5 }?.lower?.roundToInt() ?: 0
     }
 
-    // Inactivity reminder (#419) — real + persisted via InactivityPrefs (opt-in, default OFF). Seeded
-    // once, written through on change (SharedPreferences isn't reactive). The buzz itself fires from the
-    // BLE offload path (WhoopBleClient.maybeBuzzInactivity → the shipped SedentaryDetector engine); this
-    // screen only edits the prefs the engine reads.
+ // Inactivity reminder — real + persisted via InactivityPrefs (opt-in, default OFF). Seeded
+ // once, written through on change (SharedPreferences isn't reactive). The buzz itself fires from the
+ // BLE offload path (WhoopBleClient.maybeBuzzInactivity → the shipped SedentaryDetector engine); this
+ // screen only edits the prefs the engine reads.
     var inactivityEnabled by remember { mutableStateOf(InactivityPrefs.enabled(ctx)) }
     var inactivityThreshold by remember { mutableStateOf(InactivityPrefs.thresholdMinutes(ctx)) }
     var inactivityReNudge by remember { mutableStateOf(InactivityPrefs.reNudgeMinutes(ctx)) }
@@ -95,21 +95,21 @@ fun AutomationsScreen(viewModel: AppViewModel) {
     var inactivityActiveHours by remember { mutableStateOf(InactivityPrefs.activeHoursEnabled(ctx)) }
     var inactivityActiveStart by remember { mutableStateOf(InactivityPrefs.activeStartMinutes(ctx)) }
     var inactivityActiveEnd by remember { mutableStateOf(InactivityPrefs.activeEndMinutes(ctx)) }
-    // The engine also requires the global notification master (default OFF); surface that dependency so
-    // enabling the reminder while master is off isn't silently inert.
+ // The engine also requires the global notification master (default OFF); surface that dependency so
+ // enabling the reminder while master is off isn't silently inert.
     val notifMasterOn = NotifPrefs.getBool(ctx, NotifPrefs.MASTER, false)
 
-    // PERF (#707): lazy scaffold — each settings section is an unconditional top-level child, so each
-    // becomes one `item { }` in the same order. No standalone Spacers (the eager `spacedBy(20.dp)` is
-    // reproduced by the LazyColumn), so spacing is byte-identical; only on-screen sections compose + get
-    // accessibility-walked on scroll.
+ // PERF : lazy scaffold — each settings section is an unconditional top-level child, so each
+ // becomes one `item { }` in the same order. No standalone Spacers (the eager `spacedBy(20.dp)` is
+ // reproduced by the LazyColumn), so spacing is byte-identical; only on-screen sections compose + get
+ // accessibility-walked on scroll.
     LazyScreenScaffold(
         title = "Automations",
         subtitle = "Make the strap do things: tap to act, walk away to lock, train by feel.",
     ) {
-        // Double-tap (parity since 4.2.8): a real, persisted action picker bound to the ViewModel, with a
-        // Test action button. Mirrors AutomationsView.swift's Picker (Apple-applicable subset only; no
-        // lockScreen / runShortcut on Android).
+ // Double-tap (parity since 4.2.8): a real, persisted action picker bound to the ViewModel, with a
+ // Test action button. Mirrors AutomationsView.swift's Picker (Apple-applicable subset only; no
+ // lockScreen / runShortcut on Android).
         item {
         NoopSettingsSection(
             icon = Icons.Filled.TouchApp,
@@ -146,7 +146,7 @@ fun AutomationsScreen(viewModel: AppViewModel) {
         }
         }
 
-        // Haptic coaching.
+ // Haptic coaching.
         item {
         NoopSettingsSection(
             icon = Icons.Filled.Bolt,
@@ -173,11 +173,11 @@ fun AutomationsScreen(viewModel: AppViewModel) {
         }
         }
 
-        // #766: the strap's silent wake-alarm card used to sit here, which let users conflate it with the
-        // Wake Window + Wind-Down reminder over on the Alarms screen. It's moved to SmartAlarmScreen so
-        // every wake/alarm control lives in one place. Automations is just inputs-to-actions now.
+ // : the strap's silent wake-alarm card used to sit here, which let users conflate it with the
+ // Wake Window + Wind-Down reminder over on the Alarms screen. It's moved to SmartAlarmScreen so
+ // every wake/alarm control lives in one place. Automations is just inputs-to-actions now.
 
-        // Inactivity reminder (#419) — real + persisted via InactivityPrefs; opt-in, default OFF.
+ // Inactivity reminder — real + persisted via InactivityPrefs; opt-in, default OFF.
         item {
         NoopSettingsSection(
             icon = Icons.Filled.Timer,
@@ -274,12 +274,12 @@ fun AutomationsScreen(viewModel: AppViewModel) {
         }
         }
 
-        // On-device short-nap detection (PR #569 reimpl) — opt-in, default OFF. Detected on the offload
-        // hook; a confident nap is offered as a review card you accept (it becomes a nap session) or
-        // dismiss. NEVER auto-written.
+ // On-device short-nap detection ( reimpl) — opt-in, default OFF. Detected on the offload
+ // hook; a confident nap is offered as a review card you accept (it becomes a nap session) or
+ // dismiss. NEVER auto-written.
         item { NapDetectionSection(viewModel) }
 
-        // Illness early-warning (real + persisted; opt-OUT — the watch has always run on Android).
+ // Illness early-warning (real + persisted; opt-OUT — the watch has always run on Android).
         item {
         NoopSettingsSection(
             icon = Icons.Filled.MonitorHeart,
@@ -297,7 +297,7 @@ fun AutomationsScreen(viewModel: AppViewModel) {
         }
         }
 
-        // Battery alerts (real + persisted; opt-OUT, default ON — #368, thanks @ujix).
+ // Battery alerts (real + persisted; opt-OUT, default ON — , thanks @ujix).
         item {
         NoopSettingsSection(
             icon = Icons.Filled.BatteryStd,
@@ -325,19 +325,19 @@ fun AutomationsScreen(viewModel: AppViewModel) {
     }
 }
 
-// MARK: - On-device nap detection (PR #569 reimpl under NoopApp)
+// MARK: - On-device nap detection ( reimpl under NoopApp)
 
 /**
  * The nap-detection automation: a toggle plus the REVIEW queue. Detection runs on the offload hook
  * (WhoopBleClient.maybeDetectNaps → the pure NapDetector); a confident NAP is queued in NapStore and shown
- * here as a card the user ACCEPTS (→ a manual nap session, the #508 path) or DISMISSES. The engine never
+ * here as a card the user ACCEPTS (→ a manual nap session, the path) or DISMISSES. The engine never
  * auto-writes a session, and an INCONCLUSIVE window queues nothing — honest by construction.
  */
 @Composable
 private fun NapDetectionSection(viewModel: AppViewModel) {
     val scope = rememberCoroutineScope()
     val enabled by viewModel.napDetectionEnabled.collectAsStateWithLifecycle()
-    // The queue isn't a reactive flow (it's written from the BLE layer); re-read it on each toggle/action.
+ // The queue isn't a reactive flow (it's written from the BLE layer); re-read it on each toggle/action.
     var pending by remember { mutableStateOf(viewModel.pendingNaps()) }
 
     NoopSettingsSection(
@@ -380,7 +380,7 @@ private fun NapDetectionSection(viewModel: AppViewModel) {
 }
 
 /** One pending nap candidate: an honest "HH:mm–HH:mm · ~N min" line (+ mean HR when known) with Keep /
- *  Skip controls. Keep persists it as a nap session; Skip forgets it (and won't re-queue the window). */
+ * Skip controls. Keep persists it as a nap session; Skip forgets it (and won't re-queue the window). */
 @Composable
 private fun NapReviewRow(nap: NapCandidate, onAccept: () -> Unit, onDismiss: () -> Unit) {
     val ctx = LocalContext.current
@@ -422,15 +422,15 @@ private fun napWindowLabel(nap: NapCandidate, ctx: android.content.Context): Str
 private fun napDetailLabel(nap: NapCandidate): String =
     if (nap.meanHr != null) "Quiet and settled, mean HR ~${nap.meanHr} bpm." else "Quiet and settled."
 
-// MARK: - Per-weekday wake-time overrides (PR #554 reimpl under NoopApp)
+// MARK: - Per-weekday wake-time overrides ( reimpl under NoopApp)
 
 /**
- * Per-weekday wake-time OVERRIDES for the smart alarm (#554). For each day the alarm fires on, shows the
+ * Per-weekday wake-time OVERRIDES for the smart alarm. For each day the alarm fires on, shows the
  * effective wake time (the day's override, else the default) as a [TimeChip]; picking a time sets that
  * day's override, and a "Reset" affordance clears it back to the default. Days the alarm doesn't fire on
  * aren't shown (no point overriding a day it won't ring). Empty enabledDays = every day, so all seven show.
  */
-// internal (not private) so the consolidated Alarms screen (SmartAlarmScreen, #766) can reuse the
+// internal (not private) so the consolidated Alarms screen (SmartAlarmScreen, ) can reuse the
 // exact same picker. The strap wake-alarm card moved there but its weekday/override UI is unchanged.
 @Composable
 internal fun AlarmDayOverridePicker(
@@ -477,7 +477,7 @@ internal fun AlarmDayOverridePicker(
 
 
 /** A compact dropdown that mirrors the iOS double-tap Picker: a tappable label + chevron that opens a
- *  menu of [DoubleTapAction]s. Labels come from [DoubleTapAction.label] so both clients read the same. */
+ * menu of [DoubleTapAction]s. Labels come from [DoubleTapAction.label] so both clients read the same. */
 @Composable
 private fun DoubleTapActionPicker(
     selected: DoubleTapAction,
@@ -520,10 +520,10 @@ private fun DoubleTapActionPicker(
 }
 
 /**
- * Weekday selector for the smart alarm (#539). One tappable circle per weekday, Monday-first. An empty
+ * Weekday selector for the smart alarm. One tappable circle per weekday, Monday-first. An empty
  * [selected] set means "every day" (all circles read as on). Mirrors the macOS AutomationsView picker.
  */
-// internal (not private) so SmartAlarmScreen (the consolidated Alarms surface, #766) can reuse it.
+// internal (not private) so SmartAlarmScreen (the consolidated Alarms surface, ) can reuse it.
 @Composable
 internal fun AlarmWeekdayPicker(selected: Set<Int>, onToggle: (Int) -> Unit) {
     Column(
@@ -644,13 +644,4 @@ private fun StepButton(icon: ImageVector, contentDescription: String, enabled: B
     }
 }
 
-@Composable
-private fun RowDivider() {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(1.dp)
-            .padding(vertical = 4.dp)
-            .background(Palette.hairline),
-    )
-}
+

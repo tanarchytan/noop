@@ -86,30 +86,26 @@ import kotlin.math.cos
 import kotlin.math.min
 import kotlin.math.sin
 
-// MARK: - Locked component system (ported from StrandDesign/Components.swift + StrandCard.swift)
+// MARK: - Locked component system
 //
 // Every screen composes ONLY these. Fixed dimensions + one spacing scale guarantee
 // the uniform, instrument-grade look from the reference.
 
-// MARK: - Frosted card surface (Titanium & Gold) + NoopCard
+// MARK: - Frosted card surface
 //
-// The card surface: a deep-navy fill (cardFillTop → cardFillBottom), rounded corners, a
-// very faint DIAGONAL accent-gradient wash and a flat 1px hairline border — NO shadow
-// (Titanium & Gold cards sit flat on the navy field; depth comes from the hairline + fill,
-// not a drop shadow). `Modifier.frostedCardSurface(tint = …)` is the one place the look
-// lives so NoopCard / ad-hoc surfaces all share it. Pass a domain tint (or null for the
-// neutral gold wash).
+// The card surface: a deep-navy fill, rounded corners, a diagonal accent wash and a flat
+// 1px hairline border — no shadow. frostedCardSurface is the one place the look lives so
+// NoopCard / ad-hoc surfaces all share it. Pass a domain tint (or null for neutral).
 
 /**
  * Paint the frosted-card surface (navy fill + faint diagonal accent wash + flat hairline
  * border, no shadow) behind the content. [tint] colours the wash + border bias; null uses a
  * near-neutral gold wash. Drawn with `drawBehind` so the animation/recomposition of the card's
- * content never reaches this surface subtree. Mirrors StrandDesign's FrostedCardSurface.
+ * content never reaches this surface subtree.
  */
 /** App-wide card-surface opacity (0f = fully see-through, 1f = solid), driven by the "Card transparency"
- *  setting. Reactive (a mutableState) so the Settings slider live-previews; initialised from NoopPrefs at
- *  app start via [init]. Only the card SURFACE (fill + border + wash) fades — the card's CONTENT is drawn
- *  above and stays fully readable over the background. */
+ *  setting. Initialised from NoopPrefs at app start via [init]. Only the card SURFACE fades — the card's
+ *  CONTENT is drawn above and stays readable over the background. */
 object CardAppearance {
     var opacity by mutableStateOf(1f)
     fun init(context: Context) {
@@ -122,13 +118,11 @@ fun Modifier.frostedCardSurface(
     cornerRadius: Dp = Metrics.cardRadius,
     washStrength: Float = 1f,
 ): Modifier = composed {
-    // "Card transparency" setting: scale the whole glass surface (fill + border + wash) by the user's
-    // opacity so cards fade toward the background. Reading the reactive value here makes the slider
-    // live-preview. Content drawn above the surface is unaffected, so numbers/labels stay readable.
+    // Scale the glass surface (fill + border + wash) by the user's opacity setting so cards
+    // fade toward the background. Content drawn above is unaffected.
     val op = CardAppearance.opacity
     this
-        // Elevation idiom: DARK is flat (the hairline + hue carry the edge). LIGHT raises the white card
-        // off the warm-paper canvas with a soft drop shadow — the hairline alone is too faint on paper.
+        // Dark theme: flat. Light theme: white card raised off canvas with a soft drop shadow.
         .then(
             if (Palette.isLight)
                 Modifier.shadow(elevation = (6f * op).dp, shape = RoundedCornerShape(cornerRadius), clip = false)
@@ -141,17 +135,13 @@ fun Modifier.frostedCardSurface(
             val border = Palette.hairline.copy(alpha = Palette.hairline.alpha * op)
 
             if (tint == null) {
-                // NEUTRAL card (iOS FrostedCardSurface tint == nil): a FLAT raised surface — no vertical
-                // bevel gradient, no accent wash, and a PLAIN hairline border (no accent bias).
+                // NEUTRAL card: flat raised surface with no accent wash or bias.
                 drawRoundRect(color = fill, cornerRadius = corner)
                 drawRoundRect(color = border, cornerRadius = corner, style = Stroke(width = 1.dp.toPx()))
             } else {
-                // TINTED card (iOS parity, 2026-06-23 "synthesis has the old blue style"): a FLAT raised
-                // surface — the SAME WHOOP grey as the neutral card, NO navy bevel gradient — carrying only
-                // a whisper of the domain tint as a diagonal hue wash so it stays in the grey family.
-                // 1) Flat raised fill — identical to the neutral card.
+                // TINTED card: raised surface with a diagonal domain-hue wash over the fill.
                 drawRoundRect(color = fill, cornerRadius = corner)
-                // 2) Faint diagonal accent hue wash over the flat fill (matches iOS FrostedCardSurface ~0.05).
+                // Faint diagonal accent hue wash over the flat fill.
                 drawRoundRect(
                     brush = Brush.linearGradient(
                         colorStops = arrayOf(
@@ -170,11 +160,7 @@ fun Modifier.frostedCardSurface(
         }
 }
 
-// MARK: - NoopCard — the one card surface (Titanium & Gold frosted card, 16dp radius)
-//
-// PUBLIC API is unchanged (modifier, padding, content); an optional [tint] was ADDED
-// (defaulted null) so callers can opt into a per-domain accent wash without breaking
-// existing call sites. Every existing NoopCard re-skins to the navy fill + flat hairline.
+// MARK: - NoopCard — the one card surface
 
 @Composable
 fun NoopCard(
@@ -222,12 +208,11 @@ fun DataPendingNote(title: String, body: String, modifier: Modifier = Modifier) 
     }
 }
 
-// MARK: - SyncingHistoryNote — pulsing "history sync in progress" line (#77)
+// MARK: - SyncingHistoryNote — pulsing "history sync in progress" line
 //
 // Shown above a screen's empty state while the strap's historical offload runs, so a half-loaded
-// screen ("No nights here yet") reads as in-progress rather than final. Shows the honest live
-// signal — chunks pulled so far — never a percent (total pending is unknowable from the protocol,
-// so a determinate bar would lie).
+// screen reads as in-progress rather than final. Shows the honest live signal — chunks pulled so
+// far — never a percent (total pending is unknowable from the protocol).
 
 @Composable
 fun SyncingHistoryNote(chunks: Int, modifier: Modifier = Modifier) {
@@ -282,7 +267,7 @@ fun SectionHeader(
     }
 }
 
-// MARK: - StrandTone (ported from StrandDesign/StatePill.swift)
+// MARK: - StrandTone
 
 enum class StrandTone(val color: Color) {
     Neutral(Palette.textSecondary),
@@ -292,7 +277,7 @@ enum class StrandTone(val color: Color) {
     Critical(Palette.statusCritical),
 }
 
-// MARK: - ConnectionDot — tiny status dot with optional breathing pulse halo
+// MARK: - ConnectionDot — status dot with optional breathing pulse halo
 
 @Composable
 fun ConnectionDot(
@@ -305,11 +290,8 @@ fun ConnectionDot(
         modifier = modifier.size(size),
         contentAlignment = Alignment.Center,
     ) {
-        // PERF (#scroll-jank): only spin up the infinite breathing transition when the dot ACTUALLY pulses.
-        // The transition lived unconditionally here, so every static (non-pulsing) ConnectionDot — and there
-        // are several on Today (each StatePill, source pill, etc.) — kept a running animation-clock
-        // subscription invalidating the frame, for a halo that wasn't even drawn. Hoisting it into a child
-        // that's composed only when `pulsing` means a still dot does zero per-frame work. Identical visuals.
+        // PERF: only spin up the breathing transition when the dot actually pulses.
+        // A still dot composes none of the child below, so it does zero per-frame work.
         if (pulsing) {
             PulsingDotHalo(tone = tone, size = size)
         }
@@ -323,7 +305,7 @@ fun ConnectionDot(
 }
 
 /** The breathing halo behind a LIVE [ConnectionDot]. Isolated so the infinite transition only exists while
- *  the dot is actually pulsing (a still dot creates no animation subscription — the scroll-jank fix). */
+ *  the dot is actually pulsing. */
 @Composable
 private fun PulsingDotHalo(tone: StrandTone, size: Dp) {
     val transition = rememberInfiniteTransition(label = "dot")
@@ -364,12 +346,8 @@ private fun DrawScope.drawCircleScaled(
 
 // MARK: - StatePill — rounded pill with optional leading dot + tinted label
 //
-// The status chip behind SOLID / BUILDING / CALIBRATING / LIVE. The tone owns the hue:
-//   • SOLID       → StrandTone.Accent/Positive — gold dot + gold@.12 fill + gold@.32 border + gold text
-//   • BUILDING    → StrandTone.Warning re-valued to blue #4A90E2 by the theme lane
-//   • CALIBRATING → StrandTone.Neutral — slate #8A94A4 (textTertiary world)
-//   • LIVE        → gold tone + pulsing=true → the ConnectionDot grows a breathing gold halo
-// Fill .12 / border .32 / text full-strength matches the Titanium & Gold spec on every tone.
+// The status chip behind SOLID / BUILDING / CALIBRATING / LIVE. The tone owns the hue.
+// Fill .12 / border .32 / text full-strength.
 
 @Composable
 fun StatePill(
@@ -417,18 +395,17 @@ fun SourceBadge(text: String, tint: Color = Palette.accent, modifier: Modifier =
             text = text.uppercase(),
             style = NoopType.overline.copy(fontSize = 10.sp, letterSpacing = 0.5.sp),
             color = tint,
-            maxLines = 1,                          // #74: e.g. "ON-DEVICE" stays on one line, never wraps the hero
+            maxLines = 1,                          // "ON-DEVICE" stays on one line
             overflow = TextOverflow.Ellipsis,
             textAlign = TextAlign.Center,
         )
     }
 }
 
-// MARK: - TrendChip — a small tinted delta pill with a direction arrow.
+// MARK: - TrendChip — tinted delta pill with a direction arrow.
 //
 // A compact trend pill: an up/down/flat arrow + the delta text, tinted to [color].
-// Inferred direction comes from a leading +/− in the text (else flat). Sits in the
-// corner of a StatTile or beside a metric value. Mirrors StrandDesign's TrendChip.
+// Inferred direction comes from a leading +/− in the text (else flat).
 
 @Composable
 fun TrendChip(text: String, color: Color = Palette.textTertiary, modifier: Modifier = Modifier) {
@@ -436,8 +413,7 @@ fun TrendChip(text: String, color: Color = Palette.textTertiary, modifier: Modif
     val symbol = when {
         t.startsWith("+") || t.startsWith("▲") || t.lowercase().startsWith("up") -> "▲"
         t.startsWith("-") || t.startsWith("−") || t.startsWith("▼") || t.lowercase().startsWith("down") -> "▼"
-        // No sign → a plain magnitude (e.g. a workout's "874 kcal"), not a trend: show NO direction
-        // glyph. Previously this fell to "–", whose leading dash read as a negative ("-874 kcal" — #41).
+        // No sign → plain magnitude, not a trend: show NO direction glyph.
         else -> null
     }
     Row(
@@ -449,24 +425,17 @@ fun TrendChip(text: String, color: Color = Palette.textTertiary, modifier: Modif
         horizontalArrangement = Arrangement.spacedBy(3.dp),
     ) {
         if (symbol != null) Text(symbol, style = NoopType.captionNumber.copy(fontSize = 8.sp, fontWeight = FontWeight.Bold), color = color)
-        // Ellipsize rather than overflow if a caller constrains the chip's width (e.g. the workout
-        // tiles' compactDelta path) — keeps the pill inside its share of the row (#332).
+        // Ellipsize rather than overflow if a caller constrains the chip's width.
         Text(text, style = NoopType.captionNumber, color = color, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
 
 // MARK: - StatTile — uniform fixed-height metric tile
-//
-// PUBLIC API unchanged (label, value, caption, accent, delta, deltaColor); an optional
-// [tint] was ADDED (defaulted to the accent) so each tile reads as part of its colour
-// world via a faint card wash. The delta now renders as a TrendChip.
 
-// MARK: - AutoSizeValue — a single-line value that SHRINKS to fit instead of truncating
+// MARK: - AutoSizeValue — shrinks to fit instead of truncating
 //
-// Compose (BOM 2024.06) has no `TextAutoSize`, and the metric/workout tiles are narrow with a
-// trailing sparkline or kcal chip — so a value like "1h 52m" or a tile number was ellipsizing to
-// "1…" (#319/#332). This steps the font down (to a 0.6× floor, matching the Swift tile's
-// minimumScaleFactor) until the text fits one line, then holds. Resets when the text/style changes.
+// Steps the font down (to a 0.6x floor) until the text fits one line, then holds.
+// Resets when the text/style changes.
 @Composable
 internal fun AutoSizeValue(
     text: String,
@@ -504,9 +473,7 @@ fun StatTile(
     deltaColor: Color = Palette.textTertiary,
     tint: Color? = null,
     // When true, the trailing delta chip yields width to the value instead of taking its full
-    // intrinsic size. Used by the workout tiles, where a wide kcal chip (e.g. "1234 kcal") was
-    // starving the duration column and clipping it to "4…"/"2…" on narrow phones (#332). The
-    // default keeps the sparkline key-metric tiles (Rest/Respiratory/HRV) exactly as they were.
+    // intrinsic size. Used by the workout tiles when space is tight.
     compactDelta: Boolean = false,
 ) {
     // Each tile borrows its accent as a faint card wash, so a metric reads as part of its
@@ -519,8 +486,7 @@ fun StatTile(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                // Value takes priority width and SHRINKS to fit (down to 0.6×) rather than
-                // truncating to "1…", matching the Swift tile's minimumScaleFactor (#319/#332).
+                // Value shrinks to fit (down to 0.6x) rather than truncating.
                 // The chip keeps its intrinsic size at the end.
                 AutoSizeValue(
                     value,
@@ -530,9 +496,7 @@ fun StatTile(
                 )
                 if (delta != null) {
                     Spacer(Modifier.width(8.dp))
-                    // In compact mode the chip shares the row's remaining space (fill = false, so it
-                    // never grows past its content) — this guarantees the weighted value column keeps
-                    // its half and the duration reads in full beside the kcal chip (#332).
+                    // Compact mode: chip fills available width without growing past its content.
                     TrendChip(
                         text = delta,
                         color = deltaColor,
@@ -552,9 +516,6 @@ fun StatTile(
 }
 
 // MARK: - InsightCard
-//
-// PUBLIC API unchanged; an optional [tint] was ADDED (defaulted to the status colour)
-// so the coaching card sits in the same colour world as the score it summarises.
 
 @Composable
 fun InsightCard(
@@ -583,16 +544,12 @@ fun <T> SegmentedPillControl(
     label: (T) -> String,
     onSelect: (T) -> Unit,
     modifier: Modifier = Modifier,
-    // Per-segment availability (#943): a disabled segment stays VISIBLE (dimmed, not clickable) so the
-    // control can teach that an option exists before it is usable, e.g. trend ranges that unlock as
-    // history builds. Defaulted so every existing call site is untouched.
+    // Disabled segment stays visible (dimmed, not clickable) so it can teach that an option exists
+    // before it is usable.
     enabled: (T) -> Boolean = { true },
 ) {
     val outerShape = RoundedCornerShape(50)
-    // The track is a fixed-height pill; the selected pill FILLS that height so its inset is EQUAL on
-    // every side (container padding 4, pill horizontal padding only). The old compact pill inside a
-    // taller row left more vertical margin than horizontal — it read as off-centre. Mirrors iOS's
-    // SegmentedPillControl refresh (segment height 36, pill fills it for an even inset).
+    // Track is a fixed-height pill; the selected pill fills that height so its inset is equal on every side.
     Row(
         modifier = modifier
             .height(36.dp)
@@ -641,25 +598,18 @@ fun <T> SegmentedPillControl(
     }
 }
 
-// MARK: - BevelGauge (NEW) — the layered ring gauge primitive
+// MARK: - BevelGauge — the layered ring gauge primitive
 //
 // The shared instrument behind RecoveryRing and StrainGauge: an open gauge with
-//   • a soft frosted inner disc (subtle radial fill, hairline rim)
-//   • a faint full-span track ring
-//   • a gradient-stroked progress arc (sweep gradient over the domain ramp)
-//   • a soft outer BLOOM whose intensity scales with the fill (breathing pulse)
-//   • a GLOWING end-cap dot at the arc tip (coloured halo + white core)
-//   • a centred big bold number with an optional wordmark / caption / state word
+// a frosted inner disc, full-span track ring, gradient-stroked progress arc, outer bloom,
+// end-cap dot, and centred number with optional wordmark/caption/state word.
 //
 // It owns no domain logic — callers pass the fraction, the ramp stops, the tip colour
-// and the centre read-out strings. RecoveryRing / StrainGauge keep their own public
-// signatures and delegate here, so every screen re-skins without a call-site change.
+// and the centre read-out strings. RecoveryRing / StrainGauge delegate here.
 //
-// The geometry defaults to the Bevel 240° instrument (gap at the bottom). Three optional
-// params (defaulted, so every existing call site is untouched) let the RecoveryRing brand
-// glyph diverge: [startDeg]/[spanDeg] override the arc (it uses −90° / ~288° = open ~80%
-// ring, clockwise), [coreDot] paints a SOLID gold core dot at the centre, and [wordmark]
-// stamps a micro ALL-CAPS "NOOP" above the number. Mirrors StrandDesign/BevelGauge.swift.
+// Default geometry: Bevel 240° instrument (gap at bottom). Optional [startDeg]/[spanDeg]
+// override the arc, [coreDot] paints a solid gold core dot, [wordmark] stamps a micro
+// "NOOP" above the number.
 
 @Composable
 fun BevelGauge(
@@ -686,9 +636,8 @@ fun BevelGauge(
         animationSpec = tween(Motion.durationSlow, easing = Motion.drawIn),
         label = "ringFill",
     )
-    // Outer bloom — a faint, STATIC glow. The breathing pulse is gone (matching iOS): it sits calm so
-    // the ring reads flat/Material, not glowing. Strength tracks the iOS bloomOpacity (0.05 + 0.13·frac)
-    // — a restrained additive halo, well down from the old (0.16 + 0.40·frac) pulse.
+    // Outer bloom — a faint, static glow so the ring reads flat/Material.
+    // Strength = 0.05 + 0.13·frac.
     val bloomOpacity = 0.05f + 0.13f * frac
     val sweep = Brush.sweepGradient(*stops.toTypedArray())
 
@@ -699,17 +648,9 @@ fun BevelGauge(
         Box(
             modifier = Modifier
                 .size(diameter)
-                // PERF (#scroll-jank): the frosted inner disc + its hairline rim — and crucially the
-                // radial-gradient disc Brush they need — are STATIC (they read neither the animated
-                // fraction nor any scroll state) yet shared one drawBehind with the fraction-driven arc,
-                // so they were re-issued every animation/scroll frame. Hoist JUST the disc + rim into
-                // drawWithCache (keyed on the implicit size + lineWidth + the palette tones) so they
-                // rasterise once and replay as a texture. The track stays in the per-frame layer because
-                // the original z-order is disc → rim → BLOOM → track → fill arc → cap, i.e. the bloom (a
-                // fraction-driven, per-frame layer) sits BETWEEN the rim and the track — caching the track
-                // above the bloom would move it over the bloom and change the pixels. The remaining
-                // per-frame layer is just the track + bloom + fill arc + cap + core (a handful of
-                // drawArc/drawCircle calls), no longer the expensive radial disc. Pixel-identical.
+                // PERF: hoist the static disc + rim into drawWithCache so they rasterise once and
+                // replay as a texture. The track stays in the per-frame layer (bloom sits between
+                // rim and track in z-order, so caching the track above it would change pixels).
                 .drawWithCache {
                     val stroke = lineWidth.toPx()
                     val radius = (min(size.width, size.height) - stroke) / 2f
@@ -727,7 +668,7 @@ fun BevelGauge(
                     onDrawBehind {
                         // Frosted inner disc behind the arc — a glassy "well".
                         drawCircle(brush = discBrush, radius = discRadius, center = center)
-                        // Faint hairline rim around the inner disc (iOS innerDisc strokeBorder hairline 0.5).
+                        // Faint hairline rim around the inner disc (alpha 0.5).
                         drawCircle(
                             color = Palette.hairline.copy(alpha = 0.5f),
                             radius = discRadius,
@@ -736,9 +677,8 @@ fun BevelGauge(
                         )
                     }
                 }
-                // The per-frame layer: bloom + full-span track + fill arc + end cap + brand core, in the
-                // ORIGINAL order. Drawn AFTER (over) the cached disc/rim. Reads animatedFraction so it
-                // re-issues per frame, but it is only a few drawArc/drawCircle calls now.
+                // The per-frame layer: bloom + full-span track + fill arc + end cap + core.
+                // Reads animatedFraction so it re-issues per frame.
                 .drawBehind {
                     val stroke = lineWidth.toPx()
                     val radius = (min(size.width, size.height) - stroke) / 2f
@@ -764,9 +704,7 @@ fun BevelGauge(
                         )
                     }
 
-                    // Full-span track — the carved inset "well" the arc sits in (iOS: solid surfaceInset,
-                    // full opacity, same round cap), not a faint hairline. Stays here (over the bloom,
-                    // under the fill arc) to preserve the exact original z-order.
+                    // Full-span track — the carved inset "well" the arc sits in.
                     drawArc(
                         color = Palette.surfaceInset,
                         startAngle = startDeg,
@@ -789,9 +727,7 @@ fun BevelGauge(
                             style = sweepStroke,
                         )
 
-                        // Clean Material end-cap (iOS BevelGauge.endCap): a single small tipCore dot with a
-                        // faint tip-coloured overlay — half the old size, no saturated full-colour disc and
-                        // no hard white centre pip ("the dot" the maintainer flagged).
+                        // Clean Material end-cap: a single small tipCore dot with a faint tip-coloured overlay.
                         val tipAngle = Math.toRadians((startDeg + spanDeg * animatedFraction).toDouble())
                         val bead = Offset(
                             center.x + radius * cos(tipAngle).toFloat(),
@@ -801,10 +737,8 @@ fun BevelGauge(
                         drawCircle(color = tipColor.copy(alpha = 0.35f), radius = stroke * 0.35f, center = bead)
                     }
 
-                    // Brand glyph core: a small solid gold dot at the very centre — but ONLY in the
-                    // glyph-only lock-up (logo / nav). When a number is shown the dot sits behind the
-                    // digits and muddies them (community feedback at the v3 launch), so suppress it
-                    // whenever showsLabel — leaving a clean ring + number + micro-NOOP wordmark.
+                    // Brand glyph core: gold dot at the centre, suppressed when a number is shown
+                    // (it would muddy the digits).
                     if (coreDot != null && !showsLabel) {
                         drawCircle(color = coreDot, radius = stroke * 0.40f, center = center)
                     }
@@ -834,7 +768,7 @@ fun BevelGauge(
                     color = Palette.textPrimary,
                 )
                 if (captionText != null) {
-                    // Caption scales WITH the gauge (iOS: rounded(diameter*0.085, .medium)).
+                    // Caption scales with the gauge.
                     Text(
                         text = captionText,
                         style = NoopType.footnote.copy(
@@ -845,9 +779,8 @@ fun BevelGauge(
                     )
                 }
                 if (stateText != null) {
-                    // State word scales with the gauge so it never overflows the small three-up rings
-                    // (#403): stateSize = min(11, diameter*0.085), with the overline tracking scaled to
-                    // match. Pinned to the original 11pt on the large solo-hero rings (≥130dp).
+                    // State word scales with the gauge so it never overflows the small three-up rings:
+                    // stateSize = min(11, diameter*0.085), with the overline tracking scaled to match.
                     val stateSize = minOf(11f, diameter.value * 0.085f)
                     Text(
                         text = stateText,
@@ -873,26 +806,20 @@ fun BevelGauge(
     }
 }
 
-// MARK: - RecoveryRing (Titanium & Gold brand glyph) — THE signature Charge / Rest component
+// MARK: - RecoveryRing — THE signature Charge / Rest component
 //
-// PUBLIC API is unchanged (score, supporting, diameter, lineWidth, showsLabel); it now
-// delegates its visuals to [BevelGauge]. An optional [valueFormat] was ADDED (defaulted)
-// so the Rest hero can show "Rest 87" while Charge keeps the bare number — same shape as
-// the macOS RecoveryRing.valueFormat. The state word + tip colour sample the recovery (gold)
-// ramp. Unlike the Bevel 240° gauge it draws the BRAND GLYPH: an open ~80% ring starting at
-// −90° (12 o'clock) clockwise, a solid gold centre core dot and a micro "NOOP" wordmark.
+// Delegates to BevelGauge. Draws the brand glyph: an open ~80% ring starting at 12 o'clock
+// clockwise, a solid gold centre core dot and a micro "NOOP" wordmark.
 
-// MARK: - GlowRing — crisp WHOOP-style score ring (Compose parity with iOS StrandDesign.GlowRing, #23)
+// MARK: - GlowRing — crisp WHOOP-style score ring
 //
-// A clean solid arc with round caps over a clearly-visible full-circle track, a bold centred number
-// that counts up from 0, and a tight low-alpha glow hugging the arc. The arc springs in from 12
-// o'clock and re-animates when the value changes (day nav). minSdk-safe (no RenderEffect blur).
+// Clean solid arc over a full-circle track, bold centred number counting up from 0,
+// and a tight low-alpha glow hugging the arc. Arc springs from 12 o'clock.
 
 /**
  * The centre-number text style for a ring of the given [diameter] — the house numeral at `diameter * 0.36`,
- * Bold. The ONE source of truth for a ring's centre number, shared by [GlowRing]'s live label and the
- * carried-value overlay on the Today hero so a carried Charge, a clean value and (at the headline size)
- * "No Data" read with one consistent size + weight. Mirrors iOS `GlowRing.centerFont(diameter:)`.
+ * Bold. Shared by [GlowRing]'s live label and the carried-value overlay on the Today hero so a carried
+ * Charge, a clean value and "No Data" read with one consistent size + weight.
  */
 fun glowRingCenterTextStyle(diameter: Dp, color: Color = Palette.textPrimary): TextStyle =
     TextStyle(fontWeight = FontWeight.Bold, fontSize = (diameter.value * 0.36f).sp, color = color)
@@ -926,12 +853,8 @@ fun GlowRing(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                // PERF (#scroll-jank): the full-circle TRACK is static (it reads no animation state), but
-                // it shared one Canvas draw lambda with the fraction-driven arcs, so it was re-issued on
-                // every animation/scroll frame. Hoist the track into drawWithCache — keyed on the implicit
-                // size + the stroke + the track tone — so it rasterises ONCE and replays; only the glow +
-                // crisp arc re-draw per frame (the drawBehind below). Pixel-identical: same circle geometry,
-                // same round cap, same track-under-arc order.
+                // PERF: hoist the static full-circle track into drawWithCache so it rasterises once
+                // and replays; only the glow + crisp arc re-draw per frame.
                 .drawWithCache {
                     val stroke = lineWidth.toPx()
                     val inset = stroke / 2f
@@ -951,20 +874,16 @@ fun GlowRing(
                     val stroke = lineWidth.toPx()
                     val inset = stroke / 2f
                     // Always draw a CIRCLE: size the arc off the smaller box dimension and centre it, so a
-                    // non-square box (e.g. a hero ring the Row squeezes horizontally) never renders an ellipse.
+                    // non-square box never renders an ellipse.
                     val d = minOf(size.width, size.height)
                     val arcSize = Size(d - stroke, d - stroke)
                     val tl = Offset((size.width - d) / 2f + inset, (size.height - d) / 2f + inset)
                     val sweep = animFraction.coerceIn(0f, 1f) * 360f
-                    // Only draw the arc (+ its glow) when there's ACTUAL progress. A near-zero round-capped
-                    // arc renders as a full visible dot at 12 o'clock on Android's Canvas (unlike iOS's
-                    // sub-pixel `trim`), which read as the unwanted "dot" on empty / No-Data / Calibrating
-                    // rings the maintainer flagged. Below the threshold we show just the clean full-circle
-                    // track — exactly like the iOS GlowRing's empty state.
+                    // Only draw the arc (+ its glow) when there's actual progress. A near-zero round-capped
+                    // arc renders as a visible dot at 12 o'clock on Android's Canvas.
                     if (animFraction > 0.001f) {
-                        // Tight glow — a wider, low-alpha arc under the crisp one (minSdk-safe, no RenderEffect).
-                        // Gated on the dark canvas only, mirroring iOS AdditiveBloom hiding on the light field
-                        // (on white it just smears the edge); the crisp arc carries the ring on its own there.
+                        // Tight glow — a wider, low-alpha arc under the crisp one. Gated on the dark canvas only;
+                        // on the light field the crisp arc carries the ring on its own.
                         if (!Palette.isLight) {
                             drawArc(
                                 color = color.copy(alpha = 0.45f), startAngle = -90f, sweepAngle = sweep, useCenter = false,
@@ -1019,16 +938,10 @@ fun RecoveryRing(
     )
 }
 
-// MARK: - StrainGauge (NEW) — the Effort hero gauge
+// MARK: - StrainGauge — the Effort hero gauge
 //
-// The Effort sibling of RecoveryRing: a [BevelGauge] over the amber strain ramp. The arc fills to
-// strain/outOf, with an "of N" caption naming the scale max. `outOf` is the maximum of the scale the
-// passed [strain] is ON (default 21, WHOOP's Day-Strain axis). The Effort hero passes the value already
-// converted to the user's selected display scale (#313) plus its matching max (100 or 21) and an optional
-// [valueText] override for the centre numeral, so the arc, number and caption all read on one scale rather
-// than being hardcoded to 0–21. Stays scale-agnostic — the caller owns the conversion (EffortScale is an
-// app concern). Mirrors StrandDesign's StrainGauge so the hero row reads as three matched instruments
-// (Charge gold · Effort amber · Rest blue).
+// The Effort sibling of RecoveryRing: a BevelGauge over the amber strain ramp.
+// Caller owns the scale conversion; outOf defaults to 21 (WHOOP's Day-Strain axis).
 
 @Composable
 fun StrainGauge(
@@ -1058,13 +971,11 @@ fun StrainGauge(
     )
 }
 
-// MARK: - ScenicHeroBackground (NEW) — premium hero backdrop
+// MARK: - ScenicHeroBackground — premium hero backdrop
 //
-// A Canvas-drawn radial deep blue-black gradient (warm-lit center → near-black edge)
-// sprinkled with a faint DETERMINISTIC starfield, optionally tinted toward a domain's
-// glow, with a bottom fade so content sits cleanly over it. Deterministic (fixed star
-// positions) so it never flickers; decorative, so hidden from accessibility by the
-// caller's container. Mirrors StrandDesign's ScenicHeroBackground.
+// Canvas-drawn radial deep blue-black gradient with a faint deterministic starfield
+// (fixed star positions so it never flickers), optionally tinted toward a domain's
+// glow, with a bottom fade so content sits cleanly over it.
 
 @Composable
 fun ScenicHeroBackground(
@@ -1099,9 +1010,8 @@ fun ScenicHeroBackground(
                 )
             }
 
-            // Deterministic starfield — fixed positions/sizes so it can't flicker. A night-sky field
-            // only belongs on the dark hero; on the warm-paper light field it reads as dirt, so it's
-            // suppressed there (the radial + domain bloom carry the light hero alone).
+            // Deterministic starfield — fixed positions/sizes so it can't flicker. Only on dark theme;
+            // on light theme the radial + domain bloom carry the hero alone.
             if (!Palette.isLight) {
                 val wi = maxOf(1, w.toInt())
                 val topBand = maxOf(1, (h * 0.55f).toInt())
@@ -1136,7 +1046,7 @@ fun ScenicHeroBackground(
     }
 }
 
-// MARK: - ScreenScaffold (ported from Strand/Screens/ScreenScaffold.swift)
+// MARK: - ScreenScaffold
 //
 // Standard scrollable screen container: a title + optional subtitle header over the
 // dark surface, then a left-aligned content column with 28dp screen padding.
@@ -1146,25 +1056,19 @@ fun ScreenScaffold(
     title: String?,
     subtitle: String? = null,
     modifier: Modifier = Modifier,
-    // Top inset above the content. Defaults to the standard 28dp screen padding; a screen that
-    // supplies its own compact header (Today, title = null) can pass a smaller value to tighten the
-    // gap above its first element — Compose forbids negative padding, so this is how iOS's
-    // `.padding(top: -16)` tightening is expressed.
+    // Top inset above the content. Defaults to 28dp; a screen with its own compact header can
+    // pass a smaller value to tighten the gap above its first element.
     topPadding: Dp = 28.dp,
     leading: (@Composable () -> Unit)? = null,
     trailing: (@Composable () -> Unit)? = null,
-    // Optional full-bleed view drawn behind the scroll content at the TOP of the screen (e.g. Today's
-    // day-cycle scene). Defaults to null so other screens stay on the flat canvas; null draws nothing.
-    // Mirrors the iOS ScreenScaffold `topBackground` slot — the scene is a SCREEN-level backdrop the
-    // cards float OVER, not a card-clipped hero atmosphere.
+    // Optional full-bleed view drawn behind the scroll content at the top of the screen.
+    // The scene is a screen-level backdrop the cards float over.
     topBackground: (@Composable () -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    // The scrolling content column. Its OUTER modifier differs by path: with no topBackground it is the
-    // original root Column (the caller's `modifier` + an opaque-canvas background — byte-for-byte the old
-    // layout); with a topBackground the canvas + scene paint in the wrapping Box's background (below) and
-    // the column stays TRANSPARENT so the scene shows through behind the scroll content. Pulled out so the
-    // two paths share one body.
+    // The scrolling content column. Its outer modifier differs by path:
+    // - No topBackground: root Column with opaque-canvas background
+    // - With topBackground: transparent column so the scene shows through behind scroll content.
     val columnModifier: Modifier =
         if (topBackground == null) {
             modifier.fillMaxWidth().background(Palette.surfaceBase)
@@ -1176,16 +1080,11 @@ fun ScreenScaffold(
             modifier = columnModifier
                 .verticalScroll(rememberScrollState())
                 .padding(start = 28.dp, end = 28.dp, top = topPadding, bottom = 28.dp),
-            // #765: one shared inter-card spacing token (was a bare `20.dp`), so the eager + lazy scaffolds
-            // and every screen through them keep the SAME uniform gap between top-level cards.
+            // One shared inter-card spacing token, so all scaffolds keep the same gap between top-level cards.
             verticalArrangement = Arrangement.spacedBy(Metrics.screenRowSpacing),
         ) {
-            // Compact top bar: an optional LEADING action (e.g. the Today profile avatar, mirroring iOS's
-            // avatar-leading header), the screen title/subtitle, then an optional trailing action (e.g. the
-            // Support heart on Today). Mirrors the iOS ScreenScaffold slots from the WHOOP redesign (#23).
-            // When BOTH title and subtitle are null the large-title header block is omitted entirely, so a
-            // screen can supply its own custom header in `content` (iOS Today's compact top bar) — mirroring
-            // the iOS ScreenScaffold which only renders the header `if title != nil || subtitle != nil`.
+            // Compact top bar: optional leading action, screen title/subtitle, optional trailing action.
+            // When both title and subtitle are null the header block is omitted entirely.
             if (title != null || subtitle != null) {
                 Row(verticalAlignment = Alignment.Top) {
                     if (leading != null) {
@@ -1211,16 +1110,13 @@ fun ScreenScaffold(
     }
 
     if (topBackground == null) {
-        // Unchanged path: the column IS the root, with the caller's `modifier` + opaque canvas background
-        // applied to it directly — byte-for-byte the previous layout (no wrapping Box).
+        // No scene path: the column is the root, with the caller's modifier and opaque canvas background.
         column()
     } else {
-        // Scene-backed path (Today): the wrapping Box paints the flat canvas, then the SCREEN-level scene
-        // backdrop over it, anchored to the TOP and bled UP behind the status bar so it reads as a
-        // full-bleed scenic header; the (transparent) scroll content floats OVER both. Mirrors the iOS
-        // scaffold's `.background(alignment: .top){ ZStack { surfaceBase; topBackground }.ignoresSafeArea() }`.
-        // Pull the scene up by the status-bar inset (the Scaffold already pushed this content below the
-        // bar), so the scene bleeds behind the status bar rather than starting under it.
+        // Scene-backed path: the wrapping Box paints the flat canvas, then the screen-level scene
+        // backdrop over it, anchored to the top and bled behind the status bar; the transparent
+        // scroll content floats over both. The scene is offset by the status-bar inset so it
+        // bleeds behind the status bar rather than starting under it.
         val statusBarTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
         Box(modifier = modifier.fillMaxSize().background(Palette.surfaceBase)) {
             Box(
@@ -1228,12 +1124,8 @@ fun ScreenScaffold(
                     .fillMaxWidth()
                     .align(Alignment.TopCenter)
                     .offset(y = -statusBarTop)
-                    // PERF (#scroll-jank): promote the static scene backdrop to its OWN compositing layer so
-                    // its gradient + bitmap rasterise ONCE into a render node and are reused as a texture on
-                    // every scroll frame, instead of the parent re-issuing the scene's `drawBehind` draw each
-                    // time the (sibling) scroll column composites over it. The backdrop reads no scroll state
-                    // and never moves, so an empty `graphicsLayer {}` is purely an isolation hint —
-                    // appearance-identical. Mirrors keeping the iOS scene as a static screen-level backdrop.
+                    // PERF: promote the static scene backdrop to its own compositing layer so it
+                    // rasterises once and replays as a texture on every scroll frame.
                     .graphicsLayer { },
             ) {
                 topBackground()
@@ -1245,45 +1137,32 @@ fun ScreenScaffold(
 
 // MARK: - LazyScreenScaffold
 //
-// A lazy twin of [ScreenScaffold] for screens whose content ends in a long list. The
-// eager [ScreenScaffold] above builds every child up-front; with an 800+ day imported
-// history that froze the app (and tripped Android's "close unresponsive app?" prompt)
-// when Intelligence "ALL" was tapped (#345). LazyColumn builds only the rows on screen.
+// A lazy twin of [ScreenScaffold] for screens with long lists. LazyColumn builds only
+// the rows on screen instead of every child up-front.
 //
-// The content slot is a [LazyListScope] (item { } / items(...)) rather than a ColumnScope,
-// so callers stay explicit about what is a one-off header vs the lazily-built list — and
-// every existing ScreenScaffold caller is untouched. The header, 28dp screen padding and
-// the shared Metrics.screenRowSpacing inter-item gap match ScreenScaffold so the two read identically.
+// Content slot is a [LazyListScope] so callers stay explicit about headers vs the
+// lazily-built list. Header, 28dp screen padding and inter-item gap match ScreenScaffold.
 
 @Composable
 fun LazyScreenScaffold(
     title: String?,
     subtitle: String? = null,
     modifier: Modifier = Modifier,
-    // Mirrors ScreenScaffold: a screen with a scene-backed header (Today-style) can tighten the gap
-    // above its first row, and supply leading/trailing header actions + a screen-level scene backdrop.
-    // All defaulted, so the existing flat callers (Intelligence) are byte-for-byte untouched.
+    // Top inset above content. Defaults to 28dp.
     topPadding: Dp = 28.dp,
-    // The inter-row vertical spacing between top-level items. Defaults to the shared `screenRowSpacing`
-    // (20dp) so every existing caller is byte-for-byte untouched; the liquid Today passes a tighter value
-    // to match the iOS Today's compact `VStack(spacing: 12)` section rhythm (the maintainer's "iOS is
-    // tighter/slicker" note). Scoped per-scaffold so no other screen's rhythm shifts.
+    // Inter-row vertical spacing between top-level items. Defaults to screenRowSpacing; liquid Today
+    // passes a tighter value for a more compact rhythm.
     rowSpacing: Dp = Metrics.screenRowSpacing,
     leading: (@Composable () -> Unit)? = null,
     trailing: (@Composable () -> Unit)? = null,
-    // Optional full-bleed scene drawn behind the scroll content at the TOP of the screen — the SAME slot
-    // contract as ScreenScaffold.topBackground. Null draws nothing (the flat-canvas path). When supplied,
-    // the scene paints in the wrapping Box (promoted to its own compositing layer) and the LazyColumn is
-    // transparent so the scene shows through behind the rows. Mirrors the iOS scaffold's topBackground.
+    // Optional full-bleed scene behind the scroll content — same slot contract as ScreenScaffold.topBackground.
+    // Null draws nothing; when supplied the LazyColumn is transparent so the scene shows through.
     topBackground: (@Composable () -> Unit)? = null,
-    // When true, the [topBackground] fills the WHOLE scaffold (viewport) instead of the top band — the
-    // "sky behind cards" mode, so a full-height backdrop shows behind every scrolling row.
+    // When true, the [topBackground] fills the whole scaffold viewport instead of the top band.
     fullBleedBackground: Boolean = false,
     content: LazyListScope.() -> Unit,
 ) {
-    // The header row: optional leading action, the title/subtitle, optional trailing action. Omitted
-    // entirely when both title and subtitle are null (a screen supplying its own custom header). Matches
-    // ScreenScaffold's header block so the eager + lazy scaffolds read identically.
+    // Header row: optional leading/trailing actions + title/subtitle. Omitted when all are null.
     val header: (@Composable () -> Unit)? =
         if (title != null || subtitle != null || leading != null || trailing != null) {
             {
@@ -1310,10 +1189,8 @@ fun LazyScreenScaffold(
             null
         }
 
-    // The lazy list itself. Its background + the contentPadding differ by path so the scene-backed list
-    // is transparent (scene shows through) while keeping the SAME 28dp screen inset + shared row spacing as
-    // the eager ScreenScaffold. The top inset honours [topPadding] (so a custom-header screen can tighten
-    // the gap above the first row, exactly like ScreenScaffold's `padding(top = topPadding)`).
+    // The lazy list itself. Its background + contentPadding differ by path so the scene-backed list
+    // is transparent while keeping the same 28dp inset + row spacing as ScreenScaffold.
     val listModifier: Modifier =
         if (topBackground == null) {
             modifier.fillMaxWidth().background(Palette.surfaceBase)
@@ -1324,9 +1201,7 @@ fun LazyScreenScaffold(
         LazyColumn(
             modifier = listModifier,
             contentPadding = PaddingValues(start = 28.dp, top = topPadding, end = 28.dp, bottom = 28.dp),
-            // #765: the shared inter-card spacing token by default (Today/Explore + the eager screens share
-            // one uniform card rhythm); a caller may pass a tighter [rowSpacing] (the liquid Today does, for
-            // the iOS-compact section rhythm).
+            // Shared inter-card spacing token by default; caller may pass a tighter rowSpacing.
             verticalArrangement = Arrangement.spacedBy(rowSpacing),
         ) {
             if (header != null) {
@@ -1339,18 +1214,14 @@ fun LazyScreenScaffold(
     if (topBackground == null) {
         list()
     } else {
-        // Scene-backed path: the wrapping Box paints the flat canvas + the screen-level scene backdrop
-        // (anchored TOP, bled up behind the status bar), and the transparent LazyColumn floats over both.
-        // Identical scene treatment to ScreenScaffold — including promoting the static backdrop to its own
-        // compositing layer (an empty graphicsLayer {}) so the scene rasterises once and replays as a
-        // texture on every scroll frame instead of being re-issued under the scrolling rows.
+        // Scene-backed path: wrapping Box paints canvas + scene backdrop, transparent LazyColumn
+        // floats over both. Same treatment as ScreenScaffold.
         val statusBarTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
         Box(modifier = modifier.fillMaxSize().background(Palette.surfaceBase)) {
             Box(
                 modifier = (
                     if (fullBleedBackground) {
-                        // Sky-behind-cards: the backdrop fills the whole viewport (covers under the status
-                        // bar already), so the transparent rows scroll OVER a full-height sky.
+                        // Sky-behind-cards: backdrop fills the whole viewport, rows scroll over it.
                         Modifier.fillMaxSize()
                     } else {
                         // Default: a top-anchored band bled up behind the status bar.
@@ -1365,11 +1236,9 @@ fun LazyScreenScaffold(
     }
 }
 
-// MARK: - Stepper field (Compose has no Stepper — tabular value + round −/+ buttons)
+// MARK: - Stepper field — tabular value + round −/+ buttons
 //
-// The canonical profile editor used by both Settings and onboarding. Reuse this
-// rather than forking sliders or bespoke button sizes, so every numeric profile
-// field reads and behaves identically across the app.
+// The canonical profile editor used by both Settings and onboarding.
 
 @Composable
 fun StepperField(
@@ -1415,7 +1284,7 @@ fun StepperButton(symbol: String, onClick: () -> Unit, label: String) {
     }
 }
 
-// MARK: - Small interaction helper (clickable without ripple, for pill segments)
+// MARK: - clickable without ripple, for pill segments
 
 @Composable
 private fun Modifier.clickableNoRipple(onClick: () -> Unit): Modifier =
@@ -1427,9 +1296,7 @@ private fun Modifier.clickableNoRipple(onClick: () -> Unit): Modifier =
 
 // MARK: - Shared reusable components (deduplicated from Settings/Automations/TestCentre)
 
-/** A settings section card — the one shared wrapper for every settings-group card across the app.
- *  Replaces the identical private composables that lived in SettingsScreen, AutomationsScreen and
- *  TestCentreScreen. */
+/** A settings section card — the one shared wrapper for every settings-group card across the app. */
 @Composable
 fun NoopSettingsSection(
     icon: ImageVector,
@@ -1502,8 +1369,7 @@ fun NoopToggleRow(
     }
 }
 
-/** The one confirm/cancel dialog used across the app. 18 call sites consolidated into a single
- *  composable matching the existing style (surfaceOverlay container, title2 title, subhead body). */
+/** The one confirm/cancel dialog used across the app. */
 @Composable
 fun NoopConfirmDialog(
     title: String,
@@ -1542,4 +1408,16 @@ fun CloseButton(onClick: () -> Unit, modifier: Modifier = Modifier.size(36.dp)) 
     IconButton(onClick = onClick, modifier = modifier) {
         Icon(Icons.Filled.Close, contentDescription = "Close", tint = Palette.textSecondary)
     }
+}
+
+/** Hairline divider row used inside settings/automation cards. */
+@Composable
+fun RowDivider() {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(1.dp)
+            .padding(vertical = 4.dp)
+            .background(Palette.hairline),
+    )
 }

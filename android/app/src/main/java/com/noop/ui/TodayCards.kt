@@ -50,7 +50,7 @@ import java.util.Locale
 import kotlin.math.abs
 import kotlin.math.roundToInt
 
-// The Vitality vessel purple (#9b7bff) — no exact Palette token in this theme, so a fixed brand literal
+// The Vitality vessel purple (b7bff) — no exact Palette token in this theme, so a fixed brand literal
 // matching the iOS liquid Today's `liquidPurple` (Color(.sRGB, red:0x9b, green:0x7b, blue:0xff)). Used by
 // the mini "Your cards" vessel so Vitality reads the same purple as iOS.
 private val LIQUID_PURPLE: Color = Color(red = 0x9b / 255f, green = 0x7b / 255f, blue = 0xff / 255f, alpha = 1f)
@@ -88,7 +88,7 @@ internal fun YourCardsSection(
 ) {
     Box(modifier = Modifier.fillMaxWidth().staggeredAppear(2)) {
         Column(verticalArrangement = Arrangement.spacedBy(Metrics.gap)) {
-            // Header: "YOUR CARDS" overline + a right-aligned blue CUSTOMISE action (the WHOOP ✎ affordance).
+ // Header: "YOUR CARDS" overline + a right-aligned blue CUSTOMISE action (the WHOOP ✎ affordance).
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Overline("Your cards", modifier = Modifier.weight(1f))
                 TextButton(
@@ -128,7 +128,7 @@ internal fun YourCardsSection(
                         hydrationTotalMl = hydrationTotalMl,
                         hydrationGoalMl = hydrationGoalMl,
                     ),
-                    // The mini liquid vessel's fill — the SAME per-card fraction iOS `liquidCard` uses.
+ // The mini liquid vessel's fill — the SAME per-card fraction iOS `liquidCard` uses.
                     fraction = dashboardCardFraction(
                         card = card,
                         day = day,
@@ -141,14 +141,14 @@ internal fun YourCardsSection(
                         estimatedStepsForDay = estimatedStepsForDay,
                     ),
                     tint = dashboardCardTint(card),
-                    // #110: label the sleep row with its source + night (this section renders at offset 0
-                    // only, so it IS last night), so a WHOOP-imported figure is never silently shown as
-                    // "last night" with no provenance. iOS TodayView.sleepSourceSubtitle twin.
+ // : label the sleep row with its source + night (this section renders at offset 0
+ // only, so it IS last night), so a WHOOP-imported figure is never silently shown as
+ // "last night" with no provenance. iOS TodayView.sleepSourceSubtitle twin.
                     subtitleOverride = sleepSourceSubtitle(card, day),
-                    // #706/#684: every card now opens its OWN detail, matching iOS. The Stress card -> Stress;
-                    // the overnight vitals (HRV / Resting HR / Respiratory / SpO₂ / Skin Temp) + Fitness age /
-                    // Vitality / Steps / Calories -> each metric's focused trend (vital_detail/<key>, the iOS
-                    // metricDetail twin); Sleep -> Sleep; Hydration -> Hydration. Whole row is the button.
+ // /: every card now opens its OWN detail, matching iOS. The Stress card -> Stress;
+ // the overnight vitals (HRV / Resting HR / Respiratory / SpO₂ / Skin Temp) + Fitness age /
+ // Vitality / Steps / Calories -> each metric's focused trend (vital_detail/<key>, the iOS
+ // metricDetail twin); Sleep -> Sleep; Hydration -> Hydration. Whole row is the button.
                     onClick = dashboardCardDestination(
                         card = card,
                         onOpenStress = onOpenStress,
@@ -163,14 +163,14 @@ internal fun YourCardsSection(
     }
 }
 
-/** #110: the sleep row's value is `totalSleepMin` — WHOOP's imported TST, which can legitimately differ
- *  from the Sleep tab's on-device re-staged night (WHOOP CSV + Apple Health both imported). Label the row
- *  with its source (the SAME `daySourceBadge` winner the Sleep tab's `MainSleepFooter` uses) + "last
- *  night" — `YourCardsSection` renders at offset 0 only, so the row IS last night — so a WHOOP figure is
- *  never silently shown as "last night" with no provenance. null → the card keeps its static subtitle
- *  (not the sleep card, or no banked sleep). Twin of iOS `TodayView.sleepSourceSubtitle`; the source
- *  mechanism differs per platform (Android keys on the day's session source, iOS on `importedSleep`),
- *  exactly as the two Sleep-tab badges already do, so the label — not the wiring — is what stays in parity. */
+/** : the sleep row's value is `totalSleepMin` — WHOOP's imported TST, which can legitimately differ
+ * from the Sleep tab's on-device re-staged night (WHOOP CSV + Apple Health both imported). Label the row
+ * with its source (the SAME `daySourceBadge` winner the Sleep tab's `MainSleepFooter` uses) + "last
+ * night" — `YourCardsSection` renders at offset 0 only, so the row IS last night — so a WHOOP figure is
+ * never silently shown as "last night" with no provenance. null → the card keeps its static subtitle
+ * (not the sleep card, or no banked sleep). Twin of iOS `TodayView.sleepSourceSubtitle`; the source
+ * mechanism differs per platform (Android keys on the day's session source, iOS on `importedSleep`),
+ * exactly as the two Sleep-tab badges already do, so the label — not the wiring — is what stays in parity. */
 private fun sleepSourceSubtitle(card: DashboardCard, day: DailyMetric?): String? {
     if (card != DashboardCard.SLEEP) return null
     val d = day ?: return null
@@ -180,9 +180,9 @@ private fun sleepSourceSubtitle(card: DashboardCard, day: DailyMetric?): String?
 }
 
 /** The `vital_detail/<key>` key a metric/vital card opens, or null when the card has its OWN dedicated
- *  screen (Stress / Sleep / Hydration / Coupled) rather than a metric-detail trend. Mirrors the iOS
- *  `liquidCard` switch, where every metric/vital card opens `metricDetail(key)` (its own focused trend),
- *  NOT the shared Health hub (2026-07-03). Keys are the Android VitalDetailScreen keys. */
+ * screen (Stress / Sleep / Hydration / Coupled) rather than a metric-detail trend. Mirrors the iOS
+ * `liquidCard` switch, where every metric/vital card opens `metricDetail(key)` (its own focused trend),
+ * NOT the shared Health hub (2026-07-03). Keys are the Android VitalDetailScreen keys. */
 private fun dashboardCardMetricKey(card: DashboardCard): String? = when (card) {
     DashboardCard.HRV -> "hrv"
     DashboardCard.RESTING_HR -> "rhr"
@@ -193,14 +193,14 @@ private fun dashboardCardMetricKey(card: DashboardCard): String? = when (card) {
     DashboardCard.VITALITY -> "vitality"
     DashboardCard.STEPS -> "steps_est"
     DashboardCard.CALORIES -> "active_kcal"
-    // These carry their own full screen, not a per-metric trend.
+ // These carry their own full screen, not a per-metric trend.
     DashboardCard.STRESS, DashboardCard.SLEEP, DashboardCard.HYDRATION, DashboardCard.COUPLED -> null
 }
 
 /** The destination callback a dashboard card opens when tapped. Mirrors the iOS dashboardCardRow switch:
- *  Stress -> Stress; Sleep -> Sleep; Hydration -> Hydration; Coupled -> the WHOOP-style day screen; every
- *  metric/vital card -> its OWN focused trend (`vital_detail/<key>` via [onOpenMetric]), matching the iOS
- *  `metricDetail(key)`. Every card resolves to a destination, so the chevron is always honest (#706/#684). */
+ * Stress -> Stress; Sleep -> Sleep; Hydration -> Hydration; Coupled -> the WHOOP-style day screen; every
+ * metric/vital card -> its OWN focused trend (`vital_detail/<key>` via [onOpenMetric]), matching the iOS
+ * `metricDetail(key)`. Every card resolves to a destination, so the chevron is always honest. */
 private fun dashboardCardDestination(
     card: DashboardCard,
     onOpenStress: () -> Unit,
@@ -212,9 +212,9 @@ private fun dashboardCardDestination(
     DashboardCard.STRESS -> onOpenStress
     DashboardCard.SLEEP -> onOpenSleep
     DashboardCard.HYDRATION -> onOpenHydration
-    // The Coupled view card (#43) taps through to the full WHOOP-style day screen.
+ // The Coupled view card taps through to the full WHOOP-style day screen.
     DashboardCard.COUPLED -> onOpenCoupled
-    // Every overnight vital + Fitness age / Vitality / Steps / Calories opens its own metric-detail trend.
+ // Every overnight vital + Fitness age / Vitality / Steps / Calories opens its own metric-detail trend.
     else -> {
         val key = dashboardCardMetricKey(card)
         if (key != null) ({ onOpenMetric(key) }) else ({})
@@ -222,17 +222,17 @@ private fun dashboardCardDestination(
 }
 
 /** A dashboard card's WHOOP-token tint (icon + accent). Score cards take their domain colour; vitals take
- *  their biometric hue; everything else the blue accent. No gold (WHOOP), tokens only. Mirrors iOS
- *  dashboardTint. This drives the mini liquid vessel's tint on each row, so it follows the iOS `liquidCard`
- *  per-card tints exactly: Stress=accent, Fitness age=charge-green, Vitality=liquid-purple, HRV=cyan,
- *  Resting HR=rose, Respiratory=accent, Steps=cyan, Sleep=rest, Coupled=charge. */
+ * their biometric hue; everything else the blue accent. No gold (WHOOP), tokens only. Mirrors iOS
+ * dashboardTint. This drives the mini liquid vessel's tint on each row, so it follows the iOS `liquidCard`
+ * per-card tints exactly: Stress=accent, Fitness age=charge-green, Vitality=liquid-purple, HRV=cyan,
+ * Resting HR=rose, Respiratory=accent, Steps=cyan, Sleep=rest, Coupled=charge. */
 private fun dashboardCardTint(card: DashboardCard): Color = when (card) {
-    // iOS `liquidCard`: stress → StrandPalette.accent (blue), not the Effort orange.
+ // iOS `liquidCard`: stress → StrandPalette.accent (blue), not the Effort orange.
     DashboardCard.STRESS -> Palette.accent
     DashboardCard.FITNESS_AGE -> Palette.chargeColor
-    // iOS vitality → liquidPurple (#9b7bff).
+ // iOS vitality → liquidPurple (b7bff).
     DashboardCard.VITALITY -> LIQUID_PURPLE
-    // iOS hrv → metricCyan (this theme's metricPurple is a blue, cyan reads as the iOS HRV teal).
+ // iOS hrv → metricCyan (this theme's metricPurple is a blue, cyan reads as the iOS HRV teal).
     DashboardCard.HRV -> Palette.metricCyan
     DashboardCard.RESTING_HR -> Palette.metricRose
     DashboardCard.RESPIRATORY -> Palette.accent
@@ -248,9 +248,9 @@ private fun dashboardCardTint(card: DashboardCard): Color = when (card) {
 /**
  * A dashboard card's mini-vessel fill fraction (0..1), or null for an empty (no-reading) vessel. Mirrors the
  * iOS `liquidCard` `frac:` argument exactly, per card:
- *   Stress = stress/3 · Fitness age = 0.5 (fixed) · Vitality = vitality/100 · HRV = avgHrv/120 ·
- *   Resting HR = restingHr/100 · Respiratory = respRate/24 · Steps = steps/10000 · Sleep = totalSleepMin/480 ·
- *   Coupled = 0.6 (fixed) · Blood oxygen / Skin temp / Calories / Hydration = null (empty, not half-full).
+ * Stress = stress/3 · Fitness age = 0.5 (fixed) · Vitality = vitality/100 · HRV = avgHrv/120 ·
+ * Resting HR = restingHr/100 · Respiratory = respRate/24 · Steps = steps/10000 · Sleep = totalSleepMin/480 ·
+ * Coupled = 0.6 (fixed) · Blood oxygen / Skin temp / Calories / Hydration = null (empty, not half-full).
  * The three overnight vitals (HRV / Resting HR / Respiratory) read PER-FIELD today-first with the
  * recovery-INDEPENDENT [vitalsDay] carry, matching the row VALUE, so the vessel fill and the number agree
  * (and a recovery-nulled night keeps its OWN preserved vitals). Sleep keeps the recovery-gated
@@ -282,7 +282,7 @@ private fun dashboardCardFraction(
         }
         DashboardCard.SLEEP -> over(vd?.totalSleepMin, 480.0)
         DashboardCard.COUPLED -> 0.6
-        // Not wired to a real read yet — an EMPTY vessel (not half-full) so it doesn't imply a reading.
+ // Not wired to a real read yet — an EMPTY vessel (not half-full) so it doesn't imply a reading.
         DashboardCard.BLOOD_OXYGEN, DashboardCard.SKIN_TEMP, DashboardCard.CALORIES,
         DashboardCard.HYDRATION -> null
     }
@@ -295,7 +295,7 @@ private fun dashboardCardFraction(
  * steps, calories, sleep duration). Mirrors iOS dashboardValue.
  *
  * The three overnight vitals (HRV / Resting HR / Respiratory) read PER-FIELD today-first with the
- * recovery-INDEPENDENT [vitalsDay] carry (#543 follow-up), so a night whose recovery was nulled post-update
+ * recovery-INDEPENDENT [vitalsDay] carry ( follow-up), so a night whose recovery was nulled post-update
  * still shows its OWN preserved value rather than an older recovery-scored day's (the tile-vs-card fix).
  * SpO₂ / Skin Temp / Sleep keep the recovery-gated `carriedDay ?: day` carry. Steps / Calories stay on
  * today's own row (they accrue through the day, never a carry). Stress / Fitness age / Vitality come from
@@ -320,7 +320,7 @@ private fun dashboardCardValue(
     fun withUnit(s: String): String =
         if (s == NO_DATA) NO_DATA else if (card.unit.isEmpty()) s else "$s ${card.unit}"
 
-    // SpO₂ / Skin Temp / Sleep carry over from the last scored night; today's accruing totals do not.
+ // SpO₂ / Skin Temp / Sleep carry over from the last scored night; today's accruing totals do not.
     val vd = carriedDay ?: day
 
     return when (card) {
@@ -331,12 +331,12 @@ private fun dashboardCardValue(
         DashboardCard.RESPIRATORY ->
             withUnit((day?.respRateBpm ?: vitalsDay?.respRateBpm)?.let { String.format(Locale.US, "%.1f", it) } ?: NO_DATA)
         DashboardCard.BLOOD_OXYGEN ->
-            // PER-FIELD carry: the whole-row carries (vd) land on rows whose spo2Pct is null (the engine
-            // writes spo2Pct = null on computed rows), so fall through to the last row that HAS one.
+ // PER-FIELD carry: the whole-row carries (vd) land on rows whose spo2Pct is null (the engine
+ // writes spo2Pct = null on computed rows), so fall through to the last row that HAS one.
             (vd?.spo2Pct ?: spo2Day?.spo2Pct)?.let { String.format(Locale.US, "%.0f%%", it) } ?: NO_DATA
         DashboardCard.SKIN_TEMP ->
-            // Stored as a deviation from baseline (°C); show it signed so +/- reads honestly.
-            // Same per-field carry as Blood Oxygen.
+ // Stored as a deviation from baseline (°C); show it signed so +/- reads honestly.
+ // Same per-field carry as Blood Oxygen.
             (vd?.skinTempDevC ?: skinTempDay?.skinTempDevC)?.let { String.format(Locale.US, "%+.1f°", it) } ?: NO_DATA
         DashboardCard.SLEEP -> sleepValue(vd)
         DashboardCard.STEPS -> {
@@ -348,25 +348,25 @@ private fun dashboardCardValue(
         DashboardCard.CALORIES ->
             withUnit(latestActiveKcal?.let { intStringGrouped(it) } ?: NO_DATA)
         DashboardCard.STRESS ->
-            // #706/#684: Stress is baseline-relative, so until the strap has banked enough worn nights to
-            // seed the 30-day RHR/HRV baseline StressScreen reads, the front card has no number to show. The
-            // old `?: NO_DATA` rendered a bare dash that read like a broken card; show the honest calibrating
-            // state instead, matching the owner's reply on #706 and the StressScreen empty/calibrating copy.
+ // /: Stress is baseline-relative, so until the strap has banked enough worn nights to
+ // seed the 30-day RHR/HRV baseline StressScreen reads, the front card has no number to show. The
+ // old `?: NO_DATA` rendered a bare dash that read like a broken card; show the honest calibrating
+ // state instead, matching the owner's reply on and the StressScreen empty/calibrating copy.
             stress?.let { it.roundToInt().toString() } ?: STRESS_CALIBRATING
         DashboardCard.FITNESS_AGE ->
             withUnit(fitnessAge?.let { it.roundToInt().toString() } ?: NO_DATA)
         DashboardCard.VITALITY ->
             vitality?.let { it.roundToInt().toString() } ?: NO_DATA
         DashboardCard.HYDRATION ->
-            // "<total> / <goal> L" in litres to 1 dp, e.g. "1.2 / 3.2 L". Always shows a value (a fresh
-            // day reads "0.0 / 3.2 L"), since the goal is always derivable from the profile.
+ // "<total> / <goal> L" in litres to 1 dp, e.g. "1.2 / 3.2 L". Always shows a value (a fresh
+ // day reads "0.0 / 3.2 L"), since the goal is always derivable from the profile.
             String.format(
                 Locale.US, "%.1f / %.1f L",
                 hydrationTotalMl / 1000.0, hydrationGoalMl / 1000.0,
             )
         DashboardCard.COUPLED ->
-            // A tap-through row with no metric value of its own, the row shows just the chevron. An empty
-            // string (not NO_DATA) renders no number and leaves it un-dimmed. Mirrors iOS dashboardValue.
+ // A tap-through row with no metric value of its own, the row shows just the chevron. An empty
+ // string (not NO_DATA) renders no number and leaves it un-dimmed. Mirrors iOS dashboardValue.
             ""
     }
 }
@@ -375,7 +375,7 @@ private fun dashboardCardValue(
  * One WHOOP "My Dashboard" metric row: a thin-line tinted icon tile, an UPPERCASE tracked label over a grey
  * baseline caption, the big white value + small unit, and a chevron, on the flat frosted card surface (no
  * glow), tokens only. Mirrors iOS pinnedCardRow. The whole row is the tap target: when [onClick] is set it
- * pushes that card's detail (the chevron is the hint), matching iOS (#706/#684).
+ * pushes that card's detail (the chevron is the hint), matching iOS.
  */
 @Composable
 private fun DashboardCardRow(
@@ -383,19 +383,19 @@ private fun DashboardCardRow(
     value: String,
     fraction: Double?,
     tint: Color,
-    // #110: a per-card dynamic subtitle (currently the sleep row's source + night); null keeps the
-    // card's static description.
+ // : a per-card dynamic subtitle (currently the sleep row's source + night); null keeps the
+ // card's static description.
     subtitleOverride: String? = null,
     onClick: (() -> Unit)? = null,
 ) {
-    // A real number renders white; a placeholder (No Data, or the Stress calibrating state) renders dimmed.
+ // A real number renders white; a placeholder (No Data, or the Stress calibrating state) renders dimmed.
     val hasValue = value != NO_DATA && value != STRESS_CALIBRATING
-    // iOS `cardLink` corner is 20 (a touch rounder than the app-wide 18dp card), with the SAME neutral
-    // surfaceRaised fill + plain hairline the frosted neutral surface already draws.
+ // iOS `cardLink` corner is 20 (a touch rounder than the app-wide 18dp card), with the SAME neutral
+ // surfaceRaised fill + plain hairline the frosted neutral surface already draws.
     val rowShape = RoundedCornerShape(20.dp)
-    // liquidPress: the tappable card settles inward on press (the iOS LiquidPressStyle feel). The SAME
-    // interactionSource feeds the clickable and the press modifier, so it responds to the actual touch.
-    // It is applied OUTSIDE the frosted surface so the whole card (surface + content) scales/dims as one.
+ // liquidPress: the tappable card settles inward on press (the iOS LiquidPressStyle feel). The SAME
+ // interactionSource feeds the clickable and the press modifier, so it responds to the actual touch.
+ // It is applied OUTSIDE the frosted surface so the whole card (surface + content) scales/dims as one.
     val interaction = remember { MutableInteractionSource() }
     Row(
         modifier = Modifier
@@ -408,15 +408,15 @@ private fun DashboardCardRow(
                     it.clickable(interactionSource = interaction, indication = null, onClick = onClick)
                 } else it
             }
-            // iOS row padding: 14h / 11v (tighter than the old 13/11 icon-box row).
+ // iOS row padding: 14h / 11v (tighter than the old 13/11 icon-box row).
             .padding(horizontal = 14.dp, vertical = 11.dp)
             .semantics { contentDescription = "${card.title}: $value" },
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        // THE fix: a 30dp mini LIQUID VESSEL filled to this card's fraction, tinted its domain colour — the
-        // "small liquid circle per icon" iOS shows and Android was missing (a flat Material-icon square).
-        // Static (animated=false) so the many small gauges cost nothing per frame, matching iOS `cardLink`.
+ // THE fix: a 30dp mini LIQUID VESSEL filled to this card's fraction, tinted its domain colour — the
+ // "small liquid circle per icon" iOS shows and Android was missing (a flat Material-icon square).
+ // Static (animated=false) so the many small gauges cost nothing per frame, matching iOS `cardLink`.
         LiquidVessel(
             value = fraction,
             tint = tint,
@@ -427,7 +427,7 @@ private fun DashboardCardRow(
             modifier = Modifier.weight(1f),
             verticalArrangement = Arrangement.spacedBy(1.dp),
         ) {
-            // iOS: overline 11 / +1.0 tracking, textPrimary.
+ // iOS: overline 11 / +1.0 tracking, textPrimary.
             Text(
                 card.title.uppercase(),
                 style = NoopType.overline.copy(fontSize = 11.sp, letterSpacing = 1.0.sp),
@@ -443,14 +443,14 @@ private fun DashboardCardRow(
                 overflow = TextOverflow.Ellipsis,
             )
         }
-        // iOS value = number(17), textPrimary.
+ // iOS value = number(17), textPrimary.
         Text(
             value,
             style = NoopType.number(17f),
             color = if (hasValue) Palette.textPrimary else Palette.textTertiary,
             maxLines = 1,
         )
-        // iOS chevron = 12.
+ // iOS chevron = 12.
         Icon(
             Icons.AutoMirrored.Filled.KeyboardArrowRight,
             contentDescription = null,
@@ -461,7 +461,7 @@ private fun DashboardCardRow(
 }
 
 /** Group-separated integer display from a Double (e.g. 12 345 steps), matching the Apple Health tiles. A
- *  file-internal twin of the private [intString] so the dashboard rows format steps/calories identically. */
+ * file-internal twin of the private [intString] so the dashboard rows format steps/calories identically. */
 private fun intStringGrouped(v: Double): String {
     val n = v.roundToInt()
     return if (kotlin.math.abs(n) >= 1000) String.format(Locale.US, "%,d", n) else "$n"
@@ -579,7 +579,7 @@ internal fun DashboardCardsEditorDialog(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     TextButton(
                         onClick = {
-                            // Reset to the canonical default: the default selection enabled, rest disabled.
+ // Reset to the canonical default: the default selection enabled, rest disabled.
                             items.clear()
                             val enabledSet = DashboardCard.defaultSelection.toHashSet()
                             DashboardCard.defaultSelection.forEach { items.add(EditableDashboardCard(it, true)) }
@@ -591,7 +591,7 @@ internal fun DashboardCardsEditorDialog(
                     Spacer(Modifier.weight(1f))
                     Button(
                         onClick = { onSave(items.filter { it.enabled }.map { it.card }) },
-                        // At least one card must stay visible, an empty dashboard reads as a bug, not a choice.
+ // At least one card must stay visible, an empty dashboard reads as a bug, not a choice.
                         enabled = items.any { it.enabled },
                         colors = ButtonDefaults.buttonColors(
                             containerColor = Palette.accent,

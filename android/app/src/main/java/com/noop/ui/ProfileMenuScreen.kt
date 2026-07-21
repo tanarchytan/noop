@@ -506,16 +506,6 @@ private fun FormRow(label: String, control: @Composable () -> Unit) {
     }
 }
 
-@Composable
-private fun RowDivider() {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp)
-            .height(1.dp)
-            .background(Palette.hairline),
-    )
-}
 
 // MARK: - Sex options (mirrors SettingsScreen's private copy)
 

@@ -979,16 +979,6 @@ private fun NoopSwitch(
     )
 }
 
-@Composable
-private fun RowDivider() {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(1.dp)
-            .padding(vertical = 4.dp)
-            .background(Palette.hairline),
-    )
-}
 
 /** Apply a uniform alpha to a subtree (dims disabled category content). */
 private fun Modifier.alphaIf(value: Float): Modifier = this.alpha(value)

@@ -109,45 +109,45 @@ internal enum class Destination(
     @StringRes val titleRes: Int,
     val icon: ImageVector,
 ) {
-    // Group: Home
+ // Group: Home
     Today("today", R.string.nav_today, Icons.Filled.Home),
     Intelligence("intelligence", R.string.nav_intelligence, Icons.Filled.Psychology),
-    // Optional, default-OFF (task #43): the Coupled view (WHOOP-style day read). Reached ONLY via the
-    // Today dashboard "Coupled view" card tap-through, so it is deliberately NOT in any [DrawerGroup].
+ // Optional, default-OFF : the Coupled view (WHOOP-style day read). Reached ONLY via the
+ // Today dashboard "Coupled view" card tap-through, so it is deliberately NOT in any [DrawerGroup].
     CoupledView("coupled_view", R.string.nav_coupled_view, Icons.Filled.Hexagon),
 
-    // Group: Intervals (the standalone Live entry was removed in the Live/Health fold — its live HR /
-    // physiology folded into Health, its workout controls into Workouts).
+ // Group: Intervals (the standalone Live entry was removed in the Live/Health fold — its live HR /
+ // physiology folded into Health, its workout controls into Workouts).
     Intervals("intervals", R.string.nav_intervals, Icons.Filled.Timeline),
 
-    // Group: Recovery
+ // Group: Recovery
     Sleep("sleep", R.string.nav_sleep, Icons.Filled.Bedtime),
     Breathe("breathe", R.string.nav_breathe, Icons.Filled.Air),
     Stress("stress", R.string.nav_stress, Icons.Filled.Spa),
 
-    // Group: Activity
+ // Group: Activity
     Workouts("workouts", R.string.nav_workouts, Icons.Filled.FitnessCenter),
     Trends("trends", R.string.nav_trends, Icons.AutoMirrored.Filled.TrendingUp),
 
-    // Group: Insight
+ // Group: Insight
     Coach("coach", R.string.nav_coach, Icons.Filled.AutoAwesome),
     InsightsHub("insights_hub", R.string.nav_insights_hub, Icons.Filled.Insights),
     Insights("insights", R.string.nav_insights, Icons.Filled.Insights),
     Explore("explore", R.string.nav_explore, Icons.Filled.Explore),
     Compare("compare", R.string.nav_compare, Icons.AutoMirrored.Filled.CompareArrows),
 
-    // Group: Health
+ // Group: Health
     Health("health", R.string.nav_health, Icons.Filled.MonitorHeart),
     Hydration("hydration", R.string.nav_hydration, Icons.Filled.WaterDrop),
     VitalSignsDetail("vital_detail/{key}", R.string.nav_vital_signs, Icons.Filled.HealthAndSafety),
     AppleHealth("apple_health", R.string.nav_apple_health, Icons.Filled.HealthAndSafety),
 
-    // Group: System
+ // Group: System
     Automations("automations", R.string.nav_automations, Icons.Filled.Bolt),
-    // "Alarms" is the ONE alarm surface (#766): the phone-based Wake Window (light-sleep detection with a
-    // guaranteed OS backup), the strap's own firmware wake-alarm, and the wind-down reminder, all in one
-    // place. Previously "Wake Window" (#730), but the strap alarm moved in from Automations so the broader
-    // name fits. Route id stays "smart_alarm" (display string only).
+ // "Alarms" is the ONE alarm surface : the phone-based Wake Window (light-sleep detection with a
+ // guaranteed OS backup), the strap's own firmware wake-alarm, and the wind-down reminder, all in one
+ // place. Previously "Wake Window" , but the strap alarm moved in from Automations so the broader
+ // name fits. Route id stays "smart_alarm" (display string only).
     SmartAlarm("smart_alarm", R.string.nav_alarms, Icons.Filled.Alarm),
     Devices("devices", R.string.nav_devices, Icons.Filled.Sensors),
     DataSources("data_sources", R.string.nav_data_sources, Icons.Filled.Storage),
@@ -156,23 +156,23 @@ internal enum class Destination(
     Notifications("notifications", R.string.nav_notifications, Icons.Filled.Notifications),
     Settings("settings", R.string.nav_settings, Icons.Filled.Settings),
     TestCentre("test_centre", R.string.nav_test_centre, Icons.Filled.BugReport),
-    // Minimal About (name + version + GitHub link), listed in the More page's "App" group.
+ // Minimal About (name + version + GitHub link), listed in the More page's "App" group.
     About("about", R.string.nav_about, Icons.Filled.Info),
 
-    // Profile menu (body profile + units) — reached ONLY from the Today header's leading avatar, so
-    // like [CoupledView] it is deliberately NOT in any [DrawerGroup].
+ // Profile menu (body profile + units) — reached ONLY from the Today header's leading avatar, so
+ // like [CoupledView] it is deliberately NOT in any [DrawerGroup].
     ProfileMenu("profile_menu", R.string.nav_profile, Icons.Filled.Person),
 
-    // The "More" tab: its own navigated page (mirroring the iOS More tab) that hosts the full
-    // grouped destination list. It is NOT itself in any [DrawerGroup] — it's the door to them.
+ // The "More" tab: its own navigated page (mirroring the iOS More tab) that hosts the full
+ // grouped destination list. It is NOT itself in any [DrawerGroup] — it's the door to them.
     More("more", R.string.nav_more, Icons.Filled.MoreHoriz);
 
     companion object {
         /** Resolve the destination owning the current back-stack route (defaults to Today). */
         fun forRoute(route: String?): Destination =
             entries.firstOrNull {
-                // Match parameterised routes (e.g. "vital_detail/rhr" vs "vital_detail/{key}") by
-                // base path so the top-bar title resolves correctly on a detail screen, not "Today".
+ // Match parameterised routes (e.g. "vital_detail/rhr" vs "vital_detail/{key}") by
+ // base path so the top-bar title resolves correctly on a detail screen, not "Today".
                 it.route == route || it.route.substringBefore('/') == route?.substringBefore('/')
             } ?: Today
     }
@@ -194,8 +194,8 @@ fun AppRoot(viewModel: AppViewModel = viewModel()) {
     val currentRoute = backStack?.destination?.route
     val current = Destination.forRoute(currentRoute)
     var showQuickActions by remember { mutableStateOf(false) }
-    // The Updates inbox sheet (opened by the Today header bell). The store is a process singleton so
-    // the Today cards and the import path post to the same inbox this sheet renders.
+ // The Updates inbox sheet (opened by the Today header bell). The store is a process singleton so
+ // the Today cards and the import path post to the same inbox this sheet renders.
     val context = androidx.compose.ui.platform.LocalContext.current
     val updateStore = remember { UpdateStore.from(context) }
     var showUpdatesInbox by remember { mutableStateOf(false) }
@@ -204,11 +204,11 @@ fun AppRoot(viewModel: AppViewModel = viewModel()) {
         Scaffold(
             containerColor = Palette.surfaceBase,
             bottomBar = {
-                // One unified "glass" bar: four evenly-spaced tabs — Home · Health · Sleep · More
-                // (matches the iOS FloatingTabBar). The quick-action "+" lives in the Today header's
-                // top-right (balancing the avatar), so the bar is clean tabs only. "More" navigates to
-                // its own page (mirroring the iOS More tab) that reaches every grouped destination, so no
-                // destination is lost without the drawer.
+ // One unified "glass" bar: four evenly-spaced tabs — Home · Health · Sleep · More
+ // (matches the iOS FloatingTabBar). The quick-action "+" lives in the Today header's
+ // top-right (balancing the avatar), so the bar is clean tabs only. "More" navigates to
+ // its own page (mirroring the iOS More tab) that reaches every grouped destination, so no
+ // destination is lost without the drawer.
                 GlassBottomBar(
                     current = current,
                     onTabSelected = { dest ->
@@ -221,52 +221,51 @@ fun AppRoot(viewModel: AppViewModel = viewModel()) {
                 navController = nav,
                 startDestination = Destination.Today.route,
                 modifier = Modifier.padding(inner),
-                // README motion: top-level destinations crossfade (~240ms) on the calm,
-                // decelerating global easing — nothing slides or bounces between tabs. The
-                // same fade is used for back (pop) so the bar never feels jerky. Drill-ins
-                // (e.g. vital_detail) are pushed by the same NavHost, so they inherit the
-                // same restrained crossfade rather than a hard cut.
+ // README motion: top-level destinations crossfade (~240ms) on the calm,
+ // decelerating global easing — nothing slides or bounces between tabs. The
+ // same fade is used for back (pop) so the bar never feels jerky. Drill-ins
+ // (e.g. vital_detail) are pushed by the same NavHost, so they inherit the
+ // same restrained crossfade rather than a hard cut.
                 enterTransition = { fadeIn(navFadeSpec) },
                 exitTransition = { fadeOut(navFadeSpec) },
                 popEnterTransition = { fadeIn(navFadeSpec) },
                 popExitTransition = { fadeOut(navFadeSpec) },
             ) {
-                // --- Live, working screens (existing waves) ---
+ // --- Live, working screens (existing waves) ---
                 composable(Destination.Today.route) {
                     TodayScreen(
                         viewModel = viewModel,
-                        onOpenWorkouts = { nav.navigateTopLevel(Destination.Workouts.route) },
-                        // The quick-action "+" lives in the Today header's top-right now (off the
-                        // bottom bar) — it opens the same quick-action sheet the bar used to.
+ // The quick-action "+" lives in the Today header's top-right now (off the
+ // bottom bar) — it opens the same quick-action sheet the bar used to.
                         onQuickActions = { showQuickActions = true },
                         updateStore = updateStore,
-                        // The leading profile avatar opens the Profile menu (body profile + units);
-                        // Settings stays reachable from the More page. The gear/Settings deep-links kept
-                        // for cards that still open Settings directly.
+ // The leading profile avatar opens the Profile menu (body profile + units);
+ // Settings stays reachable from the More page. The gear/Settings deep-links kept
+ // for cards that still open Settings directly.
                         onOpenSettings = { nav.navigateTopLevel(Destination.Settings.route) },
                         onOpenProfile = { nav.navigateTopLevel(Destination.ProfileMenu.route) },
-                        // The opt-in Hydration card (only shown when Hydration tracking is on) pushes its
-                        // detail. A normal push so the back-stack returns to Today.
+ // The opt-in Hydration card (only shown when Hydration tracking is on) pushes its
+ // detail. A normal push so the back-stack returns to Today.
                         onOpenHydration = { nav.navigate(Destination.Hydration.route) },
-                        // #706/#684: the dashboard cards draw a tappable chevron; wire each to its detail,
-                        // matching iOS. Stress + the vitals are pushes; Sleep is a top-level tab switch.
+ // /: the dashboard cards draw a tappable chevron; wire each to its detail,
+ // matching iOS. Stress + the vitals are pushes; Sleep is a top-level tab switch.
                         onOpenStress = { nav.navigate(Destination.Stress.route) },
                         onOpenHealth = { nav.navigate(Destination.Health.route) },
-                        // Every metric/vital card opens its OWN focused detail trend (vital_detail/<key>),
-                        // not the shared Health hub (2026-07-03). Mirrors the iOS liquidCard metricDetail.
+ // Every metric/vital card opens its OWN focused detail trend (vital_detail/<key>),
+ // not the shared Health hub (2026-07-03). Mirrors the iOS liquidCard metricDetail.
                         onOpenMetric = { key -> nav.navigate("vital_detail/$key") },
                         onOpenSleep = { nav.navigateTopLevel(Destination.Sleep.route) },
-                        // Optional Coupled view card (task #43): a normal push so back returns to Today.
+ // Optional Coupled view card : a normal push so back returns to Today.
                         onOpenCoupled = { nav.navigate(Destination.CoupledView.route) },
-                        // The "workout in progress" indicator: raise the one-shot that WorkoutStartSection
-                        // consumes to re-open the in-exercise overlay, then route to Workouts (the Live/Health
-                        // fold moved the workout controls there). One tap from Today (iOS parity).
+ // The "workout in progress" indicator: raise the one-shot that WorkoutStartSection
+ // consumes to re-open the in-exercise overlay, then route to Workouts (the Live/Health
+ // fold moved the workout controls there). One tap from Today (iOS parity).
                         onOpenActiveWorkout = {
                             viewModel.openActiveWorkout()
                             nav.navigateTopLevel(Destination.Workouts.route)
                         },
-                        // The liquid header's strap battery ring taps through to Devices (iOS parity: the
-                        // battery ring → router.openDevices()).
+ // The liquid header's strap battery ring taps through to Devices (iOS parity: the
+ // battery ring → router.openDevices).
                         onOpenDevices = { nav.navigateTopLevel(Destination.Devices.route) },
                     )
                 }
@@ -279,7 +278,7 @@ fun AppRoot(viewModel: AppViewModel = viewModel()) {
                 composable(Destination.CoupledView.route) {
                     CoupledScreen(
                         vm = viewModel,
-                        // Tapping Sleep in the coupled read opens the full Sleep screen (iOS parity).
+ // Tapping Sleep in the coupled read opens the full Sleep screen (iOS parity).
                         onOpenSleep = { nav.navigateTopLevel(Destination.Sleep.route) },
                     )
                 }
@@ -292,7 +291,7 @@ fun AppRoot(viewModel: AppViewModel = viewModel()) {
                 composable(Destination.Workouts.route) { WorkoutsScreen(viewModel) }
                 composable(Destination.Intelligence.route) { IntelligenceScreen(viewModel) }
 
-                // --- Placeholder routes (later waves fill these in) ---
+ // --- Placeholder routes (later waves fill these in) ---
                 composable(Destination.Stress.route) {
                     StressScreen(
                         vm = viewModel,
@@ -300,8 +299,8 @@ fun AppRoot(viewModel: AppViewModel = viewModel()) {
                     )
                 }
                 composable(Destination.Trends.route) { TrendsScreen(viewModel) }
-                // "What Moves You" (InsightsHub) is folded into Insights: no longer a top-level More-page row,
-                // reached from the Insights screen's WhatMovesYouLink as a sub-page (push, back → Insights).
+ // "What Moves You" (InsightsHub) is folded into Insights: no longer a top-level More-page row,
+ // reached from the Insights screen's WhatMovesYouLink as a sub-page (push, back → Insights).
                 composable(Destination.Insights.route) { InsightsScreen(viewModel, onOpenInsightsHub = { nav.navigate(Destination.InsightsHub.route) }) }
                 composable(Destination.Compare.route) { CompareScreen(viewModel) }
                 composable(Destination.Health.route) {
@@ -318,7 +317,7 @@ fun AppRoot(viewModel: AppViewModel = viewModel()) {
                         key = backStackEntry.arguments?.getString("key").orEmpty(),
                     )
                 }
-                // --- v5 pillar screens (Wave 3 wiring) ---
+ // --- v5 pillar screens (Wave 3 wiring) ---
                 composable(Destination.InsightsHub.route) { InsightsHubScreen(viewModel) }
                 composable(Destination.FusedRecord.route) { FusedRecordRoute(viewModel) }
                 composable(Destination.AppleHealth.route) { AppleHealthScreen(viewModel) }
@@ -342,16 +341,16 @@ fun AppRoot(viewModel: AppViewModel = viewModel()) {
                 composable(Destination.TestCentre.route) { TestCentreScreen(viewModel) }
                 composable(Destination.About.route) { AboutScreen() }
                 composable(Destination.ProfileMenu.route) { ProfileMenuScreen(viewModel) }
-                // The "More" page — the iOS More tab's twin: a navigated ScreenScaffold page hosting the
-                // full grouped destination list (was a pull-up sheet). A row navigates top-level.
+ // The "More" page — the iOS More tab's twin: a navigated ScreenScaffold page hosting the
+ // full grouped destination list (was a pull-up sheet). A row navigates top-level.
                 composable(Destination.More.route) {
                     MoreScreen(onNavigate = { nav.navigateTopLevel(it) })
                 }
             }
         }
 
-        // Quick-actions sheet, opened by the raised gold centre FAB. Each row routes to an
-        // existing destination — nothing new is built here, the FAB is just a faster door in.
+ // Quick-actions sheet, opened by the raised gold centre FAB. Each row routes to an
+ // existing destination — nothing new is built here, the FAB is just a faster door in.
         if (showQuickActions) {
             ModalBottomSheet(
                 onDismissRequest = { showQuickActions = false },
@@ -369,9 +368,9 @@ fun AppRoot(viewModel: AppViewModel = viewModel()) {
                         modifier = Modifier.padding(start = 16.dp, top = 4.dp, bottom = 6.dp),
                         color = Palette.textTertiary,
                     )
-                    // Updates inbox — relocated here off the Today header (the liquid Today header mirrors iOS,
-                    // which has no notifications bell). The feature is fully intact and one tap away: this row
-                    // opens the same inbox sheet, showing the unread count as a trailing badge.
+ // Updates inbox — relocated here off the Today header (the liquid Today header mirrors iOS,
+ // which has no notifications bell). The feature is fully intact and one tap away: this row
+ // opens the same inbox sheet, showing the unread count as a trailing badge.
                     NavigationDrawerItem(
                         selected = false,
                         onClick = {
@@ -420,14 +419,14 @@ fun AppRoot(viewModel: AppViewModel = viewModel()) {
             }
         }
 
-        // The Updates inbox (opened by the Today header bell). Presented here so it has the nav for
-        // deep-links — a row's "trends" key switches the bottom tab, mirroring the iOS NavRouter route.
+ // The Updates inbox (opened by the Today header bell). Presented here so it has the nav for
+ // deep-links — a row's "trends" key switches the bottom tab, mirroring the iOS NavRouter route.
         if (showUpdatesInbox) {
             ModalBottomSheet(
                 onDismissRequest = { showUpdatesInbox = false },
-                // Open full-height (no half-pull) so it reads like the iOS Updates sheet, and use the
-                // BEIGE surfaceBase so the white NoopCards POP — surfaceRaised made white cards sit on a
-                // white sheet (no contrast), which is why the Android inbox looked flat vs iOS.
+ // Open full-height (no half-pull) so it reads like the iOS Updates sheet, and use the
+ // BEIGE surfaceBase so the white NoopCards POP — surfaceRaised made white cards sit on a
+ // white sheet (no contrast), which is why the Android inbox looked flat vs iOS.
                 sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
                 containerColor = Palette.surfaceBase,
                 contentColor = Palette.textPrimary,
@@ -436,8 +435,8 @@ fun AppRoot(viewModel: AppViewModel = viewModel()) {
                     store = updateStore,
                     onClose = { showUpdatesInbox = false },
                     onDeepLink = { key ->
-                        // Map the inbox deep-link key to a route (only known keys route). "trends" is
-                        // the one real poster's target today; unknown keys just close the sheet.
+ // Map the inbox deep-link key to a route (only known keys route). "trends" is
+ // the one real poster's target today; unknown keys just close the sheet.
                         val route = when (key) {
                             "trends" -> Destination.Trends.route
                             else -> null
@@ -445,8 +444,8 @@ fun AppRoot(viewModel: AppViewModel = viewModel()) {
                         if (route != null && route != currentRoute) nav.navigateTopLevel(route)
                     },
                     onRestore = { cardId ->
-                        // Flip the shared dismissed flag back off so the card reappears, and signal a
-                        // mounted Today to re-read it immediately (SharedPreferences isn't reactive).
+ // Flip the shared dismissed flag back off so the card reappears, and signal a
+ // mounted Today to re-read it immediately (SharedPreferences isn't reactive).
                         TodayCardDismissal.setDismissed(context, cardId, false)
                         updateStore.restoreRequest = cardId
                     },
@@ -470,7 +469,7 @@ fun AppRoot(viewModel: AppViewModel = viewModel()) {
 private data class BarTab(val dest: Destination, val icon: ImageVector, @StringRes val labelRes: Int)
 
 /** The nav slots: Home · Health · Sleep · More.
- *  More is special-cased (it opens the sheet rather than a route), so it is appended at the call site. */
+ * More is special-cased (it opens the sheet rather than a route), so it is appended at the call site. */
 private val barLeadingTabs = listOf(
     BarTab(Destination.Today, Icons.Outlined.GridView, R.string.nav_today),
     BarTab(Destination.Health, Icons.Filled.MonitorHeart, R.string.nav_health),
@@ -488,9 +487,9 @@ private fun GlassBottomBar(
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            // Clear the gesture-nav bar (home indicator) first, then add breathing room so the capsule
-            // floats free of the bottom edge rather than jamming against it — iOS clears the home-indicator
-            // safe area + 4pt; here navigationBarsPadding + 12dp gives the same lift.
+ // Clear the gesture-nav bar (home indicator) first, then add breathing room so the capsule
+ // floats free of the bottom edge rather than jamming against it — iOS clears the home-indicator
+ // safe area + 4pt; here navigationBarsPadding + 12dp gives the same lift.
             .navigationBarsPadding()
             .padding(horizontal = 22.dp)
             .padding(top = 4.dp, bottom = Metrics.space12),
@@ -498,15 +497,15 @@ private fun GlassBottomBar(
     ) {
         Surface(
             shape = barShape,
-            // "Glass": a translucent raised surface — a frosted island, not a hard slab. Compose has no
-            // cheap blur, so translucency (≈0.80) + a hairline rim is the Liquid-Glass stand-in. A soft,
-            // low drop shadow reads as floating without a glow.
+ // "Glass": a translucent raised surface — a frosted island, not a hard slab. Compose has no
+ // cheap blur, so translucency (≈0.80) + a hairline rim is the Liquid-Glass stand-in. A soft,
+ // low drop shadow reads as floating without a glow.
             color = Palette.surfaceRaised.copy(alpha = 0.80f),
             tonalElevation = 2.dp,
             shadowElevation = 4.dp,
             modifier = Modifier
                 .fillMaxWidth()
-                // Cap the width so the pill stays a centred floating island on tablets, not a full-bleed bar.
+ // Cap the width so the pill stays a centred floating island on tablets, not a full-bleed bar.
                 .widthIn(max = 480.dp)
                 .border(0.5.dp, Palette.hairline.copy(alpha = 0.6f), barShape),
         ) {
@@ -538,9 +537,9 @@ private fun GlassBottomBar(
                 BarSlot(
                     icon = Icons.Filled.MoreHoriz,
                     label = stringResource(R.string.nav_more),
-                    // Selected on the More page itself, and also kept lit whenever the current screen is
-                    // one reached THROUGH More (i.e. not one of the bar's own three tabs) — so drilling
-                    // into any grouped destination still reads as "you're in More", never "nowhere".
+ // Selected on the More page itself, and also kept lit whenever the current screen is
+ // one reached THROUGH More (i.e. not one of the bar's own three tabs) — so drilling
+ // into any grouped destination still reads as "you're in More", never "nowhere".
                     active = current != Destination.Today && current != Destination.Health &&
                         current != Destination.Sleep,
                     modifier = Modifier.weight(1f),
@@ -552,7 +551,7 @@ private fun GlassBottomBar(
 }
 
 /** One nav slot: an icon over a small label. Active = gold accent (semibold), inactive = textSecondary.
- *  No selection pill, no glow — just the colour swap, matching the iOS bar. */
+ * No selection pill, no glow — just the colour swap, matching the iOS bar. */
 @Composable
 private fun BarSlot(
     icon: ImageVector,
@@ -591,7 +590,7 @@ private fun BarSlot(
 private data class QuickAction(@StringRes val titleRes: Int, val icon: ImageVector, val route: String)
 
 /** The quick actions on the gold centre FAB, each routing to an existing destination. Live HR leads —
- *  after the Live/Health fold it opens Health (which now hosts the live HR hero + physiology). */
+ * after the Live/Health fold it opens Health (which now hosts the live HR hero + physiology). */
 private val quickActions: List<QuickAction> = listOf(
     QuickAction(R.string.action_live_hr, Icons.Filled.FavoriteBorder, Destination.Health.route),
     QuickAction(R.string.action_start_workout, Icons.Filled.FitnessCenter, Destination.Workouts.route),
@@ -628,14 +627,14 @@ internal fun BrandMark(size: Dp = 22.dp) {
         val arcSize = Size(radius * 2f, radius * 2f)
         val capStroke = Stroke(width = stroke, cap = StrokeCap.Round)
 
-        // Faint full-ring track (navy hairline) behind the open arc.
+ // Faint full-ring track (navy hairline) behind the open arc.
         drawCircle(
             color = Palette.hairline.copy(alpha = 0.5f),
             radius = radius,
             center = center,
             style = capStroke,
         )
-        // Open recovery-ring arc: ~80% (288°), −90° start (12 o'clock), clockwise.
+ // Open recovery-ring arc: ~80% (288°), −90° start (12 o'clock), clockwise.
         drawArc(
             color = Palette.chargeColor,
             startAngle = -90f,
@@ -645,7 +644,7 @@ internal fun BrandMark(size: Dp = 22.dp) {
             size = arcSize,
             style = capStroke,
         )
-        // Solid WHITE "on-device core" dot at the centre (green ring + white core — iOS parity, no gold).
+ // Solid WHITE "on-device core" dot at the centre (green ring + white core — iOS parity, no gold).
         drawCircle(color = Color.White, radius = stroke * 0.62f, center = center)
     }
 }
