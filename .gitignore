@@ -55,3 +55,6 @@ __pycache__/
 # Local release artifacts (zips/apks built for upload; never tracked)
 dist/
 err.txt
+
+# Working notes (git-ignored, per project convention)
+dev-docs/
