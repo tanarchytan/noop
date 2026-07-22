@@ -71,6 +71,7 @@ The algorithm is in Rust; the Kotlin file marshals inputs and calls `RustScores`
 | Daily stress | `StressModel.build` (baseline assembly stays Kotlin) | `dailyStress` |
 | Daytime stress | `DaytimeStress` (Kotlin bucketing, Rust scoring) | `daytimeStress` |
 | HRV frequency domain (Lomb-Scargle LF/HF) | `HrvFreqDomain` (thin router) | `hrvFreqDomain` |
+| Short-nap detection (tri-state) | `NapDetector` (thin router) | `napEvaluate` |
 
 Steps / Calories(day) / Rest / SleepDebt / DaytimeStress / HRV-freq no longer keep a Kotlin oracle: the math
 was DELETED once whoop-rs parity was proven, so each engine is now a thin router and its Kotlin test is an
@@ -106,7 +107,7 @@ downstream and secondary metrics NOOP layers on top of the core scores.
 | Dose to response | `DoseResponseEngine`, `DoseResponsePriors` |
 | Effect ranking (Cohen's d, Welch t) | `EffectRanker` |
 | Resonance breathing / pacing | `ResonanceEngine`, `BreathPacer`, `HrDownPacer` |
-| Nap / sedentary | `NapDetector`, `SedentaryDetector` |
+| Sedentary | `SedentaryDetector` |
 | Caffeine decay, hydration | `CaffeineDecay`, `HydrationGoal` |
 | Route / distance (Haversine) | `RouteMath` |
 | 4.0 step estimation | `StepsEstimateEngine` |

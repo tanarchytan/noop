@@ -735,6 +735,8 @@ internal object IntegrityCheckingUniffiLib {
     ): Int
     external fun uniffi_whoop_ffi_checksum_func_main_night_selection(
     ): Int
+    external fun uniffi_whoop_ffi_checksum_func_nap_evaluate(
+    ): Int
     external fun uniffi_whoop_ffi_checksum_func_nightly_spo2_raw_means(
     ): Int
     external fun uniffi_whoop_ffi_checksum_func_ppg_hr(
@@ -982,6 +984,8 @@ internal object UniffiLib {
     external fun uniffi_whoop_ffi_fn_func_main_night_index(`blocks`: RustBuffer.ByValue,`offsetS`: Long,`habitualMidsleepSec`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_func_main_night_selection(`blocks`: RustBuffer.ByValue,`offsetS`: Long,`habitualMidsleepSec`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    external fun uniffi_whoop_ffi_fn_func_nap_evaluate(`gravity`: RustBuffer.ByValue,`hr`: RustBuffer.ByValue,`restingHr`: RustBuffer.ByValue,`config`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_func_nightly_spo2_raw_means(`spans`: RustBuffer.ByValue,`samples`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
@@ -1233,6 +1237,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_whoop_ffi_checksum_func_main_night_selection() != 4436) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_whoop_ffi_checksum_func_nap_evaluate() != 47112) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_whoop_ffi_checksum_func_nightly_spo2_raw_means() != 36193) {
@@ -4039,6 +4046,159 @@ public object FfiConverterTypeMetricCfgInfo: FfiConverterRustBuffer<MetricCfgInf
 
 
 /**
+ * A proposed nap to offer for review. `confidence` orders the UI only, never a medical claim.
+ */
+data class NapCandidateInfo (
+    var `start`: kotlin.Long
+    , 
+    var `end`: kotlin.Long
+    , 
+    var `meanHr`: kotlin.Int?
+    , 
+    var `confidence`: kotlin.Double
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeNapCandidateInfo: FfiConverterRustBuffer<NapCandidateInfo> {
+    override fun read(buf: ByteBuffer): NapCandidateInfo {
+        return NapCandidateInfo(
+            FfiConverterLong.read(buf),
+            FfiConverterLong.read(buf),
+            FfiConverterOptionalInt.read(buf),
+            FfiConverterDouble.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: NapCandidateInfo) = (
+            FfiConverterLong.allocationSize(value.`start`) +
+            FfiConverterLong.allocationSize(value.`end`) +
+            FfiConverterOptionalInt.allocationSize(value.`meanHr`) +
+            FfiConverterDouble.allocationSize(value.`confidence`)
+    )
+
+    override fun write(value: NapCandidateInfo, buf: ByteBuffer) {
+            FfiConverterLong.write(value.`start`, buf)
+            FfiConverterLong.write(value.`end`, buf)
+            FfiConverterOptionalInt.write(value.`meanHr`, buf)
+            FfiConverterDouble.write(value.`confidence`, buf)
+    }
+}
+
+
+
+/**
+ * User-tunable nap thresholds.
+ */
+data class NapConfigInfo (
+    var `enabled`: kotlin.Boolean
+    , 
+    var `minNapMinutes`: kotlin.Int
+    , 
+    var `maxNapMinutes`: kotlin.Int
+    , 
+    var `stillThresholdG`: kotlin.Double
+    , 
+    var `hrSettleMarginBpm`: kotlin.Int
+    , 
+    var `smoothWindowSeconds`: kotlin.Double
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeNapConfigInfo: FfiConverterRustBuffer<NapConfigInfo> {
+    override fun read(buf: ByteBuffer): NapConfigInfo {
+        return NapConfigInfo(
+            FfiConverterBoolean.read(buf),
+            FfiConverterInt.read(buf),
+            FfiConverterInt.read(buf),
+            FfiConverterDouble.read(buf),
+            FfiConverterInt.read(buf),
+            FfiConverterDouble.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: NapConfigInfo) = (
+            FfiConverterBoolean.allocationSize(value.`enabled`) +
+            FfiConverterInt.allocationSize(value.`minNapMinutes`) +
+            FfiConverterInt.allocationSize(value.`maxNapMinutes`) +
+            FfiConverterDouble.allocationSize(value.`stillThresholdG`) +
+            FfiConverterInt.allocationSize(value.`hrSettleMarginBpm`) +
+            FfiConverterDouble.allocationSize(value.`smoothWindowSeconds`)
+    )
+
+    override fun write(value: NapConfigInfo, buf: ByteBuffer) {
+            FfiConverterBoolean.write(value.`enabled`, buf)
+            FfiConverterInt.write(value.`minNapMinutes`, buf)
+            FfiConverterInt.write(value.`maxNapMinutes`, buf)
+            FfiConverterDouble.write(value.`stillThresholdG`, buf)
+            FfiConverterInt.write(value.`hrSettleMarginBpm`, buf)
+            FfiConverterDouble.write(value.`smoothWindowSeconds`, buf)
+    }
+}
+
+
+
+/**
+ * The nap verdict + (only when `Nap`) the candidate to review.
+ */
+data class NapDecisionInfo (
+    var `verdict`: NapVerdictInfo
+    , 
+    var `candidate`: NapCandidateInfo?
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeNapDecisionInfo: FfiConverterRustBuffer<NapDecisionInfo> {
+    override fun read(buf: ByteBuffer): NapDecisionInfo {
+        return NapDecisionInfo(
+            FfiConverterTypeNapVerdictInfo.read(buf),
+            FfiConverterOptionalTypeNapCandidateInfo.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: NapDecisionInfo) = (
+            FfiConverterTypeNapVerdictInfo.allocationSize(value.`verdict`) +
+            FfiConverterOptionalTypeNapCandidateInfo.allocationSize(value.`candidate`)
+    )
+
+    override fun write(value: NapDecisionInfo, buf: ByteBuffer) {
+            FfiConverterTypeNapVerdictInfo.write(value.`verdict`, buf)
+            FfiConverterOptionalTypeNapCandidateInfo.write(value.`candidate`, buf)
+    }
+}
+
+
+
+/**
  * Stress-onset evaluation result.
  */
 data class OnsetDecisionInfo (
@@ -5902,6 +6062,44 @@ public object FfiConverterTypeMainNightReason: FfiConverterRustBuffer<MainNightR
 
 
 
+/**
+ * Tri-state nap verdict.
+ */
+
+enum class NapVerdictInfo {
+    
+    NAP,
+    NONE,
+    INCONCLUSIVE;
+
+    
+
+
+    companion object
+}
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeNapVerdictInfo: FfiConverterRustBuffer<NapVerdictInfo> {
+    override fun read(buf: ByteBuffer) = try {
+        NapVerdictInfo.values()[buf.getInt() - 1]
+    } catch (e: IndexOutOfBoundsException) {
+        throw RuntimeException("invalid enum value, something is very wrong!!", e)
+    }
+
+    override fun allocationSize(value: NapVerdictInfo) = 4UL
+
+    override fun write(value: NapVerdictInfo, buf: ByteBuffer) {
+        buf.putInt(value.ordinal + 1)
+    }
+}
+
+
+
+
+
 
 enum class ReadinessTier {
     
@@ -7192,6 +7390,38 @@ public object FfiConverterOptionalTypeMetadataInfo: FfiConverterRustBuffer<Metad
         } else {
             buf.put(1)
             FfiConverterTypeMetadataInfo.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterOptionalTypeNapCandidateInfo: FfiConverterRustBuffer<NapCandidateInfo?> {
+    override fun read(buf: ByteBuffer): NapCandidateInfo? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterTypeNapCandidateInfo.read(buf)
+    }
+
+    override fun allocationSize(value: NapCandidateInfo?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterTypeNapCandidateInfo.allocationSize(value)
+        }
+    }
+
+    override fun write(value: NapCandidateInfo?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterTypeNapCandidateInfo.write(value, buf)
         }
     }
 }
@@ -9024,6 +9254,23 @@ public object FfiConverterSequenceOptionalDouble: FfiConverterRustBuffer<List<ko
         FfiConverterSequenceTypeMainNightBlock.lower(`blocks`),
         FfiConverterLong.lower(`offsetS`),
         FfiConverterOptionalLong.lower(`habitualMidsleepSec`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Classify one candidate window for a short nap (tri-state, conservative — only PROPOSES a review card).
+         */ fun `napEvaluate`(`gravity`: List<WorkoutGravitySample>, `hr`: List<HrTick>, `restingHr`: kotlin.Int?, `config`: NapConfigInfo): NapDecisionInfo {
+            return FfiConverterTypeNapDecisionInfo.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_func_nap_evaluate(
+    
+        
+        FfiConverterSequenceTypeWorkoutGravitySample.lower(`gravity`),
+        FfiConverterSequenceTypeHrTick.lower(`hr`),
+        FfiConverterOptionalInt.lower(`restingHr`),
+        FfiConverterTypeNapConfigInfo.lower(`config`),_status)
 }
     )
     }

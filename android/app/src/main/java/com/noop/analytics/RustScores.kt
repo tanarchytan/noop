@@ -1,10 +1,15 @@
 package com.noop.analytics
 
+import com.noop.data.GravitySample
+import com.noop.data.HrRow
 import com.noop.data.HrSample
 import com.noop.data.RrInterval
 import com.noop.data.Spo2Sample
 import com.noop.data.StepSample
 import uniffi.whoop_ffi.DaytimeStressInfo
+import uniffi.whoop_ffi.NapConfigInfo
+import uniffi.whoop_ffi.NapVerdictInfo
+import uniffi.whoop_ffi.WorkoutGravitySample
 import uniffi.whoop_ffi.DebtNightInput
 import uniffi.whoop_ffi.DriverBaselineInfo
 import uniffi.whoop_ffi.FitnessAgeInfo
@@ -359,4 +364,35 @@ internal object RustScores {
         uniffi.whoop_ffi.hrvFreqDomain(rawRR.map { it.toInt().toUShort() })?.let {
             HrvFreqDomain.Bands(lf = it.lf, hf = it.hf, lfhf = it.lfhf, totalPower = it.totalPower)
         }
+
+    // ── Short-nap detection ──────────────────────────────────────────────────
+
+    /** Tri-state nap verdict over a candidate window — twin of [NapDetector.evaluate]. The dense-gravity
+     *  eligibility, the longest-quiet-run and the length + HR-settled gates all live in whoop-rs. */
+    fun napEvaluate(gravity: List<GravitySample>, hr: List<HrRow>, restingHr: Int?, config: NapConfig): NapDecision {
+        val info = uniffi.whoop_ffi.napEvaluate(
+            gravity.map { WorkoutGravitySample(it.ts, it.x, it.y, it.z) },
+            hr.map { HrTick(it.ts, it.bpm) },
+            restingHr,
+            NapConfigInfo(
+                enabled = config.enabled,
+                minNapMinutes = config.minNapMinutes,
+                maxNapMinutes = config.maxNapMinutes,
+                stillThresholdG = config.stillThresholdG,
+                hrSettleMarginBpm = config.hrSettleMarginBpm,
+                smoothWindowSeconds = config.smoothWindowSeconds,
+            ),
+        )
+        val verdict = when (info.verdict) {
+            NapVerdictInfo.NAP -> NapVerdict.NAP
+            NapVerdictInfo.NONE -> NapVerdict.NONE
+            NapVerdictInfo.INCONCLUSIVE -> NapVerdict.INCONCLUSIVE
+        }
+        return NapDecision(
+            verdict = verdict,
+            candidate = info.candidate?.let {
+                NapCandidate(start = it.start, end = it.end, meanHr = it.meanHr, confidence = it.confidence)
+            },
+        )
+    }
 }
