@@ -50,7 +50,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         LiveSessionRow::class,
         PpgWaveformSampleEntity::class,
     ],
-    version = 22,
+    version = 100,
     exportSchema = false,
 )
 abstract class WhoopDatabase : RoomDatabase() {
@@ -59,13 +59,17 @@ abstract class WhoopDatabase : RoomDatabase() {
     companion object {
         const val DB_NAME = "noop_whoop.db"
 
-        /** Current Room schema version. Must match [Database.version]. Exposed for backup migration. */
-        const val SCHEMA_VERSION = 22
+        /** Current Room schema version (v1-tan). Must match [Database.version]. */
+        const val SCHEMA_VERSION = 100
 
         /**
          * Ordered list of all Room migrations, from earliest to latest. Used by
          * [DataBackup.migrateBackupIfNeeded] to bring an older backup's SQLite file
          * to the current schema before it replaces the live database.
+         *
+         * Versions 22–99 are catch-all slots: any upstream DB at v22 or later
+         * (ryanbr/newwbbss) converges to v100 (v1-tan) via the same [reconcileToTan]
+         * logic. No individual migration per upstream version is needed.
          */
         val ALL_MIGRATIONS: List<Migration> by lazy {
             listOf(
@@ -74,7 +78,16 @@ abstract class WhoopDatabase : RoomDatabase() {
             MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14,
             MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18,
             MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21, MIGRATION_21_22,
-        )
+            ) + UPSTREAM_CATCHALL_MIGRATIONS
+        }
+
+        /** Any upstream version 22–99 converges to v1-tan via [reconcileToTan]. */
+        private val UPSTREAM_CATCHALL_MIGRATIONS: List<Migration> by lazy {
+            (22..99).map { v ->
+                object : Migration(v, 100) {
+                    override fun migrate(db: SupportSQLiteDatabase) { reconcileToTan(db) }
+                }
+            }
         }
 
         @Volatile
@@ -602,6 +615,47 @@ abstract class WhoopDatabase : RoomDatabase() {
         internal val MIGRATION_21_22 = object : Migration(21, 22) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE dailyMetric ADD COLUMN skinTempAbsC REAL")
+            }
+        }
+
+        /**
+         * Bring any upstream (ryanbr/newwbbss) or unknown schema into the noop-tan shape.
+         *
+         * Detection uses `spo2PctSample` table — present → already noop-tan, no-op.
+         * Missing tables/columns are added idempotently (CREATE IF NOT EXISTS / ALTER ADD).
+         * Upstream extras (rawImuSample, managementVisible) are harmless and left in place.
+         */
+        private fun reconcileToTan(db: SupportSQLiteDatabase) {
+            if (!tableExists(db, "spo2PctSample")) {
+                for (stmt in SPO2_PCT_SAMPLE_MIGRATION_SQL) db.execSQL(stmt)
+            }
+            if (!columnExists(db, "dailyMetric", "skinTempAbsC")) {
+                db.execSQL("ALTER TABLE dailyMetric ADD COLUMN skinTempAbsC REAL")
+            }
+            if (!tableExists(db, "ppgWaveformSample")) {
+                for (stmt in PPG_WAVEFORM_MIGRATION_SQL) db.execSQL(stmt)
+            }
+        }
+
+        /** True if [table] exists in sqlite_master (case-insensitive). */
+        private fun tableExists(db: SupportSQLiteDatabase, table: String): Boolean {
+            val c = db.query(
+                "SELECT count(*) FROM sqlite_master WHERE type='table' AND name=? COLLATE NOCASE",
+                arrayOf(table),
+            )
+            return c.use { it.moveToFirst() && it.getInt(0) > 0 }
+        }
+
+        /** True if [column] exists on [table]. */
+        private fun columnExists(db: SupportSQLiteDatabase, table: String, column: String): Boolean {
+            val c = db.query("PRAGMA table_info(`$table`)")
+            val nameIdx = c.getColumnIndex("name")
+            return c.use {
+                while (it.moveToNext()) {
+                    if (nameIdx >= 0 && it.getString(nameIdx).equals(column, ignoreCase = true))
+                        return@use true
+                }
+                false
             }
         }
 
