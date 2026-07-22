@@ -603,13 +603,13 @@ object DataBackup {
     }
 
     /**
-     * Byte offset of `PRAGMA user_version` in the SQLite 3 database header (100-byte header,
-     * big-endian 32-bit integer at offset 64). Verified against the SQLite source.
+     * Byte offset of `PRAGMA user_version` in the SQLite 3 database header — a big-endian 32-bit integer
+     * at offset 60 (offset 64 is the incremental-vacuum field, offset 68 the application_id).
      */
-    private const val USER_VERSION_OFFSET = 64
+    private const val USER_VERSION_OFFSET = 60
 
-    /** Bytes of the SQLite header needed to extract [USER_VERSION_OFFSET]. */
-    private const val HEADER_READ_SIZE = 68
+    /** Bytes of the SQLite header needed to extract [USER_VERSION_OFFSET] (offset + 4). */
+    private const val HEADER_READ_SIZE = 64
 
     /**
      * Read the Room schema version (`PRAGMA user_version`) from a SQLite file's database header,
@@ -656,28 +656,13 @@ object DataBackup {
         val currentVersion = readUserVersion(stagedFile)
             ?: return "Could not read the backup's schema version."
 
-        // v0 = fresh/empty database, no existing schema to migrate.
+        // v0 = a fresh/empty Room database with no schema to migrate. (A cross-platform GRDB backup is
+        // also user_version 0, but it is rejected earlier by the origin check, so it never reaches here.)
         if (currentVersion <= 0) return null
         if (currentVersion >= targetVersion) return null
 
-        val applicable = migrations
-            .filter { it.startVersion >= currentVersion && it.endVersion <= targetVersion }
-            .sortedBy { it.startVersion }
-
-        if (applicable.isEmpty()) {
-            return "No migration path from schema v$currentVersion to v$targetVersion."
-        }
-
-        var expected = currentVersion
-        for (m in applicable) {
-            if (m.startVersion != expected) {
-                return "Migration gap: schema v$expected to v${m.startVersion}."
-            }
-            expected = m.endVersion
-        }
-        if (expected != targetVersion) {
-            return "Migration chain ends at v$expected, target is v$targetVersion."
-        }
+        val plan = planMigrationPath(currentVersion, targetVersion, migrations)
+        val applicable = plan.path ?: return plan.error
 
         // Open the staged file read-write through FrameworkSQLiteOpenHelper, which wraps a raw
         // SQLiteDatabase as a SupportSQLiteDatabase — exactly what Migration.migrate() expects.
@@ -706,6 +691,32 @@ object DataBackup {
         }.getOrElse { e ->
             "Migration from v$currentVersion to v$targetVersion failed: ${e.message}"
         }
+    }
+
+    /** Result of [planMigrationPath]: the ordered migrations to run, or an [error] when no step exists. */
+    internal data class MigrationPlan(val path: List<Migration>?, val error: String?)
+
+    /**
+     * Plan the migration path from [currentVersion] to [targetVersion]. At each step it takes the migration
+     * that starts at the current version and jumps FURTHEST (endVersion <= target) — Room's own resolution
+     * rule, so an upstream catch-all (each of v22..99 -> v100) leaps straight to the target instead of
+     * needing a strictly contiguous per-version chain. Pure and unit-testable (no DB open).
+     *
+     * Returns an empty path when already at/after the target, the ordered path on success, or a null path
+     * with [MigrationPlan.error] set when some intermediate version has no outgoing migration.
+     */
+    internal fun planMigrationPath(currentVersion: Int, targetVersion: Int, migrations: List<Migration>): MigrationPlan {
+        if (currentVersion >= targetVersion) return MigrationPlan(emptyList(), null)
+        val startsAt = migrations.filter { it.endVersion <= targetVersion }.groupBy { it.startVersion }
+        val path = ArrayList<Migration>()
+        var at = currentVersion
+        while (at < targetVersion) {
+            val next = startsAt[at]?.maxByOrNull { it.endVersion }
+                ?: return MigrationPlan(null, "No migration path from schema v$at to v$targetVersion.")
+            path.add(next)
+            at = next.endVersion
+        }
+        return MigrationPlan(path, null)
     }
 }
 
