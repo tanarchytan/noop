@@ -4,9 +4,11 @@ import com.noop.data.HrSample
 import com.noop.data.RrInterval
 import com.noop.data.Spo2Sample
 import com.noop.data.StepSample
+import uniffi.whoop_ffi.DaytimeStressInfo
 import uniffi.whoop_ffi.DebtNightInput
 import uniffi.whoop_ffi.DriverBaselineInfo
 import uniffi.whoop_ffi.FitnessAgeInfo
+import uniffi.whoop_ffi.HourPointInfo
 import uniffi.whoop_ffi.HrTick
 import uniffi.whoop_ffi.HrZoneSetInfo
 import uniffi.whoop_ffi.RecoveryDrivers
@@ -18,6 +20,7 @@ import uniffi.whoop_ffi.Spo2RawSample
 import uniffi.whoop_ffi.Spo2Span
 import uniffi.whoop_ffi.StrainMethod
 import uniffi.whoop_ffi.StressComponentsInfo
+import uniffi.whoop_ffi.StressDayInfo
 import uniffi.whoop_ffi.TimeInZoneInfo
 
 /**
@@ -315,4 +318,21 @@ internal object RustScores {
             needMin = info.needMin,
         )
     }
+
+    // ── Daily autonomic stress (RHR + HRV vs baseline) ───────────────────────
+
+    /** Daily autonomic stress (0-3) for `today` against a `baseline` of prior `(rhr, hrv)` days. `null`
+     *  under the 14-day baseline floor or with no usable signal. whoop-rs owns the mean/SD + z + logistic. */
+    fun dailyStress(rhr: Double?, hrv: Double?, baseline: List<Pair<Double?, Double?>>): Double? =
+        uniffi.whoop_ffi.dailyStress(
+            StressDayInfo(rhr, hrv),
+            baseline.map { StressDayInfo(it.first, it.second) },
+        )
+
+    // ── Daytime autonomic stress (per-hour activation) ───────────────────────
+
+    /** Score waking-hour aggregates for autonomic activation. Returns the whoop-rs `DaytimeStressInfo`
+     *  (scored hours + day mean + peak hour + trailing high run); the caller reassembles its timeline. */
+    fun daytimeStress(hours: List<HourPointInfo>): DaytimeStressInfo =
+        uniffi.whoop_ffi.daytimeStress(hours)
 }

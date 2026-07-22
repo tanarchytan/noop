@@ -60,9 +60,7 @@ import com.noop.analytics.RustScores
 import com.noop.analytics.StressIndex
 import com.noop.data.DailyMetric
 import java.util.Locale
-import kotlin.math.exp
 import kotlin.math.roundToInt
-import kotlin.math.sqrt
 
 // MARK: - Stress Monitor (ported from Strand/Screens/StressView.swift)
 //
@@ -1220,27 +1218,22 @@ internal class StressModel private constructor(
  // Baseline window: up to 30 days ending the day BEFORE the scored day, so it's measured
  // against its own recent past rather than itself.
             val baseline = if (idx > 0) days.subList(0, idx).takeLast(30) else emptyList()
+            val baselineDays = baseline.map { it.restingHr?.toDouble() to it.avgHrv }
 
             val rhrBase = baseline.mapNotNull { it.restingHr?.toDouble() }
             val hrvBase = baseline.mapNotNull { it.avgHrv }
 
             val meanRHR = mean(rhrBase)
-            val sdRHR = std(rhrBase, meanRHR)
             val meanHRV = mean(hrvBase)
-            val sdHRV = std(hrvBase, meanHRV)
 
             val rhrT = today.restingHr?.toDouble()
             val hrvT = today.avgHrv
 
-            val derivedAvailable = (rhrT != null && meanRHR != null) || (hrvT != null && meanHRV != null)
+            // Score + baseline gate live in whoop-rs (daily_stress): a value only above the 14-day baseline
+            // floor with usable signal, else null. Means are kept for the vs-baseline deltas below.
             val storedToday = stored[today.day]
-            if (storedToday == null && !derivedAvailable) return null
-
-            val derivedToday: Double? = if (derivedAvailable) {
-                squash(rawScore(rhrT, meanRHR, sdRHR, hrvT, meanHRV, sdHRV))
-            } else {
-                null
-            }
+            val derivedToday: Double? = RustScores.dailyStress(rhrT, hrvT, baselineDays)
+            if (storedToday == null && derivedToday == null) return null
 
             val s = storedToday ?: derivedToday ?: 1.5
             val usingStored = storedToday != null
@@ -1258,10 +1251,8 @@ internal class StressModel private constructor(
                     pts.add(TrendPoint(d.day, v.coerceIn(0.0, 3.0)))
                     continue
                 }
-                val dRHR = d.restingHr?.toDouble()
-                val dHRV = d.avgHrv
-                if ((dRHR == null || meanRHR == null) && (dHRV == null || meanHRV == null)) continue
-                pts.add(TrendPoint(d.day, squash(rawScore(dRHR, meanRHR, sdRHR, dHRV, meanHRV, sdHRV))))
+                val score = RustScores.dailyStress(d.restingHr?.toDouble(), d.avgHrv, baselineDays)
+                if (score != null) pts.add(TrendPoint(d.day, score))
             }
 
  // "Calm time": share of the last 30 charted days that sat in the LOW band.
@@ -1297,32 +1288,6 @@ internal class StressModel private constructor(
 
         private fun mean(xs: List<Double>): Double? =
             if (xs.isEmpty()) null else xs.sum() / xs.size
-
-        /** Population standard deviation; 0 when there's no spread. */
-        private fun std(xs: List<Double>, m: Double?): Double {
-            if (m == null || xs.size <= 1) return 0.0
-            val v = xs.sumOf { (it - m) * (it - m) } / xs.size
-            return sqrt(v)
-        }
-
-        /** Combined autonomic z-score. RHR-up and HRV-down both push it positive. */
-        private fun rawScore(
-            rhrToday: Double?, meanRHR: Double?, sdRHR: Double,
-            hrvToday: Double?, meanHRV: Double?, sdHRV: Double,
-        ): Double {
-            var sum = 0.0
-            if (rhrToday != null && meanRHR != null && sdRHR > 0.0001) {
-                sum += (rhrToday - meanRHR) / sdRHR        // up = stress
-            }
-            if (hrvToday != null && meanHRV != null && sdHRV > 0.0001) {
-                sum += (meanHRV - hrvToday) / sdHRV        // down = stress
-            }
-            return sum
-        }
-
-        /** Logistic squash of the raw z-sum onto 0–3 (baseline 0 → 1.5). */
-        private fun squash(raw: Double): Double =
-            (3.0 / (1.0 + exp(-raw))).coerceIn(0.0, 3.0)
 
         private fun explanation(band: StressBand, rhrDelta: Double?, hrvDelta: Double?): String {
             val rhrUp = (rhrDelta ?: 0.0) > 1.0

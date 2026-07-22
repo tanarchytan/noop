@@ -5,6 +5,7 @@ import com.noop.data.RrInterval
 import kotlin.math.exp
 import kotlin.math.min
 import kotlin.math.sqrt
+import uniffi.whoop_ffi.HourPointInfo
 
 /*
  * DaytimeStress.kt — an intraday (hour-by-hour) read of the SAME autonomic stress proxy
@@ -146,26 +147,25 @@ object DaytimeStress {
      */
     fun analyze(hr: List<HrSample>, rr: List<RrInterval>, tzOffsetSeconds: Long = 0L): Result {
         if (hr.isEmpty()) return Result.EMPTY
+        return scoreRust(bucketize(hr, rr, tzOffsetSeconds), tzOffsetSeconds)
+    }
 
-        // 1) Bucket HR + R-R into LOCAL hour-of-day buckets, keyed by the bucket start
-        //    (floored to the hour on the local clock).
+    /** One hour's aggregates: mean HR (null below the [minHourHrSamples] gate) + cleaned RMSSD. */
+    internal data class HourAgg(val bucket: Long, val meanHr: Double?, val rmssd: Double?)
+
+    /** Bucket the day's HR + R-R into LOCAL hour-of-day buckets and reduce each to (meanHr, rmssd). RMSSD
+     *  runs through the shared HRV cleaner so ectopic beats can't fabricate variability. */
+    internal fun bucketize(hr: List<HrSample>, rr: List<RrInterval>, tzOffsetSeconds: Long): List<HourAgg> {
         val hrByBucket = HashMap<Long, MutableList<Double>>()
         for (s in hr) {
-            val localTs = s.ts + tzOffsetSeconds
-            val bucket = floorDiv(localTs, bucketSeconds) * bucketSeconds
+            val bucket = floorDiv(s.ts + tzOffsetSeconds, bucketSeconds) * bucketSeconds
             hrByBucket.getOrPut(bucket) { ArrayList() }.add(s.bpm.toDouble())
         }
         val rrByBucket = HashMap<Long, MutableList<Double>>()
         for (s in rr) {
-            val localTs = s.ts + tzOffsetSeconds
-            val bucket = floorDiv(localTs, bucketSeconds) * bucketSeconds
+            val bucket = floorDiv(s.ts + tzOffsetSeconds, bucketSeconds) * bucketSeconds
             rrByBucket.getOrPut(bucket) { ArrayList() }.add(s.rrMs.toDouble())
         }
-
-        // 2) Per-hour mean HR + RMSSD (RMSSD via the shared HRV cleaner, so ectopic beats
-        //    can't fabricate variability). An hour with < minHourHrSamples HR is left
-        //    unscored (null level) — never invented.
-        data class HourAgg(val bucket: Long, val meanHr: Double?, val rmssd: Double?)
         val orderedBuckets = hrByBucket.keys.sorted()
         val aggs = ArrayList<HourAgg>(orderedBuckets.size)
         for (b in orderedBuckets) {
@@ -174,19 +174,12 @@ object DaytimeStress {
             val rrRes = HrvAnalyzer.analyzeRaw(rrByBucket[b] ?: emptyList())
             aggs.add(HourAgg(b, mHr, rrRes.rmssd))
         }
+        return aggs
+    }
 
-        // 3) The day's OWN quiet reference: centre on the CALM end (the lower quartile of
-        //    hourly mean HR, the upper quartile of hourly RMSSD), and spread from the
-        //    across-hour SD. This makes a flat day read ~baseline and a spiky day surface its
-        //    tense hours — without any cross-day history. Falls back to the plain mean when
-        //    there are too few scored hours for a quartile.
-        //
-        //    Built from the WAKING hours only — the same hours scored in step 4. Sleep is the
-        //    calmest, lowest-HR / highest-HRV stretch of the day, and the analysis window
-        //    always begins at local midnight, so the current day routinely carries several
-        //    hours of it. Letting those night hours into the reference drags the "calm" anchor
-        //    far beneath every waking hour, inflating an ordinary calm day toward HIGH and
-        //    falsely tripping the sustained-high Breathe nudge.
+    /** Kotlin scoring reference (calm-quartile z + logistic) — the parity ORACLE; the live path is
+     *  [scoreRust]. Kept whole so a fixture can compare the two leg-for-leg. */
+    internal fun scoreKotlin(aggs: List<HourAgg>, tzOffsetSeconds: Long): Result {
         val referenceAggs = aggs.filter { isWakingHour(it.bucket) }
         val hrMeans = referenceAggs.mapNotNull { it.meanHr }
         val rmssdVals = referenceAggs.mapNotNull { it.rmssd }
@@ -195,15 +188,11 @@ object DaytimeStress {
         val sdHr = std(hrMeans, mean(hrMeans))
         val sdRmssd = std(rmssdVals, mean(rmssdVals))
 
-        // 4) Score each waking-hour bucket on the shared 0–3 curve.
         val points = ArrayList<HourPoint>(aggs.size)
         for (a in aggs) {
             if (!isWakingHour(a.bucket)) continue
             val hourOfDay = (floorDiv(a.bucket, bucketSeconds) % 24).toInt()
-            // The wall-clock bucket start (undo the local shift applied above).
             val wallStart = a.bucket - tzOffsetSeconds
-            // Score only when HR cleared the count gate (HR is the always-available anchor;
-            // RMSSD enriches it when beats allow).
             val level: Double? = if (a.meanHr != null) {
                 squash(rawScore(a.meanHr, refHr, sdHr, a.rmssd, refRmssd, sdRmssd))
             } else {
@@ -211,26 +200,40 @@ object DaytimeStress {
             }
             points.add(HourPoint(hourOfDay, wallStart, level, a.meanHr, a.rmssd))
         }
-
         val scored = points.mapNotNull { p -> p.level?.let { p to it } }
         if (scored.isEmpty()) {
-            // No scorable waking hour — still return the (unscored) timeline so the UI can
-            // show "not enough data" rather than nothing.
             return if (points.isEmpty()) Result.EMPTY
             else Result(points, sustainedHigh = false, sustainedRun = 0, dayMean = null, peak = null)
         }
-
-        // 5) Sustained-high flag: walk back from the latest SCORED hour while each is HIGH.
         var run = 0
         for ((_, lvl) in scored.asReversed()) {
             if (lvl >= highBandFloor) run += 1 else break
         }
-        val sustained = run >= sustainedHours
-
         val dayMean = mean(scored.map { it.second })
         val peak = scored.maxByOrNull { it.second }?.first
+        return Result(points, run >= sustainedHours, run, dayMean, peak)
+    }
 
-        return Result(points, sustained, run, dayMean, peak)
+    /** Live path: score the hourly aggregates in whoop-rs (daytime_stress), then reassemble the full
+     *  timeline (unscored hours kept for the UI). Adopts the whoop-rs peak on a tie (last hour). */
+    internal fun scoreRust(aggs: List<HourAgg>, tzOffsetSeconds: Long): Result {
+        val hourPoints = aggs.map { a ->
+            HourPointInfo((floorDiv(a.bucket, bucketSeconds) % 24).toInt(), a.meanHr, a.rmssd)
+        }
+        val info = RustScores.daytimeStress(hourPoints)
+        val scoredByHour = info.hours.associateBy { it.hour }
+
+        val points = ArrayList<HourPoint>(aggs.size)
+        for (a in aggs) {
+            if (!isWakingHour(a.bucket)) continue
+            val hourOfDay = (floorDiv(a.bucket, bucketSeconds) % 24).toInt()
+            val wallStart = a.bucket - tzOffsetSeconds
+            val level = if (a.meanHr != null) scoredByHour[hourOfDay]?.stress else null
+            points.add(HourPoint(hourOfDay, wallStart, level, a.meanHr, a.rmssd))
+        }
+        if (points.isEmpty()) return Result.EMPTY
+        val peak = info.peakHour?.let { ph -> points.firstOrNull { it.hour == ph } }
+        return Result(points, info.sustainedHigh, info.sustainedRun.toInt(), info.dayMean, peak)
     }
 
     // MARK: - Helpers
