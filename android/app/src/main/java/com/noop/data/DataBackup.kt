@@ -718,6 +718,70 @@ object DataBackup {
         }
         return MigrationPlan(path, null)
     }
+
+    // ── Content-based (version-agnostic) row-copy import ──────────────────────────
+
+    /** How a backup's rows fold into the target store. */
+    enum class ImportMode { MERGE, REPLACE }
+
+    /**
+     * A content-based import plan: the SQL to run, plus what didn't line up (surfaced to the user as
+     * warnings, never as a hard error). [statements] run inside one transaction with `src` ATTACHed.
+     */
+    internal data class RowCopyPlan(
+        val statements: List<String>,
+        /** Target tables absent from the backup — no data to import for them. */
+        val missingTables: List<String>,
+        /** Backup tables with no home in the target — their rows are skipped. */
+        val droppedTables: List<String>,
+        /** Per table, target columns the backup lacks (they import as NULL/default). */
+        val missingColumns: Map<String, List<String>>,
+    ) {
+        /** Human-readable warnings, empty when the backup lines up cleanly. */
+        fun warnings(): List<String> = buildList {
+            if (missingTables.isNotEmpty()) add("No data in this backup for: ${missingTables.joinToString(", ")}.")
+            if (droppedTables.isNotEmpty()) add("Skipped tables not in this app: ${droppedTables.joinToString(", ")}.")
+            missingColumns.forEach { (t, cols) -> add("$t is missing fields ${cols.joinToString(", ")} (imported empty).") }
+        }
+    }
+
+    private val HOUSEKEEPING_TABLES = setOf("android_metadata", "sqlite_sequence", "room_master_table", "grdb_migrations")
+
+    /**
+     * Plan a version-agnostic row copy from [source] into [target] — each a `table -> ordered columns` map
+     * read at runtime from `PRAGMA table_info`, so it needs no schema version and never touches Room's
+     * identity. For every data table in BOTH, copy the intersection of columns; type/quoting/default
+     * differences across forks/platforms are irrelevant (SQLite coerces on insert). [ImportMode.REPLACE]
+     * clears each target table first (restore semantics); [ImportMode.MERGE] keeps existing rows on a PK
+     * clash. Mismatched tables/columns become [RowCopyPlan] warnings, not failures.
+     */
+    internal fun planRowCopyImport(
+        target: Map<String, List<String>>,
+        source: Map<String, List<String>>,
+        mode: ImportMode,
+    ): RowCopyPlan {
+        fun dataTables(keys: Set<String>) = keys.filter { it !in HOUSEKEEPING_TABLES && !it.startsWith("sqlite_") }
+        val tgt = dataTables(target.keys).toSet()
+        val src = dataTables(source.keys).toSet()
+        val stmts = ArrayList<String>()
+        val missingCols = LinkedHashMap<String, List<String>>()
+        for (t in (tgt intersect src).sorted()) {
+            val srcCols = source[t]!!.toSet()
+            val cols = target[t]!!.filter { it in srcCols }
+            val absent = target[t]!!.filter { it !in srcCols }
+            if (absent.isNotEmpty()) missingCols[t] = absent
+            if (cols.isEmpty()) continue
+            val colList = cols.joinToString(", ") { "`$it`" }
+            if (mode == ImportMode.REPLACE) stmts.add("DELETE FROM main.`$t`")
+            stmts.add("INSERT OR IGNORE INTO main.`$t` ($colList) SELECT $colList FROM src.`$t`")
+        }
+        return RowCopyPlan(
+            statements = stmts,
+            missingTables = (tgt - src).sorted(),
+            droppedTables = (src - tgt).sorted(),
+            missingColumns = missingCols,
+        )
+    }
 }
 
 /**
