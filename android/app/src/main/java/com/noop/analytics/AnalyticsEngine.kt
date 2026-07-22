@@ -434,7 +434,7 @@ object AnalyticsEngine {
         // Replaces the bare efficiency proxy: duration-vs-personal-need 0.50 + efficiency 0.20 +
         // restorative (deep+REM)/asleep 0.20 + consistency 0.10. Stored under the sleep_performance
         // key. null when no in-bed session. (Charge/Effort/Rest)
-        val rest: Double? = if (matched.isEmpty()) null else RestScorer.rest(
+        val rest: Double? = if (matched.isEmpty()) null else RustScores.rest(
             asleepSeconds = tstS,
             efficiency = efficiency,
             deepSeconds = deepS,
@@ -1061,7 +1061,7 @@ object RestScorer {
         val tstMin = daily.totalSleepMin ?: return null
         val eff = daily.efficiency ?: return null
         if (tstMin <= 0.0) return null
-        return rest(
+        return RustScores.rest(
             asleepSeconds = tstMin * 60.0,
             efficiency = eff,
             deepSeconds = (daily.deepMin ?: 0.0) * 60.0,

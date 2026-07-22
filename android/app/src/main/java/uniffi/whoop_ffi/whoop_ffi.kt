@@ -689,9 +689,13 @@ internal object IntegrityCheckingUniffiLib {
     ): Int
     external fun uniffi_whoop_ffi_checksum_func_daily_resting_hr(
     ): Int
+    external fun uniffi_whoop_ffi_checksum_func_daily_stress(
+    ): Int
     external fun uniffi_whoop_ffi_checksum_func_data_range_newest(
     ): Int
     external fun uniffi_whoop_ffi_checksum_func_data_range_oldest(
+    ): Int
+    external fun uniffi_whoop_ffi_checksum_func_daytime_stress(
     ): Int
     external fun uniffi_whoop_ffi_checksum_func_fitness_age_compute(
     ): Int
@@ -741,7 +745,11 @@ internal object IntegrityCheckingUniffiLib {
     ): Int
     external fun uniffi_whoop_ffi_checksum_func_resp_rate_from_rr(
     ): Int
+    external fun uniffi_whoop_ffi_checksum_func_rest_score(
+    ): Int
     external fun uniffi_whoop_ffi_checksum_func_session_resting_hr(
+    ): Int
+    external fun uniffi_whoop_ffi_checksum_func_sleep_debt_ledger(
     ): Int
     external fun uniffi_whoop_ffi_checksum_func_spo2_from_paired(
     ): Int
@@ -925,9 +933,13 @@ internal object UniffiLib {
     ): Double
     external fun uniffi_whoop_ffi_fn_func_daily_resting_hr(`sessionFloors`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
+    external fun uniffi_whoop_ffi_fn_func_daily_stress(`today`: RustBuffer.ByValue,`baseline`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_func_data_range_newest(`frame`: RustBuffer.ByValue,`wallNowUnix`: Long,`futureSkewSeconds`: Long,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_func_data_range_oldest(`frame`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    external fun uniffi_whoop_ffi_fn_func_daytime_stress(`hours`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_func_fitness_age_compute(`age`: Double,`sex`: RustBuffer.ByValue,`restingHr`: Double,`paIndex`: Double,`waistCm`: RustBuffer.ByValue,`lowerConfidence`: Byte,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
@@ -977,7 +989,11 @@ internal object UniffiLib {
     ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_func_resp_rate_from_rr(`beats`: RustBuffer.ByValue,`start`: Long,`end`: Long,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
+    external fun uniffi_whoop_ffi_fn_func_rest_score(`asleepSeconds`: Double,`efficiency`: Double,`deepSeconds`: Double,`remSeconds`: Double,`sleepNeedHours`: RustBuffer.ByValue,`consistency`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_func_session_resting_hr(`start`: Long,`end`: Long,`hr`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    external fun uniffi_whoop_ffi_fn_func_sleep_debt_ledger(`series`: RustBuffer.ByValue,`needHours`: RustBuffer.ByValue,`window`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_func_spo2_from_paired(`red`: RustBuffer.ByValue,`ir`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
@@ -1142,10 +1158,16 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_whoop_ffi_checksum_func_daily_resting_hr() != 11457) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_whoop_ffi_checksum_func_daily_stress() != 515) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_whoop_ffi_checksum_func_data_range_newest() != 53769) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_whoop_ffi_checksum_func_data_range_oldest() != 344) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_whoop_ffi_checksum_func_daytime_stress() != 64174) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_whoop_ffi_checksum_func_fitness_age_compute() != 21035) {
@@ -1220,7 +1242,13 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_whoop_ffi_checksum_func_resp_rate_from_rr() != 47487) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_whoop_ffi_checksum_func_rest_score() != 47618) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_whoop_ffi_checksum_func_session_resting_hr() != 56066) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_whoop_ffi_checksum_func_sleep_debt_ledger() != 40274) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_whoop_ffi_checksum_func_spo2_from_paired() != 11748) {
@@ -2867,6 +2895,195 @@ public object FfiConverterTypeBaselineStateInfo: FfiConverterRustBuffer<Baseline
 
 
 /**
+ * Daytime-stress result: the per-hour scores plus the day mean, peak hour, and the trailing high run.
+ */
+data class DaytimeStressInfo (
+    var `hours`: List<ScoredHourInfo>
+    , 
+    var `dayMean`: kotlin.Double?
+    , 
+    var `peakHour`: kotlin.Int?
+    , 
+    var `sustainedHigh`: kotlin.Boolean
+    , 
+    var `sustainedRun`: kotlin.UInt
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeDaytimeStressInfo: FfiConverterRustBuffer<DaytimeStressInfo> {
+    override fun read(buf: ByteBuffer): DaytimeStressInfo {
+        return DaytimeStressInfo(
+            FfiConverterSequenceTypeScoredHourInfo.read(buf),
+            FfiConverterOptionalDouble.read(buf),
+            FfiConverterOptionalInt.read(buf),
+            FfiConverterBoolean.read(buf),
+            FfiConverterUInt.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: DaytimeStressInfo) = (
+            FfiConverterSequenceTypeScoredHourInfo.allocationSize(value.`hours`) +
+            FfiConverterOptionalDouble.allocationSize(value.`dayMean`) +
+            FfiConverterOptionalInt.allocationSize(value.`peakHour`) +
+            FfiConverterBoolean.allocationSize(value.`sustainedHigh`) +
+            FfiConverterUInt.allocationSize(value.`sustainedRun`)
+    )
+
+    override fun write(value: DaytimeStressInfo, buf: ByteBuffer) {
+            FfiConverterSequenceTypeScoredHourInfo.write(value.`hours`, buf)
+            FfiConverterOptionalDouble.write(value.`dayMean`, buf)
+            FfiConverterOptionalInt.write(value.`peakHour`, buf)
+            FfiConverterBoolean.write(value.`sustainedHigh`, buf)
+            FfiConverterUInt.write(value.`sustainedRun`, buf)
+    }
+}
+
+
+
+/**
+ * The rolling debt ledger over the capped trailing window of nights with data.
+ */
+data class DebtLedgerInfo (
+    var `balanceMin`: kotlin.Double
+    , 
+    var `nights`: List<DebtNightInfo>
+    , 
+    var `needMin`: kotlin.Double
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeDebtLedgerInfo: FfiConverterRustBuffer<DebtLedgerInfo> {
+    override fun read(buf: ByteBuffer): DebtLedgerInfo {
+        return DebtLedgerInfo(
+            FfiConverterDouble.read(buf),
+            FfiConverterSequenceTypeDebtNightInfo.read(buf),
+            FfiConverterDouble.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: DebtLedgerInfo) = (
+            FfiConverterDouble.allocationSize(value.`balanceMin`) +
+            FfiConverterSequenceTypeDebtNightInfo.allocationSize(value.`nights`) +
+            FfiConverterDouble.allocationSize(value.`needMin`)
+    )
+
+    override fun write(value: DebtLedgerInfo, buf: ByteBuffer) {
+            FfiConverterDouble.write(value.`balanceMin`, buf)
+            FfiConverterSequenceTypeDebtNightInfo.write(value.`nights`, buf)
+            FfiConverterDouble.write(value.`needMin`, buf)
+    }
+}
+
+
+
+/**
+ * One night's contribution to the ledger.
+ */
+data class DebtNightInfo (
+    var `day`: kotlin.String
+    , 
+    var `sleptMin`: kotlin.Double
+    , 
+    var `deltaMin`: kotlin.Double
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeDebtNightInfo: FfiConverterRustBuffer<DebtNightInfo> {
+    override fun read(buf: ByteBuffer): DebtNightInfo {
+        return DebtNightInfo(
+            FfiConverterString.read(buf),
+            FfiConverterDouble.read(buf),
+            FfiConverterDouble.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: DebtNightInfo) = (
+            FfiConverterString.allocationSize(value.`day`) +
+            FfiConverterDouble.allocationSize(value.`sleptMin`) +
+            FfiConverterDouble.allocationSize(value.`deltaMin`)
+    )
+
+    override fun write(value: DebtNightInfo, buf: ByteBuffer) {
+            FfiConverterString.write(value.`day`, buf)
+            FfiConverterDouble.write(value.`sleptMin`, buf)
+            FfiConverterDouble.write(value.`deltaMin`, buf)
+    }
+}
+
+
+
+/**
+ * One night fed into the debt ledger: local `day` key + `slept_min` (None = no data, skipped not zeroed).
+ */
+data class DebtNightInput (
+    var `day`: kotlin.String
+    , 
+    var `sleptMin`: kotlin.Double?
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeDebtNightInput: FfiConverterRustBuffer<DebtNightInput> {
+    override fun read(buf: ByteBuffer): DebtNightInput {
+        return DebtNightInput(
+            FfiConverterString.read(buf),
+            FfiConverterOptionalDouble.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: DebtNightInput) = (
+            FfiConverterString.allocationSize(value.`day`) +
+            FfiConverterOptionalDouble.allocationSize(value.`sleptMin`)
+    )
+
+    override fun write(value: DebtNightInput, buf: ByteBuffer) {
+            FfiConverterString.write(value.`day`, buf)
+            FfiConverterOptionalDouble.write(value.`sleptMin`, buf)
+    }
+}
+
+
+
+/**
  * A personal baseline driver (mean + spread) for recovery z-scoring.
  */
 data class DriverBaselineInfo (
@@ -3074,6 +3291,53 @@ public object FfiConverterTypeHistorySummary: FfiConverterRustBuffer<HistorySumm
             FfiConverterOptionalUByte.write(value.`sleepState`, buf)
             FfiConverterOptionalUByte.write(value.`signalFlags`, buf)
             FfiConverterOptionalUByte.write(value.`signalQuality`, buf)
+    }
+}
+
+
+
+/**
+ * One hour's aggregates: local `hour` (0–23), mean HR (None below the sample gate) and RMSSD (None on
+ * insufficient clean R-R).
+ */
+data class HourPointInfo (
+    var `hour`: kotlin.Int
+    , 
+    var `meanHr`: kotlin.Double?
+    , 
+    var `rmssd`: kotlin.Double?
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeHourPointInfo: FfiConverterRustBuffer<HourPointInfo> {
+    override fun read(buf: ByteBuffer): HourPointInfo {
+        return HourPointInfo(
+            FfiConverterInt.read(buf),
+            FfiConverterOptionalDouble.read(buf),
+            FfiConverterOptionalDouble.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: HourPointInfo) = (
+            FfiConverterInt.allocationSize(value.`hour`) +
+            FfiConverterOptionalDouble.allocationSize(value.`meanHr`) +
+            FfiConverterOptionalDouble.allocationSize(value.`rmssd`)
+    )
+
+    override fun write(value: HourPointInfo, buf: ByteBuffer) {
+            FfiConverterInt.write(value.`hour`, buf)
+            FfiConverterOptionalDouble.write(value.`meanHr`, buf)
+            FfiConverterOptionalDouble.write(value.`rmssd`, buf)
     }
 }
 
@@ -4095,6 +4359,57 @@ public object FfiConverterTypeRrRun: FfiConverterRustBuffer<RrRun> {
 
 
 /**
+ * One scored waking hour.
+ */
+data class ScoredHourInfo (
+    var `hour`: kotlin.Int
+    , 
+    var `meanHr`: kotlin.Double
+    , 
+    var `rmssd`: kotlin.Double?
+    , 
+    var `stress`: kotlin.Double
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeScoredHourInfo: FfiConverterRustBuffer<ScoredHourInfo> {
+    override fun read(buf: ByteBuffer): ScoredHourInfo {
+        return ScoredHourInfo(
+            FfiConverterInt.read(buf),
+            FfiConverterDouble.read(buf),
+            FfiConverterOptionalDouble.read(buf),
+            FfiConverterDouble.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: ScoredHourInfo) = (
+            FfiConverterInt.allocationSize(value.`hour`) +
+            FfiConverterDouble.allocationSize(value.`meanHr`) +
+            FfiConverterOptionalDouble.allocationSize(value.`rmssd`) +
+            FfiConverterDouble.allocationSize(value.`stress`)
+    )
+
+    override fun write(value: ScoredHourInfo, buf: ByteBuffer) {
+            FfiConverterInt.write(value.`hour`, buf)
+            FfiConverterDouble.write(value.`meanHr`, buf)
+            FfiConverterOptionalDouble.write(value.`rmssd`, buf)
+            FfiConverterDouble.write(value.`stress`, buf)
+    }
+}
+
+
+
+/**
  * One 3-axis accel / gravity sample (g) at unix second `ts`.
  */
 data class SleepAccelSample (
@@ -4867,6 +5182,47 @@ public object FfiConverterTypeStressComponentsInfo: FfiConverterRustBuffer<Stres
             FfiConverterDouble.write(value.`amoPercent`, buf)
             FfiConverterDouble.write(value.`mxdmnSec`, buf)
             FfiConverterDouble.write(value.`si`, buf)
+    }
+}
+
+
+
+/**
+ * One day's RHR + HRV for daily-stress scoring (either may be absent).
+ */
+data class StressDayInfo (
+    var `rhr`: kotlin.Double?
+    , 
+    var `hrv`: kotlin.Double?
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeStressDayInfo: FfiConverterRustBuffer<StressDayInfo> {
+    override fun read(buf: ByteBuffer): StressDayInfo {
+        return StressDayInfo(
+            FfiConverterOptionalDouble.read(buf),
+            FfiConverterOptionalDouble.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: StressDayInfo) = (
+            FfiConverterOptionalDouble.allocationSize(value.`rhr`) +
+            FfiConverterOptionalDouble.allocationSize(value.`hrv`)
+    )
+
+    override fun write(value: StressDayInfo, buf: ByteBuffer) {
+            FfiConverterOptionalDouble.write(value.`rhr`, buf)
+            FfiConverterOptionalDouble.write(value.`hrv`, buf)
     }
 }
 
@@ -7133,6 +7489,90 @@ public object FfiConverterSequenceTypeBandStateSample: FfiConverterRustBuffer<Li
 /**
  * @suppress
  */
+public object FfiConverterSequenceTypeDebtNightInfo: FfiConverterRustBuffer<List<DebtNightInfo>> {
+    override fun read(buf: ByteBuffer): List<DebtNightInfo> {
+        val len = buf.getInt()
+        return List<DebtNightInfo>(len) {
+            FfiConverterTypeDebtNightInfo.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<DebtNightInfo>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeDebtNightInfo.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<DebtNightInfo>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeDebtNightInfo.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeDebtNightInput: FfiConverterRustBuffer<List<DebtNightInput>> {
+    override fun read(buf: ByteBuffer): List<DebtNightInput> {
+        val len = buf.getInt()
+        return List<DebtNightInput>(len) {
+            FfiConverterTypeDebtNightInput.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<DebtNightInput>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeDebtNightInput.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<DebtNightInput>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeDebtNightInput.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeHourPointInfo: FfiConverterRustBuffer<List<HourPointInfo>> {
+    override fun read(buf: ByteBuffer): List<HourPointInfo> {
+        val len = buf.getInt()
+        return List<HourPointInfo>(len) {
+            FfiConverterTypeHourPointInfo.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<HourPointInfo>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeHourPointInfo.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<HourPointInfo>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeHourPointInfo.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterSequenceTypeHrTick: FfiConverterRustBuffer<List<HrTick>> {
     override fun read(buf: ByteBuffer): List<HrTick> {
         val len = buf.getInt()
@@ -7375,6 +7815,34 @@ public object FfiConverterSequenceTypeRrRun: FfiConverterRustBuffer<List<RrRun>>
         buf.putInt(value.size)
         value.iterator().forEach {
             FfiConverterTypeRrRun.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeScoredHourInfo: FfiConverterRustBuffer<List<ScoredHourInfo>> {
+    override fun read(buf: ByteBuffer): List<ScoredHourInfo> {
+        val len = buf.getInt()
+        return List<ScoredHourInfo>(len) {
+            FfiConverterTypeScoredHourInfo.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<ScoredHourInfo>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeScoredHourInfo.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<ScoredHourInfo>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeScoredHourInfo.write(it, buf)
         }
     }
 }
@@ -7721,6 +8189,34 @@ public object FfiConverterSequenceTypeSpo2Span: FfiConverterRustBuffer<List<Spo2
 /**
  * @suppress
  */
+public object FfiConverterSequenceTypeStressDayInfo: FfiConverterRustBuffer<List<StressDayInfo>> {
+    override fun read(buf: ByteBuffer): List<StressDayInfo> {
+        val len = buf.getInt()
+        return List<StressDayInfo>(len) {
+            FfiConverterTypeStressDayInfo.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<StressDayInfo>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeStressDayInfo.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<StressDayInfo>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeStressDayInfo.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterSequenceTypeWorkoutGravitySample: FfiConverterRustBuffer<List<WorkoutGravitySample>> {
     override fun read(buf: ByteBuffer): List<WorkoutGravitySample> {
         val len = buf.getInt()
@@ -8026,6 +8522,22 @@ public object FfiConverterSequenceOptionalDouble: FfiConverterRustBuffer<List<ko
     
 
         /**
+         * Daily autonomic stress (0–3) from today's RHR + HRV against the prior-days baseline. `None` on too few
+         * baseline days or no signal today.
+         */ fun `dailyStress`(`today`: StressDayInfo, `baseline`: List<StressDayInfo>): kotlin.Double? {
+            return FfiConverterOptionalDouble.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_func_daily_stress(
+    
+        
+        FfiConverterTypeStressDayInfo.lower(`today`),
+        FfiConverterSequenceTypeStressDayInfo.lower(`baseline`),_status)
+}
+    )
+    }
+    
+
+        /**
          * Newest plausible unix banked, scanning EVERY byte offset of a GET_DATA_RANGE frame and preferring the
          * newest non-future word (falls back to newest-any). This is the sync gate — it REPLACES the fixed-offset
          * `Response::DataRange` newest read.
@@ -8053,6 +8565,21 @@ public object FfiConverterSequenceOptionalDouble: FfiConverterRustBuffer<List<ko
     
         
         FfiConverterByteArray.lower(`frame`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Score waking hours for autonomic activation against the day's own calm-hour quartiles (Q25 HR, Q75
+         * RMSSD). Each hour needs its own HR gate applied by the caller (a `None` mean_hr hour is skipped).
+         */ fun `daytimeStress`(`hours`: List<HourPointInfo>): DaytimeStressInfo {
+            return FfiConverterTypeDaytimeStressInfo.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_func_daytime_stress(
+    
+        
+        FfiConverterSequenceTypeHourPointInfo.lower(`hours`),_status)
 }
     )
     }
@@ -8418,6 +8945,26 @@ public object FfiConverterSequenceOptionalDouble: FfiConverterRustBuffer<List<ko
     
 
         /**
+         * Rest (sleep performance) composite [0, 100] from a night's aggregates. `None` when there is no asleep
+         * time. Absent `sleep_need_hours` defaults to 8 h; absent `consistency` defaults to a neutral 0.5.
+         */ fun `restScore`(`asleepSeconds`: kotlin.Double, `efficiency`: kotlin.Double, `deepSeconds`: kotlin.Double, `remSeconds`: kotlin.Double, `sleepNeedHours`: kotlin.Double?, `consistency`: kotlin.Double?): kotlin.Double? {
+            return FfiConverterOptionalDouble.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_func_rest_score(
+    
+        
+        FfiConverterDouble.lower(`asleepSeconds`),
+        FfiConverterDouble.lower(`efficiency`),
+        FfiConverterDouble.lower(`deepSeconds`),
+        FfiConverterDouble.lower(`remSeconds`),
+        FfiConverterOptionalDouble.lower(`sleepNeedHours`),
+        FfiConverterOptionalDouble.lower(`consistency`),_status)
+}
+    )
+    }
+    
+
+        /**
          * Lowest 5-min tumbling-window mean bpm floor over `[start, end]`. `None` with no samples.
          */ fun `sessionRestingHr`(`start`: kotlin.Long, `end`: kotlin.Long, `hr`: List<HrTick>): kotlin.Int? {
             return FfiConverterOptionalInt.lift(
@@ -8428,6 +8975,23 @@ public object FfiConverterSequenceOptionalDouble: FfiConverterRustBuffer<List<ko
         FfiConverterLong.lower(`start`),
         FfiConverterLong.lower(`end`),
         FfiConverterSequenceTypeHrTick.lower(`hr`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Rolling sleep-debt ledger: Σ(slept − need) over the last `window` (default 14) nights with data.
+         * `need_hours` defaults to 8 h. Nights with no sleep are skipped, never zero-filled.
+         */ fun `sleepDebtLedger`(`series`: List<DebtNightInput>, `needHours`: kotlin.Double?, `window`: kotlin.UInt?): DebtLedgerInfo {
+            return FfiConverterTypeDebtLedgerInfo.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_func_sleep_debt_ledger(
+    
+        
+        FfiConverterSequenceTypeDebtNightInput.lower(`series`),
+        FfiConverterOptionalDouble.lower(`needHours`),
+        FfiConverterOptionalUInt.lower(`window`),_status)
 }
     )
     }

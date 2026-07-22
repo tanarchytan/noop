@@ -507,7 +507,7 @@ internal fun buildSleepModel(
     // Rolling 14-night sleep-debt ledger over the FULL day history (capped to the most-recent 14 counted
     // nights, no-data nights skipped), using the same personal need the tiles use (`needMin`, ≥ 7.5h). Full
     // history, not the browsed-night window — a "Last 14 nights" summary matching the debt TILE.
-    val sleepDebtLedger = SleepDebt.ledger(
+    val sleepDebtLedger = com.noop.analytics.RustScores.sleepDebtLedger(
         series = days.map { it.day to it.totalSleepMin },
         needHours = needMin / 60.0,
     )

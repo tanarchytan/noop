@@ -4,6 +4,7 @@ import com.noop.data.HrSample
 import com.noop.data.RrInterval
 import com.noop.data.Spo2Sample
 import com.noop.data.StepSample
+import uniffi.whoop_ffi.DebtNightInput
 import uniffi.whoop_ffi.DriverBaselineInfo
 import uniffi.whoop_ffi.FitnessAgeInfo
 import uniffi.whoop_ffi.HrTick
@@ -280,4 +281,38 @@ internal object RustScores {
             hrmax ?: 220.0,
             restingHR ?: 60.0,
         )
+
+    // ── Rest (sleep performance composite) ───────────────────────────────────
+
+    /** Rest (sleep performance) composite [0,100] — twin of [RestScorer.rest]. `null` when no asleep time.
+     *  Absent `sleepNeedHours` -> 8 h, absent `consistency` -> neutral 0.5 (both resolved in whoop-rs). */
+    fun rest(
+        asleepSeconds: Double,
+        efficiency: Double,
+        deepSeconds: Double,
+        remSeconds: Double,
+        sleepNeedHours: Double? = null,
+        consistency: Double? = null,
+    ): Double? = uniffi.whoop_ffi.restScore(asleepSeconds, efficiency, deepSeconds, remSeconds, sleepNeedHours, consistency)
+
+    // ── Sleep debt ledger ────────────────────────────────────────────────────
+
+    /** Rolling sleep-debt ledger — twin of [SleepDebt.ledger]. Maps the whoop-rs `DebtLedgerInfo` back to
+     *  the Kotlin [SleepDebtLedger] the UI consumes; no-data nights are skipped, never zero-filled. */
+    fun sleepDebtLedger(
+        series: List<Pair<String, Double?>>,
+        needHours: Double = RestScorer.defaultSleepNeedHours,
+        window: Int = SleepDebt.DEFAULT_WINDOW_NIGHTS,
+    ): SleepDebtLedger {
+        val info = uniffi.whoop_ffi.sleepDebtLedger(
+            series.map { DebtNightInput(it.first, it.second) },
+            needHours,
+            window.coerceAtLeast(1).toUInt(),
+        )
+        return SleepDebtLedger(
+            balanceMin = info.balanceMin,
+            nights = info.nights.map { SleepDebtNight(day = it.day, sleptMin = it.sleptMin, deltaMin = it.deltaMin) },
+            needMin = info.needMin,
+        )
+    }
 }
