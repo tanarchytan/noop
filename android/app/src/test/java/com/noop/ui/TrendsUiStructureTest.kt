@@ -33,7 +33,7 @@ class TrendsUiStructureTest {
                 "LIQUID_HERO_FILL", "LIQUID_HERO_RADIUS", "TrendsRange", "ResolvedMetric", "resolveMetric", "windowPoints", "caption",
                 "ChartCard", "HeadlineVessel", "ChangeChip", "ChartWithAxes", "prettyAxisDate",
                 "MetricTrendCard", "periodChange", "ChartFooter", "RecoveryHistoryCard",
-                "GlowEndCap", "SparsePlaceholder", "EmptyTrends", "EM_DASH", "averageOrNull",
+                "SparsePlaceholder", "EmptyTrends", "EM_DASH", "averageOrNull",
             ),
         )
         expectedOwners.forEach { (name, expectedDeclarations) ->

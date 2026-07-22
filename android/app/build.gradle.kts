@@ -131,6 +131,9 @@ android {
     }
 
     testOptions {
+        // Unmocked android.jar methods (e.g. android.util.Log reached via analyzeDay's logging) return
+        // defaults instead of throwing, so the pure-logic JVM tests aren't blocked by the Android stub jar.
+        unitTests.isReturnDefaultValues = true
         unitTests.all {
             // The RustCodec (FFI) parity test loads the host build of libwhoop_ffi via JNA. The desktop
             // library (whoop_ffi.dll on Windows) lives in the sibling whoop-rs checkout's release dir;

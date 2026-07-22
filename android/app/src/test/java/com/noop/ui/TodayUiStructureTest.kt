@@ -28,7 +28,7 @@ class TodayUiStructureTest {
         val expectedOwners = mapOf(
             "TodayScreen.kt" to setOf(
                 "CARD_SCORES_BUILDING", "CARD_NEW_HERE", "CARD_CALIBRATING",
-                "CARD_CALIBRATION_MILESTONES", "CARD_CARRIED_SLEEP",
+                "CARD_CALIBRATION_MILESTONES", "MILESTONES_DISMISSED_DATE", "CARD_CARRIED_SLEEP",
                 "todayDidSnapToTodayThisLaunch", "LIQUID_HERO_FILL", "LIQUID_HERO_RADIUS",
                 "TodayLiveSnapshot", "TodayScreen",
             ),
