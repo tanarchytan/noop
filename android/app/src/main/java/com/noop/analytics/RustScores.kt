@@ -159,8 +159,6 @@ internal object RustScores {
     fun rangeFilterRR(rrMs: List<Int>): List<Int> =
         uniffi.whoop_ffi.hrvRangeFilter(rrMs.map { it.toUShort() }).map { it.toInt() }
 
-    fun sdnn(rrMs: List<Int>): Double? = uniffi.whoop_ffi.hrvSdnn(rrMs.map { it.toUShort() })
-
     fun rmssdRaw(nn: List<Double>): Double? = uniffi.whoop_ffi.hrvRmssdPlain(nn.map { it.toInt().toUShort() })
 
     /** Full clean-and-analyze (RMSSD/SDNN/pNN50/meanNN + input/clean counts) — twin of
@@ -277,9 +275,9 @@ internal object RustScores {
 
     // ── Steps (5/MG cumulative motion counter) ───────────────────────────────
 
-    /** Raw wrap-aware motion-tick total over [samples] (5/MG `step_motion_counter@57`) — twin of
-     *  [StepsCounter.stepsInWindow]. `null` for <2 samples or no forward movement (so "no data" stays
-     *  distinct from a real zero). The caller applies its `stepTicksPerStep` calibration. */
+    /** Raw wrap-aware motion-tick total over [samples] (5/MG `step_motion_counter@57`). `null` for
+     *  <2 samples or no forward movement (so "no data" stays distinct from a real zero). The caller
+     *  applies its `stepTicksPerStep` calibration. */
     fun steps(samples: List<StepSample>): Int? =
         uniffi.whoop_ffi.stepsCounter(
             samples.map { SleepStepSample(it.ts, it.counter.toUShort(), it.activityClass?.toUByte()) },
@@ -287,8 +285,8 @@ internal object RustScores {
 
     // ── Calories (whole-day HR estimate) ─────────────────────────────────────
 
-    /** APPROXIMATE whole-day energy (kcal) from the day's HR — twin of [Calories.estimateDayCalories].
-     *  Applies the SAME profile / hrmax / resting fallbacks the Kotlin path used, then delegates. */
+    /** APPROXIMATE whole-day energy (kcal) from the day's HR. Applies the profile / hrmax / resting
+     *  fallbacks, then delegates the Keytel active + Harris-Benedict BMR model to whoop-rs. */
     fun caloriesDay(hr: List<HrSample>, profile: UserProfile, hrmax: Double?, restingHR: Double?): Double =
         uniffi.whoop_ffi.caloriesEstimateDay(
             hrTicks(hr),
@@ -302,8 +300,8 @@ internal object RustScores {
 
     // ── Rest (sleep performance composite) ───────────────────────────────────
 
-    /** Rest (sleep performance) composite [0,100] — twin of [RestScorer.rest]. `null` when no asleep time.
-     *  Absent `sleepNeedHours` -> 8 h, absent `consistency` -> neutral 0.5 (both resolved in whoop-rs). */
+    /** Rest (sleep performance) composite [0,100]. `null` when no asleep time. Absent `sleepNeedHours`
+     *  -> 8 h, absent `consistency` -> neutral 0.5 (both resolved in whoop-rs). */
     fun rest(
         asleepSeconds: Double,
         efficiency: Double,
@@ -315,8 +313,8 @@ internal object RustScores {
 
     // ── Sleep debt ledger ────────────────────────────────────────────────────
 
-    /** Rolling sleep-debt ledger — twin of [SleepDebt.ledger]. Maps the whoop-rs `DebtLedgerInfo` back to
-     *  the Kotlin [SleepDebtLedger] the UI consumes; no-data nights are skipped, never zero-filled. */
+    /** Rolling sleep-debt ledger. Maps the whoop-rs `DebtLedgerInfo` back to the Kotlin [SleepDebtLedger]
+     *  the UI consumes; no-data nights are skipped, never zero-filled. */
     fun sleepDebtLedger(
         series: List<Pair<String, Double?>>,
         needHours: Double = RestScorer.defaultSleepNeedHours,
@@ -350,4 +348,15 @@ internal object RustScores {
      *  (scored hours + day mean + peak hour + trailing high run); the caller reassembles its timeline. */
     fun daytimeStress(hours: List<HourPointInfo>): DaytimeStressInfo =
         uniffi.whoop_ffi.daytimeStress(hours)
+
+    // ── Frequency-domain HRV (Lomb-Scargle LF/HF) ────────────────────────────
+
+    /** Frequency-domain HRV bands (LF/HF/LF-HF/total power, ms²) over a time-ordered R-R series (ms) —
+     *  twin of [HrvFreqDomain.freqDomainRaw]. Range + Malik-ectopic clean, the tachogram build, the 60 s
+     *  HF and 250 s LF span gates and the 20-beat floor all live in whoop-rs. R-R are integer ms (u16 on
+     *  the wire); `null` below the HF span gate or the 20-beat floor. */
+    fun freqDomain(rawRR: List<Double>): HrvFreqDomain.Bands? =
+        uniffi.whoop_ffi.hrvFreqDomain(rawRR.map { it.toInt().toUShort() })?.let {
+            HrvFreqDomain.Bands(lf = it.lf, hf = it.hf, lfhf = it.lfhf, totalPower = it.totalPower)
+        }
 }

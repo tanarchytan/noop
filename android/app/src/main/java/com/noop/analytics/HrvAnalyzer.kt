@@ -254,38 +254,6 @@ object HrvAnalyzer {
     fun analyzeRaw(rawRR: List<Double>, maxRejectedFraction: Double? = null): HrvResult =
         RustScores.analyzeRaw(rawRR, maxRejectedFraction)
 
-    /**
-     * Kotlin reference implementation of [analyzeRaw], retained as the bit-exact parity ORACLE; the live
-     * path routes to whoop-rs above. Range filter, Malik ectopic, the [MIN_BEATS] floor, the spot
-     * rejected-fraction gate, and the gap-aware RMSSD/pNN50 all mirror `physio-algo`'s `analyze_raw`.
-     */
-    internal fun analyzeRawKotlin(rawRR: List<Double>, maxRejectedFraction: Double? = null): HrvResult {
-        val nInput = rawRR.size
-        val cleaned = cleanRRGapAware(rawRR)
-        val clean = cleaned.nn
-        if (clean.size < MIN_BEATS) {
-            return HrvResult.empty(nInput)
-        }
-        // Spot-only: refuse when too large a fraction of beats was noise (out-of-range or ectopic). Only
-        // applied when a ceiling is supplied; nInput > 0 holds implicitly (clean.size ≥ MIN_BEATS > 0).
-        if (maxRejectedFraction != null && nInput > 0) {
-            val rejectedFraction = 1.0 - clean.size.toDouble() / nInput.toDouble()
-            if (rejectedFraction > maxRejectedFraction) {
-                return HrvResult.empty(nInput)
-            }
-        }
-        // RMSSD and pNN50 are gap-aware: a successive difference across a dropped beat is skipped so a
-        // removed out-of-range/ectopic beat cannot splice its neighbours into a spurious delta. SDNN and
-        // meanNN use every clean beat (no successive differences), so they are unchanged.
-        val rmssd = rmssdGapAware(cleaned.nn, cleaned.contiguous)
-        val sdnn = sdnnRaw(clean)
-        val mean = clean.sum() / clean.size.toDouble()
-        val pnn50 = pnn50GapAware(cleaned.nn, cleaned.contiguous)
-
-        return HrvResult(rmssd = rmssd, sdnn = sdnn, meanNN = mean, pnn50 = pnn50,
-            nInput = nInput, nClean = clean.size)
-    }
-
     /** #257: total heartbeat-time (sum of NN intervals, ms) ÷ wall-clock span of the R-R window (ms).
      *  A value > ~1.0 is physically impossible — you can't record more beat-time than elapsed time — so
      *  it directly flags DOUBLE-COUNTED / overlapping R-R (e.g. a live + historical merge storing the same

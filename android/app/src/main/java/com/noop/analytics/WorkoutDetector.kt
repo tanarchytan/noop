@@ -438,16 +438,6 @@ object Calories {
 
     const val activeHRRFraction: Double = 0.30
 
-    /**
-     * Whole-day active gate ([estimateDayCalories] only). The Keytel 2005 equation is
-     * validated for genuine EXERCISE HR; applying it to ordinary low-intensity daytime HR
-     * (walking, stairs, standing — typically ~95–110 bpm) across the WHOLE day credits the
-     * full gross-exercise rate to every elevated second and over-counts by ~1000+ kcal
-     * (community "Calories too high"). The bout path keeps the 0.30 detector fraction —
-     * Keytel is appropriate for a real detected/manual workout — but the day path raises the
-     * gate to 50% HRR so the gross rate only applies at genuine exercise-level HR.
-     */
-    const val dayActiveHRRFraction: Double = 0.50
     const val workoutDivisor: Double = 251.04 // 60 s/min × 4.184 kJ/kcal
 
     fun resolveCoeffs(sex: String): Coeffs = when (sex.lowercase()) {
@@ -476,9 +466,9 @@ object Calories {
      *
      * This elapsed-time weighting is justified ONLY for the bout path: a bout's intra-sample
      * gaps are motion-gated and ≤ [mergeGapS] (150 s) by construction, so each gap really is
-     * continuous active/resting time. The whole-day estimator deliberately does NOT use it
-     * (see [estimateDayCalories]) — its raw, non-gap-filled day HR union would otherwise
-     * credit up to 150 s of active burn to a single isolated elevated sample.
+     * continuous active/resting time. The whole-day estimate in whoop-rs deliberately does NOT
+     * use it — its raw, non-gap-filled day HR union would otherwise credit up to 150 s of active
+     * burn to a single isolated elevated sample.
      *
      * @param hrSamples the bout's HR samples (any order; sorted by ts here).
      * @param profile weight/height/age/sex for the BMR + active-EE coefficients.
@@ -529,70 +519,4 @@ object Calories {
         return totalKcal to (totalKcal * 4.184)
     }
 
-    /**
-     * APPROXIMATE whole-day total energy estimate (kcal) from the full day's HR
-     * samples. Per-second model: below the day activeThreshold (resting +
-     * [dayActiveHRRFraction] HRR) a sample burns the resting BMR rate, above it the
-     * Keytel active rate — FLOORED at the resting rate so a day-second can never be
-     * credited LESS than resting metabolism.
-     *
-     * The day path uses [dayActiveHRRFraction] (50% HRR), NOT the 30% the bout detector
-     * uses ([activeHRRFraction]). The Keytel 2005 equation is validated for genuine
-     * EXERCISE HR; at 30% the gate falls to ~94 bpm for a typical user, so ordinary
-     * low-intensity daytime HR (walking, stairs, standing) credited the full
-     * gross-exercise rate across the whole day and over-counted by ~1000+ kcal
-     * (community "Calories too high"). The 50% gate keeps the gross rate for genuine
-     * exercise-level HR only; the bout path is UNCHANGED — Keytel is appropriate there,
-     * on a real detected/manual workout.
-     *
-     * Each HR sample = ONE second of data (1 Hz strap), counted flat — this path
-     * deliberately does NOT use the bout estimator's elapsed-time-per-sample weighting.
-     * The day feed is a raw, non-gap-filled union of the day's HR (it is NOT motion-gated
-     * the way a bout is), so capping each gap at mergeGapS (150 s) would credit up to
-     * ~150 s of active burn to a single isolated elevated sample — over-counting by ~150x
-     * on gappy days. Flat one-second-per-sample is the conservative, stable choice for the
-     * day total. This is an on-device estimate from heart rate alone — NOT laboratory
-     * calorimetry, NOT Apple/WHOOP cloud parity, NOT medical advice.
-     *
-     * @param hrSamples the whole day's HR samples (one second each).
-     * @param profile weight/height/age/sex for the BMR + active-EE coefficients.
-     * @param hrmax effective HRmax (bpm); null → 220.
-     * @param restingHR resting HR (bpm); null → 60.
-     * @return total estimated kcal for the day (>= 0).
-     */
-    fun estimateDayCalories(
-        hrSamples: List<HrSample>,
-        profile: UserProfile,
-        hrmax: Double?,
-        restingHR: Double?,
-    ): Double {
-        if (hrSamples.isEmpty()) return 0.0
-
-        val weightKg = if (profile.weightKg > 0) profile.weightKg else 70.0
-        val heightCm = if (profile.heightCm > 0) profile.heightCm else 170.0
-        val age = if (profile.age > 0) profile.age else 30.0
-        val coeffs = resolveCoeffs(profile.sex)
-
-        val effHRmax = hrmax ?: 220.0
-        val effResting = restingHR ?: 60.0
-        // Day-path gate is HIGHER than the bout detector's: only genuine exercise-level HR
-        // gets the Keytel gross rate (see [dayActiveHRRFraction]).
-        val activeThreshold = effResting + dayActiveHRRFraction * (effHRmax - effResting)
-
-        val restingRate = restingKcalPerS(coeffs, weightKg, heightCm, age)
-
-        var totalKcal = 0.0
-        for (s in hrSamples) {
-            val bpm = s.bpm.toDouble()
-            totalKcal += if (bpm < activeThreshold) {
-                restingRate
-            } else {
-                // Floor the active rate at the resting BMR rate: a worn day-second never
-                // burns LESS than resting metabolism, even where the Keytel value dips low
-                // for some profiles just above the gate.
-                maxOf(restingRate, activeKcalPerS(coeffs, bpm, effHRmax, weightKg, age))
-            }
-        }
-        return totalKcal
-    }
 }

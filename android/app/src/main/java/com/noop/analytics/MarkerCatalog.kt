@@ -109,16 +109,4 @@ object MarkerCatalog {
 
     /** The built-in definition for [key], or null if it's a custom marker. */
     fun definition(key: String): MarkerDefinition? = byKey[key]
-
-    /** Build a definition for a user-added custom marker (category Other, no range, no judgement). */
-    fun custom(key: String, displayName: String, unit: String, decimals: Int = 1): MarkerDefinition =
-        MarkerDefinition(
-            key = key,
-            displayName = displayName,
-            category = LabMarkerCategory.OTHER,
-            canonicalUnit = unit,
-            decimals = decimals,
-            referenceTextHint = null,
-            higherIsBetter = null,
-        )
 }

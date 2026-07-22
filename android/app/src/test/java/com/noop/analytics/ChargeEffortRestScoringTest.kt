@@ -196,14 +196,14 @@ class ChargeEffortRestScoringTest {
 
     @Test
     fun rest_nullWhenNoAsleepTime() {
-        assertNull(RestScorer.rest(0.0, 0.9, 0.0, 0.0))
+        assertNull(RustScores.rest(0.0, 0.9, 0.0, 0.0))
     }
 
     @Test
     fun rest_compositeWithoutConsistencyUsesNeutral() {
         // 8h asleep (dur 100), eff 0.92 (92), deep 1.5h + REM 2h = 3.5h restorative, share 0.4375/0.50
         // → 87.5. No consistency → NEUTRAL 50 at full weight.
-        val score = RestScorer.rest(
+        val score = RustScores.rest(
             asleepSeconds = 8 * 3600.0,
             efficiency = 0.92,
             deepSeconds = 1.5 * 3600.0,
@@ -215,7 +215,7 @@ class ChargeEffortRestScoringTest {
 
     @Test
     fun rest_consistencyTermIncluded() {
-        val score = RestScorer.rest(
+        val score = RustScores.rest(
             asleepSeconds = 8 * 3600.0,
             efficiency = 0.92,
             deepSeconds = 1.5 * 3600.0,
@@ -230,7 +230,7 @@ class ChargeEffortRestScoringTest {
     fun rest_durationDominatesShortNight() {
         // 4h asleep against the 8h default → duration 50; eff 0.95 (95); restorative share 0.5 → 100.
         // No consistency → neutral 50 at full weight.
-        val score = RestScorer.rest(
+        val score = RustScores.rest(
             asleepSeconds = 4 * 3600.0,
             efficiency = 0.95,
             deepSeconds = 1.0 * 3600.0,
@@ -243,15 +243,15 @@ class ChargeEffortRestScoringTest {
     @Test
     fun rest_personalNeedRefinementRaisesDuration() {
         // Same 6h asleep scores higher once personal need is refined down to 6h (duration → 100).
-        val defaultNeed = RestScorer.rest(6 * 3600.0, 0.90, 1.0 * 3600.0, 1.5 * 3600.0)!!
-        val refined = RestScorer.rest(6 * 3600.0, 0.90, 1.0 * 3600.0, 1.5 * 3600.0, sleepNeedHours = 6.0)!!
+        val defaultNeed = RustScores.rest(6 * 3600.0, 0.90, 1.0 * 3600.0, 1.5 * 3600.0)!!
+        val refined = RustScores.rest(6 * 3600.0, 0.90, 1.0 * 3600.0, 1.5 * 3600.0, sleepNeedHours = 6.0)!!
         assertTrue(refined > defaultNeed)
     }
 
     @Test
     fun rest_oversleepDurationClampsAtHundred() {
         // 10h asleep against an 8h need does not over-credit: duration clamps at 100.
-        val score = RestScorer.rest(10 * 3600.0, 0.90, 2.0 * 3600.0, 2.5 * 3600.0)!!
+        val score = RustScores.rest(10 * 3600.0, 0.90, 2.0 * 3600.0, 2.5 * 3600.0)!!
         val restShare = (2.0 + 2.5) / 10.0 // 0.45 → /0.5 → 90
         // No consistency → neutral 50 at full weight.
         val expected = 100.0 * 0.50 + 90.0 * 0.20 + (restShare / 0.50 * 100.0) * 0.20 + 50.0 * 0.10

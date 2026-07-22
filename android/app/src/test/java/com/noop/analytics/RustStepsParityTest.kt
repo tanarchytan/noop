@@ -6,12 +6,11 @@ import org.junit.Assert.assertNull
 import org.junit.Test
 
 /**
- * App-side parity gate for routing the 5/MG step total through whoop-rs. The wrap-aware
- * `step_motion_counter@57` tick sum is moving from the Kotlin [StepsCounter] to physio-algo (via the
- * [RustScores.steps] bridge -> uniffi -> whoop-rs `steps_counter`); this pins the swap by replaying the
- * SAME counter series through BOTH paths and asserting the Int? total is identical (the exact value
- * [AnalyticsEngine] divides by `stepTicksPerStep` into `DailyMetric.steps`). Loads the host libwhoop_ffi
- * via JNA (see jna.library.path / buildRustHostDll).
+ * FFI smoke test for the 5/MG step total ([RustScores.steps] -> uniffi -> whoop-rs `steps_counter`). The
+ * wrap-aware `step_motion_counter@57` tick math lives in physio-algo; this asserts the marshalled result
+ * end-to-end (wrap handling, the gap/reset drop, ts sorting, the null gates), catching a bad binding/.so.
+ * The exact tick numbers are frozen by the Rust golden tests; here we pin the observable behaviour. Loads
+ * the host libwhoop_ffi via JNA (buildRustHostDll).
  */
 class RustStepsParityTest {
 
@@ -20,65 +19,44 @@ class RustStepsParityTest {
 
     private fun sample(ts: Long, counter: Int) = StepSample(dev, ts, counter)
 
-    private fun assertStepsParity(label: String, samples: List<StepSample>) {
-        val kotlin = StepsCounter.stepsInWindow(samples)
-        val rust = RustScores.steps(samples)
-        assertEquals("$label (kotlin=$kotlin rust=$rust)", kotlin, rust)
-    }
-
     @Test
-    fun `steady 1 Hz counter increments match`() {
-        // Climb by a few ticks per second, hold flat, climb again.
+    fun `steady counter sums the per-second increments`() {
+        // +2 on i = 0,3,..,597 (200 bumps). The i=0 bump is baked into the first sample's baseline (no
+        // prior sample to diff), so 199 captured deltas of +2 = 398.
         val s = ArrayList<StepSample>()
         var c = 1000
         for (i in 0 until 600) {
             c += if (i % 3 == 0) 2 else 0
             s.add(sample(start + i, c and 0xFFFF))
         }
-        assertStepsParity("steady", s)
+        assertEquals(398, RustScores.steps(s))
     }
 
     @Test
-    fun `u16 wrap is counted wrap-aware on both paths`() {
-        // Cross the 65536 boundary: 65500 -> 20 is a wrap-aware +56, not a huge negative.
-        val s = listOf(
-            sample(start, 65_400),
-            sample(start + 1, 65_500),
-            sample(start + 2, 20), // wrap: (20 - 65500) and 0xFFFF = 56
-            sample(start + 3, 90),
-        )
-        assertStepsParity("wrap", s)
+    fun `u16 wrap counts wrap-aware not as a huge negative`() {
+        // 65400 ->65500 (+100), 65500 ->20 wraps to +56, 20 ->90 (+70) = 226.
+        val s = listOf(sample(start, 65_400), sample(start + 1, 65_500), sample(start + 2, 20), sample(start + 3, 90))
+        assertEquals(226, RustScores.steps(s))
     }
 
     @Test
-    fun `a gap or reset delta at-or-above 512 is dropped identically`() {
-        val s = listOf(
-            sample(start, 100),
-            sample(start + 1, 200), // +100 kept
-            sample(start + 2, 1200), // +1000 >= 512 dropped (sync gap / reboot)
-            sample(start + 3, 1210), // +10 kept
-        )
-        assertStepsParity("gap-drop", s)
+    fun `a gap or reset delta at-or-above 512 is dropped`() {
+        // +100 kept, +1000 dropped (sync gap / reboot), +10 kept = 110.
+        val s = listOf(sample(start, 100), sample(start + 1, 200), sample(start + 2, 1200), sample(start + 3, 1210))
+        assertEquals(110, RustScores.steps(s))
     }
 
     @Test
-    fun `unsorted input sorts by ts identically`() {
-        val s = listOf(
-            sample(start + 3, 130),
-            sample(start, 100),
-            sample(start + 2, 120),
-            sample(start + 1, 108),
-        )
-        assertStepsParity("unsorted", s)
+    fun `unsorted input is sorted by ts before differencing`() {
+        val s = listOf(sample(start + 3, 130), sample(start, 100), sample(start + 2, 120), sample(start + 1, 108))
+        assertEquals(30, RustScores.steps(s)) // 100 ->108 ->120 ->130 = 30
     }
 
     @Test
-    fun `null gates match - too few samples and no movement`() {
-        assertNull(StepsCounter.stepsInWindow(emptyList()))
-        assertNull(RustScores.steps(emptyList()))
-        assertStepsParity("single", listOf(sample(start, 100)))
-        // All-flat counter -> no forward movement -> both null (distinct from a real zero).
+    fun `null gates - too few samples and no forward movement`() {
+        assertNull("empty", RustScores.steps(emptyList()))
+        assertNull("single sample", RustScores.steps(listOf(sample(start, 100))))
         val flat = (0 until 50).map { sample(start + it, 500) }
-        assertStepsParity("flat-no-movement", flat)
+        assertNull("flat counter is no data, not a real zero", RustScores.steps(flat))
     }
 }

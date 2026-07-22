@@ -9,9 +9,10 @@ import kotlin.math.PI
 import kotlin.math.sin
 
 /**
- * Swift-parity twin of HRVFreqDomainTests.swift, frequency-domain HRV via Lomb-Scargle on the (uneven)
- * tachogram. Verifies the Task-Force span gates (HF >= 60 s, LF >= 250 s) and that a band-limited
- * sinusoidal modulation puts its power in the expected band.
+ * Frequency-domain HRV smoke test through the whoop-rs FFI ([HrvFreqDomain.freqDomainRaw] ->
+ * [RustScores.freqDomain]). Verifies the Task-Force span gates (HF >= 60 s, LF >= 250 s) and that a
+ * band-limited sinusoidal modulation lands its power in the expected band, catching a mis-marshalled
+ * band field end-to-end. Loads the host libwhoop_ffi via JNA (buildRustHostDll).
  */
 class HrvFreqDomainTest {
 
@@ -36,7 +37,7 @@ class HrvFreqDomainTest {
 
     @Test
     fun tooFewBeatsAbstains() {
-        val rr = List(HrvFreqDomain.MIN_BEATS - 1) { 1000.0 }
+        val rr = List(19) { 1000.0 } // one below the 20-beat floor (owned by whoop-rs)
         assertNull(HrvFreqDomain.freqDomainRaw(rr))
     }
 

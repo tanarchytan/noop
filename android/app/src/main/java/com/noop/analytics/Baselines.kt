@@ -12,15 +12,10 @@ import kotlin.math.sqrt
  * Faithful Kotlin port of StrandAnalytics/Baselines.swift (verified on macOS),
  * itself ported from server/ingest/app/analysis/baselines.py.
  *
- * Two paths are provided:
- *   1. Winsorized EWMA (the production model): robust, recency-weighted center
- *      with an EWMA-of-absolute-deviation spread tracker, cold-start gating, hard
- *      outlier rejection, and Winsor clamping. This is [update] / [foldHistory].
- *   2. Trailing-window mean/SD (the task's "trailing 30-day mean/SD"): a simple,
- *      auditable rolling mean and sample SD over the trailing N valid nights.
- *      This is [rollingMeanSD]. Useful for explainability and cross-checking.
- *
- * Both produce a [BaselineState] so RecoveryScorer can consume either uniformly.
+ * The production model is a Winsorized EWMA: robust, recency-weighted center with an
+ * EWMA-of-absolute-deviation spread tracker, cold-start gating, hard outlier rejection,
+ * and Winsor clamping ([update] / [foldHistory]). It produces a [BaselineState] that
+ * RecoveryScorer consumes.
  *
  * The value types ([MetricCfg], [BaselineStatus], [BaselineState], [Deviation])
  * are defined in AnalyticsModels.kt and intentionally NOT redefined here. All
@@ -322,63 +317,6 @@ object Baselines {
         val delta = value - state.baseline
         val ratio = if (state.baseline != 0.0) (value / state.baseline - 1.0) else 0.0
         return Deviation(z = z, delta = delta, ratio = ratio, inNormalRange = abs(z) <= 1.0)
-    }
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // Trailing-window mean/SD (simple, auditable)
-    // ─────────────────────────────────────────────────────────────────────────
-
-    /**
-     * Rolling personal baseline from the trailing [window] valid nights, as a
-     * plain mean and sample SD (ddof=1). This is the task's "trailing 30-day
-     * mean/SD" path: no recency weighting, maximally explainable.
-     *
-     * Physiologically implausible values (outside cfg bounds) and nulls are
-     * dropped. The spread returned is stored in the SAME internal units the
-     * Winsor EWMA uses (abs-dev space), i.e. SD / 1.253, so that [deviation]
-     * recovers the intended Gaussian σ unchanged.
-     *
-     * @param values ordered nightly values (oldest → newest); nulls allowed.
-     * @param cfg metric config (bounds + floor spread).
-     * @param window number of trailing valid nights to use (default 30).
-     */
-    fun rollingMeanSD(values: List<Double?>, cfg: MetricCfg, window: Int = 30): BaselineState {
-        val valid = values.mapNotNull { v ->
-            if (v != null && cfg.minVal <= v && v <= cfg.maxVal) v else null
-        }
-        if (valid.isEmpty()) {
-            val seed = (cfg.minVal + cfg.maxVal) / 2.0
-            return BaselineState(
-                baseline = seed, spread = cfg.floorSpread, nValid = 0,
-                nightsSinceUpdate = 0, status = BaselineStatus.CALIBRATING,
-            )
-        }
-        val trailing = valid.takeLast(window)
-        val n = trailing.size
-        val mean = trailing.sum() / n.toDouble()
-
-        val sd: Double
-        if (n >= 2) {
-            var ss = 0.0
-            for (v in trailing) {
-                val d = v - mean
-                ss += d * d
-            }
-            sd = sqrt(ss / (n - 1).toDouble())
-        } else {
-            // Single sample: no dispersion estimate; fall back to the σ floor.
-            sd = cfg.floorSpread * 1.253
-        }
-
-        // Apply the σ floor in σ-space, then convert to internal abs-dev space.
-        val sigmaFloored = max(cfg.floorSpread, sd)
-        val spreadInternal = sigmaFloored / 1.253
-
-        return BaselineState(
-            baseline = mean, spread = spreadInternal, nValid = n,
-            nightsSinceUpdate = 0,
-            status = computeStatus(n, 0),
-        )
     }
 
     // ─────────────────────────────────────────────────────────────────────────

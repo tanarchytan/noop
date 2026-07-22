@@ -1,77 +1,54 @@
 package com.noop.analytics
 
-import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * App-side parity gate for routing the Rest (sleep performance) composite through whoop-rs. The 0-100
- * weighted composite is moving from the Kotlin [RestScorer.rest] to physio-algo (via [RustScores.rest] ->
- * uniffi -> whoop-rs `rest_score`); this pins the swap by replaying the SAME night aggregates through BOTH
- * paths and asserting the returned value is bit-for-bit identical (the exact Double [AnalyticsEngine]
- * stores under `sleep_performance`). Loads the host libwhoop_ffi via JNA.
- *
- * `weighted` is a convex combination of non-negative sub-scores, so it is always >= 0; Kotlin's
- * `roundToInt` (half up) and whoop-rs' `f64::round` (half away from zero) agree on every non-negative tie,
- * so the final 2-dp round is identical.
+ * FFI smoke test for the Rest (sleep performance) composite ([RustScores.rest] -> uniffi -> whoop-rs
+ * `rest_score`). The 0-100 weighted composite (duration vs need, efficiency, restorative share with the
+ * deep-adequacy factor, consistency) lives in physio-algo; this pins the marshalled behaviour (bounded
+ * 0..100, null on no sleep, the default-need + neutral-consistency fallbacks, more sleep scores higher).
+ * Exact values are frozen by the Rust golden tests. Loads the host libwhoop_ffi via JNA (buildRustHostDll).
  */
 class RustRestParityTest {
 
-    private fun assertBitEq(msg: String, kotlin: Double?, rust: Double?) {
-        if (kotlin == null || rust == null) {
-            assertEquals(msg, kotlin as Any?, rust as Any?)
-            return
-        }
-        assertEquals(
-            "$msg (kotlin=$kotlin rust=$rust)",
-            java.lang.Double.doubleToLongBits(kotlin),
-            java.lang.Double.doubleToLongBits(rust),
-        )
-    }
-
-    private fun assertRestParity(
-        label: String,
-        asleepSeconds: Double,
-        efficiency: Double,
-        deepSeconds: Double,
-        remSeconds: Double,
-        sleepNeedHours: Double?,
-        consistency: Double?,
-    ) {
-        val k = RestScorer.rest(asleepSeconds, efficiency, deepSeconds, remSeconds, sleepNeedHours, consistency)
-        val r = RustScores.rest(asleepSeconds, efficiency, deepSeconds, remSeconds, sleepNeedHours, consistency)
-        assertBitEq("$label", k, r)
-    }
-
     private val h = 3600.0
 
+    private fun rest(asleepH: Double, eff: Double, deepH: Double, remH: Double, need: Double?, cons: Double?) =
+        RustScores.rest(asleepH * h, eff, deepH * h, remH * h, need, cons)
+
     @Test
-    fun `store-site shaped night matches`() {
-        assertRestParity("full-night", 7.5 * h, 0.92, 1.4 * h, 1.8 * h, 8.0, 0.8)
+    fun `a full night lands in the 0-100 band`() {
+        val r = rest(7.5, 0.92, 1.4, 1.8, 8.0, 0.8)
+        assertNotNull(r)
+        assertTrue("composite in [0,100]", r!! in 0.0..100.0)
     }
 
     @Test
-    fun `default sleep-need and neutral consistency fall back identically`() {
-        assertRestParity("null-need-and-consistency", 6.5 * h, 0.88, 1.0 * h, 1.5 * h, null, null)
+    fun `default need and neutral consistency resolve without error`() {
+        val r = rest(6.5, 0.88, 1.0, 1.5, null, null)
+        assertNotNull("null need -> 8 h, null consistency -> neutral 0.5", r)
+        assertTrue(r!! in 0.0..100.0)
     }
 
     @Test
-    fun `zero-deep deep-adequacy factor matches`() {
-        assertRestParity("zero-deep", 8.0 * h, 0.90, 0.0, 2.0 * h, 8.0, 1.0)
+    fun `more sleep toward need scores higher`() {
+        val short = rest(4.0, 0.90, 0.6, 0.7, 8.0, 0.6)!!
+        val full = rest(8.0, 0.90, 1.4, 1.8, 8.0, 0.6)!!
+        assertTrue("a fuller, better-structured night outscores a short one", full > short)
     }
 
     @Test
-    fun `over-need duration clamps identically`() {
-        assertRestParity("over-need", 10.0 * h, 0.95, 2.0 * h, 2.0 * h, 8.0, 0.6)
+    fun `over-need duration clamps, so it cannot exceed 100`() {
+        val r = rest(10.0, 0.95, 2.0, 2.0, 8.0, 0.6)!!
+        assertTrue("duration credit is capped", r <= 100.0)
     }
 
     @Test
-    fun `short rough night matches`() {
-        assertRestParity("short", 4.0 * h, 0.80, 0.6 * h, 0.7 * h, 8.0, 0.4)
-    }
-
-    @Test
-    fun `no asleep time is null on both paths`() {
-        assertRestParity("zero-asleep", 0.0, 0.9, h, h, 8.0, 0.5)
-        assertRestParity("negative-asleep", -1.0, 0.9, h, h, null, null)
+    fun `no asleep time is null`() {
+        assertNull(RustScores.rest(0.0, 0.9, h, h, 8.0, 0.5))
+        assertNull(RustScores.rest(-1.0, 0.9, h, h, null, null))
     }
 }

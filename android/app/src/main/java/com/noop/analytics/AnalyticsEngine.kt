@@ -549,7 +549,7 @@ object AnalyticsEngine {
             // Prefer the full-calendar-day stream for the additive total; fall back to the
             // night-window stream when the caller didn't supply one (pure-function callers/tests). The
             // day's read window may include adjacent-day samples, so filter to the LOCAL-day key first
-            // (#277); the wrap-aware tick math itself lives in the shared StepsCounter kernel so the daily
+            // (#277); the wrap-aware tick math itself lives in whoop-rs (RustScores.steps) so the daily
             // and per-workout (#398) totals can never disagree.
             val inDay = (daySteps ?: steps).filter { dayString(it.ts, tzOffsetSeconds) == day }
             val ticks = RustScores.steps(inDay) ?: return@run null
@@ -921,58 +921,11 @@ object RestScorer {
     const val NEUTRAL_CONSISTENCY: Double = 0.5
 
     /**
-     * Rest composite [0,100], or null when there is no asleep time.
-     *
-     * @param asleepSeconds total sleep time (TST) for the night, seconds.
-     * @param efficiency asleep / in-bed in [0,1].
-     * @param deepSeconds deep-stage seconds.
-     * @param remSeconds REM-stage seconds.
-     * @param sleepNeedHours personal need (hours); null → [defaultSleepNeedHours].
-     * @param consistency sleep/wake regularity in [0,1]; null drops the term + renormalizes.
-     */
-    fun rest(
-        asleepSeconds: Double,
-        efficiency: Double,
-        deepSeconds: Double,
-        remSeconds: Double,
-        sleepNeedHours: Double? = null,
-        consistency: Double? = null,
-    ): Double? {
-        if (asleepSeconds <= 0.0) return null
-
-        val asleepHours = asleepSeconds / 3600.0
-        val needHours = (sleepNeedHours ?: defaultSleepNeedHours).coerceAtLeast(1e-9)
-
-        // Duration vs personal need (clamped at 100 — sleeping past need does not over-credit).
-        val durationScore = min(100.0, asleepHours / needHours * 100.0)
-        // Efficiency (0..1 → 0..100), clamped.
-        val efficiencyScore = (efficiency * 100.0).coerceIn(0.0, 100.0)
-        // Restorative share vs healthy target (clamped at 100), then scaled by a gentle deep-adequacy
-        // factor in [deepFloorFactor, 1]: full once deep ≥ target share, ramping to the floor as
-        // deep → 0, so a near-zero-deep night loses up to half this term (~10 pts) — honest, not
-        // tanking, no fabricated stages. Mirrors Swift Rest.composite EXACTLY.
-        val restorativeShare = (deepSeconds + remSeconds) / asleepSeconds
-        val deepAdequacy = ((deepSeconds / asleepSeconds) / deepShareTarget).coerceIn(0.0, 1.0)
-        val deepFactor = deepFloorFactor + (1.0 - deepFloorFactor) * deepAdequacy
-        val restorativeScore = min(100.0, restorativeShare / restorativeTargetShare * 100.0) * deepFactor
-
-        // Consistency uses a NEUTRAL 0.5 (→50) when the caller supplies none — matching the Swift
-        // Rest.composite EXACTLY (parity is required; Swift adds a neutral term, it does NOT drop +
-        // renormalize). Weights sum to 1.0 so the weighted sum is already on 0..100.
-        val consistencyScore = ((consistency ?: NEUTRAL_CONSISTENCY) * 100.0).coerceIn(0.0, 100.0)
-        val weighted = wDuration * durationScore +
-            wEfficiency * efficiencyScore +
-            wRestorative * restorativeScore +
-            wConsistency * consistencyScore
-        return (weighted * 100.0).roundToInt() / 100.0
-    }
-
-    /**
-     * Sleep & Rest test-mode (E11) diagnostic line for the Rest composite. Recomputes the four weighted
-     * sub-scores from the SAME inputs `rest()` reads (on the 0..1 scale, byte-aligned with the Swift
-     * `Rest.subScoreLine`), and reuses `rest()` for the final `composite=` value so the trace can never
-     * disagree with the score. `groupFragments` / `groupInBedSeconds` describe the main-night GROUP
-     * composition (#525/#561). Pure, side-effect-free, no em-dashes. Mirrors Swift exactly.
+     * Sleep & Rest test-mode diagnostic line for the Rest composite. Recomputes the four weighted
+     * sub-scores from the SAME inputs the scorer reads (on the 0..1 scale) for the human-readable
+     * breakdown, and pulls the final `composite=` value from whoop-rs so the trace can never disagree
+     * with the stored score. `groupFragments` / `groupInBedSeconds` describe the main-night GROUP
+     * composition. Pure, side-effect-free.
      */
     /**
      * #319 diagnostic (Sleep & Rest test mode): the motion-coverage + staging context behind the Rest
@@ -1035,9 +988,9 @@ object RestScorer {
         val restorativeScore = if (tstSeconds > 0)
             clamp01((restorativeSeconds / tstSeconds) / restorativeTargetShare) * deepFactor else 0.0
         val consistencyScore = clamp01(consistency ?: NEUTRAL_CONSISTENCY)
-        // Reuse the real scorer for the composite (cannot diverge). `rest()` takes deep + REM separately;
-        // restorative = deep + REM, so REM = restorative - deep. null deep -> 0 deep (no-adequacy path).
-        val composite = rest(
+        // Pull the composite from the real scorer (whoop-rs) so the trace can't diverge from the stored
+        // score. It takes deep + REM separately; restorative = deep + REM, so REM = restorative - deep.
+        val composite = RustScores.rest(
             asleepSeconds = tstSeconds, efficiency = efficiency,
             deepSeconds = deepSeconds ?: 0.0,
             remSeconds = restorativeSeconds - (deepSeconds ?: 0.0),

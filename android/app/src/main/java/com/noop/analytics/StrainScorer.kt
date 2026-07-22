@@ -1,7 +1,6 @@
 package com.noop.analytics
 
 import com.noop.data.HrSample
-import kotlin.math.exp
 import kotlin.math.ln
 import kotlin.math.roundToLong
 
@@ -95,12 +94,6 @@ object StrainScorer {
     /** TRIMP accumulation method. */
     enum class Method { EDWARDS, BANISTER }
 
-    /** Strain calibration / fit errors. Mirrors Swift `StrainError`. */
-    enum class StrainError { TOO_FEW_PAIRS, DEGENERATE }
-
-    /** Thrown by [fitStrainDenominator] when the fit is impossible. */
-    class StrainException(val error: StrainError) : Exception("Strain fit failed: $error")
-
     // ---- HRmax helpers ----
 
     /** Tanaka (2001): HRmax = 208 − 0.7 × age (gender-independent). */
@@ -163,28 +156,6 @@ object StrainScorer {
         if (trimp <= 0) return 0.0
         val value = maxStrain * ln(trimp + 1.0) / ln(denominator)
         return (value * 100).roundToLong() / 100.0
-    }
-
-    // ---- Denominator calibration ----
-
-    /**
-     * Calibrate D from (TRIMP, reference_strain) pairs via the through-origin
-     * least-squares line: ln(D) = maxStrain × Σ(x²) / Σ(xy), x = ln(TRIMP+1).
-     * Reference strains are on the maxStrain (0–100) scale. Throws [StrainException]
-     * when fewer than 2 usable pairs (TRIMP>0, strain>0) or degenerate.
-     */
-    fun fitStrainDenominator(pairs: List<Pair<Double, Double>>): Double {
-        val usable = pairs.filter { it.first > 0 && it.second > 0 }
-        if (usable.size < 2) throw StrainException(StrainError.TOO_FEW_PAIRS)
-        var sumXX = 0.0
-        var sumXY = 0.0
-        for ((trimp, strain) in usable) {
-            val x = ln(trimp + 1.0)
-            sumXX += x * x
-            sumXY += x * strain
-        }
-        if (!(sumXY > 0 && sumXX > 0)) throw StrainException(StrainError.DEGENERATE)
-        return exp(maxStrain * sumXX / sumXY)
     }
 
     // ---- Public API ----

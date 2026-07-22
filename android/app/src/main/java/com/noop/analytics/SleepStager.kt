@@ -15,8 +15,6 @@ import kotlin.math.sqrt
  * whoop-rs (physio-algo::sleep), reached through the single `analyzeSleep` FFI — see
  * android/SLEEP-BORDER.md and whoop-rs/docs/sleep.md. This object is no longer a stager;
  * what remains is frontend glue, not algorithm:
- *   - detectSleep: a bounded memo (detectCache) in front of RustSleepStager.analyze — it
- *     only ever skips a recompute for an identical input, never changes the result.
  *   - the HRV-window / deep-pool layer (sessionHrvWindows / lastDeepRun / HrvWindow):
  *     stage-tagged 5-min RMSSD windows for the deep-stage HRV pool and the HRV trace.
  *     The scored session avgHrv itself is computed in whoop-rs (RustScores.windowedAvgHrv).
@@ -322,113 +320,6 @@ object SleepStager {
         val secOfDay = Math.floorMod(start + tzOffsetSeconds, secondsPerDay)
         val hour = (secOfDay / 3_600L).toInt()
         return !(hour >= daytimeBandStartHour && hour < daytimeBandEndHour)
-    }
-
-    // ── detectSleep (public) ──────────────────────────────────────────────────
-
-    /**
-     * One folded Long per sample stream for the [detectSleep] memo key: folds the COUNT plus every
-     * (ts, quantised value) with large odd multipliers — the same every-element discipline as
-     * [StagerCache.fingerprint] — so an in-place interior edit (a re-import correcting a value), a
-     * truncation, or an append all re-key to a fresh compute and a stale hit is never served.
-     * Internal so the fingerprint-completeness test pins those properties directly.
-     */
-    internal fun <T> streamFingerprint(samples: List<T>, ts: (T) -> Long, quant: (T) -> Long): Long {
-        var h = samples.size.toLong() * 2_654_435_761L
-        for (e in samples) h = (h * 1_000_003L + ts(e)) * 1_000_003L + quant(e)
-        return h
-    }
-
-    /** Full memo key for [detectSleep] — every input that steers detection or staging, nothing else. */
-    private data class DetectKey(
-        val grav: Long, val hr: Long, val rr: Long, val resp: Long, val steps: Long,
-        val tz: Long, val wristOff: Long, val band: Long,
-    )
-
-    /** Bound ≈ the distinct days of a scoring window (matches the Swift detectSleepCache capacity, 40).
-     *  Access-order LRU so the hottest nights survive a long session; an entry is a handful of small
-     *  sessions — the multi-hour raw streams are never retained (#707 rule: the cache must not be the
-     *  next leak). */
-    private const val DETECT_CACHE_MAX_DAYS = 40
-    private val detectCache = object : LinkedHashMap<DetectKey, List<DetectedSleep>>(16, 0.75f, true) {
-        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<DetectKey, List<DetectedSleep>>): Boolean =
-            size > DETECT_CACHE_MAX_DAYS
-    }
-    private val detectCacheLock = Any()
-
-    /** Deep copy across the memo boundary. [DetectedSleep] itself is immutable, but its `stages` are
-     *  mutable [StageSegment]s — the exact reason [StagerCache] deep-copies hypnograms — so the memo
-     *  holds a private copy and hands every hit a fresh one; a caller reshaping a segment in place can
-     *  never poison the cache. Swift needs no copy (value-type structs); Kotlin's mutable StageSegment
-     *  does. O(stages), a rounding error next to the detection spine the memo skips. */
-    private fun copyDetected(sessions: List<DetectedSleep>): List<DetectedSleep> =
-        sessions.map { it.copy(stages = StagerCache.copyOf(it.stages)) }
-
-    /**
-     * Detect sleep sessions from biometric streams. Empty/absent gravity → [].
-     * Gravity-only input degrades gracefully (HR/RR/resp refinements skipped).
-     *
-     * [tzOffsetSeconds] is the wall-clock UTC offset (TimeZone.getDefault().getOffset)
-     * used ONLY to place each window's center on a LOCAL clock for the daytime false-sleep
-     * guard (#90). It defaults to 0 so the pure function and its tests stay UTC; the live
-     * call site (IntelligenceEngine) passes the device's real offset.
-     *
-     * [wristOff] is an optional list of off-wrist [start, end) intervals (unix seconds), paired from
-     * the strap's WRIST_OFF/WRIST_ON events by `AnalyticsEngine.offWristIntervals`. When the call site
-     * has them (IntelligenceEngine reads `repo.events`), they sharpen the always-on HR-gap off-wrist
-     * backstop: a candidate run is dropped when its off-wrist coverage (HR-gap spans UNION these
-     * intervals) reaches [maxOffWristSleepFraction] of its duration — the FRACTIONAL rule from #504, so
-     * a real night with a short off-wrist tail survives (#500). Defaults to empty (HR-gap proxy only),
-     * so the pure function and its tests stay event-free.
-     *
-     * PERF (#707 parity, mirrors the Swift detectSleepCache): this is the single heaviest analytics
-     * call — it sorts the dense full-day gravity stream, builds the delta/still spine, and stages every
-     * accepted run — and [IntelligenceEngine.analyzeRecent] re-runs it per day across the window every
-     * 15-min tick, so an idempotent re-pass (or a sync that never touched a given day) redid all of it
-     * for an identical result; the exact path that ANR'd before #125. Android had only the staging-layer
-     * [StagerCache], so the detection spine still re-ran uncached ~21× per pass. The public entry now
-     * memoizes the RESULT on a FULL input key (every argument that steers detection or staging: the four
-     * streams, tz offset, #500 off-wrist intervals, #531 band state, the V2 toggle) in a bounded LRU. A
-     * hit is byte-identical to recomputing — the memo only ever skips work, never changes it.
-     */
-    fun detectSleep(
-        hr: List<HrSample> = emptyList(),
-        rr: List<RrInterval> = emptyList(),
-        resp: List<RespSample> = emptyList(),
-        gravity: List<GravitySample>,
-        steps: List<StepSample> = emptyList(),
-        tzOffsetSeconds: Long = 0L,
-        wristOff: List<Pair<Long, Long>> = emptyList(),
-        // The strap's OWN persisted v18 BAND sleep_state per timestamp (0 wake/1 still/2 asleep/3 up),
-        // consumed by the whoop-rs morning-stillness re-onset guard. IntelligenceEngine passes the night
-        // window's persisted band state; default empty keeps pure-function callers free of it.
-        bandSleepState: List<Pair<Long, Int>> = emptyList(),
-    ): List<DetectedSleep> {
-        // Detection + staging + motion-aware refinement all run in whoop-rs (physio-algo) via one FFI call;
-        // this bounded LRU only ever skips a recompute for an identical input, never changes the result.
-        val key = DetectKey(
-            // Fold the three gravity axes SEPARATELY (raw IEEE-754 bits) so two postures sharing a component
-            // sum can't alias; a fingerprint collision only ever costs an extra recompute, never a value.
-            grav = streamFingerprint(gravity, { it.ts }) { s ->
-                var q = java.lang.Double.doubleToRawLongBits(s.x)
-                q = q * 1_000_003L + java.lang.Double.doubleToRawLongBits(s.y)
-                q = q * 1_000_003L + java.lang.Double.doubleToRawLongBits(s.z)
-                q
-            },
-            hr = streamFingerprint(hr, { it.ts }) { it.bpm.toLong() },
-            rr = streamFingerprint(rr, { it.ts }) { it.rrMs.toLong() },
-            resp = streamFingerprint(resp, { it.ts }) { it.raw.toLong() },
-            steps = streamFingerprint(steps, { it.ts }) { it.counter.toLong() },
-            tz = tzOffsetSeconds,
-            wristOff = streamFingerprint(wristOff, { it.first }) { it.second },
-            band = streamFingerprint(bandSleepState, { it.first }) { it.second.toLong() },
-        )
-        synchronized(detectCacheLock) { detectCache[key] }?.let { return copyDetected(it) }
-        val sessions = RustSleepStager.analyze(
-            hr, rr, resp, gravity, steps, tzOffsetSeconds, wristOff, bandSleepState,
-        )
-        synchronized(detectCacheLock) { detectCache[key] = copyDetected(sessions) }
-        return sessions
     }
 
     // ── Respiration rate from R-R (RSA) — WHOOP5 on-wire path ────────────────

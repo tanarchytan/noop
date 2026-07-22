@@ -64,18 +64,20 @@ The algorithm is in Rust; the Kotlin file marshals inputs and calls `RustScores`
 | Fitness Age / VO2max | `FitnessAgeEngine` | `vo2maxEstimate`, `fitnessAgeCompute` |
 | SpO2 nightly raw means | `AnalyticsEngine` | `nightlySpo2RawMeans` |
 | Personal baselines (EWMA update) | `Baselines` | `baselineUpdate` |
-| Steps (5/MG counter) | `StepsCounter` oracle; `AnalyticsEngine`, `AppViewModel` | `stepsCounter` |
-| Calories (whole-day) | `Calories` oracle; `AnalyticsEngine` | `caloriesEstimateDay` |
-| Rest (sleep performance) | `RestScorer` oracle; `AnalyticsEngine`, `restFromDaily` | `restScore` |
-| Sleep debt ledger | `SleepDebt` oracle; `SleepModels` | `sleepDebtLedger` |
+| Steps (5/MG counter) | `AnalyticsEngine`, `AppViewModel` (via `RustScores.steps`) | `stepsCounter` |
+| Calories (whole-day) | `AnalyticsEngine` (via `RustScores.caloriesDay`) | `caloriesEstimateDay` |
+| Rest (sleep performance) | `RestScorer.restFromDaily`, `AnalyticsEngine` | `restScore` |
+| Sleep debt ledger | `RustScores.sleepDebtLedger`; `SleepModels` reads the types | `sleepDebtLedger` |
 | Daily stress | `StressModel.build` (baseline assembly stays Kotlin) | `dailyStress` |
-| Daytime stress | `DaytimeStress` (bucketing + `scoreKotlin` oracle) | `daytimeStress` |
+| Daytime stress | `DaytimeStress` (Kotlin bucketing, Rust scoring) | `daytimeStress` |
+| HRV frequency domain (Lomb-Scargle LF/HF) | `HrvFreqDomain` (thin router) | `hrvFreqDomain` |
 
-Steps / Calories / Rest / SleepDebt were routed with bit-exact parity tests (Kotlin oracle == Rust). Daily
-and daytime stress were routed by ADOPTING the whoop-rs semantics (14-day daily cold-start gate; last-hour
-peak on a tie), a deliberate Stress-screen behaviour change, not a byte-parity swap. `Baselines.kt` is a
-mixed case: it delegates the per-night `update` to Rust but still carries its Kotlin `foldHistory` /
-trailing-window path and the full config table.
+Steps / Calories(day) / Rest / SleepDebt / DaytimeStress / HRV-freq no longer keep a Kotlin oracle: the math
+was DELETED once whoop-rs parity was proven, so each engine is now a thin router and its Kotlin test is an
+FFI smoke test (Rust owns the exact numbers). Daily and daytime stress ADOPT the whoop-rs semantics (14-day
+daily cold-start gate; last-hour peak on a tie), a deliberate Stress-screen behaviour change. `Baselines.kt`
+is a mixed case: it delegates the per-night `update` to Rust but still carries its Kotlin `foldHistory`
+recency-weighted path and the full config table.
 
 ### 2. Ported to whoop-rs, still running in Kotlin
 
@@ -95,7 +97,6 @@ downstream and secondary metrics NOOP layers on top of the core scores.
 
 | Area | Kotlin engines |
 |---|---|
-| HRV frequency domain (Lomb-Scargle LF/HF) | `HrvFreqDomain` |
 | Illness early-warning | `IllnessSignalEngine`, `IllnessDistance` (Mahalanobis) |
 | Vitality / Body Age (Gompertz) | `VitalityEngine`, `VitalBands` |
 | Readiness (ACWR / Foster monotony) | `ReadinessEngine` |
@@ -114,8 +115,8 @@ downstream and secondary metrics NOOP layers on top of the core scores.
 | Live session, spot HRV, 5.0 health | `LiveSessionEngine`, `SpotHrvReading`, `V5HealthSignals` |
 
 Plus orchestration and plumbing that is not itself an algorithm: `AnalyticsEngine` and
-`IntelligenceEngine` (the day orchestrators), the `*Trace` twins, `ScoreConfidence`, `StagerCache`, the
-day-owner resolvers, the sleep edit / dedup / reclip guards, and the various stores and prefs.
+`IntelligenceEngine` (the day orchestrators), the `*Trace` twins, `ScoreConfidence`, the day-owner
+resolvers, the sleep edit / dedup / reclip guards, and the various stores and prefs.
 
 ---
 

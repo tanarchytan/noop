@@ -1,32 +1,11 @@
 package com.noop.analytics
 
 import kotlin.math.abs
-import kotlin.math.ceil
-import kotlin.math.floor
 
 /*
- * SleepDebt.kt — a rolling sleep-debt ledger over the last N nights.
- *
- * Faithful Kotlin mirror of StrandAnalytics/SleepDebt.swift. Keep the window cap,
- * the skip-no-data rule, and the Σ(slept − need) accumulation byte-identical to
- * Swift — the two clients must report the same balance for the same nights.
- *
- * Pure, deterministic, DB-free. Given a chronological series of per-night total
- * sleep (minutes) and a personal sleep need (hours), it accumulates a running
- * balance of (actual − need) per night across a capped trailing window (14 nights
- * by default) and reports the net balance plus the per-night deltas behind it.
- *
- * HONEST by construction:
- *   - A plain debt accumulator — sum of nightly (slept − need) — NOT a physiological
- *     model. A surplus night genuinely offsets a deficit one, like a balance nets
- *     credits and debits.
- *   - The window is capped (default 14) so debt never compounds across months of
- *     history — only the recent fortnight is in scope.
- *   - Nights with no usable sleep total are SKIPPED (no zero-fill), so a gap in wear
- *     never reads as a full night of debt.
- *   - The need value is supplied by the caller ([RestScorer.defaultSleepNeedHours] =
- *     8.0 by default; the caller passes any per-user override). Computation here stays
- *     a pure function of (series, need, window).
+ * SleepDebt.kt — the rolling sleep-debt ledger types (one night's contribution + the windowed ledger)
+ * and its display thresholds. The Σ(slept − need) accumulation over the capped trailing window lives in
+ * whoop-rs (sleep_debt), reached via RustScores.sleepDebtLedger; these are the shapes it returns.
  */
 
 /**
@@ -78,58 +57,4 @@ object SleepDebt {
      * a debt/surplus, so a few stray minutes don't flip the headline.
      */
     const val ON_TARGET_BAND_MIN: Double = 30.0
-
-    /**
-     * Build the ledger from a chronological `List<Pair<day, totalSleepMin?>>` series.
-     *
-     * @param series per-night `(day, totalSleepMin)` rows in CHRONOLOGICAL order
-     *   (oldest → newest), exactly the order `days` carries. A null or non-positive
-     *   `totalSleepMin` marks a night with no usable data and is SKIPPED (never zero-filled).
-     * @param needHours personal sleep need (hours) each night is measured against. Defaults
-     *   to [RestScorer.defaultSleepNeedHours] (8 h); the caller passes any per-user override.
-     * @param window how many of the most-recent COUNTED nights to include. Defaults to
-     *   [DEFAULT_WINDOW_NIGHTS] (14). Clamped to ≥ 1.
-     *
-     * The balance is Σ over the window of (sleptMin − needMin): a surplus night offsets a
-     * deficit one. Returns an empty ledger (balance 0, no nights) when no night has data.
-     */
-    fun ledger(
-        series: List<Pair<String, Double?>>,
-        needHours: Double = RestScorer.defaultSleepNeedHours,
-        window: Int = DEFAULT_WINDOW_NIGHTS,
-    ): SleepDebtLedger {
-        val needMin = needHours.coerceAtLeast(0.0) * 60.0
-        val cap = window.coerceAtLeast(1)
-
-        // Keep only nights with usable sleep, preserving chronological order, then take the
-        // most-recent `cap` of them.
-        val usable = series.filter { (it.second ?: 0.0) > 0.0 }
-        val windowed = usable.takeLast(cap)
-
-        val nights = ArrayList<SleepDebtNight>(windowed.size)
-        var balance = 0.0
-        for ((day, slept) in windowed) {
-            val sleptMin = slept ?: 0.0
-            val delta = sleptMin - needMin
-            balance += delta
-            nights.add(SleepDebtNight(day = day, sleptMin = sleptMin, deltaMin = delta))
-        }
-        return SleepDebtLedger(balanceMin = round1(balance), nights = nights, needMin = needMin)
-    }
-
-    /**
-     * Round to 1 decimal place — keeps Σ stable without trailing float noise.
-     *
-     * Matches Swift `SleepDebt.round1` byte-for-byte: Swift's `Double.rounded()` is
-     * `.toNearestOrAwayFromZero` (half-AWAY-from-zero), so a negative half-tie like a
-     * −0.05 balance rounds to −0.1, not 0.0. Kotlin's `Double.roundToInt()` rounds half
-     * toward +∞ (`floor(x + 0.5)`), which would round that same tie to 0.0 — a real
-     * cross-platform divergence on negative half-ties (audit #6). Round each sign away
-     * from zero so the two clients report the same balance for the same nights.
-     */
-    internal fun round1(v: Double): Double {
-        val scaled = v * 10.0
-        val rounded = if (scaled < 0.0) ceil(scaled - 0.5) else floor(scaled + 0.5)
-        return rounded / 10.0
-    }
 }

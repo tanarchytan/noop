@@ -1401,7 +1401,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     /** Steps over a manual-workout window `[from, to]` from the strap's own `step_motion_counter@57`
-     *  (#398): the shared wrap-aware `StepsCounter` delta-sum, then the per-user `stepTicksPerStep`
+     *  (#398): the shared wrap-aware delta-sum in whoop-rs (RustScores.steps), then the per-user `stepTicksPerStep`
      *  calibration the daily total applies (#139, floor 0.5). null when no strap counter covers the window
      *  — a WHOOP 4.0 (no @57 counter) or an MG/5.0 that hasn't offloaded the window yet. Mirrors Swift
      *  `Repository.strapStepTicks` + the WorkoutDetailView scaling; the phone-pedometer fallback iOS adds is

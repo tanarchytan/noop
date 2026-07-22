@@ -2,9 +2,6 @@ package com.noop.analytics
 
 import com.noop.data.HrSample
 import com.noop.data.RrInterval
-import kotlin.math.exp
-import kotlin.math.min
-import kotlin.math.sqrt
 import uniffi.whoop_ffi.HourPointInfo
 
 /*
@@ -96,42 +93,10 @@ object DaytimeStress {
         }
     }
 
-    // MARK: - Shared stress math (identical formula to the daily StressModel)
+    // MARK: - Mean over an hour's samples (mean HR for a bucket)
 
     private fun mean(xs: List<Double>): Double? =
         if (xs.isEmpty()) null else xs.sum() / xs.size
-
-    /** Population standard deviation; 0 when there's no spread. (Matches StressMath.std.) */
-    private fun std(xs: List<Double>, m: Double?): Double {
-        if (m == null || xs.size <= 1) return 0.0
-        val v = xs.sumOf { (it - m) * (it - m) } / xs.size
-        return sqrt(v)
-    }
-
-    /**
-     * Combined autonomic z-score. HR-up and HRV-down both push it positive — the SAME
-     * directionality as the daily score (RHR up = stress, HRV down = stress).
-     */
-    private fun rawScore(
-        hr: Double?, meanHr: Double?, sdHr: Double,
-        rmssd: Double?, meanRmssd: Double?, sdRmssd: Double,
-    ): Double {
-        var sum = 0.0
-        if (hr != null && meanHr != null && sdHr > 0.0001) {
-            sum += (hr - meanHr) / sdHr            // HR up = stress
-        }
-        if (rmssd != null && meanRmssd != null && sdRmssd > 0.0001) {
-            sum += (meanRmssd - rmssd) / sdRmssd   // HRV (RMSSD) down = stress
-        }
-        return sum
-    }
-
-    /**
-     * Logistic squash of the raw z-sum onto 0–3 (baseline 0 → 1.5). Identical to
-     * StressMath.squash, so an hourly point shares the daily score's scale and bands.
-     */
-    private fun squash(raw: Double): Double =
-        (3.0 / (1.0 + exp(-raw))).coerceIn(0.0, 3.0)
 
     // MARK: - Public API
 
@@ -177,44 +142,7 @@ object DaytimeStress {
         return aggs
     }
 
-    /** Kotlin scoring reference (calm-quartile z + logistic) — the parity ORACLE; the live path is
-     *  [scoreRust]. Kept whole so a fixture can compare the two leg-for-leg. */
-    internal fun scoreKotlin(aggs: List<HourAgg>, tzOffsetSeconds: Long): Result {
-        val referenceAggs = aggs.filter { isWakingHour(it.bucket) }
-        val hrMeans = referenceAggs.mapNotNull { it.meanHr }
-        val rmssdVals = referenceAggs.mapNotNull { it.rmssd }
-        val refHr = calmReference(hrMeans, calmIsLow = true)         // calm HR is LOW
-        val refRmssd = calmReference(rmssdVals, calmIsLow = false)   // calm HRV is HIGH
-        val sdHr = std(hrMeans, mean(hrMeans))
-        val sdRmssd = std(rmssdVals, mean(rmssdVals))
-
-        val points = ArrayList<HourPoint>(aggs.size)
-        for (a in aggs) {
-            if (!isWakingHour(a.bucket)) continue
-            val hourOfDay = (floorDiv(a.bucket, bucketSeconds) % 24).toInt()
-            val wallStart = a.bucket - tzOffsetSeconds
-            val level: Double? = if (a.meanHr != null) {
-                squash(rawScore(a.meanHr, refHr, sdHr, a.rmssd, refRmssd, sdRmssd))
-            } else {
-                null
-            }
-            points.add(HourPoint(hourOfDay, wallStart, level, a.meanHr, a.rmssd))
-        }
-        val scored = points.mapNotNull { p -> p.level?.let { p to it } }
-        if (scored.isEmpty()) {
-            return if (points.isEmpty()) Result.EMPTY
-            else Result(points, sustainedHigh = false, sustainedRun = 0, dayMean = null, peak = null)
-        }
-        var run = 0
-        for ((_, lvl) in scored.asReversed()) {
-            if (lvl >= highBandFloor) run += 1 else break
-        }
-        val dayMean = mean(scored.map { it.second })
-        val peak = scored.maxByOrNull { it.second }?.first
-        return Result(points, run >= sustainedHours, run, dayMean, peak)
-    }
-
-    /** Live path: score the hourly aggregates in whoop-rs (daytime_stress), then reassemble the full
+    /** Score the hourly aggregates in whoop-rs (daytime_stress), then reassemble the full
      *  timeline (unscored hours kept for the UI). Adopts the whoop-rs peak on a tie (last hour). */
     internal fun scoreRust(aggs: List<HourAgg>, tzOffsetSeconds: Long): Result {
         val hourPoints = aggs.map { a ->
@@ -250,35 +178,10 @@ object DaytimeStress {
 
     /**
      * Whether a local hour-bucket start falls inside the waking window the timeline scores
-     * (06:00–22:00). The single source of truth for "waking" — used both to build the calm
-     * reference and to pick the hours to score, so the two can never drift apart.
+     * (06:00–22:00). Picks which hours [scoreRust] keeps when it reassembles the timeline.
      */
     private fun isWakingHour(bucket: Long): Boolean {
         val hourOfDay = (floorDiv(bucket, bucketSeconds) % 24).toInt()
         return hourOfDay >= wakingStartHour && hourOfDay < wakingEndHour
-    }
-
-    /**
-     * The day's "calm" reference for a signal: the quartile toward the calm end (lower
-     * quartile when calm is LOW, e.g. HR; upper quartile when calm is HIGH, e.g. RMSSD).
-     * Falls back to the plain mean below 4 values, and to null when empty.
-     */
-    private fun calmReference(xs: List<Double>, calmIsLow: Boolean): Double? {
-        if (xs.isEmpty()) return null
-        if (xs.size < 4) return mean(xs)
-        val s = xs.sorted()
-        return if (calmIsLow) quantile(s, 0.25) else quantile(s, 0.75)
-    }
-
-    /** Linear-interpolated quantile of an already-sorted, non-empty list. */
-    private fun quantile(sorted: List<Double>, q: Double): Double {
-        val n = sorted.size
-        if (n == 0) return 0.0   // defensive: callers guard emptiness; never index []
-        if (n == 1) return sorted[0]
-        val pos = q * (n - 1)
-        val lo = pos.toInt()
-        val hi = min(lo + 1, n - 1)
-        val frac = pos - lo
-        return sorted[lo] + frac * (sorted[hi] - sorted[lo])
     }
 }

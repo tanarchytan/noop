@@ -709,6 +709,8 @@ internal object IntegrityCheckingUniffiLib {
     ): Int
     external fun uniffi_whoop_ffi_checksum_func_hrv_analyze_raw(
     ): Int
+    external fun uniffi_whoop_ffi_checksum_func_hrv_freq_domain(
+    ): Int
     external fun uniffi_whoop_ffi_checksum_func_hrv_range_filter(
     ): Int
     external fun uniffi_whoop_ffi_checksum_func_hrv_readiness(
@@ -955,6 +957,8 @@ internal object UniffiLib {
     ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_func_hrv_analyze_raw(`rrMs`: RustBuffer.ByValue,`maxRejectedFraction`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
+    external fun uniffi_whoop_ffi_fn_func_hrv_freq_domain(`rrMs`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_func_hrv_range_filter(`rrMs`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_func_hrv_readiness(`nightlyRmssd`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
@@ -1189,7 +1193,10 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_whoop_ffi_checksum_func_hr_zones_for_age() != 34437) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_whoop_ffi_checksum_func_hrv_analyze_raw() != 17926) {
+    if (lib.uniffi_whoop_ffi_checksum_func_hrv_analyze_raw() != 57905) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_whoop_ffi_checksum_func_hrv_freq_domain() != 18739) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_whoop_ffi_checksum_func_hrv_range_filter() != 26959) {
@@ -3551,6 +3558,58 @@ public object FfiConverterTypeHrvAnalysisInfo: FfiConverterRustBuffer<HrvAnalysi
             FfiConverterOptionalDouble.write(value.`pnn50`, buf)
             FfiConverterUInt.write(value.`nInput`, buf)
             FfiConverterUInt.write(value.`nClean`, buf)
+    }
+}
+
+
+
+/**
+ * Frequency-domain HRV bands (ms²): LF / HF / LF-HF / total power. `lf`/`lfhf` are `None` under the 250 s
+ * LF span gate; the whole record is absent (`None`) under the 60 s HF gate or the 20-beat floor.
+ */
+data class HrvBandsInfo (
+    var `lf`: kotlin.Double?
+    , 
+    var `hf`: kotlin.Double
+    , 
+    var `lfhf`: kotlin.Double?
+    , 
+    var `totalPower`: kotlin.Double
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeHrvBandsInfo: FfiConverterRustBuffer<HrvBandsInfo> {
+    override fun read(buf: ByteBuffer): HrvBandsInfo {
+        return HrvBandsInfo(
+            FfiConverterOptionalDouble.read(buf),
+            FfiConverterDouble.read(buf),
+            FfiConverterOptionalDouble.read(buf),
+            FfiConverterDouble.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: HrvBandsInfo) = (
+            FfiConverterOptionalDouble.allocationSize(value.`lf`) +
+            FfiConverterDouble.allocationSize(value.`hf`) +
+            FfiConverterOptionalDouble.allocationSize(value.`lfhf`) +
+            FfiConverterDouble.allocationSize(value.`totalPower`)
+    )
+
+    override fun write(value: HrvBandsInfo, buf: ByteBuffer) {
+            FfiConverterOptionalDouble.write(value.`lf`, buf)
+            FfiConverterDouble.write(value.`hf`, buf)
+            FfiConverterOptionalDouble.write(value.`lfhf`, buf)
+            FfiConverterDouble.write(value.`totalPower`, buf)
     }
 }
 
@@ -6983,6 +7042,38 @@ public object FfiConverterOptionalTypeHistorySummary: FfiConverterRustBuffer<His
 /**
  * @suppress
  */
+public object FfiConverterOptionalTypeHrvBandsInfo: FfiConverterRustBuffer<HrvBandsInfo?> {
+    override fun read(buf: ByteBuffer): HrvBandsInfo? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterTypeHrvBandsInfo.read(buf)
+    }
+
+    override fun allocationSize(value: HrvBandsInfo?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterTypeHrvBandsInfo.allocationSize(value)
+        }
+    }
+
+    override fun write(value: HrvBandsInfo?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterTypeHrvBandsInfo.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterOptionalTypeHrvReadinessInfo: FfiConverterRustBuffer<HrvReadinessInfo?> {
     override fun read(buf: ByteBuffer): HrvReadinessInfo? {
         if (buf.get().toInt() == 0) {
@@ -8735,7 +8826,7 @@ public object FfiConverterSequenceOptionalDouble: FfiConverterRustBuffer<List<ko
     
 
         /**
-         * Clean-and-analyze a raw R-R series in one call (the app's `HrvAnalyzer.analyzeRaw`).
+         * Clean-and-analyze a raw R-R series in one call (the app's full spot/nightly HRV analysis path).
          */ fun `hrvAnalyzeRaw`(`rrMs`: List<kotlin.UShort>, `maxRejectedFraction`: kotlin.Double?): HrvAnalysisInfo {
             return FfiConverterTypeHrvAnalysisInfo.lift(
     uniffiRustCall() { _status ->
@@ -8744,6 +8835,20 @@ public object FfiConverterSequenceOptionalDouble: FfiConverterRustBuffer<List<ko
         
         FfiConverterSequenceUShort.lower(`rrMs`),
         FfiConverterOptionalDouble.lower(`maxRejectedFraction`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Frequency-domain HRV over a time-ordered R-R series (ms) via the Lomb-Scargle periodogram.
+         */ fun `hrvFreqDomain`(`rrMs`: List<kotlin.UShort>): HrvBandsInfo? {
+            return FfiConverterOptionalTypeHrvBandsInfo.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_func_hrv_freq_domain(
+    
+        
+        FfiConverterSequenceUShort.lower(`rrMs`),_status)
 }
     )
     }
