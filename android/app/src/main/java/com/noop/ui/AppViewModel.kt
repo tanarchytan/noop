@@ -1409,7 +1409,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     suspend fun workoutSteps(from: Long, to: Long): Int? {
         if (to <= from) return null
         val samples = runCatching { repository.stepSamples(deviceId, from, to) }.getOrDefault(emptyList())
-        val ticks = com.noop.analytics.StepsCounter.stepsInWindow(samples) ?: return null
+        val ticks = com.noop.analytics.RustScores.steps(samples) ?: return null
         val scaled = (ticks.toDouble() / maxOf(profileStore.stepTicksPerStep, 0.5)).roundToInt()
         return if (scaled > 0) scaled else null
     }

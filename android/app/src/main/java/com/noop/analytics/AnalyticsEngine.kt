@@ -552,7 +552,7 @@ object AnalyticsEngine {
             // (#277); the wrap-aware tick math itself lives in the shared StepsCounter kernel so the daily
             // and per-workout (#398) totals can never disagree.
             val inDay = (daySteps ?: steps).filter { dayString(it.ts, tzOffsetSeconds) == day }
-            val ticks = StepsCounter.stepsInWindow(inDay) ?: return@run null
+            val ticks = RustScores.steps(inDay) ?: return@run null
             // @57 counts motion ticks, not validated steps — the 5/MG counter overcounts. Divide
             // by the user-calibrated ticks-per-step (default 1.0 = raw pass-through; floor 0.5 so
             // a bad pref can at most double, never explode, the total). (#139)
@@ -577,8 +577,8 @@ object AnalyticsEngine {
         val activeKcalEst: Double? = if (dayHrFiltered.isEmpty()) {
             null
         } else {
-            Calories.estimateDayCalories(
-                hrSamples = dayHrFiltered,
+            RustScores.caloriesDay(
+                hr = dayHrFiltered,
                 profile = profile,
                 hrmax = effMaxHR,
                 restingHR = restingHRDaily?.toDouble(),

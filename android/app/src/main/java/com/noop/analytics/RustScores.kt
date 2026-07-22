@@ -3,6 +3,7 @@ package com.noop.analytics
 import com.noop.data.HrSample
 import com.noop.data.RrInterval
 import com.noop.data.Spo2Sample
+import com.noop.data.StepSample
 import uniffi.whoop_ffi.DriverBaselineInfo
 import uniffi.whoop_ffi.FitnessAgeInfo
 import uniffi.whoop_ffi.HrTick
@@ -11,6 +12,7 @@ import uniffi.whoop_ffi.RecoveryDrivers
 import uniffi.whoop_ffi.RrBeat
 import uniffi.whoop_ffi.RrRun
 import uniffi.whoop_ffi.SleepSegment
+import uniffi.whoop_ffi.SleepStepSample
 import uniffi.whoop_ffi.Spo2RawSample
 import uniffi.whoop_ffi.Spo2Span
 import uniffi.whoop_ffi.StrainMethod
@@ -253,4 +255,29 @@ internal object RustScores {
     /** Session avgHrv (ms) from 5-min buckets whose centre falls in deep-sleep spans. */
     fun windowedAvgHrvDeep(start: Long, end: Long, rr: List<RrInterval>, segments: List<SleepSegment>): Double? =
         uniffi.whoop_ffi.hrvWindowedAvgDeep(start.toUInt(), end.toUInt(), groupRuns(rr.sortedBy { it.ts }), segments)
+
+    // ── Steps (5/MG cumulative motion counter) ───────────────────────────────
+
+    /** Raw wrap-aware motion-tick total over [samples] (5/MG `step_motion_counter@57`) — twin of
+     *  [StepsCounter.stepsInWindow]. `null` for <2 samples or no forward movement (so "no data" stays
+     *  distinct from a real zero). The caller applies its `stepTicksPerStep` calibration. */
+    fun steps(samples: List<StepSample>): Int? =
+        uniffi.whoop_ffi.stepsCounter(
+            samples.map { SleepStepSample(it.ts, it.counter.toUShort(), it.activityClass?.toUByte()) },
+        )?.toInt()
+
+    // ── Calories (whole-day HR estimate) ─────────────────────────────────────
+
+    /** APPROXIMATE whole-day energy (kcal) from the day's HR — twin of [Calories.estimateDayCalories].
+     *  Applies the SAME profile / hrmax / resting fallbacks the Kotlin path used, then delegates. */
+    fun caloriesDay(hr: List<HrSample>, profile: UserProfile, hrmax: Double?, restingHR: Double?): Double =
+        uniffi.whoop_ffi.caloriesEstimateDay(
+            hrTicks(hr),
+            if (profile.weightKg > 0) profile.weightKg else 70.0,
+            if (profile.heightCm > 0) profile.heightCm else 170.0,
+            if (profile.age > 0) profile.age else 30.0,
+            profile.sex,
+            hrmax ?: 220.0,
+            restingHR ?: 60.0,
+        )
 }
