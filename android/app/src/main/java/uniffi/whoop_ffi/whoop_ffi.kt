@@ -707,6 +707,8 @@ internal object IntegrityCheckingUniffiLib {
     ): Int
     external fun uniffi_whoop_ffi_checksum_func_hr_zones_for_age(
     ): Int
+    external fun uniffi_whoop_ffi_checksum_func_hrv_analyze_raw(
+    ): Int
     external fun uniffi_whoop_ffi_checksum_func_hrv_range_filter(
     ): Int
     external fun uniffi_whoop_ffi_checksum_func_hrv_readiness(
@@ -951,6 +953,8 @@ internal object UniffiLib {
     ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_func_hr_zones_for_age(`age`: Double,`maxHrOverride`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
+    external fun uniffi_whoop_ffi_fn_func_hrv_analyze_raw(`rrMs`: RustBuffer.ByValue,`maxRejectedFraction`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_func_hrv_range_filter(`rrMs`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_func_hrv_readiness(`nightlyRmssd`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
@@ -1183,6 +1187,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_whoop_ffi_checksum_func_hr_zones_for_age() != 34437) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_whoop_ffi_checksum_func_hrv_analyze_raw() != 17926) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_whoop_ffi_checksum_func_hrv_range_filter() != 26959) {
@@ -3481,6 +3488,69 @@ public object FfiConverterTypeHrZoneSetInfo: FfiConverterRustBuffer<HrZoneSetInf
             FfiConverterSequenceTypeHrZoneInfo.write(value.`zones`, buf)
             FfiConverterDouble.write(value.`maxHr`, buf)
             FfiConverterString.write(value.`source`, buf)
+    }
+}
+
+
+
+/**
+ * Full HRV analysis over a raw R-R capture (ms): cleaned RMSSD/SDNN/pNN50/meanNN + input/clean counts.
+ * Fields are `None` (and `n_clean` 0) below the 20-clean-beat floor, or when `max_rejected_fraction` (the
+ * spot honesty gate) is set and exceeded. The nightly path passes `None` (no gate).
+ */
+data class HrvAnalysisInfo (
+    var `rmssd`: kotlin.Double?
+    , 
+    var `sdnn`: kotlin.Double?
+    , 
+    var `meanNn`: kotlin.Double?
+    , 
+    var `pnn50`: kotlin.Double?
+    , 
+    var `nInput`: kotlin.UInt
+    , 
+    var `nClean`: kotlin.UInt
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeHrvAnalysisInfo: FfiConverterRustBuffer<HrvAnalysisInfo> {
+    override fun read(buf: ByteBuffer): HrvAnalysisInfo {
+        return HrvAnalysisInfo(
+            FfiConverterOptionalDouble.read(buf),
+            FfiConverterOptionalDouble.read(buf),
+            FfiConverterOptionalDouble.read(buf),
+            FfiConverterOptionalDouble.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterUInt.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: HrvAnalysisInfo) = (
+            FfiConverterOptionalDouble.allocationSize(value.`rmssd`) +
+            FfiConverterOptionalDouble.allocationSize(value.`sdnn`) +
+            FfiConverterOptionalDouble.allocationSize(value.`meanNn`) +
+            FfiConverterOptionalDouble.allocationSize(value.`pnn50`) +
+            FfiConverterUInt.allocationSize(value.`nInput`) +
+            FfiConverterUInt.allocationSize(value.`nClean`)
+    )
+
+    override fun write(value: HrvAnalysisInfo, buf: ByteBuffer) {
+            FfiConverterOptionalDouble.write(value.`rmssd`, buf)
+            FfiConverterOptionalDouble.write(value.`sdnn`, buf)
+            FfiConverterOptionalDouble.write(value.`meanNn`, buf)
+            FfiConverterOptionalDouble.write(value.`pnn50`, buf)
+            FfiConverterUInt.write(value.`nInput`, buf)
+            FfiConverterUInt.write(value.`nClean`, buf)
     }
 }
 
@@ -8659,6 +8729,21 @@ public object FfiConverterSequenceOptionalDouble: FfiConverterRustBuffer<List<ko
         
         FfiConverterDouble.lower(`age`),
         FfiConverterOptionalDouble.lower(`maxHrOverride`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Clean-and-analyze a raw R-R series in one call (the app's `HrvAnalyzer.analyzeRaw`).
+         */ fun `hrvAnalyzeRaw`(`rrMs`: List<kotlin.UShort>, `maxRejectedFraction`: kotlin.Double?): HrvAnalysisInfo {
+            return FfiConverterTypeHrvAnalysisInfo.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_func_hrv_analyze_raw(
+    
+        
+        FfiConverterSequenceUShort.lower(`rrMs`),
+        FfiConverterOptionalDouble.lower(`maxRejectedFraction`),_status)
 }
     )
     }

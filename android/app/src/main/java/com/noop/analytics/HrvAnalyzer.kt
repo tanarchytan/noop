@@ -251,7 +251,15 @@ object HrvAnalyzer {
      *   beats is too noisy to trust. null (the default, and what the NIGHTLY windowed path passes) skips
      *   the gate entirely, so the nightly RMSSD is byte-identical to before this parameter existed.
      */
-    fun analyzeRaw(rawRR: List<Double>, maxRejectedFraction: Double? = null): HrvResult {
+    fun analyzeRaw(rawRR: List<Double>, maxRejectedFraction: Double? = null): HrvResult =
+        RustScores.analyzeRaw(rawRR, maxRejectedFraction)
+
+    /**
+     * Kotlin reference implementation of [analyzeRaw], retained as the bit-exact parity ORACLE; the live
+     * path routes to whoop-rs above. Range filter, Malik ectopic, the [MIN_BEATS] floor, the spot
+     * rejected-fraction gate, and the gap-aware RMSSD/pNN50 all mirror `physio-algo`'s `analyze_raw`.
+     */
+    internal fun analyzeRawKotlin(rawRR: List<Double>, maxRejectedFraction: Double? = null): HrvResult {
         val nInput = rawRR.size
         val cleaned = cleanRRGapAware(rawRR)
         val clean = cleaned.nn

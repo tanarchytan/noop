@@ -163,6 +163,21 @@ internal object RustScores {
 
     fun rmssdRaw(nn: List<Double>): Double? = uniffi.whoop_ffi.hrvRmssdPlain(nn.map { it.toInt().toUShort() })
 
+    /** Full clean-and-analyze (RMSSD/SDNN/pNN50/meanNN + input/clean counts) — twin of
+     *  [HrvAnalyzer.analyzeRaw]. R-R are integer ms (u16 on the wire); range filter, Malik ectopic, the
+     *  20-beat floor and the spot rejected-fraction gate all live in whoop-rs. `nInput` = the raw count. */
+    fun analyzeRaw(rawRR: List<Double>, maxRejectedFraction: Double?): HrvAnalyzer.HrvResult {
+        val info = uniffi.whoop_ffi.hrvAnalyzeRaw(rawRR.map { it.toInt().toUShort() }, maxRejectedFraction)
+        return HrvAnalyzer.HrvResult(
+            rmssd = info.rmssd,
+            sdnn = info.sdnn,
+            meanNN = info.meanNn,
+            pnn50 = info.pnn50,
+            nInput = info.nInput.toInt(),
+            nClean = info.nClean.toInt(),
+        )
+    }
+
     /** Windowed session avgHrv (ms): mean of per-5-min-bucket gap-aware RMSSD over [start, end] — the stored
      *  DailyMetric.avgHrv/SleepSession.avgHrv (twin of SleepStager.sessionAvgHRV). `rr` must be ts-sorted. */
     fun windowedAvgHrv(start: Long, end: Long, rr: List<RrInterval>): Double? =
