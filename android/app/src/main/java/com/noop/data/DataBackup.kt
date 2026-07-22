@@ -782,6 +782,68 @@ object DataBackup {
             missingColumns = missingCols,
         )
     }
+
+    /** `table -> ordered column names` from `PRAGMA table_info` on [schema] ('main' or an ATTACHed alias). */
+    private fun readSchema(db: SQLiteDatabase, schema: String): Map<String, List<String>> {
+        val out = LinkedHashMap<String, List<String>>()
+        db.rawQuery("SELECT name FROM $schema.sqlite_master WHERE type = 'table'", null).use { tc ->
+            while (tc.moveToNext()) {
+                val t = tc.getString(0) ?: continue
+                val cols = ArrayList<String>()
+                db.rawQuery("PRAGMA $schema.table_info(`$t`)", null).use { cc ->
+                    val ni = cc.getColumnIndex("name")
+                    while (cc.moveToNext()) if (ni >= 0) cc.getString(ni)?.let(cols::add)
+                }
+                out[t] = cols
+            }
+        }
+        return out
+    }
+
+    /**
+     * Reconcile a foreign / cross-platform [stagedBackup] into a file carrying THIS app's exact v100 schema
+     * + identity, by COPYING [liveDbFile] (a valid Room store) and row-copying the backup's data into it —
+     * REPLACE clears each shared table, then inserts the intersection of columns. Version-agnostic: reads by
+     * table/column via [readSchema], never by schema version, so any fork's or the iOS/GRDB backup lands by
+     * logical data alone. Returns the reconciled file + [RowCopyPlan] warnings, or null on failure; the caller
+     * swaps the returned file in through the normal snapshot/rollback path. The live store must already exist.
+     */
+    fun reconcileForeignBackup(
+        appContext: Context,
+        liveDbFile: File,
+        stagedBackup: File,
+        mode: ImportMode,
+    ): Pair<File, List<String>> {
+        require(liveDbFile.exists()) { "no live store to reconcile the backup against" }
+        val work = File(appContext.cacheDir, "import-reconciled.db")
+        listOf(work, File(work.path + "-wal"), File(work.path + "-shm")).forEach { it.delete() }
+        liveDbFile.copyTo(work, overwrite = true) // exact v100 schema + identity (local rows cleared below)
+        val warnings: List<String>
+        val db = SQLiteDatabase.openDatabase(work.path, null, SQLiteDatabase.OPEN_READWRITE, PRESERVE_ON_CORRUPTION)
+        try {
+            val target = readSchema(db, "main")
+            db.execSQL("ATTACH DATABASE ? AS src", arrayOf(stagedBackup.path))
+            val source = readSchema(db, "src")
+            val plan = planRowCopyImport(target, source, mode)
+            db.beginTransaction()
+            try {
+                for (s in plan.statements) db.execSQL(s)
+                db.setTransactionSuccessful()
+            } finally {
+                db.endTransaction()
+            }
+            db.execSQL("DETACH DATABASE src")
+            // wal_checkpoint returns a row, so it must go through rawQuery, not execSQL. Fold the WAL so
+            // `work` is a self-contained file for the swap.
+            db.rawQuery("PRAGMA wal_checkpoint(TRUNCATE)", null).use { it.moveToFirst() }
+            warnings = plan.warnings()
+        } finally {
+            db.close()
+        }
+        File(work.path + "-wal").delete()
+        File(work.path + "-shm").delete()
+        return work to warnings
+    }
 }
 
 /**
