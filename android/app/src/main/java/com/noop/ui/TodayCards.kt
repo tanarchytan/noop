@@ -45,6 +45,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import com.noop.analytics.VitalBands
 import com.noop.data.DailyMetric
 import java.util.Locale
 import kotlin.math.abs
@@ -335,9 +336,13 @@ private fun dashboardCardValue(
  // writes spo2Pct = null on computed rows), so fall through to the last row that HAS one.
             (vd?.spo2Pct ?: spo2Day?.spo2Pct)?.let { String.format(Locale.US, "%.0f%%", it) } ?: NO_DATA
         DashboardCard.SKIN_TEMP ->
- // Stored as a deviation from baseline (°C); show it signed so +/- reads honestly.
- // Same per-field carry as Blood Oxygen.
-            (vd?.skinTempDevC ?: skinTempDay?.skinTempDevC)?.let { String.format(Locale.US, "%+.1f°", it) } ?: NO_DATA
+ // Prefer the ABSOLUTE skin temp (skinTempAbsC, e.g. 34.0°); fall back to the ±deviation from
+ // baseline (skinTempDevC) for older/imported rows that only carry it. An absolute reading shows
+ // unsigned, a deviation signed so +/- reads honestly. Same per-field carry as Blood Oxygen; the
+ // abs-vs-deviation split matches HealthScreen (VitalBands.isAbsoluteSkinTemp).
+            (vd?.skinTempAbsC ?: skinTempDay?.skinTempAbsC ?: vd?.skinTempDevC ?: skinTempDay?.skinTempDevC)
+                ?.let { String.format(Locale.US, if (VitalBands.isAbsoluteSkinTemp(it)) "%.1f°" else "%+.1f°", it) }
+                ?: NO_DATA
         DashboardCard.SLEEP -> sleepValue(vd)
         DashboardCard.STEPS -> {
             val real = day?.steps?.let { intStringGrouped(it.toDouble()) }

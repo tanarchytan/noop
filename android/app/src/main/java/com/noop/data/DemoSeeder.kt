@@ -149,7 +149,10 @@ object DemoSeeder {
                     deepMin = round1(deep), remMin = round1(rem), lightMin = round1(light),
                     disturbances = disturbances, restingHr = rhr, avgHrv = round1(hrv),
                     recovery = round1(recovery), strain = round1(strain), exerciseCount = nWorkouts,
-                    spo2Pct = round1(spo2), skinTempDevC = round2(skinTempDev), respRateBpm = round1(resp),
+                    spo2Pct = round1(spo2), skinTempDevC = round2(skinTempDev),
+                    // Absolute nightly skin temp (~34 °C baseline + the deviation) so the Today card and
+                    // Health show a real temperature, not just the ±deviation.
+                    skinTempAbsC = round2(34.0 + skinTempDev), respRateBpm = round1(resp),
                 )
             )
 
