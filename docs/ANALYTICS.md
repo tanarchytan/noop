@@ -64,27 +64,29 @@ The algorithm is in Rust; the Kotlin file marshals inputs and calls `RustScores`
 | Fitness Age / VO2max | `FitnessAgeEngine` | `vo2maxEstimate`, `fitnessAgeCompute` |
 | SpO2 nightly raw means | `AnalyticsEngine` | `nightlySpo2RawMeans` |
 | Personal baselines (EWMA update) | `Baselines` | `baselineUpdate` |
+| Steps (5/MG counter) | `StepsCounter` oracle; `AnalyticsEngine`, `AppViewModel` | `stepsCounter` |
+| Calories (whole-day) | `Calories` oracle; `AnalyticsEngine` | `caloriesEstimateDay` |
+| Rest (sleep performance) | `RestScorer` oracle; `AnalyticsEngine`, `restFromDaily` | `restScore` |
+| Sleep debt ledger | `SleepDebt` oracle; `SleepModels` | `sleepDebtLedger` |
+| Daily stress | `StressModel.build` (baseline assembly stays Kotlin) | `dailyStress` |
+| Daytime stress | `DaytimeStress` (bucketing + `scoreKotlin` oracle) | `daytimeStress` |
+
+Steps / Calories / Rest / SleepDebt were routed with bit-exact parity tests (Kotlin oracle == Rust). Daily
+and daytime stress were routed by ADOPTING the whoop-rs semantics (14-day daily cold-start gate; last-hour
+peak on a tie), a deliberate Stress-screen behaviour change, not a byte-parity swap. `Baselines.kt` is a
+mixed case: it delegates the per-night `update` to Rust but still carries its Kotlin `foldHistory` /
+trailing-window path and the full config table.
 
 ### 2. Ported to whoop-rs, still running in Kotlin
 
-whoop-rs already implements these, but the Android call site has not been cut over, so the Kotlin copy is
-what runs today. Cutting each over (delete the Kotlin math, call the FFI) is the migration backlog. Some
-FFI functions exist and just need a caller; others are implemented in `physio-algo` but not yet on the FFI
-surface (marked below).
+whoop-rs implements these too, but the Android call site has not been cut over yet, so the Kotlin copy is
+what runs today.
 
-| Metric | Kotlin file | whoop-rs home | FFI ready? |
+| Metric | Kotlin file | whoop-rs home | Why not yet |
 |---|---|---|---|
-| Calories (Keytel + Harris-Benedict) | `Calories` | `calories.rs` | yes, `caloriesEstimate*` (no caller) |
-| Workout detection | `AutoWorkoutDetector`, `WorkoutDetector` | `workout.rs` | yes, `workoutDetect` (no caller) |
-| Steps, 5/MG counter | `StepsCounter` | `steps.rs` | yes, `stepsCounter` (no caller) |
-| IMU activity features | `ImuFeatureExtractor` | `imu_features.rs` | yes, `imuFeatures` (no caller) |
-| Rest composite | `AnalyticsEngine` (Rest) | `rest.rs` | not exported yet |
-| Sleep debt | `SleepDebt` | `sleep_debt.rs` | not exported yet |
-| Daily stress | `AnalyticsEngine` / stress model | `stress.rs` `daily_stress` | not exported yet |
-| Daytime stress | `DaytimeStress` | `stress.rs` `daytime_stress` | not exported yet |
-
-`Baselines.kt` is a mixed case: it delegates the per-night `update` to Rust but still carries its Kotlin
-`foldHistory` / trailing-window path and the full config table.
+| Workout detection | `AutoWorkoutDetector`, `WorkoutDetector` | `workout.rs` | Rust `WorkoutSession` drops `hrmax`/`hrmaxSource`; independent impls, not byte-parity. Needs reconcile. |
+| Calories (per-bout) | `Calories` | `calories.rs` | only `WorkoutDetector` (Kotlin) calls it; moves with Workout. |
+| IMU activity features | `ImuFeatureExtractor` | `imu_features.rs` | no UI surface (BLE deep-buffer diagnostic only). |
 
 ### 3. Kotlin-only (no whoop-rs port yet)
 
