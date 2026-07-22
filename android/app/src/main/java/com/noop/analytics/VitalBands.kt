@@ -84,6 +84,15 @@ object VitalBands {
      *  real deviation reaches ±20 °C. */
     fun isAbsoluteSkinTemp(v: Double): Boolean = v >= 20.0
 
+    /** The skin-temp value a reading tile should surface: absolute °C if the row has it, else the
+     *  ±°C deviation. The single value-source for every "current skin temp" surface. */
+    fun skinTempDisplay(absC: Double?, devC: Double?): Double? = absC ?: devC
+
+    /** Format a skin-temp reading: unsigned when absolute (34.0°), signed when a deviation (+1.2°),
+     *  split by [isAbsoluteSkinTemp]. The single formatter for Home, Health, and Compare. */
+    fun formatSkinTemp(v: Double): String =
+        String.format(java.util.Locale.US, if (isAbsoluteSkinTemp(v)) "%.1f°" else "%+.1f°", v)
+
     /** Keep only history entries of the SAME kind (absolute vs deviation) as the displayed
      *  [value]; entries of the other kind become null (missing nights) so the baseline isn't
      *  folded across two incompatible scales. */

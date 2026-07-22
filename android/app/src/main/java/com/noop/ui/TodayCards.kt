@@ -336,13 +336,12 @@ private fun dashboardCardValue(
  // writes spo2Pct = null on computed rows), so fall through to the last row that HAS one.
             (vd?.spo2Pct ?: spo2Day?.spo2Pct)?.let { String.format(Locale.US, "%.0f%%", it) } ?: NO_DATA
         DashboardCard.SKIN_TEMP ->
- // Prefer the ABSOLUTE skin temp (skinTempAbsC, e.g. 34.0°); fall back to the ±deviation from
- // baseline (skinTempDevC) for older/imported rows that only carry it. An absolute reading shows
- // unsigned, a deviation signed so +/- reads honestly. Same per-field carry as Blood Oxygen; the
- // abs-vs-deviation split matches HealthScreen (VitalBands.isAbsoluteSkinTemp).
-            (vd?.skinTempAbsC ?: skinTempDay?.skinTempAbsC ?: vd?.skinTempDevC ?: skinTempDay?.skinTempDevC)
-                ?.let { String.format(Locale.US, if (VitalBands.isAbsoluteSkinTemp(it)) "%.1f°" else "%+.1f°", it) }
-                ?: NO_DATA
+ // Absolute skin temp when the row has it, else the ±deviation; formatted by the shared VitalBands
+ // rule so this card, the Health tiles, and Compare all read the same. Same per-field carry as Blood Oxygen.
+            VitalBands.skinTempDisplay(
+                vd?.skinTempAbsC ?: skinTempDay?.skinTempAbsC,
+                vd?.skinTempDevC ?: skinTempDay?.skinTempDevC,
+            )?.let { VitalBands.formatSkinTemp(it) } ?: NO_DATA
         DashboardCard.SLEEP -> sleepValue(vd)
         DashboardCard.STEPS -> {
             val real = day?.steps?.let { intStringGrouped(it.toDouble()) }

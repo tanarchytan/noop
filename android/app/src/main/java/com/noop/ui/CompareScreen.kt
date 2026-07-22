@@ -197,7 +197,9 @@ private object CompareCatalog {
         "rhr" -> { d -> d.restingHr?.toDouble() }
         "resp_rate" -> { d -> d.respRateBpm }
         "spo2" -> { d -> d.spo2Pct }
-        "skin_temp" -> { d -> d.skinTempDevC }
+        // Absolute °C when the row carries it (on-device 5/MG + WHOOP CSV rows), else the ±deviation,
+        // so the noop series matches the export's absolute °C it is compared against.
+        "skin_temp" -> { d -> d.skinTempAbsC ?: d.skinTempDevC }
         "sleep_total_min" -> { d -> d.totalSleepMin }
         "sleep_efficiency" -> { d -> d.efficiency }
         "sleep_deep_min" -> { d -> d.deepMin }

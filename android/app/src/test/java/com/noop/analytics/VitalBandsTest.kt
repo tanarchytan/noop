@@ -1,6 +1,7 @@
 package com.noop.analytics
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Test
 
 /**
@@ -92,6 +93,20 @@ class VitalBandsTest {
         val mixed: List<Double?> = listOf(34.1, 0.2, null, 33.8, -0.1)
         assertEquals(listOf(null, 0.2, null, null, -0.1), VitalBands.skinTempHistory(0.3, mixed))
         assertEquals(listOf(34.1, null, null, 33.8, null), VitalBands.skinTempHistory(34.0, mixed))
+    }
+
+    @Test
+    fun skinTempDisplay_prefersAbsoluteThenDeviation() {
+        assertEquals(34.5, VitalBands.skinTempDisplay(34.5, 0.2)!!, 0.0)
+        assertEquals(0.2, VitalBands.skinTempDisplay(null, 0.2)!!, 0.0)
+        assertNull(VitalBands.skinTempDisplay(null, null))
+    }
+
+    @Test
+    fun formatSkinTemp_unsignedAbsolute_signedDeviation() {
+        assertEquals("34.0°", VitalBands.formatSkinTemp(34.0))
+        assertEquals("+1.2°", VitalBands.formatSkinTemp(1.2))
+        assertEquals("-0.3°", VitalBands.formatSkinTemp(-0.3))
     }
 
     @Test
