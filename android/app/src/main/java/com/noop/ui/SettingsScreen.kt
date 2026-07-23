@@ -101,6 +101,17 @@ class ProfileStore(private val prefs: SharedPreferences) {
         get() = yearsFromDob(dateOfBirthMillis).coerceIn(AGE_MIN, AGE_MAX)
 
     /**
+ * FRACTIONAL age in years from the DOB (days / 365.2425), so it advances continuously (e.g. 25.7)
+ * instead of flooring like [age]. For age-sensitive compute (Fitness Age / HR zones / VO2max /
+ * Rhythm Age); [age] stays the whole-year DISPLAY value. Clamped to the same band.
+ */
+    val ageYears: Double
+        get() {
+            val days = (System.currentTimeMillis() - dateOfBirthMillis) / 86_400_000.0
+            return (days / 365.2425).coerceIn(AGE_MIN.toDouble(), AGE_MAX.toDouble())
+        }
+
+    /**
  * Date of birth as epoch millis — the canonical source of truth for [age]. The getter
  * lazily migrates a pre- stored age (or a restored legacy `age`, see [applyBackup]) into an
  * anchored DOB the first time it's read, then persists it so the derivation is stable. The setter

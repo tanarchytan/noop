@@ -1443,7 +1443,7 @@ class WhoopBleClient(
                 val profile = UserProfile(
                     weightKg = profileStore.weightKg,
                     heightCm = profileStore.heightCm,
-                    age = profileStore.age.toDouble(),
+                    age = profileStore.ageYears,
                     sex = profileStore.sex,
                     stepTicksPerStep = profileStore.stepTicksPerStep,
                 )

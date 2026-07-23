@@ -673,7 +673,7 @@ fun TodayScreen(
                 .getOrDefault(emptyList())
  // effMaxHR resolution matches AnalyticsEngine: manual HR-max override first, else Tanaka from age.
             val effMaxHR = profileStore.hrMaxOverride.takeIf { it > 0 }?.toDouble()
-                ?: if (profileStore.age > 0) StrainScorer.tanakaHRmax(profileStore.age.toDouble()) else null
+                ?: if (profileStore.age > 0) StrainScorer.tanakaHRmax(profileStore.ageYears) else null
             StrainScorer.strain(
                 hr = todayHr,
                 maxHR = effMaxHR,

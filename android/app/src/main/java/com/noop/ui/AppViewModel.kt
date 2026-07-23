@@ -880,7 +880,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     private fun currentProfile(): UserProfile = UserProfile(
         weightKg = profileStore.weightKg,
         heightCm = profileStore.heightCm,
-        age = profileStore.age.toDouble(),
+        age = profileStore.ageYears,
         sex = profileStore.sex,
         stepTicksPerStep = profileStore.stepTicksPerStep,
         waistCm = profileStore.waistCm,
@@ -1391,7 +1391,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         if (to <= from) return null
         val samples = runCatching { repository.hrSamples(deviceId, from, to) }.getOrDefault(emptyList())
         if (samples.isEmpty()) return null
-        val age = profileStore.age.toDouble().takeIf { it > 0 } ?: 30.0
+        val age = profileStore.ageYears.takeIf { it > 0 } ?: 30.0
         // Analytics cutover (Tier 1): the age-derived zone split + time-in-zone now score in whoop-rs
         // physio-algo (hr_zones_for_age / hr_time_in_zone), proven bit-for-bit == the deleted Kotlin
         // HrZones.zones(age)/timeInZone by RustHrZonesParityTest before the cutover.
