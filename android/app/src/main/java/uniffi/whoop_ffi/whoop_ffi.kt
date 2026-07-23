@@ -687,7 +687,7 @@ internal object IntegrityCheckingUniffiLib {
     ): Int
     external fun uniffi_whoop_ffi_checksum_func_calories_estimate_day(
     ): Int
-    external fun uniffi_whoop_ffi_checksum_func_circadian_phase(
+    external fun uniffi_whoop_ffi_checksum_func_circadian_phase_from_samples(
     ): Int
     external fun uniffi_whoop_ffi_checksum_func_daily_resting_hr(
     ): Int
@@ -759,7 +759,7 @@ internal object IntegrityCheckingUniffiLib {
     ): Int
     external fun uniffi_whoop_ffi_checksum_func_rest_score(
     ): Int
-    external fun uniffi_whoop_ffi_checksum_func_rhythm_age_from_bins(
+    external fun uniffi_whoop_ffi_checksum_func_rhythm_age_from_samples(
     ): Int
     external fun uniffi_whoop_ffi_checksum_func_session_resting_hr(
     ): Int
@@ -945,7 +945,7 @@ internal object UniffiLib {
     ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_func_calories_estimate_day(`hr`: RustBuffer.ByValue,`weightKg`: Double,`heightCm`: Double,`age`: Double,`sex`: RustBuffer.ByValue,`hrmax`: Double,`restingHr`: Double,uniffi_out_err: UniffiRustCallStatus, 
     ): Double
-    external fun uniffi_whoop_ffi_fn_func_circadian_phase(`bins`: RustBuffer.ByValue,`daysObserved`: Int,`habitualWakeHour`: Double,`observedTempMinHour`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    external fun uniffi_whoop_ffi_fn_func_circadian_phase_from_samples(`samples`: RustBuffer.ByValue,`tzOffsetSeconds`: Long,`daysObserved`: Int,`habitualWakeHour`: Double,`observedTempMinHour`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_func_daily_resting_hr(`sessionFloors`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
@@ -1017,7 +1017,7 @@ internal object UniffiLib {
     ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_func_rest_score(`asleepSeconds`: Double,`efficiency`: Double,`deepSeconds`: Double,`remSeconds`: Double,`sleepNeedHours`: RustBuffer.ByValue,`consistency`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
-    external fun uniffi_whoop_ffi_fn_func_rhythm_age_from_bins(`bins`: RustBuffer.ByValue,`chronologicalAge`: Double,`sex`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    external fun uniffi_whoop_ffi_fn_func_rhythm_age_from_samples(`samples`: RustBuffer.ByValue,`tzOffsetSeconds`: Long,`chronologicalAge`: Double,`sex`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_func_session_resting_hr(`start`: Long,`end`: Long,`hr`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
@@ -1183,7 +1183,7 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_whoop_ffi_checksum_func_calories_estimate_day() != 38796) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_whoop_ffi_checksum_func_circadian_phase() != 29480) {
+    if (lib.uniffi_whoop_ffi_checksum_func_circadian_phase_from_samples() != 33961) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_whoop_ffi_checksum_func_daily_resting_hr() != 11457) {
@@ -1291,7 +1291,7 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_whoop_ffi_checksum_func_rest_score() != 47618) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_whoop_ffi_checksum_func_rhythm_age_from_bins() != 21487) {
+    if (lib.uniffi_whoop_ffi_checksum_func_rhythm_age_from_samples() != 47369) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_whoop_ffi_checksum_func_session_resting_hr() != 56066) {
@@ -2850,6 +2850,47 @@ public object FfiConverterTypeWhoopCodec: FfiConverter<WhoopCodec, Long> {
 
 
 /**
+ * One raw activity sample: unix seconds + the on-chip gravity-removed motion magnitude (g).
+ */
+data class ActivitySample (
+    var `unix`: kotlin.Long
+    , 
+    var `activity`: kotlin.Double
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeActivitySample: FfiConverterRustBuffer<ActivitySample> {
+    override fun read(buf: ByteBuffer): ActivitySample {
+        return ActivitySample(
+            FfiConverterLong.read(buf),
+            FfiConverterDouble.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: ActivitySample) = (
+            FfiConverterLong.allocationSize(value.`unix`) +
+            FfiConverterDouble.allocationSize(value.`activity`)
+    )
+
+    override fun write(value: ActivitySample, buf: ByteBuffer) {
+            FfiConverterLong.write(value.`unix`, buf)
+            FfiConverterDouble.write(value.`activity`, buf)
+    }
+}
+
+
+
+/**
  * One band sleep-state sample: the strap's own `state` (0 wake/1 still/2 asleep/3 up) at `ts`.
  */
 data class BandStateSample (
@@ -2938,47 +2979,6 @@ public object FfiConverterTypeBaselineStateInfo: FfiConverterRustBuffer<Baseline
             FfiConverterInt.write(value.`nValid`, buf)
             FfiConverterInt.write(value.`nightsSinceUpdate`, buf)
             FfiConverterString.write(value.`status`, buf)
-    }
-}
-
-
-
-/**
- * One per-hour rest-activity bin: local clock hour (0..24) + motion volume.
- */
-data class CircadianBin (
-    var `hour`: kotlin.Double
-    , 
-    var `activity`: kotlin.Double
-    
-){
-    
-
-    
-
-    
-    companion object
-}
-
-/**
- * @suppress
- */
-public object FfiConverterTypeCircadianBin: FfiConverterRustBuffer<CircadianBin> {
-    override fun read(buf: ByteBuffer): CircadianBin {
-        return CircadianBin(
-            FfiConverterDouble.read(buf),
-            FfiConverterDouble.read(buf),
-        )
-    }
-
-    override fun allocationSize(value: CircadianBin) = (
-            FfiConverterDouble.allocationSize(value.`hour`) +
-            FfiConverterDouble.allocationSize(value.`activity`)
-    )
-
-    override fun write(value: CircadianBin, buf: ByteBuffer) {
-            FfiConverterDouble.write(value.`hour`, buf)
-            FfiConverterDouble.write(value.`activity`, buf)
     }
 }
 
@@ -8230,6 +8230,34 @@ public object FfiConverterSequenceByteArray: FfiConverterRustBuffer<List<kotlin.
 /**
  * @suppress
  */
+public object FfiConverterSequenceTypeActivitySample: FfiConverterRustBuffer<List<ActivitySample>> {
+    override fun read(buf: ByteBuffer): List<ActivitySample> {
+        val len = buf.getInt()
+        return List<ActivitySample>(len) {
+            FfiConverterTypeActivitySample.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<ActivitySample>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeActivitySample.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<ActivitySample>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeActivitySample.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterSequenceTypeBandStateSample: FfiConverterRustBuffer<List<BandStateSample>> {
     override fun read(buf: ByteBuffer): List<BandStateSample> {
         val len = buf.getInt()
@@ -8248,34 +8276,6 @@ public object FfiConverterSequenceTypeBandStateSample: FfiConverterRustBuffer<Li
         buf.putInt(value.size)
         value.iterator().forEach {
             FfiConverterTypeBandStateSample.write(it, buf)
-        }
-    }
-}
-
-
-
-
-/**
- * @suppress
- */
-public object FfiConverterSequenceTypeCircadianBin: FfiConverterRustBuffer<List<CircadianBin>> {
-    override fun read(buf: ByteBuffer): List<CircadianBin> {
-        val len = buf.getInt()
-        return List<CircadianBin>(len) {
-            FfiConverterTypeCircadianBin.read(buf)
-        }
-    }
-
-    override fun allocationSize(value: List<CircadianBin>): ULong {
-        val sizeForLength = 4UL
-        val sizeForItems = value.map { FfiConverterTypeCircadianBin.allocationSize(it) }.sum()
-        return sizeForLength + sizeForItems
-    }
-
-    override fun write(value: List<CircadianBin>, buf: ByteBuffer) {
-        buf.putInt(value.size)
-        value.iterator().forEach {
-            FfiConverterTypeCircadianBin.write(it, buf)
         }
     }
 }
@@ -9305,15 +9305,16 @@ public object FfiConverterSequenceOptionalDouble: FfiConverterRustBuffer<List<ko
     
 
         /**
-         * Body-clock phase from per-hour activity bins, days observed, habitual wake hour, and an optional
-         * observed skin-temp minimum hour. `None` when the cosinor is degenerate.
-         */ fun `circadianPhase`(`bins`: List<CircadianBin>, `daysObserved`: kotlin.UInt, `habitualWakeHour`: kotlin.Double, `observedTempMinHour`: kotlin.Double?): PhaseEstimateInfo? {
+         * Body-clock phase from raw (unix, activity) samples + tz offset, days observed, habitual wake hour, and an
+         * optional observed skin-temp minimum hour. `None` when the cosinor is degenerate.
+         */ fun `circadianPhaseFromSamples`(`samples`: List<ActivitySample>, `tzOffsetSeconds`: kotlin.Long, `daysObserved`: kotlin.UInt, `habitualWakeHour`: kotlin.Double, `observedTempMinHour`: kotlin.Double?): PhaseEstimateInfo? {
             return FfiConverterOptionalTypePhaseEstimateInfo.lift(
     uniffiRustCall() { _status ->
-    UniffiLib.uniffi_whoop_ffi_fn_func_circadian_phase(
+    UniffiLib.uniffi_whoop_ffi_fn_func_circadian_phase_from_samples(
     
         
-        FfiConverterSequenceTypeCircadianBin.lower(`bins`),
+        FfiConverterSequenceTypeActivitySample.lower(`samples`),
+        FfiConverterLong.lower(`tzOffsetSeconds`),
         FfiConverterUInt.lower(`daysObserved`),
         FfiConverterDouble.lower(`habitualWakeHour`),
         FfiConverterOptionalDouble.lower(`observedTempMinHour`),_status)
@@ -9855,16 +9856,18 @@ public object FfiConverterSequenceOptionalDouble: FfiConverterRustBuffer<List<ko
     
 
         /**
-         * Circadian Rhythm Age from per-hour activity bins + chronological age + sex: a single-component cosinor
-         * then the Gompertz biological-age transform. `None` when the fit is degenerate (< 3 bins). v1 is a
-         * RELATIVE index; the activity scale is not calibrated to the model's mg-ENMO training units.
-         */ fun `rhythmAgeFromBins`(`bins`: List<CircadianBin>, `chronologicalAge`: kotlin.Double, `sex`: SexInput): RhythmAgeInfo? {
+         * Circadian Rhythm Age from raw (unix, activity) samples + tz offset + chronological age + sex: bins the
+         * samples per LOCAL hour, fits a single-component cosinor, then the Gompertz biological-age transform.
+         * `None` when the fit is degenerate (< 3 populated hours). v1 is a RELATIVE index; the activity scale is
+         * not calibrated to the model's mg-ENMO training units.
+         */ fun `rhythmAgeFromSamples`(`samples`: List<ActivitySample>, `tzOffsetSeconds`: kotlin.Long, `chronologicalAge`: kotlin.Double, `sex`: SexInput): RhythmAgeInfo? {
             return FfiConverterOptionalTypeRhythmAgeInfo.lift(
     uniffiRustCall() { _status ->
-    UniffiLib.uniffi_whoop_ffi_fn_func_rhythm_age_from_bins(
+    UniffiLib.uniffi_whoop_ffi_fn_func_rhythm_age_from_samples(
     
         
-        FfiConverterSequenceTypeCircadianBin.lower(`bins`),
+        FfiConverterSequenceTypeActivitySample.lower(`samples`),
+        FfiConverterLong.lower(`tzOffsetSeconds`),
         FfiConverterDouble.lower(`chronologicalAge`),
         FfiConverterTypeSexInput.lower(`sex`),_status)
 }

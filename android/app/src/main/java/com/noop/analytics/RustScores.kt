@@ -404,22 +404,27 @@ internal object RustScores {
         )
     }
 
-    /** Body-clock phase from per-hour activity bins + the habitual wake hour; null when the fit is degenerate. */
+    /** Body-clock phase from raw (unix, motion) samples + tz offset; whoop-rs bins them per local hour.
+     *  Null when the fit is degenerate. */
     fun circadianPhase(
-        bins: List<uniffi.whoop_ffi.CircadianBin>,
+        samples: List<uniffi.whoop_ffi.ActivitySample>,
+        tzOffsetSeconds: Long,
         daysObserved: Int,
         habitualWakeHour: Double,
         observedTempMinHour: Double?,
     ): uniffi.whoop_ffi.PhaseEstimateInfo? =
-        uniffi.whoop_ffi.circadianPhase(bins, daysObserved.toUInt(), habitualWakeHour, observedTempMinHour)
+        uniffi.whoop_ffi.circadianPhaseFromSamples(
+            samples, tzOffsetSeconds, daysObserved.toUInt(), habitualWakeHour, observedTempMinHour)
 
-    /** Circadian Rhythm Age (relative) from per-hour activity bins + chronological age + sex. */
+    /** Circadian Rhythm Age (relative) from raw (unix, motion) samples + tz offset + age + sex; whoop-rs
+     *  bins per local hour, fits the cosinor, and applies the Gompertz transform. */
     fun rhythmAge(
-        bins: List<uniffi.whoop_ffi.CircadianBin>,
+        samples: List<uniffi.whoop_ffi.ActivitySample>,
+        tzOffsetSeconds: Long,
         chronologicalAge: Double,
         sex: uniffi.whoop_ffi.SexInput,
     ): uniffi.whoop_ffi.RhythmAgeInfo? =
-        uniffi.whoop_ffi.rhythmAgeFromBins(bins, chronologicalAge, sex)
+        uniffi.whoop_ffi.rhythmAgeFromSamples(samples, tzOffsetSeconds, chronologicalAge, sex)
 
     /** Personal sleep need (hours) = mean of recent nightly asleep hours, floored at 7.5. For the Rest score. */
     fun personalSleepNeedHours(recentAsleepHours: List<Double>): Double =

@@ -1045,8 +1045,10 @@ object IntelligenceEngine {
                 "female" -> uniffi.whoop_ffi.SexInput.FEMALE
                 else -> uniffi.whoop_ffi.SexInput.UNKNOWN
             }
-            RustScores.rhythmAge(CircadianActivity.hourlyBins(rhythmSamples, tzOffsetSeconds),
-                profile.age.toDouble(), sexInput)?.let { ra ->
+            val activitySamples = rhythmSamples.mapNotNull { s ->
+                s.dynAccelG?.let { uniffi.whoop_ffi.ActivitySample(s.ts, it) }
+            }
+            RustScores.rhythmAge(activitySamples, tzOffsetSeconds, profile.age.toDouble(), sexInput)?.let { ra ->
                 repo.upsertMetricSeries(listOf(MetricSeriesRow(deviceId = computedId,
                     day = saturdayKeyOnOrBefore(newestDay), key = "rhythm_age", value = ra.cosinorAgeYears)))
             }
