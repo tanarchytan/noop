@@ -2787,11 +2787,15 @@ class WhoopBleClient(
      *  strap was connected when we sent it), so a "didn't buzz" report shows sent-vs-strap-reports. */
     private fun recordAlarmArm(sentEpoch: Long) {
         runCatching {
-            NoopPrefs.of(context).edit()
+            val editor = NoopPrefs.of(context).edit()
                 .putLong("alarm.lastArmSentEpoch", sentEpoch)
                 .putLong("alarm.lastArmAt", System.currentTimeMillis())
                 .putBoolean("alarm.lastArmConnected", _state.value.connected)
-                .apply()
+            // Live HR at arm, a free read logged only to test whether the strap's OWN sleep/rest state
+            // (not anything sent) gates the physical haptic. Absent key = no HR had streamed yet at arm.
+            val hr = _state.value.heartRate
+            if (hr != null) editor.putInt("alarm.lastArmHeartRate", hr) else editor.remove("alarm.lastArmHeartRate")
+            editor.apply()
         }
     }
 
