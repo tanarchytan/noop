@@ -252,6 +252,24 @@ private const val PRE_ONSET_STUB_MAX_MIN = 240.0
 /** Most asleep minutes a fragment can carry and still count as a (sleepless) pre-onset awake stub. A real
  *  first sleep fragment of a biphasic night carries far more. */
 private const val PRE_ONSET_STUB_ASLEEP_MAX_MIN = 3.0
+/**
+ * The trailing [limit] nights' bridged bed->wake spans, one per local calendar day of wake, grouped the
+ * same way the browsable day list groups sessions ([localDayString] of the wake ts) and resolved through
+ * the same bridged selector [mainSleepSpan] the hero uses, so the Schedule card agrees with the Phase
+ * breakdown on what counts as one night. A day whose only blocks are naps (no bridgeable main sleep)
+ * drops out via mapNotNull. Ascending by day, oldest first.
+ */
+internal fun consistencyNightSpans(
+    sleeps: List<SleepSession>,
+    habitualMidsleepSec: Long? = null,
+    limit: Int = 14,
+): List<Pair<Long, Long>> =
+    sleeps.groupBy { localDayString(it.endTs) }
+        .toSortedMap()
+        .values
+        .mapNotNull { blocks -> mainSleepSpan(blocks.sortedBy { it.effectiveStartTs }, habitualMidsleepSec) }
+        .takeLast(limit)
+
 /** A leading pre-onset fragment that carries SOME sleep is still spurious when it is minor RELATIVE to the
  *  night's main block: its asleep minutes are below this fraction of the largest fragment's. A genuine
  *  biphasic first sleep is comparable in size, so it is never dropped; only a small stray lead is. */

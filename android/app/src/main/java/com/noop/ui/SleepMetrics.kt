@@ -697,20 +697,21 @@ private data class SleepNightTiming(val label: String, val bedHour: Float, val w
  * the share of nights whose bed AND wake fell within 45 min of the personal typical.
  */
 @Composable
-internal fun SleepConsistencyCard(sleeps: List<SleepSession>) {
+internal fun SleepConsistencyCard(sleeps: List<SleepSession>, habitualMidsleepSec: Long? = null) {
     // PERF: building the per-night fold allocates 2 Calendars + a SimpleDateFormat per session. It's a pure
     // derivation of `sleeps`, so memoize it — scrolling then reuses it instead of rebuilding each recompose.
-    val timings = remember(sleeps) {
-        val recent = sleeps.takeLast(14)
+    val timings = remember(sleeps, habitualMidsleepSec) {
         val sdf = SimpleDateFormat("EEE", Locale.US)
-        recent.map { s ->
-            val bedCal = Calendar.getInstance().apply { timeInMillis = s.effectiveStartTs * 1000L } // edited bedtime
-            val wakeCal = Calendar.getInstance().apply { timeInMillis = s.endTs * 1000L }
+        // Bridged bed->wake spans (one per day, night-tail fragments folded into the hero's one night), not
+        // raw sessions, so this card agrees with the Phase breakdown on what counts as one night.
+        consistencyNightSpans(sleeps, habitualMidsleepSec).map { (onsetTs, wakeTs) ->
+            val bedCal = Calendar.getInstance().apply { timeInMillis = onsetTs * 1000L } // edited bedtime
+            val wakeCal = Calendar.getInstance().apply { timeInMillis = wakeTs * 1000L }
             val bedH = bedCal.get(Calendar.HOUR_OF_DAY) + bedCal.get(Calendar.MINUTE) / 60f
             // Fold an evening bedtime to a negative hour so it sorts ABOVE the next-day wake on the axis.
             val bedNorm = if (bedH > 12f) bedH - 24f else bedH
             val wakeH = wakeCal.get(Calendar.HOUR_OF_DAY) + wakeCal.get(Calendar.MINUTE) / 60f
-            SleepNightTiming(sdf.format(Date(s.endTs * 1000L)), bedNorm, wakeH)
+            SleepNightTiming(sdf.format(Date(wakeTs * 1000L)), bedNorm, wakeH)
         }
     }
     if (timings.size < 3) return

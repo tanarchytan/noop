@@ -426,7 +426,7 @@ fun SleepScreen(
                 item { Spacer(Modifier.height(Metrics.selectorTopUp)) }
                 item { HoursVsNeededCard(m) }
                 item { Spacer(Modifier.height(Metrics.selectorTopUp)) }
-                item { SleepConsistencyCard(sleeps) }
+                item { SleepConsistencyCard(sleeps, habitualMidsleep) }
             }
         }
     }
