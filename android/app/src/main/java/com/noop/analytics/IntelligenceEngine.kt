@@ -1026,6 +1026,32 @@ object IntelligenceEngine {
                 MetricSeriesRow(deviceId = computedId, day = satKey, key = "body_age", value = vRes.bodyAge)))
         }
 
+        // ── Circadian Rhythm Age (Phase 7, EXPERIMENTAL) , weekly, keyed to the week's Saturday ──
+        // Pool the trailing 14 days' per-hour on-chip motion (gravitySample.dynAccelG) into a rest-activity
+        // cosinor, then the Gompertz biological-age transform (whoop-rs), for a RELATIVE circadian Rhythm Age.
+        // Runs here in the post-nightly pass; owner-resolved per day like the steps calibration. Empty until
+        // @41 has banked (WHOOP 4.0 / pre-migration history) , then rhythmAge returns null and nothing persists.
+        if (profile.age > 0) {
+            val rhythmSamples = ArrayList<com.noop.data.GravitySample>()
+            for (off in 0 until 14) {
+                val dayMid = midnightLocal(nowLocalMidnight - off * SECONDS_PER_DAY, tzOffsetSeconds)
+                val dayEnd = dayMid + SECONDS_PER_DAY - 1
+                val dayKey = AnalyticsEngine.dayString(dayMid, tzOffsetSeconds)
+                val owner = resolveDayOwner(repo, ownerSource, candidatePriorities, dayKey, dayMid, dayEnd, importedDeviceId)
+                rhythmSamples += repo.gravitySamples(owner, dayMid, dayEnd, STREAM_LIMIT)
+            }
+            val sexInput = when (profile.sex.lowercase(java.util.Locale.US)) {
+                "male" -> uniffi.whoop_ffi.SexInput.MALE
+                "female" -> uniffi.whoop_ffi.SexInput.FEMALE
+                else -> uniffi.whoop_ffi.SexInput.UNKNOWN
+            }
+            RustScores.rhythmAge(CircadianActivity.hourlyBins(rhythmSamples, tzOffsetSeconds),
+                profile.age.toDouble(), sexInput)?.let { ra ->
+                repo.upsertMetricSeries(listOf(MetricSeriesRow(deviceId = computedId,
+                    day = saturdayKeyOnOrBefore(newestDay), key = "rhythm_age", value = ra.cosinorAgeYears)))
+            }
+        }
+
         // ── Steps ESTIMATE (WHOOP 4.0) , DAILY, keyed to each strap-only day ──
         // A WHOOP 4.0 sends no step count over BLE, so for days the phone DIDN'T also count steps we
         // estimate them: calibrate the strap's daily MOTION VOLUME against the phone's real step count on
