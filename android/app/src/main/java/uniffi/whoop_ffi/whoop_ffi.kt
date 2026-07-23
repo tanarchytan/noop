@@ -703,6 +703,8 @@ internal object IntegrityCheckingUniffiLib {
     ): Int
     external fun uniffi_whoop_ffi_checksum_func_haptic_clock_pulses(
     ): Int
+    external fun uniffi_whoop_ffi_checksum_func_hr_recovery_calculate(
+    ): Int
     external fun uniffi_whoop_ffi_checksum_func_hr_time_in_zone(
     ): Int
     external fun uniffi_whoop_ffi_checksum_func_hr_zones_for_age(
@@ -953,6 +955,8 @@ internal object UniffiLib {
     ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_func_haptic_clock_pulses(`hour`: Int,`minute`: Int,`is24h`: Byte,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
+    external fun uniffi_whoop_ffi_fn_func_hr_recovery_calculate(`hr`: RustBuffer.ByValue,`workoutStart`: Long,`workoutEnd`: Long,`maxHr`: Double,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_func_hr_time_in_zone(`hr`: RustBuffer.ByValue,`age`: Double,`maxHrOverride`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_func_hr_zones_for_age(`age`: Double,`maxHrOverride`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
@@ -1189,6 +1193,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_whoop_ffi_checksum_func_haptic_clock_pulses() != 28487) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_whoop_ffi_checksum_func_hr_recovery_calculate() != 49678) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_whoop_ffi_checksum_func_hr_time_in_zone() != 23829) {
@@ -3359,6 +3366,58 @@ public object FfiConverterTypeHourPointInfo: FfiConverterRustBuffer<HourPointInf
             FfiConverterInt.write(value.`hour`, buf)
             FfiConverterOptionalDouble.write(value.`meanHr`, buf)
             FfiConverterOptionalDouble.write(value.`rmssd`, buf)
+    }
+}
+
+
+
+/**
+ * HR recovery: bpm drop 1/2/5 min after a sustained high-intensity bout. `None` when ineligible or
+ * under-sampled; a HR rise stays signed.
+ */
+data class HrRecoveryInfo (
+    var `endHr`: kotlin.Int
+    , 
+    var `after1min`: kotlin.Int?
+    , 
+    var `after2min`: kotlin.Int?
+    , 
+    var `after5min`: kotlin.Int?
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeHrRecoveryInfo: FfiConverterRustBuffer<HrRecoveryInfo> {
+    override fun read(buf: ByteBuffer): HrRecoveryInfo {
+        return HrRecoveryInfo(
+            FfiConverterInt.read(buf),
+            FfiConverterOptionalInt.read(buf),
+            FfiConverterOptionalInt.read(buf),
+            FfiConverterOptionalInt.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: HrRecoveryInfo) = (
+            FfiConverterInt.allocationSize(value.`endHr`) +
+            FfiConverterOptionalInt.allocationSize(value.`after1min`) +
+            FfiConverterOptionalInt.allocationSize(value.`after2min`) +
+            FfiConverterOptionalInt.allocationSize(value.`after5min`)
+    )
+
+    override fun write(value: HrRecoveryInfo, buf: ByteBuffer) {
+            FfiConverterInt.write(value.`endHr`, buf)
+            FfiConverterOptionalInt.write(value.`after1min`, buf)
+            FfiConverterOptionalInt.write(value.`after2min`, buf)
+            FfiConverterOptionalInt.write(value.`after5min`, buf)
     }
 }
 
@@ -7240,6 +7299,38 @@ public object FfiConverterOptionalTypeHistorySummary: FfiConverterRustBuffer<His
 /**
  * @suppress
  */
+public object FfiConverterOptionalTypeHrRecoveryInfo: FfiConverterRustBuffer<HrRecoveryInfo?> {
+    override fun read(buf: ByteBuffer): HrRecoveryInfo? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterTypeHrRecoveryInfo.read(buf)
+    }
+
+    override fun allocationSize(value: HrRecoveryInfo?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterTypeHrRecoveryInfo.allocationSize(value)
+        }
+    }
+
+    override fun write(value: HrRecoveryInfo?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterTypeHrRecoveryInfo.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterOptionalTypeHrvBandsInfo: FfiConverterRustBuffer<HrvBandsInfo?> {
     override fun read(buf: ByteBuffer): HrvBandsInfo? {
         if (buf.get().toInt() == 0) {
@@ -9019,6 +9110,20 @@ public object FfiConverterSequenceOptionalDouble: FfiConverterRustBuffer<List<ko
         FfiConverterUInt.lower(`hour`),
         FfiConverterUInt.lower(`minute`),
         FfiConverterBoolean.lower(`is24h`),_status)
+}
+    )
+    }
+    
+ fun `hrRecoveryCalculate`(`hr`: List<HrTick>, `workoutStart`: kotlin.Long, `workoutEnd`: kotlin.Long, `maxHr`: kotlin.Double): HrRecoveryInfo? {
+            return FfiConverterOptionalTypeHrRecoveryInfo.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_func_hr_recovery_calculate(
+    
+        
+        FfiConverterSequenceTypeHrTick.lower(`hr`),
+        FfiConverterLong.lower(`workoutStart`),
+        FfiConverterLong.lower(`workoutEnd`),
+        FfiConverterDouble.lower(`maxHr`),_status)
 }
     )
     }

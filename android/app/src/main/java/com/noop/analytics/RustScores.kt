@@ -14,6 +14,7 @@ import uniffi.whoop_ffi.DebtNightInput
 import uniffi.whoop_ffi.DriverBaselineInfo
 import uniffi.whoop_ffi.FitnessAgeInfo
 import uniffi.whoop_ffi.HourPointInfo
+import uniffi.whoop_ffi.HrRecoveryInfo
 import uniffi.whoop_ffi.HrTick
 import uniffi.whoop_ffi.HrZoneSetInfo
 import uniffi.whoop_ffi.RecoveryDrivers
@@ -192,6 +193,13 @@ internal object RustScores {
         uniffi.whoop_ffi.sessionRestingHr(start, end, hrTicks(hr))
 
     fun dailyRestingHr(sessionFloors: List<Int?>): Int? = uniffi.whoop_ffi.dailyRestingHr(sessionFloors)
+
+    // ── HR recovery ──────────────────────────────────────────────────────────
+
+    /** HR recovery for a workout window: the bpm drop 1/2/5 min after a sustained high-intensity bout,
+     *  computed in whoop-rs. Null when ineligible or lacking post-workout coverage. */
+    fun hrRecovery(hr: List<HrSample>, workoutStart: Long, workoutEnd: Long, maxHr: Double): HrRecoveryInfo? =
+        uniffi.whoop_ffi.hrRecoveryCalculate(hrTicks(hr), workoutStart, workoutEnd, maxHr)
 
     // ── Respiratory rate ─────────────────────────────────────────────────────
 

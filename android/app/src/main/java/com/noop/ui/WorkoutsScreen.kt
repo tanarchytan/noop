@@ -1244,6 +1244,7 @@ private fun WorkoutDetailSheet(vm: AppViewModel, row: WorkoutRow, onDismiss: () 
     var hrCurve by remember(row.startTs) { mutableStateOf<List<Double>>(emptyList()) }
     var zoneMinutes by remember(row.startTs) { mutableStateOf<List<Double>?>(null) }
     var zonesFromImport by remember(row.startTs) { mutableStateOf(false) }
+    var heartRateRecovery by remember(row.startTs) { mutableStateOf<uniffi.whoop_ffi.HrRecoveryInfo?>(null) }
  // Steps for an on-foot sport : the strap's own counter over the window, computed at display time
  // so it "fills in after sync". null for non-foot sports or when no strap counter covers the window.
     var steps by remember(row.startTs) { mutableStateOf<Int?>(null) }
@@ -1262,6 +1263,7 @@ private fun WorkoutDetailSheet(vm: AppViewModel, row: WorkoutRow, onDismiss: () 
             zoneMinutes = vm.workoutZoneMinutes(row.startTs, row.endTs)
             zonesFromImport = false
         }
+        heartRateRecovery = vm.workoutHeartRateRecovery(row.startTs, row.endTs)
     }
 
     ModalBottomSheet(
@@ -1379,7 +1381,60 @@ private fun WorkoutDetailSheet(vm: AppViewModel, row: WorkoutRow, onDismiss: () 
                     )
                 }
             }
+
+            heartRateRecovery?.let {
+                CardDivider()
+                HeartRateRecoveryCard(it)
+            }
         }
+    }
+}
+
+/** Per-workout HR recovery: signed bpm changes from the exercise-end HR. Missing minute windows stay
+ *  dashes rather than being interpolated across a strap disconnect. */
+@Composable
+private fun HeartRateRecoveryCard(result: uniffi.whoop_ffi.HrRecoveryInfo) {
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        SectionHeader(
+            title = "Heart Rate Recovery",
+            overline = "After a high-intensity effort",
+            trailing = "Peak ${result.endHr} bpm",
+        )
+        NoopCard(tint = Palette.metricRose) {
+            Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                Row(modifier = Modifier.fillMaxWidth()) {
+                    RecoveryStat("1 min", result.after1min, Modifier.weight(1f))
+                    RecoveryStat("2 min", result.after2min, Modifier.weight(1f))
+                    RecoveryStat("5 min", result.after5min, Modifier.weight(1f))
+                }
+                CardDivider()
+                Text(
+                    "A bigger drop means your heart rate settled faster after the effort, a sign of stronger " +
+                        "cardiovascular recovery.",
+                    style = NoopType.footnote,
+                    color = Palette.textTertiary,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun RecoveryStat(label: String, value: Int?, modifier: Modifier = Modifier) {
+    Column(
+        modifier = modifier.semantics {
+            contentDescription = "$label recovery, ${value?.toString() ?: "not available"}"
+        },
+        verticalArrangement = Arrangement.spacedBy(3.dp),
+    ) {
+        Overline(label)
+        Text(
+            value?.toString() ?: "–",
+            style = NoopType.number(24f),
+            color = value?.let { if (it >= 0) Palette.statusPositive else Palette.statusWarning }
+                ?: Palette.textTertiary,
+        )
+        Text("bpm", style = NoopType.footnote, color = Palette.textTertiary)
     }
 }
 

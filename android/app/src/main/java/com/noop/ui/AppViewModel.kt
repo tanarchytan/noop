@@ -1414,6 +1414,18 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         return if (scaled > 0) scaled else null
     }
 
+    /** HR recovery for a workout window: the bpm drop 1/2/5 min past the end, computed in whoop-rs from
+     *  the strap's post-workout HR. Reads a 300s lookback (eligibility) plus 5 min + 15s (measurement)
+     *  past the end. Null when the bout was not a sustained high-intensity effort or has no post-workout
+     *  coverage; a disconnect stays null, never interpolated. */
+    suspend fun workoutHeartRateRecovery(from: Long, to: Long): uniffi.whoop_ffi.HrRecoveryInfo? {
+        if (to <= from) return null
+        val samples = runCatching {
+            repository.hrSamplesUnion(deviceId, maxOf(from, to - 300L), to + 5 * 60 + 15, limit = 2_000)
+        }.getOrDefault(emptyList())
+        return com.noop.analytics.RustScores.hrRecovery(samples, from, to, profileStore.hrMax.toDouble())
+    }
+
     /** Save a retroactive / edited manual workout, then reload. [replacing] is the original on edit. */
     fun saveManualWorkout(row: WorkoutRow, replacing: WorkoutRow? = null) {
         viewModelScope.launch {
