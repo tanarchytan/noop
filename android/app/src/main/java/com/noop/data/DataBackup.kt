@@ -61,13 +61,38 @@ object DataBackup {
     private val ZIP_MAGIC: ByteArray =
         byteArrayOf(0x50, 0x4B, 0x03, 0x04)
 
+    /** Which foreign platform / fork a picked backup came from, used to word the import confirmation. */
+    enum class ForeignBackupKind { IOS, ANDROID_FORK }
+
     /** Outcome of an [importFrom] call. On success the app must be restarted. */
     sealed interface ImportResult {
-        /** The new database is in place; tell the user to relaunch NOOP. */
-        data object NeedsRestart : ImportResult
+        /**
+         * The new database is in place; tell the user to relaunch NOOP. [warnings] is empty for a
+         * plain same-app restore; a cross-platform / cross-fork row-copy import (see
+         * [reconcileForeignBackup]) fills it with what the two schemas didn't share (tables/columns
+         * only one side has), for the UI to surface after the restore. Never a hard error.
+         */
+        data class NeedsRestart(val warnings: List<String> = emptyList()) : ImportResult
+
+        /**
+         * The picked file is a FOREIGN NOOP backup (the iOS/GRDB store, or a divergent Android NOOP
+         * fork) whose rows CAN be merged in by [reconcileForeignBackup], but doing so is a deliberate
+         * cross-platform act, so it isn't done silently. The UI shows a confirm dialog keyed on [kind]
+         * and, on approval, re-invokes [importFrom] with `confirmedForeign = true`.
+         */
+        data class NeedsConfirmation(val kind: ForeignBackupKind) : ImportResult
 
         /** Import failed and the original database is untouched. */
         data class Failed(val message: String) : ImportResult
+
+        /**
+         * Like [Failed] the live database FILE is intact and untouched, but a cross-fork reconcile
+         * (see [reconcileForeignBackup]) failed AFTER the live Room singleton was closed for the merge,
+         * so its DAOs now point at a closed connection (the #57 stale-handle hazard). The reconcile only
+         * READS the live file and writes scratch, so the data is safe; the UI shows [message], then
+         * relaunches the app on dismiss so Room re-opens the intact store fresh.
+         */
+        data class FailedNeedsRestart(val message: String) : ImportResult
     }
 
     /**
@@ -143,10 +168,17 @@ object DataBackup {
      * Accepts both the new `.noopbak` (ZIP) format and legacy plain `.sqlite`/`.noopdb`
      * files so older backups keep working after the format upgrade.
      *
+     * A same-app Room backup (any version this app's migrator can open) restores by the fast file
+     * swap below. A FOREIGN backup — the iOS/GRDB store, or a divergent Android NOOP fork whose schema
+     * this build can't migrate forward — is instead merged in row-by-row by [reconcileForeignBackup],
+     * but only once the caller passes [confirmedForeign] true (the first call returns
+     * [ImportResult.NeedsConfirmation] so the UI can ask). Detection is by schema CONTENT, never by
+     * version (GRDB always reports user_version 0, forks reuse the same integers).
+     *
      * On any error the current database is left exactly as it was. On success the caller
      * MUST instruct the user to fully restart the app.
      */
-    fun importFrom(context: Context, uri: Uri): ImportResult {
+    fun importFrom(context: Context, uri: Uri, confirmedForeign: Boolean = false): ImportResult {
         val appContext = context.applicationContext
         val resolver = appContext.contentResolver
 
@@ -199,25 +231,34 @@ object DataBackup {
             return ImportResult.Failed("The backup archive doesn't contain a valid NOOP database.")
         }
 
-        // 3b. Origin check (parity with the Apple side's GRDB-origin rejection). The SQLite magic
-        //     passes for ANY SQLite file: a GRDB (Mac/iOS NOOP) backup or some other app's database
-        //     would otherwise sail through and REPLACE the live Room store, stranding the user. Read
-        //     the backup's table names READ-ONLY and reject anything that isn't a Room (this-app)
-        //     backup but still holds real data. Empty/pre-migration files fall through to Room's
-        //     open-time migrator, exactly as before.
+        // 3b. Route by backup CONTENT, not version (the SQLite magic passes for ANY SQLite file, and
+        //     the header's user_version is unusable here — GRDB always writes 0 and Room forks reuse
+        //     the same integers). Read the table names + the dailyMetric columns READ-ONLY:
+        //       - our own Room store (any version this app's migrator can open) keeps the fast file
+        //         swap restore below;
+        //       - a FOREIGN backup — the iOS/GRDB store, or a divergent Android NOOP fork whose schema
+        //         this build can't migrate forward (a raw swap would then strand or wipe it) — is
+        //         merged in row-by-row by [reconcileForeignBackup], but only after the user confirms
+        //         (a cross-platform restore is a deliberate act, so it is never silent);
+        //       - a file that holds data yet carries neither migrator's bookkeeping is some other
+        //         app's database and is still refused outright.
+        //     Empty/pre-migration files fall through to Room's open-time migrator, exactly as before.
+        var importWarnings: List<String> = emptyList()
+        // A NULL schema read means the backup's SQLite could not be OPENED or queried AT ALL — distinct
+        // from a readable-but-empty file, which reads as an empty set and falls through to Room's
+        // open-time migrator exactly as before. Refuse a null honestly instead of falling through to the
+        // raw file-swap, which would drop an unreadable file over the live store.
         val backupTables = sqliteTableNames(tempSqlite)
-        when (backupOriginOf(backupTables)) {
-            BackupOrigin.MAC ->
-                return rejectForeign(
-                    tempSqlite,
-                    tempSettings,
-                    "This isn't a NOOP backup from this app. It looks like a backup from the Mac or " +
-                        "iOS NOOP app (it carries that platform's migration bookkeeping). Restoring it here " +
-                        "would strand your store. To move your history across platforms, export the " +
-                        "WHOOP-format CSV on the other device (Settings → Export data) and import that here.",
-                )
-            BackupOrigin.UNKNOWN ->
-                if (holdsData(backupTables)) {
+            ?: return rejectForeign(
+                tempSqlite,
+                tempSettings,
+                "Couldn't read this backup's database. Your current data is untouched. Try an earlier " +
+                    "backup file.",
+            )
+        val backupDailyMetricColumns = sqliteColumnNames(tempSqlite, "dailyMetric") ?: emptySet()
+        when (val foreign = foreignBackupKind(backupTables, backupDailyMetricColumns)) {
+            null ->
+                if (backupOriginOf(backupTables) == BackupOrigin.UNKNOWN && holdsData(backupTables)) {
                     return rejectForeign(
                         tempSqlite,
                         tempSettings,
@@ -226,7 +267,58 @@ object DataBackup {
                             "strand your store.",
                     )
                 }
-            BackupOrigin.ANDROID -> Unit // our own backup, proceed.
+            else -> {
+                // Gate the cross-platform merge behind an explicit confirmation; nothing has touched
+                // the live DB yet, so returning here leaves it exactly as it was.
+                if (!confirmedForeign) {
+                    tempSqlite.delete()
+                    tempSettings.delete()
+                    return ImportResult.NeedsConfirmation(foreign)
+                }
+                // Fresh-install contract (twin of the Swift restore): a foreign row-copy inherits THIS
+                // app's exact schema + Room identity from the live store. If NOOP has never opened its
+                // store on this device there is nothing to reconcile into, so refuse honestly rather than
+                // create an empty store and merge into it. Checked BEFORE the WhoopDatabase.get() below,
+                // which would otherwise create that empty store.
+                val liveDb = appContext.getDatabasePath(WhoopDatabase.DB_NAME)
+                if (!liveDb.exists()) {
+                    return rejectForeign(
+                        tempSqlite,
+                        tempSettings,
+                        "This looks like a backup from another NOOP platform, but there's no NOOP store " +
+                            "on this device yet to merge it into. Open NOOP once to set up your store, " +
+                            "then import again - or move your history with a WHOOP-format CSV export.",
+                    )
+                }
+                // Row-copy the foreign rows into a file carrying THIS app's schema + identity, then
+                // REPLACE the staged file with it so the ordinary integrity/snapshot/swap path below
+                // lands it. Checkpoint + close the live store first so the file the reconcile reads is
+                // quiescent.
+                importWarnings = runCatching {
+                    WhoopDatabase.get(appContext).query("PRAGMA wal_checkpoint(TRUNCATE)", null)
+                        .use { it.moveToFirst() }
+                    WhoopDatabase.close()
+                    val (reconciled, warnings) =
+                        reconcileForeignBackup(appContext, liveDb, tempSqlite, ImportMode.REPLACE)
+                    reconciled.copyTo(tempSqlite, overwrite = true)
+                    reconciled.delete()
+                    // Reopen the live store so the shared gates below (3c integrity check) run with it
+                    // OPEN, exactly as the same-app restore does; step 4 re-closes it for the swap. This
+                    // keeps a downstream failure on the ordinary Failed path instead of stranding closed DAOs.
+                    WhoopDatabase.get(appContext)
+                    warnings
+                }.getOrElse { e ->
+                    tempSqlite.delete()
+                    tempSettings.delete()
+                    // The live DB FILE is untouched (reconcile only reads it + writes scratch), but the
+                    // Room singleton is now CLOSED (closed above so the reconcile read a quiescent file).
+                    // A plain Failed here would strand the app on stale/closed DAOs (the #57 hazard);
+                    // FailedNeedsRestart makes the UI show the error, then relaunch on the intact live DB.
+                    return ImportResult.FailedNeedsRestart(
+                        "Couldn't bring this backup into NOOP's format: ${e.message}"
+                    )
+                }
+            }
         }
 
         // 3c. #1014 defence-in-depth: gates 3 and 3b read only the FIRST pages of the file — the
@@ -321,6 +413,12 @@ object DataBackup {
         if (tempSettings.exists()) {
             runCatching {
                 BackupSettingsBridge.apply(appContext, tempSettings.readText(Charsets.UTF_8))
+            }.onFailure { e ->
+                // Non-fatal to the DB restore (the rows already landed), but don't swallow it: surface it
+                // as a restore warning so the user knows their profile/display settings didn't come back
+                // and can re-enter them, instead of silently reverting to the device's current values.
+                importWarnings = importWarnings +
+                    "Your saved profile and display settings couldn't be re-applied: ${e.message}"
             }
             tempSettings.delete()
         }
@@ -333,7 +431,7 @@ object DataBackup {
             com.noop.ui.NoopPrefs.of(appContext).edit()
                 .putLong("backup.lastRestoreAt", System.currentTimeMillis() / 1000L).apply()
         }
-        return ImportResult.NeedsRestart
+        return ImportResult.NeedsRestart(importWarnings)
     }
 
     // ── Container staging (pure file/stream layer, unit-tested under real file I/O) ──────
@@ -517,13 +615,26 @@ object DataBackup {
         return tableNames.any { it !in housekeeping && !it.startsWith("sqlite_") }
     }
 
-    /** Every table name in [file], opened READ-ONLY so the probed file is never mutated. Empty on
-     *  failure. Carries [PRESERVE_ON_CORRUPTION] (#1014): without an explicit handler the framework
-     *  default would DELETE the staged file when the open reports SQLITE_NOTADB/CORRUPT. */
-    private fun sqliteTableNames(file: File): Set<String> {
-        val db = runCatching {
+    /** Open [file] for a schema PROBE: read-only first, then falling back to read-write exactly as
+     *  [sqliteQuickCheckFailure] does. A checkpointed WAL `.noopbak` carries a WAL-mode header that
+     *  pre-3.22 SQLite (API 26/27, minSdk 26) cannot open read-only without an initialized `-shm`, so a
+     *  read-only-only probe would spuriously fail on valid Android 8.x backups. Returns null when NEITHER
+     *  open succeeds. Both opens carry [PRESERVE_ON_CORRUPTION] (#1014) so a probe can never delete what
+     *  it probes; a read-write open only runs standard SQLite recovery, never a content change, and every
+     *  probed file is a staged temp copy this app owns. */
+    private fun openReadableForProbe(file: File): SQLiteDatabase? =
+        runCatching {
             SQLiteDatabase.openDatabase(file.path, null, SQLiteDatabase.OPEN_READONLY, PRESERVE_ON_CORRUPTION)
-        }.getOrNull() ?: return emptySet()
+        }.recoverCatching {
+            SQLiteDatabase.openDatabase(file.path, null, SQLiteDatabase.OPEN_READWRITE, PRESERVE_ON_CORRUPTION)
+        }.getOrNull()
+
+    /** Every table name in [file], or NULL when the database could not be OPENED or queried at all —
+     *  distinct from a readable-but-empty file, which returns an EMPTY set. The caller ([importFrom])
+     *  turns a null into an honest "couldn't read this backup" refusal instead of falling through to the
+     *  raw file-swap. Opened via [openReadableForProbe] so a WAL `.noopbak` still reads on API 26/27. */
+    private fun sqliteTableNames(file: File): Set<String>? {
+        val db = openReadableForProbe(file) ?: return null
         return try {
             val names = LinkedHashSet<String>()
             db.rawQuery("SELECT name FROM sqlite_master WHERE type = 'table'", null).use { c ->
@@ -531,7 +642,27 @@ object DataBackup {
             }
             names
         } catch (e: Exception) {
-            emptySet()
+            null
+        } finally {
+            runCatching { db.close() }
+        }
+    }
+
+    /** Column names of [table] in [file], or NULL when the database could not be OPENED or queried at
+     *  all. A readable file that simply LACKS [table] returns an EMPTY set (not null). Opened via
+     *  [openReadableForProbe] like [sqliteTableNames]. Used by the fork-marker check ([foreignBackupKind])
+     *  to spot a column another fork carries but this build's schema doesn't. */
+    private fun sqliteColumnNames(file: File, table: String): Set<String>? {
+        val db = openReadableForProbe(file) ?: return null
+        return try {
+            val names = LinkedHashSet<String>()
+            db.rawQuery("PRAGMA table_info(${quoteId(table)})", null).use { c ->
+                val ni = c.getColumnIndex("name")
+                while (c.moveToNext()) if (ni >= 0) c.getString(ni)?.let(names::add)
+            }
+            names
+        } catch (e: Exception) {
+            null
         } finally {
             runCatching { db.close() }
         }
@@ -606,6 +737,363 @@ object DataBackup {
             "quick_check failed: ${e.message}"
         } finally {
             runCatching { db.close() }
+        }
+    }
+
+    // ── Cross-platform / cross-fork row-copy import (version-agnostic) ────────────
+
+    /**
+     * Decide whether [tableNames] + [dailyMetricColumns] describe a FOREIGN backup this app should
+     * reconcile (row-copy) rather than file-swap, and if so from where. Content-based, never
+     * version-based:
+     *  - a GRDB store (`grdb_migrations`) is the iOS / Mac NOOP app → [ForeignBackupKind.IOS];
+     *  - a Room store carrying a table or column THIS build's schema doesn't have — a divergent
+     *    Android NOOP fork — → [ForeignBackupKind.ANDROID_FORK]: its ahead/renamed schema can't be
+     *    brought forward by this app's Room migrator, so a raw file swap would strand or wipe it.
+     * Returns null for our OWN Room backup (including an older one the migrator can still open, and a
+     * fork that is merely BEHIND — a version difference, not a content divergence) and for an
+     * empty/unrecognised file: those keep the existing same-app restore / open-time-migrator path.
+     *
+     * The fork-only markers are the two tables/columns no upstream NOOP schema carries: the
+     * `spo2PctSample` table and `dailyMetric.skinTempAbsC`. Pure (no DB open) so it is unit-tested
+     * directly on the plain JVM.
+     */
+    fun foreignBackupKind(tableNames: Set<String>, dailyMetricColumns: Set<String>): ForeignBackupKind? {
+        if (tableNames.contains("grdb_migrations")) return ForeignBackupKind.IOS
+        if (tableNames.contains("room_master_table")) {
+            if (tableNames.contains("spo2PctSample") || dailyMetricColumns.contains("skinTempAbsC")) {
+                return ForeignBackupKind.ANDROID_FORK
+            }
+        }
+        return null
+    }
+
+    /** How a foreign backup's rows fold into the target store. */
+    enum class ImportMode { MERGE, REPLACE }
+
+    /**
+     * One column's identity plus the two `PRAGMA table_info` facts the row copy needs to keep a
+     * source-absent NOT NULL column instead of dropping its rows: whether it is NOT NULL, and whether it
+     * carries a schema DEFAULT (`dflt_value`). [type] is the declared type, the affinity source for the
+     * typed zero literal a filled column gets.
+     *
+     * The distinction is load-bearing across platforms: Room emits NO SQL default for a Kotlin `= 0`
+     * property, so an Android `synced` flag is NOT NULL with no default, whereas the GRDB twin of the
+     * same column is written `NOT NULL DEFAULT 0`. Omitting such a column from an `INSERT OR IGNORE`
+     * makes SQLite drop EVERY row (a NOT NULL violation, silently ignored) instead of filling a default —
+     * which is why the copy must read these facts and fill the column explicitly.
+     */
+    internal data class SchemaColumn(
+        val name: String,
+        val type: String,
+        val notNull: Boolean,
+        val hasDefault: Boolean,
+        /**
+         * True when this column is part of the table's PRIMARY KEY or any UNIQUE index. A source-absent
+         * NOT NULL-no-default column that is a KEY must NOT be CONSTANT-filled: every row would get the
+         * SAME typed zero, so `INSERT OR IGNORE` would treat all but the first as a key clash and collapse
+         * the whole table to one row. The planner fills it with the source `rowid` (per-row-unique) instead,
+         * so the rows import. Read from `PRAGMA table_info` (`pk` > 0) plus `PRAGMA index_list` / `index_info`.
+         */
+        val key: Boolean = false,
+    )
+
+    /**
+     * A content-based import plan: the SQL to run, plus what didn't line up (surfaced to the user as
+     * warnings, never as a hard error). [statements] run inside one transaction with `src` ATTACHed.
+     */
+    internal data class RowCopyPlan(
+        val statements: List<String>,
+        /** Target tables absent from the backup — no data to import for them. */
+        val missingTables: List<String>,
+        /** Backup tables with no home in the target — their rows are skipped. */
+        val droppedTables: List<String>,
+        /** Per table, source-absent target columns that are NULLABLE or carry a DEFAULT — omitted from the
+         *  INSERT so SQLite fills NULL / the default. */
+        val missingColumns: Map<String, List<String>>,
+        /** Per table, source-absent target columns that are NOT NULL with NO default — KEPT in the INSERT
+         *  and filled with a typed zero literal, so `INSERT OR IGNORE` can't silently drop the row. */
+        val filledColumns: Map<String, List<String>> = emptyMap(),
+        /** Per table, source-absent NOT NULL-no-default KEY (PK / UNIQUE) columns filled with the source
+         *  `rowid` (a per-row-unique id) so the rows import without a constant collapsing the table. Maps
+         *  the table to those key column(s). */
+        val synthesizedKeyColumns: Map<String, List<String>> = emptyMap(),
+        /** Tables an INSERT was actually emitted for — the set the reconcile row-count backstop verifies. */
+        val copiedTables: List<String> = emptyList(),
+    ) {
+        /** Human-readable warnings, empty when the backup lines up cleanly. */
+        fun warnings(): List<String> = buildList {
+            if (missingTables.isNotEmpty()) add("No data in this backup for: ${missingTables.joinToString(", ")}.")
+            if (droppedTables.isNotEmpty()) add("Skipped tables not in this app: ${droppedTables.joinToString(", ")}.")
+            // A key column the backup didn't carry, filled with a generated id so the rows still import.
+            synthesizedKeyColumns.forEach { (t, cols) ->
+                add("$t: generated ids for the key column(s) ${cols.joinToString(", ")} this backup didn't carry.")
+            }
+            // Filled columns are KEPT (their rows survive) — say so, never "imported empty", which would
+            // wrongly imply the rows were dropped. Listed before the omitted-column notes for stable order.
+            filledColumns.forEach { (t, cols) -> add("$t: filled ${cols.joinToString(", ")} with defaults.") }
+            missingColumns.forEach { (t, cols) -> add("$t is missing fields ${cols.joinToString(", ")} (imported empty).") }
+        }
+    }
+
+    /** SQLite / Room / GRDB bookkeeping tables — never row-copied: they carry the target's own
+     *  identity, autoincrement counters and migration ledger, which copying would corrupt. */
+    private val HOUSEKEEPING_TABLES =
+        setOf("android_metadata", "sqlite_sequence", "room_master_table", "grdb_migrations")
+
+    /**
+     * Plan a version-agnostic row copy from [source] into [target] — each a `table -> ordered columns`
+     * map (with per-column NOT NULL / default facts) read at runtime from `PRAGMA table_info`, so it
+     * needs no schema version and never touches Room's identity. For every data table in BOTH:
+     *  - copy the intersection of columns (target column order preserved);
+     *  - a target column ABSENT from the source that is NOT NULL with NO default is KEPT and filled with
+     *    a typed zero literal — otherwise `INSERT OR IGNORE` would drop the whole table's rows on the
+     *    NOT NULL violation (Room emits no SQL default for a Kotlin `= 0`, e.g. `synced`);
+     *  - EXCEPT when that source-absent NOT NULL-no-default column is a KEY (PK / UNIQUE member): a constant
+     *    fill would collapse the table under `INSERT OR IGNORE`, so it is filled with the source `rowid`
+     *    (per-row-unique) instead, keeping the rows without collapsing (see [synthesizedKeyColumns]);
+     *  - a source-absent column that is nullable or has a default is omitted (SQLite fills NULL/default).
+     * Other type/quoting differences across forks/platforms are irrelevant (SQLite coerces on insert).
+     * [ImportMode.REPLACE] clears each target table first (restore semantics); [ImportMode.MERGE] keeps
+     * existing rows on a PK clash. Both use `INSERT OR IGNORE`, so a clash is skipped, never overwritten.
+     * Mismatched tables/columns become [RowCopyPlan] warnings, not failures.
+     */
+    internal fun planRowCopyImport(
+        target: Map<String, List<SchemaColumn>>,
+        source: Map<String, List<SchemaColumn>>,
+        mode: ImportMode,
+    ): RowCopyPlan {
+        fun dataTables(keys: Set<String>) = keys.filter { it !in HOUSEKEEPING_TABLES && !it.startsWith("sqlite_") }
+        val tgt = dataTables(target.keys).toSet()
+        val src = dataTables(source.keys).toSet()
+        val stmts = ArrayList<String>()
+        val copied = ArrayList<String>()
+        val missingCols = LinkedHashMap<String, List<String>>()
+        val filledCols = LinkedHashMap<String, List<String>>()
+        val synthKeyCols = LinkedHashMap<String, List<String>>()
+        for (t in (tgt intersect src).sorted()) {
+            val srcCols = source[t]!!.map { it.name }.toSet()
+            val insertCols = ArrayList<String>()
+            val selectExprs = ArrayList<String>()
+            val omitted = ArrayList<String>()
+            val filled = ArrayList<String>()
+            val synthKeys = ArrayList<String>()
+            for (col in target[t]!!) {
+                when {
+                    // Shared column: straight copy, target order preserved.
+                    col.name in srcCols -> {
+                        insertCols.add(col.name)
+                        selectExprs.add(quoteId(col.name))
+                    }
+                    // Source-absent NOT NULL-no-default column that is a KEY (PK / UNIQUE member): a CONSTANT
+                    // fill would give every row the same value and INSERT OR IGNORE would collapse the table
+                    // to one row. Fill the source `rowid` instead — a per-row-unique id — so the rows import
+                    // without collapsing (the row-count backstop still catches any true shortfall).
+                    col.notNull && !col.hasDefault && col.key -> {
+                        insertCols.add(col.name)
+                        selectExprs.add("rowid")
+                        synthKeys.add(col.name)
+                    }
+                    // Source-absent NOT NULL with no default (not a key): MUST be kept + filled, or
+                    // INSERT OR IGNORE drops the whole row on the NOT NULL violation. Fill a typed zero.
+                    col.notNull && !col.hasDefault -> {
+                        insertCols.add(col.name)
+                        selectExprs.add(typedZeroLiteral(col.type))
+                        filled.add(col.name)
+                    }
+                    // Source-absent nullable / has-default: omit it, SQLite fills NULL / the default.
+                    else -> omitted.add(col.name)
+                }
+            }
+            if (synthKeys.isNotEmpty()) synthKeyCols[t] = synthKeys
+            if (omitted.isNotEmpty()) missingCols[t] = omitted
+            if (filled.isNotEmpty()) filledCols[t] = filled
+            if (insertCols.isEmpty()) continue
+            val colList = insertCols.joinToString(", ") { quoteId(it) }
+            val selList = selectExprs.joinToString(", ")
+            if (mode == ImportMode.REPLACE) stmts.add("DELETE FROM main.${quoteId(t)}")
+            stmts.add("INSERT OR IGNORE INTO main.${quoteId(t)} ($colList) SELECT $selList FROM src.${quoteId(t)}")
+            copied.add(t)
+        }
+        return RowCopyPlan(
+            statements = stmts,
+            missingTables = (tgt - src).sorted(),
+            droppedTables = (src - tgt).sorted(),
+            missingColumns = missingCols,
+            filledColumns = filledCols,
+            synthesizedKeyColumns = synthKeyCols,
+            copiedTables = copied,
+        )
+    }
+
+    /** The zero literal a source-absent NOT NULL-no-default column is filled with, by declared type:
+     *  TEXT (`''`), BLOB (`x''`), everything else — INTEGER, REAL, NUMERIC, and an untyped column —
+     *  numeric `0`. Matches the Swift twin (`ForeignBackupImport.zeroLiteral`) exactly, so a column
+     *  filled on either platform lands the same byte. The untyped case aligns to Swift's `0` purely for
+     *  parity (both platforms must emit the same literal); it doesn't arise in either real Room/GRDB
+     *  schema, since both always declare an affinity keyword. */
+    private fun typedZeroLiteral(declaredType: String): String {
+        val t = declaredType.uppercase()
+        return when {
+            t.contains("CHAR") || t.contains("CLOB") || t.contains("TEXT") -> "''"
+            t.contains("BLOB") -> "x''"
+            else -> "0"
+        }
+    }
+
+    /** A backtick-quoted SQL identifier with any embedded backtick DOUBLED, so a foreign backup's table
+     *  or column name (interpolated into the PRAGMA / row-copy statements below — PRAGMA can't bind an
+     *  identifier parameter) can't break out of its quoting. Bounded even without this — every mutating
+     *  statement targets trusted `main` names — but a stray backtick in a source identifier would
+     *  otherwise throw mid-read; doubling keeps the read honest. Twin of the Swift `quoteId`. */
+    private fun quoteId(id: String): String = "`" + id.replace("`", "``") + "`"
+
+    /** Row count of [table] in [schema] ('main' or the ATTACHed 'src'), for the reconcile backstop. */
+    private fun rowCount(db: SQLiteDatabase, schema: String, table: String): Long =
+        db.rawQuery("SELECT count(*) FROM $schema.${quoteId(table)}", null).use {
+            if (it.moveToFirst()) it.getLong(0) else 0L
+        }
+
+    /** Names of every column of [table] in [schema] that participates in the PRIMARY KEY or any UNIQUE
+     *  index — the columns the planner must NOT constant-fill (a shared value would collapse the table
+     *  under `INSERT OR IGNORE`). PK members come from `PRAGMA table_info` (`pk` > 0); UNIQUE members from
+     *  each `unique` index in `PRAGMA index_list`, expanded via `PRAGMA index_info`. */
+    private fun keyColumns(db: SQLiteDatabase, schema: String, table: String): Set<String> {
+        val keys = LinkedHashSet<String>()
+        db.rawQuery("PRAGMA $schema.table_info(${quoteId(table)})", null).use { c ->
+            val ni = c.getColumnIndex("name")
+            val pi = c.getColumnIndex("pk")
+            while (c.moveToNext()) {
+                val name = if (ni >= 0) c.getString(ni) else null
+                val isPk = pi >= 0 && c.getInt(pi) != 0
+                if (name != null && isPk) keys.add(name)
+            }
+        }
+        val uniqueIndexes = ArrayList<String>()
+        db.rawQuery("PRAGMA $schema.index_list(${quoteId(table)})", null).use { il ->
+            val nameIdx = il.getColumnIndex("name")
+            val uniqIdx = il.getColumnIndex("unique")
+            while (il.moveToNext()) {
+                val unique = uniqIdx >= 0 && il.getInt(uniqIdx) != 0
+                val idxName = if (nameIdx >= 0) il.getString(nameIdx) else null
+                if (unique && idxName != null) uniqueIndexes.add(idxName)
+            }
+        }
+        for (idx in uniqueIndexes) {
+            db.rawQuery("PRAGMA $schema.index_info(${quoteId(idx)})", null).use { ii ->
+                val cn = ii.getColumnIndex("name")
+                while (ii.moveToNext()) if (cn >= 0) ii.getString(cn)?.let(keys::add)
+            }
+        }
+        return keys
+    }
+
+    /** `table -> ordered [SchemaColumn]s` from `PRAGMA table_info` on [schema] ('main' or an ATTACHed
+     *  alias). Reads each column's declared type, NOT NULL flag (`notnull`), whether it carries a
+     *  DEFAULT (`dflt_value` non-null), AND whether it is a KEY (PK / UNIQUE member, via [keyColumns]),
+     *  so the planner can keep + fill a source-absent NOT NULL-no-default column — but never a KEY one,
+     *  which it skips — instead of silently dropping the table's rows. */
+    private fun readSchema(db: SQLiteDatabase, schema: String): Map<String, List<SchemaColumn>> {
+        val out = LinkedHashMap<String, List<SchemaColumn>>()
+        db.rawQuery("SELECT name FROM $schema.sqlite_master WHERE type = 'table'", null).use { tc ->
+            while (tc.moveToNext()) {
+                val t = tc.getString(0) ?: continue
+                val keyCols = keyColumns(db, schema, t)
+                val cols = ArrayList<SchemaColumn>()
+                db.rawQuery("PRAGMA $schema.table_info(${quoteId(t)})", null).use { cc ->
+                    val ni = cc.getColumnIndex("name")
+                    val ti = cc.getColumnIndex("type")
+                    val nn = cc.getColumnIndex("notnull")
+                    val df = cc.getColumnIndex("dflt_value")
+                    while (cc.moveToNext()) {
+                        val name = (if (ni >= 0) cc.getString(ni) else null) ?: continue
+                        val type = (if (ti >= 0) cc.getString(ti) else null) ?: ""
+                        val notNull = nn >= 0 && cc.getInt(nn) != 0
+                        val hasDefault = df >= 0 && !cc.isNull(df)
+                        cols.add(SchemaColumn(name, type, notNull, hasDefault, key = name in keyCols))
+                    }
+                }
+                out[t] = cols
+            }
+        }
+        return out
+    }
+
+    /**
+     * Reconcile a foreign / cross-platform [stagedBackup] into a file carrying THIS app's exact schema
+     * + Room identity, by COPYING [liveDbFile] (a valid store) and row-copying the backup's data into
+     * it — REPLACE clears each shared table, then inserts the column intersection. Version-agnostic:
+     * reads by table/column via [readSchema], never by schema version, so any fork's or the iOS/GRDB
+     * backup lands by its logical data alone. Returns the reconciled file + [RowCopyPlan] warnings; the
+     * caller swaps the returned file in through the normal snapshot / rollback path. THROWS on any SQL
+     * failure (never swallows) so a torn reconcile can never masquerade as a good restore; on ANY throw
+     * the half-built work file and its `-wal` / `-shm` sidecars are deleted, so a failed reconcile never
+     * leaks a partial store into the cache. The live store must already exist.
+     */
+    fun reconcileForeignBackup(
+        appContext: Context,
+        liveDbFile: File,
+        stagedBackup: File,
+        mode: ImportMode,
+    ): Pair<File, List<String>> {
+        require(liveDbFile.exists()) { "no live store to reconcile the backup against" }
+        val work = File(appContext.cacheDir, "import-reconciled.db")
+        val artifacts = listOf(work, File(work.path + "-wal"), File(work.path + "-shm"))
+        artifacts.forEach { it.delete() }
+        var handedOff = false
+        try {
+            liveDbFile.copyTo(work, overwrite = true) // inherits this app's schema + identity; rows cleared below
+            val warnings: List<String>
+            val db = SQLiteDatabase.openDatabase(work.path, null, SQLiteDatabase.OPEN_READWRITE, PRESERVE_ON_CORRUPTION)
+            try {
+                val target = readSchema(db, "main")
+                db.execSQL("ATTACH DATABASE ? AS src", arrayOf(stagedBackup.path))
+                val source = readSchema(db, "src")
+                val plan = planRowCopyImport(target, source, mode)
+                db.beginTransaction()
+                try {
+                    for (s in plan.statements) db.execSQL(s)
+                    // Row-count backstop (REPLACE restore only). Each copied table was cleared then re-filled
+                    // from the source, so on a clean import `landed == source`. A shortfall means
+                    // `INSERT OR IGNORE` silently dropped rows on a constraint the planner didn't model — a
+                    // CHECK, or a UNIQUE the source didn't enforce — so ABORT (throw, rolling back) instead
+                    // of committing a quietly-truncated table. The planner already prevents the key-column
+                    // collapse by skipping such tables; this catches everything else, before the swap path
+                    // ever touches the live store. MERGE is exempt: its `INSERT OR IGNORE` PK-clash drops
+                    // are intentional (existing rows win). `src` is still ATTACHed here (DETACH is below).
+                    if (mode == ImportMode.REPLACE) {
+                        for (t in plan.copiedTables) {
+                            val sourceRows = rowCount(db, "src", t)
+                            val landed = rowCount(db, "main", t)
+                            if (landed < sourceRows) {
+                                throw IllegalStateException(
+                                    "table \"$t\" kept only $landed of $sourceRows rows " +
+                                        "(a schema constraint dropped the rest)"
+                                )
+                            }
+                        }
+                    }
+                    db.setTransactionSuccessful()
+                } finally {
+                    db.endTransaction()
+                }
+                db.execSQL("DETACH DATABASE src")
+                // wal_checkpoint returns a row, so it must go through rawQuery, not execSQL. Fold the WAL
+                // so `work` is a self-contained file for the swap.
+                db.rawQuery("PRAGMA wal_checkpoint(TRUNCATE)", null).use { it.moveToFirst() }
+                warnings = plan.warnings()
+            } finally {
+                db.close()
+            }
+            File(work.path + "-wal").delete()
+            File(work.path + "-shm").delete()
+            handedOff = true
+            return work to warnings
+        } finally {
+            // On ANY throw (copy, open, SQL, checkpoint) the work file was never handed to the caller —
+            // delete it AND its -wal/-shm sidecars so nothing partial survives. On success `work` is
+            // returned and only its (now-empty) sidecars were dropped above.
+            if (!handedOff) artifacts.forEach { runCatching { it.delete() } }
         }
     }
 }

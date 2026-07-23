@@ -2,6 +2,26 @@
 <resources>
     <!-- German (de). App name stays untranslated (brand). Nav terms mirror the iOS German pass where
          one exists, so the two platforms read the same. -->
+    <string name="l10n_settings_screen_this_backup_is_from_a_different_noop_build_n_d18acf8c">Dieses Backup stammt aus einer anderen NOOP-Version. NOOP überträgt die Daten in das Format dieser App. Felder, die diese Version nicht teilt, werden möglicherweise nicht übernommen.</string>
+    <string name="l10n_settings_screen_the_backup_was_imported_but_some_of_it_didn_1b387c8a">Das Backup wurde importiert, aber einiges passte nicht zu dieser App:</string>
+    <string name="l10n_settings_screen_restart_b134bd55">Neu starten</string>
+    <string name="l10n_settings_screen_importing_an_ios_backup_into_android_is_tha_fa165da3">Ein iOS-Backup wird nach Android importiert – ist das richtig? NOOP überträgt die Daten in das Format dieser App. Felder, die die iOS-App nicht teilt, werden möglicherweise nicht übernommen.</string>
+    <string name="l10n_settings_screen_imported_with_notes_15850487">Importiert mit Hinweisen</string>
+    <string name="l10n_settings_screen_import_didn_t_finish_dcae86b3">Import nicht abgeschlossen</string>
+    <string name="l10n_settings_screen_import_d6fbc9d2">Importieren</string>
+    <string name="l10n_settings_screen_import_an_ios_backup_cdce911a">Ein iOS-Backup importieren?</string>
+    <string name="l10n_settings_screen_import_a_backup_from_another_noop_build_cddb47ad">Ein Backup aus einer anderen NOOP-Version importieren?</string>
+    <string name="l10n_settings_screen_1_s_5ff08eae">• %1$s</string>
+    <string name="l10n_backup_sync_screen_this_backup_is_from_a_different_noop_build_n_d18acf8c">Dieses Backup stammt aus einer anderen NOOP-Version. NOOP überträgt die Daten in das Format dieser App. Felder, die diese Version nicht teilt, werden möglicherweise nicht übernommen.</string>
+    <string name="l10n_backup_sync_screen_the_backup_was_imported_but_some_of_it_didn_1b387c8a">Das Backup wurde importiert, aber einiges passte nicht zu dieser App:</string>
+    <string name="l10n_backup_sync_screen_restart_b134bd55">Neu starten</string>
+    <string name="l10n_backup_sync_screen_importing_an_ios_backup_into_android_is_tha_fa165da3">Ein iOS-Backup wird nach Android importiert – ist das richtig? NOOP überträgt die Daten in das Format dieser App. Felder, die die iOS-App nicht teilt, werden möglicherweise nicht übernommen.</string>
+    <string name="l10n_backup_sync_screen_imported_with_notes_15850487">Importiert mit Hinweisen</string>
+    <string name="l10n_backup_sync_screen_import_didn_t_finish_dcae86b3">Import nicht abgeschlossen</string>
+    <string name="l10n_backup_sync_screen_import_d6fbc9d2">Importieren</string>
+    <string name="l10n_backup_sync_screen_import_an_ios_backup_cdce911a">Ein iOS-Backup importieren?</string>
+    <string name="l10n_backup_sync_screen_import_a_backup_from_another_noop_build_cddb47ad">Ein Backup aus einer anderen NOOP-Version importieren?</string>
+    <string name="l10n_backup_sync_screen_1_s_5ff08eae">• %1$s</string>
     <string name="widget_description">Ruhe, Ladung und Anstrengung von heute, mit Live-Herzfrequenz und Band-Akku auf einen Blick.</string>
     <string name="widget_compact_name">NOOP Kompakt</string>
     <string name="widget_compact_description">Kompaktes Widget für Ruhe, Ladung und Anstrengung, mit Live-Herzfrequenz und Band-Akku.</string>

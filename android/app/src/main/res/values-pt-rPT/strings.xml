@@ -3,6 +3,26 @@
 
     <!-- Portuguese (Portugal) localization. -->
     <string name="app_name">NOOP</string>
+    <string name="l10n_settings_screen_this_backup_is_from_a_different_noop_build_n_d18acf8c">Esta cópia de segurança é de outra versão do NOOP. O NOOP vai copiar os dados para o formato desta app. Os campos que essa versão não partilha poderão não ser transferidos.</string>
+    <string name="l10n_settings_screen_the_backup_was_imported_but_some_of_it_didn_1b387c8a">A cópia de segurança foi importada, mas parte dela não correspondia a esta app:</string>
+    <string name="l10n_settings_screen_restart_b134bd55">Reiniciar</string>
+    <string name="l10n_settings_screen_importing_an_ios_backup_into_android_is_tha_fa165da3">Vai importar uma cópia de segurança do iOS para o Android — é isso mesmo? O NOOP vai copiar os dados para o formato desta app. Os campos que a app de iOS não partilha poderão não ser transferidos.</string>
+    <string name="l10n_settings_screen_imported_with_notes_15850487">Importado com notas</string>
+    <string name="l10n_settings_screen_import_didn_t_finish_dcae86b3">A importação não terminou</string>
+    <string name="l10n_settings_screen_import_d6fbc9d2">Importar</string>
+    <string name="l10n_settings_screen_import_an_ios_backup_cdce911a">Importar uma cópia de segurança do iOS?</string>
+    <string name="l10n_settings_screen_import_a_backup_from_another_noop_build_cddb47ad">Importar uma cópia de segurança de outra versão do NOOP?</string>
+    <string name="l10n_settings_screen_1_s_5ff08eae">• %1$s</string>
+    <string name="l10n_backup_sync_screen_this_backup_is_from_a_different_noop_build_n_d18acf8c">Esta cópia de segurança é de outra versão do NOOP. O NOOP vai copiar os dados para o formato desta app. Os campos que essa versão não partilha poderão não ser transferidos.</string>
+    <string name="l10n_backup_sync_screen_the_backup_was_imported_but_some_of_it_didn_1b387c8a">A cópia de segurança foi importada, mas parte dela não correspondia a esta app:</string>
+    <string name="l10n_backup_sync_screen_restart_b134bd55">Reiniciar</string>
+    <string name="l10n_backup_sync_screen_importing_an_ios_backup_into_android_is_tha_fa165da3">Vai importar uma cópia de segurança do iOS para o Android — é isso mesmo? O NOOP vai copiar os dados para o formato desta app. Os campos que a app de iOS não partilha poderão não ser transferidos.</string>
+    <string name="l10n_backup_sync_screen_imported_with_notes_15850487">Importado com notas</string>
+    <string name="l10n_backup_sync_screen_import_didn_t_finish_dcae86b3">A importação não terminou</string>
+    <string name="l10n_backup_sync_screen_import_d6fbc9d2">Importar</string>
+    <string name="l10n_backup_sync_screen_import_an_ios_backup_cdce911a">Importar uma cópia de segurança do iOS?</string>
+    <string name="l10n_backup_sync_screen_import_a_backup_from_another_noop_build_cddb47ad">Importar uma cópia de segurança de outra versão do NOOP?</string>
+    <string name="l10n_backup_sync_screen_1_s_5ff08eae">• %1$s</string>
     <string name="widget_description">Descanso, Carga e Esforço de hoje, com frequência cardíaca em direto e bateria da bracelete num relance.</string>
     <string name="widget_compact_name">NOOP Compacto</string>
     <string name="widget_compact_description">Widget compacto de Descanso, Carga e Esforço, com frequência cardíaca em direto e bateria da bracelete.</string>

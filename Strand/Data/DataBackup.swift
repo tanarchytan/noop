@@ -36,8 +36,10 @@ enum DataBackup {
         /// Export wrote the backup to `url`.
         case exported(URL)
         /// Import succeeded; a relaunch is required for it to take effect. `sidecar` is where the
-        /// previous database was preserved, in case the user wants to roll back.
-        case imported(sidecar: URL)
+        /// previous database was preserved, in case the user wants to roll back. `warnings` is empty
+        /// for a same-fork restore; a cross-fork reconcile (see `restore`) surfaces the tables/columns
+        /// that didn't line up here so the UI can show them without failing the import.
+        case imported(sidecar: URL, warnings: [String])
         /// The user dismissed the save/open panel — nothing happened, show nothing loud.
         case cancelled
         /// Something went wrong; `message` is user-facing.
@@ -280,8 +282,12 @@ enum DataBackup {
         // If the picked file is a .noopbak ZIP, extract the SQLite entry to a temp dir first.
         // Legacy plain-SQLite files fall straight through. The extracted dir is cleaned up below.
         let fm = FileManager.default
-        let source: URL
+        var source: URL
         let extractedDir: URL?
+        // A cross-fork reconcile (below) writes a self-contained SQLite copy here that becomes the
+        // effective `source`; cleaned up on the way out, alongside `extractedDir`.
+        var reconciledFile: URL?
+        var reconcileWarnings: [String] = []
 
         if isZipFile(at: pickedSource) {
             let tmpExtract = fm.temporaryDirectory
@@ -307,22 +313,58 @@ enum DataBackup {
             extractedDir = nil
         }
         defer { if let d = extractedDir { try? fm.removeItem(at: d) } }
+        defer {
+            if let f = reconciledFile {
+                for suffix in ["", "-wal", "-shm"] { try? fm.removeItem(atPath: f.path + suffix) }
+            }
+        }
 
         // Validate: must be a real SQLite database (magic header "SQLite format 3\0").
         guard isSQLiteFile(at: source) else {
             return .failure(String(localized: "That file isn't a NOOP backup. It doesn't look like a SQLite database."))
         }
 
-        // Reject any backup that isn't a clean GRDB (this-app) backup. The magic check passes for ANY
-        // SQLite file, so an Android (Room) backup — or any other SQLite file that happens to carry our
-        // table names without our `grdb_migrations` bookkeeping — would otherwise replace the live DB
-        // and leave the migrator re-running v1 forever (`table "device" already exists`, #222). A valid
-        // NOOP-Mac/iOS backup always carries `grdb_migrations`; reject everything else that holds data.
-        let backupTables = sqliteTableNames(at: source)
+        // Route the backup by its migrator bookkeeping. A clean GRDB (this-app) backup carries
+        // `grdb_migrations` and file-swaps straight in below — that same-fork path is UNCHANGED. A
+        // foreign one (Android/Room's `room_master_table`, or an unknown-but-populated store) can't
+        // file-swap: dropping it over our GRDB store strands the migrator, which re-runs v1 forever
+        // (`table "device" already exists`, #222). Instead of the old outright refusal, RECONCILE it —
+        // copy the live GRDB store (our exact schema + `grdb_migrations` identity) and row-copy the
+        // backup's shared tables/columns into the copy (`ForeignBackupImport`, the WhoopStore twin of
+        // Android's `reconcileForeignBackup`), then swap that reconciled file in through the exact same
+        // hardened path below. REPLACE = restore semantics: clear each shared table, then insert.
+        //
+        // A schema read that FAILS (nil) — a file that carries the SQLite magic but can't be opened or
+        // queried (truncated, torn, or not really a database) — is refused HERE, before anything touches
+        // the live store. Returning empty and falling through would route it to the raw file-swap, which
+        // would "restore" a silently empty store; the honest move is to stop with the live data intact.
+        guard let backupTables = sqliteTableNames(at: source) else {
+            return .failure(String(localized: "Couldn't read this backup's database. Your current data is untouched. Try an earlier backup file."))
+        }
         let origin = backupOrigin(of: backupTables)
         let holdsData = backupTables.contains("device") || backupTables.contains("hrSample")
         if origin == .android || (origin == .unknown && holdsData) {
-            return .failure(String(localized: "This isn't a NOOP backup from this app. It's missing the migration bookkeeping a NOOP backup carries (it looks like an Android backup or another app's database), and restoring it would strand your store. To move your history across platforms, export the WHOOP-format CSV on the other device (Settings → Export data) and import that here, or import your original WHOOP / Apple Health export."))
+            guard fm.fileExists(atPath: dbPath) else {
+                // No live store to inherit a schema + identity from yet (fresh install): keep the honest
+                // refusal — there is nothing to reconcile the foreign rows into.
+                return .failure(String(localized: "This looks like a backup from another NOOP platform, but there's no NOOP store on this \(Platform.deviceNoun) yet to merge it into. Open NOOP once to set up your store, then import again — or move your history with the WHOOP-format CSV (Settings → Export data)."))
+            }
+            let work = fm.temporaryDirectory
+                .appendingPathComponent("noop-reconciled-\(UUID().uuidString).sqlite")
+            reconciledFile = work
+            do {
+                reconcileWarnings = try ForeignBackupImport.reconcile(
+                    liveDatabaseURL: URL(fileURLWithPath: dbPath),
+                    stagedBackupURL: source,
+                    workURL: work,
+                    mode: .replace)
+            } catch {
+                return .failure(String(localized: "Couldn't reconcile that cross-platform backup. Your current data was left untouched. \(error.localizedDescription)"))
+            }
+            // The reconciled file is a valid, checkpointed GRDB store (it carries `grdb_migrations`), so
+            // it passes the integrity gate below and opens without the #222 quarantine. `extractedDir`
+            // is left pointing at the ORIGINAL extract dir so a `settings.json` entry still applies.
+            source = work
         }
 
         // #1014 defence-in-depth: both gates above read only the FIRST pages of the file — the
@@ -421,7 +463,7 @@ enum DataBackup {
             // #57 debug: record when a restore swapped the DB, so the export can correlate a restore with a
             // later write stall (a restore not followed by a relaunch is the #57 failure).
             UserDefaults.standard.set(Date().timeIntervalSince1970, forKey: "backup.lastRestoreAt")
-            return .imported(sidecar: sidecar)
+            return .imported(sidecar: sidecar, warnings: reconcileWarnings)
         } catch {
             return .failure(String(localized: "Import failed: \(error.localizedDescription)"))
         }
@@ -491,27 +533,38 @@ enum DataBackup {
         return .unknown
     }
 
-    /// Every table name in a SQLite file, opened READ-ONLY through the system SQLite so the probed
-    /// file is never mutated. Returns an empty set on any failure — the caller treats that as
-    /// `.unknown` and falls through to the existing behaviour.
-    private static func sqliteTableNames(at url: URL) -> Set<String> {
-        var db: OpaquePointer?
-        guard sqlite3_open_v2(url.path, &db, SQLITE_OPEN_READONLY, nil) == SQLITE_OK else {
-            sqlite3_close(db)
-            return []
-        }
-        defer { sqlite3_close(db) }
-        var stmt: OpaquePointer?
-        let sql = "SELECT name FROM sqlite_master WHERE type = 'table'"
-        guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else { return [] }
-        defer { sqlite3_finalize(stmt) }
-        var names: Set<String> = []
-        while sqlite3_step(stmt) == SQLITE_ROW {
-            if let c = sqlite3_column_text(stmt, 0) {
-                names.insert(String(cString: c))
+    /// Every table name in a SQLite file. Opens READ-ONLY first (so a healthy file is never mutated);
+    /// on an OPEN failure retries READ-WRITE, because a checkpointed WAL-header backup can't be
+    /// read-only-opened without its `-shm` sibling (mirrors `DatabaseIntegrity.quickCheckFailure` and
+    /// the Android probe's read-write fallback — the probed file is a staged temp copy or the picked
+    /// backup, and a read-write open only runs standard SQLite recovery, never a content change).
+    ///
+    /// Distinguishes an EMPTY-but-valid file (opened + queried, no tables → empty set, a legitimate
+    /// pre-migration store) from a file it COULD NOT READ (both opens failed, or the query failed →
+    /// `nil`). The caller must surface `nil` as an honest failure and NOT fall through to the raw
+    /// file-swap: an unreadable file behind a valid magic header would otherwise "restore" into a
+    /// silently empty store.
+    private static func sqliteTableNames(at url: URL) -> Set<String>? {
+        for flags in [SQLITE_OPEN_READONLY, SQLITE_OPEN_READWRITE] {
+            var db: OpaquePointer?
+            if sqlite3_open_v2(url.path, &db, flags, nil) != SQLITE_OK {
+                sqlite3_close(db)
+                continue   // read-only may fail on a WAL-header file — retry read-write before giving up
             }
+            defer { sqlite3_close(db) }
+            var stmt: OpaquePointer?
+            let sql = "SELECT name FROM sqlite_master WHERE type = 'table'"
+            guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else { return nil }
+            defer { sqlite3_finalize(stmt) }
+            var names: Set<String> = []
+            while sqlite3_step(stmt) == SQLITE_ROW {
+                if let c = sqlite3_column_text(stmt, 0) {
+                    names.insert(String(cString: c))
+                }
+            }
+            return names
         }
-        return names
+        return nil   // neither open mode succeeded → a genuine read failure, not an empty database
     }
 
     /// Read the first 4 bytes and check for the ZIP PK magic (`PK\x03\x04`).

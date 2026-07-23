@@ -1800,9 +1800,16 @@ struct SettingsView: View {
             backupAlertTitle = String(localized: "Backup exported")
             backupAlertMessage = String(localized: "Saved to \(url.lastPathComponent). Copy this file to your other \(Platform.deviceNoun) and use Import there to restore everything.")
             showBackupAlert = true
-        case .imported:
+        case .imported(_, let warnings):
             backupAlertTitle = String(localized: "Backup imported")
-            backupAlertMessage = String(localized: "Your data has been restored. Quit and reopen NOOP for it to take effect.")
+            var message = String(localized: "Your data has been restored. Quit and reopen NOOP for it to take effect.")
+            if !warnings.isEmpty {
+                // A cross-platform backup was reconciled row-by-row; show what didn't line up so the
+                // import is honest about any gaps (never a silent partial restore).
+                message += "\n\n" + String(localized: "This was a backup from another NOOP platform, merged into your store:")
+                message += "\n" + warnings.joined(separator: "\n")
+            }
+            backupAlertMessage = message
             showBackupAlert = true
         case .failure(let message):
             backupAlertTitle = String(localized: "Backup problem")

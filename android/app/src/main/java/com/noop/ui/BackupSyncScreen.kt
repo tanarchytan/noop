@@ -78,35 +78,56 @@ fun BackupSyncScreen() {
     var snapshots by remember { mutableStateOf<List<BackupSync.SnapshotDoc>>(emptyList()) }
     var showSnapshotPicker by remember { mutableStateOf(false) }
     var pendingRestore by remember { mutableStateOf<Pair<String, Uri>?>(null) }
+    // A foreign (iOS/GRDB or other-fork) backup that needs the cross-platform-import confirmation, and
+    // the row-copy warnings to surface once such an import lands (empty for a plain same-app restore).
+    var pendingForeign by remember { mutableStateOf<Pair<Uri, DataBackup.ForeignBackupKind>?>(null) }
+    var importWarnings by remember { mutableStateOf<List<String>>(emptyList()) }
+    // A cross-fork reconcile that FAILED after the live DB was closed for the merge (see
+    // DataBackup.ImportResult.FailedNeedsRestart). The live database file is UNTOUCHED — the reconcile
+    // only reads it and writes scratch — but the Room singleton is now closed, so the app must relaunch
+    // to reopen it on the intact data (the #57 stale-DAO hazard). Holds the failure message to show
+    // before that forced relaunch.
+    var pendingFailedRestart by remember { mutableStateOf<String?>(null) }
 
-    // Runs the actual destructive restore for a chosen backup Uri, off the main thread.
-    fun runRestore(uri: Uri) {
+    // #57: the restore CLOSED and swapped the database file. The long-lived WhoopRepository + BLE client
+    // still hold a DAO on the OLD (now-closed) connection, so any strap sync would fail with "connection
+    // pool has been closed" — and, worse, empty/metadata history ENDs would still ack and trim the strap
+    // PAST records we can't store, discarding real history. Relaunching the process re-opens Room against
+    // the restored file. Do it automatically rather than trust the user to read a toast (which is exactly
+    // how #57 happened). NonCancellable: this runs in the screen's scope, cancelled the instant the user
+    // navigates away, but the restart is a data-safety guarantee (the DB is already swapped), so it must
+    // complete even if the composition leaves.
+    fun restartNoop(message: String = "Backup restored — restarting NOOP…") {
+        scope.launch {
+            Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+            withContext(NonCancellable) {
+                delay(800)   // let the toast render before the process dies
+                val ctx = context.applicationContext
+                ctx.packageManager.getLaunchIntentForPackage(ctx.packageName)
+                    ?.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+                    ?.let { ctx.startActivity(it) }
+                Runtime.getRuntime().exit(0)
+            }
+        }
+    }
+
+    // Runs the actual destructive restore for a chosen backup Uri, off the main thread. A foreign backup
+    // returns NeedsConfirmation first (nothing touched yet); the caller re-runs with confirmedForeign=true
+    // after the cross-platform-import dialog. A cross-fork import can land warnings (missing tables/
+    // columns) — those are shown in a dialog whose "Restart" button does the relaunch, so they aren't
+    // lost to the auto-restart.
+    fun runRestore(uri: Uri, confirmedForeign: Boolean = false) {
         busy = true
         scope.launch {
-            val r = withContext(Dispatchers.IO) { DataBackup.importFrom(context, uri) }
+            val r = withContext(Dispatchers.IO) { DataBackup.importFrom(context, uri, confirmedForeign) }
             busy = false
             when (r) {
-                is DataBackup.ImportResult.NeedsRestart -> {
-                    // #57: the restore CLOSED and swapped the database file. The long-lived WhoopRepository +
-                    // BLE client still hold a DAO on the OLD (now-closed) connection, so any strap sync would
-                    // fail with "connection pool has been closed" — and, worse, empty/metadata history ENDs
-                    // would still ack and trim the strap PAST records we can't store, discarding real history.
-                    // Relaunching the process re-opens Room against the restored file. Do it automatically
-                    // rather than trust the user to read a toast (which is exactly how #57 happened).
-                    Toast.makeText(context, "Backup restored — restarting NOOP…", Toast.LENGTH_LONG).show()
-                    // NonCancellable: this coroutine runs in the screen's scope, which is cancelled the
-                    // instant the user navigates away. The restart is a data-safety guarantee (the DB is
-                    // already swapped), so it must complete even if the composition leaves — otherwise the
-                    // user could keep syncing into the closed DB, the very bug we're fixing.
-                    withContext(NonCancellable) {
-                        delay(800)   // let the toast render before the process dies
-                        val ctx = context.applicationContext
-                        ctx.packageManager.getLaunchIntentForPackage(ctx.packageName)
-                            ?.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
-                            ?.let { ctx.startActivity(it) }
-                        Runtime.getRuntime().exit(0)
-                    }
-                }
+                is DataBackup.ImportResult.NeedsConfirmation ->
+                    pendingForeign = uri to r.kind
+                is DataBackup.ImportResult.NeedsRestart ->
+                    if (r.warnings.isEmpty()) restartNoop() else importWarnings = r.warnings
+                is DataBackup.ImportResult.FailedNeedsRestart ->
+                    pendingFailedRestart = r.message
                 is DataBackup.ImportResult.Failed ->
                     Toast.makeText(context, r.message, Toast.LENGTH_LONG).show()
             }
@@ -425,6 +446,90 @@ fun BackupSyncScreen() {
             dismissButton = {
                 TextButton(onClick = { pendingRestore = null }) {
                     Text(uiString(R.string.l10n_backup_sync_screen_cancel_77dfd213), style = NoopType.body, color = Palette.textSecondary)
+                }
+            },
+        )
+    }
+
+    // Cross-platform / cross-fork confirmation. The chosen backup is a foreign NOOP store (iOS/GRDB or a
+    // different Android build); NOOP copies its rows into this app's format rather than swapping the file.
+    // Confirming re-runs the import with confirmedForeign=true.
+    pendingForeign?.let { (uri, kind) ->
+        val (title, body) = when (kind) {
+            DataBackup.ForeignBackupKind.IOS ->
+                uiString(R.string.l10n_backup_sync_screen_import_an_ios_backup_cdce911a) to
+                    uiString(R.string.l10n_backup_sync_screen_importing_an_ios_backup_into_android_is_tha_fa165da3)
+            DataBackup.ForeignBackupKind.ANDROID_FORK ->
+                uiString(R.string.l10n_backup_sync_screen_import_a_backup_from_another_noop_build_cddb47ad) to
+                    uiString(R.string.l10n_backup_sync_screen_this_backup_is_from_a_different_noop_build_n_d18acf8c)
+        }
+        AlertDialog(
+            onDismissRequest = { pendingForeign = null },
+            containerColor = Palette.surfaceOverlay,
+            title = { Text(title, style = NoopType.title2, color = Palette.textPrimary) },
+            text = { Text(body, style = NoopType.subhead, color = Palette.textSecondary) },
+            confirmButton = {
+                TextButton(onClick = {
+                    pendingForeign = null
+                    runRestore(uri, confirmedForeign = true)
+                }) {
+                    Text(uiString(R.string.l10n_backup_sync_screen_import_d6fbc9d2), style = NoopType.body, color = Palette.accent)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingForeign = null }) {
+                    Text(uiString(R.string.l10n_backup_sync_screen_cancel_77dfd213), style = NoopType.body, color = Palette.textSecondary)
+                }
+            },
+        )
+    }
+
+    // Post-import warnings from a cross-fork row copy (tables/columns the two schemas didn't share). Shown
+    // BEFORE the relaunch so they aren't lost to the auto-restart; "Restart" does the relaunch.
+    if (importWarnings.isNotEmpty()) {
+        AlertDialog(
+            onDismissRequest = { },
+            containerColor = Palette.surfaceOverlay,
+            title = { Text(uiString(R.string.l10n_backup_sync_screen_imported_with_notes_15850487), style = NoopType.title2, color = Palette.textPrimary) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(
+                        uiString(R.string.l10n_backup_sync_screen_the_backup_was_imported_but_some_of_it_didn_1b387c8a),
+                        style = NoopType.subhead, color = Palette.textSecondary,
+                    )
+                    importWarnings.forEach { w ->
+                        Text(uiString(R.string.l10n_backup_sync_screen_1_s_5ff08eae, w), style = NoopType.footnote, color = Palette.textTertiary)
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    importWarnings = emptyList()
+                    restartNoop()
+                }) {
+                    Text(uiString(R.string.l10n_backup_sync_screen_restart_b134bd55), style = NoopType.body, color = Palette.accent)
+                }
+            },
+        )
+    }
+
+    // A cross-fork reconcile FAILED after the live DB was closed for the merge. The live database file is
+    // UNTOUCHED (the reconcile only reads it + writes scratch), but the Room singleton is now closed, so
+    // the app must relaunch to reopen it on the intact data — otherwise every DAO is left on a closed
+    // connection (the #57 stale-DAO hazard). The dialog can't be dismissed without restarting; the single
+    // "Restart" button runs the same relaunch as the success path, coming back on the intact live data.
+    pendingFailedRestart?.let { message ->
+        AlertDialog(
+            onDismissRequest = { },
+            containerColor = Palette.surfaceOverlay,
+            title = { Text(uiString(R.string.l10n_backup_sync_screen_import_didn_t_finish_dcae86b3), style = NoopType.title2, color = Palette.textPrimary) },
+            text = { Text(message, style = NoopType.subhead, color = Palette.textSecondary) },
+            confirmButton = {
+                TextButton(onClick = {
+                    pendingFailedRestart = null
+                    restartNoop("Restarting NOOP…")
+                }) {
+                    Text(uiString(R.string.l10n_backup_sync_screen_restart_b134bd55), style = NoopType.body, color = Palette.accent)
                 }
             },
         )

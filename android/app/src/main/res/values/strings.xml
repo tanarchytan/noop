@@ -1,6 +1,26 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">NOOP</string>
+    <string name="l10n_settings_screen_this_backup_is_from_a_different_noop_build_n_d18acf8c">This backup is from a different NOOP build. NOOP will copy its data into this app\'s format. Any fields that build doesn\'t share may not carry over.</string>
+    <string name="l10n_settings_screen_the_backup_was_imported_but_some_of_it_didn_1b387c8a">The backup was imported, but some of it didn\'t line up with this app:</string>
+    <string name="l10n_settings_screen_restart_b134bd55">Restart</string>
+    <string name="l10n_settings_screen_importing_an_ios_backup_into_android_is_tha_fa165da3">Importing an iOS backup into Android — is that correct? NOOP will copy its data into this app\'s format. Any fields the iOS app doesn\'t share may not carry over.</string>
+    <string name="l10n_settings_screen_imported_with_notes_15850487">Imported with notes</string>
+    <string name="l10n_settings_screen_import_didn_t_finish_dcae86b3">Import didn\'t finish</string>
+    <string name="l10n_settings_screen_import_d6fbc9d2">Import</string>
+    <string name="l10n_settings_screen_import_an_ios_backup_cdce911a">Import an iOS backup?</string>
+    <string name="l10n_settings_screen_import_a_backup_from_another_noop_build_cddb47ad">Import a backup from another NOOP build?</string>
+    <string name="l10n_settings_screen_1_s_5ff08eae">• %1$s</string>
+    <string name="l10n_backup_sync_screen_this_backup_is_from_a_different_noop_build_n_d18acf8c">This backup is from a different NOOP build. NOOP will copy its data into this app\'s format. Any fields that build doesn\'t share may not carry over.</string>
+    <string name="l10n_backup_sync_screen_the_backup_was_imported_but_some_of_it_didn_1b387c8a">The backup was imported, but some of it didn\'t line up with this app:</string>
+    <string name="l10n_backup_sync_screen_restart_b134bd55">Restart</string>
+    <string name="l10n_backup_sync_screen_importing_an_ios_backup_into_android_is_tha_fa165da3">Importing an iOS backup into Android — is that correct? NOOP will copy its data into this app\'s format. Any fields the iOS app doesn\'t share may not carry over.</string>
+    <string name="l10n_backup_sync_screen_imported_with_notes_15850487">Imported with notes</string>
+    <string name="l10n_backup_sync_screen_import_didn_t_finish_dcae86b3">Import didn\'t finish</string>
+    <string name="l10n_backup_sync_screen_import_d6fbc9d2">Import</string>
+    <string name="l10n_backup_sync_screen_import_an_ios_backup_cdce911a">Import an iOS backup?</string>
+    <string name="l10n_backup_sync_screen_import_a_backup_from_another_noop_build_cddb47ad">Import a backup from another NOOP build?</string>
+    <string name="l10n_backup_sync_screen_1_s_5ff08eae">• %1$s</string>
     <string name="widget_description">Today\'s Rest, Charge and Effort, with live heart rate and strap battery at a glance.</string>
     <string name="widget_compact_name">NOOP Compact</string>
     <string name="widget_compact_description">Compact Rest, Charge and Effort widget, with live heart rate and strap battery.</string>
