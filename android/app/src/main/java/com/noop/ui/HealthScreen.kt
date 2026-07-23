@@ -2463,21 +2463,22 @@ private suspend fun buildSeriesVitalDetail(vm: AppViewModel, key: String): Vital
         )
     }
     "active_kcal" -> {
- // Read active energy from the SAME apple-health ∪ health-connect union the Today Calories card uses.
- // Health Connect (the common Android source) writes activeKcal only into the AppleDaily table under
- // "health-connect", not as an active_kcal metricSeries row, so reading metricSeries("apple-health") alone
- // opened an empty detail for a Health-Connect-only user whose card DID show a number. One point per day,
- // apple-health winning a tie (matching the card's newest-value read), ascending.
-        val rows = vm.repo.appleDaily("apple-health", "0000-01-01", "9999-12-31") +
-            vm.repo.appleDaily("health-connect", "0000-01-01", "9999-12-31")
-        val byDay = LinkedHashMap<String, VitalReading>()
-        for (r in rows) r.activeKcal?.let { byDay.putIfAbsent(r.day, VitalReading(r.day, it, r.deviceId)) }
+ // Imported apple-health/health-connect activeKcal (in the AppleDaily table, apple winning a tie) first,
+ // then the strap's own activeKcalEst fills days with no phone import, so a strap-only day still shows.
+        val imported = LinkedHashMap<String, VitalReading>()
+        for (r in vm.repo.appleDaily("apple-health", "0000-01-01", "9999-12-31") +
+            vm.repo.appleDaily("health-connect", "0000-01-01", "9999-12-31")) {
+            r.activeKcal?.let { imported.putIfAbsent(r.day, VitalReading(r.day, it, r.deviceId)) }
+        }
+        val est = vm.repo.resolvedSeries("active_kcal", "my-whoop", "0000-00-00", "9999-99-99",
+            strapDeviceId = vm.activeStrapId)
+            .points.associateBy({ it.day }, { VitalReading(it.day, it.value, it.source) })
         VitalDetailModel(
             key = key,
             title = "Active Energy",
             unit = "kcal",
             color = Palette.metricAmber,
-            readings = byDay.entries.sortedBy { it.key }.map { it.value },
+            readings = (imported.keys + est.keys).toSortedSet().mapNotNull { imported[it] ?: est[it] },
             format = { it.roundToInt().toString() },
         )
     }

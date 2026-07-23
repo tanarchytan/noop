@@ -406,16 +406,20 @@ fun TodayScreen(
         }
     }
 
- // The latest active-energy figure (kcal) for the Calories card, the newest non-null activeKcal across
- // the Apple-side daily aggregates, mirroring the Today Calories tile. Null hides the card's value.
+ // Latest active-energy (kcal) for the Calories card: newest day across imported apple/health-connect
+ // aggregates and the strap's own activeKcalEst, imported winning a day, so a strap-only day still shows.
     var latestActiveKcal by remember { mutableStateOf<Double?>(null) }
     LaunchedEffect(days) {
         latestActiveKcal = runCatching {
-            (viewModel.repo.appleDaily("apple-health", "0000-01-01", "9999-12-31") +
-                viewModel.repo.appleDaily("health-connect", "0000-01-01", "9999-12-31"))
-                .filter { it.activeKcal != null }
-                .maxByOrNull { it.day }
-                ?.activeKcal
+            val imported = LinkedHashMap<String, Double>()
+            for (r in viewModel.repo.appleDaily("apple-health", "0000-01-01", "9999-12-31") +
+                viewModel.repo.appleDaily("health-connect", "0000-01-01", "9999-12-31")) {
+                r.activeKcal?.let { imported.putIfAbsent(r.day, it) }
+            }
+            val est = viewModel.repo.resolvedSeries("active_kcal", "my-whoop", "0000-00-00", "9999-99-99",
+                strapDeviceId = viewModel.activeStrapId)
+                .points.associate { it.day to it.value }
+            (imported.keys + est.keys).maxOrNull()?.let { imported[it] ?: est[it] }
         }.getOrNull()
     }
 
