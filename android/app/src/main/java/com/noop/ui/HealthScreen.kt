@@ -676,14 +676,23 @@ private fun VitalitySection(vm: AppViewModel, days: List<DailyMetric>, profile: 
 
 /** Circadian Rhythm Age: a weekly relative body-clock age (years) from the rest-activity cosinor + the
  * Gompertz transform (whoop-rs), read from metricSeries. A wellness estimate from your motion rhythm,
- * relative until calibrated , NOT a clinical age. Hidden until a weekly value exists. */
+ * relative until calibrated , NOT a clinical age. Below the headline, a time-series chart tracks your
+ * chronological (actual) age, Fitness Age and Rhythm Age together over time. Hidden until a value exists. */
 @Composable
 private fun RhythmAgeSection(vm: AppViewModel, days: List<DailyMetric>, profile: ProfileStore) {
     var rhythmAge by remember { mutableStateOf<Double?>(null) }
+    var trend by remember { mutableStateOf<List<Pair<LineSeries, String>>>(emptyList()) }
     LaunchedEffect(days) {
         rhythmAge = runCatching {
             vm.repo.latestMetricComputedUnion(vm.activeStrapId, "rhythm_age")?.value
         }.getOrNull()
+        trend = runCatching {
+            val fit = vm.repo.metricSeriesComputedUnion(vm.activeStrapId, "fitness_age", "0000-01-01", "9999-12-31")
+                .associate { it.day to it.value }
+            val rhy = vm.repo.metricSeriesComputedUnion(vm.activeStrapId, "rhythm_age", "0000-01-01", "9999-12-31")
+                .associate { it.day to it.value }
+            buildAgeTrend((fit.keys + rhy.keys).toSortedSet().toList(), fit, rhy, profile.dateOfBirthMillis)
+        }.getOrDefault(emptyList())
     }
     val value = rhythmAge ?: return
     val chrono = profile.age
@@ -709,9 +718,52 @@ private fun RhythmAgeSection(vm: AppViewModel, days: List<DailyMetric>, profile:
                     style = NoopType.footnote,
                     color = Palette.textTertiary,
                 )
+                if (trend.size >= 2) {
+                    MultiLineChart(trend.map { it.first }, Modifier.fillMaxWidth().height(120.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                        trend.forEach { (line, label) ->
+                            Text(label, style = NoopType.caption, color = line.color)
+                        }
+                    }
+                }
             }
         }
     }
+}
+
+/** Fractional chronological age (years) on the local calendar day [dayIso] ("yyyy-MM-dd") from a DOB. */
+private fun chronoAgeYearsAt(dayIso: String, dobMillis: Long): Double? {
+    val d = runCatching { java.time.LocalDate.parse(dayIso) }.getOrNull() ?: return null
+    val dayMillis = d.atStartOfDay(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli()
+    return (dayMillis - dobMillis) / 86_400_000.0 / 365.2425
+}
+
+/** Forward + back-fill a per-day metric onto [days] so the series is DENSE (no gaps) and aligned
+ *  index-for-index with the other age series; null when the metric has no data at all. */
+private fun denseSeriesOnDays(days: List<String>, byDay: Map<String, Double>): List<Double>? {
+    if (byDay.isEmpty()) return null
+    var prev: Double? = null
+    val fwd = days.map { d -> byDay[d]?.also { prev = it } ?: prev }
+    val firstKnown = fwd.firstOrNull { it != null } ?: return null
+    return fwd.map { it ?: firstKnown }
+}
+
+/** The chronological-age / Fitness-Age / Rhythm-Age lines over [days] (a shared weekly grid), each paired
+ *  with a legend label. Chronological is always present; the other two only when they have data. */
+private fun buildAgeTrend(
+    days: List<String>,
+    fitnessByDay: Map<String, Double>,
+    rhythmByDay: Map<String, Double>,
+    dobMillis: Long,
+): List<Pair<LineSeries, String>> {
+    if (days.size < 2) return emptyList()
+    val chrono = days.map { chronoAgeYearsAt(it, dobMillis) }
+    if (chrono.any { it == null }) return emptyList()
+    val out = ArrayList<Pair<LineSeries, String>>()
+    out.add(LineSeries(chrono.filterNotNull(), Palette.textTertiary) to "Actual")
+    denseSeriesOnDays(days, fitnessByDay)?.let { out.add(LineSeries(it, Palette.metricCyan) to "Fitness") }
+    denseSeriesOnDays(days, rhythmByDay)?.let { out.add(LineSeries(it, Palette.metricPurple) to "Rhythm") }
+    return out
 }
 
 @Composable
