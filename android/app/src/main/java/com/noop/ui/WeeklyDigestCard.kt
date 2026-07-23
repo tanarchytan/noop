@@ -196,7 +196,7 @@ fun WeeklyDigestContent(digest: WeeklyDigest, compact: Boolean = false) {
         if (!compact) {
             HorizontalDivider(color = Palette.hairline)
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                digest.sleepConsistencySD?.let { sd ->
+                digest.restScoreSD?.let { sd ->
                     Text(
                         "Sleep steadiness: Rest varied ±${fmt1(sd)} pts night to night.",
                         style = NoopType.footnote,

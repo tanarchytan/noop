@@ -14,7 +14,7 @@ import kotlin.math.sqrt
 //   • per-metric this-week stats (mean / median / min / max / SD / OLS slope),
 //   • week-over-week comparison (this week vs the immediately preceding Mon–Sun week),
 //   • a "vs baseline" delta (this-week mean vs the trailing [baselineWeeks] weeks),
-//   • sleep consistency (SD of this week's Rest values; lower = steadier),
+//   • Rest-score steadiness (SD of this week's Rest values; lower = steadier),
 //   • a strain-vs-recovery balance read, the biggest movers, and 1–2 plain-English
 //     focal points.
 //
@@ -174,7 +174,7 @@ data class WeeklyDigest(
     /** Distinct days this week that carried at least one reading. */
     val daysWithData: Int,
     /** SD of this week's Rest values (lower = steadier), or null with < 2 Rest nights. */
-    val sleepConsistencySD: Double?,
+    val restScoreSD: Double?,
     /** Strain-vs-recovery balance read for the week. */
     val balance: BalanceRead,
     /** 1–2 plain-English focal points, most salient first. */
@@ -242,14 +242,14 @@ object WeeklyDigestEngine {
         }
 
         val restStat = summaries.firstOrNull { it.metric == WeeklyMetric.REST }?.thisWeek
-        val restConsistency = if ((restStat?.n ?: 0) >= 2) restStat?.stdev else null
+        val restScoreSD = if ((restStat?.n ?: 0) >= 2) restStat?.stdev else null
 
         val balance = balanceRead(summaries)
-        val focal = focalPoints(summaries, balance, restConsistency, effortDisplayFactor)
+        val focal = focalPoints(summaries, balance, restScoreSD, effortDisplayFactor)
 
         return WeeklyDigest(
             weekStart = monday, weekEnd = sunday, metrics = summaries,
-            daysWithData = daysSeen.size, sleepConsistencySD = restConsistency,
+            daysWithData = daysSeen.size, restScoreSD = restScoreSD,
             balance = balance, focalPoints = focal,
         )
     }
@@ -338,7 +338,7 @@ object WeeklyDigestEngine {
     private fun focalPoints(
         summaries: List<WeeklyMetricSummary>,
         balance: BalanceRead,
-        consistencySD: Double?,
+        restScoreSD: Double?,
         effortDisplayFactor: Double = 1.0,
     ): List<String> {
         val movers = summaries
@@ -381,8 +381,8 @@ object WeeklyDigestEngine {
                     "Last week only had $prevDays $dayWord of data, so week-over-week " +
                         "changes are rough, not a trend.",
                 )
-            } else if (consistencySD != null && consistencySD <= 6.0) {
-                lines.add("A steady week: Rest held even (±${round1(consistencySD)} pts) and nothing moved much.")
+            } else if (restScoreSD != null && restScoreSD <= 6.0) {
+                lines.add("A steady week: Rest held even (±${round1(restScoreSD)} pts) and nothing moved much.")
             } else {
                 lines.add("A steady week: no metric moved meaningfully from last week.")
             }

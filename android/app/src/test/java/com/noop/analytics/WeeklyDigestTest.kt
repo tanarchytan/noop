@@ -108,13 +108,13 @@ class WeeklyDigestTest {
         val vals = listOf(80.0, 82.0, 84.0, 86.0, 88.0, 90.0, 92.0)
         vals.forEachIndexed { i, v -> rest[fmt(8 + i)] = v }
         val d = WeeklyDigestEngine.build(mapOf(WeeklyMetric.REST to rest), "2026-06-10")
-        assertEquals(4.320493798938574, d.sleepConsistencySD!!, 1e-9)
+        assertEquals(4.320493798938574, d.restScoreSD!!, 1e-9)
     }
 
     @Test fun sleepConsistencyNullWithOneNight() {
         val rest = mapOf("2026-06-08" to 85.0)
         val d = WeeklyDigestEngine.build(mapOf(WeeklyMetric.REST to rest), "2026-06-10")
-        assertNull(d.sleepConsistencySD)
+        assertNull(d.restScoreSD)
     }
 
     // MARK: - Balance read
