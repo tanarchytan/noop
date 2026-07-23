@@ -674,10 +674,9 @@ private fun VitalitySection(vm: AppViewModel, days: List<DailyMetric>, profile: 
     }
 }
 
-/** Circadian Rhythm Age: a weekly relative body-clock age (years) from the rest-activity cosinor + the
- * Gompertz transform (whoop-rs), read from metricSeries. A wellness estimate from your motion rhythm,
- * relative until calibrated , NOT a clinical age. Below the headline, a time-series chart tracks your
- * chronological (actual) age, Fitness Age and Rhythm Age together over time. Hidden until a value exists. */
+/** Circadian Rhythm Age: a relative body-clock age (years) from the rest-activity cosinor + biological-age
+ * transform, read from metricSeries; below it a chart tracks chronological, Fitness and Rhythm age over
+ * time. A wellness estimate, not a clinical age. Hidden until a value exists. */
 @Composable
 private fun RhythmAgeSection(vm: AppViewModel, days: List<DailyMetric>, profile: ProfileStore) {
     var rhythmAge by remember { mutableStateOf<Double?>(null) }
@@ -756,13 +755,17 @@ private fun buildAgeTrend(
     rhythmByDay: Map<String, Double>,
     dobMillis: Long,
 ): List<Pair<LineSeries, String>> {
-    if (days.size < 2) return emptyList()
-    val chrono = days.map { chronoAgeYearsAt(it, dobMillis) }
+    // Span only the period Rhythm Age actually covers, so no line is drawn flat across never-measured
+    // history; all three series share this window so they stay index-aligned in the chart.
+    val firstRhythmDay = rhythmByDay.keys.minOrNull() ?: return emptyList()
+    val window = days.filter { it >= firstRhythmDay }
+    if (window.size < 2) return emptyList()
+    val chrono = window.map { chronoAgeYearsAt(it, dobMillis) }
     if (chrono.any { it == null }) return emptyList()
     val out = ArrayList<Pair<LineSeries, String>>()
     out.add(LineSeries(chrono.filterNotNull(), Palette.textTertiary) to "Actual")
-    denseSeriesOnDays(days, fitnessByDay)?.let { out.add(LineSeries(it, Palette.metricCyan) to "Fitness") }
-    denseSeriesOnDays(days, rhythmByDay)?.let { out.add(LineSeries(it, Palette.metricPurple) to "Rhythm") }
+    denseSeriesOnDays(window, fitnessByDay)?.let { out.add(LineSeries(it, Palette.metricCyan) to "Fitness") }
+    denseSeriesOnDays(window, rhythmByDay)?.let { out.add(LineSeries(it, Palette.metricPurple) to "Rhythm") }
     return out
 }
 

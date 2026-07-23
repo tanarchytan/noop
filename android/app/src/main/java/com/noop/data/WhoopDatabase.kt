@@ -625,7 +625,7 @@ abstract class WhoopDatabase : RoomDatabase() {
          * vector; the circadian / CosinorAge activity signal. Nullable so existing rows migrate untouched;
          * the SQL must match Room's generated schema for a `Double?` column exactly (REAL, no NOT NULL, no
          * default). The upstream catch-all still targets v100, so any pre-v100 schema lands at 100 then
-         * chains here. Guarded by MigrationRoundTripTest.
+         * chains here. The 100->101 pair is exercised by DataBackupMigrationTest.planPath.
          */
         internal val MIGRATION_100_101 = object : Migration(100, 101) {
             override fun migrate(db: SupportSQLiteDatabase) {

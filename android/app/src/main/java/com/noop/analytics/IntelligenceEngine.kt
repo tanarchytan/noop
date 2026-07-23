@@ -1026,11 +1026,9 @@ object IntelligenceEngine {
                 MetricSeriesRow(deviceId = computedId, day = satKey, key = "body_age", value = vRes.bodyAge)))
         }
 
-        // ── Circadian Rhythm Age (Phase 7, EXPERIMENTAL) , weekly, keyed to the week's Saturday ──
-        // Pool the trailing 14 days' per-hour on-chip motion (gravitySample.dynAccelG) into a rest-activity
-        // cosinor, then the Gompertz biological-age transform (whoop-rs), for a RELATIVE circadian Rhythm Age.
-        // Runs here in the post-nightly pass; owner-resolved per day like the steps calibration. Empty until
-        // @41 has banked (WHOOP 4.0 / pre-migration history) , then rhythmAge returns null and nothing persists.
+        // Circadian Rhythm Age, weekly, keyed to the week's Saturday: pool the trailing 14 days' per-hour
+        // on-chip motion (gravitySample.dynAccelG) into the rest-activity cosinor + biological-age transform.
+        // Owner-resolved per day; needs >= 7 worn days of motion, else nothing persists.
         if (profile.age > 0) {
             val rhythmSamples = ArrayList<com.noop.data.GravitySample>()
             for (off in 0 until 14) {
@@ -1040,17 +1038,21 @@ object IntelligenceEngine {
                 val owner = resolveDayOwner(repo, ownerSource, candidatePriorities, dayKey, dayMid, dayEnd, importedDeviceId)
                 rhythmSamples += repo.gravitySamples(owner, dayMid, dayEnd, STREAM_LIMIT)
             }
-            val sexInput = when (profile.sex.lowercase(java.util.Locale.US)) {
-                "male" -> uniffi.whoop_ffi.SexInput.MALE
-                "female" -> uniffi.whoop_ffi.SexInput.FEMALE
-                else -> uniffi.whoop_ffi.SexInput.UNKNOWN
-            }
             val activitySamples = rhythmSamples.mapNotNull { s ->
                 s.dynAccelG?.let { uniffi.whoop_ffi.ActivitySample(s.ts, it) }
             }
-            RustScores.rhythmAge(activitySamples, tzOffsetSeconds, profile.age, sexInput)?.let { ra ->
-                repo.upsertMetricSeries(listOf(MetricSeriesRow(deviceId = computedId,
-                    day = saturdayKeyOnOrBefore(newestDay), key = "rhythm_age", value = ra.cosinorAgeYears)))
+            // A day or two of data fits a spurious rhythm, so require >= 7 distinct worn days first.
+            val wornDays = activitySamples.map { (it.unix + tzOffsetSeconds) / SECONDS_PER_DAY }.distinct().size
+            if (wornDays >= 7) {
+                val sexInput = when (profile.sex.lowercase(java.util.Locale.US)) {
+                    "male" -> uniffi.whoop_ffi.SexInput.MALE
+                    "female" -> uniffi.whoop_ffi.SexInput.FEMALE
+                    else -> uniffi.whoop_ffi.SexInput.UNKNOWN
+                }
+                RustScores.rhythmAge(activitySamples, tzOffsetSeconds, profile.age, sexInput)?.let { ra ->
+                    repo.upsertMetricSeries(listOf(MetricSeriesRow(deviceId = computedId,
+                        day = saturdayKeyOnOrBefore(newestDay), key = "rhythm_age", value = ra.cosinorAgeYears)))
+                }
             }
         }
 

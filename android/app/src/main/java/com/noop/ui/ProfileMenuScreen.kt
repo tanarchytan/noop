@@ -83,13 +83,10 @@ fun ProfileMenuScreen(vm: AppViewModel) {
 
     val scope = rememberCoroutineScope()
 
-    // Wheel-picker option lists for age / weight / height (mirrors the onboarding ProfileStep). The stored
-    // profile stays SI; the weight/height labels re-format per the live unit system and the picker maps the
-    // chosen index back to SI on select. Age is 13..100 (matches setAge's clamp).
-    val ageSteps = remember { (13..100).toList() }
+    // Wheel-picker option lists for weight / height. The stored profile stays SI; the labels re-format per
+    // the live unit system and the picker maps the chosen index back to SI on select.
     val weightSteps = remember { generateSequence(30.0) { it + 0.5 }.takeWhile { it <= 250.0001 }.toList() }
     val heightSteps = remember { (120..230).toList() }
-    val ageOptions = remember { ageSteps.map { "$it" } }
     val weightOptions = remember(unitSystem) { weightSteps.map { UnitFormatter.massFromKilograms(it, unitSystem) } }
     val heightOptions = remember(unitSystem) { heightSteps.map { UnitFormatter.heightFromCentimeters(it.toDouble(), unitSystem) } }
 
