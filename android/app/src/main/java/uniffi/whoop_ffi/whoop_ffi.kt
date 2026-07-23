@@ -687,6 +687,8 @@ internal object IntegrityCheckingUniffiLib {
     ): Int
     external fun uniffi_whoop_ffi_checksum_func_calories_estimate_day(
     ): Int
+    external fun uniffi_whoop_ffi_checksum_func_circadian_phase(
+    ): Int
     external fun uniffi_whoop_ffi_checksum_func_daily_resting_hr(
     ): Int
     external fun uniffi_whoop_ffi_checksum_func_daily_stress(
@@ -741,6 +743,8 @@ internal object IntegrityCheckingUniffiLib {
     ): Int
     external fun uniffi_whoop_ffi_checksum_func_nightly_spo2_raw_means(
     ): Int
+    external fun uniffi_whoop_ffi_checksum_func_personal_sleep_need_hours(
+    ): Int
     external fun uniffi_whoop_ffi_checksum_func_ppg_hr(
     ): Int
     external fun uniffi_whoop_ffi_checksum_func_recovery_band(
@@ -754,6 +758,8 @@ internal object IntegrityCheckingUniffiLib {
     external fun uniffi_whoop_ffi_checksum_func_resp_rate_from_rr(
     ): Int
     external fun uniffi_whoop_ffi_checksum_func_rest_score(
+    ): Int
+    external fun uniffi_whoop_ffi_checksum_func_rhythm_age_from_bins(
     ): Int
     external fun uniffi_whoop_ffi_checksum_func_session_resting_hr(
     ): Int
@@ -939,6 +945,8 @@ internal object UniffiLib {
     ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_func_calories_estimate_day(`hr`: RustBuffer.ByValue,`weightKg`: Double,`heightCm`: Double,`age`: Double,`sex`: RustBuffer.ByValue,`hrmax`: Double,`restingHr`: Double,uniffi_out_err: UniffiRustCallStatus, 
     ): Double
+    external fun uniffi_whoop_ffi_fn_func_circadian_phase(`bins`: RustBuffer.ByValue,`daysObserved`: Int,`habitualWakeHour`: Double,`observedTempMinHour`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_func_daily_resting_hr(`sessionFloors`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_func_daily_stress(`today`: RustBuffer.ByValue,`baseline`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
@@ -993,6 +1001,8 @@ internal object UniffiLib {
     ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_func_nightly_spo2_raw_means(`spans`: RustBuffer.ByValue,`samples`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
+    external fun uniffi_whoop_ffi_fn_func_personal_sleep_need_hours(`recentAsleepHours`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): Double
     external fun uniffi_whoop_ffi_fn_func_ppg_hr(`samples`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_func_recovery_band(`score`: Double,uniffi_out_err: UniffiRustCallStatus, 
@@ -1006,6 +1016,8 @@ internal object UniffiLib {
     external fun uniffi_whoop_ffi_fn_func_resp_rate_from_rr(`beats`: RustBuffer.ByValue,`start`: Long,`end`: Long,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_func_rest_score(`asleepSeconds`: Double,`efficiency`: Double,`deepSeconds`: Double,`remSeconds`: Double,`sleepNeedHours`: RustBuffer.ByValue,`consistency`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    external fun uniffi_whoop_ffi_fn_func_rhythm_age_from_bins(`bins`: RustBuffer.ByValue,`chronologicalAge`: Double,`sex`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_func_session_resting_hr(`start`: Long,`end`: Long,`hr`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
@@ -1171,6 +1183,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_whoop_ffi_checksum_func_calories_estimate_day() != 38796) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_whoop_ffi_checksum_func_circadian_phase() != 29480) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_whoop_ffi_checksum_func_daily_resting_hr() != 11457) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
@@ -1252,6 +1267,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_whoop_ffi_checksum_func_nightly_spo2_raw_means() != 36193) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_whoop_ffi_checksum_func_personal_sleep_need_hours() != 37855) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_whoop_ffi_checksum_func_ppg_hr() != 31690) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
@@ -1271,6 +1289,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_whoop_ffi_checksum_func_rest_score() != 47618) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_whoop_ffi_checksum_func_rhythm_age_from_bins() != 21487) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_whoop_ffi_checksum_func_session_resting_hr() != 56066) {
@@ -2923,6 +2944,47 @@ public object FfiConverterTypeBaselineStateInfo: FfiConverterRustBuffer<Baseline
 
 
 /**
+ * One per-hour rest-activity bin: local clock hour (0..24) + motion volume.
+ */
+data class CircadianBin (
+    var `hour`: kotlin.Double
+    , 
+    var `activity`: kotlin.Double
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeCircadianBin: FfiConverterRustBuffer<CircadianBin> {
+    override fun read(buf: ByteBuffer): CircadianBin {
+        return CircadianBin(
+            FfiConverterDouble.read(buf),
+            FfiConverterDouble.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: CircadianBin) = (
+            FfiConverterDouble.allocationSize(value.`hour`) +
+            FfiConverterDouble.allocationSize(value.`activity`)
+    )
+
+    override fun write(value: CircadianBin, buf: ByteBuffer) {
+            FfiConverterDouble.write(value.`hour`, buf)
+            FfiConverterDouble.write(value.`activity`, buf)
+    }
+}
+
+
+
+/**
  * Daytime-stress result: the per-hour scores plus the day mean, peak hour, and the trailing high run.
  */
 data class DaytimeStressInfo (
@@ -3248,6 +3310,8 @@ data class HistorySummary (
     var `signalFlags`: kotlin.UByte?
     , 
     var `signalQuality`: kotlin.UByte?
+    , 
+    var `dynamicAccelerationG`: kotlin.Float?
     
 ){
     
@@ -3280,6 +3344,7 @@ public object FfiConverterTypeHistorySummary: FfiConverterRustBuffer<HistorySumm
             FfiConverterOptionalUByte.read(buf),
             FfiConverterOptionalUByte.read(buf),
             FfiConverterOptionalUByte.read(buf),
+            FfiConverterOptionalFloat.read(buf),
         )
     }
 
@@ -3299,7 +3364,8 @@ public object FfiConverterTypeHistorySummary: FfiConverterRustBuffer<HistorySumm
             FfiConverterOptionalUByte.allocationSize(value.`activityClass`) +
             FfiConverterOptionalUByte.allocationSize(value.`sleepState`) +
             FfiConverterOptionalUByte.allocationSize(value.`signalFlags`) +
-            FfiConverterOptionalUByte.allocationSize(value.`signalQuality`)
+            FfiConverterOptionalUByte.allocationSize(value.`signalQuality`) +
+            FfiConverterOptionalFloat.allocationSize(value.`dynamicAccelerationG`)
     )
 
     override fun write(value: HistorySummary, buf: ByteBuffer) {
@@ -3319,6 +3385,7 @@ public object FfiConverterTypeHistorySummary: FfiConverterRustBuffer<HistorySumm
             FfiConverterOptionalUByte.write(value.`sleepState`, buf)
             FfiConverterOptionalUByte.write(value.`signalFlags`, buf)
             FfiConverterOptionalUByte.write(value.`signalQuality`, buf)
+            FfiConverterOptionalFloat.write(value.`dynamicAccelerationG`, buf)
     }
 }
 
@@ -4360,6 +4427,63 @@ public object FfiConverterTypeOnsetStateInfo: FfiConverterRustBuffer<OnsetStateI
 
 
 /**
+ * A body-clock phase estimate. `confidence` is "unreadable"/"wide"/"solid"; `lean` is
+ * "earlier"/"aligned"/"later" (the app renders the sentence from these).
+ */
+data class PhaseEstimateInfo (
+    var `tempMinHour`: kotlin.Double
+    , 
+    var `acrophaseHours`: kotlin.Double
+    , 
+    var `offsetVsScheduleMinutes`: kotlin.Double
+    , 
+    var `confidence`: kotlin.String
+    , 
+    var `lean`: kotlin.String
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypePhaseEstimateInfo: FfiConverterRustBuffer<PhaseEstimateInfo> {
+    override fun read(buf: ByteBuffer): PhaseEstimateInfo {
+        return PhaseEstimateInfo(
+            FfiConverterDouble.read(buf),
+            FfiConverterDouble.read(buf),
+            FfiConverterDouble.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: PhaseEstimateInfo) = (
+            FfiConverterDouble.allocationSize(value.`tempMinHour`) +
+            FfiConverterDouble.allocationSize(value.`acrophaseHours`) +
+            FfiConverterDouble.allocationSize(value.`offsetVsScheduleMinutes`) +
+            FfiConverterString.allocationSize(value.`confidence`) +
+            FfiConverterString.allocationSize(value.`lean`)
+    )
+
+    override fun write(value: PhaseEstimateInfo, buf: ByteBuffer) {
+            FfiConverterDouble.write(value.`tempMinHour`, buf)
+            FfiConverterDouble.write(value.`acrophaseHours`, buf)
+            FfiConverterDouble.write(value.`offsetVsScheduleMinutes`, buf)
+            FfiConverterString.write(value.`confidence`, buf)
+            FfiConverterString.write(value.`lean`, buf)
+    }
+}
+
+
+
+/**
  * A derived HR estimate from `ppg_hr`.
  */
 data class PpgEstimate (
@@ -4619,6 +4743,67 @@ public object FfiConverterTypeRecoveryDrivers: FfiConverterRustBuffer<RecoveryDr
             FfiConverterOptionalDouble.write(value.`recoveryIndexSlope`, buf)
             FfiConverterOptionalTypeDriverBaselineInfo.write(value.`effortBaseline`, buf)
             FfiConverterOptionalDouble.write(value.`priorDayEffort`, buf)
+    }
+}
+
+
+
+/**
+ * A circadian Rhythm Age result plus the cosinor fit it came from.
+ */
+data class RhythmAgeInfo (
+    var `cosinorAgeYears`: kotlin.Double
+    , 
+    var `advanceYears`: kotlin.Double
+    , 
+    var `mesor`: kotlin.Double
+    , 
+    var `amplitude`: kotlin.Double
+    , 
+    var `acrophaseHours`: kotlin.Double
+    , 
+    var `relativeAmplitude`: kotlin.Double
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeRhythmAgeInfo: FfiConverterRustBuffer<RhythmAgeInfo> {
+    override fun read(buf: ByteBuffer): RhythmAgeInfo {
+        return RhythmAgeInfo(
+            FfiConverterDouble.read(buf),
+            FfiConverterDouble.read(buf),
+            FfiConverterDouble.read(buf),
+            FfiConverterDouble.read(buf),
+            FfiConverterDouble.read(buf),
+            FfiConverterDouble.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: RhythmAgeInfo) = (
+            FfiConverterDouble.allocationSize(value.`cosinorAgeYears`) +
+            FfiConverterDouble.allocationSize(value.`advanceYears`) +
+            FfiConverterDouble.allocationSize(value.`mesor`) +
+            FfiConverterDouble.allocationSize(value.`amplitude`) +
+            FfiConverterDouble.allocationSize(value.`acrophaseHours`) +
+            FfiConverterDouble.allocationSize(value.`relativeAmplitude`)
+    )
+
+    override fun write(value: RhythmAgeInfo, buf: ByteBuffer) {
+            FfiConverterDouble.write(value.`cosinorAgeYears`, buf)
+            FfiConverterDouble.write(value.`advanceYears`, buf)
+            FfiConverterDouble.write(value.`mesor`, buf)
+            FfiConverterDouble.write(value.`amplitude`, buf)
+            FfiConverterDouble.write(value.`acrophaseHours`, buf)
+            FfiConverterDouble.write(value.`relativeAmplitude`, buf)
     }
 }
 
@@ -6515,6 +6700,44 @@ public object FfiConverterTypeResponse : FfiConverterRustBuffer<Response>{
 
 
 /**
+ * Sex selector for the biological-age coefficient set.
+ */
+
+enum class SexInput {
+    
+    FEMALE,
+    MALE,
+    UNKNOWN;
+
+    
+
+
+    companion object
+}
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeSexInput: FfiConverterRustBuffer<SexInput> {
+    override fun read(buf: ByteBuffer) = try {
+        SexInput.values()[buf.getInt() - 1]
+    } catch (e: IndexOutOfBoundsException) {
+        throw RuntimeException("invalid enum value, something is very wrong!!", e)
+    }
+
+    override fun allocationSize(value: SexInput) = 4UL
+
+    override fun write(value: SexInput, buf: ByteBuffer) {
+        buf.putInt(value.ordinal + 1)
+    }
+}
+
+
+
+
+
+/**
  * A staged sleep stage. String forms are `"wake" | "light" | "deep" | "rem"` for cross-platform parity.
  */
 
@@ -7523,6 +7746,38 @@ public object FfiConverterOptionalTypeNapCandidateInfo: FfiConverterRustBuffer<N
 /**
  * @suppress
  */
+public object FfiConverterOptionalTypePhaseEstimateInfo: FfiConverterRustBuffer<PhaseEstimateInfo?> {
+    override fun read(buf: ByteBuffer): PhaseEstimateInfo? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterTypePhaseEstimateInfo.read(buf)
+    }
+
+    override fun allocationSize(value: PhaseEstimateInfo?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterTypePhaseEstimateInfo.allocationSize(value)
+        }
+    }
+
+    override fun write(value: PhaseEstimateInfo?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterTypePhaseEstimateInfo.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterOptionalTypePpgFrame: FfiConverterRustBuffer<PpgFrame?> {
     override fun read(buf: ByteBuffer): PpgFrame? {
         if (buf.get().toInt() == 0) {
@@ -7545,6 +7800,38 @@ public object FfiConverterOptionalTypePpgFrame: FfiConverterRustBuffer<PpgFrame?
         } else {
             buf.put(1)
             FfiConverterTypePpgFrame.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterOptionalTypeRhythmAgeInfo: FfiConverterRustBuffer<RhythmAgeInfo?> {
+    override fun read(buf: ByteBuffer): RhythmAgeInfo? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterTypeRhythmAgeInfo.read(buf)
+    }
+
+    override fun allocationSize(value: RhythmAgeInfo?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterTypeRhythmAgeInfo.allocationSize(value)
+        }
+    }
+
+    override fun write(value: RhythmAgeInfo?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterTypeRhythmAgeInfo.write(value, buf)
         }
     }
 }
@@ -7961,6 +8248,34 @@ public object FfiConverterSequenceTypeBandStateSample: FfiConverterRustBuffer<Li
         buf.putInt(value.size)
         value.iterator().forEach {
             FfiConverterTypeBandStateSample.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeCircadianBin: FfiConverterRustBuffer<List<CircadianBin>> {
+    override fun read(buf: ByteBuffer): List<CircadianBin> {
+        val len = buf.getInt()
+        return List<CircadianBin>(len) {
+            FfiConverterTypeCircadianBin.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<CircadianBin>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeCircadianBin.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<CircadianBin>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeCircadianBin.write(it, buf)
         }
     }
 }
@@ -8990,6 +9305,24 @@ public object FfiConverterSequenceOptionalDouble: FfiConverterRustBuffer<List<ko
     
 
         /**
+         * Body-clock phase from per-hour activity bins, days observed, habitual wake hour, and an optional
+         * observed skin-temp minimum hour. `None` when the cosinor is degenerate.
+         */ fun `circadianPhase`(`bins`: List<CircadianBin>, `daysObserved`: kotlin.UInt, `habitualWakeHour`: kotlin.Double, `observedTempMinHour`: kotlin.Double?): PhaseEstimateInfo? {
+            return FfiConverterOptionalTypePhaseEstimateInfo.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_func_circadian_phase(
+    
+        
+        FfiConverterSequenceTypeCircadianBin.lower(`bins`),
+        FfiConverterUInt.lower(`daysObserved`),
+        FfiConverterDouble.lower(`habitualWakeHour`),
+        FfiConverterOptionalDouble.lower(`observedTempMinHour`),_status)
+}
+    )
+    }
+    
+
+        /**
          * Daily resting HR = min of the per-session floors.
          */ fun `dailyRestingHr`(`sessionFloors`: List<kotlin.Int?>): kotlin.Int? {
             return FfiConverterOptionalInt.lift(
@@ -9399,6 +9732,21 @@ public object FfiConverterSequenceOptionalDouble: FfiConverterRustBuffer<List<ko
     
 
         /**
+         * Personal sleep need (hours) = mean of recent nightly asleep hours, floored at 7.5. For the Rest
+         * score's sleep-need input.
+         */ fun `personalSleepNeedHours`(`recentAsleepHours`: List<kotlin.Double>): kotlin.Double {
+            return FfiConverterDouble.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_func_personal_sleep_need_hours(
+    
+        
+        FfiConverterSequenceDouble.lower(`recentAsleepHours`),_status)
+}
+    )
+    }
+    
+
+        /**
          * HR from a v26 optical PPG buffer (24 Hz autocorrelation).
          */ fun `ppgHr`(`samples`: List<PpgSample>): List<PpgEstimate> {
             return FfiConverterSequenceTypePpgEstimate.lift(
@@ -9501,6 +9849,24 @@ public object FfiConverterSequenceOptionalDouble: FfiConverterRustBuffer<List<ko
         FfiConverterDouble.lower(`remSeconds`),
         FfiConverterOptionalDouble.lower(`sleepNeedHours`),
         FfiConverterOptionalDouble.lower(`consistency`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Circadian Rhythm Age from per-hour activity bins + chronological age + sex: a single-component cosinor
+         * then the Gompertz biological-age transform. `None` when the fit is degenerate (< 3 bins). v1 is a
+         * RELATIVE index; the activity scale is not calibrated to the model's mg-ENMO training units.
+         */ fun `rhythmAgeFromBins`(`bins`: List<CircadianBin>, `chronologicalAge`: kotlin.Double, `sex`: SexInput): RhythmAgeInfo? {
+            return FfiConverterOptionalTypeRhythmAgeInfo.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_func_rhythm_age_from_bins(
+    
+        
+        FfiConverterSequenceTypeCircadianBin.lower(`bins`),
+        FfiConverterDouble.lower(`chronologicalAge`),
+        FfiConverterTypeSexInput.lower(`sex`),_status)
 }
     )
     }
