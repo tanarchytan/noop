@@ -207,6 +207,7 @@ fun HealthScreen(
             item { Spacer(Modifier.height(Metrics.selectorTopUp)) }
             item { FitnessAgeSection(vm = vm, days = days, profile = profile) }
             item { VitalitySection(vm = vm, days = days, profile = profile) }
+            item { RhythmAgeSection(vm = vm, days = days, profile = profile) }
  // SKIN TEMPERATURE (v5 pillar) — Cycle awareness (opt-in), Body clock + an illness heads-up,
  // each from a pure engine RESULT the ViewModel publishes. A section of Health, never its own
  // destination (umbrella §2.4). Non-clinical observations about your own numbers.
@@ -669,6 +670,46 @@ private fun VitalitySection(vm: AppViewModel, days: List<DailyMetric>, profile: 
         Column(verticalArrangement = Arrangement.spacedBy(Metrics.gap)) {
             SectionHeader("Vitality", overline = "Weekly", trailing = "Body Age ${ba.roundToInt()}")
             VitalityHero(vitality = v, bodyAge = ba, chronoAge = profile.age, contributions = contributions)
+        }
+    }
+}
+
+/** Circadian Rhythm Age: a weekly relative body-clock age (years) from the rest-activity cosinor + the
+ * Gompertz transform (whoop-rs), read from metricSeries. A wellness estimate from your motion rhythm,
+ * relative until calibrated , NOT a clinical age. Hidden until a weekly value exists. */
+@Composable
+private fun RhythmAgeSection(vm: AppViewModel, days: List<DailyMetric>, profile: ProfileStore) {
+    var rhythmAge by remember { mutableStateOf<Double?>(null) }
+    LaunchedEffect(days) {
+        rhythmAge = runCatching {
+            vm.repo.latestMetricComputedUnion(vm.activeStrapId, "rhythm_age")?.value
+        }.getOrNull()
+    }
+    val value = rhythmAge ?: return
+    val chrono = profile.age
+    val delta = chrono - value.roundToInt()
+    Column(verticalArrangement = Arrangement.spacedBy(Metrics.gap)) {
+        SectionHeader("Rhythm Age", overline = "Weekly", trailing = "relative")
+        LiquidHeroCard {
+            Column(verticalArrangement = Arrangement.spacedBy(Metrics.space12)) {
+                Overline("Body clock")
+                CountUpText(
+                    value = value,
+                    format = { it.roundToInt().toString() },
+                    style = NoopType.number(34f),
+                    color = Palette.textPrimary,
+                )
+                Text(
+                    when {
+                        chrono <= 0 -> "years, from your circadian rhythm"
+                        delta == 0 -> "about your age, from your circadian rhythm"
+                        else -> "${kotlin.math.abs(delta)} ${yearWord(delta)} " +
+                            "${if (value < chrono) "younger" else "older"} than your age, from your circadian rhythm"
+                    },
+                    style = NoopType.footnote,
+                    color = Palette.textTertiary,
+                )
+            }
         }
     }
 }
