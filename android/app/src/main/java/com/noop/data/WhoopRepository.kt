@@ -122,7 +122,7 @@ data class StepRow(val ts: Long, val counter: Int, val activityClass: Int? = nul
  */
 data class SleepStateRow(val ts: Long, val state: Int)
 data class RespRow(val ts: Long, val raw: Int)
-data class GravityRow(val ts: Long, val x: Double, val y: Double, val z: Double)
+data class GravityRow(val ts: Long, val x: Double, val y: Double, val z: Double, val dynAccelG: Double? = null)
 /** HR derived from the v26 PPG waveform: [ts] window-centre sec, [bpm], [conf] in 0…1. (#156) */
 data class PpgHrRow(val ts: Long, val bpm: Int, val conf: Double)
 /**
@@ -262,7 +262,7 @@ class WhoopRepository(private val dao: WhoopDao) {
         val respIds = if (streams.resp.isEmpty()) emptyList() else
             dao.insertResp(streams.resp.map { RespSample(deviceId, it.ts, it.raw) })
         val gravIds = if (streams.gravity.isEmpty()) emptyList() else
-            dao.insertGravity(streams.gravity.map { GravitySample(deviceId, it.ts, it.x, it.y, it.z) })
+            dao.insertGravity(streams.gravity.map { GravitySample(deviceId, it.ts, it.x, it.y, it.z, dynAccelG = it.dynAccelG) })
         // v26 PPG-derived HR (#156). Idempotent by (deviceId, ts); counted into InsertCounts.hr so the
         // backfill "persisted N" summary reflects HR recovered from the optical waveform too.
         val ppgHrIds = if (streams.ppgHr.isEmpty()) emptyList() else

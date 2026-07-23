@@ -82,7 +82,7 @@ class DataBackupMigrationTest {
 
     @Test
     fun readUserVersion_roundTripsAppVersions() {
-        for (v in listOf(2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 100)) {
+        for (v in listOf(2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 100, 101)) {
             assertEquals("schema version $v", v, DataBackup.readUserVersion(sqliteHeaderFile(v)))
         }
     }
@@ -115,25 +115,34 @@ class DataBackupMigrationTest {
     // ── planMigrationPath (greedy longest-jump, catch-all aware) ──────────────
 
     private val migrations = WhoopDatabase.ALL_MIGRATIONS
-    private val target = WhoopDatabase.SCHEMA_VERSION // 100 (v1-tan)
+    private val target = WhoopDatabase.SCHEMA_VERSION // 101 (v1-tan)
 
     private fun path(from: Int) = DataBackup.planMigrationPath(from, target, migrations)
 
     @Test
-    fun planPath_upstreamV20_stepsToV22ThenLeapsToTarget() {
-        // v20 has only the individual 20->21, 21->22; at 22 the catch-all jumps straight to 100.
+    fun planPath_upstreamV20_stepsToV22ThenLeapsToTanThenTarget() {
+        // v20 steps 20->21, 21->22; at 22 the catch-all jumps to v100 (v1-tan), then 100->101 adds dynAccelG.
         val p = path(20)
         assertNull(p.error)
-        assertEquals(listOf(20 to 21, 21 to 22, 22 to target), p.path!!.map { it.startVersion to it.endVersion })
+        assertEquals(listOf(20 to 21, 21 to 22, 22 to 100, 100 to target), p.path!!.map { it.startVersion to it.endVersion })
     }
 
     @Test
-    fun planPath_catchAllVersions_leapDirectlyToTarget() {
+    fun planPath_catchAllVersions_leapToTanThenStepToTarget() {
+        // Each upstream v22..99 leaps to v100 (v1-tan) via the catch-all, then 100->101 adds dynAccelG.
         for (v in listOf(22, 50, 99)) {
             val p = path(v)
             assertNull("v$v", p.error)
-            assertEquals("v$v", listOf(v to target), p.path!!.map { it.startVersion to it.endVersion })
+            assertEquals("v$v", listOf(v to 100, 100 to target), p.path!!.map { it.startVersion to it.endVersion })
         }
+    }
+
+    @Test
+    fun planPath_v100_singleStepToV101() {
+        // A current v1-tan (v100) backup gains gravitySample.dynAccelG via the single 100->101 step.
+        val p = path(100)
+        assertNull(p.error)
+        assertEquals(listOf(100 to target), p.path!!.map { it.startVersion to it.endVersion })
     }
 
     @Test

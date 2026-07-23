@@ -27,6 +27,7 @@ class RustAdapterTest {
         steps: Int? = null,
         activityClass: Int? = null,
         sleepState: Int? = null,
+        dynamicAccelerationG: Float? = null,
     ) = HistorySummary(
         version = 18.toUByte(),
         unix = 1_784_000_000u,
@@ -44,9 +45,17 @@ class RustAdapterTest {
         sleepState = sleepState?.toUByte(),
         signalFlags = null,
         signalQuality = null,
+        dynamicAccelerationG = dynamicAccelerationG,
     )
 
     // ---- PRIMARY seam: HistorySummary → the flat map keys the offload loop reads (no native lib) --------
+
+    @Test
+    fun `summaryToHistMap emits dynamic_acceleration_g only when present`() {
+        val present = RustAdapter.summaryToHistMap(summary(dynamicAccelerationG = 0.014f))
+        assertEquals(0.014, present["dynamic_acceleration_g"] as Double, 1e-6)
+        assertEquals(false, RustAdapter.summaryToHistMap(summary()).containsKey("dynamic_acceleration_g"))
+    }
 
     @Test
     fun `summaryToHistMap emits the storing-loop keys, rr zeros dropped, gravity widened`() {

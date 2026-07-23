@@ -50,6 +50,7 @@ object RustAdapter {
                 m["gravity_x"] = g[0].toDouble(); m["gravity_y"] = g[1].toDouble(); m["gravity_z"] = g[2].toDouble()
             }
         }
+        s.dynamicAccelerationG?.let { m["dynamic_acceleration_g"] = it.toDouble() }
         return m
     }
 

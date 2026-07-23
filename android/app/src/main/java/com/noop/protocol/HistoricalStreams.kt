@@ -361,6 +361,7 @@ fun extractHistoricalStreams(
                             x = gx,
                             y = p.doubleOrNull("gravity_y") ?: 0.0,
                             z = p.doubleOrNull("gravity_z") ?: 0.0,
+                            dynAccelG = p.doubleOrNull("dynamic_acceleration_g"),
                         ),
                     )
                 }

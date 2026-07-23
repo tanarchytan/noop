@@ -224,6 +224,9 @@ data class GravitySample(
     val y: Double,
     val z: Double,
     val synced: Int = 0,
+    // 5.0/MG v18 on-chip gravity-removed motion magnitude (g), same (deviceId, ts) as the gravity vector.
+    // The circadian / CosinorAge activity signal. Nullable: absent on 4.0 and on older banked rows.
+    val dynAccelG: Double? = null,
 )
 
 /**
