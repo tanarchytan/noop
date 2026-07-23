@@ -868,9 +868,20 @@ object IntelligenceEngine {
                 // though their sports differ , the #975 "two workouts, one vanished" seam. Name the collider.
                 val collider = realWorkouts.firstOrNull { w -> s.start < w.endTs && w.startTs < s.end }
                 if (collider != null) {
+                    // The detected bout's own avgHR/calories/maxHR/strain come from the SAME motion+HR
+                    // trace the detector used to find this activity's real boundaries, often a tighter
+                    // match than a manual row's typed [startTs,endTs] (whose guessed window can clip the
+                    // HR-rich period and leave the strap-HR fill too thin). Backfill only the fields the
+                    // colliding row lacks, keyed the same, so the upsert updates it in place.
+                    val backfilled = backfillWorkoutFromDetectedBout(
+                        collider, avgBpm = avgBpm, peakHR = s.peakHR, caloriesKcal = s.caloriesKcal, strain = s.strain,
+                    )
+                    val didBackfill = backfilled != collider
+                    if (didBackfill) workoutRows.add(backfilled)
                     workoutsTraceSink?.invoke(
                         WorkoutsTrace.detectedBoutLine(
-                            verdict = "droppedOverlap", durMin = durMin, avgBpm = avgBpm,
+                            verdict = if (didBackfill) "droppedOverlapBackfilled" else "droppedOverlap",
+                            durMin = durMin, avgBpm = avgBpm,
                             overlapSource = colliderSourceLabel(collider.source),
                         ),
                     )
@@ -1199,6 +1210,25 @@ object IntelligenceEngine {
             else -> "apple"
         }
     }
+
+    /**
+     * Backfill ONLY the avgHr/maxHr/energyKcal/strain fields [real] doesn't already have, from a
+     * detected bout's own computed values, never touching a field already present (user-typed,
+     * imported, or filled by an earlier pass). Returns [real] unchanged (==) when it already had
+     * everything, so the caller can tell whether a write is actually needed.
+     */
+    internal fun backfillWorkoutFromDetectedBout(
+        real: WorkoutRow,
+        avgBpm: Int,
+        peakHR: Int,
+        caloriesKcal: Double?,
+        strain: Double?,
+    ): WorkoutRow = real.copy(
+        avgHr = real.avgHr ?: avgBpm,
+        maxHr = real.maxHr ?: peakHR,
+        energyKcal = real.energyKcal ?: caloriesKcal,
+        strain = real.strain ?: strain,
+    )
 
     /**
      * #137: re-score under-sampled manual workouts. Conservative + idempotent: only `manual` rows that
