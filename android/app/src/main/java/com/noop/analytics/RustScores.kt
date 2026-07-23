@@ -403,4 +403,25 @@ internal object RustScores {
             },
         )
     }
+
+    /** Body-clock phase from per-hour activity bins + the habitual wake hour; null when the fit is degenerate. */
+    fun circadianPhase(
+        bins: List<uniffi.whoop_ffi.CircadianBin>,
+        daysObserved: Int,
+        habitualWakeHour: Double,
+        observedTempMinHour: Double?,
+    ): uniffi.whoop_ffi.PhaseEstimateInfo? =
+        uniffi.whoop_ffi.circadianPhase(bins, daysObserved.toUInt(), habitualWakeHour, observedTempMinHour)
+
+    /** Circadian Rhythm Age (relative) from per-hour activity bins + chronological age + sex. */
+    fun rhythmAge(
+        bins: List<uniffi.whoop_ffi.CircadianBin>,
+        chronologicalAge: Double,
+        sex: uniffi.whoop_ffi.SexInput,
+    ): uniffi.whoop_ffi.RhythmAgeInfo? =
+        uniffi.whoop_ffi.rhythmAgeFromBins(bins, chronologicalAge, sex)
+
+    /** Personal sleep need (hours) = mean of recent nightly asleep hours, floored at 7.5. For the Rest score. */
+    fun personalSleepNeedHours(recentAsleepHours: List<Double>): Double =
+        uniffi.whoop_ffi.personalSleepNeedHours(recentAsleepHours)
 }
