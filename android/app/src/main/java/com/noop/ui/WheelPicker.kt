@@ -88,6 +88,60 @@ fun WheelPickerField(
     }
 }
 
+/** A tappable field showing the birthday (from [dobMillis]) that opens the platform date picker, capped at
+ *  today. Committing a date calls [onPick] with the chosen day's start-of-day epoch millis, so age derives
+ *  from a real date of birth (fractional, advancing continuously) rather than a whole-year anchor. */
+@Composable
+fun BirthdayPickerField(
+    dobMillis: Long,
+    accessibility: String,
+    onPick: (Long) -> Unit,
+) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val zone = java.time.ZoneId.systemDefault()
+    var open by remember { mutableStateOf(false) }
+    val label = remember(dobMillis) {
+        java.time.Instant.ofEpochMilli(dobMillis).atZone(zone).toLocalDate()
+            .format(java.time.format.DateTimeFormatter.ofPattern("d MMM yyyy", java.util.Locale.getDefault()))
+    }
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = Modifier
+            .clip(RoundedCornerShape(8.dp))
+            .clickable { open = true }
+            .semantics { contentDescription = "$accessibility. Tap to choose." },
+    ) {
+        Text(label, style = NoopType.bodyNumber, color = Palette.textPrimary)
+        Icon(
+            Icons.Filled.KeyboardArrowDown,
+            contentDescription = null,
+            tint = Palette.textTertiary,
+            modifier = Modifier.size(18.dp),
+        )
+    }
+    if (open) {
+        androidx.compose.runtime.DisposableEffect(Unit) {
+            val cal = java.util.Calendar.getInstance().apply { timeInMillis = dobMillis }
+            val dialog = android.app.DatePickerDialog(
+                context,
+                { _, y, m, d ->
+                    onPick(java.time.LocalDate.of(y, m + 1, d).atStartOfDay(zone).toInstant().toEpochMilli())
+                    open = false
+                },
+                cal.get(java.util.Calendar.YEAR),
+                cal.get(java.util.Calendar.MONTH),
+                cal.get(java.util.Calendar.DAY_OF_MONTH),
+            ).apply {
+                datePicker.maxDate = System.currentTimeMillis()
+                setOnDismissListener { open = false }
+            }
+            dialog.show()
+            onDispose { runCatching { dialog.dismiss() } }
+        }
+    }
+}
+
 /** The pick popup: a snap wheel over [options] with Cancel / Done. Committing calls [onConfirm]. */
 @Composable
 private fun WheelPickerDialog(

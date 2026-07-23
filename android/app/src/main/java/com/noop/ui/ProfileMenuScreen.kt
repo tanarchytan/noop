@@ -181,16 +181,11 @@ fun ProfileMenuScreen(vm: AppViewModel) {
             blurb = "These power your heart-rate zones, calorie estimates and recovery baselines. Keep them accurate.",
         ) {
             Column {
-                FormRow(label = "Age") {
-                    WheelPickerField(
-                        value = "${profile.age}",
-                        unit = "yrs",
-                        accessibility = "Age, ${profile.age} years",
-                        options = ageOptions,
-                        selectedIndex = ageSteps.indexOf(profile.age).coerceAtLeast(0),
-                        dialogTitle = "Age",
-                        // #146: age derives from a stored date of birth; setAge re-anchors it (clamped 13..100).
-                        onSelected = { mutate { profile.setAge(ageSteps[it]) } },
+                FormRow(label = "Birthday") {
+                    BirthdayPickerField(
+                        dobMillis = profile.dateOfBirthMillis,
+                        accessibility = "Birthday, ${profile.age} years old",
+                        onPick = { mutate { profile.dateOfBirthMillis = it } },
                     )
                 }
                 RowDivider()
