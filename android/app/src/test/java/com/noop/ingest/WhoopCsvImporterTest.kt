@@ -169,6 +169,26 @@ class WhoopCsvImporterTest {
         assertEquals("2026-06-05", entries.single().day)
     }
 
+    /**
+     * A real WHOOP export names this column "Answered yes" (answered_yes), not the "Answered yes/no"
+     * (answered_yes_no) NOOP's own exporter writes. Header + TRUE/FALSE casing are from a real
+     * journal_entries.csv; before the extra key none matched and every answer silently read false.
+     */
+    @Test
+    fun importedJournalReadsRealWhoopAnsweredYesHeader() {
+        val entries = journal(
+            """
+            Cycle start time,Cycle end time,Cycle timezone,Question text,Answered yes,Notes
+            2025-09-14 23:16:59,2025-09-15 23:08:01,UTC+02:00,Have any alcoholic drinks?,TRUE,
+            2025-09-14 23:16:59,2025-09-15 23:08:01,UTC+02:00,Experienced a migraine?,FALSE,
+            """,
+            emptyMap(),
+        )
+        assertEquals(2, entries.size)
+        assertEquals(true, entries[0].answeredYes)
+        assertEquals(false, entries[1].answeredYes)
+    }
+
     // --- Localized (Brazilian Portuguese) headers, issue #692 ---------------------------------
 
     /** Diacritic-folded pt-BR headers land on the canonical English keys (parity with Swift). */

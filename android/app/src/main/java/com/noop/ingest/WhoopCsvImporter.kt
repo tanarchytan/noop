@@ -584,7 +584,10 @@ object WhoopCsvImporter {
             val tz = WhoopTime.tzOffsetMinutes(row["cycle_timezone"])
             val cycleStart = WhoopTime.parseEpochSeconds(row.cell("cycle_start_time"), tz)
             val question = row.cell("question_text", "question")
-            val answer = row.cell("answered_yes_no", "answer", "answer_text")
+            // The real WHOOP export names this column "Answered yes" (answered_yes); NOOP's own
+            // exporter writes "Answered yes/no" (answered_yes_no). Check the real key first, else a
+            // WHOOP journal import silently reads every answer as false.
+            val answer = row.cell("answered_yes", "answered_yes_no", "answer", "answer_text")
             val notes = row.cell("notes")
 
             // Swift: a journal row is only meaningful if it has a question/answer/notes.
