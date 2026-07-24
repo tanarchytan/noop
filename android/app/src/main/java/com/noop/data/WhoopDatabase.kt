@@ -50,7 +50,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         LiveSessionRow::class,
         PpgWaveformSampleEntity::class,
     ],
-    version = 101,
+    version = 100,
     exportSchema = false,
 )
 abstract class WhoopDatabase : RoomDatabase() {
@@ -60,7 +60,7 @@ abstract class WhoopDatabase : RoomDatabase() {
         const val DB_NAME = "noop_whoop.db"
 
         /** Current Room schema version (v1-tan). Must match [Database.version]. */
-        const val SCHEMA_VERSION = 101
+        const val SCHEMA_VERSION = 100
 
         /**
          * Ordered list of all Room migrations, from earliest to latest. Used by
@@ -78,7 +78,6 @@ abstract class WhoopDatabase : RoomDatabase() {
             MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14,
             MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18,
             MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21, MIGRATION_21_22,
-            MIGRATION_100_101,
             ) + UPSTREAM_CATCHALL_MIGRATIONS
         }
 
@@ -620,20 +619,6 @@ abstract class WhoopDatabase : RoomDatabase() {
         }
 
         /**
-         * v100 -> v101 (v1-tan): ADDITIVE, adds `gravitySample.dynAccelG` (nullable REAL) — the 5.0/MG v18
-         * on-chip gravity-removed motion magnitude (g), banked on the SAME (deviceId, ts) as the gravity
-         * vector; the circadian / CosinorAge activity signal. Nullable so existing rows migrate untouched;
-         * the SQL must match Room's generated schema for a `Double?` column exactly (REAL, no NOT NULL, no
-         * default). The upstream catch-all still targets v100, so any pre-v100 schema lands at 100 then
-         * chains here. The 100->101 pair is exercised by DataBackupMigrationTest.planPath.
-         */
-        internal val MIGRATION_100_101 = object : Migration(100, 101) {
-            override fun migrate(db: SupportSQLiteDatabase) {
-                db.execSQL("ALTER TABLE gravitySample ADD COLUMN dynAccelG REAL")
-            }
-        }
-
-        /**
          * Bring any upstream (ryanbr/newwbbss) or unknown schema into the noop-tan shape.
          *
          * Detection uses `spo2PctSample` table — present → already noop-tan, no-op.
@@ -649,6 +634,15 @@ abstract class WhoopDatabase : RoomDatabase() {
             }
             if (!tableExists(db, "ppgWaveformSample")) {
                 for (stmt in PPG_WAVEFORM_MIGRATION_SQL) db.execSQL(stmt)
+            }
+            if (!columnExists(db, "gravitySample", "dynAccelG")) {
+                db.execSQL("ALTER TABLE gravitySample ADD COLUMN dynAccelG REAL")
+            }
+            if (!columnExists(db, "dailyMetric", "sleepNeedHours")) {
+                db.execSQL("ALTER TABLE dailyMetric ADD COLUMN sleepNeedHours REAL")
+            }
+            if (!columnExists(db, "dailyMetric", "sleepConsistency")) {
+                db.execSQL("ALTER TABLE dailyMetric ADD COLUMN sleepConsistency REAL")
             }
         }
 

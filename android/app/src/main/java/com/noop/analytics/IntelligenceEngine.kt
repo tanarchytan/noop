@@ -417,6 +417,16 @@ object IntelligenceEngine {
         val skinAnchorByOwner = HashMap<String, Double>()
         val skinAnchorResolvedOwners = HashSet<String>()
 
+        // Personal Rest inputs from the trailing persisted history (read before the loop overwrites it):
+        // one need + consistency for the whole pass, slowly-varying; sparse history -> engine defaults.
+        val priorSleepHrs = repo.dailyMetrics(
+            computedId,
+            AnalyticsEngine.dayString(nowLocalMidnight - (maxDays - 1) * SECONDS_PER_DAY, tzOffsetSeconds),
+            AnalyticsEngine.dayString(nowLocalMidnight, tzOffsetSeconds),
+        ).sortedBy { it.day }.mapNotNull { it.totalSleepMin }.map { it / 60.0 }.filter { it > 0 }
+        val recentSleepNeed = if (priorSleepHrs.isEmpty()) null else RustScores.personalSleepNeedHours(priorSleepHrs.takeLast(14))
+        val recentConsistency = VitalityEngine.sleepConsistency(priorSleepHrs.takeLast(7))
+
         for (offset in 0 until maxDays) {
             val dayStart = nowLocalMidnight - offset * SECONDS_PER_DAY
             val day = AnalyticsEngine.dayString(dayStart, tzOffsetSeconds)
@@ -554,6 +564,9 @@ object IntelligenceEngine {
                 wristOff = wristOff,
                 habitualMidsleepSec = habitualMidsleepSec,
                 bandSleepState = bandSleepState,
+                // Personal Rest inputs, persisted on the day so restFromDaily recomputes the same score.
+                sleepNeedHours = recentSleepNeed,
+                sleepConsistency = recentConsistency,
                 // Sleep & Rest test mode (Test Centre E5): thread the trace sink straight through. null (the
                 // default) keeps analyzeDay's byte-identical untraced path; when the caller passed a non-null
                 // sink (mode on), detectSleep's gate trace + the Rest sub-score line route to the .sleep-tagged

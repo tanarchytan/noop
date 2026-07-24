@@ -257,6 +257,10 @@ data class DailyMetric(
     // (imports/cloud never carry them), so old rows + non-4.0 nights stay null.
     val spo2Red: Int? = null,           // mean raw red PPG ADC during detected sleep
     val spo2Ir: Int? = null,            // mean raw IR PPG ADC during detected sleep
+    // Persisted Rest inputs so the store-site sleep_performance and every restFromDaily recompute agree:
+    // the personal sleep need (hours) and sleep-consistency [0,1] that fed this day's score.
+    val sleepNeedHours: Double? = null,
+    val sleepConsistency: Double? = null,
 )
 
 /**

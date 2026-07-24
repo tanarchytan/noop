@@ -611,6 +611,9 @@ object AnalyticsEngine {
             activeKcalEst = activeKcalEst,
             spo2Red = nightlySpo2Raw?.first,
             spo2Ir = nightlySpo2Raw?.second,
+            // Persist the Rest inputs so restFromDaily recomputes the same score off the stored row.
+            sleepNeedHours = sleepNeedHours,
+            sleepConsistency = sleepConsistency,
         )
 
         // ── Per-score confidence tiers (mirror Swift ScoreConfidence.derive decisions) ──
@@ -1019,8 +1022,8 @@ object RestScorer {
             efficiency = eff,
             deepSeconds = (daily.deepMin ?: 0.0) * 60.0,
             remSeconds = (daily.remMin ?: 0.0) * 60.0,
-            sleepNeedHours = null,
-            consistency = consistency,
+            sleepNeedHours = daily.sleepNeedHours,
+            consistency = daily.sleepConsistency ?: consistency,
         )
     }
 }
