@@ -40,9 +40,41 @@ class RecoveryScorerTraceTest {
         assertTrue(lines.any { it.contains("charge term resp ") })
         assertTrue(lines.any { it.contains("charge term sleepPerf ") })
         assertTrue(lines.any { it.contains("charge term skinTempDev ") })
-        assertTrue(lines.any { it.contains("nilTerm dropped=[]") })
+        // The two Oura terms (recovery-index slope + prior-day effort) are not supplied here, so they
+        // drop; none of the five classic supplied terms do.
+        val nilLine = lines.first { it.contains("nilTerm dropped=") }
+        assertTrue(nilLine.contains("recoveryIndex"))
+        assertTrue(nilLine.contains("activityBalance"))
+        listOf("hrv", "rhr", "resp", "sleepPerf", "skinTempDev").forEach {
+            assertFalse("supplied term $it must not appear in the dropped list", nilLine.contains(it))
+        }
         assertTrue(lines.any { it.startsWith("charge score=") && it.contains("band=") })
         assertFalse(lines.any { it.contains("\u2014") })
+    }
+
+    @Test fun traceIncludesTheOuraTermsWhenSupplied() {
+        val hrvB = baseline(50.0, 6.0)
+        val rhrB = baseline(55.0, 3.0)
+        val effB = baseline(40.0, 15.0)
+        val plain = RustScores.recovery(
+            hrv = 55.0, rhr = 52.0, resp = null,
+            hrvBaseline = hrvB, rhrBaseline = rhrB, respBaseline = null,
+            sleepPerf = 0.9, skinTempDev = null,
+            recoveryIndexSlope = -3.0, effortBaseline = effB, priorDayEffort = 70.0,
+        )
+        val (traced, lines) = RecoveryScorerTrace.recoveryTrace(
+            hrv = 55.0, rhr = 52.0, resp = null,
+            hrvBaseline = hrvB, rhrBaseline = rhrB, respBaseline = null,
+            sleepPerf = 0.9, skinTempDev = null,
+            recoveryIndexSlope = -3.0, effortBaseline = effB, priorDayEffort = 70.0,
+        )
+        assertEquals(plain, traced)
+        assertTrue(lines.any { it.contains("charge term recoveryIndex ") })
+        assertTrue(lines.any { it.contains("charge term activityBalance ") })
+        // Both terms are supplied, so neither may appear in the dropped list.
+        val nilLine = lines.first { it.contains("nilTerm dropped=") }
+        assertFalse(nilLine.contains("recoveryIndex"))
+        assertFalse(nilLine.contains("activityBalance"))
     }
 
     @Test fun traceNamesTheNilTermThatForcedRenorm() {

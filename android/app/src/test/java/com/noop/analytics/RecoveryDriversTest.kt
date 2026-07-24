@@ -99,6 +99,40 @@ class RecoveryDriversTest {
         assertTrue(skin.deltaPoints <= 0)
     }
 
+    @Test fun recoveryIndexAndActivityBalanceRowsAppearWhenSupplied() {
+        val drivers = RecoveryDrivers.chargeDrivers(
+            hrv = 55.0, rhr = 55.0, resp = null,
+            hrvBaseline = baseline(50.0, 6.0),
+            rhrBaseline = baseline(55.0, 3.0),
+            respBaseline = null, sleepPerf = 0.85, skinTempDev = null,
+            recoveryIndexSlope = -3.0,                 // declining overnight -> supports recovery
+            effortBaseline = baseline(40.0, 15.0),
+            priorDayEffort = 75.0,                     // a hard day yesterday -> limits recovery
+        )
+        val ri = drivers.first { it.label == "Recovery index" }
+        val ab = drivers.first { it.label == "Activity balance" }
+        assertTrue("a declining overnight HR should lift Charge", ri.deltaPoints > 0)
+        assertTrue(ri.verdict.contains("supporting recovery"))
+        assertTrue("a harder-than-normal day yesterday should pull Charge down", ab.deltaPoints < 0)
+        assertTrue(ab.verdict.contains("limiting recovery"))
+    }
+
+    @Test fun ouraTermsDropTheirRowsWhenInputMissing() {
+        // Slope null -> no Recovery index row; effort value present but its baseline null -> no Activity
+        // balance row (needs BOTH), matching recovery(...)'s drop discipline.
+        val drivers = RecoveryDrivers.chargeDrivers(
+            hrv = 55.0, rhr = 55.0, resp = null,
+            hrvBaseline = baseline(50.0, 6.0),
+            rhrBaseline = baseline(55.0, 3.0),
+            respBaseline = null, sleepPerf = 0.85, skinTempDev = null,
+            recoveryIndexSlope = null,
+            effortBaseline = null, priorDayEffort = 75.0,
+        )
+        val labels = drivers.map { it.label }
+        assertFalse(labels.contains("Recovery index"))
+        assertFalse(labels.contains("Activity balance"))
+    }
+
     @Test fun coldStartYieldsEmptyDrivers() {
         val coldHRV = BaselineState(
             baseline = 50.0, spread = 5.0, nValid = 2, nightsSinceUpdate = 0,

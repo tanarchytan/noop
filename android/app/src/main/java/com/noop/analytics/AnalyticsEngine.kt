@@ -212,6 +212,10 @@ object AnalyticsEngine {
         // null (single-day / pure callers with no history) → the term drops and its weight
         // renormalizes, exactly like the recovery driver-drop discipline. (Charge/Effort/Rest)
         sleepConsistency: Double? = null,
+        // The previous day's Effort/strain for the recovery Activity-Balance term, scored against the
+        // effort baseline in [baselines]. null drops the term. IntelligenceEngine threads it; pure
+        // callers leave it null.
+        priorDayEffort: Double? = null,
         // The user's learned habitual midsleep (local time-of-day seconds in [0, 86400)) for the
         // main-night scored pick, so a late/shift sleeper's real night out-scores a daytime nap. null =
         // cold-start: the selector falls back to the broad overnight-band bonus. IntelligenceEngine
@@ -476,6 +480,15 @@ object AnalyticsEngine {
             }
         }
 
+        // Overnight resting-HR decline slope (bpm/hr) across the main-night in-bed window, for the
+        // recovery "Recovery Index" term. Persisted so pass-2 recompute + the driver breakdown read the
+        // same value scored here. null with no main night or too few bins.
+        val recoveryIndexSlope: Double? = run {
+            val s = mainGroup.minOfOrNull { it.start }
+            val e = mainGroup.maxOfOrNull { it.end }
+            if (s != null && e != null) RustScores.recoveryIndexSlope(hr, s, e) else null
+        }
+
         // ── Recovery / Charge ─────────────────────────────────────────────────
         var recovery: Double? = null
         val hrvVal = avgHRVDaily
@@ -493,6 +506,9 @@ object AnalyticsEngine {
                 respBaseline = baselines.resp,
                 sleepPerf = sleepPerf,
                 skinTempDev = skinTempDevC, // symmetric penalty; term drops + renormalizes when null
+                recoveryIndexSlope = recoveryIndexSlope,
+                effortBaseline = baselines.effort, // prior-day Effort baseline; term drops when absent
+                priorDayEffort = priorDayEffort,
             )
         }
 
@@ -614,6 +630,10 @@ object AnalyticsEngine {
             // Persist the Rest inputs so restFromDaily recomputes the same score off the stored row.
             sleepNeedHours = sleepNeedHours,
             sleepConsistency = sleepConsistency,
+            // Persist the recovery Oura-term inputs so pass-2 recompute + the driver breakdown score
+            // against the same slope + prior-day Effort this store site used.
+            recoveryIndexSlope = recoveryIndexSlope,
+            priorDayEffort = priorDayEffort,
         )
 
         // ── Per-score confidence tiers (mirror Swift ScoreConfidence.derive decisions) ──

@@ -261,6 +261,11 @@ data class DailyMetric(
     // the personal sleep need (hours) and sleep-consistency [0,1] that fed this day's score.
     val sleepNeedHours: Double? = null,
     val sleepConsistency: Double? = null,
+    // Persisted recovery inputs so the store-site Charge and every recompute (pass 2, drivers, trace)
+    // agree: the overnight resting-HR decline slope (bpm/hr) and the previous day's Effort/strain that
+    // fed this day's Charge. Null drops the matching term.
+    val recoveryIndexSlope: Double? = null,
+    val priorDayEffort: Double? = null,
 )
 
 /**

@@ -65,6 +65,11 @@ object RecoveryDrivers {
      *   Sleep row.
      * @param skinTempDev tonight's skin-temperature deviation from the personal baseline (raw +/- C);
      *   null drops the Skin temp row. Surfaced as a RELATIVE deviation, never an absolute temperature.
+     * @param recoveryIndexSlope overnight resting-HR decline slope (bpm/hr); null drops the Recovery
+     *   index row. Negative (declining) supports recovery.
+     * @param effortBaseline the personal daily-Effort baseline; null (with [priorDayEffort]) drops the
+     *   Activity balance row.
+     * @param priorDayEffort the previous day's Effort/strain; null drops the Activity balance row.
      */
     fun chargeDrivers(
         hrv: Double,
@@ -75,6 +80,9 @@ object RecoveryDrivers {
         respBaseline: BaselineState?,
         sleepPerf: Double?,
         skinTempDev: Double? = null,
+        recoveryIndexSlope: Double? = null,
+        effortBaseline: BaselineState? = null,
+        priorDayEffort: Double? = null,
     ): List<ChargeDriver> {
         // Cold-start gate: no usable HRV baseline -> no score -> no drivers (honest empty, not faked rows).
         if (!hrvBaseline.usable) return emptyList()
@@ -120,6 +128,22 @@ object RecoveryDrivers {
             val z = -abs(skinTempDev) / RecoveryScorer.skinTempDevScale
             skinIdx = terms.size
             terms.add(Term(z, RecoveryScorer.wSkinTemp))
+        }
+
+        // Recovery-Index term: overnight HR-decline slope; declining (negative) is better.
+        var recoveryIdxIdx = -1
+        if (recoveryIndexSlope != null) {
+            val z = -recoveryIndexSlope / RecoveryScorer.recoveryIndexScaleBpmPerHr
+            recoveryIdxIdx = terms.size
+            terms.add(Term(z, RecoveryScorer.wRecoveryIndex))
+        }
+
+        // Activity-Balance term: previous-day Effort vs baseline; lower is better. Needs BOTH.
+        var effortIdx = -1
+        if (priorDayEffort != null && effortBaseline != null) {
+            val z = RecoveryScorer.zScore(effortBaseline.baseline, priorDayEffort, effortBaseline.spread)
+            effortIdx = terms.size
+            terms.add(Term(z, RecoveryScorer.wActivityBalance))
         }
 
         // The actual score, EXACTLY as recovery(...) computes it (so the rows can't disagree with the ring).
@@ -198,6 +222,38 @@ object RecoveryDrivers {
                     valueText = String.format(java.util.Locale.US, "%+.1f C vs baseline", skinTempDev),
                     baselineText = "",   // a deviation already; the reference is the personal baseline (0)
                     verdict = skinTempVerdict(skinTempDev),
+                ),
+            )
+        }
+        if (recoveryIdxIdx >= 0 && recoveryIndexSlope != null) {
+            // Overnight resting-HR decline slope. The z is oriented so a positive z (steeper decline,
+            // negative bpm/hr) supports recovery; a fixed bpm/hr scale, no learned baseline.
+            drivers.add(
+                ChargeDriver(
+                    label = "Recovery index",
+                    deltaPoints = delta(recoveryIdxIdx),
+                    valueText = String.format(java.util.Locale.US, "%+.1f bpm/hr overnight", recoveryIndexSlope),
+                    baselineText = "",
+                    verdict = directionVerdict(terms[recoveryIdxIdx].z,
+                        good = "resting HR fell through the night, supporting recovery",
+                        flat = "resting HR held flat overnight",
+                        bad = "resting HR rose overnight, limiting recovery"),
+                ),
+            )
+        }
+        if (effortIdx >= 0 && priorDayEffort != null && effortBaseline != null) {
+            // Yesterday's Effort vs the personal baseline. The z is oriented "lower is better", so a
+            // positive z (a lighter-than-usual day) supports recovery.
+            drivers.add(
+                ChargeDriver(
+                    label = "Activity balance",
+                    deltaPoints = delta(effortIdx),
+                    valueText = "${priorDayEffort.roundToInt()} effort yesterday",
+                    baselineText = "${effortBaseline.baseline.roundToInt()} baseline",
+                    verdict = directionVerdict(terms[effortIdx].z,
+                        good = "a lighter day yesterday, supporting recovery",
+                        flat = "a typical day yesterday",
+                        bad = "a harder day yesterday, limiting recovery"),
                 ),
             )
         }

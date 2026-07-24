@@ -364,6 +364,10 @@ internal fun recoveryChargeDrivers(
     if (!hrvBase.usable) return emptyList()
     val rhrBase = Baselines.foldHistory(ordered.map { it.restingHr?.toDouble() }, Baselines.restingHRCfg)
     val respBase = Baselines.foldHistory(ordered.map { it.respRateBpm }, Baselines.respCfg).takeIf { it.usable }
+    // Effort baseline for the Activity-Balance driver, folded from the visible daily-strain history (the
+    // same whole-history fold as the others). Usable only after enough days; the slope + prior-day Effort
+    // come off the persisted display row so the driver scores the SAME inputs the headline did.
+    val effortBase = Baselines.foldHistory(ordered.map { it.strain }, Baselines.strainCfg).takeIf { it.usable }
 
     // sleepPerf: the Rest COMPOSITE (÷100) when stages exist, else raw efficiency, the SAME derivation
     // recomputeRecovery uses, so the Sleep driver scores against the headline's own input.
@@ -378,6 +382,9 @@ internal fun recoveryChargeDrivers(
         respBaseline = respBase,
         sleepPerf = sleepPerf,
         skinTempDev = day.skinTempDevC,
+        recoveryIndexSlope = day.recoveryIndexSlope,
+        effortBaseline = effortBase,
+        priorDayEffort = day.priorDayEffort,
     )
 }
 

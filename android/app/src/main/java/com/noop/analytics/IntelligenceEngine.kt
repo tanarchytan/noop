@@ -689,10 +689,20 @@ object IntelligenceEngine {
         var respState = Baselines.foldHistory(respImported, respImportedKeys, respCfg, recoveryEpoch)
         // Skin-temp baseline is on-device-only; seed from nothing (imported rows carry skinTempDevC, not raw mean).
         var skinState: BaselineState? = null
+        // Daily-strain series for the recovery Activity-Balance term, keyed by day: imported strain, each
+        // scored night's computed strain filling a day the import doesn't cover. Both uses are order-
+        // independent: a whole-window effort baseline (mirroring the driver fold) + a prior-calendar-day lookup.
+        val strainByDay = LinkedHashMap<String, Double?>()
+        for (d in hist) strainByDay[d.day] = d.strain
+        for (res in scoredNights) if (res.daily.day !in strainByDay) strainByDay[res.daily.day] = res.daily.strain
+        val effortBaseline = Baselines.foldHistory(
+            strainByDay.entries.sortedBy { it.key }.map { it.value }, Baselines.strainCfg,
+        ).takeIf { it.usable }
         fun currentBaselines() = ProfileBaselines(
             hrv = hrvState, restingHR = rhrState,
             resp = respState.takeIf { it.usable },
             skinTemp = skinState?.takeIf { it.usable },
+            effort = effortBaseline,
         )
 
         // Real (non-detected) workouts in the scored window, used to de-duplicate detected bouts so a
@@ -783,9 +793,14 @@ object IntelligenceEngine {
             val bl = currentBaselines()
             val skinTempDevC = recomputeSkinTempDev(res.nightlySkinTempC, bl.skinTemp)
             val dailyWithSkin = if (skinTempDevC != null) daily.copy(skinTempDevC = skinTempDevC) else daily
-            val recovery = recomputeRecovery(dailyWithSkin, bl)
+            // The prior CALENDAR day's Effort for THIS night's Activity-Balance term, looked up directly
+            // (order-independent), persisted on the row so the driver breakdown reads the same input. Absent
+            // prior day (outside the window / unscored) -> null -> the term honestly drops.
+            val prevDayKey = runCatching { java.time.LocalDate.parse(daily.day).minusDays(1).toString() }.getOrNull()
+            val priorEffort = prevDayKey?.let { strainByDay[it] }
+            val recovery = recomputeRecovery(dailyWithSkin, bl, priorEffort)
             if (recoveryTraceSink != null) {
-                for (line in recoveryTraceLines(dailyWithSkin, bl)) recoveryTraceSink(line)
+                for (line in recoveryTraceLines(dailyWithSkin, bl, priorEffort)) recoveryTraceSink(line)
             }
             // Fold this night's values into the running baseline so the NEXT night scores against
             // strictly prior state (chronological, not shared).
@@ -855,8 +870,9 @@ object IntelligenceEngine {
                     ),
                 )
             }
-            // Stamp the computed source id + the re-scored recovery & skin-temp deviation onto the row.
-            dailies.add(daily.copy(deviceId = computedId, recovery = recovery, skinTempDevC = skinTempDevC))
+            // Stamp the computed source id + the re-scored recovery & skin-temp deviation onto the row,
+            // plus the prior-day Effort used to score it (recoveryIndexSlope already rides `daily`).
+            dailies.add(daily.copy(deviceId = computedId, recovery = recovery, skinTempDevC = skinTempDevC, priorDayEffort = priorEffort))
             // Map the rich DetectedSleep sessions → Room SleepSession cache rows.
             for (s in res.sleepSessions) {
                 sleepRows.add(
@@ -1316,13 +1332,18 @@ object IntelligenceEngine {
      * sleep / strain / workout / RSA pipeline. Mirrors the recovery gate in
      * AnalyticsEngine.analyzeDay exactly (null on missing HRV/RHR or an unusable HRV baseline).
      */
-    private fun recomputeRecovery(daily: DailyMetric, baselines: ProfileBaselines): Double? {
+    private fun recomputeRecovery(
+        daily: DailyMetric,
+        baselines: ProfileBaselines,
+        priorDayEffort: Double? = null,
+    ): Double? {
         val hrvVal = daily.avgHrv ?: return null
         val rhrVal = daily.restingHr ?: return null
         val hrvBase = baselines.hrv ?: return null
         // Charge enrichment: feed the Rest COMPOSITE (÷100) as the sleep-quality term instead of raw
         // efficiency, and fold in the night's skin-temp deviation (both from persisted daily fields).
-        // Mirrors the Swift recomputeRecovery. (Charge/Effort/Rest scoring redesign.)
+        // The two Oura terms read the persisted slope + the passed prior-day Effort against the effort
+        // baseline, so this recompute matches the analyzeDay store site.
         val restQuality = RestScorer.restFromDaily(daily)?.let { it / 100.0 } ?: daily.efficiency
         return RustScores.recovery(
             hrv = hrvVal,
@@ -1333,6 +1354,9 @@ object IntelligenceEngine {
             respBaseline = baselines.resp,
             sleepPerf = restQuality,
             skinTempDev = daily.skinTempDevC,
+            recoveryIndexSlope = daily.recoveryIndexSlope,
+            effortBaseline = baselines.effort,
+            priorDayEffort = priorDayEffort,
         )
     }
 
@@ -1379,7 +1403,11 @@ object IntelligenceEngine {
      * when the Recovery test mode is on, so it costs nothing when the mode is off. Mirrors the Swift
      * recoveryTraceLines.
      */
-    private fun recoveryTraceLines(daily: DailyMetric, baselines: ProfileBaselines): List<String> {
+    private fun recoveryTraceLines(
+        daily: DailyMetric,
+        baselines: ProfileBaselines,
+        priorDayEffort: Double? = null,
+    ): List<String> {
         val hrvVal = daily.avgHrv
         val rhrVal = daily.restingHr
         val hrvBase = baselines.hrv
@@ -1398,6 +1426,9 @@ object IntelligenceEngine {
             respBaseline = baselines.resp,
             sleepPerf = restQuality,
             skinTempDev = daily.skinTempDevC,
+            recoveryIndexSlope = daily.recoveryIndexSlope,
+            effortBaseline = baselines.effort,
+            priorDayEffort = priorDayEffort,
         )
         // Prefix each line with the day key so a multi-night export stays parseable, matching the sleep
         // trace's per-day shape.

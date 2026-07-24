@@ -236,6 +236,8 @@ data class ProfileBaselines(
     val restingHR: BaselineState? = null,
     val resp: BaselineState? = null,
     val skinTemp: BaselineState? = null,
+    // Rolling daily-Effort/strain baseline for the recovery Activity-Balance term.
+    val effort: BaselineState? = null,
 )
 
 /**

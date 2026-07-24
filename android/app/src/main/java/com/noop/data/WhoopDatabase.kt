@@ -644,6 +644,12 @@ abstract class WhoopDatabase : RoomDatabase() {
             if (!columnExists(db, "dailyMetric", "sleepConsistency")) {
                 db.execSQL("ALTER TABLE dailyMetric ADD COLUMN sleepConsistency REAL")
             }
+            if (!columnExists(db, "dailyMetric", "recoveryIndexSlope")) {
+                db.execSQL("ALTER TABLE dailyMetric ADD COLUMN recoveryIndexSlope REAL")
+            }
+            if (!columnExists(db, "dailyMetric", "priorDayEffort")) {
+                db.execSQL("ALTER TABLE dailyMetric ADD COLUMN priorDayEffort REAL")
+            }
         }
 
         /** True if [table] exists in sqlite_master (case-insensitive). */

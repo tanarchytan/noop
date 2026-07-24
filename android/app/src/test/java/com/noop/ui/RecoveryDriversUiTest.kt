@@ -66,4 +66,25 @@ class RecoveryDriversUiTest {
     @Test fun nullDayProducesNoRows() {
         assertTrue(recoveryChargeDrivers(scoredHistory(), null).isEmpty())
     }
+
+    @Test fun ouraDriverRowsSurfaceFromPersistedInputs() {
+        // A usable history (strain present, so the effort baseline is usable) with a display day carrying
+        // the persisted slope + prior-day Effort yields the two Oura driver rows.
+        val past = (1..10).map {
+            DailyMetric(
+                deviceId = "my-whoop-noop", day = "2026-02-%02d".format(it),
+                avgHrv = 50.0 + (it % 3), restingHr = 55, respRateBpm = 15.0,
+                efficiency = 0.9, totalSleepMin = 450.0, strain = 40.0 + (it % 5),
+            )
+        }
+        val today = DailyMetric(
+            deviceId = "my-whoop-noop", day = "2026-02-20",
+            avgHrv = 62.0, restingHr = 51, respRateBpm = 15.0, recovery = 64.0,
+            efficiency = 0.9, totalSleepMin = 450.0, strain = 55.0,
+            recoveryIndexSlope = -3.0, priorDayEffort = 75.0,
+        )
+        val labels = recoveryChargeDrivers(past + today, today).map { it.label }
+        assertTrue(labels.contains("Recovery index"))
+        assertTrue(labels.contains("Activity balance"))
+    }
 }

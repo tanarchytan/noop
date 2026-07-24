@@ -36,6 +36,9 @@ object RecoveryScorerTrace {
         respBaseline: BaselineState?,
         sleepPerf: Double?,
         skinTempDev: Double? = null,
+        recoveryIndexSlope: Double? = null,
+        effortBaseline: BaselineState? = null,
+        priorDayEffort: Double? = null,
     ): Pair<Double?, List<String>> {
         val lines = ArrayList<String>()
         val nilTerms = ArrayList<String>()
@@ -48,6 +51,8 @@ object RecoveryScorerTrace {
             hrv = hrv, rhr = rhr, resp = resp,
             hrvBaseline = hrvBaseline, rhrBaseline = rhrBaseline,
             respBaseline = respBaseline, sleepPerf = sleepPerf, skinTempDev = skinTempDev,
+            recoveryIndexSlope = recoveryIndexSlope, effortBaseline = effortBaseline,
+            priorDayEffort = priorDayEffort,
         )
 
         // Cold-start gate: HRV baseline not usable -> recovery() returns null before any term is built.
@@ -129,6 +134,32 @@ object RecoveryScorerTrace {
             )
         } else {
             nilTerms.add("skinTempDev")
+        }
+
+        // Recovery-Index term: overnight HR-decline slope, negative (declining) is better. Same append
+        // order as recovery(...): after skin temp.
+        if (recoveryIndexSlope != null) {
+            val z = -recoveryIndexSlope / RecoveryScorer.recoveryIndexScaleBpmPerHr
+            terms.add(z to RecoveryScorer.wRecoveryIndex)
+            lines.add(
+                "charge term recoveryIndex z=${r2(z)} w=${r2(RecoveryScorer.wRecoveryIndex)} " +
+                    "(slope=${r2(recoveryIndexSlope)}bpm/hr, declining is better)",
+            )
+        } else {
+            nilTerms.add("recoveryIndex")
+        }
+
+        // Activity-Balance term: previous-day Effort vs personal baseline, lower is better. Needs BOTH
+        // the value and its baseline.
+        if (priorDayEffort != null && effortBaseline != null) {
+            val z = RecoveryScorer.zScore(effortBaseline.baseline, priorDayEffort, effortBaseline.spread)
+            terms.add(z to RecoveryScorer.wActivityBalance)
+            lines.add(
+                "charge term activityBalance z=${r2(z)} w=${r2(RecoveryScorer.wActivityBalance)} " +
+                    "(priorEffort=${r2(priorDayEffort)} baselineMean=${r2(effortBaseline.baseline)})",
+            )
+        } else {
+            nilTerms.add("activityBalance")
         }
 
         // The nil terms that dropped out and forced the weight renormalization (the killer line).
