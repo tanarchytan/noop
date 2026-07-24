@@ -31,6 +31,9 @@ class NoopApplication : Application() {
         // Record any uncaught crash to a file so it rides along in the shareable strap log — a
         // device-specific crash (e.g. Insights #224/#267) is otherwise lost to an unreachable logcat.
         CrashCapture.install(this)
+        // Apply a staged backup restore before the Room store is opened, so the file swap runs with no
+        // live connection or background coroutine that could re-open a torn file mid-swap. No-op normally.
+        WhoopDatabase.applyPendingRestore(this)
     }
 
     /** Process-wide Room-backed store. One instance shared by the UI and the background service. */

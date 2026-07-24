@@ -284,85 +284,39 @@ object DataBackup {
         }
 
         val dbFile = appContext.getDatabasePath(WhoopDatabase.DB_NAME)
-        val walFile = File(dbFile.path + "-wal")
-        val shmFile = File(dbFile.path + "-shm")
-        val rollbackFile = File(dbFile.path + ".import-bak")
+        val pending = File(dbFile.path + WhoopDatabase.PENDING_RESTORE_SUFFIX)
 
-        // 4. Snapshot the current database BEFORE closing the Room singleton. Mirroring exportTo:
-        //    checkpoint the WAL, then hold a write transaction during the file copy so concurrent
-        //    commits cannot tear the snapshot and a stray get() cannot re-open the database between
-        //    the snapshot and the overwrite below.
-        val db = WhoopDatabase.get(appContext)
-        db.query("PRAGMA wal_checkpoint(TRUNCATE)", null).use { cursor ->
-            cursor.moveToFirst()
-        }
+        // 4. Stage the reconciled store beside the live DB. The swap into place is DEFERRED to the next
+        //    launch ([WhoopDatabase.applyPendingRestore] from Application.onCreate, before Room opens), so
+        //    no live connection or background coroutine can re-open the file mid-swap — the race that let
+        //    the corruption handler quarantine a good restore. The live DB is left untouched here.
         try {
-            db.runInTransaction {
-                rollbackFile.delete()
-                if (dbFile.exists()) dbFile.copyTo(rollbackFile, overwrite = true)
-            }
+            pending.parentFile?.mkdirs()
+            pending.delete()
+            tempSqlite.copyTo(pending, overwrite = true)
         } catch (e: IOException) {
-            tempSqlite.delete()
-            tempSettings.delete()
-            return ImportResult.Failed("Could not back up the current data: ${e.message}")
-        }
-
-        // 5. Close the live Room singleton so the file handles are released.
-        WhoopDatabase.close()
-
-        // 6. Overwrite the db file with the extracted backup, then drop the stale sidecars.
-        try {
-            dbFile.parentFile?.mkdirs()
-            tempSqlite.copyTo(dbFile, overwrite = true)
-            walFile.delete()
-            shmFile.delete()
-        } catch (e: IOException) {
-            runCatching { if (rollbackFile.exists()) rollbackFile.copyTo(dbFile, overwrite = true) }
-            rollbackFile.delete()
+            pending.delete()
             tempSqlite.delete()
             tempSettings.delete()
             return ImportResult.Failed("Import failed, your data is unchanged: ${e.message}")
         }
+        tempSqlite.delete()
 
-        // 6b. #1014 defence-in-depth, post-swap: re-verify the file that actually LANDED at the live
-        //     path with a second read-only quick_check. The staged file was verified in 3c, but the
-        //     copy itself can tear — disk-full mid-copy, a dying flash chip, the process killed at
-        //     the wrong instant — and the next launch would meet a corrupt store (which, before the
-        //     CorruptionPreservingOpenHelperFactory below, the platform would then silently DELETE).
-        //     On failure, roll back to the `.import-bak` snapshot automatically and say so.
-        sqliteQuickCheckFailure(dbFile)?.let { complaint ->
-            tempSqlite.delete()
+        // 4b. Re-verify the STAGED copy (the copy itself can tear — disk-full, a dying flash chip), so the
+        //     next launch never swaps in a torn store. The live DB is untouched, so a failure just discards
+        //     the staged file and leaves the current data in place.
+        sqliteQuickCheckFailure(pending)?.let { complaint ->
+            pending.delete()
             tempSettings.delete()
-            walFile.delete()
-            shmFile.delete()
-            val message: String
-            if (rollbackFile.exists()) {
-                if (runCatching { rollbackFile.copyTo(dbFile, overwrite = true) }.isSuccess) {
-                    rollbackFile.delete()
-                    message = "The backup failed its integrity check after the copy (SQLite reports: " +
-                        "$complaint). Your previous data was rolled back automatically and is unchanged."
-                } else {
-                    // The roll-back copy itself failed: KEEP the snapshot on disk — it is now the
-                    // only good copy of the user's data — and tell the user exactly where it is.
-                    message = "The backup failed its integrity check after the copy (SQLite reports: " +
-                        "$complaint), and rolling back also failed. Your previous data is preserved at " +
-                        "${rollbackFile.name} next to the app's database."
-                }
-            } else {
-                // Fresh install: nothing existed before the import, so removing the damaged file
-                // returns to the exact pre-import (empty) state.
-                dbFile.delete()
-                message = "The backup failed its integrity check after the copy (SQLite reports: " +
-                    "$complaint). There was no previous data to roll back."
-            }
-            return ImportResult.Failed(message)
+            return ImportResult.Failed(
+                "This backup file is damaged and can't be restored (SQLite reports: $complaint). " +
+                    "Your current data is untouched. Try an earlier backup file.",
+            )
         }
 
-        // 7. #1000: re-apply the backup's whitelisted profile/display settings (weight, height, age,
-        //    sex, HR-max override, unit prefs) — but only NOW, after the DB swap landed. Every failure
-        //    path above returns without touching settings. Legacy single-entry backups staged no
-        //    settings file and restore exactly as before; a malformed settings entry degrades to
-        //    "fewer keys applied" inside the codec and can never fail the restore.
+        // 5. Re-apply the backup's whitelisted profile/display settings (weight, height, age, sex, HR-max
+        //    override, unit prefs). SharedPreferences are independent of the DB file, so they persist across
+        //    the relaunch that applies the staged store. A malformed entry degrades to "fewer keys applied".
         if (tempSettings.exists()) {
             runCatching {
                 BackupSettingsBridge.apply(appContext, tempSettings.readText(Charsets.UTF_8))
@@ -370,10 +324,7 @@ object DataBackup {
             tempSettings.delete()
         }
 
-        rollbackFile.delete()
-        tempSqlite.delete()
-        // #57 debug: record when a restore swapped the DB, so the export can correlate a restore with a
-        // subsequent write stall (a restore that wasn't followed by a restart is exactly the #57 failure).
+        // Record the restore time so the export can correlate a restore with a later write stall.
         runCatching {
             com.noop.ui.NoopPrefs.of(appContext).edit()
                 .putLong("backup.lastRestoreAt", System.currentTimeMillis() / 1000L).apply()
@@ -712,6 +663,21 @@ object DataBackup {
                     migration.migrate(db)
                 }
                 db.execSQL("PRAGMA user_version = $targetVersion")
+                // The manual migration updates the SCHEMA + user_version but not Room's identity
+                // bookkeeping (room_master_table), which Room only rewrites when IT runs a migration. Left
+                // stale, the store keeps the backup's OLD identity and the app rejects it ("Room cannot
+                // verify the data integrity"). Copy the identity from a live store at the SAME target
+                // schema so the restored DB opens. Best-effort: an unreadable hash leaves prior behaviour.
+                runCatching {
+                    val liveHash = WhoopDatabase.get(appContext).openHelper.writableDatabase
+                        .query("SELECT identity_hash FROM room_master_table LIMIT 1").use { c ->
+                            if (c.moveToFirst()) c.getString(0) else null
+                        }
+                    if (liveHash != null) {
+                        db.execSQL("CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY, identity_hash TEXT)")
+                        db.execSQL("INSERT OR REPLACE INTO room_master_table (id, identity_hash) VALUES (42, ?)", arrayOf(liveHash))
+                    }
+                }
             } finally {
                 helper.close()
             }

@@ -16,12 +16,14 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CloudUpload
 import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.Restore
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Switch
@@ -77,6 +79,10 @@ fun BackupSyncScreen(repo: WhoopRepository, activeStrapId: String) {
     var auto by remember { mutableStateOf(BackupSyncPrefs.autoEnabled(context)) }
     var lastMs by remember { mutableStateOf(BackupSyncPrefs.lastBackupMs(context)) }
     var busy by remember { mutableStateOf(false) }
+    // Restore progress + failure surfaces: a large .noopbak import runs for seconds and, before, could
+    // fail silently. `restoring` drives a modal progress dialog; `restoreError` a failure dialog.
+    var restoring by remember { mutableStateOf(false) }
+    var restoreError by remember { mutableStateOf<String?>(null) }
     // How many dated snapshots to keep; pruning deletes the oldest beyond this (BackupSync.snapshotsToPrune).
     var keep by remember { mutableStateOf(BackupSyncPrefs.keepCount(context)) }
     var keepMenu by remember { mutableStateOf(false) }
@@ -126,6 +132,7 @@ fun BackupSyncScreen(repo: WhoopRepository, activeStrapId: String) {
     // Runs the actual destructive restore for a chosen backup Uri, off the main thread.
     fun runRestore(uri: Uri) {
         busy = true
+        restoring = true
         scope.launch {
             val r = withContext(Dispatchers.IO) { DataBackup.importFrom(context, uri) }
             busy = false
@@ -151,8 +158,10 @@ fun BackupSyncScreen(repo: WhoopRepository, activeStrapId: String) {
                         Runtime.getRuntime().exit(0)
                     }
                 }
-                is DataBackup.ImportResult.Failed ->
-                    Toast.makeText(context, r.message, Toast.LENGTH_LONG).show()
+                is DataBackup.ImportResult.Failed -> {
+                    restoring = false
+                    restoreError = r.message
+                }
             }
         }
     }
@@ -527,6 +536,33 @@ fun BackupSyncScreen(repo: WhoopRepository, activeStrapId: String) {
                 runRestore(uri)
             },
             onDismiss = { pendingRestore = null },
+        )
+    }
+
+    // Progress while a restore imports (non-dismissable — the process relaunches on success).
+    if (restoring) {
+        AlertDialog(
+            onDismissRequest = {},
+            confirmButton = {},
+            title = { Text("Restoring backup") },
+            text = {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    CircularProgressIndicator(modifier = Modifier.size(22.dp))
+                    Spacer(Modifier.width(14.dp))
+                    Text("Merging your data and restarting. A large backup can take a moment.")
+                }
+            },
+        )
+    }
+
+    // Failure popup: a restore that couldn't complete (damaged file, staging error) leaves the current
+    // data untouched and says why, instead of failing silently.
+    restoreError?.let { msg ->
+        AlertDialog(
+            onDismissRequest = { restoreError = null },
+            confirmButton = { TextButton(onClick = { restoreError = null }) { Text("OK") } },
+            title = { Text("Restore failed") },
+            text = { Text(msg) },
         )
     }
 }

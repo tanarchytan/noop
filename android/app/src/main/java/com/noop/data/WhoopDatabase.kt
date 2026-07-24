@@ -1,6 +1,7 @@
 package com.noop.data
 
 import android.content.Context
+import java.io.File
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
@@ -101,13 +102,37 @@ abstract class WhoopDatabase : RoomDatabase() {
 
         /**
          * Close and forget the singleton so all file handles on [DB_NAME] are released.
-         * The next [get] call rebuilds against whatever file is on disk, used by
-         * [DataBackup.importFrom] to swap the database file underneath the app.
+         * The next [get] call rebuilds against whatever file is on disk.
          */
         fun close() {
             synchronized(this) {
                 instance?.close()
                 instance = null
+            }
+        }
+
+        /** Suffix of the staged-restore file [DataBackup.importFrom] writes beside [DB_NAME]. */
+        const val PENDING_RESTORE_SUFFIX = ".pending-restore"
+
+        /**
+         * Swap a staged restore into place BEFORE the store is opened. [DataBackup.importFrom] writes the
+         * reconciled DB to `DB_NAME + PENDING_RESTORE_SUFFIX` and relaunches the process; the swap happens
+         * here so no live connection or background coroutine can re-open a torn file mid-swap. MUST run
+         * before the first [get] (called from Application.onCreate). No-op when nothing is staged.
+         */
+        fun applyPendingRestore(context: Context) {
+            val dbFile = context.getDatabasePath(DB_NAME)
+            val pending = File(dbFile.path + PENDING_RESTORE_SUFFIX)
+            if (!pending.exists()) return
+            synchronized(this) {
+                instance?.let { it.close(); instance = null }
+                runCatching { dbFile.delete() }
+                runCatching { File(dbFile.path + "-wal").delete() }
+                runCatching { File(dbFile.path + "-shm").delete() }
+                if (!pending.renameTo(dbFile)) {
+                    runCatching { pending.copyTo(dbFile, overwrite = true) }
+                    runCatching { pending.delete() }
+                }
             }
         }
 
