@@ -22,7 +22,7 @@ android {
         applicationId = "com.noop.tan"
         minSdk = 26
         targetSdk = 34
-        versionCode = 292
+        versionCode = 294
         versionName = "9.0.1-rc2-tan"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
