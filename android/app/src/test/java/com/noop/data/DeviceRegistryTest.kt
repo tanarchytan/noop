@@ -53,6 +53,8 @@ class DeviceRegistryTest {
             devices[id]?.let { devices[id] = it.copy(status = DeviceStatus.archived.name) }
         }
 
+        override suspend fun deletePairedDevice(id: String) { devices.remove(id) }
+
         override suspend fun renameDevice(id: String, nickname: String?) {
             devices[id]?.let { devices[id] = it.copy(nickname = nickname) }
         }

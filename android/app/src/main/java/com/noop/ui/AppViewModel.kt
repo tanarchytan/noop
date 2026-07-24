@@ -144,6 +144,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /** Permanently delete all of a device's recorded data (its registry row is kept). */
     suspend fun deletePairedDeviceData(id: String) = noopApp.deviceRegistry.deleteDeviceData(id)
 
+    /** Permanently delete a device: its registry row AND all its recorded data. Removes it from the list. */
+    suspend fun deletePairedDevice(id: String) = noopApp.deviceRegistry.delete(id)
+
     /**
      * A DISCOVERY-ONLY EXPERIMENTAL [com.noop.ble.OuraLiveSource] for the Add-Oura wizard. Runs its OWN
      * scan (it owns its OWN scanner + GATT, never the WHOOP client) and never persists or feeds live state

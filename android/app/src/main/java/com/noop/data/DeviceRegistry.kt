@@ -86,31 +86,47 @@ class DeviceRegistry(
      * guards completeness (fails if a delete*For DAO method isn't wired in here).
      */
     suspend fun deleteDeviceData(id: String) {
+        transactor.run { deleteAllDataRows(id) }
+    }
+
+    /**
+     * Permanently delete a device ENTIRELY: its registry row AND every recorded sample/derived row, in ONE
+     * transaction. Unlike [deleteDeviceData] (which keeps the row per I4), this removes the entry so the
+     * device leaves the list for good.
+     */
+    suspend fun delete(id: String) {
         transactor.run {
-            dao.deleteHrFor(id)
-            dao.deleteRrFor(id)
-            dao.deleteSpo2For(id)
-            dao.deleteSkinTempFor(id)
-            dao.deleteRespFor(id)
-            dao.deleteGravityFor(id)
-            dao.deleteStepsFor(id)
-            dao.deletePpgHrFor(id)
-            dao.deletePpgWaveformFor(id)
-            dao.deleteEventsFor(id)
-            dao.deleteBatteryFor(id)
-            dao.deleteDailyMetricsFor(id)
-            dao.deleteSleepSessionsFor(id)
-            dao.deleteJournalFor(id)
-            dao.deleteWorkoutsFor(id)
-            dao.deleteAppleDailyFor(id)
-            dao.deleteMetricSeriesFor(id)
-            dao.deleteDayOwnershipFor(id)
-            dao.deleteSleepStatesFor(id)
-            dao.deleteLabMarkersFor(id)
-            dao.deleteLiveSessionsFor(id)
-            dao.deleteDismissedWorkoutsFor(id)
-            dao.deleteDismissedSleepsFor(id)
+            deleteAllDataRows(id)
+            dao.deletePairedDevice(id)
         }
+    }
+
+    /** Every device-keyed table delete, shared by [deleteDeviceData] + [delete]. Kept complete against
+     *  the whole [WhoopDatabase] schema (DeviceRegistryTest guards that no delete*For DAO method is missed). */
+    private suspend fun deleteAllDataRows(id: String) {
+        dao.deleteHrFor(id)
+        dao.deleteRrFor(id)
+        dao.deleteSpo2For(id)
+        dao.deleteSkinTempFor(id)
+        dao.deleteRespFor(id)
+        dao.deleteGravityFor(id)
+        dao.deleteStepsFor(id)
+        dao.deletePpgHrFor(id)
+        dao.deletePpgWaveformFor(id)
+        dao.deleteEventsFor(id)
+        dao.deleteBatteryFor(id)
+        dao.deleteDailyMetricsFor(id)
+        dao.deleteSleepSessionsFor(id)
+        dao.deleteJournalFor(id)
+        dao.deleteWorkoutsFor(id)
+        dao.deleteAppleDailyFor(id)
+        dao.deleteMetricSeriesFor(id)
+        dao.deleteDayOwnershipFor(id)
+        dao.deleteSleepStatesFor(id)
+        dao.deleteLabMarkersFor(id)
+        dao.deleteLiveSessionsFor(id)
+        dao.deleteDismissedWorkoutsFor(id)
+        dao.deleteDismissedSleepsFor(id)
     }
 
     /** Set the owner override for a day (insert-or-replace). */

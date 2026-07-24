@@ -217,10 +217,6 @@ fun DevicesScreen(
             )
         }
 
- // PowerPack — tap to expand/collapse. One card per supported generation.
-        item { PowerPackCard(generation = 5) }
-        item { PowerPackCard(generation = 4) }
-
  // Prominent "+ Add a device" button.
         item { AddDeviceButton(onClick = { showAddWizard = true }) }
 
@@ -332,12 +328,13 @@ fun DevicesScreen(
  // --- Second, strongly-worded delete-data confirm (from the Removed card's secondary control) ---
     deleteDataTarget?.let { device ->
         NoopConfirmDialog(
-            title = "Delete all of this device's data?",
-            text = "This permanently deletes all data recorded from ${displayName(device)}. This can't be undone.",
-            confirmLabel = "Delete data",
+            title = "Delete this device?",
+            text = "This permanently removes ${displayName(device)} and all of its recorded data. This " +
+                "can't be undone.",
+            confirmLabel = "Delete device",
             destructive = true,
             onConfirm = {
-                scope.launch { viewModel.deletePairedDeviceData(device.id); reload() }
+                scope.launch { viewModel.deletePairedDevice(device.id); reload() }
                 deleteDataTarget = null
             },
             onDismiss = { deleteDataTarget = null },
@@ -642,7 +639,7 @@ private fun DeviceActionsMenu(
                 MenuItem("Rename", Icons.Filled.Edit) { onOpenChange(false); onRename() }
                 if (onDeleteData != null) {
                     HorizontalDivider(color = Palette.hairline)
-                    MenuItem("Delete this device's data…", Icons.Filled.Delete, destructive = true) {
+                    MenuItem("Delete device…", Icons.Filled.Delete, destructive = true) {
                         onOpenChange(false); onDeleteData()
                     }
                 }
@@ -1151,61 +1148,3 @@ private fun syncHelperText(live: LiveState): String = when {
     else -> "Syncs your strap's stored history right away, instead of waiting for the next automatic sync."
 }
 
-// MARK: - PowerPack card (5.0 wireless charging pack)
-
-/** A card in the Devices list for the WHOOP 5.0 PowerPack. Tapping toggles
- *  the info section. Shows "No PowerPack connected" when no pack is found. */
-@Composable
-private fun PowerPackCard(generation: Int = 5) {
-    var expanded by remember { mutableStateOf(false) }
-    NoopCard(padding = 20.dp, tint = Palette.metricAmber) {
-        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(14.dp))
-                    .clickable(onClickLabel = "PowerPack") { expanded = !expanded },
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(14.dp),
-            ) {
-                Icon(
-                    Icons.Filled.BatteryStd,
-                    contentDescription = null,
-                    tint = Palette.accent,
-                    modifier = Modifier.size(24.dp),
-                )
-                Column(modifier = Modifier.weight(1f)) {
-                    Text("PowerPack", style = NoopType.subhead, color = Palette.textPrimary)
-                    Text(
-                        "5.0 wireless charging pack",
-                        style = NoopType.caption,
-                        color = Palette.textTertiary,
-                    )
-                }
-                Icon(
-                    if (expanded) Icons.Filled.KeyboardArrowUp else Icons.Filled.KeyboardArrowDown,
-                    contentDescription = if (expanded) "Collapse" else "Expand",
-                    tint = Palette.textTertiary,
-                    modifier = Modifier.size(20.dp),
-                )
-            }
-            if (expanded) {
-                Column(
-                    modifier = Modifier.padding(top = 4.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    StatePill(
-                        title = "No PowerPack connected",
-                        tone = StrandTone.Neutral,
-                        showsDot = false,
-                    )
-                    Text(
-                        "Slide a WHOOP 5.0 PowerPack over your strap. It talks directly to your phone over BLE — no bond needed for info. Requires pack firmware 3.30+.",
-                        style = NoopType.footnote,
-                        color = Palette.textSecondary,
-                    )
-                }
-            }
-        }
-    }
-}

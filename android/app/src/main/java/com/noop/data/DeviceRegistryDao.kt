@@ -38,6 +38,10 @@ interface DeviceRegistryDao {
     @Query("UPDATE pairedDevice SET status = 'archived' WHERE id = :id")
     suspend fun archiveDevice(id: String)
 
+    /** Permanently delete a device's registry row. The full-delete op clears its samples first. */
+    @Query("DELETE FROM pairedDevice WHERE id = :id")
+    suspend fun deletePairedDevice(id: String)
+
     /** Rename a device. A null/empty nickname clears it so the UI falls back to brand+model. Mirrors the
      *  Swift store's `UPDATE pairedDevice SET nickname = ? WHERE id = ?`. */
     @Query("UPDATE pairedDevice SET nickname = :nickname WHERE id = :id")

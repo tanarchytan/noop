@@ -40,6 +40,7 @@ class RegistryDayOwnerSourceTest {
         override suspend fun archiveDevice(id: String) {
             devices[id]?.let { devices[id] = it.copy(status = DeviceStatus.archived.name) }
         }
+        override suspend fun deletePairedDevice(id: String) { devices.remove(id) }
         override suspend fun renameDevice(id: String, nickname: String?) {}
         override suspend fun setPeripheralId(id: String, peripheralId: String?) {
             devices[id]?.let { devices[id] = it.copy(peripheralId = peripheralId) }
