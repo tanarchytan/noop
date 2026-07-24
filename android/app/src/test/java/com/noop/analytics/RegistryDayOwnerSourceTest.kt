@@ -52,6 +52,7 @@ class RegistryDayOwnerSourceTest {
         override suspend fun deleteHrFor(deviceId: String) {}
         override suspend fun deleteRrFor(deviceId: String) {}
         override suspend fun deleteSpo2For(deviceId: String) {}
+        override suspend fun deleteSpo2PctFor(deviceId: String) {}
         override suspend fun deleteSkinTempFor(deviceId: String) {}
         override suspend fun deleteRespFor(deviceId: String) {}
         override suspend fun deleteGravityFor(deviceId: String) {}

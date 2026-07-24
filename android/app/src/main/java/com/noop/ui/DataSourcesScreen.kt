@@ -93,6 +93,9 @@ fun DataSourcesScreen(vm: AppViewModel, onOpenAppleHealth: () -> Unit = {}) {
     var whoopDays by remember { mutableStateOf<Int?>(null) }
     var whoopWorkouts by remember { mutableStateOf<Int?>(null) }
     var whoopHasHr by remember { mutableStateOf(false) }
+ // Earliest/latest stored WHOOP day, so the card can read "data from X to Y".
+    var whoopFirstDay by remember { mutableStateOf<String?>(null) }
+    var whoopLastDay by remember { mutableStateOf<String?>(null) }
     var appleDays by remember { mutableStateOf<Int?>(null) }
     var appleWorkouts by remember { mutableStateOf<Int?>(null) }
  // Health Connect has its OWN source ("health-connect"), counted separately from an Apple Health
@@ -109,6 +112,7 @@ fun DataSourcesScreen(vm: AppViewModel, onOpenAppleHealth: () -> Unit = {}) {
         whoopDays = vm.repo.daysCount("my-whoop")
         whoopWorkouts = vm.repo.workoutsCount("my-whoop", 0L, nowS)
         whoopHasHr = vm.repo.latestHrSampleTs("my-whoop") != null
+        vm.repo.dayBounds("my-whoop").let { (first, last) -> whoopFirstDay = first; whoopLastDay = last }
         appleDays = vm.repo.appleDailyCount("apple-health", "0000-01-01", "9999-12-31")
         appleWorkouts = vm.repo.workoutsCount("apple-health", 0L, nowS)
         hcDays = vm.repo.appleDailyCount("health-connect", "0000-01-01", "9999-12-31")
@@ -121,6 +125,8 @@ fun DataSourcesScreen(vm: AppViewModel, onOpenAppleHealth: () -> Unit = {}) {
     var busy by remember { mutableStateOf(false) }
  // ah-delete : drives the "Remove Apple Health imported data" confirm dialog.
     var confirmDeleteApple by remember { mutableStateOf(false) }
+ // Drives the "Remove WHOOP history" confirm dialog (wipes every row under the "my-whoop" source).
+    var confirmDeleteWhoop by remember { mutableStateOf(false) }
 
  // Run an importer off the main thread, refresh the counts, then toast the result.
     fun runImport(block: suspend () -> ImportSummary) {
@@ -242,21 +248,41 @@ fun DataSourcesScreen(vm: AppViewModel, onOpenAppleHealth: () -> Unit = {}) {
                 "WHOOP data export (.zip) from app.whoop.com → Data Management and it " +
                 "backfills your whole history in about a minute. Working now on Android.",
         ) {
+            val hasWhoop = (whoopDays ?: 0) > 0 || (whoopWorkouts ?: 0) > 0 || whoopHasHr
             StatePill(
-                title = if (whoopHasHr) "Streaming locally" else "No samples yet",
-                tone = if (whoopHasHr) StrandTone.Positive else StrandTone.Neutral,
+                title = if (hasWhoop) "Stored on this phone" else "Nothing here yet",
+                tone = if (hasWhoop) StrandTone.Positive else StrandTone.Neutral,
                 showsDot = true,
             )
             CountLine(
                 primary = whoopDays?.let { "$it days" } ?: "—",
                 secondary = whoopWorkouts?.let { "$it workouts stored" } ?: "Counting…",
             )
+ // The stored span, so the card reads "data from X to Y" once history is present.
+            if (whoopFirstDay != null && whoopLastDay != null) {
+                Text(
+                    "History from $whoopFirstDay to $whoopLastDay",
+                    style = NoopType.footnote,
+                    color = Palette.textTertiary,
+                )
+            }
             BackupButton(
-                label = "Import WHOOP export (.zip)",
+                label = if (hasWhoop) "Replace WHOOP export (.zip)…" else "Import WHOOP export (.zip)",
                 icon = Icons.Filled.FileUpload,
                 enabled = !busy,
                 modifier = Modifier.fillMaxWidth(),
             ) { whoopImportLauncher.launch(arrayOf("*/*")) }
+ // Remove wipes every row stored under the WHOOP source (imported + any strap-synced history), leaving
+ // the other sources intact. Shown only when there is something to remove; a confirm dialog gates it.
+            if (hasWhoop) {
+                BackupButton(
+                    label = "Remove WHOOP history",
+                    icon = Icons.Filled.DeleteOutline,
+                    enabled = !busy,
+                    tint = Palette.statusCritical,
+                    modifier = Modifier.fillMaxWidth(),
+                ) { confirmDeleteWhoop = true }
+            }
         }
         }
 
@@ -466,6 +492,39 @@ fun DataSourcesScreen(vm: AppViewModel, onOpenAppleHealth: () -> Unit = {}) {
                 }
             },
             onDismiss = { confirmDeleteApple = false },
+        )
+    }
+
+ // Wipes every row stored under the WHOOP source ("my-whoop") in one transaction, re-counts so the card
+ // flips back to empty, reloads workouts, and toasts. Other sources are untouched.
+    if (confirmDeleteWhoop) {
+        NoopConfirmDialog(
+            title = "Remove all WHOOP history?",
+            text = "This permanently deletes every day, workout and sample stored under WHOOP on this " +
+                "phone — imported history and anything synced from a strap. Apple Health and Health " +
+                "Connect are untouched. This can't be undone.",
+            confirmLabel = "Remove",
+            destructive = true,
+            onConfirm = {
+                confirmDeleteWhoop = false
+                busy = true
+                scope.launch {
+                    runCatching {
+                        withContext(Dispatchers.IO) {
+ // Wipe both the raw import ("my-whoop") and its computed sibling ("my-whoop-noop"), so no
+ // orphaned scores survive a removal.
+                            vm.deletePairedDeviceData("my-whoop")
+                            vm.deletePairedDeviceData(vm.repo.computedDeviceId("my-whoop"))
+                        }
+                    }
+                    vm.ble.externalLog("Import my-whoop: stored history removed")
+                    refreshCounts()
+                    vm.loadWorkouts()
+                    busy = false
+                    Toast.makeText(context, "Removed stored WHOOP history.", Toast.LENGTH_LONG).show()
+                }
+            },
+            onDismiss = { confirmDeleteWhoop = false },
         )
     }
 }

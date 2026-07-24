@@ -8,6 +8,7 @@ import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import androidx.sqlite.db.SupportSQLiteOpenHelper
 import androidx.sqlite.db.framework.FrameworkSQLiteOpenHelperFactory
+import com.noop.ble.WhoopModel
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
@@ -197,6 +198,9 @@ object DataBackup {
         //     unrecognized file that holds data is refused.
         val backupTables = sqliteTableNames(tempSqlite)
         var importWarnings: List<String> = emptyList()
+ // True only when the own/older backup migrated cleanly (not a foreign row-copy, nor the migrate→reconcile
+ // fallback) — the one case where the restored my-whoop peripheralId is the user's real local strap.
+        var migratedOwnData = false
         val reconciled: Boolean
         when (foreignBackupKind(backupTables)) {
             null -> {
@@ -262,6 +266,8 @@ object DataBackup {
                         "Couldn't bring this backup into NOOP's format: ${e.message}",
                     )
                 }
+            } else {
+                migratedOwnData = true
             }
         }
 
@@ -322,6 +328,14 @@ object DataBackup {
                 BackupSettingsBridge.apply(appContext, tempSettings.readText(Charsets.UTF_8))
             }
             tempSettings.delete()
+        }
+
+ // An own-data (migrate) restore carries the user's real strap identity in the migrated my-whoop row, but
+ // SharedPreferences don't survive a fresh install — so rehydrate the reconnect target from the DB. The
+ // strap then reconnects on next launch and shows in Devices (not just Data Sources). Foreign row-copies
+ // are excluded, so a foreign backup's my-whoop can't masquerade as a local band.
+        if (migratedOwnData) {
+            rehydrateLastDeviceFromOwnBackup(appContext, pending)
         }
 
         // Record the restore time so the export can correlate a restore with a later write stall.
@@ -506,6 +520,34 @@ object DataBackup {
             emptySet()
         } finally {
             runCatching { db.close() }
+        }
+    }
+
+    /** After an own-data (migrate) restore, copy the migrated "my-whoop" strap address into
+     *  NoopPrefs.lastDevice — the reconnect target + the Devices "bound here" signal a fresh install lacks.
+     *  Read-only, best-effort; a foreign row-copy never calls this, so a foreign peripheralId can't leak. */
+    private fun rehydrateLastDeviceFromOwnBackup(appContext: Context, restored: File) {
+        runCatching {
+            val db = SQLiteDatabase.openDatabase(restored.path, null, SQLiteDatabase.OPEN_READONLY, PRESERVE_ON_CORRUPTION)
+            try {
+                db.rawQuery(
+                    "SELECT peripheralId, model FROM pairedDevice WHERE id = 'my-whoop' AND peripheralId IS NOT NULL LIMIT 1",
+                    null,
+                ).use { c ->
+                    if (c.moveToFirst()) {
+                        val addr = c.getString(0)
+                        val modelText = c.getString(1) ?: ""
+                        // Model self-corrects on the live handshake (whoop5Detected) and a wrong family
+                        // rotates via fallbackScanModel, so a default is safe; the address is what pins it.
+                        if (!addr.isNullOrBlank()) {
+                            val model = if (modelText.contains("4")) WhoopModel.WHOOP4 else WhoopModel.WHOOP5_MG
+                            com.noop.ui.NoopPrefs.setLastDevice(appContext, addr, model)
+                        }
+                    }
+                }
+            } finally {
+                runCatching { db.close() }
+            }
         }
     }
 

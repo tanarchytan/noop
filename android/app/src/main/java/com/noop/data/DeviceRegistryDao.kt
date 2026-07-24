@@ -69,6 +69,7 @@ interface DeviceRegistryDao {
     @Query("DELETE FROM hrSample WHERE deviceId = :deviceId") suspend fun deleteHrFor(deviceId: String)
     @Query("DELETE FROM rrInterval WHERE deviceId = :deviceId") suspend fun deleteRrFor(deviceId: String)
     @Query("DELETE FROM spo2Sample WHERE deviceId = :deviceId") suspend fun deleteSpo2For(deviceId: String)
+    @Query("DELETE FROM spo2PctSample WHERE deviceId = :deviceId") suspend fun deleteSpo2PctFor(deviceId: String)
     @Query("DELETE FROM skinTempSample WHERE deviceId = :deviceId") suspend fun deleteSkinTempFor(deviceId: String)
     @Query("DELETE FROM respSample WHERE deviceId = :deviceId") suspend fun deleteRespFor(deviceId: String)
     @Query("DELETE FROM gravitySample WHERE deviceId = :deviceId") suspend fun deleteGravityFor(deviceId: String)

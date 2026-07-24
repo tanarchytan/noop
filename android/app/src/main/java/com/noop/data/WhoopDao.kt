@@ -344,6 +344,14 @@ interface WhoopDao : DeviceRegistryDao {
     @Query("SELECT COUNT(*) FROM dailyMetric WHERE deviceId = :deviceId")
     suspend fun daysCount(deviceId: String): Int
 
+    /** Earliest / latest cached day-key for a source (yyyy-MM-dd, lexicographic = chronological), null
+     *  when the source has no daily rows. Feeds the Data Sources import-range line. */
+    @Query("SELECT MIN(day) FROM dailyMetric WHERE deviceId = :deviceId")
+    suspend fun minDay(deviceId: String): String?
+
+    @Query("SELECT MAX(day) FROM dailyMetric WHERE deviceId = :deviceId")
+    suspend fun maxDay(deviceId: String): String?
+
     /** Reactive stream of all daily metrics for a device, oldest first. */
     @Query("SELECT * FROM dailyMetric WHERE deviceId = :deviceId ORDER BY day ASC")
     fun daysFlow(deviceId: String): Flow<List<DailyMetric>>

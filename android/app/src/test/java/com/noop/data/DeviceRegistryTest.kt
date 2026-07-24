@@ -81,6 +81,7 @@ class DeviceRegistryTest {
         override suspend fun deleteHrFor(deviceId: String) { deletedTables += "hrSample" to deviceId }
         override suspend fun deleteRrFor(deviceId: String) { deletedTables += "rrInterval" to deviceId }
         override suspend fun deleteSpo2For(deviceId: String) { deletedTables += "spo2Sample" to deviceId }
+        override suspend fun deleteSpo2PctFor(deviceId: String) { deletedTables += "spo2PctSample" to deviceId }
         override suspend fun deleteSkinTempFor(deviceId: String) { deletedTables += "skinTempSample" to deviceId }
         override suspend fun deleteRespFor(deviceId: String) { deletedTables += "respSample" to deviceId }
         override suspend fun deleteGravityFor(deviceId: String) { deletedTables += "gravitySample" to deviceId }
@@ -235,7 +236,7 @@ class DeviceRegistryTest {
         // Keep in sync with the deviceId-keyed @Entity list in Entities.kt — the audit found the last five
         // were missing, leaving raw sleep-state, lab markers, live sessions and dismissed markers behind.
         val expectedTables = setOf(
-            "hrSample", "rrInterval", "spo2Sample", "skinTempSample", "respSample", "gravitySample",
+            "hrSample", "rrInterval", "spo2Sample", "spo2PctSample", "skinTempSample", "respSample", "gravitySample",
             "stepSample", "ppgHrSample", "ppgWaveformSample", "event", "battery", "dailyMetric", "sleepSession",
             "journal", "workout", "appleDaily", "metricSeries", "dayOwnership",
             "sleepStateSample", "labMarker", "liveSession", "dismissedWorkout", "dismissedSleep",

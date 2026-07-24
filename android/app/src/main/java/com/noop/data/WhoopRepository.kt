@@ -979,6 +979,10 @@ class WhoopRepository(private val dao: WhoopDao) {
     /** Scalar COUNT twin of [days] for count badges. */
     suspend fun daysCount(deviceId: String): Int = dao.daysCount(deviceId)
 
+    /** Earliest/latest cached day-key for a source as (first, last), each null when it has no daily rows. */
+    suspend fun dayBounds(deviceId: String): Pair<String?, String?> =
+        dao.minDay(deviceId) to dao.maxDay(deviceId)
+
     /** Every distinct source id with at least one cached daily row. Feeds the Health Connect
      *  backfill's strap-coverage gate (see HealthConnectImporter.isStrapNativeSourceId). */
     suspend fun dailyMetricDeviceIds(): List<String> = dao.dailyMetricDeviceIds()

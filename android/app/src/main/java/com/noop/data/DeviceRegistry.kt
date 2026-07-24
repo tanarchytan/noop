@@ -107,6 +107,7 @@ class DeviceRegistry(
         dao.deleteHrFor(id)
         dao.deleteRrFor(id)
         dao.deleteSpo2For(id)
+        dao.deleteSpo2PctFor(id)
         dao.deleteSkinTempFor(id)
         dao.deleteRespFor(id)
         dao.deleteGravityFor(id)
