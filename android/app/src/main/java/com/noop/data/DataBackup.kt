@@ -192,25 +192,15 @@ object DataBackup {
             return ImportResult.Failed("The backup archive doesn't contain a valid NOOP database.")
         }
 
-        // 3b. Origin check (parity with the Apple side's GRDB-origin rejection). The SQLite magic
-        //     passes for ANY SQLite file: a GRDB (Mac/iOS NOOP) backup or some other app's database
-        //     would otherwise sail through and REPLACE the live Room store, stranding the user. Read
-        //     the backup's table names READ-ONLY and reject anything that isn't a Room (this-app)
-        //     backup but still holds real data. Empty/pre-migration files fall through to Room's
-        //     open-time migrator, exactly as before.
+        // 3b. Route by schema content: a foreign store (iOS, or a fork without our marker) is row-copied
+        //     into a clone of the live store; our own/older backup takes the migrate path below; an
+        //     unrecognized file that holds data is refused.
         val backupTables = sqliteTableNames(tempSqlite)
-        when (backupOriginOf(backupTables)) {
-            BackupOrigin.MAC ->
-                return rejectForeign(
-                    tempSqlite,
-                    tempSettings,
-                    "This isn't a NOOP backup from this app. It looks like a backup from the Mac or " +
-                        "iOS NOOP app (it carries that platform's migration bookkeeping). Restoring it here " +
-                        "would strand your store. To move your history across platforms, export the " +
-                        "WHOOP-format CSV on the other device (Settings → Export data) and import that here.",
-                )
-            BackupOrigin.UNKNOWN ->
-                if (holdsData(backupTables)) {
+        var importWarnings: List<String> = emptyList()
+        val reconciled: Boolean
+        when (foreignBackupKind(backupTables)) {
+            null -> {
+                if (backupOriginOf(backupTables) == BackupOrigin.UNKNOWN && holdsData(backupTables)) {
                     return rejectForeign(
                         tempSqlite,
                         tempSettings,
@@ -219,26 +209,60 @@ object DataBackup {
                             "strand your store.",
                     )
                 }
-            BackupOrigin.ANDROID -> Unit // our own backup, proceed.
+                reconciled = false
+            }
+            else -> {
+                val liveDbFile = appContext.getDatabasePath(WhoopDatabase.DB_NAME)
+                if (!liveDbFile.exists()) {
+                    return rejectForeign(
+                        tempSqlite,
+                        tempSettings,
+                        "There's no NOOP store on this device yet to merge this backup into. Open NOOP once " +
+                            "to set up your store, then import again.",
+                    )
+                }
+                importWarnings = runCatching {
+                    reconcileForeign(appContext, liveDbFile, tempSqlite)
+                }.getOrElse { e ->
+                    return rejectForeign(
+                        tempSqlite,
+                        tempSettings,
+                        "Couldn't bring this backup into NOOP's format: ${e.message}",
+                    )
+                }
+                reconciled = true
+            }
         }
 
-        // 3b-mid. If the backup carries an older Room schema, migrate it to [targetVersion] before
-        //         the integrity gate and the destructive overwrite. Room's [version] in the SQLite
-        //         header is at byte 64 of every SQLite 3 database; runs the same [WhoopDatabase] Room
-        //         migrations the app normally uses on its own open. On failure the backup is rejected
-        //         early, before anything touches the live DB.
-        val migrationError = migrateBackupIfNeeded(
-            appContext,
-            tempSqlite,
-            WhoopDatabase.SCHEMA_VERSION,
-            WhoopDatabase.ALL_MIGRATIONS,
-        )
-        if (migrationError != null) {
-            tempSqlite.delete()
-            tempSettings.delete()
-            return ImportResult.Failed(
-                "The backup could not be migrated to the current NOOP schema: $migrationError"
+        // 3b-mid. Own/older backup: migrate its Room schema forward before the swap. If it can't migrate
+        //         (a mis-hinted foreign backup, or one too far off), fall back to a content row-copy so it
+        //         still imports. A reconciled foreign backup already carries our schema, so skip it.
+        if (!reconciled) {
+            val migrationError = migrateBackupIfNeeded(
+                appContext,
+                tempSqlite,
+                WhoopDatabase.SCHEMA_VERSION,
+                WhoopDatabase.ALL_MIGRATIONS,
             )
+            if (migrationError != null) {
+                val liveDbFile = appContext.getDatabasePath(WhoopDatabase.DB_NAME)
+                if (!liveDbFile.exists()) {
+                    return rejectForeign(
+                        tempSqlite,
+                        tempSettings,
+                        "The backup could not be migrated to the current NOOP schema: $migrationError",
+                    )
+                }
+                importWarnings = runCatching {
+                    reconcileForeign(appContext, liveDbFile, tempSqlite)
+                }.getOrElse { e ->
+                    return rejectForeign(
+                        tempSqlite,
+                        tempSettings,
+                        "Couldn't bring this backup into NOOP's format: ${e.message}",
+                    )
+                }
+            }
         }
 
         // 3c. #1014 defence-in-depth: gates 3 and 3b read only the FIRST pages of the file — the
@@ -353,6 +377,10 @@ object DataBackup {
         runCatching {
             com.noop.ui.NoopPrefs.of(appContext).edit()
                 .putLong("backup.lastRestoreAt", System.currentTimeMillis() / 1000L).apply()
+        }
+        // Cross-fork row-copy notes (tables/columns that didn't line up) are best-effort diagnostics.
+        if (importWarnings.isNotEmpty()) {
+            Log.i("DataBackup", "Cross-fork import notes: ${importWarnings.joinToString("; ")}")
         }
         return ImportResult.NeedsRestart
     }
@@ -724,9 +752,23 @@ object DataBackup {
     /** How a backup's rows fold into the target store. */
     enum class ImportMode { MERGE, REPLACE }
 
+    /** A foreign store to reconcile in by row-copy. */
+    private enum class ForeignBackupKind { IOS, CROSS_FORK }
+
+    /** GRDB = iOS; a Room store without our `spo2PctSample` marker = another fork — both row-copied. Our own
+     *  backup (has the marker) and an unrecognized file return null for the migrate/reject path. Only a
+     *  fast-path hint: a misread marker is caught by the migrate-then-reconcile fallback in [importFrom]. */
+    private fun foreignBackupKind(tableNames: Set<String>): ForeignBackupKind? {
+        if (tableNames.contains("grdb_migrations")) return ForeignBackupKind.IOS
+        if (tableNames.contains("room_master_table") && !tableNames.contains("spo2PctSample")) {
+            return ForeignBackupKind.CROSS_FORK
+        }
+        return null
+    }
+
     /**
-     * A content-based import plan: the SQL to run, plus what didn't line up (surfaced to the user as
-     * warnings, never as a hard error). [statements] run inside one transaction with `src` ATTACHed.
+     * A content-based import plan: the SQL to run, plus what didn't line up (surfaced as warnings, never a
+     * hard error). [statements] run inside one transaction with `src` ATTACHed.
      */
     internal data class RowCopyPlan(
         val statements: List<String>,
@@ -734,30 +776,44 @@ object DataBackup {
         val missingTables: List<String>,
         /** Backup tables with no home in the target — their rows are skipped. */
         val droppedTables: List<String>,
-        /** Per table, target columns the backup lacks (they import as NULL/default). */
+        /** Per table, source-absent target columns that are nullable/defaulted — omitted, imported empty. */
         val missingColumns: Map<String, List<String>>,
+        /** Per table, source-absent NOT NULL-no-default columns kept + filled with a typed zero. */
+        val filledColumns: Map<String, List<String>> = emptyMap(),
+        /** Per table, source-absent NOT NULL-no-default KEY columns filled with the source rowid (a unique
+         *  per-row id) so the rows import instead of the table collapsing. */
+        val synthesizedKeyColumns: Map<String, List<String>> = emptyMap(),
     ) {
         /** Human-readable warnings, empty when the backup lines up cleanly. */
         fun warnings(): List<String> = buildList {
             if (missingTables.isNotEmpty()) add("No data in this backup for: ${missingTables.joinToString(", ")}.")
             if (droppedTables.isNotEmpty()) add("Skipped tables not in this app: ${droppedTables.joinToString(", ")}.")
+            synthesizedKeyColumns.forEach { (t, cols) ->
+                add("$t: generated ids for the key column(s) ${cols.joinToString(", ")} this backup didn't carry.")
+            }
+            filledColumns.forEach { (t, cols) -> add("$t: filled ${cols.joinToString(", ")} with defaults.") }
             missingColumns.forEach { (t, cols) -> add("$t is missing fields ${cols.joinToString(", ")} (imported empty).") }
         }
     }
 
     private val HOUSEKEEPING_TABLES = setOf("android_metadata", "sqlite_sequence", "room_master_table", "grdb_migrations")
 
-    /**
-     * Plan a version-agnostic row copy from [source] into [target] — each a `table -> ordered columns` map
-     * read at runtime from `PRAGMA table_info`, so it needs no schema version and never touches Room's
-     * identity. For every data table in BOTH, copy the intersection of columns; type/quoting/default
-     * differences across forks/platforms are irrelevant (SQLite coerces on insert). [ImportMode.REPLACE]
-     * clears each target table first (restore semantics); [ImportMode.MERGE] keeps existing rows on a PK
-     * clash. Mismatched tables/columns become [RowCopyPlan] warnings, not failures.
-     */
+    /** One column as PRAGMA table_info reports it: name, declared type, NOT NULL, has-schema-default, and
+     *  whether it is part of the PRIMARY KEY or a UNIQUE index. */
+    internal data class SchemaColumn(
+        val name: String,
+        val type: String = "",
+        val notNull: Boolean = false,
+        val hasDefault: Boolean = false,
+        val key: Boolean = false,
+    )
+
+    /** Copy the shared table+column intersection from [source] into [target] (read from PRAGMA, no schema
+     *  version). A source-absent NOT NULL-no-default column is filled with a typed zero; if it is a KEY it is
+     *  filled with the source rowid (unique, never collapses). REPLACE clears each table first; MERGE keeps clashes. */
     internal fun planRowCopyImport(
-        target: Map<String, List<String>>,
-        source: Map<String, List<String>>,
+        target: Map<String, List<SchemaColumn>>,
+        source: Map<String, List<SchemaColumn>>,
         mode: ImportMode,
     ): RowCopyPlan {
         fun dataTables(keys: Set<String>) = keys.filter { it !in HOUSEKEEPING_TABLES && !it.startsWith("sqlite_") }
@@ -765,34 +821,121 @@ object DataBackup {
         val src = dataTables(source.keys).toSet()
         val stmts = ArrayList<String>()
         val missingCols = LinkedHashMap<String, List<String>>()
+        val filledCols = LinkedHashMap<String, List<String>>()
+        val synthKeyCols = LinkedHashMap<String, List<String>>()
         for (t in (tgt intersect src).sorted()) {
-            val srcCols = source[t]!!.toSet()
-            val cols = target[t]!!.filter { it in srcCols }
-            val absent = target[t]!!.filter { it !in srcCols }
-            if (absent.isNotEmpty()) missingCols[t] = absent
-            if (cols.isEmpty()) continue
-            val colList = cols.joinToString(", ") { "`$it`" }
-            if (mode == ImportMode.REPLACE) stmts.add("DELETE FROM main.`$t`")
-            stmts.add("INSERT OR IGNORE INTO main.`$t` ($colList) SELECT $colList FROM src.`$t`")
+            val srcCols = source[t]!!.map { it.name }.toSet()
+            val insertCols = ArrayList<String>()
+            val selectExprs = ArrayList<String>()
+            val omitted = ArrayList<String>()
+            val filled = ArrayList<String>()
+            val synthKeys = ArrayList<String>()
+            for (col in target[t]!!) {
+                when {
+                    col.name in srcCols -> {
+                        insertCols.add(col.name)
+                        selectExprs.add(quoteId(col.name))
+                    }
+                    // A source-absent NOT NULL-no-default KEY: fill the source rowid, a unique per-row id, so
+                    // INSERT OR IGNORE keeps every row instead of a constant collapsing the table.
+                    col.notNull && !col.hasDefault && col.key -> {
+                        insertCols.add(col.name)
+                        selectExprs.add("rowid")
+                        synthKeys.add(col.name)
+                    }
+                    col.notNull && !col.hasDefault -> {
+                        insertCols.add(col.name)
+                        selectExprs.add(typedZeroLiteral(col.type))
+                        filled.add(col.name)
+                    }
+                    else -> omitted.add(col.name)
+                }
+            }
+            if (synthKeys.isNotEmpty()) synthKeyCols[t] = synthKeys
+            if (omitted.isNotEmpty()) missingCols[t] = omitted
+            if (filled.isNotEmpty()) filledCols[t] = filled
+            if (insertCols.isEmpty()) continue
+            val colList = insertCols.joinToString(", ") { quoteId(it) }
+            val selList = selectExprs.joinToString(", ")
+            if (mode == ImportMode.REPLACE) stmts.add("DELETE FROM main.${quoteId(t)}")
+            stmts.add("INSERT OR IGNORE INTO main.${quoteId(t)} ($colList) SELECT $selList FROM src.${quoteId(t)}")
         }
         return RowCopyPlan(
             statements = stmts,
             missingTables = (tgt - src).sorted(),
             droppedTables = (src - tgt).sorted(),
             missingColumns = missingCols,
+            filledColumns = filledCols,
+            synthesizedKeyColumns = synthKeyCols,
         )
     }
 
-    /** `table -> ordered column names` from `PRAGMA table_info` on [schema] ('main' or an ATTACHed alias). */
-    private fun readSchema(db: SQLiteDatabase, schema: String): Map<String, List<String>> {
-        val out = LinkedHashMap<String, List<String>>()
+    /** The zero a source-absent NOT NULL-no-default column is filled with, by declared type: TEXT `''`,
+     *  BLOB `x''`, everything else (INTEGER/REAL/NUMERIC/untyped) `0`. */
+    private fun typedZeroLiteral(declaredType: String): String {
+        val t = declaredType.uppercase()
+        return when {
+            t.contains("CHAR") || t.contains("CLOB") || t.contains("TEXT") -> "''"
+            t.contains("BLOB") -> "x''"
+            else -> "0"
+        }
+    }
+
+    /** A backtick-quoted identifier with embedded backticks doubled, so a foreign name can't break the SQL. */
+    private fun quoteId(id: String): String = "`" + id.replace("`", "``") + "`"
+
+    /** Column names of [table] in [schema] that are part of the PRIMARY KEY or a UNIQUE index — the ones a
+     *  constant fill must never touch. PK from table_info.pk, UNIQUE from index_list/index_info. */
+    private fun keyColumns(db: SQLiteDatabase, schema: String, table: String): Set<String> {
+        val keys = LinkedHashSet<String>()
+        db.rawQuery("PRAGMA $schema.table_info(${quoteId(table)})", null).use { c ->
+            val ni = c.getColumnIndex("name")
+            val pi = c.getColumnIndex("pk")
+            while (c.moveToNext()) {
+                val name = if (ni >= 0) c.getString(ni) else null
+                if (name != null && pi >= 0 && c.getInt(pi) != 0) keys.add(name)
+            }
+        }
+        val uniqueIndexes = ArrayList<String>()
+        db.rawQuery("PRAGMA $schema.index_list(${quoteId(table)})", null).use { il ->
+            val nameIdx = il.getColumnIndex("name")
+            val uniqIdx = il.getColumnIndex("unique")
+            while (il.moveToNext()) {
+                val unique = uniqIdx >= 0 && il.getInt(uniqIdx) != 0
+                val idxName = if (nameIdx >= 0) il.getString(nameIdx) else null
+                if (unique && idxName != null) uniqueIndexes.add(idxName)
+            }
+        }
+        for (idx in uniqueIndexes) {
+            db.rawQuery("PRAGMA $schema.index_info(${quoteId(idx)})", null).use { ii ->
+                val cn = ii.getColumnIndex("name")
+                while (ii.moveToNext()) if (cn >= 0) ii.getString(cn)?.let(keys::add)
+            }
+        }
+        return keys
+    }
+
+    /** `table -> ordered [SchemaColumn]s` from PRAGMA table_info on [schema] ('main' or an ATTACHed alias),
+     *  carrying the NOT NULL / default / key facts the planner needs to keep rows instead of dropping them. */
+    private fun readSchema(db: SQLiteDatabase, schema: String): Map<String, List<SchemaColumn>> {
+        val out = LinkedHashMap<String, List<SchemaColumn>>()
         db.rawQuery("SELECT name FROM $schema.sqlite_master WHERE type = 'table'", null).use { tc ->
             while (tc.moveToNext()) {
                 val t = tc.getString(0) ?: continue
-                val cols = ArrayList<String>()
-                db.rawQuery("PRAGMA $schema.table_info(`$t`)", null).use { cc ->
+                val keyCols = keyColumns(db, schema, t)
+                val cols = ArrayList<SchemaColumn>()
+                db.rawQuery("PRAGMA $schema.table_info(${quoteId(t)})", null).use { cc ->
                     val ni = cc.getColumnIndex("name")
-                    while (cc.moveToNext()) if (ni >= 0) cc.getString(ni)?.let(cols::add)
+                    val ti = cc.getColumnIndex("type")
+                    val nn = cc.getColumnIndex("notnull")
+                    val df = cc.getColumnIndex("dflt_value")
+                    while (cc.moveToNext()) {
+                        val name = (if (ni >= 0) cc.getString(ni) else null) ?: continue
+                        val type = (if (ti >= 0) cc.getString(ti) else null) ?: ""
+                        val notNull = nn >= 0 && cc.getInt(nn) != 0
+                        val hasDefault = df >= 0 && !cc.isNull(df)
+                        cols.add(SchemaColumn(name, type, notNull, hasDefault, name in keyCols))
+                    }
                 }
                 out[t] = cols
             }
@@ -843,6 +986,26 @@ object DataBackup {
         File(work.path + "-wal").delete()
         File(work.path + "-shm").delete()
         return work to warnings
+    }
+
+    /** Reconcile a foreign [staged] backup, staging the result back over [staged]. The live store is cloned
+     *  while Room stays OPEN — a checkpoint plus a held transaction keep the copy quiescent — then the backup
+     *  is row-copied into the clone. Returns the row-copy warnings; throws (live file untouched) on failure. */
+    private fun reconcileForeign(appContext: Context, liveDbFile: File, staged: File): List<String> {
+        val clone = File(appContext.cacheDir, "import-live-clone.db")
+        val sidecars = listOf(clone, File(clone.path + "-wal"), File(clone.path + "-shm"))
+        sidecars.forEach { it.delete() }
+        try {
+            val liveDb = WhoopDatabase.get(appContext)
+            liveDb.query("PRAGMA wal_checkpoint(TRUNCATE)", null).use { it.moveToFirst() }
+            liveDb.runInTransaction { liveDbFile.copyTo(clone, overwrite = true) }
+            val (work, warnings) = reconcileForeignBackup(appContext, clone, staged, ImportMode.REPLACE)
+            work.copyTo(staged, overwrite = true)
+            work.delete()
+            return warnings
+        } finally {
+            sidecars.forEach { runCatching { it.delete() } }
+        }
     }
 }
 
