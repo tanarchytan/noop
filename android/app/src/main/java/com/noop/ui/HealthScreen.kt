@@ -21,6 +21,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.CompareArrows
 import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.MonitorHeart
 import androidx.compose.material.icons.filled.Refresh
 import android.widget.Toast
@@ -55,7 +56,6 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.DrawScope
@@ -67,7 +67,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -83,7 +82,6 @@ import com.noop.analytics.HrZones
 import com.noop.analytics.IllnessSignalEngine
 import com.noop.analytics.V5HealthSignals
 import com.noop.analytics.FitnessAgeEngine
-import com.noop.analytics.VitalityEngine
 import com.noop.analytics.FitnessAgeReadiness
 import com.noop.analytics.FitnessReadinessItem
 import com.noop.analytics.FitnessReadinessRole
@@ -201,13 +199,10 @@ fun HealthScreen(
                     captionMode = VitalCaptionMode.AS_OF,
                 )
             }
- // FITNESS AGE — the weekly Saturday number from the engine (resting HR + activity vs your
- // age), with an honest readiness checklist behind a tap. Authoritative value comes from the
- // metricSeries the IntelligenceEngine writes; readiness is derived from what this screen sees.
+ // AGES — chronological, Fitness, Body and Rhythm age together: a compact hero row, one trend
+ // chart of all four, and an info tap explaining each line. All are wellness estimates.
             item { Spacer(Modifier.height(Metrics.selectorTopUp)) }
-            item { FitnessAgeSection(vm = vm, days = days, profile = profile) }
-            item { VitalitySection(vm = vm, days = days, profile = profile) }
-            item { RhythmAgeSection(vm = vm, days = days, profile = profile) }
+            item { AgesSection(vm = vm, days = days, profile = profile) }
  // SKIN TEMPERATURE (v5 pillar) — Cycle awareness (opt-in), Body clock + an illness heads-up,
  // each from a pure engine RESULT the ViewModel publishes. A section of Health, never its own
  // destination (umbrella §2.4). Non-clinical observations about your own numbers.
@@ -537,8 +532,8 @@ private fun ContributorBar(
 
 /** Fitness Age readiness from what a screen can see: RHR coverage over the last 7 merged daily rows
  * (drives the "N more nights" countdown), a scored-strain day as the activity signal, and the profile
- * basics. Shared by the Health hub's [FitnessAgeSection] and the Today card's [VitalDetailScreen]
- * tap-through so ONE gate feeds both surfaces (no drift). Returns (rhrDays, readiness) — rhrDays also
+ * basics. Shared by the Today card's [VitalDetailScreen] tap-through so ONE gate feeds it
+ * (no drift). Returns (rhrDays, readiness) — rhrDays also
  * feeds the not-ready lead. Approximate by design; the weekly value is the authority, this explains gaps. */
 @Composable
 private fun rememberFitnessReadiness(days: List<DailyMetric>, profile: ProfileStore): Pair<Int, FitnessAgeReadiness> {
@@ -557,178 +552,117 @@ private fun rememberFitnessReadiness(days: List<DailyMetric>, profile: ProfileSt
     return rhrDays to readiness
 }
 
+/** The merged Ages hub: chronological, Fitness, Body and Rhythm age side by side, one trend chart of all
+ * four, and an info tap that names each line. Replaces the separate Fitness Age / Vitality / Rhythm cards.
+ * Body Age comes from the weekly wellness model; all are wellness estimates, not clinical ages. */
 @Composable
-private fun FitnessAgeSection(vm: AppViewModel, days: List<DailyMetric>, profile: ProfileStore) {
-    val context = LocalContext.current
- // Latest weekly value + its optional VO₂max companion, read once (metricSeries has no Flow, so we
- // re-read whenever the merged history changes — a fresh sync/import is what moves these).
+private fun AgesSection(vm: AppViewModel, days: List<DailyMetric>, profile: ProfileStore) {
     var fitnessAge by remember { mutableStateOf<Double?>(null) }
-    var vo2max by remember { mutableStateOf<Double?>(null) }
- // Manual-refresh plumbing: the not-ready card's refresh button recomputes Fitness Age NOW and bumps
- // this tick, which re-keys the read below so a freshly written value shows without waiting for a sync.
-    var refreshTick by remember { mutableStateOf(0) }
-    var refreshing by remember { mutableStateOf(false) }
-    LaunchedEffect(days, refreshTick) {
- // Latest-value reads (LIMIT-1 per source) — the full-series `.lastOrNull` scan is gone (perf).
-        val fa = runCatching {
-            vm.repo.latestMetricComputedUnion(vm.activeStrapId, "fitness_age")?.value
-        }.getOrNull()
-        val vo2 = runCatching {
-            vm.repo.latestMetricComputedUnion(vm.activeStrapId, "vo2max_est")?.value
-        }.getOrNull()
-        fitnessAge = fa
-        vo2max = vo2
-    }
-
- // Readiness from what THIS screen can see: the last 7 merged daily rows. RHR coverage drives the
- // age; activity (a scored strain day) is an enrichment signal; height/weight/waist sit under the
- // VO₂max role. Age/sex come from the profile. Approximate by design — the weekly value is the
- // authority; this just explains the gaps.
- // rhrDays drives BOTH the readiness verdict AND the not-ready countdown lead. Shared with the Today
- // card's tap-through (VitalDetailScreen) via one helper so a single gate feeds both surfaces.
-    val (rhrDays, readiness) = rememberFitnessReadiness(days, profile)
-
-    var showChecklist by remember { mutableStateOf(false) }
-
-    Column(verticalArrangement = Arrangement.spacedBy(Metrics.gap)) {
-        SectionHeader("Fitness Age", overline = "Weekly", trailing = "± 5 yr")
-        val value = fitnessAge
-        if (value != null) {
-            FitnessAgeHero(
-                fitnessAge = value,
-                chronoAge = profile.age,
-                vo2max = vo2max,
-                onHowAccurate = { showChecklist = !showChecklist },
-                checklistOpen = showChecklist,
-            )
-            if (showChecklist) {
-                FitnessReadinessCard(readiness = readiness, headed = false)
-            }
-        } else {
- // No weekly value yet — lead with a concrete countdown, then the checklist. The refresh button
- // forces the weekly recompute now (from stored data), so a ready user doesn't have to wait.
-            FitnessReadinessCard(
-                readiness = readiness, headed = true,
-                lead = fitnessReadyLead(rhrDays, profile.age > 0, profile.sex.isNotBlank()),
-                refreshing = refreshing,
-                onRefresh = {
-                    refreshing = true
-                    vm.refreshFitnessAgeNow { wrote ->
-                        refreshing = false
-                        refreshTick++
-                        Toast.makeText(
-                            context,
-                            if (wrote) "Fitness Age updated."
-                            else "Not enough wear yet — keep your strap on overnight.",
-                            Toast.LENGTH_SHORT,
-                        ).show()
-                    }
-                },
-            )
-        }
-    }
-}
-
-/** Vitality / Body Age: a weekly 0–100 wellness score + Body Age in years, computed by
- * IntelligenceEngine from the mortality-hazard model and read from metricSeries. A wellness trend
- * from your habits — NOT a clinical biological age. Recomputes the live best/worst factor for the why. */
-@Composable
-private fun VitalitySection(vm: AppViewModel, days: List<DailyMetric>, profile: ProfileStore) {
-    var vitality by remember { mutableStateOf<Double?>(null) }
     var bodyAge by remember { mutableStateOf<Double?>(null) }
-    LaunchedEffect(days) {
- // Latest-value reads (LIMIT-1 per source) — the full-series `.lastOrNull` scan is gone (perf).
-        vitality = runCatching {
-            vm.repo.latestMetricComputedUnion(vm.activeStrapId, "vitality")?.value
-        }.getOrNull()
-        bodyAge = runCatching {
-            vm.repo.latestMetricComputedUnion(vm.activeStrapId, "body_age")?.value
-        }.getOrNull()
-    }
-    val contributions = remember(days, profile.age) {
-        val last7 = days.takeLast(7)
-        val nights = last7.mapNotNull { it.totalSleepMin }.map { it / 60.0 }.filter { it > 0 }
-        val hrvs = last7.mapNotNull { it.avgHrv }
-        val rhrs = last7.mapNotNull { it.restingHr }.map { it.toDouble() }
-        val steps = last7.mapNotNull { it.steps }.map { it.toDouble() }
-        fun mean(a: List<Double>): Double? = if (a.isEmpty()) null else a.average()
- // Match the STORED headline's aggregation (IntelligenceEngine.medianOfDoubles): median resting HR +
- // HRV (robust to one outlier night), mean sleep + steps — so this "what's driving it" breakdown
- // reconciles with the Vitality / Body Age number it explains rather than drifting on the mean (review).
-        fun median(a: List<Double>): Double? {
-            if (a.isEmpty()) return null
-            val s = a.sorted(); val n = s.size
-            return if (n % 2 == 1) s[n / 2] else (s[n / 2 - 1] + s[n / 2]) / 2.0
-        }
-        VitalityEngine.contributions(VitalityEngine.Inputs(
-            chronoAge = profile.age.toDouble(), restingHR = median(rhrs), sleepHours = mean(nights),
-            sleepConsistency = VitalityEngine.sleepConsistency(nights),
-            rmssd = median(hrvs), rmssdNorm = VitalityEngine.rmssdNorm(profile.age.toDouble()), steps = mean(steps)))
-    }
-    val v = vitality; val ba = bodyAge
-    if (v != null && ba != null) {
-        Column(verticalArrangement = Arrangement.spacedBy(Metrics.gap)) {
-            SectionHeader("Vitality", overline = "Weekly", trailing = "Body Age ${ba.roundToInt()}")
-            VitalityHero(vitality = v, bodyAge = ba, chronoAge = profile.age, contributions = contributions)
-        }
-    }
-}
-
-/** Circadian Rhythm Age: a relative body-clock age (years) from the rest-activity cosinor + biological-age
- * transform, read from metricSeries; below it a chart tracks chronological, Fitness and Rhythm age over
- * time. A wellness estimate, not a clinical age. Hidden until a value exists. */
-@Composable
-private fun RhythmAgeSection(vm: AppViewModel, days: List<DailyMetric>, profile: ProfileStore) {
     var rhythmAge by remember { mutableStateOf<Double?>(null) }
     var trend by remember { mutableStateOf<List<Pair<LineSeries, String>>>(emptyList()) }
+    var infoOpen by remember { mutableStateOf(false) }
     LaunchedEffect(days) {
-        rhythmAge = runCatching {
-            vm.repo.latestMetricComputedUnion(vm.activeStrapId, "rhythm_age")?.value
-        }.getOrNull()
+        fitnessAge = runCatching { vm.repo.latestMetricComputedUnion(vm.activeStrapId, "fitness_age")?.value }.getOrNull()
+        bodyAge = runCatching { vm.repo.latestMetricComputedUnion(vm.activeStrapId, "body_age")?.value }.getOrNull()
+        rhythmAge = runCatching { vm.repo.latestMetricComputedUnion(vm.activeStrapId, "rhythm_age")?.value }.getOrNull()
         trend = runCatching {
-            val fit = vm.repo.metricSeriesComputedUnion(vm.activeStrapId, "fitness_age", "0000-01-01", "9999-12-31")
+            suspend fun series(key: String) = vm.repo
+                .metricSeriesComputedUnion(vm.activeStrapId, key, "0000-01-01", "9999-12-31")
                 .associate { it.day to it.value }
-            val rhy = vm.repo.metricSeriesComputedUnion(vm.activeStrapId, "rhythm_age", "0000-01-01", "9999-12-31")
-                .associate { it.day to it.value }
-            buildAgeTrend((fit.keys + rhy.keys).toSortedSet().toList(), fit, rhy, profile.dateOfBirthMillis)
+            buildAgeTrend(days.map { it.day }, series("fitness_age"), series("body_age"), series("rhythm_age"), profile.dateOfBirthMillis)
         }.getOrDefault(emptyList())
     }
-    val value = rhythmAge ?: return
     val chrono = profile.age
-    val delta = chrono - value.roundToInt()
+    if (fitnessAge == null && bodyAge == null && rhythmAge == null) {
+        Column(verticalArrangement = Arrangement.spacedBy(Metrics.gap)) {
+            SectionHeader("Ages", overline = "Weekly", trailing = null)
+            DataPendingNote(
+                title = "Your ages are building",
+                body = "Fitness, Body and Rhythm age appear here after a few weeks of wear, then a single " +
+                    "chart tracks them against your actual age.",
+            )
+        }
+        return
+    }
     Column(verticalArrangement = Arrangement.spacedBy(Metrics.gap)) {
-        SectionHeader("Rhythm Age", overline = "Weekly", trailing = "relative")
+        SectionHeader("Ages", overline = "Weekly", trailing = if (chrono > 0) "vs $chrono" else null)
         LiquidHeroCard {
-            Column(verticalArrangement = Arrangement.spacedBy(Metrics.space12)) {
-                Overline("Body clock")
-                CountUpText(
-                    value = value,
-                    format = { it.roundToInt().toString() },
-                    style = NoopType.number(34f),
-                    color = Palette.textPrimary,
-                )
-                Text(
-                    when {
-                        chrono <= 0 -> "years, from your circadian rhythm"
-                        delta == 0 -> "about your age, from your circadian rhythm"
-                        else -> "${kotlin.math.abs(delta)} ${yearWord(delta)} " +
-                            "${if (value < chrono) "younger" else "older"} than your age, from your circadian rhythm"
-                    },
-                    style = NoopType.footnote,
-                    color = Palette.textTertiary,
-                )
+            Column(verticalArrangement = Arrangement.spacedBy(Metrics.space14)) {
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    AgeStat(Modifier.weight(1f), "Actual", Palette.textTertiary, if (chrono > 0) chrono.toDouble() else null, chrono, isActual = true)
+                    AgeStat(Modifier.weight(1f), "Fitness", Palette.metricCyan, fitnessAge, chrono)
+                    AgeStat(Modifier.weight(1f), "Body", Palette.chargeColor, bodyAge, chrono)
+                    AgeStat(Modifier.weight(1f), "Rhythm", Palette.metricPurple, rhythmAge, chrono)
+                }
                 if (trend.size >= 2) {
-                    MultiLineChart(trend.map { it.first }, Modifier.fillMaxWidth().height(120.dp))
-                    Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                        trend.forEach { (line, label) ->
-                            Text(label, style = NoopType.caption, color = line.color)
-                        }
+                    MultiLineChart(trend.map { it.first }, Modifier.fillMaxWidth().height(130.dp))
+                }
+                val infoInteraction = remember { MutableInteractionSource() }
+                Row(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(Metrics.cornerSm))
+                        .clickable(interactionSource = infoInteraction, indication = null) { infoOpen = !infoOpen }
+                        .padding(vertical = Metrics.space6),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(Metrics.space6),
+                ) {
+                    Icon(Icons.Filled.Info, contentDescription = null, tint = Palette.textTertiary, modifier = Modifier.size(16.dp))
+                    Text(
+                        if (infoOpen) "Hide what these mean" else "What do these mean?",
+                        style = NoopType.footnote, color = Palette.textSecondary,
+                    )
+                }
+                if (infoOpen) {
+                    Column(verticalArrangement = Arrangement.spacedBy(Metrics.space8)) {
+                        AgeLegend(Palette.textTertiary, "Actual", "Your age from your date of birth.")
+                        AgeLegend(Palette.metricCyan, "Fitness", "From resting heart rate and activity versus your age (a VO₂max proxy). About ± 5 years.")
+                        AgeLegend(Palette.chargeColor, "Body", "From a weekly wellness model of resting HR, HRV, sleep and steps. A habits estimate, not clinical.")
+                        AgeLegend(Palette.metricPurple, "Rhythm", "From your circadian rest-activity rhythm, relative to your own baseline.")
+                        Text("All are wellness estimates, not clinical ages.", style = NoopType.footnote, color = Palette.textTertiary)
                     }
                 }
             }
         }
     }
 }
+
+/** One age in the compact hero row: the label in its line colour, the years, and the signed gap vs actual. */
+@Composable
+private fun AgeStat(modifier: Modifier, label: String, color: Color, age: Double?, chronoAge: Int, isActual: Boolean = false) {
+    Column(modifier = modifier, horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Text(label, style = NoopType.caption, color = color)
+        if (age != null) {
+            CountUpText(value = age, format = { it.roundToInt().toString() }, style = NoopType.number(26f), color = Palette.textPrimary)
+            if (!isActual && chronoAge > 0) {
+                val sd = age.roundToInt() - chronoAge
+                Text(
+                    if (sd == 0) "±0 yr" else "${if (sd > 0) "+" else "−"}${kotlin.math.abs(sd)} yr",
+                    style = NoopType.footnote,
+                    color = if (sd == 0) Palette.textTertiary else if (sd < 0) Palette.statusPositive else Palette.statusWarning,
+                )
+            } else {
+                Text("today", style = NoopType.footnote, color = Palette.textTertiary)
+            }
+        } else {
+            Text("—", style = NoopType.number(26f), color = Palette.textTertiary)
+            Text("soon", style = NoopType.footnote, color = Palette.textTertiary)
+        }
+    }
+}
+
+/** One line in the info-tap legend: a colour swatch matching the chart line, the metric name, and a note. */
+@Composable
+private fun AgeLegend(color: Color, name: String, note: String) {
+    Row(horizontalArrangement = Arrangement.spacedBy(Metrics.space8), verticalAlignment = Alignment.Top) {
+        Box(Modifier.padding(top = 5.dp).size(10.dp).clip(RoundedCornerShape(2.dp)).background(color))
+        Column {
+            Text(name, style = NoopType.footnote, color = Palette.textPrimary)
+            Text(note, style = NoopType.caption, color = Palette.textTertiary)
+        }
+    }
+}
+
 
 /** Fractional chronological age (years) on the local calendar day [dayIso] ("yyyy-MM-dd") from a DOB. */
 private fun chronoAgeYearsAt(dayIso: String, dobMillis: Long): Double? {
@@ -747,85 +681,29 @@ private fun denseSeriesOnDays(days: List<String>, byDay: Map<String, Double>): L
     return fwd.map { it ?: firstKnown }
 }
 
-/** The chronological-age / Fitness-Age / Rhythm-Age lines over [days] (a shared weekly grid), each paired
- *  with a legend label. Chronological is always present; the other two only when they have data. */
+/** The chronological / Fitness / Body / Rhythm age lines over [days] (a shared weekly grid), each paired
+ *  with a legend label. Chronological is always present; a measured age appears only when it has data. The
+ *  window spans from the earliest measured age so no line is drawn flat across never-measured history. */
 private fun buildAgeTrend(
     days: List<String>,
     fitnessByDay: Map<String, Double>,
+    bodyByDay: Map<String, Double>,
     rhythmByDay: Map<String, Double>,
     dobMillis: Long,
 ): List<Pair<LineSeries, String>> {
-    // Span only the period Rhythm Age actually covers, so no line is drawn flat across never-measured
-    // history; all three series share this window so they stay index-aligned in the chart.
-    val firstRhythmDay = rhythmByDay.keys.minOrNull() ?: return emptyList()
-    val window = days.filter { it >= firstRhythmDay }
+    val firstMeasured = (fitnessByDay.keys + bodyByDay.keys + rhythmByDay.keys).minOrNull() ?: return emptyList()
+    val window = days.filter { it >= firstMeasured }
     if (window.size < 2) return emptyList()
     val chrono = window.map { chronoAgeYearsAt(it, dobMillis) }
     if (chrono.any { it == null }) return emptyList()
     val out = ArrayList<Pair<LineSeries, String>>()
     out.add(LineSeries(chrono.filterNotNull(), Palette.textTertiary) to "Actual")
     denseSeriesOnDays(window, fitnessByDay)?.let { out.add(LineSeries(it, Palette.metricCyan) to "Fitness") }
+    denseSeriesOnDays(window, bodyByDay)?.let { out.add(LineSeries(it, Palette.chargeColor) to "Body") }
     denseSeriesOnDays(window, rhythmByDay)?.let { out.add(LineSeries(it, Palette.metricPurple) to "Rhythm") }
     return out
 }
 
-@Composable
-private fun VitalityHero(
-    vitality: Double, bodyAge: Double, chronoAge: Int,
-    contributions: List<VitalityEngine.Contribution>,
-) {
-    val delta = chronoAge - bodyAge.roundToInt()
-    val younger = bodyAge < chronoAge
-    val sorted = contributions.sortedBy { it.lnHazard }
-    val best = sorted.firstOrNull()
-    val worst = sorted.lastOrNull()
- // The frosted liquid hero-card wrapper floats the vessel + white count-up over the sky (the pilot).
-    LiquidHeroCard {
-        Column(verticalArrangement = Arrangement.spacedBy(Metrics.space12)) {
-            Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Overline("Vitality")
- // The Vitality 0–100 rides a filling LiquidVessel on the charge world, the count-up
- // number rolled up over it (white, tabular) — the Today HeroScoreVessel idiom. Same
- // value + fraction (vitality / 100) as the bare headline this replaced.
-                    HealthHeroVessel(
-                        fraction = vitality / 100.0,
-                        value = vitality,
-                        tint = Palette.chargeColor,
-                        diameter = 96.dp,
-                    )
-                    Text("out of 100", style = NoopType.footnote, color = Palette.textTertiary)
-                }
-                Column(horizontalAlignment = Alignment.End) {
-                    Overline("Body Age")
-                    CountUpText(
-                        value = bodyAge,
-                        format = { it.roundToInt().toString() },
-                        style = NoopType.number(34f),
-                        color = Palette.textPrimary,
-                    )
-                    Text(
-                        if (delta == 0) "about your age"
-                        else "${kotlin.math.abs(delta)} ${yearWord(delta)} ${if (younger) "younger" else "older"}",
-                        style = NoopType.footnote,
-                        color = if (delta == 0) Palette.textSecondary
-                        else if (younger) Palette.statusPositive else Palette.statusWarning,
-                    )
-                }
-            }
-            if (best != null && best.lnHazard < 0) {
-                Text("Helping most: ${best.label}", style = NoopType.footnote, color = Palette.statusPositive)
-            }
-            if (worst != null && worst.lnHazard > 0) {
-                Text("Holding you back: ${worst.label}", style = NoopType.footnote, color = Palette.statusWarning)
-            }
-            Text(
-                "A wellness estimate from your habits, not a clinical biological age.",
-                style = NoopType.footnote, color = Palette.textTertiary,
-            )
-        }
-    }
-}
 
 // MARK: - Liquid hero-card wrapper + hero vessel (the pilot idiom)
 //
@@ -853,139 +731,6 @@ private fun LiquidHeroCard(content: @Composable () -> Unit) {
     }
 }
 
-/**
- * The health hero gauge: a [LiquidVessel] filled to [fraction] (0..1) in the domain [tint], with a
- * [CountUpText] rolled up over it — white, tabular, a soft shadow, hit-transparent so a tap falls through
- * to the vessel (which owns its own splash+haptic). The Today `HeroScoreVessel` idiom, reused verbatim so
- * the Fitness Age / Vitality numbers ride a filling vessel instead of a bare hand-drawn gauge. The number
- * size tracks the diameter (≈0.27×, capped) so the vessel and numeral stay balanced. Values/fraction/tint
- * are the SAME as the number this replaced — presentation only.
- */
-@Composable
-private fun HealthHeroVessel(
-    fraction: Double,
-    value: Double,
-    tint: Color,
-    diameter: Dp,
-    modifier: Modifier = Modifier,
-    animated: Boolean = true,
-    format: (Double) -> String = { it.roundToInt().toString() },
-) {
-    Box(modifier = modifier.size(diameter), contentAlignment = Alignment.Center) {
-        LiquidVessel(
-            value = fraction.coerceIn(0.0, 1.0),
-            tint = tint,
-            animated = animated,
-            modifier = Modifier.size(diameter),
-        )
-        val numberSp = (diameter.value * 0.27f).coerceIn(20f, 30f)
-        CountUpText(
-            value = value,
-            format = format,
-            style = NoopType.number(numberSp, weight = FontWeight.Bold)
-                .copy(shadow = Shadow(color = Color.Black.copy(alpha = 0.5f), offset = Offset(0f, 1f), blurRadius = 6f)),
-            color = Color.White,
-            modifier = Modifier.clearAndSetSemantics {},
-        )
-    }
-}
-
-/** The hero tile: a big Fitness Age number on the gold Charge world, the younger/older read-out, an
- * optional VO₂max chip, the honest ± band caption, and a "How accurate is this?" toggle. */
-@Composable
-private fun FitnessAgeHero(
-    fitnessAge: Double,
-    chronoAge: Int,
-    vo2max: Double?,
-    onHowAccurate: () -> Unit,
-    checklistOpen: Boolean,
-) {
-    val shown = fitnessAge.roundToInt()
- // Delta vs the user's actual age: younger when the fitness age is below it. abs drives the words.
-    val deltaYears = (chronoAge - fitnessAge).roundToInt()
-    val younger = fitnessAge < chronoAge
-    val deltaWord = when {
-        deltaYears == 0 -> "About your age"
-        younger -> "$deltaYears ${yearWord(deltaYears)} younger than your age"
-        else -> "${kotlin.math.abs(deltaYears)} ${yearWord(deltaYears)} older than your age"
-    }
- // Vessel fill: a bounded, honest reading of the SAME younger/older signal the card already states,
- // mapped across the ±5 yr band the section advertises — "about your age" is half-full, younger fills
- // it up, older empties it, clamped to the band. Presentation only; the shown number is unchanged.
-    val youthFraction = if (chronoAge > 0) {
-        (0.5 + (chronoAge - fitnessAge) / 10.0).coerceIn(0.0, 1.0)
-    } else 0.5
-
- // The "How accurate is this?" toggle presses inward on tap (the pilot liquidPress feel); the SAME
- // interactionSource drives its clickable + press.
-    val howAccurateInteraction = remember { MutableInteractionSource() }
-
- // The frosted liquid hero-card wrapper floats the vessel + white count-up over the sky (the pilot).
-    LiquidHeroCard {
-        Column(verticalArrangement = Arrangement.spacedBy(Metrics.space12)) {
-            Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Overline("Fitness Age")
- // The hero age rides a filling LiquidVessel on the gold Charge world, the age number
- // rolled up over it (white, tabular) — the Today HeroScoreVessel idiom. The shown NUMBER
- // is the same value (fitnessAge, rounded) as the bare headline this replaced.
-                    HealthHeroVessel(
-                        fraction = youthFraction,
-                        value = shown.toDouble(),
-                        tint = Palette.chargeColor,
-                        diameter = 96.dp,
-                    )
-                    Text(
-                        text = deltaWord,
-                        style = NoopType.subhead,
-                        color = if (deltaYears == 0) Palette.textSecondary
-                        else if (younger) Palette.statusPositive else Palette.statusWarning,
-                    )
-                }
-                if (vo2max != null) {
-                    StatePill(
-                        title = "VO₂max ${vo2max.roundToInt()}",
-                        tone = StrandTone.Accent,
-                        showsDot = false,
-                    )
-                }
-            }
-
-            Text(
-                text = "± 5 yr · a fitness comparison, not a biological age",
-                style = NoopType.footnote,
-                color = Palette.textTertiary,
-            )
-
- // "How accurate is this?" affordance — toggles the readiness checklist below the hero.
-            Row(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(Metrics.cornerSm))
-                    .liquidPress(howAccurateInteraction)
-                    .clickable(
-                        interactionSource = howAccurateInteraction,
-                        indication = null,
-                        onClick = onHowAccurate,
-                    )
-                    .padding(vertical = Metrics.space4)
-                    .semantics { contentDescription = "How accurate is this Fitness Age?" },
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(Metrics.space6),
-            ) {
-                Text(
-                    "How accurate is this?",
-                    style = NoopType.captionNumber,
-                    color = Palette.accent,
-                )
-                Text(
-                    if (checklistOpen) "▾" else "›",
-                    style = NoopType.captionNumber,
-                    color = Palette.accent,
-                )
-            }
-        }
-    }
-}
 
 /** The not-ready card's lead: a concrete countdown of nights-of-wear still needed (from the shared
  * [FitnessAgeEngine.nightsUntilReady]), noting the profile basics only when actually missing. Copy is kept
