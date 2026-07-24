@@ -8,12 +8,9 @@ import androidx.room.Index
  * Room entities mirroring the verified GRDB schema in
  * Packages/WhoopStore/Sources/WhoopStore/Database.swift (+ MetricsCache.swift).
  *
- * Natural keys mirror the Swift `ON CONFLICT(...) DO NOTHING` upserts so insert dedupe behaves identically,
- * with ONE deliberate exception noted inline:
+ * Natural keys drive the insert dedupe (each table's PRIMARY KEY):
  *   - hrSample        PK (deviceId, ts)
- *   - rrInterval      PK (deviceId, ts, rrMs, seq)  // v18: `seq` tiebreaks EQUAL same-second beats.
- *                                                   // Diverges from Swift (still deviceId, ts, rrMs) — see
- *                                                   // the RrInterval doc + PR; Swift needs the same fix.
+ *   - rrInterval      PK (deviceId, ts, rrMs, seq)  // `seq` tiebreaks EQUAL same-second beats.
  *   - event           PK (deviceId, ts, kind)
  *   - battery         PK (deviceId, ts)
  *   - spo2Sample      PK (deviceId, ts)
@@ -85,18 +82,9 @@ data class HrWindowStats(
 )
 
 /**
- * R-R interval. Swift `rrInterval` (v1); PK widened in Room v18 to (deviceId, ts, rrMs, **seq**), adding
- * `seq` as a tiebreaker for two EQUAL R-R intervals that fall in the same 1-second `ts` bucket. Keying by
- * value alone (deviceId, ts, rrMs) + `ON CONFLICT DO NOTHING` silently dropped the second of two equal
- * successive beats in a second, removing a zero-difference pair and biasing RMSSD/HRV **high** — the bias
- * matters most at rest/sleep, exactly when HRV is scored. `seq` counts equal (ts, rrMs) beats (0, 1, …) so
- * both survive. DISTINCT intervals keep their own (ts, rrMs) slot exactly as before, so no distinct beat is
- * ever dropped — including across separate insert batches or the live/historical merge (rrMs stays in the
- * key). Re-syncing identical records reproduces the same (ts, rrMs, seq), so the insert stays idempotent.
- *
- * PARITY NOTE: this intentionally diverges from the Swift `rrInterval` key, which is still
- * (deviceId, ts, rrMs); the identical value-key drop exists in `WhoopStore` (Database.swift / StreamStore /
- * Reads) and should get the same widening in a follow-up. See the PR description.
+ * R-R interval. `seq` tiebreaks two EQUAL R-R intervals in the same 1-second `ts` bucket: keying by
+ * (deviceId, ts, rrMs) alone dropped the second equal beat and biased HRV high. Equal (ts, rrMs) beats
+ * count 0, 1, …; distinct beats keep seq 0, so no distinct beat is ever dropped.
  */
 @Entity(tableName = "rrInterval", primaryKeys = ["deviceId", "ts", "rrMs", "seq"])
 data class RrInterval(
