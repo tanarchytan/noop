@@ -1,5 +1,14 @@
 # Analytics Ceiling Verification Report
 
+> **Snapshot of 2026-07-17. The sleep figures below have since moved.** The motion-absence fix in
+> `physio-algo::sleep::v2` changed staging output, so DREAMT is now **0.311** (not 0.325) and AAUWSS
+> **0.412** (not 0.431), alongside killa5 0.537 and sleep-accel 0.379. The AT-CEILING verdict still
+> holds — the gap to the ~0.33 wrist-optical floor is unchanged in kind — and a later re-tune was
+> measured and **rejected** for gaining on its fitting set while losing up to 0.372 on held-out sets.
+> Live figures: `whoop-rs/docs/algorithms.md`, pinned by
+> `cargo test -p physio-algo --test dataset_parity -- --ignored`. The numbers below are left as they
+> were read, because this document's value is the record of what the harness said that day.
+
 Measure-only. No code edits, no commits, no git-touch of whoop-rs. Every number
 below was read from an actual harness run (Python sleep-benchmark, `cargo test -p
 physio-algo`, or the Kotlin agreement JUnit XML), never from a piped exit code.
