@@ -10,16 +10,18 @@ package com.noop.analytics
  * recovery seed uses (see `bankedCalibrationNights` in TodayScreen), so a progress bar can never
  * over-state what the baseline has actually banked.
  *
- * The targets mirror WHOOP's published Calibration Timeline (Day 4 Recovery, Day 7 Sleep, Day 30 full
- * baseline) plus noop's own 14-night Trusted gate, so a WHOOP user sees the timeline they expect while
- * noop's better statistics run underneath. Mirrors the Swift `CalibrationMilestones`.
+ * These are NOOP's own baseline gates (seed 4, trust 14) plus two round coaching targets, NOT WHOOP's
+ * per-feature unlock schedule — that lives in whoop-rs `physio-algo::calibration`, where Recovery
+ * unlocks at 3 nights, sleep consistency at 5 and VO2 max at 14. The two schedules answer different
+ * questions: this one is "how far is my baseline", that one is "is this metric shown yet".
+ * Mirrors the Swift `CalibrationMilestones`.
  */
 object CalibrationMilestones {
 
-    /** The 5.0/MG "first week" sleep-coaching milestone (WHOOP Day 7). Not a baseline gate — a card target. */
+    /** First-week sleep-coaching target. Not a baseline gate — a card target. */
     const val sleepBaselineNights: Int = 7
 
-    /** WHOOP's full-baseline / rolling-30-day milestone (Day 30). Not a baseline gate — a card target. */
+    /** The rolling-30-day baseline target. Not a baseline gate — a card target. */
     const val fullBaselineNights: Int = 30
 
     /** A single calibration checkpoint. [nights] is the banked valid-night count at which it unlocks. */
@@ -37,13 +39,13 @@ object CalibrationMilestones {
         Milestone(
             id = "firstRecovery",
             title = "First Recovery",
-            nights = Baselines.minNightsSeed, // 4 — matches WHOOP Day 4
+            nights = Baselines.minNightsSeed, // 4 — noop seeds its baseline here
             unlocks = "Charge, Effort and Rest become personal to you.",
         ),
         Milestone(
             id = "sleepBaseline",
             title = "Sleep baseline",
-            nights = sleepBaselineNights, // 7 — WHOOP "after your first week"
+            nights = sleepBaselineNights, // 7 — a full week of nights
             unlocks = "Your sleep need and coaching tune to your own nights.",
         ),
         Milestone(
@@ -55,7 +57,7 @@ object CalibrationMilestones {
         Milestone(
             id = "fullBaseline",
             title = "30-day baseline",
-            nights = fullBaselineNights, // 30 — WHOOP full baseline / rolling window
+            nights = fullBaselineNights, // 30 — the full rolling window
             unlocks = "Your complete rolling 30-day baseline is set.",
         ),
     )
