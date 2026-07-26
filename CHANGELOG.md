@@ -17,6 +17,49 @@ approximate; downloads are on the [Releases](https://github.com/NoopApp/noop/rel
 
 ---
 
+## 9.0.1-rc3-tan: a fix and cleanup pass
+
+Bug fixes and menu tidying, plus the last of the scoring engines moving to the shared Rust core.
+Nothing here changes what the app is for; it changes what it gets right.
+
+**Fixed.**
+
+- **Tapping More could land you on Health.** The More list has a Health row, and using it pushed Health
+  onto More's own history, so the next time you tapped More you got Health again. More rows that point
+  at a main tab now switch tab properly.
+- **"Going to sleep" and "I'm awake" did nothing.** They wrote a timestamp nothing ever read and never
+  touched detected sleep. They're gone. NOOP already knows when you're asleep, so Home now offers
+  **End sleep** while a detected night is still running: one tap ends it and re-scores the day.
+- **Sleep regularity was measuring the wrong thing.** It read how consistent your sleep *length* was,
+  which is blind to a bedtime that swings. Sleep exactly eight hours from 22:00 one night and 02:00 the
+  next and the old measure called that perfectly regular. It now uses the Sleep Regularity Index —
+  whether you're asleep at the same clock time day to day. Time with the strap off counts as unknown,
+  never as being awake, so taking it off is not held against you.
+- **Time with the strap off could count against your sleep regularity.** The wear window was taken as
+  the first to last reading of each day, so any gap in between looked like time you were awake. A real
+  backup carried nearly 30 hours of such gaps, one of them almost 9 hours. Gaps are now unknown time,
+  which is what they are.
+- **Blood oxygen on WHOOP 4.0** was stored as raw sensor counts that never became a percentage. Both
+  band generations now show a percentage on the same card. The 4.0 figure is an uncalibrated estimate
+  and the weaker of the two; 5.0/MG still uses the band's own reading.
+- **Body Age** now uses a sourced mortality-doubling time of 10 years rather than an unsourced 8, so
+  every Body Age sits further from your actual age than before. Your zero point is unchanged: at the
+  population average on every driver you still read your own age.
+
+**Cleaned up.**
+
+- Health: the empty Skin Temperature heading and the Records & sources block are gone; the latter
+  duplicated a row already in More.
+- Sleep: the "Why this sleep?" note is gone.
+- The readiness word on Home now comes from your HRV against your own normal band, instead of restating
+  the recovery score in different words.
+
+**Under the hood.** Workout detection, IMU features, bout calories, HRV spread, baselines and the body
+age all moved to the shared Rust core, which is now the single owner of every score. The Body Clock card
+finally shows real data. Every number the app displays is computed in one place.
+
+---
+
 ## 7.9.0: Coupled view, a rebuilt workout list, and numbers in your journal (all platforms)
 
 Three sizeable new features, the fix wave that was in flight, and a hardening pass a pre-release
