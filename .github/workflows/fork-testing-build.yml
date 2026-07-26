@@ -31,6 +31,9 @@ jobs:
           TAG="testing-latest"
           DATE=$(date -u +%Y-%m-%d)
           VER=$(grep -m1 'versionName = ' android/app/build.gradle.kts | sed -E 's/.*"([^"]+)".*/\1/')
+          # Read the app id rather than hardcoding it, so a rename can't leave these notes advertising a
+          # package that no longer ships.
+          APPID=$(grep -m1 'applicationId = ' android/app/build.gradle.kts | sed -E 's/.*"([^"]+)".*/\1/')
           SHA="${GITHUB_SHA:0:7}"
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
           echo "ver=$VER" >> "$GITHUB_OUTPUT"
@@ -39,10 +42,10 @@ jobs:
           gh release delete "$TAG" --repo "$GITHUB_REPOSITORY" --cleanup-tag --yes || true
           gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --prerelease --target "${{ github.sha }}" \
             --title "NOOP Staging — base ${VER} · ${DATE} · ${SHA}" \
-            --notes "Rolling **latest** testing build — refreshed in place, so this tag is always the newest. NOOP main + ryanbr's open PRs + vetted community PRs, built with the **NOOP Staging** identity (installs **beside** the official app, separate data). Filenames carry the base app version (\`v${VER}\`).
+            --notes "Rolling **latest** testing build — refreshed in place, so this tag is always the newest. NOOP main + ryanbr's open PRs + vetted community PRs, built with the **NOOP Staging** identity (installs **beside** the release build, separate data). Filenames carry the base app version (\`v${VER}\`).
 
-          - **Android (release)** — \`NOOP-android-v${VER}.apk\` — optimized, non-debuggable build; installs beside the official app. \`com.noop.whoop.staging\`.
-          - **Android (debug)** — \`NOOP-android-debug-v${VER}.apk\` — debuggable build. \`com.noop.whoop.debug\`.
+          - **Android (release)** — \`NOOP-android-v${VER}.apk\` — optimized, non-debuggable build. \`${APPID}.staging\`.
+          - **Android (debug)** — \`NOOP-android-debug-v${VER}.apk\` — debuggable build. \`${APPID}.debug\`.
 
           Base app version ${VER} · built ${DATE} · \`${SHA}\`."
 

@@ -131,9 +131,13 @@ jobs:
             else
               echo "First release (no prior release tag) — skipping the auto PR breakdown."
             fi
+            # App id read from the gradle file so a rename can never leave the notes advertising a
+            # package that no longer ships.
+            APPID=$(grep -m1 'applicationId = ' "$GRADLE" | sed -E 's/.*"([^"]+)".*/\1/')
+            MINSDK=$(grep -m1 'minSdk = ' "$GRADLE" | sed -E 's/.*minSdk = ([0-9]+).*/\1/')
             {
-              printf '\n---\n\n**Downloads** — NOOP Staging identity, installs **beside** the official app (separate data):\n'
-              printf -- '- **Android** — `NOOP-android-v%s.apk` (`com.noop.whoop.staging`)\n' "$NEW"
+              printf '\n---\n\n**Download** — sideload on Android (minSdk %s). Installs beside any other NOOP fork, with its own data:\n' "$MINSDK"
+              printf -- '- **Android** — `NOOP-android-v%s.apk` (`%s`)\n' "$NEW" "$APPID"
             } >> "$BODY"
             gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --target "$(git rev-parse HEAD)" \
               --title "NOOP ${NEW}" --notes-file "$BODY"
