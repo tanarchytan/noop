@@ -55,6 +55,14 @@ android {
         }
     }
 
+    // Three shipped things, and one that never leaves this machine:
+    //   • release → the stable app.                    com.noop.tan
+    //   • rc      → the same app, debuggable.          com.noop.tan   (replaces stable, KEEPS its data)
+    //   • mock    → the flavor below, synthetic data.  com.noop.tan.mock
+    //   • debug   → local dev + instrumentation only, never published, own id so it cannot
+    //               overwrite the real app's data.     com.noop.tan.debug
+    // `rc` deliberately shares the stable id AND the stable signing key, so installing a candidate
+    // over a release is an ordinary update rather than a wipe-and-reinstall.
     buildTypes {
         debug {
             isMinifyEnabled = false
@@ -79,34 +87,37 @@ android {
                 signingConfigs.getByName("release")
             else
                 signingConfigs.getByName("debug")
-            // Fork staging release: built with -PstagingRelease (the fork testing-build CI only), the
-            // release APK gets its own id/name so it installs BESIDE both the official app and the
-            // .debug staging build. A real release (no property) keeps the true com.noop.tan id.
-            if (project.hasProperty("stagingRelease")) {
-                applicationIdSuffix = ".staging"
-                versionNameSuffix = "-staging"
-            }
+        }
+        // Release candidate: byte-for-byte the release build plus debuggability. No id or version
+        // suffix on purpose — it must land on top of an installed release and keep its data, which
+        // needs the same applicationId and the same signing key. The versionName already says which
+        // candidate this is (e.g. 9.0.1-rc3-tan).
+        create("rc") {
+            initWith(getByName("release"))
+            isDebuggable = true
+            matchingFallbacks += listOf("release")
         }
     }
 
     // Two clearly-distinct apps that install side-by-side:
-    //   • full → "NOOP"      (com.noop.tan)     — the real app, starts empty, pair a strap / import.
-    //   • demo → "NOOP Demo"  (com.noop.tan.demo) — preloaded with 120 days of synthetic data and
-    //                          a visible DEMO badge, so anyone can explore every screen with no strap.
-    // Build e.g. ./gradlew assembleFullRelease assembleDemoRelease.
+    //   • full → "NOOP"      (com.noop.tan)      — the real app, starts empty, pair a strap / import.
+    //   • mock → "NOOP Mock" (com.noop.tan.mock) — preloaded with 120 days of synthetic data, so every
+    //                         screen can be explored with no strap. Its own id, so it can never write
+    //                         mock data into the real app's database.
+    // Build e.g. ./gradlew assembleFullRelease assembleMockRc.
     flavorDimensions += "tier"
     productFlavors {
         create("full") {
             dimension = "tier"
             buildConfigField("String", "TIER", "\"full\"")
-            buildConfigField("boolean", "ENABLE_DEMO", "false")
+            buildConfigField("boolean", "ENABLE_MOCK", "false")
         }
-        create("demo") {
+        create("mock") {
             dimension = "tier"
-            applicationIdSuffix = ".demo"
-            versionNameSuffix = "-demo"
-            buildConfigField("String", "TIER", "\"demo\"")
-            buildConfigField("boolean", "ENABLE_DEMO", "true")
+            applicationIdSuffix = ".mock"
+            versionNameSuffix = "-mock"
+            buildConfigField("String", "TIER", "\"mock\"")
+            buildConfigField("boolean", "ENABLE_MOCK", "true")
         }
     }
 

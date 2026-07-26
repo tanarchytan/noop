@@ -81,7 +81,7 @@ row exists** — the `Packages/`, `Strand/`, `StrandiOS/`, `NOOPWatch*` trees we
 | Design system | `Packages/StrandDesign` | SwiftUI palette / components / charts. |
 | macOS + shared app | `Strand/` (scheme **Strand**, product `NOOP`, macOS 13+) | `BLE/` (CoreBluetooth), `Collect/`, `Data/` (Repository), `Screens/`, `App/` (`RootView`/`ContentView` = sidebar shell). Shared with iOS where a file isn't macOS-only. |
 | iOS-only app | `StrandiOS/` (scheme **NOOPiOS**, iOS 17+), `StrandiOSShared/`, `StrandiOSWidgets/`, `NOOPWatch*` | `StrandiOSApp` (@main), `RootTabView` (the iOS tab shell — no macOS analogue), iOS widgets, watch app. |
-| Android app | `android/` (Kotlin, Compose, Room; flavors `Full`/`Demo`) | `com.noop.{ble,collect,data,ingest,analytics,protocol,ui,widget,…}` — mirrors the Swift layering with its own reimplementations. |
+| Android app | `android/` (Kotlin, Compose, Room; flavors `Full`/`Mock`) | `com.noop.{ble,collect,data,ingest,analytics,protocol,ui,widget,…}` — mirrors the Swift layering with its own reimplementations. |
 
 *(Upstream only — not on `noop-tan`.)* Upstream, `project.yml` is the XcodeGen source of truth and
 `Strand.xcodeproj/` is generated from it. Both were removed here with the Swift app, so nothing on this
@@ -132,7 +132,8 @@ On `noop-tan`, Android is the only CI-covered target:
 | Workflow | Covers | Runner | Default state |
 |---|---|---|---|
 | `android.yml` | `assembleFullDebug` + `testFullDebugUnitTest`, on push/PR to `main` + `noop-tan` | ubuntu | **active** |
-| `fork-testing-build.yml` / `fork-release.yml` | Staging / release **APK** builds (Android only) | ubuntu | on dispatch |
+| `fork-rc-build.yml` | Release-candidate **APKs** (`fullRc` + `mockRc`), published as a prerelease | ubuntu | on dispatch |
+| `fork-release.yml` | Stable **APKs** (`fullRelease` + `mockRelease`), the non-prerelease `releases/latest` | ubuntu | on dispatch |
 
 Removed here: `swift-packages.yml` + `app-build.yml` (with the split) and the entire Swift/iOS/macOS
 source tree (with the app removal). Only `android/` is left, so `android.yml` covers everything on this
@@ -179,7 +180,9 @@ since noop-tan no longer carries the Swift side to check it against.
 - **iOS is `NOOPiOS`**, not `Strand`. `ContentView`/`RootView` (the macOS sidebar) are excluded from
   iOS; the iOS shell is `RootTabView`. A file shared with macOS (`TodayView`, `Repository`, analytics)
   must keep compiling for **both** — check the `Strand` (macOS) build too when you edit shared files.
-- **Android** is Compose + Room, flavors `Full` (real) and `Demo`. Profile/prefs live in
+- **Android** is Compose + Room, flavors `Full` (real) and `Mock` (synthetic data). Build types
+  `release` and `rc` (same id + key as release, so a candidate updates in place); `debug` is dev-only.
+  Profile/prefs live in
   SharedPreferences; the DB is Room. UI state uses a `mutate {}` recomposition-counter idiom in places.
 - iOS/macOS deployment targets (**upstream only**): macOS 13.0, iOS 17.0. No Apple targets exist on `noop-tan`.
 

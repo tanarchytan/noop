@@ -269,9 +269,9 @@ Notes:
 
 Android ships as a **full, native client** — a separate Kotlin/Gradle module rather than a port of
 the Swift app. It lives under **`android/`** with its own `README`, and a pre-built APK
-(`NOOP-full.apk`) is published in [Releases](https://github.com/ryanbr/noop/releases). A sample-data **demo** flavour still
-exists for exploring every screen with no strap, but it's now **build-from-source only**
-(`./gradlew assembleDemoDebug`) — it is no longer published as a release asset.
+(`NOOP-android-*.apk`) is published in [Releases](https://github.com/tanarchytan/noop/releases). A
+sample-data **mock** flavour ships alongside it (`NOOP-android-mock-*.apk`, `./gradlew assembleMockRc`)
+for exploring every screen with no strap.
 
 Toolchain:
 

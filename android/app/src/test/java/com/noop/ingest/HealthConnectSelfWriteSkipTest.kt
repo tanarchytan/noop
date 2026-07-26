@@ -21,7 +21,7 @@ class HealthConnectSelfWriteSkipTest {
     @Test fun keepsRecordsFromOtherSources() {
         assertFalse(HealthConnectImporter.isSelfWritten("com.google.android.apps.fitness", self))
         assertFalse(HealthConnectImporter.isSelfWritten("com.sec.android.app.shealth", self))
-        assertFalse(HealthConnectImporter.isSelfWritten("com.noop.tan.demo", self)) // different pkg
+        assertFalse(HealthConnectImporter.isSelfWritten("com.noop.tan.mock", self)) // different pkg
     }
 
     @Test fun keepsWhenOriginUnknownOrSelfBlank() {

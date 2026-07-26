@@ -1,0 +1,105 @@
+# Fork-only (noop-tan, ANDROID-ONLY): publish a RELEASE CANDIDATE.
+#
+# An rc is the stable app plus debuggability. It carries the SAME applicationId and the SAME signing
+# key as the release build, so installing one over a release is an ordinary update that KEEPS the
+# user's data — that is the whole point of the variant, and why there is no longer a `.staging` or
+# `.debug` app id in the shipped set. The mock build ships alongside for strap-free exploration.
+#
+# The tag is derived from the versionName (e.g. 9.0.1-rc3-tan -> v9.0.1-rc3-tan), so each candidate
+# is its own immutable prerelease rather than a rolling snapshot. Bump the rc number in
+# android/app/build.gradle.kts before dispatching.
+#
+# Contrast with fork-release.yml: THAT publishes the non-prerelease stable that `releases/latest`
+# returns and the in-app update check follows. This one always publishes a prerelease.
+name: RC build (fork, Android)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: rc-build
+  cancel-in-progress: true
+
+jobs:
+  meta:
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.m.outputs.tag }}
+      ver: ${{ steps.m.outputs.ver }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: m
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          GRADLE=android/app/build.gradle.kts
+          VER=$(grep -m1 'versionName = ' "$GRADLE" | sed -E 's/.*"([^"]+)".*/\1/')
+          APPID=$(grep -m1 'applicationId = ' "$GRADLE" | sed -E 's/.*"([^"]+)".*/\1/')
+          MINSDK=$(grep -m1 'minSdk = ' "$GRADLE" | sed -E 's/.*minSdk = ([0-9]+).*/\1/')
+          # Guard the one mistake that would ship a candidate as if it were stable.
+          case "$VER" in
+            *-rc*) ;;
+            *) echo "versionName '$VER' is not a release candidate — bump it to X.Y.Z-rcN-tan first, or use fork-release.yml." >&2; exit 1 ;;
+          esac
+          TAG="v${VER}"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "ver=$VER" >> "$GITHUB_OUTPUT"
+
+          # Body = the curated notes for this candidate when they exist, else a short placeholder.
+          BODY=$(mktemp)
+          NOTES_MD="docs/releases/${TAG}.md"
+          if [ -f "$NOTES_MD" ]; then
+            awk 'NR==1 && $0=="---"{fm=1; next} fm && $0=="---"{fm=0; next} !fm{print}' "$NOTES_MD" > "$BODY"
+          else
+            echo "::warning::No ${NOTES_MD} — using a placeholder body."
+            printf 'NOOP **%s** — release candidate.\n' "$VER" > "$BODY"
+          fi
+          {
+            printf '\n---\n\n**Download** — sideload on Android (minSdk %s):\n' "$MINSDK"
+            printf -- '- **NOOP** — `NOOP-android-v%s.apk` (`%s`) — debuggable, and installs over a release build keeping your data.\n' "$VER" "$APPID"
+            printf -- '- **NOOP Mock** — `NOOP-android-mock-v%s.apk` (`%s.mock`) — preloaded with synthetic data, installs alongside.\n' "$VER" "$APPID"
+            printf '\n*Release candidate: not yet verified on hardware.*\n'
+          } >> "$BODY"
+
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "Release $TAG exists — refreshing its assets, leaving the notes alone."
+          else
+            gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --prerelease \
+              --target "${{ github.sha }}" --title "NOOP v${VER} — release candidate" --notes-file "$BODY"
+          fi
+
+  android:
+    needs: meta
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: android
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/wrapper-validation@v4
+      - uses: gradle/actions/setup-gradle@v4
+      # NOTE: signed with the committed android/fork-debug.keystore via an explicit storeFile in the
+      # debug signingConfig; the release/rc types fall back to that key when no keystore.properties
+      # is present. We do NOT copy it to ~/.android/debug.keystore — the runner ignores that path
+      # (ANDROID_USER_HOME points off $HOME) and would sign with a fresh random key, which breaks
+      # sideloaded updates ("App not installed").
+      - name: Build rc + mock APKs
+        run: ./gradlew assembleFullRc assembleMockRc
+      - name: Version the filenames + attach
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VER: ${{ needs.meta.outputs.ver }}
+        run: |
+          cp app/build/outputs/apk/full/rc/*.apk "NOOP-android-v${VER}.apk"
+          cp app/build/outputs/apk/mock/rc/*.apk "NOOP-android-mock-v${VER}.apk"
+          gh release upload "${{ needs.meta.outputs.tag }}" \
+            "NOOP-android-v${VER}.apk" "NOOP-android-mock-v${VER}.apk" \
+            --repo "$GITHUB_REPOSITORY" --clobber

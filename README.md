@@ -313,8 +313,14 @@ cd NOOP/android
 
 Notes:
 
-- Flavors: **`full`** (real app) and **`demo`**. Application id `com.noop.whoop`
-  (`.staging` / `.debug` suffixes install beside the official app with separate data).
+- Flavors: **`full`** (the real app, `com.noop.tan`) and **`mock`** (`com.noop.tan.mock`, preloaded
+  with synthetic data so every screen can be explored with no strap; its own id, so it can never
+  write into the real app's database).
+- Build types: **`release`** (stable) and **`rc`** (the same build plus debuggability). An `rc`
+  deliberately keeps the release applicationId and signing key, so installing a candidate over a
+  release is an ordinary update that keeps your data. `debug` (`.debug`) is local dev only and is
+  never published.
+- Build e.g. `./gradlew assembleFullRelease`, `assembleFullRc`, `assembleMockRc`.
 - `minSdk 26` (Android 8+), `compileSdk 34`. Stack: AGP / Gradle / Kotlin, KSP, Room, Compose.
 - Release APKs are built and signed by hand (or via the fork release workflow); the
   debug build falls back to the Android debug key, so CI needs no secrets.

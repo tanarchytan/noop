@@ -674,7 +674,7 @@ object WhoopCsvImporter {
         respRateBpm = base.respRateBpm ?: fill.respRateBpm,
     )
 
-    // MARK: - JSON encoders (match DemoSeeder shapes)
+    // MARK: - JSON encoders (match MockSeeder shapes)
 
     /** Stage-segments array `[{stage, min}]` (minutes), null if no stage data present. */
     private fun stagesJson(lightMin: Double?, deepMin: Double?, remMin: Double?, awakeMin: Double?): String? {

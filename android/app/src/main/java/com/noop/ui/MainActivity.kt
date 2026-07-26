@@ -27,7 +27,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.noop.BuildConfig
 import com.noop.NoopApplication
 import com.noop.ble.WhoopModel
-import com.noop.data.DemoSeeder
+import com.noop.data.MockSeeder
 import com.noop.data.WhoopRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -51,15 +51,15 @@ class MainActivity : ComponentActivity() {
         // Load the saved "Card transparency" so every frosted card renders at the chosen opacity from launch.
         CardAppearance.init(this)
 
-        // Demo build only: preload a full synthetic dataset so every screen is populated
+        // Mock build only: preload a full synthetic dataset so every screen is populated
         // out of the box (no strap, no import). No-op once seeded; never runs on the full app.
-        if (BuildConfig.ENABLE_DEMO) {
+        if (BuildConfig.ENABLE_MOCK) {
             lifecycleScope.launch(Dispatchers.IO) {
-                runCatching { DemoSeeder.seedIfEmpty(WhoopRepository.from(applicationContext)) }
+                runCatching { MockSeeder.seedIfEmpty(WhoopRepository.from(applicationContext)) }
                 // Also seed a 2nd PAIRED device (an Oura ring) so the Devices screen shows WHOOP (Active)
                 // + a paired Oura ring out of the box. No-op once seeded / if a real pairing exists.
                 runCatching {
-                    DemoSeeder.seedDemoDeviceIfNeeded((application as NoopApplication).deviceRegistry)
+                    MockSeeder.seedMockDeviceIfNeeded((application as NoopApplication).deviceRegistry)
                 }
             }
         }

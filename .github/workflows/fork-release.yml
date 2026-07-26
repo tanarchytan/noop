@@ -54,17 +54,27 @@ jobs:
           set -euo pipefail
           GRADLE=android/app/build.gradle.kts
 
-          # Android versionName is the source of truth UpdateCheck compares against.
+          # Android versionName is the source of truth UpdateCheck compares against. It looks like
+          # 9.0.1-tan, or 9.0.1-rc3-tan on a candidate. Parse ONLY the numeric core: feeding
+          # "1-rc3-tan" to $(( )) aborts the whole release under `set -e`, which is exactly what a
+          # plain patch bump off a candidate used to do. The fork suffix is re-applied after.
           CUR=$(grep -m1 'versionName = "' "$GRADLE" | sed -E 's/.*"([^"]+)".*/\1/')
-          IFS=. read -r MA MI PA <<< "$CUR"; MA=${MA:-0}; MI=${MI:-0}; PA=${PA:-0}
+          CORE=${CUR%%-*}
+          case "$CUR" in *-tan) SUFFIX="-tan" ;; *) SUFFIX="" ;; esac
+          IFS=. read -r MA MI PA <<< "$CORE"; MA=${MA:-0}; MI=${MI:-0}; PA=${PA:-0}
           case "${BUMP:-patch}" in
-            major) NEW="$((MA+1)).0.0" ;;
-            minor) NEW="${MA}.$((MI+1)).0" ;;
-            patch) NEW="${MA}.${MI}.$((PA+1))" ;;
-            none|"") NEW="$CUR" ;;
+            major) NEW="$((MA+1)).0.0${SUFFIX}" ;;
+            minor) NEW="${MA}.$((MI+1)).0${SUFFIX}" ;;
+            patch) NEW="${MA}.${MI}.$((PA+1))${SUFFIX}" ;;
+            # `none` drops any -rcN and keeps the core: this is how a candidate is PROMOTED to
+            # stable (9.0.1-rc3-tan -> 9.0.1-tan) without needing an explicit override.
+            none|"") NEW="${CORE}${SUFFIX}" ;;
             *) echo "Unknown bump: $BUMP" >&2; exit 1 ;;
           esac
           [ -n "${OVERRIDE:-}" ] && NEW="$OVERRIDE"
+          case "$NEW" in
+            *-rc*) echo "Refusing to publish a release named '$NEW' — rc builds go through the RC workflow." >&2; exit 1 ;;
+          esac
           TAG="v${NEW}"
           echo "ver=$NEW" >> "$GITHUB_OUTPUT"
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
@@ -137,7 +147,8 @@ jobs:
             MINSDK=$(grep -m1 'minSdk = ' "$GRADLE" | sed -E 's/.*minSdk = ([0-9]+).*/\1/')
             {
               printf '\n---\n\n**Download** — sideload on Android (minSdk %s). Installs beside any other NOOP fork, with its own data:\n' "$MINSDK"
-              printf -- '- **Android** — `NOOP-android-v%s.apk` (`%s`)\n' "$NEW" "$APPID"
+              printf -- '- **NOOP** — `NOOP-android-v%s.apk` (`%s`) — the app.\n' "$NEW" "$APPID"
+              printf -- '- **NOOP Mock** — `NOOP-android-mock-v%s.apk` (`%s.mock`) — preloaded with synthetic data, installs alongside. For trying it out with no strap.\n' "$NEW" "$APPID"
             } >> "$BODY"
             gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --target "$(git rev-parse HEAD)" \
               --title "NOOP ${NEW}" --notes-file "$BODY"
@@ -159,16 +170,19 @@ jobs:
           java-version: '17'
       - uses: gradle/actions/wrapper-validation@v4
       - uses: gradle/actions/setup-gradle@v4
-      # Release-only (no debug APK). Signed with the committed fork-debug.keystore via the debug
-      # signingConfig storeFile (release falls back to it when no keystore.properties is present);
-      # -PstagingRelease gives it the .staging app id so it installs beside the official app.
-      - name: Build staging-release APK
-        run: ./gradlew assembleFullRelease -PstagingRelease
-      - name: Version the filename + attach
+      # The stable app, plus the mock build so anyone can explore every screen without a strap.
+      # Signed with the committed fork-debug.keystore via the debug signingConfig storeFile (release
+      # falls back to it when no keystore.properties is present), so an update never breaks the
+      # signature of an installed build.
+      - name: Build release APKs
+        run: ./gradlew assembleFullRelease assembleMockRelease
+      - name: Version the filenames + attach
         env:
           GH_TOKEN: ${{ github.token }}
           VER: ${{ needs.bump.outputs.ver }}
         run: |
           cp app/build/outputs/apk/full/release/*.apk "NOOP-android-v${VER}.apk"
-          gh release upload "${{ needs.bump.outputs.tag }}" "NOOP-android-v${VER}.apk" \
+          cp app/build/outputs/apk/mock/release/*.apk "NOOP-android-mock-v${VER}.apk"
+          gh release upload "${{ needs.bump.outputs.tag }}" \
+            "NOOP-android-v${VER}.apk" "NOOP-android-mock-v${VER}.apk" \
             --repo "$GITHUB_REPOSITORY" --clobber
