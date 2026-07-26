@@ -38,7 +38,6 @@ class RustRestingHrParityTest {
     private val candidates: List<String> = listOfNotNull(
         System.getProperty("noop.restingHrFixture"),
         "C:/Users/DavidGillot/Projects/whoop/whoop-data/harnesses/rr-real-fixture.json",
-        "C:/Users/DavidGillot/Projects/whoop/whoop data/rr-real-fixture.json",
     )
 
     private fun fixture(): File? = candidates.map { File(it) }.firstOrNull { it.exists() }

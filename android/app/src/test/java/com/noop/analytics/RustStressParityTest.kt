@@ -202,7 +202,7 @@ class RustStressParityTest {
     fun `rust matches Kotlin SI on the real WHOOP 5_0 nightly R-R fixture`() {
         // Same fixture + resolution convention as the other agreement tests (local-only dataset).
         val dir = System.getProperty("noop.hrvGoldFixtures")
-            ?: "C:/Users/DavidGillot/Projects/whoop/whoop data/datasets/agreement-fixtures"
+            ?: "C:/Users/DavidGillot/Projects/whoop/whoop-data/harnesses/agreement-fixtures"
         val f = File("$dir/whoop5_real_rr.json")
         assumeTrue("whoop5 real R-R fixture absent (local-only), skipping: ${f.path}", f.exists())
 

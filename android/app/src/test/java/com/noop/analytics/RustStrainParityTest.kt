@@ -154,7 +154,7 @@ class RustStrainParityTest {
     // ── real captured R-R → HR, parity on a genuine WHOOP 5.0 night (local-only, SKIPS in CI) ───────
 
     private val rrFixturePath: String =
-        System.getProperty("noop.rrFixture") ?: "C:/Users/DavidGillot/Projects/whoop/whoop data/rr-real-fixture.json"
+        System.getProperty("noop.rrFixture") ?: "C:/Users/DavidGillot/Projects/whoop/whoop-data/harnesses/rr-real-fixture.json"
 
     @Test
     fun `parity on real captured WHOOP 5_0 nights (rr-derived HR)`() {

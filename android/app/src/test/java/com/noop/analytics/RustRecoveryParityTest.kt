@@ -36,7 +36,7 @@ class RustRecoveryParityTest {
 
     // Same fixture + resolution as RecoveryAgreementTest (local-only; test SKIPS when absent).
     private val path: String = (System.getProperty("noop.hrvGoldFixtures")
-        ?: "C:/Users/DavidGillot/Projects/whoop/whoop data/datasets/agreement-fixtures") + "/recovery_cases.json"
+        ?: "C:/Users/DavidGillot/Projects/whoop/whoop-data/harnesses/agreement-fixtures") + "/recovery_cases.json"
 
     private fun baseline(o: JSONObject, meanKey: String, spreadKey: String): RecoveryScorer.DriverBaseline? =
         if (o.isNull(meanKey)) null
