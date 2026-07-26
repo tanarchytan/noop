@@ -57,6 +57,8 @@ object V5HealthSignals {
         loggedPeriodStarts: List<String> = emptyList(),
         journalContext: IllnessSignalEngine.Context = IllnessSignalEngine.Context(),
         habitualWakeHour: Double = 7.0,
+        activitySamples: List<uniffi.whoop_ffi.ActivitySample> = emptyList(),
+        tzOffsetSeconds: Long = 0,
     ): Snapshot {
         val baselineTrusted = days.count { hasAnyVital(it) } >= MIN_BASELINE_NIGHTS
 
@@ -126,10 +128,14 @@ object V5HealthSignals {
             correlation = null,
         )
 
-        // ── Body clock: needs per-hour rest-activity bins we don't bank here; the planner is on-demand.
-        //    Leave null so the BodyClockCard reads its honest "Calibrating" empty state until a future
-        //    activity-bin source lands (the engine is wired + ready, the input pipe is the gap). ──
-        val bodyClock: CircadianEngine.PhaseEstimate? = null
+        // ── Body clock: whoop-rs bins the rest-activity samples per local hour and fits the cosinor,
+        //    the same fit Rhythm Age reads, so the two can never disagree. No samples leaves it null and
+        //    the card keeps its honest empty state. ──
+        val wornDays = activitySamples.map { (it.unix + tzOffsetSeconds) / 86_400L }.distinct().size
+        val bodyClock = if (activitySamples.isEmpty()) null else {
+            RustScores.circadianPhase(activitySamples, tzOffsetSeconds, wornDays, habitualWakeHour, null)
+                ?.let { CircadianEngine.fromRust(it) }
+        }
 
         return Snapshot(cycle = cycle, bodyClock = bodyClock, illness = illness,
             illnessDistance = illnessDistance, baselineTrusted = baselineTrusted)

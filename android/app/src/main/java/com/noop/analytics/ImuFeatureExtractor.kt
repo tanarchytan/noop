@@ -43,53 +43,10 @@ object ImuFeatureExtractor {
     const val minCadenceStrength = 0.20
 
     /** Extract features from [samples] (from one or more [Whoop5ImuFrame]s, in order) at [sampleRateHz]. */
-    fun extract(samples: List<RawImuSample>, sampleRateHz: Int): ImuActivityFeatures {
-        val n = samples.size
-        if (n < 8 || sampleRateHz <= 0) {
-            return ImuActivityFeatures(0.0, 0.0, 0.0, null, 0.0, n)
-        }
-        val amag = samples.map { sqrt(it.ax * it.ax + it.ay * it.ay + it.az * it.az) }
-        val gmag = samples.map { sqrt(it.gx * it.gx + it.gy * it.gy + it.gz * it.gz) }
+    /** Feature vector over one window of raw samples. The maths lives in whoop-rs. */
+    fun extract(samples: List<RawImuSample>, sampleRateHz: Int): ImuActivityFeatures =
+        RustScores.imuFeatures(samples, sampleRateHz)
 
-        val gyroEnergy = gmag.sum() / n
-        // Accel AC: remove the DC (~gravity) then RMS.
-        val mean = amag.sum() / n
-        val ac = amag.map { it - mean }
-        val accelEnergy = sqrt(ac.sumOf { it * it } / n)
-        // Jerk: RMS of |accel| first difference.
-        var jerkSq = 0.0
-        for (i in 1 until n) { val d = amag[i] - amag[i - 1]; jerkSq += d * d }
-        val jerk = sqrt(jerkSq / (n - 1))
-
-        // Cadence: normalized autocorrelation of the AC series over the gait-band lags; the strongest
-        // peak's frequency + strength. Strength = peak ACF / zero-lag ACF (0..1), so it's amplitude-scale
-        // free (a faint but rhythmic walk and a hard one both read as rhythmic).
-        val ac0 = ac.sumOf { it * it }
-        var bestFreq: Double? = null
-        var bestStrength = 0.0
-        if (ac0 > 0) {
-            val loLag = maxOf(1, (sampleRateHz / cadenceBand.endInclusive).roundToInt())
-            val hiLag = minOf(n - 1, (sampleRateHz / cadenceBand.start).roundToInt())
-            if (loLag < hiLag) {
-                for (lag in loLag..hiLag) {
-                    var s = 0.0
-                    for (i in 0 until (n - lag)) s += ac[i] * ac[i + lag]
-                    val strength = s / ac0
-                    if (strength > bestStrength) {
-                        bestStrength = strength
-                        bestFreq = sampleRateHz.toDouble() / lag.toDouble()
-                    }
-                }
-            }
-        }
-        val cadence = if (bestStrength >= minCadenceStrength) bestFreq else null
-        return ImuActivityFeatures(
-            accelEnergyG = accelEnergy, gyroEnergyDps = gyroEnergy, jerkRms = jerk,
-            cadenceHz = cadence, cadenceStrength = maxOf(0.0, bestStrength), sampleCount = n,
-        )
-    }
-
-    /** Convenience: extract over the concatenated samples of decoded IMU frames. */
     fun extract(frames: List<Whoop5ImuFrame>): ImuActivityFeatures {
         val rate = frames.firstOrNull()?.sampleRateHz ?: 100
         return extract(frames.flatMap { it.samples }, rate)

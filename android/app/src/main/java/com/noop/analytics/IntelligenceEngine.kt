@@ -1040,11 +1040,37 @@ object IntelligenceEngine {
         val vNights = fa7.mapNotNull { it.totalSleepMin }.map { it / 60.0 }.filter { it > 0 }
         val vHRVs = fa7.mapNotNull { it.avgHrv }
         val vSteps = fa7.mapNotNull { it.steps }.map { it.toDouble() }
+        // Sleep REGULARITY is the timing of sleep, not its length: whoop-rs scores the Sleep Regularity
+        // Index over the trailing week's staged sleep, with the HR-reporting windows as the wear mask so a
+        // removed strap reads as UNKNOWN rather than as wakefulness. Falls back to the duration proxy
+        // (1 - CV of nightly hours) only when coverage is too thin for the index.
+        val sriWindowDays = 8
+        val sriStart = midnightLocal(nowLocalMidnight - (sriWindowDays - 1) * SECONDS_PER_DAY, tzOffsetSeconds)
+        val sriIndex: Double? = runCatching {
+            val asleep = ArrayList<Pair<Long, Long>>()
+            val covered = ArrayList<Pair<Long, Long>>()
+            for (off in 0 until sriWindowDays) {
+                val dayMid = midnightLocal(nowLocalMidnight - off * SECONDS_PER_DAY, tzOffsetSeconds)
+                val dayEnd = dayMid + SECONDS_PER_DAY - 1
+                val dayKey = AnalyticsEngine.dayString(dayMid, tzOffsetSeconds)
+                val owner = resolveDayOwner(repo, ownerSource, candidatePriorities, dayKey, dayMid, dayEnd, importedDeviceId)
+                repo.sleepSessions(owner, dayMid - SECONDS_PER_DAY, dayEnd, STREAM_LIMIT)
+                    .forEach { asleep += it.effectiveStartTs to it.endTs }
+                // Continuity, NOT the day's min..max: a real backup carried 29 h of mid-day gaps that
+                // a min..max mask would have counted as worn, and for this index worn-but-unmeasured
+                // reads as awake.
+                val hrTs = repo.hrSamples(owner, dayMid, dayEnd, STREAM_LIMIT).map { it.ts }
+                covered += RustScores.coverageSpans(hrTs)
+            }
+            RustScores.sleepRegularityIndex(sriStart, sriWindowDays, asleep.distinct(), covered)
+        }.getOrNull()
+
         val vInputs = VitalityEngine.Inputs(
             chronoAge = profile.age,
             restingHR = if (faRHRs.isEmpty()) null else medianOfDoubles(faRHRs),
             sleepHours = if (vNights.isEmpty()) null else vNights.average(),
-            sleepConsistency = VitalityEngine.sleepConsistency(vNights),
+            sleepRegularityIndex = sriIndex,
+            sleepConsistency = if (sriIndex != null) null else VitalityEngine.sleepConsistency(vNights),
             rmssd = if (vHRVs.isEmpty()) null else medianOfDoubles(vHRVs),
             rmssdNorm = VitalityEngine.rmssdNorm(profile.age),
             steps = if (vSteps.isEmpty()) null else vSteps.average())

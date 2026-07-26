@@ -99,28 +99,12 @@ object Baselines {
      * floor would make the z-score hypersensitive to routine training variation. Same
      * half-lives as the other metrics for consistency.
      */
-    val metricCfg: Map<String, MetricCfg> = mapOf(
-        "hrv" to MetricCfg(
-            minVal = 5.0, maxVal = 250.0, floorSpread = 5.0,
-            halfLifeB = 14.0, halfLifeS = 21.0,
-        ),
-        "resting_hr" to MetricCfg(
-            minVal = 30.0, maxVal = 120.0, floorSpread = 2.0,
-            halfLifeB = 14.0, halfLifeS = 21.0,
-        ),
-        "resp" to MetricCfg(
-            minVal = 4.0, maxVal = 40.0, floorSpread = 0.5,
-            halfLifeB = 14.0, halfLifeS = 21.0,
-        ),
-        "skin_temp" to MetricCfg(
-            minVal = 20.0, maxVal = 42.0, floorSpread = 0.3,
-            halfLifeB = 14.0, halfLifeS = 21.0,
-        ),
-        "strain" to MetricCfg(
-            minVal = 0.0, maxVal = 100.0, floorSpread = 5.0,
-            halfLifeB = 14.0, halfLifeS = 21.0,
-        ),
-    )
+    // The validity bands, spread floors and EWMA half-lives are read from whoop-rs, so the app cannot
+    // carry a second copy that drifts from the one the baseline maths actually uses.
+    val metricCfg: Map<String, MetricCfg> =
+        listOf("hrv", "resting_hr", "resp", "skin_temp", "strain")
+            .mapNotNull { name -> RustScores.baselineMetricCfg(name)?.let { name to it } }
+            .toMap()
 
     /** Convenience accessor for the standard HRV config. */
     val hrvCfg: MetricCfg get() = metricCfg.getValue("hrv")
@@ -161,11 +145,7 @@ object Baselines {
             baseline = it.baseline, spread = it.spread, nValid = it.nValid,
             nightsSinceUpdate = it.nightsSinceUpdate, status = it.status.raw,
         ) }
-        val ffiCfg = uniffi.whoop_ffi.MetricCfgInfo(
-            minVal = cfg.minVal, maxVal = cfg.maxVal, floorSpread = cfg.floorSpread,
-            halfLifeB = cfg.halfLifeB, halfLifeS = cfg.halfLifeS,
-        )
-        val r = uniffi.whoop_ffi.baselineUpdate(ffiState, value, ffiCfg)
+        val r = uniffi.whoop_ffi.baselineUpdate(ffiState, value, RustScores.metricCfgInfo(cfg))
         return BaselineState(
             baseline = r.baseline, spread = r.spread, nValid = r.nValid,
             nightsSinceUpdate = r.nightsSinceUpdate,
@@ -177,16 +157,8 @@ object Baselines {
      * Replay an ordered sequence of nightly values (oldest first) to build state.
      * `null` entries are treated as missing nights (skip-and-hold).
      */
-    fun foldHistory(values: List<Double?>, cfg: MetricCfg): BaselineState {
-        var state: BaselineState? = null
-        for (v in values) state = update(state, v, cfg)
-        state?.let { return it }
-        val seed = (cfg.minVal + cfg.maxVal) / 2.0
-        return BaselineState(
-            baseline = seed, spread = cfg.floorSpread, nValid = 0,
-            nightsSinceUpdate = 0, status = BaselineStatus.CALIBRATING,
-        )
-    }
+    fun foldHistory(values: List<Double?>, cfg: MetricCfg): BaselineState =
+        RustScores.baselineFoldHistory(values, cfg)
 
     /**
      * Replay an ordered sequence of nightly values (oldest first) to build state, honouring a manual

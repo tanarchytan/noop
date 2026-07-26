@@ -292,28 +292,9 @@ object WeeklyDigestEngine {
         return PeriodComparison(cur, prev, delta, pct, direction)
     }
 
-    private fun median(values: List<Double>): Double {
-        if (values.isEmpty()) return 0.0
-        val s = values.sorted()
-        val n = s.size
-        return if (n % 2 == 1) s[n / 2] else (s[n / 2 - 1] + s[n / 2]) / 2.0
-    }
+    private fun median(values: List<Double>): Double = RustScores.median(values)
 
-    /** OLS slope of values vs their 0-based index. 0 when n < 2. */
-    private fun leastSquaresSlope(values: List<Double>): Double {
-        val n = values.size
-        if (n < 2) return 0.0
-        val meanX = (n - 1) / 2.0
-        val meanY = values.sum() / n
-        var sxy = 0.0
-        var sxx = 0.0
-        for (i in 0 until n) {
-            val dx = i - meanX
-            sxy += dx * (values[i] - meanY)
-            sxx += dx * dx
-        }
-        return if (sxx > 0) sxy / sxx else 0.0
-    }
+    private fun leastSquaresSlope(values: List<Double>): Double = RustScores.slope(values)
 
     // MARK: - Balance read
 

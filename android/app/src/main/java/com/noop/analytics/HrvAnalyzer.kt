@@ -96,16 +96,7 @@ object HrvAnalyzer {
      */
     fun rmssdRaw(nn: List<Double>): Double? = RustScores.rmssdRaw(nn)
 
-    fun sdnnRaw(nn: List<Double>): Double? {
-        if (nn.size < 2) return null
-        val mean = nn.sum() / nn.size.toDouble()
-        var ss = 0.0
-        for (v in nn) {
-            val d = v - mean
-            ss += d * d
-        }
-        return sqrt(ss / (nn.size - 1).toDouble())
-    }
+    fun sdnnRaw(nn: List<Double>): Double? = RustScores.sdnnRaw(nn)
 
     // ── Cleaning ─────────────────────────────────────────────────────────────
 

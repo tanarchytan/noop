@@ -37,62 +37,6 @@ object CircadianEngine {
     /** One per-hour rest-activity sample: local clock hour (0..<24, may be fractional) + motion volume. */
     data class ActivityBin(val hour: Double, val activity: Double)
 
-    // ── Cosinor ──
-
-    /** A single-component cosinor fit: y ≈ mesor + amplitude·cos(2π(hour − acrophaseHours)/24). */
-    data class CosinorFit(
-        val mesor: Double,
-        val amplitude: Double,
-        val acrophaseHours: Double,
-    )
-
-    /** Fit a single 24 h cosine to the (hour, activity) bins by ordinary least squares. null if degenerate. */
-    fun cosinor(bins: List<ActivityBin>): CosinorFit? {
-        if (bins.size < 3) return null
-        val w = 2.0 * PI / 24.0
-        val n = bins.size.toDouble()
-
-        var sumY = 0.0; var sumC = 0.0; var sumS = 0.0
-        var sumCC = 0.0; var sumSS = 0.0; var sumCS = 0.0
-        var sumYC = 0.0; var sumYS = 0.0
-        for (b in bins) {
-            val c = cos(w * b.hour)
-            val s = sin(w * b.hour)
-            val y = b.activity
-            sumY += y; sumC += c; sumS += s
-            sumCC += c * c; sumSS += s * s; sumCS += c * s
-            sumYC += y * c; sumYS += y * s
-        }
-
-        // Cramer's rule on the 3×3 normal equations for (M, β, γ).
-        val a11 = n; val a12 = sumC; val a13 = sumS
-        val a21 = sumC; val a22 = sumCC; val a23 = sumCS
-        val a31 = sumS; val a32 = sumCS; val a33 = sumSS
-        val det = a11 * (a22 * a33 - a23 * a32) -
-            a12 * (a21 * a33 - a23 * a31) +
-            a13 * (a21 * a32 - a22 * a31)
-        if (abs(det) <= 1e-12) return null
-
-        val detM = sumY * (a22 * a33 - a23 * a32) -
-            a12 * (sumYC * a33 - a23 * sumYS) +
-            a13 * (sumYC * a32 - a22 * sumYS)
-        val detB = a11 * (sumYC * a33 - a23 * sumYS) -
-            sumY * (a21 * a33 - a23 * a31) +
-            a13 * (a21 * sumYS - sumYC * a31)
-        val detG = a11 * (a22 * sumYS - sumYC * a32) -
-            a12 * (a21 * sumYS - sumYC * a31) +
-            sumY * (a21 * a32 - a22 * a31)
-
-        val m = detM / det
-        val beta = detB / det
-        val gamma = detG / det
-
-        val amplitude = sqrt(beta * beta + gamma * gamma)
-        var phase = (atan2(gamma, beta) / w) % 24.0
-        if (phase < 0) phase += 24.0
-        return CosinorFit(m, amplitude, phase)
-    }
-
     // ── Phase estimate ──
 
     enum class PhaseConfidence(val raw: String) {
@@ -109,38 +53,30 @@ object CircadianEngine {
         val note: String,
     )
 
-    /** Estimate the body-clock phase from a pooled activity profile and the user's habitual wake time. */
-    fun estimatePhase(
-        bins: List<ActivityBin>,
-        daysObserved: Int,
-        habitualWakeHour: Double,
-        observedTempMinHour: Double? = null,
-    ): PhaseEstimate? {
-        val fit = cosinor(bins) ?: return null
-
-        val relativeAmplitude = if (fit.mesor != 0.0) fit.amplitude / abs(fit.mesor) else 0.0
-        if (daysObserved < minDaysForFit || relativeAmplitude < minRelativeAmplitude) {
-            val tmin = observedTempMinHour ?: wrap24(fit.acrophaseHours - acrophaseAfterCbtMinHours)
-            return PhaseEstimate(tmin, fit.acrophaseHours, 0.0, PhaseConfidence.UNREADABLE,
-                "Your rhythm is hard to read right now - keep wearing it for a clearer picture.")
+    /** Map a whoop-rs phase estimate onto the UI type, generating the note the card renders. */
+    fun fromRust(info: uniffi.whoop_ffi.PhaseEstimateInfo): PhaseEstimate {
+        val confidence = when (info.confidence) {
+            "solid" -> PhaseConfidence.SOLID
+            "wide" -> PhaseConfidence.WIDE
+            else -> PhaseConfidence.UNREADABLE
         }
-
-        val derivedTempMin = wrap24(fit.acrophaseHours - acrophaseAfterCbtMinHours)
-        val tempMinHour = observedTempMinHour ?: derivedTempMin
-
-        val idealTempMin = wrap24(habitualWakeHour - cbtMinBeforeWakeHours)
-        val offsetHours = signedHourDelta(idealTempMin, tempMinHour)
-        val offsetMinutes = offsetHours * 60.0
-
-        val confidence = if (daysObserved >= goodDaysForFit) PhaseConfidence.SOLID else PhaseConfidence.WIDE
-        val lean = when {
-            offsetMinutes > 20 -> "later (a night-owl lean)"
-            offsetMinutes < -20 -> "earlier (a morning-lark lean)"
-            else -> "well-aligned with your schedule"
+        val note = if (confidence == PhaseConfidence.UNREADABLE) {
+            "Your rhythm is hard to read right now - keep wearing it for a clearer picture."
+        } else {
+            val lean = when (info.lean) {
+                "later" -> "later (a night-owl lean)"
+                "earlier" -> "earlier (a morning-lark lean)"
+                else -> "well-aligned with your schedule"
+            }
+            "Your body clock looks $lean."
         }
-        val note = "Your body clock looks $lean."
-
-        return PhaseEstimate(tempMinHour, fit.acrophaseHours, offsetMinutes, confidence, note)
+        return PhaseEstimate(
+            tempMinHour = info.tempMinHour,
+            acrophaseHours = info.acrophaseHours,
+            offsetVsScheduleMinutes = info.offsetVsScheduleMinutes,
+            confidence = confidence,
+            note = note,
+        )
     }
 
     // ── Jet-lag / shift planner ──

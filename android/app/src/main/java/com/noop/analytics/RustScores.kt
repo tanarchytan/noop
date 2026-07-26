@@ -9,6 +9,7 @@ import com.noop.data.StepSample
 import uniffi.whoop_ffi.DaytimeStressInfo
 import uniffi.whoop_ffi.NapConfigInfo
 import uniffi.whoop_ffi.NapVerdictInfo
+import com.noop.protocol.RawImuSample
 import uniffi.whoop_ffi.WorkoutGravitySample
 import uniffi.whoop_ffi.DebtNightInput
 import uniffi.whoop_ffi.DriverBaselineInfo
@@ -225,6 +226,19 @@ internal object RustScores {
 
     // ── SpO2 (4.0 paired red/IR) ─────────────────────────────────────────────
 
+    /** Blood oxygen % from a 4.0 night's paired red/IR ADC via ratio-of-ratios, over the in-bed samples
+     *  only. The 4.0 counterpart to the 5.0/MG strap-computed percent, so both generations bank the SAME
+     *  DailyMetric.spo2Pct and render on the same card. Null when no window survives. */
+    fun spo2PercentFromPaired(sessions: List<DetectedSleep>, spo2: List<Spo2Sample>): Double? {
+        if (sessions.isEmpty() || spo2.isEmpty()) return null
+        val inBed = spo2.filter { s -> sessions.any { s.ts in it.start..it.end } }
+        if (inBed.isEmpty()) return null
+        return uniffi.whoop_ffi.spo2FromPaired(
+            inBed.map { it.red.toDouble() },
+            inBed.map { it.ir.toDouble() },
+        )
+    }
+
     /** Nightly integer-truncated raw red/IR ADC means over the detected in-bed [sessions] — the stored
      *  DailyMetric.spo2Red/spo2Ir (twin of AnalyticsEngine.nightlySpo2RawMeans). Never a calibrated percent. */
     fun nightlySpo2RawMeans(sessions: List<DetectedSleep>, spo2: List<Spo2Sample>): Pair<Int, Int>? =
@@ -429,4 +443,190 @@ internal object RustScores {
     /** Personal sleep need (hours) = mean of recent nightly asleep hours, floored at 7.5. For the Rest score. */
     fun personalSleepNeedHours(recentAsleepHours: List<Double>): Double =
         uniffi.whoop_ffi.personalSleepNeedHours(recentAsleepHours)
+
+    /** HRV readiness over a nightly RMSSD series (oldest first): the log-domain 7-night baseline against
+     *  the personal normal band. Null while calibrating (under 3 valid nights). */
+    fun hrvReadiness(nightlyRmssd: List<Double?>): uniffi.whoop_ffi.HrvReadinessInfo? =
+        uniffi.whoop_ffi.hrvReadiness(nightlyRmssd)
+
+    /** Sample SD (ddof=1) of an NN series (ms); null under 2 beats. No filtering — the raw spread. */
+    fun sdnnRaw(nn: List<Double>): Double? =
+        uniffi.whoop_ffi.hrvSdnn(nn.map { it.toInt().toUShort() })
+
+    // ── Raw 6-axis IMU activity features ─────────────────────────────────────
+
+    /** Energy / jerk / gait-band cadence over a window of 100 Hz IMU samples. */
+    fun imuFeatures(samples: List<RawImuSample>, sampleRateHz: Int): ImuActivityFeatures {
+        val f = uniffi.whoop_ffi.imuFeatures(
+            samples.map { uniffi.whoop_ffi.ImuSampleInfo(it.ax, it.ay, it.az, it.gx, it.gy, it.gz) },
+            sampleRateHz,
+        )
+        return ImuActivityFeatures(
+            accelEnergyG = f.accelEnergyG,
+            gyroEnergyDps = f.gyroEnergyDps,
+            jerkRms = f.jerkRms,
+            cadenceHz = f.cadenceHz,
+            cadenceStrength = f.cadenceStrength,
+            sampleCount = f.sampleCount.toInt(),
+        )
+    }
+
+    // ── Personal baselines ───────────────────────────────────────────────────
+
+    /** Replay an ordered nightly series (oldest first) into a baseline state; nulls skip-and-hold. */
+    fun baselineFoldHistory(values: List<Double?>, cfg: MetricCfg): BaselineState {
+        val r = uniffi.whoop_ffi.baselineFoldHistory(values, metricCfgInfo(cfg))
+        return BaselineState(
+            baseline = r.baseline, spread = r.spread, nValid = r.nValid,
+            nightsSinceUpdate = r.nightsSinceUpdate,
+            status = BaselineStatus.entries.first { it.raw == r.status },
+        )
+    }
+
+    // ── Workout detection ────────────────────────────────────────────────────
+
+    /** Detect workout bouts from the HR + gravity streams. Bout strain, zone breakdown and the
+     *  Keytel/BMR calorie estimate are all computed in whoop-rs alongside the detection. */
+    fun workoutDetect(
+        hr: List<HrSample>,
+        gravity: List<GravitySample>,
+        restingHR: Double?,
+        maxHR: Double?,
+        age: Double?,
+        profile: UserProfile?,
+    ): List<ExerciseSession> =
+        uniffi.whoop_ffi.workoutDetect(
+            hrTicks(hr),
+            gravity.map { WorkoutGravitySample(it.ts, it.x, it.y, it.z) },
+            restingHR,
+            maxHR,
+            age,
+            profile?.weightKg ?: 0.0,
+            profile?.heightCm ?: 0.0,
+            profile?.sex ?: "",
+        ).map { w ->
+            ExerciseSession(
+                start = w.start,
+                end = w.end,
+                avgHR = w.avgHr,
+                peakHR = w.peakHr,
+                strain = w.strain,
+                durationS = w.durationS,
+                zoneTimePct = w.zoneTime.associate { it.zone to it.pct },
+                avgHRRPct = w.avgHrrPct,
+                hrmax = w.hrmax,
+                hrmaxSource = w.hrmaxSource,
+                caloriesKcal = w.caloriesKcal,
+                caloriesKJ = w.caloriesKj,
+            )
+        }
+
+    /** Bout energy `(kcal, kJ)`. Profile gaps fall back to the neutral 70 kg / 170 cm / 30 y figures. */
+    fun caloriesBout(
+        hr: List<HrSample>,
+        profile: UserProfile,
+        hrmax: Double?,
+        restingHR: Double?,
+    ): Pair<Double, Double> {
+        val out = uniffi.whoop_ffi.caloriesEstimateBout(
+            hrTicks(hr),
+            if (profile.weightKg > 0) profile.weightKg else 70.0,
+            if (profile.heightCm > 0) profile.heightCm else 170.0,
+            if (profile.age > 0) profile.age else 30.0,
+            profile.sex,
+            hrmax ?: 190.0,
+            restingHR ?: 60.0,
+        )
+        return out[0] to out[1]
+    }
+
+    /** Trailing rolling mean of the motion intensities over `windowS` seconds. */
+    fun smoothedIntensity(motion: List<ActivityPoint>, windowS: Double): List<Double> =
+        uniffi.whoop_ffi.smoothedIntensity(
+            motion.map { uniffi.whoop_ffi.ActivityPointInfo(it.ts, it.intensity) }, windowS,
+        )
+
+    /** Per-record motion intensity from a gravity stream — the shared spine for sedentary + nap reads. */
+    fun activitySeries(gravity: List<GravitySample>): List<ActivityPoint> =
+        uniffi.whoop_ffi.activitySeries(
+            gravity.map { WorkoutGravitySample(it.ts, it.x, it.y, it.z) },
+        ).map { ActivityPoint(ts = it.ts, intensity = it.intensity) }
+
+    // ── Vitality / Body Age ──────────────────────────────────────────────────
+
+    /** Vitality (0-100) + Body Age from the wearable drivers; null below three present drivers. */
+    fun vitality(inputs: VitalityEngine.Inputs): VitalityEngine.Result? =
+        uniffi.whoop_ffi.vitalityCompute(
+            inputs.chronoAge, inputs.restingHR, inputs.vo2max, inputs.expectedVO2max,
+            inputs.sleepHours, inputs.sleepRegularityIndex, inputs.sleepConsistency,
+            inputs.rmssd, inputs.rmssdNorm, inputs.steps,
+        )?.let { r ->
+            VitalityEngine.Result(
+                vitality = r.vitality,
+                bodyAge = r.bodyAge,
+                chronoAge = r.chronoAge,
+                advanceYears = r.advanceYears,
+                bandYears = r.bandYears,
+                contributions = r.contributions.map {
+                    VitalityEngine.Contribution(it.key, it.label, it.lnHazard)
+                },
+                factorsUsed = r.factorsUsed.toInt(),
+            )
+        }
+
+    /** Each present driver's signed log-hazard, ungated — the "why" behind a reading. */
+    fun vitalityContributions(inputs: VitalityEngine.Inputs): List<VitalityEngine.Contribution> =
+        uniffi.whoop_ffi.vitalityContributions(
+            inputs.chronoAge, inputs.restingHR, inputs.vo2max, inputs.expectedVO2max,
+            inputs.sleepHours, inputs.sleepRegularityIndex, inputs.sleepConsistency,
+            inputs.rmssd, inputs.rmssdNorm, inputs.steps,
+        ).map { VitalityEngine.Contribution(it.key, it.label, it.lnHazard) }
+
+    /** Nocturnal RMSSD age norm (ms) — the reference the HRV driver scores against. */
+    fun vitalityRmssdNorm(forAge: Double): Double = uniffi.whoop_ffi.vitalityRmssdNorm(forAge)
+
+    /** Coverage windows from a sample series: consecutive timestamps within `maxGapSeconds` form one
+     *  span. Use this rather than a day's min..max, or every mid-day gap counts as worn time. */
+    fun coverageSpans(timestamps: List<Long>, maxGapSeconds: Long = 300L): List<Pair<Long, Long>> =
+        uniffi.whoop_ffi.coverageSpans(timestamps, maxGapSeconds).map { it.start to it.end }
+
+    /** Sleep Regularity Index (-100..100) over `days` days from local midnight. `asleep` are the staged
+     *  sleep spans, `covered` the windows the strap was reporting; anything outside `covered` is UNKNOWN,
+     *  never awake, so taking the strap off cannot read as irregularity. Null below the coverage gates. */
+    fun sleepRegularityIndex(
+        firstLocalMidnight: Long,
+        days: Int,
+        asleep: List<Pair<Long, Long>>,
+        covered: List<Pair<Long, Long>>,
+    ): Double? = uniffi.whoop_ffi.sleepRegularityIndex(
+        firstLocalMidnight,
+        days.toUInt(),
+        asleep.map { uniffi.whoop_ffi.TimeSpan(it.first, it.second) },
+        covered.map { uniffi.whoop_ffi.TimeSpan(it.first, it.second) },
+    )
+
+    /** Sleep regularity in [0,1] from nightly durations (hours); null below three nights. */
+    fun vitalitySleepConsistency(nightlyHours: List<Double>): Double? =
+        uniffi.whoop_ffi.vitalitySleepConsistency(nightlyHours)
+
+    /** Median of a series; 0.0 when empty. The same median the algorithms use. */
+    fun median(values: List<Double>): Double = uniffi.whoop_ffi.seriesMedian(values)
+
+    /** OLS slope of a series over x = 0, 1, 2, …; 0.0 under two points or a degenerate spread. */
+    fun slope(values: List<Double>): Double = uniffi.whoop_ffi.seriesSlope(values)
+
+    /** One metric's baseline configuration, read from whoop-rs so the tuning table has a single owner. */
+    fun baselineMetricCfg(metric: String): MetricCfg? =
+        uniffi.whoop_ffi.baselineMetricCfg(metric)?.let {
+            MetricCfg(
+                minVal = it.minVal, maxVal = it.maxVal, floorSpread = it.floorSpread,
+                halfLifeB = it.halfLifeB, halfLifeS = it.halfLifeS,
+            )
+        }
+
+    /** The FFI shape for one metric's baseline configuration. */
+    fun metricCfgInfo(cfg: MetricCfg) = uniffi.whoop_ffi.MetricCfgInfo(
+        minVal = cfg.minVal, maxVal = cfg.maxVal, floorSpread = cfg.floorSpread,
+        halfLifeB = cfg.halfLifeB, halfLifeS = cfg.halfLifeS,
+    )
 }

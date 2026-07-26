@@ -427,12 +427,14 @@ object AnalyticsEngine {
         // physio-algo (RustScores.nightlySpo2RawMeans). (#93)
         val nightlySpo2Raw = RustScores.nightlySpo2RawMeans(matched, spo2)
 
-        // ── Sleep SpO2 percent (WHOOP 5.0/MG v18 @frame-82) ───────────────────
-        // The MEDIAN (robust to the tail) of the night's physiological SpO2 readings over the detected
-        // in-bed spans, banked on DailyMetric.spo2Pct. whoop-rs already sleep-gates + drops sentinels, so
-        // every sample is a real reading. A WELLNESS estimate, never medical. Null on a WHOOP 4.0 / a night
-        // with no readings.
+        // ── Sleep SpO2 percent — ONE field, both generations ──────────────────
+        // 5.0/MG: the MEDIAN (robust to the tail) of the night's strap-computed readings over the detected
+        // in-bed spans; whoop-rs already sleep-gates + drops sentinels, so every sample is real.
+        // 4.0: no strap-computed percent exists, so the night's paired red/IR ADC is run through the
+        // ratio-of-ratios in whoop-rs to produce the same figure. Either way it lands on
+        // DailyMetric.spo2Pct and renders on the same card. A WELLNESS estimate, never medical.
         val nightlySpo2Pct = nightlySpo2PctMedian(matched, spo2Pct)
+            ?: RustScores.spo2PercentFromPaired(matched, spo2)
 
         // ── Rest (sleep_performance composite, 0–100) ─────────────────────────
         // Replaces the bare efficiency proxy: duration-vs-personal-need 0.50 + efficiency 0.20 +
