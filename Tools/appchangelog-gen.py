@@ -34,7 +34,7 @@ KT = ROOT / "android/app/src/main/java/com/noop/ui/AppChangelog.kt"
 
 
 def frontmatter(md: pathlib.Path) -> dict:
-    m = re.match(r"^---\n(.*?)\n---\n", md.read_text(), re.S)
+    m = re.match(r"^---\r?\n(.*?)\r?\n---\r?\n", md.read_text(encoding="utf-8"), re.S)
     if not m:
         sys.exit(f"appchangelog-gen: no YAML front-matter in {md}")
     wn = (yaml.safe_load(m.group(1)) or {}).get("whatsnew")
@@ -62,7 +62,7 @@ def kt_block(ver, wn):
 
 
 def apply(path, anchor, block, ver, const_re, const_new):
-    text = path.read_text()
+    text = path.read_text(encoding="utf-8")
     idx = text.index(anchor) + len(anchor)
     already = f'version = "{ver}"' in text[idx:idx + 400] or f'version: "{ver}"' in text[idx:idx + 400]
     if already:
@@ -72,7 +72,7 @@ def apply(path, anchor, block, ver, const_re, const_new):
     text, n = re.subn(const_re, const_new, text, count=1)
     if n != 1:
         sys.exit(f"appchangelog-gen: could not bump the version constant in {path.name}")
-    path.write_text(text)
+    path.write_text(text, encoding="utf-8")
     if not already:
         print(f"  {path.name}: inserted v{ver} entry + set constant")
 
