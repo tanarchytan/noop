@@ -52,7 +52,7 @@ For a runnable, ad-hoc-signed `NOOP.app` without an Apple ID, see
 ```bash
 cd android
 ./gradlew assembleFullDebug      # the real app (full flavour); JDK 17 required
-./gradlew assembleDemoDebug      # demo flavour — 120 days of synthetic data, no strap
+./gradlew assembleMockRc         # mock flavour — 120 days of synthetic data, no strap
 ./gradlew testFullDebugUnitTest  # unit tests
 ```
 

@@ -8,8 +8,8 @@
 # version-stamped artifacts. releases/latest returns it, so UpdateCheck finds it (isNewer strips the
 # `-staging` suffix, so an installed staging build compares clean).
 #
-# Contrast with fork-testing-build.yml: THAT publishes the rolling `testing-latest` PRERELEASE (a
-# snapshot), which releases/latest deliberately ignores. THIS never touches testing-latest.
+# Contrast with fork-rc-build.yml: THAT publishes a per-candidate PRERELEASE, which releases/latest
+# deliberately ignores. THIS publishes the stable that releases/latest returns.
 #
 # noop-tan is ANDROID-ONLY: this workflow builds and publishes the Android APK only. The macOS/iOS
 # and AltStore jobs — and the Swift `project.yml` version bump — were removed with the platform split,
