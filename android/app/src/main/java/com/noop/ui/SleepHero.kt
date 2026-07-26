@@ -327,48 +327,18 @@ private fun NapsCard(
     }
 }
 
-/**
- * The Naps card footer: the night's provenance badge (the REAL per-day merge winner) next to a tappable
- * "Why this sleep?" affordance that reveals the [SleepStageTotals.MainNightReason] copy inline (Compose has
- * no anchored popover, so it's an inline disclosure).
- */
+/** The Naps card footer: the night's provenance badge — the REAL per-day merge winner. */
 @Composable
 private fun MainSleepFooter(
     main: SleepSession,
     naps: List<SleepSession>,
     habitualMidsleepSec: Long?,
 ) {
-    val reason = mainSleepReasonText(listOf(main) + naps, habitualMidsleepSec)
     // The real merge winner, the same wording the By-Day badge uses ("On-device" / "Whoop" / "Apple
     // Health"), keyed on the main block's source.
     val (sourceText, sourceTint) = daySourceBadge(main.deviceId)
-    var showWhy by remember(main.startTs) { mutableStateOf(false) }
-    Column(verticalArrangement = Arrangement.spacedBy(Metrics.space10)) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            SourceBadge(text = sourceText, tint = sourceTint)
-            Spacer(Modifier.weight(1f))
-            if (reason != null) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(5.dp),
-                    modifier = Modifier
-                        .clickable { showWhy = !showWhy }
-                        .semantics { contentDescription = "Why this is your main sleep" },
-                ) {
-                    Icon(
-                        Icons.Filled.Info,
-                        contentDescription = null,
-                        tint = Palette.restColor,
-                        modifier = Modifier.size(16.dp),
-                    )
-                    Text("Why this sleep?", style = NoopType.footnote, color = Palette.restColor)
-                }
-            }
-        }
-        if (showWhy && reason != null) {
-            Text("About your main sleep", style = NoopType.subhead, color = Palette.textPrimary)
-            Text(reason, style = NoopType.footnote, color = Palette.textSecondary)
-        }
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        SourceBadge(text = sourceText, tint = sourceTint)
     }
 }
 

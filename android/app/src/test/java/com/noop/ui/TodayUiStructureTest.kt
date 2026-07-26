@@ -64,7 +64,8 @@ class TodayUiStructureTest {
                 "provenanceLabelTint",
             ),
             "TodayMetrics.kt" to setOf(
-                "MetricGrid", "KeyTileData", "LiquidKeyTile", "workoutsAllSources", "ReadinessSection", "readinessWord",
+                "MetricGrid", "KeyTileData", "LiquidKeyTile", "workoutsAllSources", "ReadinessSection",
+                "hrvReadinessWord", "hrvReadinessColor", "readinessWord",
                 "syncedFromSummary", "METRICS_COLLAPSED_CAP", "readinessColor", "flagColor",
                 "IllnessBanner", "synthesisWord", "synthesisDetail", "sleepValue",
                 "restStageLowConfidence", "buildingHint",

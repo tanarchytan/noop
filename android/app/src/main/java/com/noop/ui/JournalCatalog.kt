@@ -180,9 +180,6 @@ fun setJournalItemGroup(items: List<JournalCatalogItem>, canonical: String, grou
 fun setJournalItemKind(items: List<JournalCatalogItem>, canonical: String, kind: JournalKind): List<JournalCatalogItem> =
     editJournalItem(items, canonical) { it.copy(kind = kind) }
 
-fun setJournalItemSortIndex(items: List<JournalCatalogItem>, canonical: String, sortIndex: Int): List<JournalCatalogItem> =
-    editJournalItem(items, canonical) { it.copy(sortIndex = sortIndex) }
-
 /** Add a custom item of the given type + group. No-op if the canonical already exists. */
 fun addCustomJournalItem(
     items: List<JournalCatalogItem>,

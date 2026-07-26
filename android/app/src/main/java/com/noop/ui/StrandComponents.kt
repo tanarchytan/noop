@@ -37,65 +37,6 @@ import java.time.temporal.ChronoUnit
 import java.util.Calendar
 import java.util.Locale
 
-@Composable
-internal fun ThreeDaySelectorBar(
-    selectedOffset: Int,
-    onSelect: (Int) -> Unit,
-) {
-    val base = LocalDate.now()
-    val blockShape = RoundedCornerShape(Metrics.cornerSm)
-    Row(horizontalArrangement = Arrangement.spacedBy(Metrics.selectorSpacing)) {
-        listOf(2, 1, 0).forEach { offset ->
-            val day = base.minusDays(offset.toLong())
-            val selected = selectedOffset == offset
-            val label = when (offset) {
-                0 -> "Today"
-                1 -> "Yesterday"
-                else -> "2 days ago"
-            }
-            val date = day.format(DateTimeFormatter.ofPattern("d MMM", Locale.US))
-            Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .clip(blockShape)
-                    .background(
-                        if (selected) Palette.accent.copy(alpha = StrandAlpha.selectedFill)
-                        else Palette.surfaceInset,
-                    )
-                    .border(
-                        width = Metrics.divider,
-                        color = if (selected) {
-                            Palette.accent.copy(alpha = StrandAlpha.selectedBorder)
-                        } else {
-                            Palette.hairline
-                        },
-                        shape = blockShape,
-                    )
-                    .clickable { onSelect(offset) }
-                    .padding(vertical = Metrics.selectorPadding, horizontal = Metrics.selectorPadding),
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                Text(
-                    text = label,
-                    style = NoopType.caption,
-                    color = if (selected) Palette.textPrimary else Palette.textSecondary,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Text(
-                    text = date,
-                    style = NoopType.captionNumber,
-                    // Selected date reads in bright gold-light; unselected sits muted.
-                    color = if (selected) Palette.accentHover else Palette.textTertiary,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.padding(top = Metrics.space2),
-                )
-            }
-        }
-    }
-}
-
 /**
  * Chevron-navigation day selector for the Today screen. The left chevron steps one day
  * older, the right one day newer (disabled at today so a future day can't be selected),
@@ -201,18 +142,3 @@ internal fun InsetChartPlaceholder(
     }
 }
 
-@Composable
-internal fun SparkTailBox(
-    modifier: Modifier = Modifier,
-    wide: Boolean = false,
-    content: @Composable () -> Unit,
-) {
-    Box(
-        modifier = modifier
-            .padding(start = Metrics.space8, bottom = Metrics.space2)
-            .width(if (wide) Metrics.sparkWidthWide else Metrics.sparkWidth)
-            .height(Metrics.sparkHeight),
-    ) {
-        content()
-    }
-}

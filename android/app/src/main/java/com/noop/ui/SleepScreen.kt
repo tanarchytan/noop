@@ -307,24 +307,6 @@ fun SleepScreen(
                 )
             }
             item { Spacer(Modifier.height(Metrics.selectorTopUp)) }
-            // SLEEP MARKS — tap to log "going to sleep" / "I'm awake". LOGGING ONLY: a mark is persisted to
-            // the `sleep_mark` series + the shareable strap log; it never changes detected sleep.
-            item {
-            SleepMarkCard(
-                onMark = { type ->
-                    val mark = SleepMark.now(type)
-                    // The shareable strap log is the human-readable surface in a debug export.
-                    vm.ble.externalLog(mark.logLine())
-                    scope.launch {
-                        runCatching {
-                            vm.repo.upsertMetricSeries(listOf(mark.metricPoint("my-whoop")))
-                        }
-                    }
-                    Toast.makeText(context, mark.confirmation(), Toast.LENGTH_SHORT).show()
-                },
-            )
-            }
-            item { Spacer(Modifier.height(Metrics.selectorTopUp)) }
             item {
             Hero(
                 display = display,

@@ -421,10 +421,26 @@ internal fun ReadinessSection(days: List<DailyMetric>, carriedDay: DailyMetric? 
 }
 
 /**
- * S4 (#205): the one-word readiness read kept on the hero (Push / Maintain / Rest) now the full Readiness
- * card folded into the Charge-ring tap. PURE mapping of the existing [ReadinessEngine.Level]; INSUFFICIENT
- * returns null (the hero then shows no word, matching the old card hiding itself). Byte-identical twin of
- * the Swift TodayView.readinessWord.
+ * The one-word readiness read on the hero (Push / Maintain / Rest). PURE mapping of the whoop-rs HRV
+ * readiness tier; a null tier (still calibrating) returns null and the hero shows no word.
+ */
+internal fun hrvReadinessWord(tier: uniffi.whoop_ffi.ReadinessTier?): String? = when (tier) {
+    uniffi.whoop_ffi.ReadinessTier.PRIMED -> "Push"
+    uniffi.whoop_ffi.ReadinessTier.NORMAL -> "Maintain"
+    uniffi.whoop_ffi.ReadinessTier.SUPPRESSED -> "Rest"
+    null -> null
+}
+
+/** Tier -> the pill tint, reusing the existing readiness palette. */
+internal fun hrvReadinessColor(tier: uniffi.whoop_ffi.ReadinessTier?): Color = when (tier) {
+    uniffi.whoop_ffi.ReadinessTier.PRIMED -> Palette.accent
+    uniffi.whoop_ffi.ReadinessTier.NORMAL -> Palette.statusPositive
+    uniffi.whoop_ffi.ReadinessTier.SUPPRESSED -> Palette.statusWarning
+    null -> Palette.textTertiary
+}
+
+/**
+ * Retained for the Coupled screen's readiness pill, which still reads the multi-signal engine.
  */
 internal fun readinessWord(level: ReadinessEngine.Level): String? = when (level) {
     ReadinessEngine.Level.PRIMED -> "Push"

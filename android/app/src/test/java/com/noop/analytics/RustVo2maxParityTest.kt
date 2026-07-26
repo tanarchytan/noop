@@ -177,7 +177,7 @@ class RustVo2maxParityTest {
         assertEquals(20.0, RustScores.fitnessAgeCompute(25.0, "male", 35.0, 15.0)!!.fitnessAge, 1e-9)
 
         val ref = RustScores.fitnessAgeCompute(40.0, "male", 65.0, 5.0)!!
-        assertEquals(0.0, ref.deltaYears, 1e-9)
+        assertEquals(0.0, ref.advanceYears, 1e-9)
         assertNull("no waist -> null vo2max", ref.vo2max)
         assertEquals(46.275, RustScores.fitnessAgeCompute(40.0, "male", 65.0, 5.0, waistCm = 90.0)!!.vo2max!!, 1e-3)
         assertTrue("nonbinary -> lower confidence", RustScores.fitnessAgeCompute(40.0, "nonbinary", 60.0, 6.0)!!.lowerConfidence)

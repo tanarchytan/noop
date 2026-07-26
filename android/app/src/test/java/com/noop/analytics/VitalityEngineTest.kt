@@ -15,7 +15,7 @@ class VitalityEngineTest {
             sleepHours = 7.5, sleepConsistency = 0.75, rmssd = 45.0, rmssdNorm = 45.0, steps = 7000.0))!!
         assertEquals(40.0, r.bodyAge, 0.01)
         assertEquals(50.0, r.vitality, 0.01)
-        assertEquals(0.0, r.deltaYears, 0.01)
+        assertEquals(0.0, r.advanceYears, 0.01)
         assertEquals(6, r.factorsUsed)
     }
 
@@ -23,18 +23,22 @@ class VitalityEngineTest {
         val r = VitalityEngine.compute(VitalityEngine.Inputs(
             chronoAge = 40.0, restingHR = 52.0, vo2max = 55.5, expectedVO2max = 45.0,
             sleepHours = 7.5, sleepConsistency = 0.9, rmssd = 54.0, rmssdNorm = 45.0, steps = 11000.0))!!
-        assertEquals(32.42, r.bodyAge, 0.1)
-        assertEquals(68.95, r.vitality, 0.2)
-        assertTrue(r.deltaYears > 0)
+        // Pinned against MORTALITY_DOUBLING_YEARS = 10 (arXiv:1509.07271). These were 32.42 / 68.95
+        // under the previous unsourced doubling time of 8; the offset from chronological age scales
+        // linearly with that constant, so both moved by exactly 10/8.
+        assertEquals(30.53, r.bodyAge, 0.1)
+        assertEquals(73.68, r.vitality, 0.2)
+        assertTrue("healthier reads YOUNGER, so the advance is negative", r.advanceYears < 0)
     }
 
     @Test fun unhealthyIsOlder() {
         val r = VitalityEngine.compute(VitalityEngine.Inputs(
             chronoAge = 40.0, restingHR = 80.0, vo2max = 34.5, expectedVO2max = 45.0,
             sleepHours = 5.5, sleepConsistency = 0.5, rmssd = 31.5, rmssdNorm = 45.0, steps = 3000.0))!!
-        assertEquals(49.71, r.bodyAge, 0.1)
-        assertEquals(25.73, r.vitality, 0.2)
-        assertTrue(r.deltaYears < 0)
+        // Was 49.71 / 25.73 at a doubling time of 8; see healthyIsYounger for why these moved.
+        assertEquals(52.13, r.bodyAge, 0.1)
+        assertEquals(19.66, r.vitality, 0.2)
+        assertTrue("unhealthier reads OLDER, so the advance is positive", r.advanceYears > 0)
     }
 
     @Test fun nilBelowMinFactors() {

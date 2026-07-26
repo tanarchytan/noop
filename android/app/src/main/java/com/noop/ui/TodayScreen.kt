@@ -48,6 +48,7 @@ import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.contentDescription
@@ -67,6 +68,7 @@ import com.noop.data.DailyMetric
 import com.noop.data.WhoopRepository
 import com.noop.ingest.HealthConnectImporter
 import android.widget.Toast
+import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -475,6 +477,13 @@ fun TodayScreen(
         mutableStateOf(TodayCardDismissal.isDismissed(context, CARD_NEW_HERE))
     }
  // : the calibrating note's own dismissed flag, read once from the same shared store.
+    // The in-progress night, if the detector currently believes you are asleep. Refreshed on entry and
+    // after an End-sleep tap; there is no separate "going to bed" state to keep in sync.
+    var activeSleep by remember { mutableStateOf<com.noop.data.SleepSession?>(null) }
+    var sleepTick by remember { mutableStateOf(0) }
+    val endSleepScope = rememberCoroutineScope()
+    LaunchedEffect(sleepTick) { activeSleep = runCatching { viewModel.activeSleepSession() }.getOrNull() }
+
     var calibratingDismissed by remember {
         mutableStateOf(TodayCardDismissal.isDismissed(context, CARD_CALIBRATING))
     }
@@ -1140,6 +1149,39 @@ fun TodayScreen(
                 onRestTap = onOpenSleep,
             )
         }
+        }
+
+ // END SLEEP — only while the detector has a night in progress. Tapping clamps that session's end to
+ // now and marks it user-edited, so the correction survives the next recompute.
+        if (activeSleep != null) {
+            item {
+                NoopCard {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("Sleep in progress", style = NoopType.subhead, color = Palette.textPrimary)
+                            Text(
+                                "Your strap still reads you as asleep. End it here if you're up.",
+                                style = NoopType.footnote,
+                                color = Palette.textSecondary,
+                            )
+                        }
+                        TextButton(
+                            onClick = {
+                                endSleepScope.launch {
+                                    val ended = viewModel.endSleepNow()
+                                    sleepTick++
+                                    Toast.makeText(
+                                        context,
+                                        if (ended) "Sleep ended." else "No sleep in progress.",
+                                        Toast.LENGTH_SHORT,
+                                    ).show()
+                                }
+                            },
+                            colors = ButtonDefaults.textButtonColors(contentColor = Palette.accent),
+                        ) { Text("End sleep", style = NoopType.subhead) }
+                    }
+                }
+            }
         }
 
  // CALIBRATION MILESTONES (gamification): the WHOOP-style countdown stack, directly under the hero

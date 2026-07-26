@@ -67,7 +67,14 @@ class RustHrZonesParityTest {
         return maxOf(gaps[gaps.size / 2], 1.0)
     }
 
-    /** Hold-until-next time-in-zone accumulation, byte-identical to the deleted `HrZones.timeInZone`. */
+    /** Longest inter-sample gap credited to a zone; matches the Rust `hr_zones::DROPOUT_CAP_SECONDS`. */
+    private val DROPOUT_CAP_S = 1200.0
+
+    /**
+     * Hold-until-next time-in-zone accumulation. A real inter-sample gap is credited in full up to
+     * [DROPOUT_CAP_S]; past that the strap was not reporting, so the span is a wear gap rather than time
+     * spent in a zone. The tail sample gets the median interval.
+     */
     private fun refTimeInZone(hr: List<HrSample>, zoneSet: HrZoneSet): RefTiz {
         val sorted = hr.sortedBy { it.ts }
         val zoneSeconds = DoubleArray(5)
@@ -77,7 +84,7 @@ class RustHrZonesParityTest {
         for (i in sorted.indices) {
             val dur: Double = if (i < sorted.size - 1) {
                 val gap = (sorted[i + 1].ts - sorted[i].ts).toDouble()
-                if (gap > 0) min(gap, tailDuration) else tailDuration
+                if (gap > 0) min(gap, DROPOUT_CAP_S) else tailDuration
             } else {
                 tailDuration
             }

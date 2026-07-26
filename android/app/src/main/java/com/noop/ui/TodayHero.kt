@@ -42,6 +42,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import com.noop.analytics.Baselines
 import com.noop.analytics.ReadinessEngine
+import com.noop.analytics.RustScores
 import com.noop.data.DailyMetric
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -330,15 +331,14 @@ internal fun SynthesisHeroCard(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Spacer(Modifier.weight(1f))
-            // S4 (#205): the one-word readiness read kept on the hero now the full Readiness card folded
-            // into the Charge-ring tap. Push / Maintain / Rest; hidden when there isn't enough history.
-            // Tapping it opens the Charge breakdown, where the full Readiness card now lives.
-            val readinessLevel = remember(days) {
-                if (days.isEmpty()) ReadinessEngine.Level.INSUFFICIENT
-                else ReadinessEngine.evaluate(days, today = logicalDayKeyNow()).level
+            // The one-word readiness read on the hero: whoop-rs scores the nightly RMSSD series against
+            // the personal normal band (Primed / Normal / Suppressed) and that maps to Push / Maintain /
+            // Rest. Hidden while calibrating. Tapping it opens the Charge breakdown.
+            val hrvTier = remember(days) {
+                RustScores.hrvReadiness(days.map { it.avgHrv })?.tier
             }
-            readinessWord(readinessLevel)?.let { word ->
-                ReadinessHeroPill(word = word, level = readinessLevel, onTap = onOpenReadiness)
+            hrvReadinessWord(hrvTier)?.let { word ->
+                ReadinessHeroPill(word = word, tint = hrvReadinessColor(hrvTier), onTap = onOpenReadiness)
             }
             // SOLID only when TODAY's own row carries a settled recovery, a carried prior-day read is
             // honestly still CALIBRATING for today, matching the iOS pill (keyed on displayDay.recovery).
@@ -429,8 +429,8 @@ internal fun SynthesisHeroCard(
  * where the full Readiness card lives. Mirrors the iOS readinessHeroPill.
  */
 @Composable
-private fun ReadinessHeroPill(word: String, level: ReadinessEngine.Level, onTap: () -> Unit) {
-    val tone = readinessColor(level)
+private fun ReadinessHeroPill(word: String, tint: Color, onTap: () -> Unit) {
+    val tone = tint
     Row(
         modifier = Modifier
             .clip(RoundedCornerShape(50))

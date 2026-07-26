@@ -117,7 +117,6 @@ import kotlinx.coroutines.delay
 fun HealthScreen(
     vm: AppViewModel,
     onVitalClick: (String) -> Unit = {},
-    onOpenFusedRecord: () -> Unit = {},
 ) {
     val context = LocalContext.current
     val profile = remember { ProfileStore.from(context.applicationContext) }
@@ -225,14 +224,6 @@ fun HealthScreen(
  // labelled progress bars in the shared stage/zone bar style, mirroring Today's section.
             item { Spacer(Modifier.height(Metrics.selectorTopUp)) }
             item { HealthContributorsSection(today) }
- // RECORDS & SOURCES (Swift parity) — deep-link rows into the local Lab Book and the
- // "Your Data, Fused" record, so both are discoverable from Health, not just the drawer.
-            item { Spacer(Modifier.height(Metrics.selectorTopUp)) }
-            item {
-                RecordsAndSourcesSection(
-                    onOpenFusedRecord = onOpenFusedRecord,
-                )
-            }
         }
     }
 
@@ -293,22 +284,6 @@ private fun HrvSnapshotButton(enabled: Boolean, onClick: () -> Unit) {
 // Fused"). Both live entirely on this phone, so the overline says so. Plain navigation rows in the
 // house NoopCard style with an icon, a title/subtitle and a trailing chevron, each carrying a single
 // combined contentDescription for screen readers.
-
-@Composable
-private fun RecordsAndSourcesSection(
-    onOpenFusedRecord: () -> Unit,
-) {
-    Column(verticalArrangement = Arrangement.spacedBy(Metrics.gap)) {
-        SectionHeader("Records & sources", overline = "On this phone")
-        RecordRow(
-            icon = Icons.AutoMirrored.Filled.CompareArrows,
-            tint = Palette.accent,
-            title = "Your Data, Fused",
-            subtitle = "The best-sourced number per metric, across your bands.",
-            onClick = onOpenFusedRecord,
-        )
-    }
-}
 
 /** One navigation row in the Records & sources section: a tinted glyph, a title + subtitle, and a
  * trailing chevron, wrapped in a clickable NoopCard with a combined accessibility label. */
@@ -391,8 +366,6 @@ private fun SkinTempSuiteSection(
     onTurnOffCycle: () -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(Metrics.gap)) {
-        SectionHeader("Skin Temperature", overline = "From your nightly readings")
-
  // Illness heads-up first when it has something to say (it's the most time-sensitive card).
         signals?.illness?.let { illness ->
             if (illness.level != IllnessSignalEngine.Level.QUIET) {

@@ -620,6 +620,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                         days = days,
                         cycleOptedIn = _cycleTrackingEnabled.value,
                         journalContext = illnessJournalContext(days),
+                        activitySamples = restActivitySamples(),
+                        tzOffsetSeconds = localTzOffsetSeconds(),
                     )
                 }
                 // Keep the home-screen widget fresh while the app is open — covers users who turned
@@ -1840,6 +1842,24 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     /**
+     * The trailing [REST_ACTIVITY_DAYS] days of on-chip motion (`dynAccelG`) for the body-clock cosinor —
+     * the same rest-activity signal Rhythm Age is fitted on, so the two readings share one input. Empty
+     * (and the card keeps its empty state) when the strap banked no motion.
+     */
+    private fun localTzOffsetSeconds(): Long =
+        java.util.TimeZone.getDefault().getOffset(System.currentTimeMillis()) / 1_000L
+
+    private suspend fun restActivitySamples(): List<uniffi.whoop_ffi.ActivitySample> {
+        val id = deviceId
+        val now = System.currentTimeMillis() / 1000
+        val from = now - REST_ACTIVITY_DAYS * 86_400L
+        return runCatching {
+            repo.gravitySamples(id, from, now)
+                .mapNotNull { g -> g.dynAccelG?.let { uniffi.whoop_ffi.ActivitySample(g.ts, it) } }
+        }.getOrDefault(emptyList())
+    }
+
+    /**
      * Same-day confounder context for [IllnessSignalEngine] from the day's journal — alcohol / hard-or-late
      * workout / "feeling unwell" suppress an anomaly so a hangover or a late session never reads as illness.
      * Lightweight: derived from the latest day's exercise count + the cached "unwell" flag we can see here.
@@ -1980,6 +2000,43 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         ble.buzz(1)
     }
 
+    /**
+     * The detected night currently in progress: the newest session whose window still contains `now`.
+     * The detector is what decides you are asleep, so there is no separate "I'm going to bed" state to
+     * keep in sync. Null when no detected session spans this moment.
+     */
+    suspend fun activeSleepSession(): com.noop.data.SleepSession? {
+        val now = System.currentTimeMillis() / 1000L
+        return runCatching {
+            vmRepoSleepSessions(now)
+                .filter { now >= it.effectiveStartTs && now < it.endTs }
+                .maxByOrNull { it.effectiveStartTs }
+        }.getOrNull()
+    }
+
+    private suspend fun vmRepoSleepSessions(now: Long): List<com.noop.data.SleepSession> {
+        val from = now - 24 * 3600L
+        val own = repo.sleepSessions("my-whoop", from, now + 24 * 3600L)
+        val computed = repo.sleepSessions(repo.computedDeviceId("my-whoop"), from, now + 24 * 3600L)
+        return own + computed
+    }
+
+    /**
+     * End the in-progress night NOW: clamp the detected session's end to this moment and mark it
+     * user-edited, so the recompute keeps the correction instead of re-detecting over it. Unlike the old
+     * "I'm awake" mark, this actually changes the night. Returns false when nothing was in progress.
+     */
+    suspend fun endSleepNow(): Boolean {
+        val active = activeSleepSession() ?: return false
+        val now = System.currentTimeMillis() / 1000L
+        // Through the ViewModel's own edit path, NOT the repository's: that one re-scores the affected
+        // day, so Rest/efficiency/totals reflect the shortened night instead of going stale.
+        return runCatching {
+            updateSleepSessionTimes(active, active.effectiveStartTs, now)
+            true
+        }.getOrDefault(false)
+    }
+
     /** Record a "sleep mark" via the existing [SleepMark] analytics + the shareable strap log, with a
      *  confirming buzz — the same logging-only path the Sleep screen's mark card uses (#461). A double-tap
      *  can't pick bedtime vs wake, so it defaults to bedtime ([SleepMark.nowDefault]). */
@@ -2051,6 +2108,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     private companion object {
         /** Grace before the first scoring pass, letting the first BLE offload land. */
         const val FIRST_OFFLOAD_GRACE_MS = 6_000L
+        /** Days of rest-activity pooled for the body-clock cosinor; matches the Rhythm Age window. */
+        const val REST_ACTIVITY_DAYS = 14L
         /** On-device scoring cadence — 15 min, matching the strap offload cadence. */
         const val ANALYZE_INTERVAL_MS = 15 * 60 * 1_000L
         /** Daily re-arm cadence for the single-instant strap firmware alarm (secondary buzz cue). */

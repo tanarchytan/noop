@@ -307,7 +307,6 @@ fun AppRoot(viewModel: AppViewModel = viewModel()) {
                     HealthScreen(
                         vm = viewModel,
                         onVitalClick = { nav.navigate("vital_detail/$it") },
-                        onOpenFusedRecord = { nav.navigateTopLevel(Destination.FusedRecord.route) },
                     )
                 }
                 composable(Destination.Hydration.route) { HydrationScreen(viewModel) }
@@ -344,7 +343,9 @@ fun AppRoot(viewModel: AppViewModel = viewModel()) {
  // The "More" page — the iOS More tab's twin: a navigated ScreenScaffold page hosting the
  // full grouped destination list (was a pull-up sheet). A row navigates top-level.
                 composable(Destination.More.route) {
-                    MoreScreen(onNavigate = { nav.navigate(it) })
+                    MoreScreen(onNavigate = { route ->
+                        if (route in tabRoutes) nav.navigateTopLevel(route) else nav.navigate(route)
+                    })
                 }
             }
         }
@@ -648,6 +649,12 @@ internal fun BrandMark(size: Dp = 22.dp) {
         drawCircle(color = Color.White, radius = stroke * 0.62f, center = center)
     }
 }
+
+/** The bottom-bar tabs. A More row pointing at one of these switches tab instead of stacking under
+ *  More, so the saved More stack can never restore to another tab's screen. */
+private val tabRoutes: Set<String> = setOf(
+    Destination.Today.route, Destination.Health.route, Destination.Sleep.route, Destination.More.route,
+)
 
 /** Navigate to a top-level destination with single-top + state save/restore. */
 private fun NavHostController.navigateTopLevel(route: String) {
