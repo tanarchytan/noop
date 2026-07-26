@@ -150,12 +150,33 @@ There is also a first-run **onboarding wizard** that sets expectations
 
 ## Strap support
 
-NOOP is an independent project with mature, hardware-verified decode for both generations.
+NOOP is an independent project. What follows separates what has been **verified against a real strap**
+from what is implemented but not yet exercised on hardware, because the difference matters.
 
 | Strap | Status |
 |---|---|
-| **WHOOP 4.0** | ✅ Live HR, recovery, strain, sleep, history offload — the full experience. SpO₂ with raw red/IR from the v24 record. |
-| **WHOOP 5.0 / MG** | ✅ Full support: live HR, recovery, Strain, Rest, sleep staging (V2), skin temperature, **sleep SpO₂**, HRV, respiratory rate, battery, firmware/hardware info, history offload, and R22 opt-in deep IMU buffers. Pick "WHOOP 5.0 / MG" before connecting. |
+| **WHOOP 5.0 / MG** | ✅ **Hardware-verified.** Live HR, recovery, Strain, Rest, sleep staging, skin temperature, sleep SpO₂, HRV, respiratory rate, battery, firmware info, history offload and R22 deep IMU buffers, all exercised against a real strap over months of wear. Pick "WHOOP 5.0 / MG" before connecting. |
+| **WHOOP 4.0** | ⚠️ **Implemented, not hardware-verified.** The v5/v9/v12/v24/v25 record decoders are written and unit-tested, but have never been run against a real 4.0 offload — the bond path has only ever been exercised on 5.0/MG. Expect it to work; treat any 4.0 number as unconfirmed until someone runs it. |
+
+### Which numbers are verified, and how
+
+Four different kinds of evidence, kept distinct:
+
+| Metric | Evidence |
+|---|---|
+| HR, R-R, gravity, steps, skin temp, SpO₂ % | ✅ **Hardware** — decoded from a real 5.0/MG and cross-checked against the band's own readings |
+| Sleep staging (V2) | ✅ **External gold standard** — Cohen's κ 0.311 on DREAMT (100 PSG subjects), 0.412 AAUWSS, 0.537 killa5, 0.379 sleep-accel. Re-tuning was attempted and **rejected**: it gained on the fitting set and lost up to 0.372 on held-out sets |
+| Workout detection, IMU features, bout calories, HRV spread, baselines, HR zones, Fitness Age | ✅ **Parity-tested** — pinned against figures produced by the previous implementation, still passing after the move to the Rust core |
+| Resting HR | ⚠️ **Known low bias** — reads ~10 bpm below a reference band, stable across independent halves of the data and not explained by wrist or sensor differences. Unchanged because the evidence says something is wrong, not what to change it to |
+| Body Age (Vitality) | ⚠️ **Literature-sourced, partly ours** — VO₂max, resting HR, steps, HRV and sleep-regularity coefficients each cite a named meta-analysis; only VO₂max is published as a per-unit slope, the rest are contrasts we linearise, and the sleep-duration figure is ours |
+| Sleep Regularity Index | ✅ **Verified on real data** — computes at 88 % coverage over a real week and correctly refuses when coverage drops below its gate |
+| Rhythm Age (CosinorAge) | ❌ **Never yet computed** — needs 7 worn days of on-chip motion, and its activity scale carries an unvalidated conversion factor |
+| SpO₂ on 4.0 | ⚠️ **Uncalibrated** — the red/IR ratio uses generic curve constants, unlike 5.0/MG which reads the strap's own value |
+
+Everything is computed locally from the strap's own sensor streams — no WHOOP account, no cloud, no
+proprietary algorithms. Each score is an honest, documented approximation grounded in published sports
+science, never a reproduction of WHOOP's private models. Where a number is weaker than it looks, the
+table above says so rather than the app implying otherwise.
 
 **The one gap:** **ECG** — it requires the MG electrode (absent on the 5.0), and even on MG the
 firmware gate is unreachable in software. Everything else the strap measures is decoded and fed into
