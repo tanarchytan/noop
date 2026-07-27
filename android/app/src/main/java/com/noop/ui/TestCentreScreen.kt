@@ -233,7 +233,7 @@ private fun DiagnosticToolsCard(vm: AppViewModel, is5MG: Boolean, onReport: () -
                 leadingIcon = Icons.Filled.Upload,
                 kind = NoopButtonKind.Secondary,
                 fullWidth = true,
-                onClick = { scope.launch { RawSensorExport.export(context, vm.repo) } },
+                onClick = { scope.launch { RawSensorExport.export(context, vm.repo, vm.activeStrapId) } },
             )
             Text(
                 "Saves the last 24h of decoded sensor samples (heart rate, R-R, motion, steps and any 5/MG deep streams you've unlocked) as one CSV you can share, for tinkering with your own data. Nothing leaves the phone unless you share it.",
