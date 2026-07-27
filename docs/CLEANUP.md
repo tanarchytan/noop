@@ -312,11 +312,13 @@ Everything below is unstarted or waiting on a decision. Nothing here is broken; 
 
 ### Mine, ready to start
 
-- **A consumer for the banked v18 channels — `optical_signal_poor` was measured and REJECTED.** It
-  looked like the obvious upgrade for `hr_anomaly.rs`'s eligibility gate, but it fires on 988 records
-  the quality byte calls clean, so wiring it removes 53% of eligible samples, and it does not predict
-  bad HR at all (consecutive-second delta 0.47 flagged vs 0.50 clean). It tracks whether the strap
-  emitted R-R, not whether the HR is wrong. Needs a second strap before it gates anything.
+- **`optical_signal_poor` SHOULD gate the R-R path — an earlier rejection here was wrong.** It was
+  measured on the one daytime capture, where it fires on 53% of records and looks useless. On the two
+  real nights in `whoop-research/own data raw/` it fires on 7% and 24%, and flagged R-R disagree with
+  their own record's HR 3-6x more (median 7.27 vs 2.42 bpm on 838-night, 17.09 vs 2.86 on 206-sleep,
+  54,294 records, two straps). Through the shipped grouping nightly RMSSD moves -0.51% and -4.67%.
+  Small but real. Belongs in the R-R/HRV path, not `hr_anomaly` (HR quality is unaffected). Forward
+  only — the flag is banked from v101 on, so past R-R has nothing to join to.
 - **The thermal pair is the better candidate.** `auxRaw1`/`auxRaw2` give a skin-to-ambient gradient,
   replicated on four straps, which is the input a core-temperature correction needs. Not yet measured
   against the existing skin-temp deviation.
