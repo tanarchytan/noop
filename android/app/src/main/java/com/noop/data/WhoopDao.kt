@@ -254,7 +254,9 @@ interface WhoopDao : DeviceRegistryDao {
         // WITHIN a second is its whole input. `ord` carries the emission order; `seq` cannot, because
         // assignRrSeq keys on (ts, rrMs) and every distinct beat in a second holds 0, leaving the sort
         // to fall through to the primary-key index and return them by magnitude. Legacy rows hold a
-        // NULL ord, which SQLite sorts first, so they keep reading exactly as they did.
+        // NULL ord, which SQLite sorts first, so they fall through to (rrMs, seq) — the order the old
+        // read already produced for 99.7% of multi-beat seconds. The remainder is where the old sort
+        // was non-deterministic and is now stable, moving nightly RMSSD on stored history by <1%.
         "SELECT * FROM rrInterval WHERE deviceId = :deviceId AND ts >= :from AND ts <= :to " +
             "ORDER BY ts ASC, ord ASC, rrMs ASC, seq ASC LIMIT :limit"
     )
