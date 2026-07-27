@@ -105,14 +105,15 @@ WHOOP 4.0's first day — so it needs a release note, not a silent landing.
 
 ---
 
-## 5. In-app "What's New" is three releases stale
+## 5. In-app "What's New" is three releases stale — RESOLVED 2026-07-27
 
 `AppChangelog.CURRENT_VERSION` is `8.7.0`; the app is `9.0.2-dev-tan`. It never got entries for
 9.0.0-tan, the 9.0.1 candidates, or 9.0.1 itself.
 
-`docs/releases/v9.0.1-tan.md` now carries the front-matter that `Tools/appchangelog-gen.py` needs, and
-the release workflow regenerates the entry at release time — so **cutting 9.0.1 stable fixes this by
-itself**. No manual edit needed; just don't hand-write the Kotlin.
+Fixed by cutting 9.0.1: the release workflow ran `Tools/appchangelog-gen.py` against
+`docs/releases/v9.0.1-tan.md` and committed the entry, moving `CURRENT_VERSION` from `8.7.0` to
+`9.0.1-tan`. Nothing was hand-written. Kept here as the worked example: the fix for a stale in-app
+changelog is to cut a release with its notes file present, never to edit `AppChangelog.kt`.
 
 ---
 
@@ -196,3 +197,45 @@ meaningless. Either re-derive the offset against the 4.0 corpus or stop storing 
 **Health Connect reads have no visible surface yet.** Blood pressure, hydration and nutrition land in
 `metricSeries` under the keys the existing screens use, so they should appear — but that has only been
 reasoned about, not seen on a device with real Health Connect data.
+
+
+---
+
+## 9. WHOOP 4.0 blood oxygen — PARKED 2026-07-27
+
+Closed as far as the data allows; reopen only with a raw capture.
+
+**Settled.** The percent cannot be computed from what the strap sends. The red/IR pair arrives at
+1 Hz, so the 0.5 Hz Nyquist limit sits below the 0.83-3.0 Hz cardiac band and the pulsatile component
+is aliased away. A second line of evidence says the same thing: in the windows that do vary, the AC
+amplitude is 3-6 LSB with red and IR moving in near-lockstep, and the resulting ratio (p10 1.13,
+p50 1.20, p90 1.37) sits on the DC ratio of the two channels (1.24) rather than on anything
+physiological. Filtering to worn windows changes nothing — off-wrist windows never scored in the
+first place, because a constant channel has no amplitude. Replicated across two straps and 2.1M
+samples, and re-checked at 4.0 days on the live band with the same result (2.0% scored, median
+81.8%). A pulsatility gate now returns `None`.
+
+**Not settled, and the only way forward.** The official app shows a real SpO2 for the 4.0, so the
+strap computes one internally — the MAX86171 runs to 2.9 kfps and the strap returns millisecond R-R,
+which 1 Hz sampling cannot produce, so the fast dual-wavelength waveform exists on-device and is
+simply never transmitted. The open question is whether it BANKS the computed value in a record byte
+we have not mapped. Raw capture now works on the 4.0, so the next step is a capture plus an offline
+hunt for a byte behaving like a saturation percentage. Until that exists there is nothing to analyse.
+
+**Do not** try to fix this with different curve constants, a different window size, or a wear filter.
+All three were tested and none of them can work against an aliased signal.
+
+## 10. Smaller things noticed while working, not chased
+
+- **`Spo2::rolling_reading` is exposed but no screen calls it.** The 4.0 card now shows nothing where
+  it used to show a wrong number. Whether it should show the anchored multi-night value instead is a
+  UI decision nobody has made.
+- **One `sleepSession` row across four days of 4.0 data, with `startTs == endTs`.** The daily metrics
+  did stage a full night earlier in the same database, so this is probably an artifact of one
+  offload's slice rather than a stager fault. Worth a look once a night is worn end to end.
+- **`resp_raw` @76 on 4.0 decodes to 3 distinct values across 29,851 samples**, 98% pinned at 3073.
+  Respiratory rate is unaffected (it comes from R-R via RSA). Either re-derive the offset against the
+  4.0 corpus or stop storing the field.
+- **The v18 optical channels stop at the Rust border.** `optical_signal_poor` is the valuable one: a
+  first-party per-second flag that the band's own beat detection failed, which the HRV windows and the
+  sleep stager currently infer from motion. Wiring it needs the four-step FFI regen.
