@@ -777,6 +777,8 @@ internal object IntegrityCheckingUniffiLib {
     ): Int
     external fun uniffi_whoop_ffi_checksum_func_spo2_from_paired(
     ): Int
+    external fun uniffi_whoop_ffi_checksum_func_spo2_rolling_reading(
+    ): Int
     external fun uniffi_whoop_ffi_checksum_func_stage_sleep_refined(
     ): Int
     external fun uniffi_whoop_ffi_checksum_func_steps_counter(
@@ -1052,6 +1054,8 @@ internal object UniffiLib {
     external fun uniffi_whoop_ffi_fn_func_smoothed_intensity(`motion`: RustBuffer.ByValue,`windowS`: Double,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_func_spo2_from_paired(`red`: RustBuffer.ByValue,`ir`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    external fun uniffi_whoop_ffi_fn_func_spo2_rolling_reading(`recentNightly`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_func_stage_sleep_refined(`input`: RustBuffer.ByValue,`steps`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
@@ -1352,6 +1356,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_whoop_ffi_checksum_func_spo2_from_paired() != 11748) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_whoop_ffi_checksum_func_spo2_rolling_reading() != 10862) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_whoop_ffi_checksum_func_stage_sleep_refined() != 55156) {
@@ -5694,6 +5701,48 @@ public object FfiConverterTypeSpo2RawSample: FfiConverterRustBuffer<Spo2RawSampl
             FfiConverterLong.write(value.`ts`, buf)
             FfiConverterInt.write(value.`red`, buf)
             FfiConverterInt.write(value.`ir`, buf)
+    }
+}
+
+
+
+/**
+ * A smoothed multi-night SpO2 readout: `pct` once calibrated, else `calibrating_nights` carries the
+ * night count so far.
+ */
+data class Spo2Rolling (
+    var `pct`: kotlin.Double?
+    , 
+    var `calibratingNights`: kotlin.UInt?
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeSpo2Rolling: FfiConverterRustBuffer<Spo2Rolling> {
+    override fun read(buf: ByteBuffer): Spo2Rolling {
+        return Spo2Rolling(
+            FfiConverterOptionalDouble.read(buf),
+            FfiConverterOptionalUInt.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: Spo2Rolling) = (
+            FfiConverterOptionalDouble.allocationSize(value.`pct`) +
+            FfiConverterOptionalUInt.allocationSize(value.`calibratingNights`)
+    )
+
+    override fun write(value: Spo2Rolling, buf: ByteBuffer) {
+            FfiConverterOptionalDouble.write(value.`pct`, buf)
+            FfiConverterOptionalUInt.write(value.`calibratingNights`, buf)
     }
 }
 
@@ -10388,6 +10437,23 @@ public object FfiConverterSequenceOptionalDouble: FfiConverterRustBuffer<List<ko
         
         FfiConverterSequenceDouble.lower(`red`),
         FfiConverterSequenceDouble.lower(`ir`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * The 4.0 display value. Its ratio-of-ratios percent carries an uncalibrated per-device DC offset, so
+         * the absolute number means nothing on its own — this anchors the 30-night median to a plausible
+         * baseline and reports the 7-night median at that offset, keeping the night-to-night movement.
+         * `recent_nightly` is oldest to newest. 5.0/MG does not use this: its percent comes off the strap.
+         */ fun `spo2RollingReading`(`recentNightly`: List<kotlin.Double>): Spo2Rolling {
+            return FfiConverterTypeSpo2Rolling.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_func_spo2_rolling_reading(
+    
+        
+        FfiConverterSequenceDouble.lower(`recentNightly`),_status)
 }
     )
     }

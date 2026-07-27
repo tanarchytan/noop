@@ -228,7 +228,14 @@ internal object RustScores {
 
     /** Blood oxygen % from a 4.0 night's paired red/IR ADC via ratio-of-ratios, over the in-bed samples
      *  only. The 4.0 counterpart to the 5.0/MG strap-computed percent, so both generations bank the SAME
-     *  DailyMetric.spo2Pct and render on the same card. Null when no window survives. */
+     *  DailyMetric.spo2Pct and render on the same card. Null when the channel is not pulsatile enough
+     *  to carry a ratio, which is the usual case on this hardware. */
+    /** The multi-night 4.0 blood-oxygen readout: anchors the 30-night median and reports the 7-night
+     *  median at that offset, so the night-to-night movement survives a per-device DC offset the
+     *  absolute value cannot. [recentNightly] is oldest to newest. */
+    fun spo2RollingReading(recentNightly: List<Double>): uniffi.whoop_ffi.Spo2Rolling =
+        uniffi.whoop_ffi.spo2RollingReading(recentNightly)
+
     fun spo2PercentFromPaired(sessions: List<DetectedSleep>, spo2: List<Spo2Sample>): Double? {
         if (sessions.isEmpty() || spo2.isEmpty()) return null
         val inBed = spo2.filter { s -> sessions.any { s.ts in it.start..it.end } }

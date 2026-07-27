@@ -140,3 +140,42 @@ Pinned deliberately, each with a reason that will expire:
 - **R8 minification is off** for release builds. A minified build died right after the terms gate on a
   real device and the reflective path was never pinned. Re-enabling needs the exact crash trace and
   device verification, not another guess at keep rules.
+
+---
+
+## 8. Debt this branch created (2026-07-27)
+
+Recorded at the time rather than discovered later.
+
+**`IntelligenceEngine.analyzeRecentOnCpu` is still ~846 lines.** Two trailing phases were extracted
+because Kotlin 2.3 codegen pushed the method past the JVM's 64 KB limit and the build failed outright.
+That bought headroom, it did not fix the function. The remaining body has the same phase seams
+(pass-1 detect, baseline seed, pass-2 re-score, source-only fold) and the ceiling is now known to be
+reachable.
+
+**`Spo2::rolling_reading` is exposed but unused.** The FFI export and the `RustScores` adapter exist;
+no screen calls them. The 4.0 card still reads `DailyMetric.spo2Pct`, which is now usually null on that
+hardware. Deciding what the card shows instead — the anchored multi-night value, or nothing — is a UI
+question that was not part of the decode fix.
+
+**The 4.0 SpO2 story is half-told.** The pulsatility gate stops a wrong percent being published, but the
+raw red/IR nightly means are still stored and still have no consumer. If the relative reading is the
+answer, it should be built on those means rather than on a percent that no longer computes.
+
+**The v18 optical channels stop at the Rust border.** `optical_baseline_a/b`, `optical_amp_a/b` and
+`optical_signal_poor` decode and are tested, but nothing reads them. The sentinel is the valuable one:
+it is a first-party per-second signal that the band's own beat detection failed, which the HRV windows
+and the sleep stager currently infer from motion instead. Wiring it needs the four-step FFI regen.
+
+**The record-level sentinel claim is not verifiable on our fixtures.** All three real v18 captures hold
+the two amplitude bytes equal, so record-level and per-channel are indistinguishable in our corpus. The
+model is pinned by a synthetic unit test and taken on upstream's 18,650-record evidence. A capture with
+the two bytes differing would settle it.
+
+**`resp_raw` @76 on 4.0 is wrong.** 29,851 real samples carry 3 distinct values, 98% pinned at 3073.
+Respiratory rate is unaffected (it comes from R-R via RSA), but the field is decoded, stored and
+meaningless. Either re-derive the offset against the 4.0 corpus or stop storing it.
+
+**Health Connect reads have no visible surface yet.** Blood pressure, hydration and nutrition land in
+`metricSeries` under the keys the existing screens use, so they should appear — but that has only been
+reasoned about, not seen on a device with real Health Connect data.
