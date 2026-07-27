@@ -191,19 +191,22 @@ data shows so far is only that the nightly red/IR ratio varies (0.73–0.93 over
 variation tracks oxygenation rather than skin contact, temperature, position or sensor drift, and
 there is no ground truth on either strap to decide. Treat it as an open question, not a plan.
 
-**The v18 optical channels stop at the Rust border.** `optical_baseline_a/b`, `optical_amp_a/b` and
-`optical_signal_poor` decode and are tested, but nothing reads them. The sentinel is the valuable one:
-it is a first-party per-second signal that the band's own beat detection failed, which the HRV windows
-and the sleep stager currently infer from motion instead. Wiring it needs the four-step FFI regen.
+**The v18 optical channels reach the store — RESOLVED 2026-07-27.** All five cross the FFI and land
+in `v18Sample`. Whether `optical_signal_poor` should gate the R-R path is measured and answered in
+section 12: yes, but the effect is -0.5% to -4.7% on nightly RMSSD, not the large win it looked like.
 
-**The record-level sentinel claim is not verifiable on our fixtures.** All three real v18 captures hold
-the two amplitude bytes equal, so record-level and per-channel are indistinguishable in our corpus. The
-model is pinned by a synthetic unit test and taken on upstream's 18,650-record evidence. A capture with
-the two bytes differing would settle it.
+**The record-level sentinel is CONFIRMED — 2026-07-27, and the old note here was wrong twice.** It
+claimed all our captures hold the two amplitude bytes equal: they differ on 52,458 of 82,185 records
+(64%). It also called the model unverifiable: exactly one channel reading 128 occurs in **0** of those
+82,185. Both or neither, always. The claim rested on three small captures; six exist, in
+`whoop-research/own data raw/`.
 
-**`resp_raw` @76 on 4.0 is wrong.** 29,851 real samples carry 3 distinct values, 98% pinned at 3073.
-Respiratory rate is unaffected (it comes from R-R via RSA), but the field is decoded, stored and
-meaningless. Either re-derive the offset against the 4.0 corpus or stop storing it.
+**`resp_raw` @76 on 4.0 reads a channel tag, not respiration — 2026-07-27.** Measured on the
+independent 4.0: **2,066,290 rows, 3 distinct values, 99.2% pinned at 3073**. Those values are
+`0x0C01`, `0x0B01`, `0x0701` — the same family the 5.0 v18 record carries at @77, beside `0x0C02` at
+@79. A shared (tag, index) word, so this is not a mis-scaled ADC that a new divisor would fix.
+Respiratory rate is unaffected; it comes from R-R via RSA. Recommendation in the plan: stop writing
+it. Re-deriving the true offset needs 4.0 raw frames, which we do not hold.
 
 **Health Connect reads have no visible surface yet.** Blood pressure, hydration and nutrition land in
 `metricSeries` under the keys the existing screens use, so they should appear — but that has only been
