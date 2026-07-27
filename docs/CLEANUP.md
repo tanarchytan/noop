@@ -162,12 +162,22 @@ question that was not part of the decode fix.
 raw red/IR nightly means are still stored and still have no consumer. If the relative reading is the
 answer, it should be built on those means rather than on a percent that no longer computes.
 
-Replicated on a second strap since: 2,066,290 samples over 25.6 days, 89.3% of windows with no
-pulsation and a median scored value of 80.1%, against this fork's own band at 98.2% and 81.8%.
-Upstream reaches the same conclusion by declining to compute one at all, and OpenStrap's 4.0 app
-ships no SpO2 path. Three independent routes, one answer: the channel cannot carry a percent. Still
-open is whether the stored red/IR means support a RELATIVE reading — meaningful as a change against
-your own baseline, never as an absolute — which is how OpenStrap tiers the metric.
+The reason the percent cannot work is arithmetic, not calibration and not anyone's opinion. The
+channel is sampled at **1 Hz** (199,963 of 200,000 consecutive intervals are exactly one second), so
+the Nyquist limit is 0.5 Hz. A cardiac waveform runs 0.83–3.0 Hz at 50–180 bpm — **entirely above
+that limit**, so the pulsatile component ratio-of-ratios reads is aliased away before the app ever
+sees it. No curve constant, window size or calibration recovers it.
+
+The measurements agree: two straps, 2.1M samples, 89.3% and 98.2% of windows with zero amplitude,
+both producing ~80% for a healthy wearer. The "it is a sleep-only channel" explanation was tested
+and **rejected** — in-bed windows are 95.7% flat, worse than the corpus.
+
+**What is NOT established:** whether the stored red/IR means support a *relative* reading. That
+framing was taken from OpenStrap's metric tiering and asserted here before it was tested. What the
+data shows so far is only that the nightly red/IR ratio varies (0.73–0.93 over 34 nights, sd 0.066)
+— it is not constant, so a relative reading is not obviously dead. But nothing establishes that the
+variation tracks oxygenation rather than skin contact, temperature, position or sensor drift, and
+there is no ground truth on either strap to decide. Treat it as an open question, not a plan.
 
 **The v18 optical channels stop at the Rust border.** `optical_baseline_a/b`, `optical_amp_a/b` and
 `optical_signal_poor` decode and are tested, but nothing reads them. The sentinel is the valuable one:
