@@ -20,7 +20,9 @@ import androidx.health.connect.client.units.Length
 import androidx.health.connect.client.units.Percentage
 import androidx.health.connect.client.units.Temperature
 import androidx.health.connect.client.units.TemperatureDelta
+import com.noop.NoopApplication
 import com.noop.data.WhoopRepository
+import com.noop.protocol.DeviceFamily
 import com.noop.data.WorkoutRow
 import com.noop.ui.NoopPrefs
 import java.time.Instant
@@ -81,6 +83,7 @@ object HealthConnectWriter {
 
         val cutoff = LocalDate.now().minusDays(WINDOW_DAYS).toString()
         val days = repo.days(repo.computedDeviceId(deviceId)).filter { it.day >= cutoff }
+        val spo2Exportable = spo2Exportable(context, deviceId)
 
         val zone = ZoneId.systemDefault()
         // Stamp every record in this batch with one version so a later recompute (higher stamp)
@@ -108,11 +111,13 @@ object HealthConnectWriter {
                     metadata = meta("hrv", d.day, version),
                 ))
             }
-            d.spo2Pct?.let {
-                records.add(OxygenSaturationRecord(
-                    time = instant, zoneOffset = offset, percentage = Percentage(it),
-                    metadata = meta("spo2", d.day, version),
-                ))
+            if (spo2Exportable) {
+                d.spo2Pct?.let {
+                    records.add(OxygenSaturationRecord(
+                        time = instant, zoneOffset = offset, percentage = Percentage(it),
+                        metadata = meta("spo2", d.day, version),
+                    ))
+                }
             }
             d.respRateBpm?.let {
                 records.add(RespiratoryRateRecord(
@@ -151,6 +156,25 @@ object HealthConnectWriter {
         total += runCatching { writeHeartRate(client, context, repo, deviceId, version) }.getOrDefault(0)
         total += runCatching { writeSleep(client, repo, deviceId) }.getOrDefault(0)
         return total
+    }
+
+    /**
+     * Whether a strap's blood oxygen may leave the device, from its registry `model` label. Only
+     * 5.0/MG, whose percent is the strap's own computed value; the 4.0 figure is derived here and
+     * still under investigation, so it stays local.
+     *
+     * An ABSENT label is not exportable. [DeviceFamily.forRegistryModel] resolves an unknown label to
+     * 5.0 because only a positively-identified 4.0 changes its skin-temp scale; here the risk runs the
+     * other way, so this needs a label it actually recognises.
+     */
+    internal fun spo2Exportable(model: String?): Boolean =
+        model != null && DeviceFamily.forRegistryModel(model) != DeviceFamily.WHOOP4
+
+    /** [spo2Exportable] for the active strap; an unreachable registry is treated as not exportable. */
+    private suspend fun spo2Exportable(context: Context, deviceId: String): Boolean {
+        val app = context.applicationContext as? NoopApplication ?: return false
+        val model = runCatching { app.deviceRegistry.all().firstOrNull { it.id == deviceId }?.model }.getOrNull()
+        return spo2Exportable(model)
     }
 
     /** Attributes exported records to the strap rather than to the phone. */
