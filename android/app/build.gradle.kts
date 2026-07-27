@@ -22,8 +22,8 @@ android {
         applicationId = "com.noop.tan"
         minSdk = 26
         targetSdk = 34
-        versionCode = 296
-        versionName = "9.0.1-rc3-tan"
+        versionCode = 297
+        versionName = "9.0.1-tan"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
