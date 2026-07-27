@@ -10,12 +10,12 @@ import com.noop.data.RespRow
 import com.noop.data.RrRow
 import com.noop.data.SkinTempRow
 import com.noop.data.SleepStateRow
-import com.noop.data.V18Row
 import com.noop.data.Spo2PctRow
 import com.noop.data.Spo2Row
 import com.noop.data.StepRow
 import com.noop.data.StreamBatch
 import com.noop.data.StreamPersistence
+import com.noop.data.V18Row
 import uniffi.whoop_ffi.Live
 import uniffi.whoop_ffi.PpgSample
 import uniffi.whoop_ffi.Response
