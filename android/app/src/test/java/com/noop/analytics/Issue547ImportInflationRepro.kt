@@ -174,7 +174,6 @@ class Issue547ImportInflationRepro {
             day = day,
             hr = emptyList(),
             rr = emptyList(),
-            resp = emptyList(),
             gravity = emptyList(),
             profile = profile,
             tzOffsetSeconds = tzOffset,

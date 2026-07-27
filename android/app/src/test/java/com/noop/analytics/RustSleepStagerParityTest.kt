@@ -52,7 +52,7 @@ class RustSleepStagerParityTest {
         val n = goldenNight()
         val end = start + dur
         val segs = RustSleepStager.stage(start = start, end = end,
-            grav = n.grav, hr = n.hr, rr = n.rr, resp = emptyList(), steps = emptyList())
+            grav = n.grav, hr = n.hr, rr = n.rr, steps = emptyList())
         val golden = listOf(
             Triple(0L, 5070L, "deep"),
             Triple(5070L, 5280L, "light"),

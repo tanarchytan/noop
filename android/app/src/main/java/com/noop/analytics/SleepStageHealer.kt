@@ -2,7 +2,6 @@ package com.noop.analytics
 
 import com.noop.data.GravitySample
 import com.noop.data.HrSample
-import com.noop.data.RespSample
 import com.noop.data.RrInterval
 import com.noop.data.SleepSession
 import com.noop.data.StepSample
@@ -62,11 +61,10 @@ object SleepStageHealer {
         if (!isDense(grav, start, end)) return null
         val hr = repo.hrSamples(deviceId, lo, hi, IntelligenceEngine.STREAM_LIMIT)
         val rr = repo.rrIntervals(deviceId, lo, hi, IntelligenceEngine.STREAM_LIMIT)
-        val resp = repo.respSamples(deviceId, lo, hi, IntelligenceEngine.STREAM_LIMIT)
         // The whoop-rs stager always runs its motion-aware wake refinement, so the step stream is fed
         // unconditionally (a night with no steps is a no-op refinement either way).
         val steps = repo.stepSamples(deviceId, lo, hi, IntelligenceEngine.STREAM_LIMIT)
-        return restageFromSamples(start, end, grav, hr, rr, resp, steps)
+        return restageFromSamples(start, end, grav, hr, rr, steps)
     }
 
     /**
@@ -97,14 +95,13 @@ object SleepStageHealer {
         grav: List<GravitySample>,
         hr: List<HrSample>,
         rr: List<RrInterval>,
-        resp: List<RespSample>,
         // Step stream for the motion-aware wake refinement below. Default empty keeps every existing
         // positional caller/test byte-identical (the refinement is a no-op with no steps either way).
         steps: List<StepSample> = emptyList(),
     ): String? {
         if (!isDense(grav, start, end)) return null
         // Staging + motion-aware wake refinement both run in whoop-rs (V2 staging + motion-refine).
-        val refined = RustSleepStager.stage(start, end, grav, hr, rr, resp, steps)
+        val refined = RustSleepStager.stage(start, end, grav, hr, rr, steps)
         return AnalyticsEngine.encodeStages(refined)
     }
 

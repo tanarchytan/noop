@@ -2,14 +2,12 @@ package com.noop.analytics
 
 import com.noop.data.GravitySample
 import com.noop.data.HrSample
-import com.noop.data.RespSample
 import com.noop.data.RrInterval
 import com.noop.data.StepSample
 import uniffi.whoop_ffi.BandStateSample
 import uniffi.whoop_ffi.SleepAccelSample
 import uniffi.whoop_ffi.SleepHrSample
 import uniffi.whoop_ffi.SleepInput
-import uniffi.whoop_ffi.SleepRespSample
 import uniffi.whoop_ffi.SleepRrRun
 import uniffi.whoop_ffi.SleepSegment
 import uniffi.whoop_ffi.SleepStage
@@ -32,7 +30,6 @@ internal object RustSleepStager {
     fun analyze(
         hr: List<HrSample>,
         rr: List<RrInterval>,
-        resp: List<RespSample>,
         gravity: List<GravitySample>,
         steps: List<StepSample>,
         tzOffsetSeconds: Long,
@@ -43,7 +40,6 @@ internal object RustSleepStager {
             hr = hr.sortedBy { it.ts }.map { SleepHrSample(it.ts, it.bpm.toUShort()) },
             rr = groupRuns(rr.sortedBy { it.ts }),
             accel = gravity.sortedBy { it.ts }.map { SleepAccelSample(it.ts, it.x, it.y, it.z) },
-            resp = resp.sortedBy { it.ts }.map { SleepRespSample(it.ts, it.raw) },
             steps = steps.sortedBy { it.ts }
                 .map { SleepStepSample(it.ts, it.counter.toUShort(), it.activityClass?.toUByte()) },
             tzOffsetS = tzOffsetSeconds,
@@ -64,7 +60,7 @@ internal object RustSleepStager {
      *  (the app's edit self-heal path). */
     fun stage(
         start: Long, end: Long,
-        grav: List<GravitySample>, hr: List<HrSample>, rr: List<RrInterval>, resp: List<RespSample>,
+        grav: List<GravitySample>, hr: List<HrSample>, rr: List<RrInterval>,
         steps: List<StepSample>,
     ): List<StageSegment> {
         val input = SleepInput(
@@ -72,7 +68,6 @@ internal object RustSleepStager {
             hr = hr.sortedBy { it.ts }.map { SleepHrSample(it.ts, it.bpm.toUShort()) },
             rr = groupRuns(rr.sortedBy { it.ts }),
             accel = grav.sortedBy { it.ts }.map { SleepAccelSample(it.ts, it.x, it.y, it.z) },
-            resp = resp.sortedBy { it.ts }.map { SleepRespSample(it.ts, it.raw) },
         )
         val ffiSteps = steps.sortedBy { it.ts }
             .map { SleepStepSample(it.ts, it.counter.toUShort(), it.activityClass?.toUByte()) }

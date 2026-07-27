@@ -7,7 +7,6 @@ import com.noop.data.HrSample
 import com.noop.data.SkinTempSample
 import com.noop.data.Spo2PctSample
 import com.noop.data.Spo2Sample
-import com.noop.data.RespSample
 import com.noop.data.RrInterval
 import com.noop.data.StepSample
 import com.noop.protocol.DeviceFamily
@@ -135,7 +134,7 @@ object AnalyticsEngine {
      *
      * @param day the calendar day (UTC) this metric is for; a sleep session is
      *   attributed to the day its `end` falls on (a night ending that morning).
-     * @param hr/rr/resp/gravity the day's raw streams (the wider window around the
+     * @param hr/rr/gravity the day's raw streams (the wider window around the
      *   night may be passed; sleep detection finds the in-bed span itself).
      * @param profile user profile (age/sex/weight/height) for HRmax + calories.
      * @param baselines personal baselines for recovery normalization.
@@ -146,7 +145,6 @@ object AnalyticsEngine {
         day: String,
         hr: List<HrSample> = emptyList(),
         rr: List<RrInterval> = emptyList(),
-        resp: List<RespSample> = emptyList(),
         gravity: List<GravitySample> = emptyList(),
         steps: List<StepSample> = emptyList(),
         // Calendar-day-scoped overrides for the ADDITIVE daily totals (steps + activeKcalEst) AND
@@ -159,7 +157,7 @@ object AnalyticsEngine {
         // lagging to the next pass; dayHr ALSO drives strain ("Effort") so the day's load reflects the
         // WHOLE calendar day, not midnight→noon (+ the night window's −30h prior-evening bleed). A
         // workout straddling local midnight splits at the day boundary (same tradeoff as the totals).
-        // Sleep / recovery keep using hr/rr/resp/gravity — staging needs the pre-midnight night span.
+        // Sleep / recovery keep using hr/rr/gravity — staging needs the pre-midnight night span.
         dayHr: List<HrSample>? = null,
         daySteps: List<StepSample>? = null,
         dayGravity: List<GravitySample>? = null,
@@ -250,7 +248,7 @@ object AnalyticsEngine {
         // Detection + staging + the motion-aware wake refinement now all run in whoop-rs (physio-algo)
         // behind one FFI call; `steps` feeds the refinement, which self-gates on the observed density.
         val allSessions = RustSleepStager.analyze(
-            hr = hr, rr = rr, resp = resp, gravity = gravity, steps = steps,
+            hr = hr, rr = rr, gravity = gravity, steps = steps,
             tzOffsetSeconds = tzOffsetSeconds, wristOff = wristOff, bandSleepState = bandSleepState,
         )
         // Sessions attributed to `day` = those whose end falls on `day` (LOCAL day, #277). `day` is

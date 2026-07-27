@@ -5338,8 +5338,6 @@ data class SleepInput (
     var `rr`: List<SleepRrRun>
     , 
     var `accel`: List<SleepAccelSample>
-    , 
-    var `resp`: List<SleepRespSample>
     
 ){
     
@@ -5361,7 +5359,6 @@ public object FfiConverterTypeSleepInput: FfiConverterRustBuffer<SleepInput> {
             FfiConverterSequenceTypeSleepHrSample.read(buf),
             FfiConverterSequenceTypeSleepRrRun.read(buf),
             FfiConverterSequenceTypeSleepAccelSample.read(buf),
-            FfiConverterSequenceTypeSleepRespSample.read(buf),
         )
     }
 
@@ -5370,8 +5367,7 @@ public object FfiConverterTypeSleepInput: FfiConverterRustBuffer<SleepInput> {
             FfiConverterLong.allocationSize(value.`end`) +
             FfiConverterSequenceTypeSleepHrSample.allocationSize(value.`hr`) +
             FfiConverterSequenceTypeSleepRrRun.allocationSize(value.`rr`) +
-            FfiConverterSequenceTypeSleepAccelSample.allocationSize(value.`accel`) +
-            FfiConverterSequenceTypeSleepRespSample.allocationSize(value.`resp`)
+            FfiConverterSequenceTypeSleepAccelSample.allocationSize(value.`accel`)
     )
 
     override fun write(value: SleepInput, buf: ByteBuffer) {
@@ -5380,48 +5376,6 @@ public object FfiConverterTypeSleepInput: FfiConverterRustBuffer<SleepInput> {
             FfiConverterSequenceTypeSleepHrSample.write(value.`hr`, buf)
             FfiConverterSequenceTypeSleepRrRun.write(value.`rr`, buf)
             FfiConverterSequenceTypeSleepAccelSample.write(value.`accel`, buf)
-            FfiConverterSequenceTypeSleepRespSample.write(value.`resp`, buf)
-    }
-}
-
-
-
-/**
- * One raw respiration-ADC sample at unix second `ts` (accepted for parity; V2 recovers RSA from R-R).
- */
-data class SleepRespSample (
-    var `ts`: kotlin.Long
-    , 
-    var `raw`: kotlin.Int
-    
-){
-    
-
-    
-
-    
-    companion object
-}
-
-/**
- * @suppress
- */
-public object FfiConverterTypeSleepRespSample: FfiConverterRustBuffer<SleepRespSample> {
-    override fun read(buf: ByteBuffer): SleepRespSample {
-        return SleepRespSample(
-            FfiConverterLong.read(buf),
-            FfiConverterInt.read(buf),
-        )
-    }
-
-    override fun allocationSize(value: SleepRespSample) = (
-            FfiConverterLong.allocationSize(value.`ts`) +
-            FfiConverterInt.allocationSize(value.`raw`)
-    )
-
-    override fun write(value: SleepRespSample, buf: ByteBuffer) {
-            FfiConverterLong.write(value.`ts`, buf)
-            FfiConverterInt.write(value.`raw`, buf)
     }
 }
 
@@ -5643,8 +5597,6 @@ data class SleepStreams (
     , 
     var `accel`: List<SleepAccelSample>
     , 
-    var `resp`: List<SleepRespSample>
-    , 
     var `steps`: List<SleepStepSample>
     , 
     var `tzOffsetS`: kotlin.Long
@@ -5671,7 +5623,6 @@ public object FfiConverterTypeSleepStreams: FfiConverterRustBuffer<SleepStreams>
             FfiConverterSequenceTypeSleepHrSample.read(buf),
             FfiConverterSequenceTypeSleepRrRun.read(buf),
             FfiConverterSequenceTypeSleepAccelSample.read(buf),
-            FfiConverterSequenceTypeSleepRespSample.read(buf),
             FfiConverterSequenceTypeSleepStepSample.read(buf),
             FfiConverterLong.read(buf),
             FfiConverterSequenceTypeWristOffInterval.read(buf),
@@ -5683,7 +5634,6 @@ public object FfiConverterTypeSleepStreams: FfiConverterRustBuffer<SleepStreams>
             FfiConverterSequenceTypeSleepHrSample.allocationSize(value.`hr`) +
             FfiConverterSequenceTypeSleepRrRun.allocationSize(value.`rr`) +
             FfiConverterSequenceTypeSleepAccelSample.allocationSize(value.`accel`) +
-            FfiConverterSequenceTypeSleepRespSample.allocationSize(value.`resp`) +
             FfiConverterSequenceTypeSleepStepSample.allocationSize(value.`steps`) +
             FfiConverterLong.allocationSize(value.`tzOffsetS`) +
             FfiConverterSequenceTypeWristOffInterval.allocationSize(value.`wristOff`) +
@@ -5694,7 +5644,6 @@ public object FfiConverterTypeSleepStreams: FfiConverterRustBuffer<SleepStreams>
             FfiConverterSequenceTypeSleepHrSample.write(value.`hr`, buf)
             FfiConverterSequenceTypeSleepRrRun.write(value.`rr`, buf)
             FfiConverterSequenceTypeSleepAccelSample.write(value.`accel`, buf)
-            FfiConverterSequenceTypeSleepRespSample.write(value.`resp`, buf)
             FfiConverterSequenceTypeSleepStepSample.write(value.`steps`, buf)
             FfiConverterLong.write(value.`tzOffsetS`, buf)
             FfiConverterSequenceTypeWristOffInterval.write(value.`wristOff`, buf)
@@ -9244,34 +9193,6 @@ public object FfiConverterSequenceTypeSleepHrSample: FfiConverterRustBuffer<List
         buf.putInt(value.size)
         value.iterator().forEach {
             FfiConverterTypeSleepHrSample.write(it, buf)
-        }
-    }
-}
-
-
-
-
-/**
- * @suppress
- */
-public object FfiConverterSequenceTypeSleepRespSample: FfiConverterRustBuffer<List<SleepRespSample>> {
-    override fun read(buf: ByteBuffer): List<SleepRespSample> {
-        val len = buf.getInt()
-        return List<SleepRespSample>(len) {
-            FfiConverterTypeSleepRespSample.read(buf)
-        }
-    }
-
-    override fun allocationSize(value: List<SleepRespSample>): ULong {
-        val sizeForLength = 4UL
-        val sizeForItems = value.map { FfiConverterTypeSleepRespSample.allocationSize(it) }.sum()
-        return sizeForLength + sizeForItems
-    }
-
-    override fun write(value: List<SleepRespSample>, buf: ByteBuffer) {
-        buf.putInt(value.size)
-        value.iterator().forEach {
-            FfiConverterTypeSleepRespSample.write(it, buf)
         }
     }
 }
