@@ -312,13 +312,15 @@ Everything below is unstarted or waiting on a decision. Nothing here is broken; 
 
 ### Mine, ready to start
 
-- **Upstream #848 — bank the v18 per-second fields the storage funnel discards.** The last substantial
-  item from the 2026-07-27 sweep and the bigger prize behind #845's inventory of 23 decoded-but-unread
-  fields. Verify against our own decoder first: we already decode several of them, so the loss may be
-  at extraction rather than at decode.
-- **Wire `optical_signal_poor` through the FFI.** Decoded and tested in whoop-rs, read by nothing. It
-  is a first-party per-second flag that the band's own beat detection failed, which the HRV windows
-  and the sleep stager currently infer from motion instead. Needs the four-step regen.
+- **Find a consumer for the banked v18 channels.** They are stored as of schema v101 but nothing
+  reads them. Two have an obvious use waiting: `optical_signal_poor` is a first-party per-second flag
+  that the band's own beat detection failed, which the HRV windows and the sleep stager currently
+  infer from motion; and the two auxiliary thermal registers give a skin-to-ambient gradient, which is
+  the input a core-temperature correction needs. Neither is wired into a score yet.
+- **Settle the four unpinned channels.** `raw_u8_28/29`, `raw_u16_30` and `raw_f32_105` are banked
+  under names that claim nothing. `raw_f32_105` is the interesting one: continuous, finite, always
+  negative between -5.28 and -2.14, 1,851 distinct values in 1,861 records, and not a transform of
+  dynamic acceleration. Settling any of them needs raw frames from a second 5.0 over several days.
 - **Upstream #872/#873 — the 4.0 feature-flag probe.** Reads what the 4.0 firmware exposes; may bear
   on the blood-oxygen hunt.
 - **Upstream #874/#875, #818.** Sync robustness and the `pagesBehind` field offsets. Unassessed.
