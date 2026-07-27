@@ -158,17 +158,8 @@ object HealthConnectWriter {
         return total
     }
 
-    /**
-     * Whether a strap's blood oxygen may leave the device, from its registry `model` label. Only
-     * 5.0/MG, whose percent is the strap's own computed value; the 4.0 figure is derived here and
-     * still under investigation, so it stays local.
-     *
-     * An ABSENT label is not exportable. [DeviceFamily.forRegistryModel] resolves an unknown label to
-     * 5.0 because only a positively-identified 4.0 changes its skin-temp scale; here the risk runs the
-     * other way, so this needs a label it actually recognises.
-     */
-    internal fun spo2Exportable(model: String?): Boolean =
-        model != null && DeviceFamily.forRegistryModel(model) != DeviceFamily.WHOOP4
+    /** Whether a strap's blood oxygen may leave the device, from its registry `model` label. */
+    internal fun spo2Exportable(model: String?): Boolean = Spo2Policy.trusted(model)
 
     /** [spo2Exportable] for the active strap; an unreachable registry is treated as not exportable. */
     private suspend fun spo2Exportable(context: Context, deviceId: String): Boolean {

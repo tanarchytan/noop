@@ -99,6 +99,18 @@ interface WhoopDao : DeviceRegistryDao {
     @Upsert
     suspend fun upsertDailyMetrics(rows: List<DailyMetric>)
 
+    /**
+     * Fill one day's blood oxygen ONLY where it is absent, leaving every other column untouched.
+     * A plain upsert would rewrite the whole row, so a day the strap already scored would lose its
+     * resting HR, HRV and sleep. Inserts the day when no row exists yet.
+     */
+    @Query(
+        "INSERT INTO dailyMetric (deviceId, day, spo2Pct) VALUES (:deviceId, :day, :pct) " +
+            "ON CONFLICT(deviceId, day) DO UPDATE SET spo2Pct = excluded.spo2Pct " +
+            "WHERE dailyMetric.spo2Pct IS NULL",
+    )
+    suspend fun fillMissingSpo2(deviceId: String, day: String, pct: Double)
+
     @Upsert
     suspend fun upsertSleepSessions(rows: List<SleepSession>)
 

@@ -26,6 +26,7 @@ import androidx.health.connect.client.records.Vo2MaxRecord
 import androidx.health.connect.client.records.WeightRecord
 import androidx.health.connect.client.request.ReadRecordsRequest
 import androidx.health.connect.client.time.TimeRangeFilter
+import com.noop.NoopApplication
 import com.noop.analytics.FitnessAgeEngine
 import com.noop.analytics.HydrationStore
 import com.noop.data.AppleDaily
@@ -505,6 +506,11 @@ object HealthConnectImporter {
         val coveredDays: Set<String> = buildSet {
             for (id in strapSourceIds(repo)) addAll(strapDays(repo, id))
         }
+        // A covered day drops the whole daily row below, blood oxygen with it. On 5.0/MG that one
+        // value is still worth taking when the strap recorded none, so collect it here and fill the
+        // gap after the write. Held to 5.0/MG by [Spo2Policy], the same gate the export side uses.
+        val spo2Fills = ArrayList<Pair<String, Double>>()
+        val spo2FillAllowed = spo2FillAllowed(context)
 
         val appleRows = ArrayList<AppleDaily>(acc.size)
         val dailyRows = ArrayList<DailyMetric>(acc.size)
@@ -605,6 +611,8 @@ object HealthConnectImporter {
                         )
                     )
                 }
+            } else if (spo2FillAllowed && a.spo2Count > 0) {
+                spo2Fills.add(day to round1(a.spo2Sum / a.spo2Count))
             }
         }
 
@@ -629,6 +637,9 @@ object HealthConnectImporter {
             if (workouts.isNotEmpty()) {
                 repo.upsertWorkouts(workouts)
             }
+            // Gap-fill only: the statement leaves a day that already carries a reading untouched, so a
+            // strap value is never replaced and re-importing changes nothing.
+            for ((day, pct) in spo2Fills) repo.fillMissingSpo2(WHOOP, day, pct)
         } catch (e: Exception) {
             return ImportSummary.failure(SOURCE, "Saving Health Connect data failed: ${e.message}")
         }
@@ -767,6 +778,19 @@ object HealthConnectImporter {
             // accumulate into shared buckets, so a partial type is simply absent, never corrupt.
             android.util.Log.w("HealthConnect", "read of ${type.simpleName} failed; skipping: ${e.message}")
         }
+    }
+
+    /**
+     * Whether the active strap's blood oxygen may be filled from Health Connect. An unreachable
+     * registry or no active strap is treated as not allowed, so the fill needs a strap it recognises.
+     */
+    private suspend fun spo2FillAllowed(context: Context): Boolean {
+        val app = context.applicationContext as? NoopApplication ?: return false
+        val model = runCatching {
+            val active = app.deviceRegistry.activeDeviceId()
+            app.deviceRegistry.all().firstOrNull { it.id == active }?.model
+        }.getOrNull()
+        return Spo2Policy.trusted(model)
     }
 
     // MARK: - strap-coverage helpers

@@ -358,6 +358,10 @@ class WhoopRepository(private val dao: WhoopDao) {
     // MARK: - Server-derived caches (latest value wins on conflict)
 
     suspend fun upsertDailyMetrics(days: List<DailyMetric>) = dao.upsertDailyMetrics(days)
+
+    /** Fill [day]'s blood oxygen only where it is absent; every other column is left alone. */
+    suspend fun fillMissingSpo2(deviceId: String, day: String, pct: Double) =
+        dao.fillMissingSpo2(deviceId, day, pct)
     suspend fun upsertSleepSessions(sessions: List<SleepSession>) = dao.upsertSleepSessions(sessions)
 
     /** Delete the computed source's cached daily rows whose day-key is in [from, to] (inclusive,
