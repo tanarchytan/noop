@@ -4,12 +4,15 @@ import android.content.Context
 import androidx.health.connect.client.HealthConnectClient
 import androidx.health.connect.client.permission.HealthPermission
 import androidx.health.connect.client.records.ActiveCaloriesBurnedRecord
+import androidx.health.connect.client.records.BloodPressureRecord
 import androidx.health.connect.client.records.BodyFatRecord
 import androidx.health.connect.client.records.DistanceRecord
 import androidx.health.connect.client.records.ExerciseSessionRecord
 import androidx.health.connect.client.records.HeartRateRecord
 import androidx.health.connect.client.records.HeartRateVariabilityRmssdRecord
 import androidx.health.connect.client.records.HeightRecord
+import androidx.health.connect.client.records.HydrationRecord
+import androidx.health.connect.client.records.NutritionRecord
 import androidx.health.connect.client.records.LeanBodyMassRecord
 import androidx.health.connect.client.records.OxygenSaturationRecord
 import androidx.health.connect.client.records.Record
@@ -23,6 +26,7 @@ import androidx.health.connect.client.records.WeightRecord
 import androidx.health.connect.client.request.ReadRecordsRequest
 import androidx.health.connect.client.time.TimeRangeFilter
 import com.noop.analytics.FitnessAgeEngine
+import com.noop.analytics.HydrationStore
 import com.noop.data.AppleDaily
 import com.noop.data.DailyMetric
 import com.noop.data.ImportSummary
@@ -105,6 +109,9 @@ object HealthConnectImporter {
         BodyFatRecord::class,
         LeanBodyMassRecord::class,
         HeightRecord::class,
+        BloodPressureRecord::class,
+        HydrationRecord::class,
+        NutritionRecord::class,
         ExerciseSessionRecord::class,
         DistanceRecord::class,
     )
@@ -304,6 +311,28 @@ object HealthConnectImporter {
                     newestWeightTs = r.time.epochSecond
                     newestWeightKg = r.weight.inKilograms
                 }
+            }
+            // --- Blood pressure -> the day's last reading wins. A paired cuff is the only source of
+            // a real BP number here; NOOP never estimates one. ---
+            readAll(client, BloodPressureRecord::class, filter, selfPackage) { r ->
+                val b = bucket(dayOf(r.time))
+                if (r.time.epochSecond >= b.bpTs) {
+                    b.bpTs = r.time.epochSecond
+                    b.systolic = r.systolic.inMillimetersOfMercury
+                    b.diastolic = r.diastolic.inMillimetersOfMercury
+                }
+            }
+            // --- Hydration + nutrition -> day totals, summed over every entry. Same keys the CSV
+            // importer writes, so the Explore + Hydration screens read them unchanged. ---
+            readAll(client, HydrationRecord::class, filter, selfPackage) { r ->
+                bucket(dayOf(r.startTime)).hydrationMl += r.volume.inMilliliters
+            }
+            readAll(client, NutritionRecord::class, filter, selfPackage) { r ->
+                val b = bucket(dayOf(r.startTime))
+                r.energy?.let { b.kcalIn += it.inKilocalories }
+                r.protein?.let { b.proteinG += it.inGrams }
+                r.totalCarbohydrate?.let { b.carbsG += it.inGrams }
+                r.totalFat?.let { b.fatG += it.inGrams }
             }
             // --- Height (cm) -> newest wins; not bucketed per day. ---
             readAll(client, HeightRecord::class, filter, selfPackage) { r ->
@@ -505,6 +534,23 @@ object HealthConnectImporter {
             // day with no steps/HR still records its readings. Same keys + units as the iOS Apple Health
             // import: body_fat as a 0-100 percent, lean_mass in kg.
             a.bodyFatPct?.let { metricSeriesRows += MetricSeriesRow(HC_DEVICE, day, "body_fat", round2(it)) }
+            a.systolic?.let { metricSeriesRows += MetricSeriesRow(HC_DEVICE, day, "bp_systolic", round1(it)) }
+            a.diastolic?.let { metricSeriesRows += MetricSeriesRow(HC_DEVICE, day, "bp_diastolic", round1(it)) }
+            if (a.hydrationMl > 0) {
+                metricSeriesRows += MetricSeriesRow(HydrationStore.SOURCE_ID, day, HydrationStore.KEY, round1(a.hydrationMl))
+            }
+            if (a.kcalIn > 0) {
+                metricSeriesRows += MetricSeriesRow(HC_DEVICE, day, NutritionCsvImporter.KEY_CALORIES_IN, round1(a.kcalIn))
+            }
+            if (a.proteinG > 0) {
+                metricSeriesRows += MetricSeriesRow(HC_DEVICE, day, NutritionCsvImporter.KEY_PROTEIN_G, round1(a.proteinG))
+            }
+            if (a.carbsG > 0) {
+                metricSeriesRows += MetricSeriesRow(HC_DEVICE, day, NutritionCsvImporter.KEY_CARBS_G, round1(a.carbsG))
+            }
+            if (a.fatG > 0) {
+                metricSeriesRows += MetricSeriesRow(HC_DEVICE, day, NutritionCsvImporter.KEY_FAT_G, round1(a.fatG))
+            }
             a.leanMassKg?.let { metricSeriesRows += MetricSeriesRow(HC_DEVICE, day, "lean_mass", round2(it)) }
 
             // DailyMetric (my-whoop): resting-HR / HRV / sleep-minutes / SpO2 / respiration,
@@ -990,5 +1036,17 @@ object HealthConnectImporter {
         var leanMassTs: Long = Long.MIN_VALUE
 
         var exerciseCount: Int = 0
+
+        // Blood pressure: the day's LAST reading wins, the way a cuff app shows the latest.
+        var systolic: Double? = null
+        var diastolic: Double? = null
+        var bpTs: Long = Long.MIN_VALUE
+
+        // Hydration and nutrition are day TOTALS: every entry adds up.
+        var hydrationMl: Double = 0.0
+        var kcalIn: Double = 0.0
+        var proteinG: Double = 0.0
+        var carbsG: Double = 0.0
+        var fatG: Double = 0.0
     }
 }
