@@ -312,11 +312,14 @@ Everything below is unstarted or waiting on a decision. Nothing here is broken; 
 
 ### Mine, ready to start
 
-- **Find a consumer for the banked v18 channels.** They are stored as of schema v101 but nothing
-  reads them. Two have an obvious use waiting: `optical_signal_poor` is a first-party per-second flag
-  that the band's own beat detection failed, which the HRV windows and the sleep stager currently
-  infer from motion; and the two auxiliary thermal registers give a skin-to-ambient gradient, which is
-  the input a core-temperature correction needs. Neither is wired into a score yet.
+- **A consumer for the banked v18 channels — `optical_signal_poor` was measured and REJECTED.** It
+  looked like the obvious upgrade for `hr_anomaly.rs`'s eligibility gate, but it fires on 988 records
+  the quality byte calls clean, so wiring it removes 53% of eligible samples, and it does not predict
+  bad HR at all (consecutive-second delta 0.47 flagged vs 0.50 clean). It tracks whether the strap
+  emitted R-R, not whether the HR is wrong. Needs a second strap before it gates anything.
+- **The thermal pair is the better candidate.** `auxRaw1`/`auxRaw2` give a skin-to-ambient gradient,
+  replicated on four straps, which is the input a core-temperature correction needs. Not yet measured
+  against the existing skin-temp deviation.
 - **Settle the four unpinned channels.** `raw_u8_28/29`, `raw_u16_30` and `raw_f32_105` are banked
   under names that claim nothing. `raw_f32_105` is the interesting one: continuous, finite, always
   negative between -5.28 and -2.14, 1,851 distinct values in 1,861 records, and not a transform of
