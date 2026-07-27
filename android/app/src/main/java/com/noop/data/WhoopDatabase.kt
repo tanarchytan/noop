@@ -51,7 +51,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         LiveSessionRow::class,
         PpgWaveformSampleEntity::class,
     ],
-    version = 100,
+    version = 101,
     exportSchema = false,
 )
 abstract class WhoopDatabase : RoomDatabase() {
@@ -61,7 +61,7 @@ abstract class WhoopDatabase : RoomDatabase() {
         const val DB_NAME = "noop_whoop.db"
 
         /** Current Room schema version (v1-tan). Must match [Database.version]. */
-        const val SCHEMA_VERSION = 100
+        const val SCHEMA_VERSION = 101
 
         /**
          * Ordered list of all Room migrations, from earliest to latest. Used by
@@ -79,7 +79,19 @@ abstract class WhoopDatabase : RoomDatabase() {
             MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14,
             MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18,
             MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21, MIGRATION_21_22,
+            MIGRATION_100_101,
             ) + UPSTREAM_CATCHALL_MIGRATIONS
+        }
+
+        /**
+         * Records the beat's position within its second, so RMSSD reads beats in emission order
+         * instead of by magnitude. Additive and nullable: existing rows never held the order, so they
+         * stay NULL and keep reading as before.
+         */
+        internal val MIGRATION_100_101 = object : Migration(100, 101) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE rrInterval ADD COLUMN ord INTEGER")
+            }
         }
 
         /** Any upstream version 22–99 converges to v1-tan via [reconcileToTan]. */

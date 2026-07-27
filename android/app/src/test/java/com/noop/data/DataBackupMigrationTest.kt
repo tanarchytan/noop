@@ -16,7 +16,7 @@ import org.junit.rules.TemporaryFolder
  * What we CAN pin on the plain JVM:
  *  - Byte-level `PRAGMA user_version` extraction from a SQLite header (pure file I/O).
  *  - Invalid / not-a-SQLite-file rejection.
- *  - Round-trip at every version the app uses (2 through 100, v1-tan).
+ *  - Round-trip at every version the app uses (2 through 101).
  */
 class DataBackupMigrationTest {
 
@@ -82,7 +82,7 @@ class DataBackupMigrationTest {
 
     @Test
     fun readUserVersion_roundTripsAppVersions() {
-        for (v in listOf(2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 100)) {
+        for (v in listOf(2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 100, 101)) {
             assertEquals("schema version $v", v, DataBackup.readUserVersion(sqliteHeaderFile(v)))
         }
     }
@@ -115,32 +115,41 @@ class DataBackupMigrationTest {
     // ── planMigrationPath (greedy longest-jump, catch-all aware) ──────────────
 
     private val migrations = WhoopDatabase.ALL_MIGRATIONS
-    private val target = WhoopDatabase.SCHEMA_VERSION // 100 (v1-tan)
+    private val target = WhoopDatabase.SCHEMA_VERSION // 101 (v1-tan + rr ord)
 
     private fun path(from: Int) = DataBackup.planMigrationPath(from, target, migrations)
 
     @Test
     fun planPath_upstreamV20_stepsToV22ThenLeapsToTarget() {
-        // v20 steps 20->21, 21->22; at 22 the catch-all leaps straight to v100 (v1-tan), the single base.
+        // v20 steps 20->21, 21->22; at 22 the catch-all leaps to v100 (v1-tan, the single base), then
+        // the additive rr-ord step carries it to the target.
         val p = path(20)
         assertNull(p.error)
-        assertEquals(listOf(20 to 21, 21 to 22, 22 to target), p.path!!.map { it.startVersion to it.endVersion })
+        assertEquals(listOf(20 to 21, 21 to 22, 22 to 100, 100 to target), p.path!!.map { it.startVersion to it.endVersion })
     }
 
     @Test
     fun planPath_catchAllVersions_leapStraightToTarget() {
-        // Each upstream v22..99 leaps directly to v100 (v1-tan) via the catch-all; there is no further step.
+        // Each upstream v22..99 leaps directly to v100 (v1-tan) via the catch-all, then takes the one
+        // additive step to the target.
         for (v in listOf(22, 50, 99)) {
             val p = path(v)
             assertNull("v$v", p.error)
-            assertEquals("v$v", listOf(v to target), p.path!!.map { it.startVersion to it.endVersion })
+            assertEquals("v$v", listOf(v to 100, 100 to target), p.path!!.map { it.startVersion to it.endVersion })
         }
     }
 
     @Test
-    fun planPath_v100_isTargetSoNoSteps() {
-        // v100 (v1-tan) IS the target: nothing to migrate.
+    fun planPath_v100_takesTheSingleAdditiveStep() {
+        // v100 (v1-tan) predates the rr-ord column, so it takes exactly one additive step.
         val p = path(100)
+        assertNull(p.error)
+        assertEquals(listOf(100 to target), p.path!!.map { it.startVersion to it.endVersion })
+    }
+
+    @Test
+    fun planPath_targetIsTargetSoNoSteps() {
+        val p = path(target)
         assertNull(p.error)
         assertEquals(emptyList<Pair<Int, Int>>(), p.path!!.map { it.startVersion to it.endVersion })
     }

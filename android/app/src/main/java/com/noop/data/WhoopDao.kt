@@ -250,11 +250,13 @@ interface WhoopDao : DeviceRegistryDao {
 
     @Query(
         // ORDER BY ts, seq preserves the decoder's emission order (seq = insertion counter).
-        // Sorting by rrMs between same-second beats reorders physiologically — RMSSD depends on
-        // successive-beat order. The old ts,rrMs,seq order was a bug: same-second distinct intervals
-        // sorted by magnitude instead of true beat sequence.
+        // RMSSD is built from successive-beat differences and groups R-R per second, so the order
+        // WITHIN a second is its whole input. `ord` carries the emission order; `seq` cannot, because
+        // assignRrSeq keys on (ts, rrMs) and every distinct beat in a second holds 0, leaving the sort
+        // to fall through to the primary-key index and return them by magnitude. Legacy rows hold a
+        // NULL ord, which SQLite sorts first, so they keep reading exactly as they did.
         "SELECT * FROM rrInterval WHERE deviceId = :deviceId AND ts >= :from AND ts <= :to " +
-            "ORDER BY ts ASC, seq ASC LIMIT :limit"
+            "ORDER BY ts ASC, ord ASC, rrMs ASC, seq ASC LIMIT :limit"
     )
     suspend fun rrIntervals(deviceId: String, from: Long, to: Long, limit: Int): List<RrInterval>
 

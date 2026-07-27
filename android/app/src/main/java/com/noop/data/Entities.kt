@@ -93,6 +93,10 @@ data class RrInterval(
     val rrMs: Int,
     val seq: Int = 0,
     val synced: Int = 0,
+    /** Position among the beats sharing this [ts], stamped at decode from the wire order. Leads the
+     *  read sort so RMSSD sees beats in the order the strap emitted them. NULL on rows written before
+     *  the column existed: the order was never recorded, so it cannot be recovered. */
+    val ord: Int? = null,
 )
 
 /**
