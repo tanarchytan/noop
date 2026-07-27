@@ -150,12 +150,9 @@ class ProfileStore(private val prefs: SharedPreferences) {
         set(v) = prefs.edit().putFloat(KEY_HEIGHT, v.coerceIn(HEIGHT_MIN, HEIGHT_MAX).toFloat()).apply()
 
     /**
-     * Adopt body measurements read from a connected source (Health Connect). A measured value beats
-     * a typed one — a scale that syncs daily is more current than a number entered months ago — and
-     * these feed BMI, BMR and the VO2 max estimate, so a stale weight quietly skews all three.
-     *
-     * Only plausible readings are taken: anything outside the stored range is ignored rather than
-     * clamped, so one bad record can't silently pin the profile to a boundary. Nulls are no-ops.
+     * Adopt body measurements read from a connected source, overwriting the typed values that
+     * [weightKg] and [heightCm] hold. Out-of-range readings are IGNORED rather than clamped, so one
+     * bad record cannot pin the profile to a boundary; nulls are no-ops.
      */
     fun applyMeasured(measuredWeightKg: Double?, measuredHeightCm: Double?) {
         measuredWeightKg?.takeIf { it in WEIGHT_MIN..WEIGHT_MAX }?.let { weightKg = it }

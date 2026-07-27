@@ -215,8 +215,6 @@ dependencies {
     implementation("androidx.security:security-crypto:1.1.0-alpha06")
 
     // --- Health Connect (native read/write of steps/HR/HRV/sleep/skin temperature/etc.) ---
-    // alpha08 is the last build that compiles against compileSdk 34 AND carries SkinTemperatureRecord.
-    // alpha09-alpha12 need compileSdk 35; beta02 and 1.1.0 stable need 36, which also needs a newer AGP.
     implementation("androidx.health.connect:connect-client:1.1.0")
 
     // --- Unit / instrumentation tests ---

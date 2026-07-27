@@ -1014,9 +1014,7 @@ object IntelligenceEngine {
         if (dailies.isNotEmpty()) repo.upsertDailyMetrics(dailies)
         if (restRows.isNotEmpty()) repo.upsertMetricSeries(restRows)
 
-        // Weekly ages and the WHOOP-4 step estimate run after the scores are persisted; both are
-        // self-contained trailing phases, extracted so this function stays under the JVM 64 KB
-        // method limit that Kotlin 2.3 codegen pushed it past.
+        // Trailing phases, both reading the scores just persisted above.
         writeWeeklyAges(repo, profile, dailies, faPriorDaily, computedId, importedDeviceId,
             ownerSource, candidatePriorities, newestDay, nowLocalMidnight, tzOffsetSeconds, diag)
         writeStepsEstimate(repo, dailies, computedId, importedDeviceId, ownerSource,
@@ -1117,11 +1115,7 @@ object IntelligenceEngine {
      * WorkoutEditing.sourceLabel / the Swift WorkoutSource.sourceLabel token set. No PII (a source class only).
      */
 
-    /**
-     * Fitness Age, Vitality / Body Age and Circadian Rhythm Age — the weekly figures, keyed to the
-     * week's Saturday. Split out of [analyzeRecentOnCpu] purely for method size; the body is
-     * unchanged and still runs at the same point in the pass, after the scores are persisted.
-     */
+    /** Fitness Age, Vitality / Body Age and Rhythm Age — weekly, keyed to the week's Saturday. */
     private suspend fun writeWeeklyAges(
         repo: WhoopRepository,
         profile: UserProfile,
@@ -1234,10 +1228,7 @@ object IntelligenceEngine {
         }
     }
 
-    /**
-     * The WHOOP 4.0 daily step ESTIMATE. Split out of [analyzeRecentOnCpu] purely for method size;
-     * the body is unchanged and still runs at the same point in the pass.
-     */
+    /** The WHOOP 4.0 daily step estimate: fit the motion-volume coefficient, then apply it. */
     private suspend fun writeStepsEstimate(
         repo: WhoopRepository,
         dailies: List<DailyMetric>,

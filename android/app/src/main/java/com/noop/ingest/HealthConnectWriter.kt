@@ -12,7 +12,6 @@ import androidx.health.connect.client.records.Record
 import androidx.health.connect.client.records.RespiratoryRateRecord
 import androidx.health.connect.client.records.RestingHeartRateRecord
 import androidx.health.connect.client.records.SkinTemperatureRecord
-import androidx.health.connect.client.records.Vo2MaxRecord
 import androidx.health.connect.client.records.SleepSessionRecord
 import androidx.health.connect.client.records.metadata.Device
 import androidx.health.connect.client.records.metadata.Metadata
@@ -56,7 +55,6 @@ object HealthConnectWriter {
         HeartRateRecord::class,
         SleepSessionRecord::class,
         SkinTemperatureRecord::class,
-        Vo2MaxRecord::class,
     )
 
     /** The write-permission strings the UI must request before calling [write]. */
@@ -117,9 +115,7 @@ object HealthConnectWriter {
                     metadata = meta("resp", d.day, version),
                 ))
             }
-            // Skin temperature is the one vital here that almost nothing else on a phone measures, so
-            // it is the most useful thing NOOP contributes. The absolute reading is the record's
-            // baseline; the nightly deviation rides along as a Delta so a reader gets both.
+            // Absolute nightly reading as the baseline, the deviation from the personal norm as a Delta.
             d.skinTempAbsC?.let { absC ->
                 records.add(SkinTemperatureRecord(
                     startTime = instant, startZoneOffset = offset,
@@ -151,13 +147,12 @@ object HealthConnectWriter {
         return total
     }
 
-    /** The strap these records came off, so Health Connect can attribute them to a wearable. */
+    /** Attributes exported records to the strap rather than to the phone. */
     private val STRAP = Device(manufacturer = "WHOOP", type = Device.TYPE_FITNESS_BAND)
 
     /**
-     * Metadata for one exported record. `clientRecordId` + `clientRecordVersion` are how a recompute
-     * REPLACES a day rather than duplicating it, so both must stay stable per metric per day.
-     * Automatically recorded: these come off a strap, not a person typing them in.
+     * Metadata for one exported record. [clientId] + [version] are what make a recompute REPLACE a
+     * day instead of duplicating it, so both stay stable per metric per day.
      */
     private fun meta(clientId: String, version: Long): Metadata =
         Metadata.autoRecorded(device = STRAP, clientRecordId = clientId, clientRecordVersion = version)

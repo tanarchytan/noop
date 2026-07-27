@@ -181,9 +181,8 @@ object HealthConnectImporter {
         val filter = TimeRangeFilter.between(start, end)
         // #528: skip our own writes on import (see readAll / isSelfWritten).
         val selfPackage = context.packageName
-        // Newest body measurements seen anywhere in the window. Height and weight are profile facts
-        // rather than daily series, so the most recent reading wins and is handed back to the caller
-        // to store on the profile — they feed BMI, BMR and the VO2 max estimate.
+        // Height and weight are profile facts, not daily series: the newest reading wins and goes
+        // back to the caller for the profile, where BMI, BMR and the VO2 max estimate read them.
         var newestWeightKg: Double? = null
         var newestWeightTs = Long.MIN_VALUE
         var newestHeightCm: Double? = null
@@ -306,8 +305,7 @@ object HealthConnectImporter {
                     newestWeightKg = r.weight.inKilograms
                 }
             }
-            // --- Height (cm) -> newest wins. Not bucketed per day: height is a profile fact, not a
-            // daily series, and it feeds BMI, BMR and the VO2 max estimate. ---
+            // --- Height (cm) -> newest wins; not bucketed per day. ---
             readAll(client, HeightRecord::class, filter, selfPackage) { r ->
                 if (r.time.epochSecond >= newestHeightTs) {
                     newestHeightTs = r.time.epochSecond
@@ -562,8 +560,7 @@ object HealthConnectImporter {
             return ImportSummary.failure(SOURCE, "Saving Health Connect data failed: ${e.message}")
         }
 
-        // Hand the newest body measurements back so the caller can refresh the profile. Done after the
-        // save so a failed import never moves the user's weight or height.
+        // After the save, so a failed import never moves the profile's weight or height.
         if (newestWeightKg != null || newestHeightCm != null) {
             onBodyMeasurements(newestWeightKg, newestHeightCm)
         }
