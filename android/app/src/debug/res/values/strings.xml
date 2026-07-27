@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Debug builds install beside the release app as com.noop.tan.debug with their own data; this
+     gives them a distinct launcher name so the two are tellable apart on the home screen. -->
+<resources>
+    <string name="app_name">NOOP Debug</string>
+</resources>
