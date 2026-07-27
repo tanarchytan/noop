@@ -675,7 +675,21 @@ internal object IntegrityCheckingUniffiLib {
     }
     external fun uniffi_whoop_ffi_checksum_func_activity_series(
     ): Int
-    external fun uniffi_whoop_ffi_checksum_func_analyze_sleep(
+    external fun uniffi_whoop_ffi_checksum_func_calories_estimate_bout(
+    ): Int
+    external fun uniffi_whoop_ffi_checksum_func_calories_estimate_day(
+    ): Int
+    external fun uniffi_whoop_ffi_checksum_func_imu_features(
+    ): Int
+    external fun uniffi_whoop_ffi_checksum_func_rhythm_age_from_samples(
+    ): Int
+    external fun uniffi_whoop_ffi_checksum_func_smoothed_intensity(
+    ): Int
+    external fun uniffi_whoop_ffi_checksum_func_steps_counter(
+    ): Int
+    external fun uniffi_whoop_ffi_checksum_func_stress_onset_evaluate(
+    ): Int
+    external fun uniffi_whoop_ffi_checksum_func_workout_detect(
     ): Int
     external fun uniffi_whoop_ffi_checksum_func_baseline_fold_history(
     ): Int
@@ -683,37 +697,11 @@ internal object IntegrityCheckingUniffiLib {
     ): Int
     external fun uniffi_whoop_ffi_checksum_func_baseline_update(
     ): Int
-    external fun uniffi_whoop_ffi_checksum_func_bridged_night_groups(
-    ): Int
-    external fun uniffi_whoop_ffi_checksum_func_calories_estimate_bout(
-    ): Int
-    external fun uniffi_whoop_ffi_checksum_func_calories_estimate_day(
-    ): Int
-    external fun uniffi_whoop_ffi_checksum_func_circadian_phase_from_samples(
-    ): Int
-    external fun uniffi_whoop_ffi_checksum_func_coverage_spans(
-    ): Int
-    external fun uniffi_whoop_ffi_checksum_func_daily_resting_hr(
-    ): Int
-    external fun uniffi_whoop_ffi_checksum_func_daily_stress(
-    ): Int
     external fun uniffi_whoop_ffi_checksum_func_data_range_newest(
     ): Int
     external fun uniffi_whoop_ffi_checksum_func_data_range_oldest(
     ): Int
     external fun uniffi_whoop_ffi_checksum_func_data_range_pages_behind(
-    ): Int
-    external fun uniffi_whoop_ffi_checksum_func_daytime_stress(
-    ): Int
-    external fun uniffi_whoop_ffi_checksum_func_fitness_age_compute(
-    ): Int
-    external fun uniffi_whoop_ffi_checksum_func_habitual_midsleep_sec(
-    ): Int
-    external fun uniffi_whoop_ffi_checksum_func_hr_recovery_calculate(
-    ): Int
-    external fun uniffi_whoop_ffi_checksum_func_hr_time_in_zone(
-    ): Int
-    external fun uniffi_whoop_ffi_checksum_func_hr_zones_for_age(
     ): Int
     external fun uniffi_whoop_ffi_checksum_func_hrv_analyze_raw(
     ): Int
@@ -735,21 +723,21 @@ internal object IntegrityCheckingUniffiLib {
     ): Int
     external fun uniffi_whoop_ffi_checksum_func_hrv_windowed_avg_deep(
     ): Int
-    external fun uniffi_whoop_ffi_checksum_func_imu_features(
-    ): Int
-    external fun uniffi_whoop_ffi_checksum_func_main_night_group_indices(
-    ): Int
-    external fun uniffi_whoop_ffi_checksum_func_main_night_index(
-    ): Int
-    external fun uniffi_whoop_ffi_checksum_func_main_night_selection(
-    ): Int
-    external fun uniffi_whoop_ffi_checksum_func_nap_evaluate(
-    ): Int
-    external fun uniffi_whoop_ffi_checksum_func_nightly_spo2_raw_means(
-    ): Int
-    external fun uniffi_whoop_ffi_checksum_func_personal_sleep_need_hours(
-    ): Int
     external fun uniffi_whoop_ffi_checksum_func_ppg_hr(
+    ): Int
+    external fun uniffi_whoop_ffi_checksum_func_resp_rate_from_rr(
+    ): Int
+    external fun uniffi_whoop_ffi_checksum_func_vitality_rmssd_norm(
+    ): Int
+    external fun uniffi_whoop_ffi_checksum_func_daily_resting_hr(
+    ): Int
+    external fun uniffi_whoop_ffi_checksum_func_fitness_age_compute(
+    ): Int
+    external fun uniffi_whoop_ffi_checksum_func_hr_recovery_calculate(
+    ): Int
+    external fun uniffi_whoop_ffi_checksum_func_hr_time_in_zone(
+    ): Int
+    external fun uniffi_whoop_ffi_checksum_func_hr_zones_for_age(
     ): Int
     external fun uniffi_whoop_ffi_checksum_func_recovery_band(
     ): Int
@@ -759,31 +747,9 @@ internal object IntegrityCheckingUniffiLib {
     ): Int
     external fun uniffi_whoop_ffi_checksum_func_recovery_score(
     ): Int
-    external fun uniffi_whoop_ffi_checksum_func_resp_rate_from_rr(
-    ): Int
     external fun uniffi_whoop_ffi_checksum_func_rest_score(
     ): Int
-    external fun uniffi_whoop_ffi_checksum_func_rhythm_age_from_samples(
-    ): Int
-    external fun uniffi_whoop_ffi_checksum_func_series_median(
-    ): Int
-    external fun uniffi_whoop_ffi_checksum_func_series_slope(
-    ): Int
     external fun uniffi_whoop_ffi_checksum_func_session_resting_hr(
-    ): Int
-    external fun uniffi_whoop_ffi_checksum_func_sleep_debt_ledger(
-    ): Int
-    external fun uniffi_whoop_ffi_checksum_func_sleep_regularity_index(
-    ): Int
-    external fun uniffi_whoop_ffi_checksum_func_smoothed_intensity(
-    ): Int
-    external fun uniffi_whoop_ffi_checksum_func_spo2_from_paired(
-    ): Int
-    external fun uniffi_whoop_ffi_checksum_func_spo2_rolling_reading(
-    ): Int
-    external fun uniffi_whoop_ffi_checksum_func_stage_sleep_refined(
-    ): Int
-    external fun uniffi_whoop_ffi_checksum_func_steps_counter(
     ): Int
     external fun uniffi_whoop_ffi_checksum_func_strain_default_denominator(
     ): Int
@@ -793,19 +759,53 @@ internal object IntegrityCheckingUniffiLib {
     ): Int
     external fun uniffi_whoop_ffi_checksum_func_stress_index(
     ): Int
-    external fun uniffi_whoop_ffi_checksum_func_stress_onset_evaluate(
+    external fun uniffi_whoop_ffi_checksum_func_vo2max_estimate(
+    ): Int
+    external fun uniffi_whoop_ffi_checksum_func_analyze_sleep(
+    ): Int
+    external fun uniffi_whoop_ffi_checksum_func_bridged_night_groups(
+    ): Int
+    external fun uniffi_whoop_ffi_checksum_func_habitual_midsleep_sec(
+    ): Int
+    external fun uniffi_whoop_ffi_checksum_func_main_night_group_indices(
+    ): Int
+    external fun uniffi_whoop_ffi_checksum_func_main_night_index(
+    ): Int
+    external fun uniffi_whoop_ffi_checksum_func_main_night_selection(
+    ): Int
+    external fun uniffi_whoop_ffi_checksum_func_nap_evaluate(
+    ): Int
+    external fun uniffi_whoop_ffi_checksum_func_personal_sleep_need_hours(
+    ): Int
+    external fun uniffi_whoop_ffi_checksum_func_sleep_debt_ledger(
+    ): Int
+    external fun uniffi_whoop_ffi_checksum_func_sleep_regularity_index(
+    ): Int
+    external fun uniffi_whoop_ffi_checksum_func_stage_sleep_refined(
+    ): Int
+    external fun uniffi_whoop_ffi_checksum_func_nightly_spo2_raw_means(
+    ): Int
+    external fun uniffi_whoop_ffi_checksum_func_spo2_from_paired(
+    ): Int
+    external fun uniffi_whoop_ffi_checksum_func_spo2_rolling_reading(
+    ): Int
+    external fun uniffi_whoop_ffi_checksum_func_circadian_phase_from_samples(
+    ): Int
+    external fun uniffi_whoop_ffi_checksum_func_coverage_spans(
+    ): Int
+    external fun uniffi_whoop_ffi_checksum_func_daily_stress(
+    ): Int
+    external fun uniffi_whoop_ffi_checksum_func_daytime_stress(
+    ): Int
+    external fun uniffi_whoop_ffi_checksum_func_series_median(
+    ): Int
+    external fun uniffi_whoop_ffi_checksum_func_series_slope(
     ): Int
     external fun uniffi_whoop_ffi_checksum_func_vitality_compute(
     ): Int
     external fun uniffi_whoop_ffi_checksum_func_vitality_contributions(
     ): Int
-    external fun uniffi_whoop_ffi_checksum_func_vitality_rmssd_norm(
-    ): Int
     external fun uniffi_whoop_ffi_checksum_func_vitality_sleep_consistency(
-    ): Int
-    external fun uniffi_whoop_ffi_checksum_func_vo2max_estimate(
-    ): Int
-    external fun uniffi_whoop_ffi_checksum_func_workout_detect(
     ): Int
     external fun uniffi_whoop_ffi_checksum_method_whoopcodec_advertising_name_frame(
     ): Int
@@ -955,7 +955,21 @@ internal object UniffiLib {
     ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_func_activity_series(`gravity`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
-    external fun uniffi_whoop_ffi_fn_func_analyze_sleep(`streams`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    external fun uniffi_whoop_ffi_fn_func_calories_estimate_bout(`hr`: RustBuffer.ByValue,`weightKg`: Double,`heightCm`: Double,`age`: Double,`sex`: RustBuffer.ByValue,`hrmax`: Double,`restingHr`: Double,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    external fun uniffi_whoop_ffi_fn_func_calories_estimate_day(`hr`: RustBuffer.ByValue,`weightKg`: Double,`heightCm`: Double,`age`: Double,`sex`: RustBuffer.ByValue,`hrmax`: Double,`restingHr`: Double,uniffi_out_err: UniffiRustCallStatus, 
+    ): Double
+    external fun uniffi_whoop_ffi_fn_func_imu_features(`samples`: RustBuffer.ByValue,`sampleRateHz`: Int,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    external fun uniffi_whoop_ffi_fn_func_rhythm_age_from_samples(`samples`: RustBuffer.ByValue,`tzOffsetSeconds`: Long,`chronologicalAge`: Double,`sex`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    external fun uniffi_whoop_ffi_fn_func_smoothed_intensity(`motion`: RustBuffer.ByValue,`windowS`: Double,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    external fun uniffi_whoop_ffi_fn_func_steps_counter(`samples`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    external fun uniffi_whoop_ffi_fn_func_stress_onset_evaluate(`rrBuffer`: RustBuffer.ByValue,`currentHr`: RustBuffer.ByValue,`recentMotionG`: RustBuffer.ByValue,`sessionActive`: Byte,`state`: RustBuffer.ByValue,`enabled`: Byte,`autoNudge`: Byte,`quietHoursEnabled`: Byte,`quietStartMin`: Int,`quietEndMin`: Int,`nowSec`: Long,`tzOffsetSec`: Long,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    external fun uniffi_whoop_ffi_fn_func_workout_detect(`hr`: RustBuffer.ByValue,`gravity`: RustBuffer.ByValue,`restingHr`: RustBuffer.ByValue,`maxHr`: RustBuffer.ByValue,`age`: RustBuffer.ByValue,`weightKg`: Double,`heightCm`: Double,`sex`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_func_baseline_fold_history(`values`: RustBuffer.ByValue,`cfg`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
@@ -963,37 +977,11 @@ internal object UniffiLib {
     ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_func_baseline_update(`state`: RustBuffer.ByValue,`value`: RustBuffer.ByValue,`cfg`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
-    external fun uniffi_whoop_ffi_fn_func_bridged_night_groups(`blocks`: RustBuffer.ByValue,`offsetS`: Long,uniffi_out_err: UniffiRustCallStatus, 
-    ): RustBuffer.ByValue
-    external fun uniffi_whoop_ffi_fn_func_calories_estimate_bout(`hr`: RustBuffer.ByValue,`weightKg`: Double,`heightCm`: Double,`age`: Double,`sex`: RustBuffer.ByValue,`hrmax`: Double,`restingHr`: Double,uniffi_out_err: UniffiRustCallStatus, 
-    ): RustBuffer.ByValue
-    external fun uniffi_whoop_ffi_fn_func_calories_estimate_day(`hr`: RustBuffer.ByValue,`weightKg`: Double,`heightCm`: Double,`age`: Double,`sex`: RustBuffer.ByValue,`hrmax`: Double,`restingHr`: Double,uniffi_out_err: UniffiRustCallStatus, 
-    ): Double
-    external fun uniffi_whoop_ffi_fn_func_circadian_phase_from_samples(`samples`: RustBuffer.ByValue,`tzOffsetSeconds`: Long,`daysObserved`: Int,`habitualWakeHour`: Double,`observedTempMinHour`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
-    ): RustBuffer.ByValue
-    external fun uniffi_whoop_ffi_fn_func_coverage_spans(`timestamps`: RustBuffer.ByValue,`maxGapS`: Long,uniffi_out_err: UniffiRustCallStatus, 
-    ): RustBuffer.ByValue
-    external fun uniffi_whoop_ffi_fn_func_daily_resting_hr(`sessionFloors`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
-    ): RustBuffer.ByValue
-    external fun uniffi_whoop_ffi_fn_func_daily_stress(`today`: RustBuffer.ByValue,`baseline`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
-    ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_func_data_range_newest(`frame`: RustBuffer.ByValue,`wallNowUnix`: Long,`futureSkewSeconds`: Long,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_func_data_range_oldest(`frame`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_func_data_range_pages_behind(`frame`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
-    ): RustBuffer.ByValue
-    external fun uniffi_whoop_ffi_fn_func_daytime_stress(`hours`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
-    ): RustBuffer.ByValue
-    external fun uniffi_whoop_ffi_fn_func_fitness_age_compute(`age`: Double,`sex`: RustBuffer.ByValue,`restingHr`: Double,`paIndex`: Double,`waistCm`: RustBuffer.ByValue,`lowerConfidence`: Byte,uniffi_out_err: UniffiRustCallStatus, 
-    ): RustBuffer.ByValue
-    external fun uniffi_whoop_ffi_fn_func_habitual_midsleep_sec(`history`: RustBuffer.ByValue,`offsetS`: Long,`minDays`: Int,uniffi_out_err: UniffiRustCallStatus, 
-    ): RustBuffer.ByValue
-    external fun uniffi_whoop_ffi_fn_func_hr_recovery_calculate(`hr`: RustBuffer.ByValue,`workoutStart`: Long,`workoutEnd`: Long,`maxHr`: Double,uniffi_out_err: UniffiRustCallStatus, 
-    ): RustBuffer.ByValue
-    external fun uniffi_whoop_ffi_fn_func_hr_time_in_zone(`hr`: RustBuffer.ByValue,`age`: Double,`maxHrOverride`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
-    ): RustBuffer.ByValue
-    external fun uniffi_whoop_ffi_fn_func_hr_zones_for_age(`age`: Double,`maxHrOverride`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_func_hrv_analyze_raw(`rrMs`: RustBuffer.ByValue,`maxRejectedFraction`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
@@ -1015,21 +1003,21 @@ internal object UniffiLib {
     ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_func_hrv_windowed_avg_deep(`start`: Int,`end`: Int,`runs`: RustBuffer.ByValue,`segments`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
-    external fun uniffi_whoop_ffi_fn_func_imu_features(`samples`: RustBuffer.ByValue,`sampleRateHz`: Int,uniffi_out_err: UniffiRustCallStatus, 
-    ): RustBuffer.ByValue
-    external fun uniffi_whoop_ffi_fn_func_main_night_group_indices(`blocks`: RustBuffer.ByValue,`offsetS`: Long,`habitualMidsleepSec`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
-    ): RustBuffer.ByValue
-    external fun uniffi_whoop_ffi_fn_func_main_night_index(`blocks`: RustBuffer.ByValue,`offsetS`: Long,`habitualMidsleepSec`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
-    ): RustBuffer.ByValue
-    external fun uniffi_whoop_ffi_fn_func_main_night_selection(`blocks`: RustBuffer.ByValue,`offsetS`: Long,`habitualMidsleepSec`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
-    ): RustBuffer.ByValue
-    external fun uniffi_whoop_ffi_fn_func_nap_evaluate(`gravity`: RustBuffer.ByValue,`hr`: RustBuffer.ByValue,`restingHr`: RustBuffer.ByValue,`config`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
-    ): RustBuffer.ByValue
-    external fun uniffi_whoop_ffi_fn_func_nightly_spo2_raw_means(`spans`: RustBuffer.ByValue,`samples`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
-    ): RustBuffer.ByValue
-    external fun uniffi_whoop_ffi_fn_func_personal_sleep_need_hours(`recentAsleepHours`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
-    ): Double
     external fun uniffi_whoop_ffi_fn_func_ppg_hr(`samples`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    external fun uniffi_whoop_ffi_fn_func_resp_rate_from_rr(`beats`: RustBuffer.ByValue,`start`: Long,`end`: Long,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    external fun uniffi_whoop_ffi_fn_func_vitality_rmssd_norm(`forAge`: Double,uniffi_out_err: UniffiRustCallStatus, 
+    ): Double
+    external fun uniffi_whoop_ffi_fn_func_daily_resting_hr(`sessionFloors`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    external fun uniffi_whoop_ffi_fn_func_fitness_age_compute(`age`: Double,`sex`: RustBuffer.ByValue,`restingHr`: Double,`paIndex`: Double,`waistCm`: RustBuffer.ByValue,`lowerConfidence`: Byte,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    external fun uniffi_whoop_ffi_fn_func_hr_recovery_calculate(`hr`: RustBuffer.ByValue,`workoutStart`: Long,`workoutEnd`: Long,`maxHr`: Double,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    external fun uniffi_whoop_ffi_fn_func_hr_time_in_zone(`hr`: RustBuffer.ByValue,`age`: Double,`maxHrOverride`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    external fun uniffi_whoop_ffi_fn_func_hr_zones_for_age(`age`: Double,`maxHrOverride`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_func_recovery_band(`score`: Double,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
@@ -1039,31 +1027,9 @@ internal object UniffiLib {
     ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_func_recovery_score(`d`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
-    external fun uniffi_whoop_ffi_fn_func_resp_rate_from_rr(`beats`: RustBuffer.ByValue,`start`: Long,`end`: Long,uniffi_out_err: UniffiRustCallStatus, 
-    ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_func_rest_score(`asleepSeconds`: Double,`efficiency`: Double,`deepSeconds`: Double,`remSeconds`: Double,`sleepNeedHours`: RustBuffer.ByValue,`consistency`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
-    external fun uniffi_whoop_ffi_fn_func_rhythm_age_from_samples(`samples`: RustBuffer.ByValue,`tzOffsetSeconds`: Long,`chronologicalAge`: Double,`sex`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
-    ): RustBuffer.ByValue
-    external fun uniffi_whoop_ffi_fn_func_series_median(`values`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
-    ): Double
-    external fun uniffi_whoop_ffi_fn_func_series_slope(`values`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
-    ): Double
     external fun uniffi_whoop_ffi_fn_func_session_resting_hr(`start`: Long,`end`: Long,`hr`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
-    ): RustBuffer.ByValue
-    external fun uniffi_whoop_ffi_fn_func_sleep_debt_ledger(`series`: RustBuffer.ByValue,`needHours`: RustBuffer.ByValue,`window`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
-    ): RustBuffer.ByValue
-    external fun uniffi_whoop_ffi_fn_func_sleep_regularity_index(`firstLocalMidnight`: Long,`days`: Int,`asleep`: RustBuffer.ByValue,`covered`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
-    ): RustBuffer.ByValue
-    external fun uniffi_whoop_ffi_fn_func_smoothed_intensity(`motion`: RustBuffer.ByValue,`windowS`: Double,uniffi_out_err: UniffiRustCallStatus, 
-    ): RustBuffer.ByValue
-    external fun uniffi_whoop_ffi_fn_func_spo2_from_paired(`red`: RustBuffer.ByValue,`ir`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
-    ): RustBuffer.ByValue
-    external fun uniffi_whoop_ffi_fn_func_spo2_rolling_reading(`recentNightly`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
-    ): RustBuffer.ByValue
-    external fun uniffi_whoop_ffi_fn_func_stage_sleep_refined(`input`: RustBuffer.ByValue,`steps`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
-    ): RustBuffer.ByValue
-    external fun uniffi_whoop_ffi_fn_func_steps_counter(`samples`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_func_strain_default_denominator(uniffi_out_err: UniffiRustCallStatus, 
     ): Double
@@ -1073,19 +1039,53 @@ internal object UniffiLib {
     ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_func_stress_index(`rrMs`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
-    external fun uniffi_whoop_ffi_fn_func_stress_onset_evaluate(`rrBuffer`: RustBuffer.ByValue,`currentHr`: RustBuffer.ByValue,`recentMotionG`: RustBuffer.ByValue,`sessionActive`: Byte,`state`: RustBuffer.ByValue,`enabled`: Byte,`autoNudge`: Byte,`quietHoursEnabled`: Byte,`quietStartMin`: Int,`quietEndMin`: Int,`nowSec`: Long,`tzOffsetSec`: Long,uniffi_out_err: UniffiRustCallStatus, 
+    external fun uniffi_whoop_ffi_fn_func_vo2max_estimate(`age`: Double,`sex`: RustBuffer.ByValue,`waistCm`: Double,`restingHr`: Double,`paIndex`: Double,uniffi_out_err: UniffiRustCallStatus, 
+    ): Double
+    external fun uniffi_whoop_ffi_fn_func_analyze_sleep(`streams`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
+    external fun uniffi_whoop_ffi_fn_func_bridged_night_groups(`blocks`: RustBuffer.ByValue,`offsetS`: Long,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    external fun uniffi_whoop_ffi_fn_func_habitual_midsleep_sec(`history`: RustBuffer.ByValue,`offsetS`: Long,`minDays`: Int,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    external fun uniffi_whoop_ffi_fn_func_main_night_group_indices(`blocks`: RustBuffer.ByValue,`offsetS`: Long,`habitualMidsleepSec`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    external fun uniffi_whoop_ffi_fn_func_main_night_index(`blocks`: RustBuffer.ByValue,`offsetS`: Long,`habitualMidsleepSec`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    external fun uniffi_whoop_ffi_fn_func_main_night_selection(`blocks`: RustBuffer.ByValue,`offsetS`: Long,`habitualMidsleepSec`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    external fun uniffi_whoop_ffi_fn_func_nap_evaluate(`gravity`: RustBuffer.ByValue,`hr`: RustBuffer.ByValue,`restingHr`: RustBuffer.ByValue,`config`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    external fun uniffi_whoop_ffi_fn_func_personal_sleep_need_hours(`recentAsleepHours`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): Double
+    external fun uniffi_whoop_ffi_fn_func_sleep_debt_ledger(`series`: RustBuffer.ByValue,`needHours`: RustBuffer.ByValue,`window`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    external fun uniffi_whoop_ffi_fn_func_sleep_regularity_index(`firstLocalMidnight`: Long,`days`: Int,`asleep`: RustBuffer.ByValue,`covered`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    external fun uniffi_whoop_ffi_fn_func_stage_sleep_refined(`input`: RustBuffer.ByValue,`steps`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    external fun uniffi_whoop_ffi_fn_func_nightly_spo2_raw_means(`spans`: RustBuffer.ByValue,`samples`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    external fun uniffi_whoop_ffi_fn_func_spo2_from_paired(`red`: RustBuffer.ByValue,`ir`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    external fun uniffi_whoop_ffi_fn_func_spo2_rolling_reading(`recentNightly`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    external fun uniffi_whoop_ffi_fn_func_circadian_phase_from_samples(`samples`: RustBuffer.ByValue,`tzOffsetSeconds`: Long,`daysObserved`: Int,`habitualWakeHour`: Double,`observedTempMinHour`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    external fun uniffi_whoop_ffi_fn_func_coverage_spans(`timestamps`: RustBuffer.ByValue,`maxGapS`: Long,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    external fun uniffi_whoop_ffi_fn_func_daily_stress(`today`: RustBuffer.ByValue,`baseline`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    external fun uniffi_whoop_ffi_fn_func_daytime_stress(`hours`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    external fun uniffi_whoop_ffi_fn_func_series_median(`values`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): Double
+    external fun uniffi_whoop_ffi_fn_func_series_slope(`values`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): Double
     external fun uniffi_whoop_ffi_fn_func_vitality_compute(`chronoAge`: Double,`restingHr`: RustBuffer.ByValue,`vo2max`: RustBuffer.ByValue,`expectedVo2max`: RustBuffer.ByValue,`sleepHours`: RustBuffer.ByValue,`sleepRegularityIndex`: RustBuffer.ByValue,`sleepConsistency`: RustBuffer.ByValue,`rmssd`: RustBuffer.ByValue,`rmssdNorm`: RustBuffer.ByValue,`steps`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_func_vitality_contributions(`chronoAge`: Double,`restingHr`: RustBuffer.ByValue,`vo2max`: RustBuffer.ByValue,`expectedVo2max`: RustBuffer.ByValue,`sleepHours`: RustBuffer.ByValue,`sleepRegularityIndex`: RustBuffer.ByValue,`sleepConsistency`: RustBuffer.ByValue,`rmssd`: RustBuffer.ByValue,`rmssdNorm`: RustBuffer.ByValue,`steps`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
-    external fun uniffi_whoop_ffi_fn_func_vitality_rmssd_norm(`forAge`: Double,uniffi_out_err: UniffiRustCallStatus, 
-    ): Double
     external fun uniffi_whoop_ffi_fn_func_vitality_sleep_consistency(`nightlyHours`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
-    ): RustBuffer.ByValue
-    external fun uniffi_whoop_ffi_fn_func_vo2max_estimate(`age`: Double,`sex`: RustBuffer.ByValue,`waistCm`: Double,`restingHr`: Double,`paIndex`: Double,uniffi_out_err: UniffiRustCallStatus, 
-    ): Double
-    external fun uniffi_whoop_ffi_fn_func_workout_detect(`hr`: RustBuffer.ByValue,`gravity`: RustBuffer.ByValue,`restingHr`: RustBuffer.ByValue,`maxHr`: RustBuffer.ByValue,`age`: RustBuffer.ByValue,`weightKg`: Double,`heightCm`: Double,`sex`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     external fun ffi_whoop_ffi_rustbuffer_alloc(`size`: Long,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
@@ -1206,298 +1206,298 @@ private fun uniffiCheckContractApiVersion(lib: IntegrityCheckingUniffiLib) {
 }
 @Suppress("UNUSED_PARAMETER")
 private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
-    if (lib.uniffi_whoop_ffi_checksum_func_activity_series() != 19109) {
+    if (lib.uniffi_whoop_ffi_checksum_func_activity_series() != 3898) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_whoop_ffi_checksum_func_analyze_sleep() != 45131) {
+    if (lib.uniffi_whoop_ffi_checksum_func_calories_estimate_bout() != 16137) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_whoop_ffi_checksum_func_baseline_fold_history() != 44616) {
+    if (lib.uniffi_whoop_ffi_checksum_func_calories_estimate_day() != 21433) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_whoop_ffi_checksum_func_baseline_metric_cfg() != 45707) {
+    if (lib.uniffi_whoop_ffi_checksum_func_imu_features() != 61222) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_whoop_ffi_checksum_func_baseline_update() != 58890) {
+    if (lib.uniffi_whoop_ffi_checksum_func_rhythm_age_from_samples() != 3092) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_whoop_ffi_checksum_func_bridged_night_groups() != 55242) {
+    if (lib.uniffi_whoop_ffi_checksum_func_smoothed_intensity() != 32267) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_whoop_ffi_checksum_func_calories_estimate_bout() != 46916) {
+    if (lib.uniffi_whoop_ffi_checksum_func_steps_counter() != 63101) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_whoop_ffi_checksum_func_calories_estimate_day() != 38796) {
+    if (lib.uniffi_whoop_ffi_checksum_func_stress_onset_evaluate() != 3676) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_whoop_ffi_checksum_func_circadian_phase_from_samples() != 33961) {
+    if (lib.uniffi_whoop_ffi_checksum_func_workout_detect() != 49862) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_whoop_ffi_checksum_func_coverage_spans() != 4290) {
+    if (lib.uniffi_whoop_ffi_checksum_func_baseline_fold_history() != 15983) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_whoop_ffi_checksum_func_daily_resting_hr() != 11457) {
+    if (lib.uniffi_whoop_ffi_checksum_func_baseline_metric_cfg() != 20127) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_whoop_ffi_checksum_func_daily_stress() != 515) {
+    if (lib.uniffi_whoop_ffi_checksum_func_baseline_update() != 62026) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_whoop_ffi_checksum_func_data_range_newest() != 53769) {
+    if (lib.uniffi_whoop_ffi_checksum_func_data_range_newest() != 39801) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_whoop_ffi_checksum_func_data_range_oldest() != 344) {
+    if (lib.uniffi_whoop_ffi_checksum_func_data_range_oldest() != 45145) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_whoop_ffi_checksum_func_data_range_pages_behind() != 18692) {
+    if (lib.uniffi_whoop_ffi_checksum_func_data_range_pages_behind() != 43033) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_whoop_ffi_checksum_func_daytime_stress() != 64174) {
+    if (lib.uniffi_whoop_ffi_checksum_func_hrv_analyze_raw() != 10710) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_whoop_ffi_checksum_func_fitness_age_compute() != 21035) {
+    if (lib.uniffi_whoop_ffi_checksum_func_hrv_freq_domain() != 33413) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_whoop_ffi_checksum_func_habitual_midsleep_sec() != 2065) {
+    if (lib.uniffi_whoop_ffi_checksum_func_hrv_range_filter() != 41757) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_whoop_ffi_checksum_func_hr_recovery_calculate() != 49678) {
+    if (lib.uniffi_whoop_ffi_checksum_func_hrv_readiness() != 48335) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_whoop_ffi_checksum_func_hr_time_in_zone() != 23829) {
+    if (lib.uniffi_whoop_ffi_checksum_func_hrv_rmssd() != 46667) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_whoop_ffi_checksum_func_hr_zones_for_age() != 34437) {
+    if (lib.uniffi_whoop_ffi_checksum_func_hrv_rmssd_gap_aware() != 26982) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_whoop_ffi_checksum_func_hrv_analyze_raw() != 57905) {
+    if (lib.uniffi_whoop_ffi_checksum_func_hrv_rmssd_plain() != 26959) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_whoop_ffi_checksum_func_hrv_freq_domain() != 18739) {
+    if (lib.uniffi_whoop_ffi_checksum_func_hrv_sdnn() != 25992) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_whoop_ffi_checksum_func_hrv_range_filter() != 26959) {
+    if (lib.uniffi_whoop_ffi_checksum_func_hrv_windowed_avg() != 28307) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_whoop_ffi_checksum_func_hrv_readiness() != 20540) {
+    if (lib.uniffi_whoop_ffi_checksum_func_hrv_windowed_avg_deep() != 1836) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_whoop_ffi_checksum_func_hrv_rmssd() != 43228) {
+    if (lib.uniffi_whoop_ffi_checksum_func_ppg_hr() != 2321) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_whoop_ffi_checksum_func_hrv_rmssd_gap_aware() != 21845) {
+    if (lib.uniffi_whoop_ffi_checksum_func_resp_rate_from_rr() != 35993) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_whoop_ffi_checksum_func_hrv_rmssd_plain() != 12535) {
+    if (lib.uniffi_whoop_ffi_checksum_func_vitality_rmssd_norm() != 4064) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_whoop_ffi_checksum_func_hrv_sdnn() != 1620) {
+    if (lib.uniffi_whoop_ffi_checksum_func_daily_resting_hr() != 6631) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_whoop_ffi_checksum_func_hrv_windowed_avg() != 17402) {
+    if (lib.uniffi_whoop_ffi_checksum_func_fitness_age_compute() != 9363) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_whoop_ffi_checksum_func_hrv_windowed_avg_deep() != 2094) {
+    if (lib.uniffi_whoop_ffi_checksum_func_hr_recovery_calculate() != 6995) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_whoop_ffi_checksum_func_imu_features() != 23396) {
+    if (lib.uniffi_whoop_ffi_checksum_func_hr_time_in_zone() != 46962) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_whoop_ffi_checksum_func_main_night_group_indices() != 21956) {
+    if (lib.uniffi_whoop_ffi_checksum_func_hr_zones_for_age() != 23418) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_whoop_ffi_checksum_func_main_night_index() != 51443) {
+    if (lib.uniffi_whoop_ffi_checksum_func_recovery_band() != 48083) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_whoop_ffi_checksum_func_main_night_selection() != 4436) {
+    if (lib.uniffi_whoop_ffi_checksum_func_recovery_banked_nights() != 54983) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_whoop_ffi_checksum_func_nap_evaluate() != 47112) {
+    if (lib.uniffi_whoop_ffi_checksum_func_recovery_index_slope() != 43726) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_whoop_ffi_checksum_func_nightly_spo2_raw_means() != 36193) {
+    if (lib.uniffi_whoop_ffi_checksum_func_recovery_score() != 23669) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_whoop_ffi_checksum_func_personal_sleep_need_hours() != 37855) {
+    if (lib.uniffi_whoop_ffi_checksum_func_rest_score() != 59242) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_whoop_ffi_checksum_func_ppg_hr() != 31690) {
+    if (lib.uniffi_whoop_ffi_checksum_func_session_resting_hr() != 22691) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_whoop_ffi_checksum_func_recovery_band() != 29263) {
+    if (lib.uniffi_whoop_ffi_checksum_func_strain_default_denominator() != 37900) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_whoop_ffi_checksum_func_recovery_banked_nights() != 31054) {
+    if (lib.uniffi_whoop_ffi_checksum_func_strain_score() != 27331) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_whoop_ffi_checksum_func_recovery_index_slope() != 62676) {
+    if (lib.uniffi_whoop_ffi_checksum_func_stress_components() != 52990) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_whoop_ffi_checksum_func_recovery_score() != 34274) {
+    if (lib.uniffi_whoop_ffi_checksum_func_stress_index() != 22838) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_whoop_ffi_checksum_func_resp_rate_from_rr() != 47487) {
+    if (lib.uniffi_whoop_ffi_checksum_func_vo2max_estimate() != 36719) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_whoop_ffi_checksum_func_rest_score() != 47618) {
+    if (lib.uniffi_whoop_ffi_checksum_func_analyze_sleep() != 40400) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_whoop_ffi_checksum_func_rhythm_age_from_samples() != 47369) {
+    if (lib.uniffi_whoop_ffi_checksum_func_bridged_night_groups() != 11274) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_whoop_ffi_checksum_func_series_median() != 23316) {
+    if (lib.uniffi_whoop_ffi_checksum_func_habitual_midsleep_sec() != 48228) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_whoop_ffi_checksum_func_series_slope() != 10583) {
+    if (lib.uniffi_whoop_ffi_checksum_func_main_night_group_indices() != 11991) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_whoop_ffi_checksum_func_session_resting_hr() != 56066) {
+    if (lib.uniffi_whoop_ffi_checksum_func_main_night_index() != 32490) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_whoop_ffi_checksum_func_sleep_debt_ledger() != 40274) {
+    if (lib.uniffi_whoop_ffi_checksum_func_main_night_selection() != 15459) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_whoop_ffi_checksum_func_sleep_regularity_index() != 54120) {
+    if (lib.uniffi_whoop_ffi_checksum_func_nap_evaluate() != 45721) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_whoop_ffi_checksum_func_smoothed_intensity() != 44317) {
+    if (lib.uniffi_whoop_ffi_checksum_func_personal_sleep_need_hours() != 25473) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_whoop_ffi_checksum_func_spo2_from_paired() != 11748) {
+    if (lib.uniffi_whoop_ffi_checksum_func_sleep_debt_ledger() != 34646) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_whoop_ffi_checksum_func_spo2_rolling_reading() != 10862) {
+    if (lib.uniffi_whoop_ffi_checksum_func_sleep_regularity_index() != 52338) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_whoop_ffi_checksum_func_stage_sleep_refined() != 55156) {
+    if (lib.uniffi_whoop_ffi_checksum_func_stage_sleep_refined() != 47589) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_whoop_ffi_checksum_func_steps_counter() != 43607) {
+    if (lib.uniffi_whoop_ffi_checksum_func_nightly_spo2_raw_means() != 907) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_whoop_ffi_checksum_func_strain_default_denominator() != 31363) {
+    if (lib.uniffi_whoop_ffi_checksum_func_spo2_from_paired() != 7285) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_whoop_ffi_checksum_func_strain_score() != 23299) {
+    if (lib.uniffi_whoop_ffi_checksum_func_spo2_rolling_reading() != 29461) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_whoop_ffi_checksum_func_stress_components() != 33971) {
+    if (lib.uniffi_whoop_ffi_checksum_func_circadian_phase_from_samples() != 20750) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_whoop_ffi_checksum_func_stress_index() != 62115) {
+    if (lib.uniffi_whoop_ffi_checksum_func_coverage_spans() != 16884) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_whoop_ffi_checksum_func_stress_onset_evaluate() != 55523) {
+    if (lib.uniffi_whoop_ffi_checksum_func_daily_stress() != 7585) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_whoop_ffi_checksum_func_vitality_compute() != 49213) {
+    if (lib.uniffi_whoop_ffi_checksum_func_daytime_stress() != 44505) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_whoop_ffi_checksum_func_vitality_contributions() != 45512) {
+    if (lib.uniffi_whoop_ffi_checksum_func_series_median() != 48020) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_whoop_ffi_checksum_func_vitality_rmssd_norm() != 27374) {
+    if (lib.uniffi_whoop_ffi_checksum_func_series_slope() != 39922) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_whoop_ffi_checksum_func_vitality_sleep_consistency() != 28724) {
+    if (lib.uniffi_whoop_ffi_checksum_func_vitality_compute() != 29108) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_whoop_ffi_checksum_func_vo2max_estimate() != 10792) {
+    if (lib.uniffi_whoop_ffi_checksum_func_vitality_contributions() != 15997) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_whoop_ffi_checksum_func_workout_detect() != 708) {
+    if (lib.uniffi_whoop_ffi_checksum_func_vitality_sleep_consistency() != 19798) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_whoop_ffi_checksum_method_whoopcodec_advertising_name_frame() != 25971) {
+    if (lib.uniffi_whoop_ffi_checksum_method_whoopcodec_advertising_name_frame() != 44614) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_whoop_ffi_checksum_method_whoopcodec_advertising_name_frame_gen5() != 58833) {
+    if (lib.uniffi_whoop_ffi_checksum_method_whoopcodec_advertising_name_frame_gen5() != 44266) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_whoop_ffi_checksum_method_whoopcodec_alarm_disable_frame() != 46355) {
+    if (lib.uniffi_whoop_ffi_checksum_method_whoopcodec_alarm_disable_frame() != 28658) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_whoop_ffi_checksum_method_whoopcodec_alarm_set_frame() != 19569) {
+    if (lib.uniffi_whoop_ffi_checksum_method_whoopcodec_alarm_set_frame() != 1076) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_whoop_ffi_checksum_method_whoopcodec_alarm_set_frame_gen4() != 9936) {
+    if (lib.uniffi_whoop_ffi_checksum_method_whoopcodec_alarm_set_frame_gen4() != 940) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_whoop_ffi_checksum_method_whoopcodec_broadcast_hr_frame() != 13762) {
+    if (lib.uniffi_whoop_ffi_checksum_method_whoopcodec_broadcast_hr_frame() != 57297) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_whoop_ffi_checksum_method_whoopcodec_buzz_frame() != 11134) {
+    if (lib.uniffi_whoop_ffi_checksum_method_whoopcodec_buzz_frame() != 50754) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_whoop_ffi_checksum_method_whoopcodec_client_hello() != 3690) {
+    if (lib.uniffi_whoop_ffi_checksum_method_whoopcodec_client_hello() != 41293) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_whoop_ffi_checksum_method_whoopcodec_command_frame() != 13829) {
+    if (lib.uniffi_whoop_ffi_checksum_method_whoopcodec_command_frame() != 45253) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_whoop_ffi_checksum_method_whoopcodec_decode_history() != 63820) {
+    if (lib.uniffi_whoop_ffi_checksum_method_whoopcodec_decode_history() != 38860) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_whoop_ffi_checksum_method_whoopcodec_decode_imu_frame() != 59046) {
+    if (lib.uniffi_whoop_ffi_checksum_method_whoopcodec_decode_imu_frame() != 36632) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_whoop_ffi_checksum_method_whoopcodec_decode_live() != 56040) {
+    if (lib.uniffi_whoop_ffi_checksum_method_whoopcodec_decode_live() != 34512) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_whoop_ffi_checksum_method_whoopcodec_decode_metadata() != 33906) {
+    if (lib.uniffi_whoop_ffi_checksum_method_whoopcodec_decode_metadata() != 22771) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_whoop_ffi_checksum_method_whoopcodec_decode_ppg_frame() != 58215) {
+    if (lib.uniffi_whoop_ffi_checksum_method_whoopcodec_decode_ppg_frame() != 19560) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_whoop_ffi_checksum_method_whoopcodec_decode_response() != 29506) {
+    if (lib.uniffi_whoop_ffi_checksum_method_whoopcodec_decode_response() != 41004) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_whoop_ffi_checksum_method_whoopcodec_feed() != 59783) {
+    if (lib.uniffi_whoop_ffi_checksum_method_whoopcodec_feed() != 6029) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_whoop_ffi_checksum_method_whoopcodec_get_battery_frame() != 30262) {
+    if (lib.uniffi_whoop_ffi_checksum_method_whoopcodec_get_battery_frame() != 8173) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_whoop_ffi_checksum_method_whoopcodec_get_data_range_frame() != 62610) {
+    if (lib.uniffi_whoop_ffi_checksum_method_whoopcodec_get_data_range_frame() != 27950) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_whoop_ffi_checksum_method_whoopcodec_get_hello_frame() != 30823) {
+    if (lib.uniffi_whoop_ffi_checksum_method_whoopcodec_get_hello_frame() != 38141) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_whoop_ffi_checksum_method_whoopcodec_offload_abort() != 36453) {
+    if (lib.uniffi_whoop_ffi_checksum_method_whoopcodec_offload_abort() != 60182) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_whoop_ffi_checksum_method_whoopcodec_offload_start() != 52980) {
+    if (lib.uniffi_whoop_ffi_checksum_method_whoopcodec_offload_start() != 49787) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_whoop_ffi_checksum_method_whoopcodec_r22_frames() != 57192) {
+    if (lib.uniffi_whoop_ffi_checksum_method_whoopcodec_r22_frames() != 23986) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_whoop_ffi_checksum_method_whoopcodec_reboot_frame() != 26556) {
+    if (lib.uniffi_whoop_ffi_checksum_method_whoopcodec_reboot_frame() != 52852) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_whoop_ffi_checksum_method_whoopcodec_reset() != 2067) {
+    if (lib.uniffi_whoop_ffi_checksum_method_whoopcodec_reset() != 48234) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_whoop_ffi_checksum_method_whoopcodec_run_haptics_frame() != 13284) {
+    if (lib.uniffi_whoop_ffi_checksum_method_whoopcodec_run_haptics_frame() != 32538) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_whoop_ffi_checksum_method_whoopcodec_set_clock_frame() != 62713) {
+    if (lib.uniffi_whoop_ffi_checksum_method_whoopcodec_set_clock_frame() != 62248) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_whoop_ffi_checksum_method_whoopcodec_set_clock_legacy_frame() != 42586) {
+    if (lib.uniffi_whoop_ffi_checksum_method_whoopcodec_set_clock_legacy_frame() != 59160) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_whoop_ffi_checksum_method_whoopcodec_set_config_frame() != 61201) {
+    if (lib.uniffi_whoop_ffi_checksum_method_whoopcodec_set_config_frame() != 50306) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_whoop_ffi_checksum_method_whoopcodec_stop_raw_flood_frame() != 37934) {
+    if (lib.uniffi_whoop_ffi_checksum_method_whoopcodec_stop_raw_flood_frame() != 59216) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_whoop_ffi_checksum_method_whoopcodec_toggle_realtime_hr_frame() != 27293) {
+    if (lib.uniffi_whoop_ffi_checksum_method_whoopcodec_toggle_realtime_hr_frame() != 36972) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_whoop_ffi_checksum_constructor_whoopcodec_new() != 50108) {
+    if (lib.uniffi_whoop_ffi_checksum_constructor_whoopcodec_new() != 40964) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
 }
@@ -9739,14 +9739,149 @@ public object FfiConverterSequenceOptionalDouble: FfiConverterRustBuffer<List<ko
     
 
         /**
-         * Detect + stage a night's streams: one call carves the in-bed spans and returns one session each.
-         */ fun `analyzeSleep`(`streams`: SleepStreams): List<SleepSession> {
-            return FfiConverterSequenceTypeSleepSession.lift(
+         * Bout energy estimate (kcal, kJ) from HR samples. Each sample weighted by elapsed time to next.
+         */ fun `caloriesEstimateBout`(`hr`: List<HrTick>, `weightKg`: kotlin.Double, `heightCm`: kotlin.Double, `age`: kotlin.Double, `sex`: kotlin.String, `hrmax`: kotlin.Double, `restingHr`: kotlin.Double): List<kotlin.Double> {
+            return FfiConverterSequenceDouble.lift(
     uniffiRustCall() { _status ->
-    UniffiLib.uniffi_whoop_ffi_fn_func_analyze_sleep(
+    UniffiLib.uniffi_whoop_ffi_fn_func_calories_estimate_bout(
     
         
-        FfiConverterTypeSleepStreams.lower(`streams`),_status)
+        FfiConverterSequenceTypeHrTick.lower(`hr`),
+        FfiConverterDouble.lower(`weightKg`),
+        FfiConverterDouble.lower(`heightCm`),
+        FfiConverterDouble.lower(`age`),
+        FfiConverterString.lower(`sex`),
+        FfiConverterDouble.lower(`hrmax`),
+        FfiConverterDouble.lower(`restingHr`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Whole-day energy estimate (kcal) from HR samples. Each sample = one second.
+         */ fun `caloriesEstimateDay`(`hr`: List<HrTick>, `weightKg`: kotlin.Double, `heightCm`: kotlin.Double, `age`: kotlin.Double, `sex`: kotlin.String, `hrmax`: kotlin.Double, `restingHr`: kotlin.Double): kotlin.Double {
+            return FfiConverterDouble.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_func_calories_estimate_day(
+    
+        
+        FfiConverterSequenceTypeHrTick.lower(`hr`),
+        FfiConverterDouble.lower(`weightKg`),
+        FfiConverterDouble.lower(`heightCm`),
+        FfiConverterDouble.lower(`age`),
+        FfiConverterString.lower(`sex`),
+        FfiConverterDouble.lower(`hrmax`),
+        FfiConverterDouble.lower(`restingHr`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Accel/gyro energy, jerk and gait-band cadence over IMU samples at `sample_rate_hz`.
+         */ fun `imuFeatures`(`samples`: List<ImuSampleInfo>, `sampleRateHz`: kotlin.Int): ImuFeaturesInfo {
+            return FfiConverterTypeImuFeaturesInfo.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_func_imu_features(
+    
+        
+        FfiConverterSequenceTypeImuSampleInfo.lower(`samples`),
+        FfiConverterInt.lower(`sampleRateHz`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Circadian Rhythm Age from raw (unix, activity) samples + tz offset + chronological age + sex: bins the
+         * samples per LOCAL hour, fits a single-component cosinor, then the Gompertz biological-age transform.
+         * `None` when the fit is degenerate (< 3 populated hours). v1 is a RELATIVE index; the activity scale is
+         * not calibrated to the model's mg-ENMO training units.
+         */ fun `rhythmAgeFromSamples`(`samples`: List<ActivitySample>, `tzOffsetSeconds`: kotlin.Long, `chronologicalAge`: kotlin.Double, `sex`: SexInput): RhythmAgeInfo? {
+            return FfiConverterOptionalTypeRhythmAgeInfo.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_func_rhythm_age_from_samples(
+    
+        
+        FfiConverterSequenceTypeActivitySample.lower(`samples`),
+        FfiConverterLong.lower(`tzOffsetSeconds`),
+        FfiConverterDouble.lower(`chronologicalAge`),
+        FfiConverterTypeSexInput.lower(`sex`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Trailing rolling mean of the motion intensities over `window_s` — the smoothed spine the stillness
+         * and sedentary gates threshold against.
+         */ fun `smoothedIntensity`(`motion`: List<ActivityPointInfo>, `windowS`: kotlin.Double): List<kotlin.Double> {
+            return FfiConverterSequenceDouble.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_func_smoothed_intensity(
+    
+        
+        FfiConverterSequenceTypeActivityPointInfo.lower(`motion`),
+        FfiConverterDouble.lower(`windowS`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Raw wrap-aware motion-tick total from step counter samples. None with fewer than 2 samples
+         * or no forward movement. The caller applies its stepTicksPerStep calibration.
+         */ fun `stepsCounter`(`samples`: List<SleepStepSample>): kotlin.ULong? {
+            return FfiConverterOptionalULong.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_func_steps_counter(
+    
+        
+        FfiConverterSequenceTypeSleepStepSample.lower(`samples`),_status)
+}
+    )
+    }
+    
+ fun `stressOnsetEvaluate`(`rrBuffer`: List<kotlin.UShort>, `currentHr`: kotlin.Double?, `recentMotionG`: kotlin.Double?, `sessionActive`: kotlin.Boolean, `state`: OnsetStateInfo, `enabled`: kotlin.Boolean, `autoNudge`: kotlin.Boolean, `quietHoursEnabled`: kotlin.Boolean, `quietStartMin`: kotlin.Int, `quietEndMin`: kotlin.Int, `nowSec`: kotlin.Long, `tzOffsetSec`: kotlin.Long): OnsetDecisionInfo {
+            return FfiConverterTypeOnsetDecisionInfo.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_func_stress_onset_evaluate(
+    
+        
+        FfiConverterSequenceUShort.lower(`rrBuffer`),
+        FfiConverterOptionalDouble.lower(`currentHr`),
+        FfiConverterOptionalDouble.lower(`recentMotionG`),
+        FfiConverterBoolean.lower(`sessionActive`),
+        FfiConverterTypeOnsetStateInfo.lower(`state`),
+        FfiConverterBoolean.lower(`enabled`),
+        FfiConverterBoolean.lower(`autoNudge`),
+        FfiConverterBoolean.lower(`quietHoursEnabled`),
+        FfiConverterInt.lower(`quietStartMin`),
+        FfiConverterInt.lower(`quietEndMin`),
+        FfiConverterLong.lower(`nowSec`),
+        FfiConverterLong.lower(`tzOffsetSec`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Detect workout sessions from HR + gravity streams. Returns one session per detected bout.
+         */ fun `workoutDetect`(`hr`: List<HrTick>, `gravity`: List<WorkoutGravitySample>, `restingHr`: kotlin.Double?, `maxHr`: kotlin.Double?, `age`: kotlin.Double?, `weightKg`: kotlin.Double, `heightCm`: kotlin.Double, `sex`: kotlin.String): List<WorkoutSession> {
+            return FfiConverterSequenceTypeWorkoutSession.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_func_workout_detect(
+    
+        
+        FfiConverterSequenceTypeHrTick.lower(`hr`),
+        FfiConverterSequenceTypeWorkoutGravitySample.lower(`gravity`),
+        FfiConverterOptionalDouble.lower(`restingHr`),
+        FfiConverterOptionalDouble.lower(`maxHr`),
+        FfiConverterOptionalDouble.lower(`age`),
+        FfiConverterDouble.lower(`weightKg`),
+        FfiConverterDouble.lower(`heightCm`),
+        FfiConverterString.lower(`sex`),_status)
 }
     )
     }
@@ -9788,123 +9923,6 @@ public object FfiConverterSequenceOptionalDouble: FfiConverterRustBuffer<List<ko
         FfiConverterOptionalTypeBaselineStateInfo.lower(`state`),
         FfiConverterOptionalDouble.lower(`value`),
         FfiConverterTypeMetricCfgInfo.lower(`cfg`),_status)
-}
-    )
-    }
-    
- fun `bridgedNightGroups`(`blocks`: List<MainNightBlock>, `offsetS`: kotlin.Long): List<SleepBridgedGroup> {
-            return FfiConverterSequenceTypeSleepBridgedGroup.lift(
-    uniffiRustCall() { _status ->
-    UniffiLib.uniffi_whoop_ffi_fn_func_bridged_night_groups(
-    
-        
-        FfiConverterSequenceTypeMainNightBlock.lower(`blocks`),
-        FfiConverterLong.lower(`offsetS`),_status)
-}
-    )
-    }
-    
-
-        /**
-         * Bout energy estimate (kcal, kJ) from HR samples. Each sample weighted by elapsed time to next.
-         */ fun `caloriesEstimateBout`(`hr`: List<HrTick>, `weightKg`: kotlin.Double, `heightCm`: kotlin.Double, `age`: kotlin.Double, `sex`: kotlin.String, `hrmax`: kotlin.Double, `restingHr`: kotlin.Double): List<kotlin.Double> {
-            return FfiConverterSequenceDouble.lift(
-    uniffiRustCall() { _status ->
-    UniffiLib.uniffi_whoop_ffi_fn_func_calories_estimate_bout(
-    
-        
-        FfiConverterSequenceTypeHrTick.lower(`hr`),
-        FfiConverterDouble.lower(`weightKg`),
-        FfiConverterDouble.lower(`heightCm`),
-        FfiConverterDouble.lower(`age`),
-        FfiConverterString.lower(`sex`),
-        FfiConverterDouble.lower(`hrmax`),
-        FfiConverterDouble.lower(`restingHr`),_status)
-}
-    )
-    }
-    
-
-        /**
-         * Whole-day energy estimate (kcal) from HR samples. Each sample = one second.
-         */ fun `caloriesEstimateDay`(`hr`: List<HrTick>, `weightKg`: kotlin.Double, `heightCm`: kotlin.Double, `age`: kotlin.Double, `sex`: kotlin.String, `hrmax`: kotlin.Double, `restingHr`: kotlin.Double): kotlin.Double {
-            return FfiConverterDouble.lift(
-    uniffiRustCall() { _status ->
-    UniffiLib.uniffi_whoop_ffi_fn_func_calories_estimate_day(
-    
-        
-        FfiConverterSequenceTypeHrTick.lower(`hr`),
-        FfiConverterDouble.lower(`weightKg`),
-        FfiConverterDouble.lower(`heightCm`),
-        FfiConverterDouble.lower(`age`),
-        FfiConverterString.lower(`sex`),
-        FfiConverterDouble.lower(`hrmax`),
-        FfiConverterDouble.lower(`restingHr`),_status)
-}
-    )
-    }
-    
-
-        /**
-         * Body-clock phase from raw (unix, activity) samples + tz offset, days observed, habitual wake hour, and an
-         * optional observed skin-temp minimum hour. `None` when the cosinor is degenerate.
-         */ fun `circadianPhaseFromSamples`(`samples`: List<ActivitySample>, `tzOffsetSeconds`: kotlin.Long, `daysObserved`: kotlin.UInt, `habitualWakeHour`: kotlin.Double, `observedTempMinHour`: kotlin.Double?): PhaseEstimateInfo? {
-            return FfiConverterOptionalTypePhaseEstimateInfo.lift(
-    uniffiRustCall() { _status ->
-    UniffiLib.uniffi_whoop_ffi_fn_func_circadian_phase_from_samples(
-    
-        
-        FfiConverterSequenceTypeActivitySample.lower(`samples`),
-        FfiConverterLong.lower(`tzOffsetSeconds`),
-        FfiConverterUInt.lower(`daysObserved`),
-        FfiConverterDouble.lower(`habitualWakeHour`),
-        FfiConverterOptionalDouble.lower(`observedTempMinHour`),_status)
-}
-    )
-    }
-    
-
-        /**
-         * Coverage windows from a sample series: consecutive timestamps within `max_gap_s` form one span.
-         * Feed the HR timestamps here rather than a day's min..max, or every mid-day gap counts as worn.
-         */ fun `coverageSpans`(`timestamps`: List<kotlin.Long>, `maxGapS`: kotlin.Long): List<TimeSpan> {
-            return FfiConverterSequenceTypeTimeSpan.lift(
-    uniffiRustCall() { _status ->
-    UniffiLib.uniffi_whoop_ffi_fn_func_coverage_spans(
-    
-        
-        FfiConverterSequenceLong.lower(`timestamps`),
-        FfiConverterLong.lower(`maxGapS`),_status)
-}
-    )
-    }
-    
-
-        /**
-         * Daily resting HR = min of the per-session floors.
-         */ fun `dailyRestingHr`(`sessionFloors`: List<kotlin.Int?>): kotlin.Int? {
-            return FfiConverterOptionalInt.lift(
-    uniffiRustCall() { _status ->
-    UniffiLib.uniffi_whoop_ffi_fn_func_daily_resting_hr(
-    
-        
-        FfiConverterSequenceOptionalInt.lower(`sessionFloors`),_status)
-}
-    )
-    }
-    
-
-        /**
-         * Daily autonomic stress (0–3) from today's RHR + HRV against the prior-days baseline. `None` on too few
-         * baseline days or no signal today.
-         */ fun `dailyStress`(`today`: StressDayInfo, `baseline`: List<StressDayInfo>): kotlin.Double? {
-            return FfiConverterOptionalDouble.lift(
-    uniffiRustCall() { _status ->
-    UniffiLib.uniffi_whoop_ffi_fn_func_daily_stress(
-    
-        
-        FfiConverterTypeStressDayInfo.lower(`today`),
-        FfiConverterSequenceTypeStressDayInfo.lower(`baseline`),_status)
 }
     )
     }
@@ -9953,98 +9971,6 @@ public object FfiConverterSequenceOptionalDouble: FfiConverterRustBuffer<List<ko
     
         
         FfiConverterByteArray.lower(`frame`),_status)
-}
-    )
-    }
-    
-
-        /**
-         * Score waking hours for autonomic activation against the day's own calm-hour quartiles (Q25 HR, Q75
-         * RMSSD). Each hour needs its own HR gate applied by the caller (a `None` mean_hr hour is skipped).
-         */ fun `daytimeStress`(`hours`: List<HourPointInfo>): DaytimeStressInfo {
-            return FfiConverterTypeDaytimeStressInfo.lift(
-    uniffiRustCall() { _status ->
-    UniffiLib.uniffi_whoop_ffi_fn_func_daytime_stress(
-    
-        
-        FfiConverterSequenceTypeHourPointInfo.lower(`hours`),_status)
-}
-    )
-    }
-    
-
-        /**
-         * Full Fitness Age. `None` only if RHR or age is missing.
-         */ fun `fitnessAgeCompute`(`age`: kotlin.Double, `sex`: kotlin.String, `restingHr`: kotlin.Double, `paIndex`: kotlin.Double, `waistCm`: kotlin.Double?, `lowerConfidence`: kotlin.Boolean): FitnessAgeInfo? {
-            return FfiConverterOptionalTypeFitnessAgeInfo.lift(
-    uniffiRustCall() { _status ->
-    UniffiLib.uniffi_whoop_ffi_fn_func_fitness_age_compute(
-    
-        
-        FfiConverterDouble.lower(`age`),
-        FfiConverterString.lower(`sex`),
-        FfiConverterDouble.lower(`restingHr`),
-        FfiConverterDouble.lower(`paIndex`),
-        FfiConverterOptionalDouble.lower(`waistCm`),
-        FfiConverterBoolean.lower(`lowerConfidence`),_status)
-}
-    )
-    }
-    
- fun `habitualMidsleepSec`(`history`: List<SleepHistoryBlock>, `offsetS`: kotlin.Long, `minDays`: kotlin.UInt): kotlin.Long? {
-            return FfiConverterOptionalLong.lift(
-    uniffiRustCall() { _status ->
-    UniffiLib.uniffi_whoop_ffi_fn_func_habitual_midsleep_sec(
-    
-        
-        FfiConverterSequenceTypeSleepHistoryBlock.lower(`history`),
-        FfiConverterLong.lower(`offsetS`),
-        FfiConverterUInt.lower(`minDays`),_status)
-}
-    )
-    }
-    
- fun `hrRecoveryCalculate`(`hr`: List<HrTick>, `workoutStart`: kotlin.Long, `workoutEnd`: kotlin.Long, `maxHr`: kotlin.Double): HrRecoveryInfo? {
-            return FfiConverterOptionalTypeHrRecoveryInfo.lift(
-    uniffiRustCall() { _status ->
-    UniffiLib.uniffi_whoop_ffi_fn_func_hr_recovery_calculate(
-    
-        
-        FfiConverterSequenceTypeHrTick.lower(`hr`),
-        FfiConverterLong.lower(`workoutStart`),
-        FfiConverterLong.lower(`workoutEnd`),
-        FfiConverterDouble.lower(`maxHr`),_status)
-}
-    )
-    }
-    
-
-        /**
-         * Seconds spent in each HR zone over an HR series, using age-derived (or override) zones.
-         */ fun `hrTimeInZone`(`hr`: List<HrTick>, `age`: kotlin.Double, `maxHrOverride`: kotlin.Double?): TimeInZoneInfo {
-            return FfiConverterTypeTimeInZoneInfo.lift(
-    uniffiRustCall() { _status ->
-    UniffiLib.uniffi_whoop_ffi_fn_func_hr_time_in_zone(
-    
-        
-        FfiConverterSequenceTypeHrTick.lower(`hr`),
-        FfiConverterDouble.lower(`age`),
-        FfiConverterOptionalDouble.lower(`maxHrOverride`),_status)
-}
-    )
-    }
-    
-
-        /**
-         * Age-derived (Tanaka) HR zones, or a manual max-HR override.
-         */ fun `hrZonesForAge`(`age`: kotlin.Double, `maxHrOverride`: kotlin.Double?): HrZoneSetInfo {
-            return FfiConverterTypeHrZoneSetInfo.lift(
-    uniffiRustCall() { _status ->
-    UniffiLib.uniffi_whoop_ffi_fn_func_hr_zones_for_age(
-    
-        
-        FfiConverterDouble.lower(`age`),
-        FfiConverterOptionalDouble.lower(`maxHrOverride`),_status)
 }
     )
     }
@@ -10201,109 +10127,6 @@ public object FfiConverterSequenceOptionalDouble: FfiConverterRustBuffer<List<ko
     
 
         /**
-         * Accel/gyro energy, jerk and gait-band cadence over IMU samples at `sample_rate_hz`.
-         */ fun `imuFeatures`(`samples`: List<ImuSampleInfo>, `sampleRateHz`: kotlin.Int): ImuFeaturesInfo {
-            return FfiConverterTypeImuFeaturesInfo.lift(
-    uniffiRustCall() { _status ->
-    UniffiLib.uniffi_whoop_ffi_fn_func_imu_features(
-    
-        
-        FfiConverterSequenceTypeImuSampleInfo.lower(`samples`),
-        FfiConverterInt.lower(`sampleRateHz`),_status)
-}
-    )
-    }
-    
- fun `mainNightGroupIndices`(`blocks`: List<MainNightBlock>, `offsetS`: kotlin.Long, `habitualMidsleepSec`: kotlin.Long?): List<kotlin.UInt>? {
-            return FfiConverterOptionalSequenceUInt.lift(
-    uniffiRustCall() { _status ->
-    UniffiLib.uniffi_whoop_ffi_fn_func_main_night_group_indices(
-    
-        
-        FfiConverterSequenceTypeMainNightBlock.lower(`blocks`),
-        FfiConverterLong.lower(`offsetS`),
-        FfiConverterOptionalLong.lower(`habitualMidsleepSec`),_status)
-}
-    )
-    }
-    
- fun `mainNightIndex`(`blocks`: List<MainNightBlock>, `offsetS`: kotlin.Long, `habitualMidsleepSec`: kotlin.Long?): kotlin.UInt? {
-            return FfiConverterOptionalUInt.lift(
-    uniffiRustCall() { _status ->
-    UniffiLib.uniffi_whoop_ffi_fn_func_main_night_index(
-    
-        
-        FfiConverterSequenceTypeMainNightBlock.lower(`blocks`),
-        FfiConverterLong.lower(`offsetS`),
-        FfiConverterOptionalLong.lower(`habitualMidsleepSec`),_status)
-}
-    )
-    }
-    
- fun `mainNightSelection`(`blocks`: List<MainNightBlock>, `offsetS`: kotlin.Long, `habitualMidsleepSec`: kotlin.Long?): MainNightSel? {
-            return FfiConverterOptionalTypeMainNightSel.lift(
-    uniffiRustCall() { _status ->
-    UniffiLib.uniffi_whoop_ffi_fn_func_main_night_selection(
-    
-        
-        FfiConverterSequenceTypeMainNightBlock.lower(`blocks`),
-        FfiConverterLong.lower(`offsetS`),
-        FfiConverterOptionalLong.lower(`habitualMidsleepSec`),_status)
-}
-    )
-    }
-    
-
-        /**
-         * Classify one candidate window for a short nap (tri-state, conservative — only PROPOSES a review card).
-         */ fun `napEvaluate`(`gravity`: List<WorkoutGravitySample>, `hr`: List<HrTick>, `restingHr`: kotlin.Int?, `config`: NapConfigInfo): NapDecisionInfo {
-            return FfiConverterTypeNapDecisionInfo.lift(
-    uniffiRustCall() { _status ->
-    UniffiLib.uniffi_whoop_ffi_fn_func_nap_evaluate(
-    
-        
-        FfiConverterSequenceTypeWorkoutGravitySample.lower(`gravity`),
-        FfiConverterSequenceTypeHrTick.lower(`hr`),
-        FfiConverterOptionalInt.lower(`restingHr`),
-        FfiConverterTypeNapConfigInfo.lower(`config`),_status)
-}
-    )
-    }
-    
-
-        /**
-         * Nightly integer-truncated means of the 4.0 raw red/IR PPG ADC over the detected in-bed `spans`, the
-         * app's stored `DailyMetric.spo2Red`/`spo2Ir`. A sample counts when its `ts` lies inside any span.
-         * `None` when either input is empty or no sample landed in-span. Raw ADC only, never a calibrated percent.
-         */ fun `nightlySpo2RawMeans`(`spans`: List<Spo2Span>, `samples`: List<Spo2RawSample>): Spo2RawMeans? {
-            return FfiConverterOptionalTypeSpo2RawMeans.lift(
-    uniffiRustCall() { _status ->
-    UniffiLib.uniffi_whoop_ffi_fn_func_nightly_spo2_raw_means(
-    
-        
-        FfiConverterSequenceTypeSpo2Span.lower(`spans`),
-        FfiConverterSequenceTypeSpo2RawSample.lower(`samples`),_status)
-}
-    )
-    }
-    
-
-        /**
-         * Personal sleep need (hours) = mean of recent nightly asleep hours, floored at 7.5. For the Rest
-         * score's sleep-need input.
-         */ fun `personalSleepNeedHours`(`recentAsleepHours`: List<kotlin.Double>): kotlin.Double {
-            return FfiConverterDouble.lift(
-    uniffiRustCall() { _status ->
-    UniffiLib.uniffi_whoop_ffi_fn_func_personal_sleep_need_hours(
-    
-        
-        FfiConverterSequenceDouble.lower(`recentAsleepHours`),_status)
-}
-    )
-    }
-    
-
-        /**
          * HR from a v26 optical PPG buffer (24 Hz autocorrelation).
          */ fun `ppgHr`(`samples`: List<PpgSample>): List<PpgEstimate> {
             return FfiConverterSequenceTypePpgEstimate.lift(
@@ -10312,6 +10135,114 @@ public object FfiConverterSequenceOptionalDouble: FfiConverterRustBuffer<List<ko
     
         
         FfiConverterSequenceTypePpgSample.lower(`samples`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Respiratory rate (breaths/min) from R-R via RSA. `None` when the signal is too thin.
+         */ fun `respRateFromRr`(`beats`: List<RrBeat>, `start`: kotlin.Long, `end`: kotlin.Long): kotlin.Double? {
+            return FfiConverterOptionalDouble.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_func_resp_rate_from_rr(
+    
+        
+        FfiConverterSequenceTypeRrBeat.lower(`beats`),
+        FfiConverterLong.lower(`start`),
+        FfiConverterLong.lower(`end`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Nocturnal RMSSD age norm (ms) — the reference the HRV driver is scored against.
+         */ fun `vitalityRmssdNorm`(`forAge`: kotlin.Double): kotlin.Double {
+            return FfiConverterDouble.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_func_vitality_rmssd_norm(
+    
+        
+        FfiConverterDouble.lower(`forAge`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Daily resting HR = min of the per-session floors.
+         */ fun `dailyRestingHr`(`sessionFloors`: List<kotlin.Int?>): kotlin.Int? {
+            return FfiConverterOptionalInt.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_func_daily_resting_hr(
+    
+        
+        FfiConverterSequenceOptionalInt.lower(`sessionFloors`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Full Fitness Age. `None` only if RHR or age is missing.
+         */ fun `fitnessAgeCompute`(`age`: kotlin.Double, `sex`: kotlin.String, `restingHr`: kotlin.Double, `paIndex`: kotlin.Double, `waistCm`: kotlin.Double?, `lowerConfidence`: kotlin.Boolean): FitnessAgeInfo? {
+            return FfiConverterOptionalTypeFitnessAgeInfo.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_func_fitness_age_compute(
+    
+        
+        FfiConverterDouble.lower(`age`),
+        FfiConverterString.lower(`sex`),
+        FfiConverterDouble.lower(`restingHr`),
+        FfiConverterDouble.lower(`paIndex`),
+        FfiConverterOptionalDouble.lower(`waistCm`),
+        FfiConverterBoolean.lower(`lowerConfidence`),_status)
+}
+    )
+    }
+    
+ fun `hrRecoveryCalculate`(`hr`: List<HrTick>, `workoutStart`: kotlin.Long, `workoutEnd`: kotlin.Long, `maxHr`: kotlin.Double): HrRecoveryInfo? {
+            return FfiConverterOptionalTypeHrRecoveryInfo.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_func_hr_recovery_calculate(
+    
+        
+        FfiConverterSequenceTypeHrTick.lower(`hr`),
+        FfiConverterLong.lower(`workoutStart`),
+        FfiConverterLong.lower(`workoutEnd`),
+        FfiConverterDouble.lower(`maxHr`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Seconds spent in each HR zone over an HR series, using age-derived (or override) zones.
+         */ fun `hrTimeInZone`(`hr`: List<HrTick>, `age`: kotlin.Double, `maxHrOverride`: kotlin.Double?): TimeInZoneInfo {
+            return FfiConverterTypeTimeInZoneInfo.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_func_hr_time_in_zone(
+    
+        
+        FfiConverterSequenceTypeHrTick.lower(`hr`),
+        FfiConverterDouble.lower(`age`),
+        FfiConverterOptionalDouble.lower(`maxHrOverride`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Age-derived (Tanaka) HR zones, or a manual max-HR override.
+         */ fun `hrZonesForAge`(`age`: kotlin.Double, `maxHrOverride`: kotlin.Double?): HrZoneSetInfo {
+            return FfiConverterTypeHrZoneSetInfo.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_func_hr_zones_for_age(
+    
+        
+        FfiConverterDouble.lower(`age`),
+        FfiConverterOptionalDouble.lower(`maxHrOverride`),_status)
 }
     )
     }
@@ -10376,22 +10307,6 @@ public object FfiConverterSequenceOptionalDouble: FfiConverterRustBuffer<List<ko
     
 
         /**
-         * Respiratory rate (breaths/min) from R-R via RSA. `None` when the signal is too thin.
-         */ fun `respRateFromRr`(`beats`: List<RrBeat>, `start`: kotlin.Long, `end`: kotlin.Long): kotlin.Double? {
-            return FfiConverterOptionalDouble.lift(
-    uniffiRustCall() { _status ->
-    UniffiLib.uniffi_whoop_ffi_fn_func_resp_rate_from_rr(
-    
-        
-        FfiConverterSequenceTypeRrBeat.lower(`beats`),
-        FfiConverterLong.lower(`start`),
-        FfiConverterLong.lower(`end`),_status)
-}
-    )
-    }
-    
-
-        /**
          * Rest (sleep performance) composite [0, 100] from a night's aggregates. `None` when there is no asleep
          * time. Absent `sleep_need_hours` defaults to 8 h; absent `consistency` defaults to a neutral 0.5.
          */ fun `restScore`(`asleepSeconds`: kotlin.Double, `efficiency`: kotlin.Double, `deepSeconds`: kotlin.Double, `remSeconds`: kotlin.Double, `sleepNeedHours`: kotlin.Double?, `consistency`: kotlin.Double?): kotlin.Double? {
@@ -10412,55 +10327,6 @@ public object FfiConverterSequenceOptionalDouble: FfiConverterRustBuffer<List<ko
     
 
         /**
-         * Circadian Rhythm Age from raw (unix, activity) samples + tz offset + chronological age + sex: bins the
-         * samples per LOCAL hour, fits a single-component cosinor, then the Gompertz biological-age transform.
-         * `None` when the fit is degenerate (< 3 populated hours). v1 is a RELATIVE index; the activity scale is
-         * not calibrated to the model's mg-ENMO training units.
-         */ fun `rhythmAgeFromSamples`(`samples`: List<ActivitySample>, `tzOffsetSeconds`: kotlin.Long, `chronologicalAge`: kotlin.Double, `sex`: SexInput): RhythmAgeInfo? {
-            return FfiConverterOptionalTypeRhythmAgeInfo.lift(
-    uniffiRustCall() { _status ->
-    UniffiLib.uniffi_whoop_ffi_fn_func_rhythm_age_from_samples(
-    
-        
-        FfiConverterSequenceTypeActivitySample.lower(`samples`),
-        FfiConverterLong.lower(`tzOffsetSeconds`),
-        FfiConverterDouble.lower(`chronologicalAge`),
-        FfiConverterTypeSexInput.lower(`sex`),_status)
-}
-    )
-    }
-    
-
-        /**
-         * Median of a series. `0.0` when empty — the one median the app and the algorithms share.
-         */ fun `seriesMedian`(`values`: List<kotlin.Double>): kotlin.Double {
-            return FfiConverterDouble.lift(
-    uniffiRustCall() { _status ->
-    UniffiLib.uniffi_whoop_ffi_fn_func_series_median(
-    
-        
-        FfiConverterSequenceDouble.lower(`values`),_status)
-}
-    )
-    }
-    
-
-        /**
-         * OLS slope of a series over x = 0, 1, 2, … — the trend direction behind a week-over-week read.
-         * `0.0` for fewer than two points or a degenerate spread.
-         */ fun `seriesSlope`(`values`: List<kotlin.Double>): kotlin.Double {
-            return FfiConverterDouble.lift(
-    uniffiRustCall() { _status ->
-    UniffiLib.uniffi_whoop_ffi_fn_func_series_slope(
-    
-        
-        FfiConverterSequenceDouble.lower(`values`),_status)
-}
-    )
-    }
-    
-
-        /**
          * Lowest 5-min tumbling-window mean bpm floor over `[start, end]`. `None` with no samples.
          */ fun `sessionRestingHr`(`start`: kotlin.Long, `end`: kotlin.Long, `hr`: List<HrTick>): kotlin.Int? {
             return FfiConverterOptionalInt.lift(
@@ -10471,120 +10337,6 @@ public object FfiConverterSequenceOptionalDouble: FfiConverterRustBuffer<List<ko
         FfiConverterLong.lower(`start`),
         FfiConverterLong.lower(`end`),
         FfiConverterSequenceTypeHrTick.lower(`hr`),_status)
-}
-    )
-    }
-    
-
-        /**
-         * Rolling sleep-debt ledger: Σ(slept − need) over the last `window` (default 14) nights with data.
-         * `need_hours` defaults to 8 h. Nights with no sleep are skipped, never zero-filled.
-         */ fun `sleepDebtLedger`(`series`: List<DebtNightInput>, `needHours`: kotlin.Double?, `window`: kotlin.UInt?): DebtLedgerInfo {
-            return FfiConverterTypeDebtLedgerInfo.lift(
-    uniffiRustCall() { _status ->
-    UniffiLib.uniffi_whoop_ffi_fn_func_sleep_debt_ledger(
-    
-        
-        FfiConverterSequenceTypeDebtNightInput.lower(`series`),
-        FfiConverterOptionalDouble.lower(`needHours`),
-        FfiConverterOptionalUInt.lower(`window`),_status)
-}
-    )
-    }
-    
-
-        /**
-         * Sleep Regularity Index (-100..100) from asleep spans and the wear windows they sit in. Non-wear is
-         * UNKNOWN, never awake. `None` below the day-pair and coverage gates.
-         */ fun `sleepRegularityIndex`(`firstLocalMidnight`: kotlin.Long, `days`: kotlin.UInt, `asleep`: List<TimeSpan>, `covered`: List<TimeSpan>): kotlin.Double? {
-            return FfiConverterOptionalDouble.lift(
-    uniffiRustCall() { _status ->
-    UniffiLib.uniffi_whoop_ffi_fn_func_sleep_regularity_index(
-    
-        
-        FfiConverterLong.lower(`firstLocalMidnight`),
-        FfiConverterUInt.lower(`days`),
-        FfiConverterSequenceTypeTimeSpan.lower(`asleep`),
-        FfiConverterSequenceTypeTimeSpan.lower(`covered`),_status)
-}
-    )
-    }
-    
-
-        /**
-         * Trailing rolling mean of the motion intensities over `window_s` — the smoothed spine the stillness
-         * and sedentary gates threshold against.
-         */ fun `smoothedIntensity`(`motion`: List<ActivityPointInfo>, `windowS`: kotlin.Double): List<kotlin.Double> {
-            return FfiConverterSequenceDouble.lift(
-    uniffiRustCall() { _status ->
-    UniffiLib.uniffi_whoop_ffi_fn_func_smoothed_intensity(
-    
-        
-        FfiConverterSequenceTypeActivityPointInfo.lower(`motion`),
-        FfiConverterDouble.lower(`windowS`),_status)
-}
-    )
-    }
-    
-
-        /**
-         * SpO2 (%) from a 4.0 paired red/IR window (ratio-of-ratios). `None` if not pulsatile.
-         */ fun `spo2FromPaired`(`red`: List<kotlin.Double>, `ir`: List<kotlin.Double>): kotlin.Double? {
-            return FfiConverterOptionalDouble.lift(
-    uniffiRustCall() { _status ->
-    UniffiLib.uniffi_whoop_ffi_fn_func_spo2_from_paired(
-    
-        
-        FfiConverterSequenceDouble.lower(`red`),
-        FfiConverterSequenceDouble.lower(`ir`),_status)
-}
-    )
-    }
-    
-
-        /**
-         * The 4.0 display value. Its ratio-of-ratios percent carries an uncalibrated per-device DC offset, so
-         * the absolute number means nothing on its own — this anchors the 30-night median to a plausible
-         * baseline and reports the 7-night median at that offset, keeping the night-to-night movement.
-         * `recent_nightly` is oldest to newest. 5.0/MG does not use this: its percent comes off the strap.
-         */ fun `spo2RollingReading`(`recentNightly`: List<kotlin.Double>): Spo2Rolling {
-            return FfiConverterTypeSpo2Rolling.lift(
-    uniffiRustCall() { _status ->
-    UniffiLib.uniffi_whoop_ffi_fn_func_spo2_rolling_reading(
-    
-        
-        FfiConverterSequenceDouble.lower(`recentNightly`),_status)
-}
-    )
-    }
-    
-
-        /**
-         * Stage one already-detected in-bed span with the V2 recipe + motion-aware wake refinement (the
-         * single-span edit self-heal path). Per-30 s-epoch stage segments over `[start, end]`.
-         */ fun `stageSleepRefined`(`input`: SleepInput, `steps`: List<SleepStepSample>): List<SleepSegment> {
-            return FfiConverterSequenceTypeSleepSegment.lift(
-    uniffiRustCall() { _status ->
-    UniffiLib.uniffi_whoop_ffi_fn_func_stage_sleep_refined(
-    
-        
-        FfiConverterTypeSleepInput.lower(`input`),
-        FfiConverterSequenceTypeSleepStepSample.lower(`steps`),_status)
-}
-    )
-    }
-    
-
-        /**
-         * Raw wrap-aware motion-tick total from step counter samples. None with fewer than 2 samples
-         * or no forward movement. The caller applies its stepTicksPerStep calibration.
-         */ fun `stepsCounter`(`samples`: List<SleepStepSample>): kotlin.ULong? {
-            return FfiConverterOptionalULong.lift(
-    uniffiRustCall() { _status ->
-    UniffiLib.uniffi_whoop_ffi_fn_func_steps_counter(
-    
-        
-        FfiConverterSequenceTypeSleepStepSample.lower(`samples`),_status)
 }
     )
     }
@@ -10649,24 +10401,325 @@ public object FfiConverterSequenceOptionalDouble: FfiConverterRustBuffer<List<ko
     )
     }
     
- fun `stressOnsetEvaluate`(`rrBuffer`: List<kotlin.UShort>, `currentHr`: kotlin.Double?, `recentMotionG`: kotlin.Double?, `sessionActive`: kotlin.Boolean, `state`: OnsetStateInfo, `enabled`: kotlin.Boolean, `autoNudge`: kotlin.Boolean, `quietHoursEnabled`: kotlin.Boolean, `quietStartMin`: kotlin.Int, `quietEndMin`: kotlin.Int, `nowSec`: kotlin.Long, `tzOffsetSec`: kotlin.Long): OnsetDecisionInfo {
-            return FfiConverterTypeOnsetDecisionInfo.lift(
+
+        /**
+         * Non-exercise VO2max estimate (ml/kg/min) from the waist-circumference model. Wellness only.
+         */ fun `vo2maxEstimate`(`age`: kotlin.Double, `sex`: kotlin.String, `waistCm`: kotlin.Double, `restingHr`: kotlin.Double, `paIndex`: kotlin.Double): kotlin.Double {
+            return FfiConverterDouble.lift(
     uniffiRustCall() { _status ->
-    UniffiLib.uniffi_whoop_ffi_fn_func_stress_onset_evaluate(
+    UniffiLib.uniffi_whoop_ffi_fn_func_vo2max_estimate(
     
         
-        FfiConverterSequenceUShort.lower(`rrBuffer`),
-        FfiConverterOptionalDouble.lower(`currentHr`),
-        FfiConverterOptionalDouble.lower(`recentMotionG`),
-        FfiConverterBoolean.lower(`sessionActive`),
-        FfiConverterTypeOnsetStateInfo.lower(`state`),
-        FfiConverterBoolean.lower(`enabled`),
-        FfiConverterBoolean.lower(`autoNudge`),
-        FfiConverterBoolean.lower(`quietHoursEnabled`),
-        FfiConverterInt.lower(`quietStartMin`),
-        FfiConverterInt.lower(`quietEndMin`),
-        FfiConverterLong.lower(`nowSec`),
-        FfiConverterLong.lower(`tzOffsetSec`),_status)
+        FfiConverterDouble.lower(`age`),
+        FfiConverterString.lower(`sex`),
+        FfiConverterDouble.lower(`waistCm`),
+        FfiConverterDouble.lower(`restingHr`),
+        FfiConverterDouble.lower(`paIndex`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Detect + stage a night's streams: one call carves the in-bed spans and returns one session each.
+         */ fun `analyzeSleep`(`streams`: SleepStreams): List<SleepSession> {
+            return FfiConverterSequenceTypeSleepSession.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_func_analyze_sleep(
+    
+        
+        FfiConverterTypeSleepStreams.lower(`streams`),_status)
+}
+    )
+    }
+    
+ fun `bridgedNightGroups`(`blocks`: List<MainNightBlock>, `offsetS`: kotlin.Long): List<SleepBridgedGroup> {
+            return FfiConverterSequenceTypeSleepBridgedGroup.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_func_bridged_night_groups(
+    
+        
+        FfiConverterSequenceTypeMainNightBlock.lower(`blocks`),
+        FfiConverterLong.lower(`offsetS`),_status)
+}
+    )
+    }
+    
+ fun `habitualMidsleepSec`(`history`: List<SleepHistoryBlock>, `offsetS`: kotlin.Long, `minDays`: kotlin.UInt): kotlin.Long? {
+            return FfiConverterOptionalLong.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_func_habitual_midsleep_sec(
+    
+        
+        FfiConverterSequenceTypeSleepHistoryBlock.lower(`history`),
+        FfiConverterLong.lower(`offsetS`),
+        FfiConverterUInt.lower(`minDays`),_status)
+}
+    )
+    }
+    
+ fun `mainNightGroupIndices`(`blocks`: List<MainNightBlock>, `offsetS`: kotlin.Long, `habitualMidsleepSec`: kotlin.Long?): List<kotlin.UInt>? {
+            return FfiConverterOptionalSequenceUInt.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_func_main_night_group_indices(
+    
+        
+        FfiConverterSequenceTypeMainNightBlock.lower(`blocks`),
+        FfiConverterLong.lower(`offsetS`),
+        FfiConverterOptionalLong.lower(`habitualMidsleepSec`),_status)
+}
+    )
+    }
+    
+ fun `mainNightIndex`(`blocks`: List<MainNightBlock>, `offsetS`: kotlin.Long, `habitualMidsleepSec`: kotlin.Long?): kotlin.UInt? {
+            return FfiConverterOptionalUInt.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_func_main_night_index(
+    
+        
+        FfiConverterSequenceTypeMainNightBlock.lower(`blocks`),
+        FfiConverterLong.lower(`offsetS`),
+        FfiConverterOptionalLong.lower(`habitualMidsleepSec`),_status)
+}
+    )
+    }
+    
+ fun `mainNightSelection`(`blocks`: List<MainNightBlock>, `offsetS`: kotlin.Long, `habitualMidsleepSec`: kotlin.Long?): MainNightSel? {
+            return FfiConverterOptionalTypeMainNightSel.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_func_main_night_selection(
+    
+        
+        FfiConverterSequenceTypeMainNightBlock.lower(`blocks`),
+        FfiConverterLong.lower(`offsetS`),
+        FfiConverterOptionalLong.lower(`habitualMidsleepSec`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Classify one candidate window for a short nap (tri-state, conservative — only PROPOSES a review card).
+         */ fun `napEvaluate`(`gravity`: List<WorkoutGravitySample>, `hr`: List<HrTick>, `restingHr`: kotlin.Int?, `config`: NapConfigInfo): NapDecisionInfo {
+            return FfiConverterTypeNapDecisionInfo.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_func_nap_evaluate(
+    
+        
+        FfiConverterSequenceTypeWorkoutGravitySample.lower(`gravity`),
+        FfiConverterSequenceTypeHrTick.lower(`hr`),
+        FfiConverterOptionalInt.lower(`restingHr`),
+        FfiConverterTypeNapConfigInfo.lower(`config`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Personal sleep need (hours) = mean of recent nightly asleep hours, floored at 7.5. For the Rest
+         * score's sleep-need input.
+         */ fun `personalSleepNeedHours`(`recentAsleepHours`: List<kotlin.Double>): kotlin.Double {
+            return FfiConverterDouble.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_func_personal_sleep_need_hours(
+    
+        
+        FfiConverterSequenceDouble.lower(`recentAsleepHours`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Rolling sleep-debt ledger: Σ(slept − need) over the last `window` (default 14) nights with data.
+         * `need_hours` defaults to 8 h. Nights with no sleep are skipped, never zero-filled.
+         */ fun `sleepDebtLedger`(`series`: List<DebtNightInput>, `needHours`: kotlin.Double?, `window`: kotlin.UInt?): DebtLedgerInfo {
+            return FfiConverterTypeDebtLedgerInfo.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_func_sleep_debt_ledger(
+    
+        
+        FfiConverterSequenceTypeDebtNightInput.lower(`series`),
+        FfiConverterOptionalDouble.lower(`needHours`),
+        FfiConverterOptionalUInt.lower(`window`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Sleep Regularity Index (-100..100) from asleep spans and the wear windows they sit in. Non-wear is
+         * UNKNOWN, never awake. `None` below the day-pair and coverage gates.
+         */ fun `sleepRegularityIndex`(`firstLocalMidnight`: kotlin.Long, `days`: kotlin.UInt, `asleep`: List<TimeSpan>, `covered`: List<TimeSpan>): kotlin.Double? {
+            return FfiConverterOptionalDouble.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_func_sleep_regularity_index(
+    
+        
+        FfiConverterLong.lower(`firstLocalMidnight`),
+        FfiConverterUInt.lower(`days`),
+        FfiConverterSequenceTypeTimeSpan.lower(`asleep`),
+        FfiConverterSequenceTypeTimeSpan.lower(`covered`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Stage one already-detected in-bed span with the V2 recipe + motion-aware wake refinement (the
+         * single-span edit self-heal path). Per-30 s-epoch stage segments over `[start, end]`.
+         */ fun `stageSleepRefined`(`input`: SleepInput, `steps`: List<SleepStepSample>): List<SleepSegment> {
+            return FfiConverterSequenceTypeSleepSegment.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_func_stage_sleep_refined(
+    
+        
+        FfiConverterTypeSleepInput.lower(`input`),
+        FfiConverterSequenceTypeSleepStepSample.lower(`steps`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Nightly integer-truncated means of the 4.0 raw red/IR PPG ADC over the detected in-bed `spans`, the
+         * app's stored `DailyMetric.spo2Red`/`spo2Ir`. A sample counts when its `ts` lies inside any span.
+         * `None` when either input is empty or no sample landed in-span. Raw ADC only, never a calibrated percent.
+         */ fun `nightlySpo2RawMeans`(`spans`: List<Spo2Span>, `samples`: List<Spo2RawSample>): Spo2RawMeans? {
+            return FfiConverterOptionalTypeSpo2RawMeans.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_func_nightly_spo2_raw_means(
+    
+        
+        FfiConverterSequenceTypeSpo2Span.lower(`spans`),
+        FfiConverterSequenceTypeSpo2RawSample.lower(`samples`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * SpO2 (%) from a 4.0 paired red/IR window (ratio-of-ratios). `None` if not pulsatile.
+         */ fun `spo2FromPaired`(`red`: List<kotlin.Double>, `ir`: List<kotlin.Double>): kotlin.Double? {
+            return FfiConverterOptionalDouble.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_func_spo2_from_paired(
+    
+        
+        FfiConverterSequenceDouble.lower(`red`),
+        FfiConverterSequenceDouble.lower(`ir`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * The 4.0 display value. Its ratio-of-ratios percent carries an uncalibrated per-device DC offset, so
+         * the absolute number means nothing on its own — this anchors the 30-night median to a plausible
+         * baseline and reports the 7-night median at that offset, keeping the night-to-night movement.
+         * `recent_nightly` is oldest to newest. 5.0/MG does not use this: its percent comes off the strap.
+         */ fun `spo2RollingReading`(`recentNightly`: List<kotlin.Double>): Spo2Rolling {
+            return FfiConverterTypeSpo2Rolling.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_func_spo2_rolling_reading(
+    
+        
+        FfiConverterSequenceDouble.lower(`recentNightly`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Body-clock phase from raw (unix, activity) samples + tz offset, days observed, habitual wake hour, and an
+         * optional observed skin-temp minimum hour. `None` when the cosinor is degenerate.
+         */ fun `circadianPhaseFromSamples`(`samples`: List<ActivitySample>, `tzOffsetSeconds`: kotlin.Long, `daysObserved`: kotlin.UInt, `habitualWakeHour`: kotlin.Double, `observedTempMinHour`: kotlin.Double?): PhaseEstimateInfo? {
+            return FfiConverterOptionalTypePhaseEstimateInfo.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_func_circadian_phase_from_samples(
+    
+        
+        FfiConverterSequenceTypeActivitySample.lower(`samples`),
+        FfiConverterLong.lower(`tzOffsetSeconds`),
+        FfiConverterUInt.lower(`daysObserved`),
+        FfiConverterDouble.lower(`habitualWakeHour`),
+        FfiConverterOptionalDouble.lower(`observedTempMinHour`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Coverage windows from a sample series: consecutive timestamps within `max_gap_s` form one span.
+         * Feed the HR timestamps here rather than a day's min..max, or every mid-day gap counts as worn.
+         */ fun `coverageSpans`(`timestamps`: List<kotlin.Long>, `maxGapS`: kotlin.Long): List<TimeSpan> {
+            return FfiConverterSequenceTypeTimeSpan.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_func_coverage_spans(
+    
+        
+        FfiConverterSequenceLong.lower(`timestamps`),
+        FfiConverterLong.lower(`maxGapS`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Daily autonomic stress (0–3) from today's RHR + HRV against the prior-days baseline. `None` on too few
+         * baseline days or no signal today.
+         */ fun `dailyStress`(`today`: StressDayInfo, `baseline`: List<StressDayInfo>): kotlin.Double? {
+            return FfiConverterOptionalDouble.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_func_daily_stress(
+    
+        
+        FfiConverterTypeStressDayInfo.lower(`today`),
+        FfiConverterSequenceTypeStressDayInfo.lower(`baseline`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Score waking hours for autonomic activation against the day's own calm-hour quartiles (Q25 HR, Q75
+         * RMSSD). Each hour needs its own HR gate applied by the caller (a `None` mean_hr hour is skipped).
+         */ fun `daytimeStress`(`hours`: List<HourPointInfo>): DaytimeStressInfo {
+            return FfiConverterTypeDaytimeStressInfo.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_func_daytime_stress(
+    
+        
+        FfiConverterSequenceTypeHourPointInfo.lower(`hours`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Median of a series. `0.0` when empty — the one median the app and the algorithms share.
+         */ fun `seriesMedian`(`values`: List<kotlin.Double>): kotlin.Double {
+            return FfiConverterDouble.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_func_series_median(
+    
+        
+        FfiConverterSequenceDouble.lower(`values`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * OLS slope of a series over x = 0, 1, 2, … — the trend direction behind a week-over-week read.
+         * `0.0` for fewer than two points or a degenerate spread.
+         */ fun `seriesSlope`(`values`: List<kotlin.Double>): kotlin.Double {
+            return FfiConverterDouble.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_func_series_slope(
+    
+        
+        FfiConverterSequenceDouble.lower(`values`),_status)
 }
     )
     }
@@ -10720,20 +10773,6 @@ public object FfiConverterSequenceOptionalDouble: FfiConverterRustBuffer<List<ko
     
 
         /**
-         * Nocturnal RMSSD age norm (ms) — the reference the HRV driver is scored against.
-         */ fun `vitalityRmssdNorm`(`forAge`: kotlin.Double): kotlin.Double {
-            return FfiConverterDouble.lift(
-    uniffiRustCall() { _status ->
-    UniffiLib.uniffi_whoop_ffi_fn_func_vitality_rmssd_norm(
-    
-        
-        FfiConverterDouble.lower(`forAge`),_status)
-}
-    )
-    }
-    
-
-        /**
          * Sleep regularity in [0, 1] from nightly durations (hours). `None` below three nights.
          */ fun `vitalitySleepConsistency`(`nightlyHours`: List<kotlin.Double>): kotlin.Double? {
             return FfiConverterOptionalDouble.lift(
@@ -10742,45 +10781,6 @@ public object FfiConverterSequenceOptionalDouble: FfiConverterRustBuffer<List<ko
     
         
         FfiConverterSequenceDouble.lower(`nightlyHours`),_status)
-}
-    )
-    }
-    
-
-        /**
-         * Non-exercise VO2max estimate (ml/kg/min) from the waist-circumference model. Wellness only.
-         */ fun `vo2maxEstimate`(`age`: kotlin.Double, `sex`: kotlin.String, `waistCm`: kotlin.Double, `restingHr`: kotlin.Double, `paIndex`: kotlin.Double): kotlin.Double {
-            return FfiConverterDouble.lift(
-    uniffiRustCall() { _status ->
-    UniffiLib.uniffi_whoop_ffi_fn_func_vo2max_estimate(
-    
-        
-        FfiConverterDouble.lower(`age`),
-        FfiConverterString.lower(`sex`),
-        FfiConverterDouble.lower(`waistCm`),
-        FfiConverterDouble.lower(`restingHr`),
-        FfiConverterDouble.lower(`paIndex`),_status)
-}
-    )
-    }
-    
-
-        /**
-         * Detect workout sessions from HR + gravity streams. Returns one session per detected bout.
-         */ fun `workoutDetect`(`hr`: List<HrTick>, `gravity`: List<WorkoutGravitySample>, `restingHr`: kotlin.Double?, `maxHr`: kotlin.Double?, `age`: kotlin.Double?, `weightKg`: kotlin.Double, `heightCm`: kotlin.Double, `sex`: kotlin.String): List<WorkoutSession> {
-            return FfiConverterSequenceTypeWorkoutSession.lift(
-    uniffiRustCall() { _status ->
-    UniffiLib.uniffi_whoop_ffi_fn_func_workout_detect(
-    
-        
-        FfiConverterSequenceTypeHrTick.lower(`hr`),
-        FfiConverterSequenceTypeWorkoutGravitySample.lower(`gravity`),
-        FfiConverterOptionalDouble.lower(`restingHr`),
-        FfiConverterOptionalDouble.lower(`maxHr`),
-        FfiConverterOptionalDouble.lower(`age`),
-        FfiConverterDouble.lower(`weightKg`),
-        FfiConverterDouble.lower(`heightCm`),
-        FfiConverterString.lower(`sex`),_status)
 }
     )
     }
