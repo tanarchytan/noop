@@ -162,6 +162,13 @@ question that was not part of the decode fix.
 raw red/IR nightly means are still stored and still have no consumer. If the relative reading is the
 answer, it should be built on those means rather than on a percent that no longer computes.
 
+Replicated on a second strap since: 2,066,290 samples over 25.6 days, 89.3% of windows with no
+pulsation and a median scored value of 80.1%, against this fork's own band at 98.2% and 81.8%.
+Upstream reaches the same conclusion by declining to compute one at all, and OpenStrap's 4.0 app
+ships no SpO2 path. Three independent routes, one answer: the channel cannot carry a percent. Still
+open is whether the stored red/IR means support a RELATIVE reading — meaningful as a change against
+your own baseline, never as an absolute — which is how OpenStrap tiers the metric.
+
 **The v18 optical channels stop at the Rust border.** `optical_baseline_a/b`, `optical_amp_a/b` and
 `optical_signal_poor` decode and are tested, but nothing reads them. The sentinel is the valuable one:
 it is a first-party per-second signal that the band's own beat detection failed, which the HRV windows
