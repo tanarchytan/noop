@@ -239,3 +239,38 @@ All three were tested and none of them can work against an aliased signal.
 - **The v18 optical channels stop at the Rust border.** `optical_signal_poor` is the valuable one: a
   first-party per-second flag that the band's own beat detection failed, which the HRV windows and the
   sleep stager currently infer from motion. Wiring it needs the four-step FFI regen.
+
+
+---
+
+## 11. R-R read order is undefined, and RMSSD depends on it — CONFIRMED 2026-07-27
+
+`WhoopDao.rrIntervals` reads `ORDER BY ts ASC, seq ASC`, and the comment above it says this fixed a
+magnitude-sort bug. It did not. `assignRrSeq` keys on `(ts, rrMs)`, so `seq` counts repeats of an
+IDENTICAL beat and every DISTINCT beat within a second carries 0. The rows therefore tie, and SQLite
+returns tied rows in whatever order the plan happens to produce.
+
+Measured across five straps (David 5.0 and 4.0, killa 5.0, and two other users):
+
+| strap | same-second groups with distinct beats | all `seq == 0` |
+|---|---|---|
+| David 5.0 | 600,382 | 592,308 (99%) |
+| David 4.0 | 9,407 | 9,362 (100%) |
+| killa 5.0 | 249,666 | 249,467 (100%) |
+| other-A | 555,578 | 554,591 (100%) |
+| other-B | 660,676 | 656,441 (99%) |
+
+2.07M groups, 99-100% fully tied every time. RMSSD is built from successive differences, so the order
+is not cosmetic: re-reading the same nights under two different orderings moved nightly RMSSD by a
+mean of 1.3 to 16.8 ms and a worst case of 42.8 ms, against typical values of 30-60 ms.
+
+**Caveat on that magnitude.** The two orderings compared were `ORDER BY rowid` and `ORDER BY ts, rrMs`.
+rowid is only emission order if the rows were inserted in emission order and never rewritten — and the
+backup importer copies rows by content, so a restored database's rowids need not preserve it. The
+spread is therefore a sound measure of HOW MUCH the order matters, and not a sound attribution of which
+direction our current read is wrong in. Upstream reports the sorted order biases RMSSD down; two of our
+five straps agree and two do not, which the rowid caveat explains without resolving.
+
+Upstream's fix (`ryanbr/noop` #830) is an `ord` column stamped at decode time, leading the read sort,
+as an additive Room migration. That removes the ambiguity rather than arguing about it, and is the
+right shape. Ours would be Room v100 to v101.
