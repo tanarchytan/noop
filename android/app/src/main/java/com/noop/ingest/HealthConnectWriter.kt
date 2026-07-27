@@ -12,6 +12,7 @@ import androidx.health.connect.client.records.Record
 import androidx.health.connect.client.records.RespiratoryRateRecord
 import androidx.health.connect.client.records.RestingHeartRateRecord
 import androidx.health.connect.client.records.SkinTemperatureRecord
+import androidx.health.connect.client.records.Vo2MaxRecord
 import androidx.health.connect.client.records.SleepSessionRecord
 import androidx.health.connect.client.records.metadata.Device
 import androidx.health.connect.client.records.metadata.Metadata
@@ -47,6 +48,9 @@ object HealthConnectWriter {
     /** How far back to write. Recomputation only ever touches recent nights; 60 days is generous. */
     private const val WINDOW_DAYS = 60L
 
+    /** The metricSeries key the weekly VO2 max estimate is stored under. */
+    private const val KEY_VO2MAX = "vo2max_est"
+
     private val WRITE_RECORDS: List<KClass<out Record>> = listOf(
         RestingHeartRateRecord::class,
         HeartRateVariabilityRmssdRecord::class,
@@ -55,6 +59,7 @@ object HealthConnectWriter {
         HeartRateRecord::class,
         SleepSessionRecord::class,
         SkinTemperatureRecord::class,
+        Vo2MaxRecord::class,
     )
 
     /** The write-permission strings the UI must request before calling [write]. */
@@ -142,6 +147,7 @@ object HealthConnectWriter {
         if (records.isNotEmpty()) {
             total += runCatching { client.insertRecords(records); records.size }.getOrDefault(0)
         }
+        total += runCatching { writeVo2Max(client, repo, deviceId, version) }.getOrDefault(0)
         total += runCatching { writeHeartRate(client, context, repo, deviceId, version) }.getOrDefault(0)
         total += runCatching { writeSleep(client, repo, deviceId) }.getOrDefault(0)
         return total
@@ -158,6 +164,34 @@ object HealthConnectWriter {
         Metadata.autoRecorded(device = STRAP, clientRecordId = clientId, clientRecordVersion = version)
 
     private fun meta(metric: String, day: String, version: Long) = meta("noop-$metric-$day", version)
+
+    /**
+     * Our own weekly VO2 max estimate, keyed to the week's Saturday like the rest of the weekly scores.
+     * Estimated from resting HR and activity, so it is marked as such rather than as a measured test.
+     */
+    private suspend fun writeVo2Max(
+        client: HealthConnectClient,
+        repo: WhoopRepository,
+        deviceId: String,
+        version: Long,
+    ): Int {
+        val cutoff = LocalDate.now().minusDays(WINDOW_DAYS).toString()
+        val rows = repo.metricSeries(repo.computedDeviceId(deviceId), KEY_VO2MAX, cutoff, LocalDate.now().toString())
+        if (rows.isEmpty()) return 0
+        val zone = ZoneId.systemDefault()
+        val records = rows.mapNotNull { r ->
+            val date = runCatching { LocalDate.parse(r.day) }.getOrNull() ?: return@mapNotNull null
+            val time = date.atTime(LocalTime.NOON).atZone(zone)
+            Vo2MaxRecord(
+                time = time.toInstant(),
+                zoneOffset = time.offset,
+                vo2MillilitersPerMinuteKilogram = r.value,
+                measurementMethod = Vo2MaxRecord.MEASUREMENT_METHOD_HEART_RATE_RATIO,
+                metadata = meta("vo2max", r.day, version),
+            )
+        }
+        return if (records.isEmpty()) 0 else insertChunked(client, records)
+    }
 
     /** Health Connect caps records per insert call; insert in batches to stay well under it. */
     private suspend fun insertChunked(client: HealthConnectClient, records: List<Record>, batch: Int = 1000): Int {

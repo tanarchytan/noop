@@ -14,6 +14,7 @@ import androidx.health.connect.client.records.HeightRecord
 import androidx.health.connect.client.records.HydrationRecord
 import androidx.health.connect.client.records.NutritionRecord
 import androidx.health.connect.client.records.LeanBodyMassRecord
+import androidx.health.connect.client.records.MenstruationPeriodRecord
 import androidx.health.connect.client.records.OxygenSaturationRecord
 import androidx.health.connect.client.records.Record
 import androidx.health.connect.client.records.RespiratoryRateRecord
@@ -68,6 +69,9 @@ object HealthConnectImporter {
 
     const val SOURCE = "Health Connect"
 
+    /** metricSeries key marking a day a menstrual period began; the cycle classifier reads these. */
+    const val KEY_PERIOD_START = "period_start"
+
     private const val WHOOP = "my-whoop"
     // The computed/derived source IntelligenceEngine writes recovery/strain/sleep+stages under,
     // namely "<importedDeviceId>-noop" with importedDeviceId == WHOOP. For a strap-only WHOOP user
@@ -79,7 +83,7 @@ object HealthConnectImporter {
     // "apple-health" bucket — otherwise it's mis-attributed to Apple Health in the UI (issue #34).
     // (The recovery/sleep backfill still lands under "my-whoop"; only the external-health aggregates
     // + workouts carry this source.)
-    private const val HC_DEVICE = "health-connect"
+    const val HC_DEVICE = "health-connect"
     private const val HC_WORKOUT_SOURCE = "health-connect"
 
     /** Read window: a wide ~10-year span ending now. Health Connect itself caps retention. */
@@ -112,6 +116,7 @@ object HealthConnectImporter {
         BloodPressureRecord::class,
         HydrationRecord::class,
         NutritionRecord::class,
+        MenstruationPeriodRecord::class,
         ExerciseSessionRecord::class,
         DistanceRecord::class,
     )
@@ -311,6 +316,11 @@ object HealthConnectImporter {
                     newestWeightTs = r.time.epochSecond
                     newestWeightKg = r.weight.inKilograms
                 }
+            }
+            // --- Period starts -> the day a menstrual period began. The cycle classifier anchors
+            // cycle-day 1 on the most recent one and cross-validates it against the detected shift. ---
+            readAll(client, MenstruationPeriodRecord::class, filter, selfPackage) { r ->
+                bucket(dayOf(r.startTime)).periodStart = true
             }
             // --- Blood pressure -> the day's last reading wins. A paired cuff is the only source of
             // a real BP number here; NOOP never estimates one. ---
@@ -534,6 +544,9 @@ object HealthConnectImporter {
             // day with no steps/HR still records its readings. Same keys + units as the iOS Apple Health
             // import: body_fat as a 0-100 percent, lean_mass in kg.
             a.bodyFatPct?.let { metricSeriesRows += MetricSeriesRow(HC_DEVICE, day, "body_fat", round2(it)) }
+            if (a.periodStart) {
+                metricSeriesRows += MetricSeriesRow(HC_DEVICE, day, KEY_PERIOD_START, 1.0)
+            }
             a.systolic?.let { metricSeriesRows += MetricSeriesRow(HC_DEVICE, day, "bp_systolic", round1(it)) }
             a.diastolic?.let { metricSeriesRows += MetricSeriesRow(HC_DEVICE, day, "bp_diastolic", round1(it)) }
             if (a.hydrationMl > 0) {
@@ -1043,6 +1056,8 @@ object HealthConnectImporter {
         var bpTs: Long = Long.MIN_VALUE
 
         // Hydration and nutrition are day TOTALS: every entry adds up.
+        var periodStart: Boolean = false
+
         var hydrationMl: Double = 0.0
         var kcalIn: Double = 0.0
         var proteinG: Double = 0.0

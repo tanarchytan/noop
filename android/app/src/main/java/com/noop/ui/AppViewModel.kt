@@ -619,6 +619,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                     _v5Signals.value = V5HealthSignals.evaluate(
                         days = days,
                         cycleOptedIn = _cycleTrackingEnabled.value,
+                        loggedPeriodStarts = loggedPeriodStarts(days),
                         journalContext = illnessJournalContext(days),
                         activitySamples = restActivitySamples(),
                         tzOffsetSeconds = localTzOffsetSeconds(),
@@ -1866,6 +1867,18 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      * Lightweight: derived from the latest day's exercise count + the cached "unwell" flag we can see here.
      * (A fuller journal-tag read lands with the Mind pillar; this keeps the v5 pass honest without new I/O.)
      */
+    /** Days a menstrual period began, from Health Connect, over the span [days] covers. The cycle
+     *  classifier anchors cycle-day 1 on the most recent one. Empty when nothing is imported. */
+    private suspend fun loggedPeriodStarts(days: List<DailyMetric>): List<String> {
+        val from = days.firstOrNull()?.day ?: return emptyList()
+        val to = days.last().day
+        return runCatching {
+            repository.metricSeries(
+                HealthConnectImporter.HC_DEVICE, HealthConnectImporter.KEY_PERIOD_START, from, to,
+            ).map { it.day }
+        }.getOrDefault(emptyList())
+    }
+
     private fun illnessJournalContext(days: List<DailyMetric>): IllnessSignalEngine.Context {
         val latest = days.lastOrNull()
         val hardOrLate = (latest?.exerciseCount ?: 0) >= 2
