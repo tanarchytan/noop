@@ -163,11 +163,23 @@ Pinned deliberately, each with a reason that will expire:
 
 Recorded at the time rather than discovered later.
 
-**`IntelligenceEngine.analyzeRecentOnCpu` is still ~846 lines.** Two trailing phases were extracted
-because Kotlin 2.3 codegen pushed the method past the JVM's 64 KB limit and the build failed outright.
-That bought headroom, it did not fix the function. The remaining body has the same phase seams
-(pass-1 detect, baseline seed, pass-2 re-score, source-only fold) and the ceiling is now known to be
-reachable.
+**`analyzeRecentOnCpu` compiles to 60,113 bytes — 91.7% of the JVM's 64 KB method limit.** Measured
+2026-07-27 with `javap -c` on the debug class; the next largest method in the file is 7,035 bytes.
+Roughly 5 KB of headroom, which is 40-70 lines of Kotlin. **This is the most urgent item in this
+file**: it is not a maintainability preference, it is a build that stops compiling on the next
+moderate addition, and it has already happened once.
+
+The body is 793 lines with 16 phase seams. It is NOT a mechanical extraction like the whoop-ffi
+split, which moved independent top-level items: the phases thread deep shared local state, so a
+careless move changes analytics silently. Extract the trailing phases first (per-epoch motion, band
+sleep-state persist, the #899 heal, the source-only fold) — they sit at the end and touch fewest
+live locals, which is why the previous extraction chose them. Verify against the recovery, strain
+and stress parity gates, not the compiler alone.
+
+Re-measure with:
+```
+javap -c -p android/app/build/.../com/noop/analytics/IntelligenceEngine.class
+```
 
 **`Spo2::rolling_reading` is exposed but unused.** The FFI export and the `RustScores` adapter exist;
 no screen calls them. The 4.0 card still reads `DailyMetric.spo2Pct`, which is now usually null on that
