@@ -324,8 +324,14 @@ Everything below is unstarted or waiting on a decision. Nothing here is broken; 
   under names that claim nothing. `raw_f32_105` is the interesting one: continuous, finite, always
   negative between -5.28 and -2.14, 1,851 distinct values in 1,861 records, and not a transform of
   dynamic acceleration. Settling any of them needs raw frames from a second 5.0 over several days.
-- **Upstream #872/#873 — the 4.0 feature-flag probe.** Reads what the 4.0 firmware exposes; may bear
-  on the blood-oxygen hunt.
+- **Upstream #872/#873 — the feature-flag probe, deferred on hardware.** Read-only enumeration of the
+  flags a strap knows (opcodes 117/118, neither of which we hold). It might name a 4.0 flag bearing on
+  blood oxygen, but a probe that has never run on a strap cannot be validated in CI. Revisit alongside
+  the 4.0 capture.
+- **Upstream #875 — let a user stop a running sync.** `ABORT_HISTORICAL_TRANSMITS` (20): we hold the
+  constant but no builder or caller, and it is in neither `FORBIDDEN` nor `DESTRUCTIVE`, so it is a
+  benign stop rather than a trim. Worth taking; the value is the stop path and the backfiller teardown,
+  which needs a strap to prove.
 - **Upstream #874/#875, #818.** Sync robustness and the `pagesBehind` field offsets. Unassessed.
 
 ### Cut 9.0.2 when the above settles
