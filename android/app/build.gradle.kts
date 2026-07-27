@@ -1,8 +1,9 @@
 import java.util.Properties
 
 plugins {
+    // AGP 9 provides Kotlin itself — there is no kotlin.android plugin here any more.
     id("com.android.application")
-    id("org.jetbrains.kotlin.android")
+    id("org.jetbrains.kotlin.plugin.compose")
     id("com.google.devtools.ksp")
 }
 
@@ -16,14 +17,14 @@ val keystoreProps = Properties().apply {
 
 android {
     namespace = "com.noop"
-    compileSdk = 34
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.noop.tan"
         minSdk = 26
-        targetSdk = 34
-        versionCode = 296
-        versionName = "9.0.1-rc3-tan"
+        targetSdk = 36
+        versionCode = 297
+        versionName = "9.0.2-dev-tan"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -126,19 +127,14 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
-    kotlinOptions {
-        jvmTarget = "17"
+    // AGP 9 replaced the `kotlinOptions` block with Kotlin's own, inside `android`.
+    kotlin {
+        jvmToolchain(17)
     }
 
     buildFeatures {
         compose = true
         buildConfig = true
-    }
-
-    composeOptions {
-        // Compose Compiler extension matched to Kotlin 1.9.24 (see the official
-        // Compose-to-Kotlin compatibility map). Bumping Kotlin requires bumping this.
-        kotlinCompilerExtensionVersion = "1.5.14"
     }
 
     testOptions {
@@ -175,7 +171,7 @@ android {
 
 dependencies {
     // --- Compose (BOM pins all Compose artifact versions in lockstep) ---
-    val composeBom = platform("androidx.compose:compose-bom:2024.06.00")
+    val composeBom = platform("androidx.compose:compose-bom:2026.06.01")
     implementation(composeBom)
     androidTestImplementation(composeBom)
 
@@ -185,20 +181,20 @@ dependencies {
     implementation("androidx.compose.material3:material3")
     implementation("androidx.compose.material:material-icons-extended")
 
-    // --- Home-screen widget (1.1.x: last line compatible with compileSdk 34) ---
+    // --- Home-screen widget ---
     implementation("androidx.glance:glance-appwidget:1.1.1")
     // Glance's own POM pins work-runtime 2.7.1 (Oct 2021) — pre-Android-14. Pin a current one
     // explicitly so the widget scheduler runs on a WorkManager that's maintained for targetSdk 34.
     // (2.10+ needs compileSdk 35; 2.9.x is the ceiling for this module.)
-    implementation("androidx.work:work-runtime-ktx:2.9.0")
+    implementation("androidx.work:work-runtime-ktx:2.11.2")
 
     // --- Activity / lifecycle / navigation ---
-    implementation("androidx.core:core-ktx:1.13.1")
-    implementation("androidx.activity:activity-compose:1.9.0")
-    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.2")
-    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.2")
-    implementation("androidx.lifecycle:lifecycle-runtime-compose:2.8.2") // collectAsStateWithLifecycle
-    implementation("androidx.navigation:navigation-compose:2.7.7")
+    implementation("androidx.core:core-ktx:1.18.0")
+    implementation("androidx.activity:activity-compose:1.13.0")
+    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.10.0")
+    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.10.0")
+    implementation("androidx.lifecycle:lifecycle-runtime-compose:2.10.0") // collectAsStateWithLifecycle
+    implementation("androidx.navigation:navigation-compose:2.9.8")
 
     // --- Coroutines ---
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.8.1")
@@ -209,7 +205,7 @@ dependencies {
     implementation("net.java.dev.jna:jna:5.14.0@aar")
 
     // --- Room (local-only persistence; on-device, nothing leaves the phone) ---
-    val roomVersion = "2.6.1"
+    val roomVersion = "2.8.4"
     implementation("androidx.room:room-runtime:$roomVersion")
     implementation("androidx.room:room-ktx:$roomVersion")
     ksp("androidx.room:room-compiler:$roomVersion")
@@ -218,9 +214,10 @@ dependencies {
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     implementation("androidx.security:security-crypto:1.1.0-alpha06")
 
-    // --- Health Connect (optional native Android import of steps/HR/HRV/sleep/etc.) ---
-    // Pinned to alpha07: alpha11+ require compileSdk 35; this module is compileSdk 34.
-    implementation("androidx.health.connect:connect-client:1.1.0-alpha07")
+    // --- Health Connect (native read/write of steps/HR/HRV/sleep/skin temperature/etc.) ---
+    // alpha08 is the last build that compiles against compileSdk 34 AND carries SkinTemperatureRecord.
+    // alpha09-alpha12 need compileSdk 35; beta02 and 1.1.0 stable need 36, which also needs a newer AGP.
+    implementation("androidx.health.connect:connect-client:1.1.0")
 
     // --- Unit / instrumentation tests ---
     testImplementation("junit:junit:4.13.2")

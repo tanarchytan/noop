@@ -1014,6 +1014,128 @@ object IntelligenceEngine {
         if (dailies.isNotEmpty()) repo.upsertDailyMetrics(dailies)
         if (restRows.isNotEmpty()) repo.upsertMetricSeries(restRows)
 
+        // Weekly ages and the WHOOP-4 step estimate run after the scores are persisted; both are
+        // self-contained trailing phases, extracted so this function stays under the JVM 64 KB
+        // method limit that Kotlin 2.3 codegen pushed it past.
+        writeWeeklyAges(repo, profile, dailies, faPriorDaily, computedId, importedDeviceId,
+            ownerSource, candidatePriorities, newestDay, nowLocalMidnight, tzOffsetSeconds, diag)
+        writeStepsEstimate(repo, dailies, computedId, importedDeviceId, ownerSource,
+            candidatePriorities, nowLocalMidnight, tzOffsetSeconds, newestDay,
+            manualStepCoefficient, persistStepsCalibration, stepsTraceSink)
+        // DURABILITY GUARD (iOS PR #395 cachedSleepKept): drop any freshly-detected session that
+        // time-overlaps a night the user has already hand-corrected. A detected onset can drift
+        // second-to-second as more raw data arrives, so without this the re-detected night would upsert
+        // as a SECOND row beside the edited one (different startTs ⇒ no ON CONFLICT match), and the
+        // mergeSleep / daily aggregate would DOUBLE-COUNT both into an inflated time-in-bed AND the edit
+        // would visually revert. The edited row is already stored (it carries userEdited=1 and is never
+        // re-emitted here , the engine only writes detected twins), so we simply don't re-insert its
+        // detected twin. Sleep has no delete-reinsert pass (unlike dailyMetric/workout), so this IS the
+        // idempotency guard for the edited case. Overlap uses the edit's EFFECTIVE window. (#318)
+        val editedWindows = editedRows.map { it.effectiveStartTs to it.endTs }
+        // #33: also drop any re-detected night the user has DELETED: a dismissedSleep tombstone keeps it
+        // from regenerating, mirroring the dismissedWorkout guard. Overlap (not exact startTs) because a
+        // re-detected onset drifts as more raw data arrives.
+        // #65 3A: dismissedSleeps now reads the UNION of the imported + computed ids, so a tombstone
+        // written under EITHER namespace (an imported night writes "my-whoop", a computed one writes
+        // "my-whoop-noop") is found. The overlap-suppression predicate lives in DismissedSleepGuard,
+        // the JVM-tested twin of Swift's DismissedSleepSpans.
+        val dismissedWindows = repo.dismissedSleeps(importedDeviceId).map { it.startTs to it.endTs }
+        val skipWindows = editedWindows + dismissedWindows
+        val sleepKept = DismissedSleepGuard.keeping(sleepRows, skipWindows) { it.startTs to it.endTs }
+        if (sleepKept.isNotEmpty()) repo.upsertSleepSessions(sleepKept)
+        // ── Persist per-epoch motion (H8) beside each kept session's stagesJSON ──────────────────────────
+        // The sleepSession rows exist now (just upserted), so the targeted motion UPDATE lands. Persist ONLY
+        // for the sessions actually kept (not edited/dismissed), keyed by the detected start analyzeDay
+        // returned. A session whose gravity wouldn't grid was omitted from the map and is left as NULL , an
+        // absent motion series stays absent, never a fabricated zero array. Mirrors Swift.
+        val keptStarts = sleepKept.map { it.startTs }.toHashSet()
+        val motionByStart = HashMap<Long, List<Double>>()
+        for (res in scoredNights) {
+            for ((start, motion) in res.sessionMotionByStart) {
+                if (start in keptStarts) motionByStart[start] = motion
+            }
+        }
+        for ((start, motion) in motionByStart) {
+            repo.persistSessionMotion(computedId, start, motion)
+        }
+        // ── Persist per-epoch BAND sleep_state (#175) beside each kept session's stagesJSON ──────────────
+        // This is the source `sleepStateJSON` lacked (the write path had no producer because the raw stream
+        // was dropped at extraction). Now analyzeDay grids the RAW `sleepStateSample` stream per session;
+        // persist it here so the NEXT pass's bandSleepStateSamples read (the H7 confirm) and the display can
+        // see the strap's OWN scored band. ONLY for kept (not edited/dismissed) sessions; a session with no
+        // band samples was omitted (no key) and stays NULL — an absent signal stays absent. Mirrors Swift.
+        val sleepStateByStart = HashMap<Long, List<Int>>()
+        for (res in scoredNights) {
+            for ((start, states) in res.sessionSleepStateByStart) {
+                if (start in keptStarts) sleepStateByStart[start] = states
+            }
+        }
+        for ((start, states) in sleepStateByStart) {
+            repo.persistSessionSleepState(computedId, start, states)
+        }
+        // ── Overlap-aware banked-sleep heal (#899) ────────────────────────────────────────────────────
+        // An unstable strap clock re-banks the SAME night under a shifted timebase, so successive passes
+        // detect it at shifted bounds and the upsert above lands a SECOND row beside the stale one (the
+        // (deviceId, startTs) key differs, and sleep has no delete-reinsert reconcile like dailyMetric /
+        // workout). Collapse the window's stored sessions with the overlap rule, treating the rows THIS
+        // pass just banked as the bank-recency witness (the strap's current timebase), and delete the
+        // stale copies. Scoped to sessions whose wake day lies inside the [oldestDay, newestDay] daily
+        // reconcile window: exactly the days this pass re-scored/evicted, so a session row is never
+        // deleted out from under a daily row the pass did not refresh. Edited rows are never dropped.
+        // Mirrors the Swift analyzeRecent heal.
+        val storedSessions = repo.sleepSessions(computedId, windowStart, nowSeconds, 4000)
+        val healable = storedSessions.filter {
+            AnalyticsEngine.dayString(it.endTs, tzOffsetSeconds) in oldestDay..newestDay
+        }
+        val healDropped = SleepSessionDedup.dedupe(healable, freshStarts = keptStarts).dropped
+        // Row-only delete: the user-facing deleteSleepSession writes a #33 dismissal tombstone, which
+        // would overlap the SURVIVING night's window and permanently suppress its re-detection.
+        for (stale in healDropped) repo.deleteSleepSessionRowOnly(stale)
+        if (healDropped.isNotEmpty()) {
+            diag(
+                "Dedup(#899): removed ${healDropped.size} overlapping duplicate sleep " +
+                    "session(s) re-banked under a shifted strap timebase; re-scoring the affected days.",
+            )
+        }
+        // Make re-detection idempotent across runs: clear the prior computed detected workouts
+        // in the scored window (a bout's startTs can drift as more HR arrives, which would
+        // otherwise orphan stale rows under the (deviceId,startTs,sport) key), then re-insert.
+        repo.deleteComputedWorkouts(computedId, "detected", windowStart, nowSeconds)
+        if (workoutRows.isNotEmpty()) repo.upsertWorkouts(workoutRows)
+
+        // #137: a manually-started workout is scored from sparse live HR at save time , near-zero
+        // calories/strain on a 5/MG. Now that offloaded HR may cover the window, re-score the
+        // under-sampled ones from that denser data.
+        rescoreManualWorkouts(repo, profile, importedDeviceId, maxHROverride, nowSeconds)
+
+        return out to healDropped.size
+    }
+
+    /**
+     * The source-only label for a detected-bout overlap collider in the #975 workouts trace, computed WITHOUT
+     * reaching into the UI-layer WorkoutEditing (the analytics layer must not depend on com.noop.ui). Mirrors
+     * WorkoutEditing.sourceLabel / the Swift WorkoutSource.sourceLabel token set. No PII (a source class only).
+     */
+
+    /**
+     * Fitness Age, Vitality / Body Age and Circadian Rhythm Age — the weekly figures, keyed to the
+     * week's Saturday. Split out of [analyzeRecentOnCpu] purely for method size; the body is
+     * unchanged and still runs at the same point in the pass, after the scores are persisted.
+     */
+    private suspend fun writeWeeklyAges(
+        repo: WhoopRepository,
+        profile: UserProfile,
+        dailies: List<DailyMetric>,
+        faPriorDaily: List<DailyMetric>,
+        computedId: String,
+        importedDeviceId: String,
+        ownerSource: DayOwnerSource?,
+        candidatePriorities: List<Pair<String, Int>>,
+        newestDay: String,
+        nowLocalMidnight: Long,
+        tzOffsetSeconds: Long,
+        diag: (String) -> Unit,
+    ) {
         // ── Fitness Age (Phase 2) , weekly, keyed to the week's Saturday ──
         val fa7 = dailies.sortedBy { it.day }.takeLast(7)
         val faRHRs = fa7.mapNotNull { it.restingHr }.map { it.toDouble() }
@@ -1110,7 +1232,26 @@ object IntelligenceEngine {
                 }
             }
         }
+    }
 
+    /**
+     * The WHOOP 4.0 daily step ESTIMATE. Split out of [analyzeRecentOnCpu] purely for method size;
+     * the body is unchanged and still runs at the same point in the pass.
+     */
+    private suspend fun writeStepsEstimate(
+        repo: WhoopRepository,
+        dailies: List<DailyMetric>,
+        computedId: String,
+        importedDeviceId: String,
+        ownerSource: DayOwnerSource?,
+        candidatePriorities: List<Pair<String, Int>>,
+        nowLocalMidnight: Long,
+        tzOffsetSeconds: Long,
+        newestDay: String,
+        manualStepCoefficient: Double?,
+        persistStepsCalibration: (StepsEstimateEngine.Calibration) -> Unit,
+        stepsTraceSink: ((String) -> Unit)?,
+    ) {
         // ── Steps ESTIMATE (WHOOP 4.0) , DAILY, keyed to each strap-only day ──
         // A WHOOP 4.0 sends no step count over BLE, so for days the phone DIDN'T also count steps we
         // estimate them: calibrate the strap's daily MOTION VOLUME against the phone's real step count on
@@ -1189,100 +1330,8 @@ object IntelligenceEngine {
                 }
             }
         }
-        // DURABILITY GUARD (iOS PR #395 cachedSleepKept): drop any freshly-detected session that
-        // time-overlaps a night the user has already hand-corrected. A detected onset can drift
-        // second-to-second as more raw data arrives, so without this the re-detected night would upsert
-        // as a SECOND row beside the edited one (different startTs ⇒ no ON CONFLICT match), and the
-        // mergeSleep / daily aggregate would DOUBLE-COUNT both into an inflated time-in-bed AND the edit
-        // would visually revert. The edited row is already stored (it carries userEdited=1 and is never
-        // re-emitted here , the engine only writes detected twins), so we simply don't re-insert its
-        // detected twin. Sleep has no delete-reinsert pass (unlike dailyMetric/workout), so this IS the
-        // idempotency guard for the edited case. Overlap uses the edit's EFFECTIVE window. (#318)
-        val editedWindows = editedRows.map { it.effectiveStartTs to it.endTs }
-        // #33: also drop any re-detected night the user has DELETED: a dismissedSleep tombstone keeps it
-        // from regenerating, mirroring the dismissedWorkout guard. Overlap (not exact startTs) because a
-        // re-detected onset drifts as more raw data arrives.
-        // #65 3A: dismissedSleeps now reads the UNION of the imported + computed ids, so a tombstone
-        // written under EITHER namespace (an imported night writes "my-whoop", a computed one writes
-        // "my-whoop-noop") is found. The overlap-suppression predicate lives in DismissedSleepGuard,
-        // the JVM-tested twin of Swift's DismissedSleepSpans.
-        val dismissedWindows = repo.dismissedSleeps(importedDeviceId).map { it.startTs to it.endTs }
-        val skipWindows = editedWindows + dismissedWindows
-        val sleepKept = DismissedSleepGuard.keeping(sleepRows, skipWindows) { it.startTs to it.endTs }
-        if (sleepKept.isNotEmpty()) repo.upsertSleepSessions(sleepKept)
-        // ── Persist per-epoch motion (H8) beside each kept session's stagesJSON ──────────────────────────
-        // The sleepSession rows exist now (just upserted), so the targeted motion UPDATE lands. Persist ONLY
-        // for the sessions actually kept (not edited/dismissed), keyed by the detected start analyzeDay
-        // returned. A session whose gravity wouldn't grid was omitted from the map and is left as NULL , an
-        // absent motion series stays absent, never a fabricated zero array. Mirrors Swift.
-        val keptStarts = sleepKept.map { it.startTs }.toHashSet()
-        val motionByStart = HashMap<Long, List<Double>>()
-        for (res in scoredNights) {
-            for ((start, motion) in res.sessionMotionByStart) {
-                if (start in keptStarts) motionByStart[start] = motion
-            }
-        }
-        for ((start, motion) in motionByStart) {
-            repo.persistSessionMotion(computedId, start, motion)
-        }
-        // ── Persist per-epoch BAND sleep_state (#175) beside each kept session's stagesJSON ──────────────
-        // This is the source `sleepStateJSON` lacked (the write path had no producer because the raw stream
-        // was dropped at extraction). Now analyzeDay grids the RAW `sleepStateSample` stream per session;
-        // persist it here so the NEXT pass's bandSleepStateSamples read (the H7 confirm) and the display can
-        // see the strap's OWN scored band. ONLY for kept (not edited/dismissed) sessions; a session with no
-        // band samples was omitted (no key) and stays NULL — an absent signal stays absent. Mirrors Swift.
-        val sleepStateByStart = HashMap<Long, List<Int>>()
-        for (res in scoredNights) {
-            for ((start, states) in res.sessionSleepStateByStart) {
-                if (start in keptStarts) sleepStateByStart[start] = states
-            }
-        }
-        for ((start, states) in sleepStateByStart) {
-            repo.persistSessionSleepState(computedId, start, states)
-        }
-        // ── Overlap-aware banked-sleep heal (#899) ────────────────────────────────────────────────────
-        // An unstable strap clock re-banks the SAME night under a shifted timebase, so successive passes
-        // detect it at shifted bounds and the upsert above lands a SECOND row beside the stale one (the
-        // (deviceId, startTs) key differs, and sleep has no delete-reinsert reconcile like dailyMetric /
-        // workout). Collapse the window's stored sessions with the overlap rule, treating the rows THIS
-        // pass just banked as the bank-recency witness (the strap's current timebase), and delete the
-        // stale copies. Scoped to sessions whose wake day lies inside the [oldestDay, newestDay] daily
-        // reconcile window: exactly the days this pass re-scored/evicted, so a session row is never
-        // deleted out from under a daily row the pass did not refresh. Edited rows are never dropped.
-        // Mirrors the Swift analyzeRecent heal.
-        val storedSessions = repo.sleepSessions(computedId, windowStart, nowSeconds, 4000)
-        val healable = storedSessions.filter {
-            AnalyticsEngine.dayString(it.endTs, tzOffsetSeconds) in oldestDay..newestDay
-        }
-        val healDropped = SleepSessionDedup.dedupe(healable, freshStarts = keptStarts).dropped
-        // Row-only delete: the user-facing deleteSleepSession writes a #33 dismissal tombstone, which
-        // would overlap the SURVIVING night's window and permanently suppress its re-detection.
-        for (stale in healDropped) repo.deleteSleepSessionRowOnly(stale)
-        if (healDropped.isNotEmpty()) {
-            diag(
-                "Dedup(#899): removed ${healDropped.size} overlapping duplicate sleep " +
-                    "session(s) re-banked under a shifted strap timebase; re-scoring the affected days.",
-            )
-        }
-        // Make re-detection idempotent across runs: clear the prior computed detected workouts
-        // in the scored window (a bout's startTs can drift as more HR arrives, which would
-        // otherwise orphan stale rows under the (deviceId,startTs,sport) key), then re-insert.
-        repo.deleteComputedWorkouts(computedId, "detected", windowStart, nowSeconds)
-        if (workoutRows.isNotEmpty()) repo.upsertWorkouts(workoutRows)
-
-        // #137: a manually-started workout is scored from sparse live HR at save time , near-zero
-        // calories/strain on a 5/MG. Now that offloaded HR may cover the window, re-score the
-        // under-sampled ones from that denser data.
-        rescoreManualWorkouts(repo, profile, importedDeviceId, maxHROverride, nowSeconds)
-
-        return out to healDropped.size
     }
 
-    /**
-     * The source-only label for a detected-bout overlap collider in the #975 workouts trace, computed WITHOUT
-     * reaching into the UI-layer WorkoutEditing (the analytics layer must not depend on com.noop.ui). Mirrors
-     * WorkoutEditing.sourceLabel / the Swift WorkoutSource.sourceLabel token set. No PII (a source class only).
-     */
     private fun colliderSourceLabel(source: String): String {
         val s = source.lowercase()
         return when {

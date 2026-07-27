@@ -1,9 +1,21 @@
 // Root build file — declares plugin versions once; applied per-module in app/build.gradle.kts.
-// Keep these versions aligned with the shared contract:
-//   Android Gradle Plugin 8.x · Kotlin 1.9.x · KSP matched to the Kotlin version · Room 2.6.x.
+// Toolchain contract: Android Gradle Plugin 9.x · Kotlin 2.3.x · KSP matched to Kotlin · Room 2.8.x.
+//
+// AGP 9 supplies Kotlin itself, so there is no `org.jetbrains.kotlin.android` plugin any more. AGP
+// 9.3.1 bundles Kotlin 2.2.10; the classpath line below raises that to 2.3.10 so it matches KSP,
+// which Room's compiler runs on. Only KSP2 (2.3.x) works with AGP built-in Kotlin — the older paired
+// KSP1 builds refuse outright — and 2.3.10 is its newest, so that is the ceiling for the whole
+// toolchain until KSP ships for Kotlin 2.4.x.
+buildscript {
+    dependencies {
+        classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:2.3.10")
+    }
+}
+
 plugins {
-    id("com.android.application") version "8.5.2" apply false
-    id("org.jetbrains.kotlin.android") version "1.9.24" apply false
-    // KSP version is <kotlinVersion>-<kspVersion>; must track the Kotlin version exactly.
-    id("com.google.devtools.ksp") version "1.9.24-1.0.20" apply false
+    id("com.android.application") version "9.3.1" apply false
+    // From Kotlin 2.0 the Compose compiler ships with Kotlin, so it takes the Kotlin version and
+    // `composeOptions.kotlinCompilerExtensionVersion` no longer exists. Still a separate plugin.
+    id("org.jetbrains.kotlin.plugin.compose") version "2.3.10" apply false
+    id("com.google.devtools.ksp") version "2.3.10" apply false
 }
