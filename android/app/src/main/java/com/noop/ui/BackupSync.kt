@@ -11,6 +11,7 @@ import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
+import com.noop.BuildConfig
 import com.noop.data.DataBackup
 import java.io.File
 import java.text.SimpleDateFormat
@@ -44,6 +45,8 @@ object BackupSync {
 
     private const val PREFIX = "noop-backup-"
     private const val SUFFIX = ".noopbak"
+    /** Width of the "yyyyMMdd-HHmmss" stamp, so a variant marker ahead of it can be skipped. */
+    private const val STAMP_LENGTH = 15
 
     /** Generic binary MIME for the SAF createDocument call (the bytes are a ZIP container). */
     const val MIME = "application/octet-stream"
@@ -82,13 +85,23 @@ object BackupSync {
         isLenient = false
     }
 
-    /** Canonical snapshot filename for an instant: `noop-backup-YYYYMMDD-HHMMSS.noopbak` (UTC). */
-    fun snapshotName(epochMs: Long): String = PREFIX + fmt().format(Date(epochMs)) + SUFFIX
+    /** Marker for builds with their own database: `debug-` / `mock-`, empty for the plain id. */
+    private fun variantTag(): String {
+        val id = BuildConfig.APPLICATION_ID
+        val cut = id.lastIndexOf('.')
+        val suffix = if (cut < 0) "" else id.substring(cut + 1)
+        return if (suffix == "debug" || suffix == "mock") "$suffix-" else ""
+    }
 
-    /** The UTC instant (ms) encoded in a snapshot filename, or null if [name] is not one of ours. */
+    /** Canonical snapshot filename for an instant: `noop-backup-[variant-]YYYYMMDD-HHMMSS.noopbak` (UTC). */
+    fun snapshotName(epochMs: Long): String = PREFIX + variantTag() + fmt().format(Date(epochMs)) + SUFFIX
+
+    /** The UTC instant (ms) in a snapshot filename, or null if [name] is not one of ours. The stamp
+     *  is fixed-width, so a variant marker ahead of it is skipped. */
     fun snapshotTimeMs(name: String): Long? {
         if (!name.startsWith(PREFIX) || !name.endsWith(SUFFIX)) return null
-        val stamp = name.substring(PREFIX.length, name.length - SUFFIX.length)
+        val body = name.substring(PREFIX.length, name.length - SUFFIX.length)
+        val stamp = body.takeLast(STAMP_LENGTH)
         return runCatching { fmt().parse(stamp)?.time }.getOrNull()
     }
 
@@ -106,13 +119,21 @@ object BackupSync {
     fun latestSnapshot(names: List<String>): String? =
         names.filter(::isSnapshot).maxByOrNull { snapshotTimeMs(it)!! }
 
+    /** The variant marker embedded in a snapshot name (`debug-`, `mock-`, or empty). */
+    private fun variantOf(name: String): String {
+        val body = name.substring(PREFIX.length, name.length - SUFFIX.length)
+        return body.dropLast(STAMP_LENGTH)
+    }
+
     /**
      * Snapshots to DELETE to keep only the [keep] newest (oldest-first). Empty when within budget.
      * Strict on purpose: only canonical snapshots are prune candidates, so a hand-named `.noopbak`
-     * in the folder is never auto-deleted.
+     * in the folder is never auto-deleted, and only this build's own variant is a candidate.
      */
     fun snapshotsToPrune(names: List<String>, keep: Int): List<String> {
-        val snaps = names.filter(::isSnapshot).sortedByDescending { snapshotTimeMs(it)!! }
+        val mine = variantTag()
+        val snaps = names.filter { isSnapshot(it) && variantOf(it) == mine }
+            .sortedByDescending { snapshotTimeMs(it)!! }
         return if (snaps.size <= keep) emptyList() else snaps.drop(keep)
     }
 

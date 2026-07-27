@@ -12,7 +12,7 @@ import java.util.Locale
 
 /**
  * EXPERIMENTAL diagnostic: dump the decoded per-sample sensor streams NOOP already stores to ONE
- * combined long-format CSV (last 24 h) and share it. Lets power users / external devs prototype
+ * combined long-format CSV and share it. Lets power users / external devs prototype
  * sleep / activity / VBT algorithms on real data without a BLE stream (#308/#276/#322).
  *
  * Long format = one row per sample, with a `stream` discriminator and ONLY that stream's columns
@@ -49,12 +49,12 @@ object RawSensorExport {
     /**
      * Read each stream for [deviceId] over [from, to] (inclusive, unix seconds), merge by ts ascending,
      * and STREAM the combined long-format CSV body straight through [out] (CSV header row first). A high
-     * per-stream [limit] caps a runaway 24 h window without truncating a normal day. Returns a per-stream
+     * per-stream [limit] caps a runaway window without truncating a normal day. Returns a per-stream
      * count map.
      *
      * Memory: we hold one short CSV-line String per sample, sort by ts, and write each through [out]'s
      * buffer. The previous version built a multi-MB StringBuilder of the whole file AND then a second
-     * full copy via `header + csv` before writing — on a busy 24 h window that doubling tipped the export
+     * full copy via `header + csv` before writing — on a busy window that doubling tipped the export
      * into an OutOfMemoryError (#406). Keeping only the raw query rows + one line each, and never
      * materialising the whole file as a String, holds peak allocation roughly to the data itself.
      */
@@ -126,6 +126,9 @@ object RawSensorExport {
     /** ts + the fully-formatted CSV line for one sample (kept small so a whole day fits in memory). */
     private class LineRow(val ts: Long, val line: String)
 
+    /** Export window. A strap offload carries about a fortnight, so a shorter one hides most of it. */
+    const val OFFLOAD_WINDOW_DAYS = 14L
+
     /** Build one CSV line: `unix_s,iso_utc,stream` + the 15 value cells (only [set] indices filled). */
     private fun line(stream: String, ts: Long, vararg set: Pair<Int, String>): String {
         val sb = StringBuilder(96)
@@ -138,11 +141,16 @@ object RawSensorExport {
     }
 
     /**
-     * Build the last-24 h CSV for the strap source and fire a share sheet (text/csv). Runs the DB read
+     * Build the CSV for the strap source and fire a share sheet (text/csv). Runs the DB read
      * off the main thread; toasts a per-stream summary so the user sees what was captured (and that the
      * deeper 5/MG streams are empty until they've been unlocked). On-device only.
      */
-    suspend fun export(context: Context, repo: WhoopRepository, deviceId: String = "my-whoop") {
+    suspend fun export(
+        context: Context,
+        repo: WhoopRepository,
+        deviceId: String = "my-whoop",
+        windowDays: Long = OFFLOAD_WINDOW_DAYS,
+    ) {
         runCatching {
             val now = System.currentTimeMillis() / 1000
             val dir = File(context.cacheDir, "logs").apply { mkdirs() }
@@ -152,7 +160,7 @@ object RawSensorExport {
                 w.append("# NOOP raw sensor export · last 24h · long-format CSV\n")
                 w.append("# App: ${BuildConfig.VERSION_NAME} (${BuildConfig.TIER}) · Android ${Build.VERSION.RELEASE} (SDK ${Build.VERSION.SDK_INT}) · ${Build.MANUFACTURER} ${Build.MODEL}\n")
                 w.append("# One row per decoded sample; only the row's `stream` columns are filled. Times are UTC.\n")
-                writeCsv(w, repo, deviceId, now - 86_400, now)
+                writeCsv(w, repo, deviceId, now - windowDays * 86_400, now)
             }
 
             val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)

@@ -159,4 +159,25 @@ class BackupSyncTest {
         val out = BackupSync.restorableDocsNewestFirst(listOf(z, a), { it.docName }, { it.modified })
         assertEquals(listOf("a", "z"), out.map { it.id })
     }
+    @Test fun anotherBuildsSnapshotStillParsesAndOrders() {
+        // A debug or mock build tags its snapshots so a shared folder stays readable. Every build must
+        // still read the others' stamps, or restore ordering breaks across variants.
+        val ms = 1_782_000_000_000L
+        val tagged = "noop-backup-debug-" + BackupSync.snapshotName(ms).removePrefix("noop-backup-")
+        assertEquals(ms, BackupSync.snapshotTimeMs(tagged))
+        assertTrue(BackupSync.isSnapshot(tagged))
+    }
+
+    @Test fun pruneNeverDeletesAnotherBuildsSnapshots() {
+        // Sharing a backup folder must not let one app delete another's history: only snapshots
+        // carrying this build's own marker are prune candidates.
+        val mine = (0L until 5L).map { BackupSync.snapshotName(1_782_000_000_000L + it * 60_000L) }
+        val theirs = (0L until 5L).map {
+            "noop-backup-debug-" + BackupSync.snapshotName(1_782_000_000_000L + it * 60_000L)
+                .removePrefix("noop-backup-")
+        }
+        val pruned = BackupSync.snapshotsToPrune(mine + theirs, keep = 2)
+        assertEquals(3, pruned.size)
+        assertTrue("pruned another build's snapshot", pruned.none { it in theirs })
+    }
 }
