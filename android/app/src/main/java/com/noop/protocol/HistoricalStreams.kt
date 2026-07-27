@@ -368,6 +368,8 @@ fun extractHistoricalStreams(
                     rawU8At29 = p.intOrNull("raw_u8_29"),
                     rawU16At30 = p.intOrNull("raw_u16_30"),
                     rawF32At105 = p.doubleOrNull("raw_f32_105"),
+                    rawU16At26 = p.intOrNull("raw_u16_26"),
+                    unpinned = p["unpinned"] as? ByteArray,
                 )
                 if (!row.isEmpty) v18.add(row)
                 // step_motion_counter@57 is the WHOOP5 CUMULATIVE u16 counter. Stored raw; AnalyticsEngine

@@ -1,6 +1,7 @@
 package com.noop.protocol
 
 import com.noop.data.StreamPersistence
+import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -36,6 +37,8 @@ class RustAdapterTest {
         opticalAmpA: Int? = null,
         opticalSignalPoor: Boolean? = null,
         rawF32105: Float? = null,
+        rawU1626: Int? = null,
+        unpinned: ByteArray? = null,
     ) = HistorySummary(
         version = 18.toUByte(),
         unix = 1_784_000_000u,
@@ -67,6 +70,8 @@ class RustAdapterTest {
         rawU829 = null,
         rawU1630 = null,
         rawF32105 = rawF32105,
+        rawU1626 = rawU1626?.toUShort(),
+        unpinned = unpinned,
     )
 
     // ---- PRIMARY seam: HistorySummary → the flat map keys the offload loop reads (no native lib) --------
@@ -164,6 +169,16 @@ class RustAdapterTest {
         val bare = RustAdapter.summaryToHistMap(summary())
         listOf("temp_aux_1_raw", "record_index", "sleep_state_raw", "optical_amp_a", "raw_f32_105")
             .forEach { assertTrue("$it must be absent", !bare.containsKey(it)) }
+    }
+
+    @Test
+    fun `the packed unpinned bytes cross the seam intact`() {
+        val bytes = byteArrayOf(1, 2, 3, 0, 127, -1)
+        val m = RustAdapter.summaryToHistMap(summary(rawU1626 = 1068, unpinned = bytes))
+        assertEquals(1068, m["raw_u16_26"])
+        // Same bytes, not a copy-of-a-copy that silently truncated or re-encoded.
+        assertArrayEquals(bytes, m["unpinned"] as ByteArray)
+        assertTrue(!RustAdapter.summaryToHistMap(summary()).containsKey("unpinned"))
     }
 
     @Test

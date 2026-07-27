@@ -3460,6 +3460,13 @@ data class HistorySummary (
     var `rawU1630`: kotlin.UShort?
     , 
     var `rawF32105`: kotlin.Float?
+    , 
+    var `rawU1626`: kotlin.UShort?
+    , 
+    /**
+     * Every remaining per-second byte that carries information, packed. Opaque: store it whole.
+     */
+    var `unpinned`: kotlin.ByteArray?
     
 ){
     
@@ -3506,6 +3513,8 @@ public object FfiConverterTypeHistorySummary: FfiConverterRustBuffer<HistorySumm
             FfiConverterOptionalUByte.read(buf),
             FfiConverterOptionalUShort.read(buf),
             FfiConverterOptionalFloat.read(buf),
+            FfiConverterOptionalUShort.read(buf),
+            FfiConverterOptionalByteArray.read(buf),
         )
     }
 
@@ -3539,7 +3548,9 @@ public object FfiConverterTypeHistorySummary: FfiConverterRustBuffer<HistorySumm
             FfiConverterOptionalUByte.allocationSize(value.`rawU828`) +
             FfiConverterOptionalUByte.allocationSize(value.`rawU829`) +
             FfiConverterOptionalUShort.allocationSize(value.`rawU1630`) +
-            FfiConverterOptionalFloat.allocationSize(value.`rawF32105`)
+            FfiConverterOptionalFloat.allocationSize(value.`rawF32105`) +
+            FfiConverterOptionalUShort.allocationSize(value.`rawU1626`) +
+            FfiConverterOptionalByteArray.allocationSize(value.`unpinned`)
     )
 
     override fun write(value: HistorySummary, buf: ByteBuffer) {
@@ -3573,6 +3584,8 @@ public object FfiConverterTypeHistorySummary: FfiConverterRustBuffer<HistorySumm
             FfiConverterOptionalUByte.write(value.`rawU829`, buf)
             FfiConverterOptionalUShort.write(value.`rawU1630`, buf)
             FfiConverterOptionalFloat.write(value.`rawF32105`, buf)
+            FfiConverterOptionalUShort.write(value.`rawU1626`, buf)
+            FfiConverterOptionalByteArray.write(value.`unpinned`, buf)
     }
 }
 

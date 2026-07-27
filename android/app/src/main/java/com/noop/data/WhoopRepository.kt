@@ -137,13 +137,15 @@ data class V18Row(
     val rawU8At29: Int? = null,
     val rawU16At30: Int? = null,
     val rawF32At105: Double? = null,
+    val rawU16At26: Int? = null,
+    val unpinned: ByteArray? = null,
 ) {
     /** True when the record carried none of these, so the extractor can skip writing an all-null row. */
     val isEmpty: Boolean
         get() = recordIndex == null && sleepStateRaw == null && opticalBaselineA == null &&
             opticalBaselineB == null && opticalAmpA == null && opticalAmpB == null &&
             opticalSignalPoor == null && rawU8At28 == null && rawU8At29 == null &&
-            rawU16At30 == null && rawF32At105 == null
+            rawU16At30 == null && rawF32At105 == null && rawU16At26 == null && unpinned == null
 }
 /**
  * Cumulative u16 step/motion counter at [ts] (WHOOP5 step_motion_counter@57). deviceId attached on insert. (#78)
@@ -300,6 +302,8 @@ class WhoopRepository(private val dao: WhoopDao) {
                         rawU8At29 = it.rawU8At29,
                         rawU16At30 = it.rawU16At30,
                         rawF32At105 = it.rawF32At105,
+                        rawU16At26 = it.rawU16At26,
+                        unpinned = it.unpinned,
                     )
                 },
             )

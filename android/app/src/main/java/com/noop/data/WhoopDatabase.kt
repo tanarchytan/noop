@@ -100,6 +100,7 @@ abstract class WhoopDatabase : RoomDatabase() {
                         "`sleepStateRaw` INTEGER, `opticalBaselineA` INTEGER, `opticalBaselineB` INTEGER, " +
                         "`opticalAmpA` INTEGER, `opticalAmpB` INTEGER, `opticalSignalPoor` INTEGER, " +
                         "`rawU8At28` INTEGER, `rawU8At29` INTEGER, `rawU16At30` INTEGER, `rawF32At105` REAL, " +
+                        "`rawU16At26` INTEGER, `unpinned` BLOB, " +
                         "PRIMARY KEY(`deviceId`, `ts`))",
                 )
             }

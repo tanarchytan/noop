@@ -190,6 +190,10 @@ data class V18Sample(
     val rawU8At29: Int? = null,
     val rawU16At30: Int? = null,
     val rawF32At105: Double? = null,
+    val rawU16At26: Int? = null,
+    // The remaining per-second bytes that carry information, packed by the decoder. Stored whole and
+    // never read here: unpacking is the decoder's job, so the layout has one owner.
+    val unpinned: ByteArray? = null,
 )
 
 /**

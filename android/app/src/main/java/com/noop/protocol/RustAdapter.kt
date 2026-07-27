@@ -64,6 +64,8 @@ object RustAdapter {
         s.rawU829?.let { m["raw_u8_29"] = it.toInt() }
         s.rawU1630?.let { m["raw_u16_30"] = it.toInt() }
         s.rawF32105?.let { m["raw_f32_105"] = it.toDouble() }
+        s.rawU1626?.let { m["raw_u16_26"] = it.toInt() }
+        s.unpinned?.let { m["unpinned"] = it }
         return m
     }
 
