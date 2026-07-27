@@ -206,10 +206,11 @@ object HealthConnectImporter {
         fun bucket(day: String): DayAcc = acc.getOrPut(day) { DayAcc() }
 
         val workouts = ArrayList<WorkoutRow>()
-        // (startEpochS, endEpochS, kcal) of every active-calorie record, so an imported exercise
-        // session can be credited with the calories burned inside its window (#117). Garmin/Fit write
-        // ActiveCaloriesBurned as interval records; ExerciseSessionRecord itself carries no energy.
-        val activeKcalRecords = ArrayList<Triple<Long, Long, Double>>()
+        // Every energy record with its source, so a session can be credited with the calories burned
+        // inside its window: ExerciseSessionRecord carries no energy of its own. Source is kept because
+        // a phone and a watch both logging one ride must not be summed twice.
+        val activeKcalRecords = ArrayList<KcalRecord>()
+        val totalKcalRecords = ArrayList<KcalRecord>()
         // #983: HC-only users (no strap) had NO sleep at all — the importer collapsed each
         // SleepSessionRecord to a per-day minute total and never wrote a SleepSession row, so the Sleep
         // screen (which reads repo.sleepSessions) fell to its empty state. Keep each night's bounds +
@@ -233,6 +234,7 @@ object HealthConnectImporter {
                 val b = bucket(dayOf(r.startTime))
                 val src = r.metadata.dataOrigin.packageName
                 b.totalKcalBySource[src] = (b.totalKcalBySource[src] ?: 0.0) + r.energy.inKilocalories
+                totalKcalRecords.add(KcalRecord(src, r.startTime.epochSecond, r.endTime.epochSecond, r.energy.inKilocalories))
             }
             // --- Active calories burned ---
             // #589: per-SOURCE sums, max-across-sources at write-out (same overlap reasoning as steps). The
@@ -242,7 +244,7 @@ object HealthConnectImporter {
                 val b = bucket(dayOf(r.startTime))
                 val src = r.metadata.dataOrigin.packageName
                 b.activeKcalBySource[src] = (b.activeKcalBySource[src] ?: 0.0) + r.energy.inKilocalories
-                activeKcalRecords.add(Triple(r.startTime.epochSecond, r.endTime.epochSecond, r.energy.inKilocalories))
+                activeKcalRecords.add(KcalRecord(src, r.startTime.epochSecond, r.endTime.epochSecond, r.energy.inKilocalories))
             }
             // --- Heart rate (instantaneous samples) -> per-day average ---
             readAll(client, HeartRateRecord::class, filter, selfPackage) { r ->
@@ -381,7 +383,7 @@ object HealthConnectImporter {
                         sport = exerciseName(r),
                         source = HC_WORKOUT_SOURCE,
                         durationS = (endS - startS).toDouble().coerceAtLeast(0.0),
-                        energyKcal = sumActiveKcalInWindow(activeKcalRecords, startS, endS),
+                        energyKcal = null, // filled below, once every record is read
                         avgHr = null,
                         maxHr = null,
                         strain = null,
@@ -466,6 +468,18 @@ object HealthConnectImporter {
                 if (meters > 0.0) {
                     workouts[i] = w.copy(distanceM = round1(meters))
                 }
+            }
+
+            // Session energy, last: the total-derived estimate needs the day's basal burn, which is
+            // only known once every energy record has been read.
+            for (i in workouts.indices) {
+                val w = workouts[i]
+                val day = acc[dayOf(Instant.ofEpochSecond(w.startTs))]
+                val basal = day?.let {
+                    basalKcal(maxSourceDouble(it.totalKcalBySource), maxSourceDouble(it.activeKcalBySource))
+                }
+                val kcal = sessionKcal(activeKcalRecords, totalKcalRecords, w.startTs, w.endTs, basal)
+                if (kcal != null) workouts[i] = w.copy(energyKcal = kcal)
             }
         } catch (e: Exception) {
             return ImportSummary.failure(SOURCE, "Health Connect read failed: ${e.message}")
@@ -910,20 +924,52 @@ object HealthConnectImporter {
      * grossly over-credits. Returns null when nothing overlaps, so an energy-less session stays blank
      * rather than showing 0. (#117)
      */
-    internal fun sumActiveKcalInWindow(
-        records: List<Triple<Long, Long, Double>>,
+    /** One energy record: its source, its window, and the kilocalories it carries. */
+    internal data class KcalRecord(val source: String, val startS: Long, val endS: Long, val kcal: Double)
+
+    /**
+     * Kilocalories a source's records place inside `[startS, endS)`, prorated by overlap, summed WITHIN
+     * each source and maxed ACROSS them. Summing across sources double-counts a phone and a watch that
+     * both logged the same session; the day totals already de-overlap this way.
+     */
+    internal fun kcalInWindow(records: List<KcalRecord>, startS: Long, endS: Long): Double {
+        if (endS <= startS) return 0.0
+        val bySource = HashMap<String, Double>()
+        for (r in records) {
+            val overlap = minOf(endS, r.endS) - maxOf(startS, r.startS)
+            if (overlap <= 0L) continue
+            val recLen = (r.endS - r.startS).coerceAtLeast(1L)
+            bySource[r.source] = (bySource[r.source] ?: 0.0) + r.kcal * (overlap.toDouble() / recLen)
+        }
+        return bySource.values.maxOrNull() ?: 0.0
+    }
+
+    /**
+     * A session's energy, or null when neither stream covers it — never a fabricated number.
+     *
+     * Prefers whichever estimate is LARGER. The active-record figure is right when a source writes one
+     * record per session, and far too small when the only cover is a coarse daily record: prorating
+     * assumes calories burn uniformly, so a hard hour inside a 24-hour record reads as 1/24 of the day.
+     * The total-derived figure is the window's share of total burn minus its share of the day's basal,
+     * and prorating BASAL is sound in a way prorating a workout's active burn is not — basal really is
+     * near-uniform. Taking the larger lets real session cover win without a threshold.
+     */
+    internal fun sessionKcal(
+        active: List<KcalRecord>,
+        total: List<KcalRecord>,
         startS: Long,
         endS: Long,
+        dayBasalKcal: Double?,
+        daySeconds: Long = 86_400L,
     ): Double? {
         if (endS <= startS) return null
-        var total = 0.0
-        for ((rStart, rEnd, kcal) in records) {
-            val overlap = minOf(endS, rEnd) - maxOf(startS, rStart)
-            if (overlap <= 0L) continue
-            val recLen = (rEnd - rStart).coerceAtLeast(1L)
-            total += kcal * (overlap.toDouble() / recLen.toDouble())
+        val fromActive = kcalInWindow(active, startS, endS)
+        val windowTotal = kcalInWindow(total, startS, endS)
+        val fromTotal = if (windowTotal <= 0.0 || dayBasalKcal == null) 0.0 else {
+            val share = (endS - startS).toDouble() / daySeconds.toDouble()
+            windowTotal - dayBasalKcal * share
         }
-        return total.takeIf { it > 0.0 }
+        return maxOf(fromActive, fromTotal).takeIf { it > 0.0 }
     }
 
     /**
