@@ -105,15 +105,26 @@ WHOOP 4.0's first day — so it needs a release note, not a silent landing.
 
 ---
 
-## 5. In-app "What's New" is three releases stale — RESOLVED 2026-07-27
+## 5. Release commits never come back to dev — 2026-07-27
 
-`AppChangelog.CURRENT_VERSION` is `8.7.0`; the app is `9.0.2-dev-tan`. It never got entries for
-9.0.0-tan, the 9.0.1 candidates, or 9.0.1 itself.
+`fork-release.yml` bumps the version and generates the `AppChangelog.kt` entry, then commits that to
+the branch it ran on. For 9.0.1 that worked: `origin/stable` carries `b440867d` with
+`CURRENT_VERSION = "9.0.1-tan"`.
 
-Fixed by cutting 9.0.1: the release workflow ran `Tools/appchangelog-gen.py` against
-`docs/releases/v9.0.1-tan.md` and committed the entry, moving `CURRENT_VERSION` from `8.7.0` to
-`9.0.1-tan`. Nothing was hand-written. Kept here as the worked example: the fix for a stale in-app
-changelog is to cut a release with its notes file present, never to edit `AppChangelog.kt`.
+Nothing merges that commit back to `noop-tan`. Dev sat at `8.7.0` and would have shipped 9.0.2 with
+the 9.0.1 card missing from the list entirely. The 9.0.1 entry has now been carried back by hand.
+
+**This recurs at every release** unless the flow closes. Options, none taken yet: the workflow opens
+a PR back to dev; or cutting the next rc starts by merging `stable` into `noop-tan`; or the entry is
+generated on dev before the rc is cut, so the release branch inherits it.
+
+**Also open:** the shipped 9.0.1 entry tells users "Blood oxygen works on WHOOP 4.0 … an
+uncalibrated estimate". 9.0.2 withdraws that reading as unreliable. The card was kept as shipped —
+rewriting what a released version told people is a judgement call, not a cleanup.
+
+**A caution worth keeping:** the local `stable` and `rc/9.0.1-tan` refs were three commits stale, and
+reading them produced a confident and wrong diagnosis ("the workflow silently failed"). Fetch before
+concluding anything from a branch you did not just push.
 
 ---
 
