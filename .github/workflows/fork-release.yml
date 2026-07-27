@@ -150,8 +150,10 @@ jobs:
               printf -- '- **NOOP** — `NOOP-android-v%s.apk` (`%s`) — the app.\n' "$NEW" "$APPID"
               printf -- '- **NOOP Mock** — `NOOP-android-mock-v%s.apk` (`%s.mock`) — preloaded with synthetic data, installs alongside. For trying it out with no strap.\n' "$NEW" "$APPID"
             } >> "$BODY"
+            # Uniform title: NOOP <version>-stable · <date>. The versionName carries no "stable"
+            # marker, so it is added here; a candidate keeps its -rcN through the rc workflow.
             gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --target "$(git rev-parse HEAD)" \
-              --title "NOOP ${NEW}" --notes-file "$BODY"
+              --title "NOOP ${NEW%-tan}-stable · $(date -u +'%-d %B %Y')" --notes-file "$BODY"
           fi
 
   android:

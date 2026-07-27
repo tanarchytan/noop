@@ -68,8 +68,10 @@ jobs:
           if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             echo "Release $TAG exists — refreshing its assets, leaving the notes alone."
           else
+            # Same shape as the stable title, with the candidate marker in place of "stable".
             gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --prerelease \
-              --target "${{ github.sha }}" --title "NOOP v${VER} — release candidate" --notes-file "$BODY"
+              --target "${{ github.sha }}" \
+              --title "NOOP ${VER%-tan} · $(date -u +'%-d %B %Y')" --notes-file "$BODY"
           fi
 
   android:
