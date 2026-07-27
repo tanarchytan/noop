@@ -25,7 +25,7 @@ object AppChangelog {
      * Bump this when you add a release below. The "What's New" sheet shows automatically when the
      * stored last-seen version is behind this. (Decoupled from the bundle version on purpose.)
      */
-    const val CURRENT_VERSION = "8.7.0"
+    const val CURRENT_VERSION = "9.0.1-tan"
 
     data class Release(
         val version: String,
@@ -36,6 +36,20 @@ object AppChangelog {
 
     /** Newest first. */
     val releases: List<Release> = listOf(
+        Release(
+            version = "9.0.1-tan",
+            title = "NOOP has its own name, a body-clock age, and a real measure of sleep regularity",
+            date = "July 2026",
+            items = listOf(
+                "**NOOP now installs as its own app.** It no longer collides with other NOOP builds, so you can keep them side by side. Coming from an older NOOP, this arrives as a second app — bring your history over with Backup & Sync → Export backup file, then Restore from a backup here.",
+                "**Rhythm Age.** A body-clock age read from your on-wrist motion, charted against your real age and your fitness age. It needs about a week of wear before it first appears.",
+                "**Sleep regularity now measures your bedtime, not your sleep length.** A schedule that swings by hours used to score as perfectly regular; it no longer does. Time with the strap off counts as unknown rather than as being awake.",
+                "**End sleep, on Home.** While a night is still being tracked, one tap ends it and re-scores your day. It replaces two buttons that never did anything.",
+                "**Blood oxygen works on WHOOP 4.0**, shown as a percentage on the same card as 5.0/MG. The 4.0 figure is an uncalibrated estimate.",
+                "**Your age comes from a date of birth**, so every age-sensitive score uses your exact age instead of a rounded year.",
+                "**Backups restore across forks and versions**, matching on content rather than row order — and a restore can no longer quarantine your database or crash-loop on open.",
+            ),
+        ),
         Release(
             version = "8.7.0",
             title = "A sync chip on Today, clearer strap-clock warnings, and complete German",
