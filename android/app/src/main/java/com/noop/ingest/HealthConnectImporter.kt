@@ -9,6 +9,7 @@ import androidx.health.connect.client.records.DistanceRecord
 import androidx.health.connect.client.records.ExerciseSessionRecord
 import androidx.health.connect.client.records.HeartRateRecord
 import androidx.health.connect.client.records.HeartRateVariabilityRmssdRecord
+import androidx.health.connect.client.records.HeightRecord
 import androidx.health.connect.client.records.LeanBodyMassRecord
 import androidx.health.connect.client.records.OxygenSaturationRecord
 import androidx.health.connect.client.records.Record
@@ -103,6 +104,7 @@ object HealthConnectImporter {
         WeightRecord::class,
         BodyFatRecord::class,
         LeanBodyMassRecord::class,
+        HeightRecord::class,
         ExerciseSessionRecord::class,
         DistanceRecord::class,
     )
@@ -133,7 +135,12 @@ object HealthConnectImporter {
      * [heightCm] is the user's profile height, used ONLY to derive BMI on days that carry a weight
      * (Health Connect has no BMI record, unlike Apple Health). Pass 0.0 to skip BMI derivation.
      */
-    suspend fun import(context: Context, repo: WhoopRepository, heightCm: Double = 0.0): ImportSummary {
+    suspend fun import(
+        context: Context,
+        repo: WhoopRepository,
+        heightCm: Double = 0.0,
+        onBodyMeasurements: (weightKg: Double?, heightCm: Double?) -> Unit = { _, _ -> },
+    ): ImportSummary {
         if (sdkStatus(context) != HealthConnectClient.SDK_AVAILABLE) {
             return ImportSummary.failure(SOURCE, "Health Connect is not available on this device.")
         }
@@ -174,6 +181,13 @@ object HealthConnectImporter {
         val filter = TimeRangeFilter.between(start, end)
         // #528: skip our own writes on import (see readAll / isSelfWritten).
         val selfPackage = context.packageName
+        // Newest body measurements seen anywhere in the window. Height and weight are profile facts
+        // rather than daily series, so the most recent reading wins and is handed back to the caller
+        // to store on the profile — they feed BMI, BMR and the VO2 max estimate.
+        var newestWeightKg: Double? = null
+        var newestWeightTs = Long.MIN_VALUE
+        var newestHeightCm: Double? = null
+        var newestHeightTs = Long.MIN_VALUE
 
         // Per-day accumulators. Keyed by "YYYY-MM-DD" (local).
         val acc = HashMap<String, DayAcc>()
@@ -286,6 +300,18 @@ object HealthConnectImporter {
                 if (r.time.epochSecond >= b.weightTs) {
                     b.weightKg = r.weight.inKilograms
                     b.weightTs = r.time.epochSecond
+                }
+                if (r.time.epochSecond >= newestWeightTs) {
+                    newestWeightTs = r.time.epochSecond
+                    newestWeightKg = r.weight.inKilograms
+                }
+            }
+            // --- Height (cm) -> newest wins. Not bucketed per day: height is a profile fact, not a
+            // daily series, and it feeds BMI, BMR and the VO2 max estimate. ---
+            readAll(client, HeightRecord::class, filter, selfPackage) { r ->
+                if (r.time.epochSecond >= newestHeightTs) {
+                    newestHeightTs = r.time.epochSecond
+                    newestHeightCm = r.height.inMeters * 100.0
                 }
             }
             // --- Body fat (%) -> latest value of the day wins. Health Connect's Percentage.value is
@@ -534,6 +560,12 @@ object HealthConnectImporter {
             }
         } catch (e: Exception) {
             return ImportSummary.failure(SOURCE, "Saving Health Connect data failed: ${e.message}")
+        }
+
+        // Hand the newest body measurements back so the caller can refresh the profile. Done after the
+        // save so a failed import never moves the user's weight or height.
+        if (newestWeightKg != null || newestHeightCm != null) {
+            onBodyMeasurements(newestWeightKg, newestHeightCm)
         }
 
         val counts = buildMap {

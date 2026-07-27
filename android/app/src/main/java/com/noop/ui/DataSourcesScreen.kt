@@ -173,7 +173,8 @@ fun DataSourcesScreen(vm: AppViewModel, onOpenAppleHealth: () -> Unit = {}) {
         PermissionController.createRequestPermissionResultContract(),
     ) { granted ->
         if (granted.any { it in HealthConnectImporter.PERMISSIONS }) {
-            runImport { HealthConnectImporter.import(context, vm.repo, ProfileStore.from(context).heightCm) }
+            runImport { HealthConnectImporter.import(context, vm.repo, ProfileStore.from(context).heightCm,
+                onBodyMeasurements = { w, h -> ProfileStore.from(context).applyMeasured(w, h) }) }
         } else {
             Toast.makeText(context, "Health Connect access not granted.", Toast.LENGTH_LONG).show()
         }
@@ -190,7 +191,8 @@ fun DataSourcesScreen(vm: AppViewModel, onOpenAppleHealth: () -> Unit = {}) {
                 HealthConnectImporter.client(context).permissionController.getGrantedPermissions()
             }.getOrDefault(emptySet())
             if (granted.any { it in HealthConnectImporter.PERMISSIONS }) {
-                runImport { HealthConnectImporter.import(context, vm.repo, ProfileStore.from(context).heightCm) }
+                runImport { HealthConnectImporter.import(context, vm.repo, ProfileStore.from(context).heightCm,
+                onBodyMeasurements = { w, h -> ProfileStore.from(context).applyMeasured(w, h) }) }
             } else {
                 hcPermissionLauncher.launch(HealthConnectImporter.PERMISSIONS)
             }

@@ -11,11 +11,15 @@ import androidx.health.connect.client.records.OxygenSaturationRecord
 import androidx.health.connect.client.records.Record
 import androidx.health.connect.client.records.RespiratoryRateRecord
 import androidx.health.connect.client.records.RestingHeartRateRecord
+import androidx.health.connect.client.records.SkinTemperatureRecord
+import androidx.health.connect.client.records.Vo2MaxRecord
 import androidx.health.connect.client.records.SleepSessionRecord
 import androidx.health.connect.client.records.metadata.Device
 import androidx.health.connect.client.records.metadata.Metadata
 import androidx.health.connect.client.units.Length
 import androidx.health.connect.client.units.Percentage
+import androidx.health.connect.client.units.Temperature
+import androidx.health.connect.client.units.TemperatureDelta
 import com.noop.data.WhoopRepository
 import com.noop.data.WorkoutRow
 import com.noop.ui.NoopPrefs
@@ -51,6 +55,8 @@ object HealthConnectWriter {
         RespiratoryRateRecord::class,
         HeartRateRecord::class,
         SleepSessionRecord::class,
+        SkinTemperatureRecord::class,
+        Vo2MaxRecord::class,
     )
 
     /** The write-permission strings the UI must request before calling [write]. */
@@ -109,6 +115,21 @@ object HealthConnectWriter {
                 records.add(RespiratoryRateRecord(
                     time = instant, zoneOffset = offset, rate = it,
                     metadata = meta("resp", d.day, version),
+                ))
+            }
+            // Skin temperature is the one vital here that almost nothing else on a phone measures, so
+            // it is the most useful thing NOOP contributes. The absolute reading is the record's
+            // baseline; the nightly deviation rides along as a Delta so a reader gets both.
+            d.skinTempAbsC?.let { absC ->
+                records.add(SkinTemperatureRecord(
+                    startTime = instant, startZoneOffset = offset,
+                    endTime = instant.plusSeconds(1), endZoneOffset = offset,
+                    baseline = Temperature.celsius(absC),
+                    deltas = d.skinTempDevC?.let { dev ->
+                        listOf(SkinTemperatureRecord.Delta(instant, TemperatureDelta.celsius(dev)))
+                    } ?: emptyList(),
+                    measurementLocation = SkinTemperatureRecord.MEASUREMENT_LOCATION_WRIST,
+                    metadata = meta("skintemp", d.day, version),
                 ))
             }
         }

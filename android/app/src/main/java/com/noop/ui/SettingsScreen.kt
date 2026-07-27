@@ -150,6 +150,19 @@ class ProfileStore(private val prefs: SharedPreferences) {
         set(v) = prefs.edit().putFloat(KEY_HEIGHT, v.coerceIn(HEIGHT_MIN, HEIGHT_MAX).toFloat()).apply()
 
     /**
+     * Adopt body measurements read from a connected source (Health Connect). A measured value beats
+     * a typed one — a scale that syncs daily is more current than a number entered months ago — and
+     * these feed BMI, BMR and the VO2 max estimate, so a stale weight quietly skews all three.
+     *
+     * Only plausible readings are taken: anything outside the stored range is ignored rather than
+     * clamped, so one bad record can't silently pin the profile to a boundary. Nulls are no-ops.
+     */
+    fun applyMeasured(measuredWeightKg: Double?, measuredHeightCm: Double?) {
+        measuredWeightKg?.takeIf { it in WEIGHT_MIN..WEIGHT_MAX }?.let { weightKg = it }
+        measuredHeightCm?.takeIf { it in HEIGHT_MIN..HEIGHT_MAX }?.let { heightCm = it }
+    }
+
+    /**
  * Waist circumference in cm; 0 = unset (the Fitness Age VO₂max estimate is hidden until a waist
  * is entered). Optional — it only unlocks the VO₂max read-out and never moves the headline Fitness
  * Age (the engine's body term cancels). No coercion floor (0 has to remain a sentinel for "unset");
