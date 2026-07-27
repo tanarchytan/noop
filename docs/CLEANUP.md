@@ -130,10 +130,14 @@ concluding anything from a branch you did not just push.
 
 ## 6. Test fixtures
 
-- **`sleep-benchmark/fixtures_multi/e9night/n1118/truth.csv` is 0 lines** while its siblings hold
-  24750 (gravity), 23824 (hr) and 1359 (rr) rows. The dataset harness reports "no ground truth" for
-  e9night and scores four sets instead of five. Either restore the labels or drop the set from
-  `dataset_parity.rs`, so the report stops implying a fifth result is coming.
+- **`e9night` has no labels, and that is handled — NOT A BUG (checked 2026-07-27).** Its `truth.csv`
+  is 0 lines while gravity/hr/rr carry real data. Running the report shows it prints
+  `e9night  -  0  no ground truth` explicitly, never kappa 0, and the test is `#[ignore]`d and
+  report-only. The earlier note here claimed it implied a missing fifth result; it does not. Keep the
+  set: the signals are real, so labels arriving later make it score with no other change.
+- **The parity gates are alive.** The same run confirms AAUWSS kappa 0.412 and DREAMT 0.311 against
+  their shipped targets, and killa5 at 0.537 — these are the gates the `whoop data` rename silently
+  disabled for ten days, so they are worth re-confirming rather than assuming.
 - **`noop-pr-crossfork/` still has 5 stale `whoop data/` fixture paths** — the same rename that
   silently disabled three parity gates here for ten days. That tree targets `ryanbr/noop`, where the
   absolute Windows paths would never resolve anyway, so it is cosmetic; worth fixing before that PR
