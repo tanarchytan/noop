@@ -3805,8 +3805,8 @@ class WhoopBleClient(
                         // flood — the offload flag lets analysis filter), BEFORE routing so frames
                         // are retained before the trim ack deletes the strap's copy. No-op (single
                         // null check) when the toggle is off. (#78 fork)
-                        if (connectedFamily == DeviceFamily.WHOOP5 && captureWriter != null) {
-                            writeWhoop5BackfillCapture(uuid.toString(), frame, parsed)
+                        if (captureWriter != null) {
+                            writeBackfillCapture(uuid.toString(), frame, parsed)
                         }
                         // Historical offload: route ONLY genuine offload frames (47/48/49/50) through
                         // the serial drain (preserves chunk order) + re-arm the idle watchdog on them.
@@ -4857,8 +4857,8 @@ class WhoopBleClient(
         _state.update { it.copy(backfilling = true, syncChunksThisSession = 0) }
         refreshConnectionPriority()   // #477: escalate to HIGH for the offload burst (faster sync). No-op unless enabled.
         // Opt-in raw capture (research aid): pref read fresh per session, like the probes gate.
-        if (connectedFamily == DeviceFamily.WHOOP5 && PuffinExperiment.from(context).isCaptureEnabled) {
-            startWhoop5BackfillCapture()
+        if (PuffinExperiment.from(context).isCaptureEnabled) {
+            startBackfillCapture()
         }
         if (connectedFamily == DeviceFamily.WHOOP5) {
 
@@ -5744,7 +5744,7 @@ class WhoopBleClient(
     private var captureSessionId = ""
     private val captureSummary = BackfillCaptureSummary()
 
-    private fun startWhoop5BackfillCapture() {
+    private fun startBackfillCapture() {
         if (captureWriter != null || captureDisabled) return
         runCatching {
             val f = java.io.File(context.filesDir, WHOOP5_CAPTURE_FILE)
@@ -5756,16 +5756,16 @@ class WhoopBleClient(
             }
             captureWriter = java.io.BufferedWriter(java.io.FileWriter(f, true))
             captureLines = 0
-            captureSessionId = "whoop5-${System.currentTimeMillis()}"
+            captureSessionId = "${connectedFamily?.name?.lowercase() ?: "unknown"}-${System.currentTimeMillis()}"
             captureSummary.reset()
-            log("Capture: 5/MG backfill capture started ($captureSessionId)")
+            log("Capture: backfill capture started ($captureSessionId)")
         }.onFailure {
             captureDisabled = true
             log("Capture: could not open capture file (${it.message}) — capture disabled")
         }
     }
 
-    private fun writeWhoop5BackfillCapture(characteristic: String, frame: ByteArray, parsed: com.noop.protocol.ParsedFrame) {
+    private fun writeBackfillCapture(characteristic: String, frame: ByteArray, parsed: com.noop.protocol.ParsedFrame) {
         val w = captureWriter ?: return
         runCatching {
             // #47: reuse the whoop-rs-decoded frame the inbound loop already produced (no re-parse). The
