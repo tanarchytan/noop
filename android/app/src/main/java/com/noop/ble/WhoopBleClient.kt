@@ -916,6 +916,11 @@ class WhoopBleClient(
          *  cover before recent nights land (#364). */
         fun dataRangeOldestUnix(frame: ByteArray): Long? = com.noop.protocol.RustCodec.dataRangeOldest(frame)
 
+        /** Pages the strap has banked but not yet sent, read off its ring cursors. Diagnostic only —
+         *  it reports how far a sync has to go and never gates one. */
+        fun dataRangePagesBehind(frame: ByteArray): Long? =
+            com.noop.protocol.RustCodec.dataRangePagesBehind(frame)
+
         /** #364 auto-continue cap: consecutive immediate re-kicks per connection before falling back to
          *  the 900s periodic timer. 6 × ~60s ≈ 6 min of back-to-back draining without letting a
          *  misbehaving strap monopolise Bluetooth. Mirrors Swift BackfillContinuation.defaultMaxAutoContinues. */
@@ -3768,6 +3773,11 @@ class WhoopBleClient(
                                 val spanDays = (it - oldestUnix) / 86_400L
                                 log("Strap banked history span: ${fmt.format(java.util.Date(oldestUnix * 1000L))} → newest " +
                                     "(~$spanDays day${if (spanDays == 1L) "" else "s"} of backlog, drained oldest-first)")
+                            }
+                            // The strap's own count of what it has banked but not sent, from its ring
+                            // cursors — the backlog measured in pages rather than inferred from the span.
+                            dataRangePagesBehind(frame)?.let { pages ->
+                                log("Strap pages behind: $pages")
                             }
                             // CAPTURE-B parity: promote the CLOCK-DRIFT picture from the buried raw frames to
                             // one upfront line in the UNIVERSAL block - the strap-reported [oldest, newest]

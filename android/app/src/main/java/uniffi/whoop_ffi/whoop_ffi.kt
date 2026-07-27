@@ -701,6 +701,8 @@ internal object IntegrityCheckingUniffiLib {
     ): Int
     external fun uniffi_whoop_ffi_checksum_func_data_range_oldest(
     ): Int
+    external fun uniffi_whoop_ffi_checksum_func_data_range_pages_behind(
+    ): Int
     external fun uniffi_whoop_ffi_checksum_func_daytime_stress(
     ): Int
     external fun uniffi_whoop_ffi_checksum_func_fitness_age_compute(
@@ -979,6 +981,8 @@ internal object UniffiLib {
     ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_func_data_range_oldest(`frame`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
+    external fun uniffi_whoop_ffi_fn_func_data_range_pages_behind(`frame`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_func_daytime_stress(`hours`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_func_fitness_age_compute(`age`: Double,`sex`: RustBuffer.ByValue,`restingHr`: Double,`paIndex`: Double,`waistCm`: RustBuffer.ByValue,`lowerConfidence`: Byte,uniffi_out_err: UniffiRustCallStatus, 
@@ -1242,6 +1246,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_whoop_ffi_checksum_func_data_range_oldest() != 344) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_whoop_ffi_checksum_func_data_range_pages_behind() != 18692) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_whoop_ffi_checksum_func_daytime_stress() != 64174) {
@@ -9915,6 +9922,21 @@ public object FfiConverterSequenceOptionalDouble: FfiConverterRustBuffer<List<ko
             return FfiConverterOptionalUInt.lift(
     uniffiRustCall() { _status ->
     UniffiLib.uniffi_whoop_ffi_fn_func_data_range_oldest(
+    
+        
+        FfiConverterByteArray.lower(`frame`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Pages the strap has banked but not yet sent, from a GET_DATA_RANGE frame. Diagnostic: it reports how
+         * far a sync has to go and never gates one.
+         */ fun `dataRangePagesBehind`(`frame`: kotlin.ByteArray): kotlin.UInt? {
+            return FfiConverterOptionalUInt.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_func_data_range_pages_behind(
     
         
         FfiConverterByteArray.lower(`frame`),_status)

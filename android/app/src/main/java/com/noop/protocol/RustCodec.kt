@@ -12,6 +12,7 @@ import uniffi.whoop_ffi.RrRun
 import uniffi.whoop_ffi.WhoopCodec
 import uniffi.whoop_ffi.dataRangeNewest as ffiDataRangeNewest
 import uniffi.whoop_ffi.dataRangeOldest as ffiDataRangeOldest
+import uniffi.whoop_ffi.dataRangePagesBehind as ffiDataRangePagesBehind
 import uniffi.whoop_ffi.hrvRmssdGapAware
 import uniffi.whoop_ffi.ppgHr
 
@@ -45,6 +46,9 @@ object RustCodec {
 
     /** Oldest plausible unix banked (backlog depth), aligned-from-7 grid. */
     fun dataRangeOldest(frame: ByteArray): Long? = ffiDataRangeOldest(frame)?.toLong()
+
+    /** Pages banked but not yet sent, from the strap's own ring cursors. Diagnostic only. */
+    fun dataRangePagesBehind(frame: ByteArray): Long? = ffiDataRangePagesBehind(frame)?.toLong()
 
     /** Decode one v26 optical-PPG frame (24 samples + unix), or null. WHOOP 5/MG only. */
     fun decodePpg(frame: ByteArray): PpgFrame? = gen5.decodePpgFrame(frame)
