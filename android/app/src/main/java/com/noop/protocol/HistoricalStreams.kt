@@ -10,6 +10,7 @@ import com.noop.data.RespRow
 import com.noop.data.RrRow
 import com.noop.data.SkinTempRow
 import com.noop.data.SleepStateRow
+import com.noop.data.V18Row
 import com.noop.data.Spo2PctRow
 import com.noop.data.Spo2Row
 import com.noop.data.StepRow
@@ -276,6 +277,7 @@ fun extractHistoricalStreams(
     val spo2 = ArrayList<Spo2Row>()
     val spo2Pct = ArrayList<Spo2PctRow>()
     val skinTemp = ArrayList<SkinTempRow>()
+    val v18 = ArrayList<V18Row>()
     val steps = ArrayList<StepRow>()
     val sleepState = ArrayList<SleepStateRow>()
     val resp = ArrayList<RespRow>()
@@ -339,7 +341,35 @@ fun extractHistoricalStreams(
                 // 5/MG v18 sleep SpO2 percent (@frame-82). whoop-rs already sleep-gates it and drops
                 // sentinels, so a present key is a real physiological reading; banked as its own stream.
                 p.intOrNull("spo2_pct")?.let { pct -> spo2Pct.add(Spo2PctRow(ts, pct)) }
-                p.intOrNull("skin_temp_raw")?.let { raw -> skinTemp.add(SkinTempRow(ts, raw)) }
+                p.intOrNull("skin_temp_raw")?.let { raw ->
+                    // The two auxiliary thermal registers ride the same record in DECI-degrees; worn they
+                    // sit below the skin channel and off-wrist all three converge on ambient.
+                    skinTemp.add(
+                        SkinTempRow(
+                            ts,
+                            raw,
+                            auxRaw1 = p.intOrNull("temp_aux_1_raw"),
+                            auxRaw2 = p.intOrNull("temp_aux_2_raw"),
+                        ),
+                    )
+                }
+                // The record counter and optical telemetry have no biometric stream to ride, and this
+                // funnel drops whatever it does not name, so they get their own row per v18 second.
+                val row = V18Row(
+                    ts,
+                    recordIndex = p.longOrNull("record_index"),
+                    sleepStateRaw = p.intOrNull("sleep_state_raw"),
+                    opticalBaselineA = p.intOrNull("optical_baseline_a"),
+                    opticalBaselineB = p.intOrNull("optical_baseline_b"),
+                    opticalAmpA = p.intOrNull("optical_amp_a"),
+                    opticalAmpB = p.intOrNull("optical_amp_b"),
+                    opticalSignalPoor = p.booleanOrNull("optical_signal_poor"),
+                    rawU8At28 = p.intOrNull("raw_u8_28"),
+                    rawU8At29 = p.intOrNull("raw_u8_29"),
+                    rawU16At30 = p.intOrNull("raw_u16_30"),
+                    rawF32At105 = p.doubleOrNull("raw_f32_105"),
+                )
+                if (!row.isEmpty) v18.add(row)
                 // step_motion_counter@57 is the WHOOP5 CUMULATIVE u16 counter. Stored raw; AnalyticsEngine
                 // derives the daily step total from counter deltas. APPROXIMATE — @57 semantics unverified
                 // vs the official app. (#78)
@@ -422,7 +452,7 @@ fun extractHistoricalStreams(
 
     return StreamBatch(
         hr = hr, rr = rr, events = events, battery = battery,
-        spo2 = spo2, spo2Pct = spo2Pct, skinTemp = skinTemp, resp = resp, gravity = gravity, steps = steps,
+        spo2 = spo2, spo2Pct = spo2Pct, skinTemp = skinTemp, v18 = v18, resp = resp, gravity = gravity, steps = steps,
         sleepState = sleepState,
         ppgHr = ppgHr,
         ppgWaveform = ppgWaveform,

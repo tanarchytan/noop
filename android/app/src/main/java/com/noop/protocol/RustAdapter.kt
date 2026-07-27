@@ -51,6 +51,19 @@ object RustAdapter {
             }
         }
         s.dynamicAccelerationG?.let { m["dynamic_acceleration_g"] = it.toDouble() }
+        s.tempAux1Raw?.let { m["temp_aux_1_raw"] = it.toInt() }
+        s.tempAux2Raw?.let { m["temp_aux_2_raw"] = it.toInt() }
+        s.recordIndex?.let { m["record_index"] = it.toLong() }
+        s.sleepStateRaw?.let { m["sleep_state_raw"] = it.toInt() }
+        s.opticalBaselineA?.let { m["optical_baseline_a"] = it.toInt() }
+        s.opticalBaselineB?.let { m["optical_baseline_b"] = it.toInt() }
+        s.opticalAmpA?.let { m["optical_amp_a"] = it.toInt() }
+        s.opticalAmpB?.let { m["optical_amp_b"] = it.toInt() }
+        s.opticalSignalPoor?.let { m["optical_signal_poor"] = it }
+        s.rawU828?.let { m["raw_u8_28"] = it.toInt() }
+        s.rawU829?.let { m["raw_u8_29"] = it.toInt() }
+        s.rawU1630?.let { m["raw_u16_30"] = it.toInt() }
+        s.rawF32105?.let { m["raw_f32_105"] = it.toDouble() }
         return m
     }
 

@@ -157,7 +157,39 @@ data class SkinTempSample(
     val deviceId: String,
     val ts: Long,
     val raw: Int,
+    // The record's two auxiliary thermal registers, in DECI-degrees C where [raw] is centi-degrees.
+    // Nullable with no SQL DEFAULT: rows written before the columns existed read back null, and a
+    // WHOOP 4.0 never carries them.
+    val auxRaw1: Int? = null,
+    val auxRaw2: Int? = null,
     val synced: Int = 0,
+)
+
+/**
+ * The 5/MG v18 per-second channels with no biometric stream of their own: the strap's dense record
+ * counter (one step per second, independent of its clock) and the optical front-end telemetry.
+ * Instrumentation — nothing scores or displays it. PK (deviceId, ts).
+ */
+@Entity(tableName = "v18Sample", primaryKeys = ["deviceId", "ts"])
+data class V18Sample(
+    val deviceId: String,
+    val ts: Long,
+    val recordIndex: Long? = null,
+    /** The whole packed byte whose bits 4-5 [SleepStateSampleEntity.state] carries. */
+    val sleepStateRaw: Int? = null,
+    val opticalBaselineA: Int? = null,
+    val opticalBaselineB: Int? = null,
+    // Withheld by the decoder when the band flags the second's beat detection, which [opticalSignalPoor]
+    // reports instead — so a null amplitude beside a true flag is a sentinel, not a missing read.
+    val opticalAmpA: Int? = null,
+    val opticalAmpB: Int? = null,
+    val opticalSignalPoor: Boolean? = null,
+    // Carried every second with no established meaning, named for their offset in the record so the
+    // column claims nothing. Stored because the strap discards its history once an offload is acked.
+    val rawU8At28: Int? = null,
+    val rawU8At29: Int? = null,
+    val rawU16At30: Int? = null,
+    val rawF32At105: Double? = null,
 )
 
 /**

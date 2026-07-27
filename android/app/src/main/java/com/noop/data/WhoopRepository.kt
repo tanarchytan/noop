@@ -27,6 +27,8 @@ data class StreamBatch(
      */
     val spo2Pct: List<Spo2PctRow> = emptyList(),
     val skinTemp: List<SkinTempRow> = emptyList(),
+    /** The v18 record counter + optical telemetry that no biometric stream carries. */
+    val v18: List<V18Row> = emptyList(),
     val resp: List<RespRow> = emptyList(),
     val gravity: List<GravityRow> = emptyList(),
     val steps: List<StepRow> = emptyList(),
@@ -70,7 +72,8 @@ data class StreamBatch(
     val isEmpty: Boolean
         get() = hr.isEmpty() && rr.isEmpty() && events.isEmpty() && battery.isEmpty() &&
             spo2.isEmpty() && spo2Pct.isEmpty() && skinTemp.isEmpty() && resp.isEmpty() && gravity.isEmpty() &&
-            steps.isEmpty() && sleepState.isEmpty() && ppgHr.isEmpty() && ppgWaveform.isEmpty()
+            steps.isEmpty() && sleepState.isEmpty() && ppgHr.isEmpty() && ppgWaveform.isEmpty() &&
+            v18.isEmpty()
 }
 
 // Device-agnostic decoded rows (deviceId attached when inserted). Mirror Streams.swift shapes.
@@ -112,7 +115,36 @@ data class BatteryRow(val ts: Long, val soc: Double?, val mv: Int?, val charging
 data class Spo2Row(val ts: Long, val red: Int, val ir: Int)
 /** WHOOP 5.0/MG sleep SpO2 percent at [ts] (v18 @frame-82). deviceId attached on insert. Wellness estimate. */
 data class Spo2PctRow(val ts: Long, val pct: Int)
-data class SkinTempRow(val ts: Long, val raw: Int)
+/** [auxRaw1]/[auxRaw2] are the two auxiliary thermal registers riding the same record, in DECI-degrees
+ *  where [raw] is centi-degrees. Null on a WHOOP 4.0 and on any record too short to carry them. */
+data class SkinTempRow(val ts: Long, val raw: Int, val auxRaw1: Int? = null, val auxRaw2: Int? = null)
+
+/**
+ * The 5/MG v18 per-second channels that have no home on a biometric stream: the strap's own record
+ * counter and its optical front-end telemetry. One row per v18 second, written alongside the streams
+ * the same record produces. Instrumentation — no score or UI reads it.
+ */
+data class V18Row(
+    val ts: Long,
+    val recordIndex: Long? = null,
+    val sleepStateRaw: Int? = null,
+    val opticalBaselineA: Int? = null,
+    val opticalBaselineB: Int? = null,
+    val opticalAmpA: Int? = null,
+    val opticalAmpB: Int? = null,
+    val opticalSignalPoor: Boolean? = null,
+    val rawU8At28: Int? = null,
+    val rawU8At29: Int? = null,
+    val rawU16At30: Int? = null,
+    val rawF32At105: Double? = null,
+) {
+    /** True when the record carried none of these, so the extractor can skip writing an all-null row. */
+    val isEmpty: Boolean
+        get() = recordIndex == null && sleepStateRaw == null && opticalBaselineA == null &&
+            opticalBaselineB == null && opticalAmpA == null && opticalAmpB == null &&
+            opticalSignalPoor == null && rawU8At28 == null && rawU8At29 == null &&
+            rawU16At30 == null && rawF32At105 == null
+}
 /**
  * Cumulative u16 step/motion counter at [ts] (WHOOP5 step_motion_counter@57). deviceId attached on insert. (#78)
  * [activityClass] is the per-record activity-class enum from @63 (community finding #316): 0=still, 1=walk,
@@ -250,7 +282,28 @@ class WhoopRepository(private val dao: WhoopDao) {
             dao.insertSpo2Pct(streams.spo2Pct.map { Spo2PctSample(deviceId, it.ts, it.pct) })
         }
         val skinIds = if (streams.skinTemp.isEmpty()) emptyList() else
-            dao.insertSkinTemp(streams.skinTemp.map { SkinTempSample(deviceId, it.ts, it.raw) })
+            dao.insertSkinTemp(streams.skinTemp.map { SkinTempSample(deviceId, it.ts, it.raw, it.auxRaw1, it.auxRaw2) })
+        if (streams.v18.isNotEmpty()) {
+            dao.insertV18(
+                streams.v18.map {
+                    V18Sample(
+                        deviceId = deviceId,
+                        ts = it.ts,
+                        recordIndex = it.recordIndex,
+                        sleepStateRaw = it.sleepStateRaw,
+                        opticalBaselineA = it.opticalBaselineA,
+                        opticalBaselineB = it.opticalBaselineB,
+                        opticalAmpA = it.opticalAmpA,
+                        opticalAmpB = it.opticalAmpB,
+                        opticalSignalPoor = it.opticalSignalPoor,
+                        rawU8At28 = it.rawU8At28,
+                        rawU8At29 = it.rawU8At29,
+                        rawU16At30 = it.rawU16At30,
+                        rawF32At105 = it.rawF32At105,
+                    )
+                },
+            )
+        }
         // activityClass (#316, v13 column) is the @63 activity-class enum (0=still/1=walk/2=run) the decoder
         // already carries on each StepRow; it was dropped here before v13 (the insert listed only ts/counter).
         // it.activityClass is null when the @63 byte was 0xFF/invalid/absent → stored as SQL NULL.

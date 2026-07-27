@@ -3427,6 +3427,32 @@ data class HistorySummary (
     var `signalQuality`: kotlin.UByte?
     , 
     var `dynamicAccelerationG`: kotlin.Float?
+    , 
+    var `opticalBaselineA`: kotlin.UByte?
+    , 
+    var `opticalBaselineB`: kotlin.UByte?
+    , 
+    var `opticalAmpA`: kotlin.UByte?
+    , 
+    var `opticalAmpB`: kotlin.UByte?
+    , 
+    var `opticalSignalPoor`: kotlin.Boolean?
+    , 
+    var `recordIndex`: kotlin.UInt?
+    , 
+    var `tempAux1Raw`: kotlin.UShort?
+    , 
+    var `tempAux2Raw`: kotlin.UShort?
+    , 
+    var `sleepStateRaw`: kotlin.UByte?
+    , 
+    var `rawU828`: kotlin.UByte?
+    , 
+    var `rawU829`: kotlin.UByte?
+    , 
+    var `rawU1630`: kotlin.UShort?
+    , 
+    var `rawF32105`: kotlin.Float?
     
 ){
     
@@ -3460,6 +3486,19 @@ public object FfiConverterTypeHistorySummary: FfiConverterRustBuffer<HistorySumm
             FfiConverterOptionalUByte.read(buf),
             FfiConverterOptionalUByte.read(buf),
             FfiConverterOptionalFloat.read(buf),
+            FfiConverterOptionalUByte.read(buf),
+            FfiConverterOptionalUByte.read(buf),
+            FfiConverterOptionalUByte.read(buf),
+            FfiConverterOptionalUByte.read(buf),
+            FfiConverterOptionalBoolean.read(buf),
+            FfiConverterOptionalUInt.read(buf),
+            FfiConverterOptionalUShort.read(buf),
+            FfiConverterOptionalUShort.read(buf),
+            FfiConverterOptionalUByte.read(buf),
+            FfiConverterOptionalUByte.read(buf),
+            FfiConverterOptionalUByte.read(buf),
+            FfiConverterOptionalUShort.read(buf),
+            FfiConverterOptionalFloat.read(buf),
         )
     }
 
@@ -3480,7 +3519,20 @@ public object FfiConverterTypeHistorySummary: FfiConverterRustBuffer<HistorySumm
             FfiConverterOptionalUByte.allocationSize(value.`sleepState`) +
             FfiConverterOptionalUByte.allocationSize(value.`signalFlags`) +
             FfiConverterOptionalUByte.allocationSize(value.`signalQuality`) +
-            FfiConverterOptionalFloat.allocationSize(value.`dynamicAccelerationG`)
+            FfiConverterOptionalFloat.allocationSize(value.`dynamicAccelerationG`) +
+            FfiConverterOptionalUByte.allocationSize(value.`opticalBaselineA`) +
+            FfiConverterOptionalUByte.allocationSize(value.`opticalBaselineB`) +
+            FfiConverterOptionalUByte.allocationSize(value.`opticalAmpA`) +
+            FfiConverterOptionalUByte.allocationSize(value.`opticalAmpB`) +
+            FfiConverterOptionalBoolean.allocationSize(value.`opticalSignalPoor`) +
+            FfiConverterOptionalUInt.allocationSize(value.`recordIndex`) +
+            FfiConverterOptionalUShort.allocationSize(value.`tempAux1Raw`) +
+            FfiConverterOptionalUShort.allocationSize(value.`tempAux2Raw`) +
+            FfiConverterOptionalUByte.allocationSize(value.`sleepStateRaw`) +
+            FfiConverterOptionalUByte.allocationSize(value.`rawU828`) +
+            FfiConverterOptionalUByte.allocationSize(value.`rawU829`) +
+            FfiConverterOptionalUShort.allocationSize(value.`rawU1630`) +
+            FfiConverterOptionalFloat.allocationSize(value.`rawF32105`)
     )
 
     override fun write(value: HistorySummary, buf: ByteBuffer) {
@@ -3501,6 +3553,19 @@ public object FfiConverterTypeHistorySummary: FfiConverterRustBuffer<HistorySumm
             FfiConverterOptionalUByte.write(value.`signalFlags`, buf)
             FfiConverterOptionalUByte.write(value.`signalQuality`, buf)
             FfiConverterOptionalFloat.write(value.`dynamicAccelerationG`, buf)
+            FfiConverterOptionalUByte.write(value.`opticalBaselineA`, buf)
+            FfiConverterOptionalUByte.write(value.`opticalBaselineB`, buf)
+            FfiConverterOptionalUByte.write(value.`opticalAmpA`, buf)
+            FfiConverterOptionalUByte.write(value.`opticalAmpB`, buf)
+            FfiConverterOptionalBoolean.write(value.`opticalSignalPoor`, buf)
+            FfiConverterOptionalUInt.write(value.`recordIndex`, buf)
+            FfiConverterOptionalUShort.write(value.`tempAux1Raw`, buf)
+            FfiConverterOptionalUShort.write(value.`tempAux2Raw`, buf)
+            FfiConverterOptionalUByte.write(value.`sleepStateRaw`, buf)
+            FfiConverterOptionalUByte.write(value.`rawU828`, buf)
+            FfiConverterOptionalUByte.write(value.`rawU829`, buf)
+            FfiConverterOptionalUShort.write(value.`rawU1630`, buf)
+            FfiConverterOptionalFloat.write(value.`rawF32105`, buf)
     }
 }
 

@@ -28,6 +28,14 @@ class RustAdapterTest {
         activityClass: Int? = null,
         sleepState: Int? = null,
         dynamicAccelerationG: Float? = null,
+        tempAux1Raw: Int? = null,
+        tempAux2Raw: Int? = null,
+        recordIndex: Long? = null,
+        sleepStateRaw: Int? = null,
+        opticalBaselineA: Int? = null,
+        opticalAmpA: Int? = null,
+        opticalSignalPoor: Boolean? = null,
+        rawF32105: Float? = null,
     ) = HistorySummary(
         version = 18.toUByte(),
         unix = 1_784_000_000u,
@@ -46,6 +54,19 @@ class RustAdapterTest {
         signalFlags = null,
         signalQuality = null,
         dynamicAccelerationG = dynamicAccelerationG,
+        opticalBaselineA = opticalBaselineA?.toUByte(),
+        opticalBaselineB = null,
+        opticalAmpA = opticalAmpA?.toUByte(),
+        opticalAmpB = null,
+        opticalSignalPoor = opticalSignalPoor,
+        recordIndex = recordIndex?.toUInt(),
+        tempAux1Raw = tempAux1Raw?.toUShort(),
+        tempAux2Raw = tempAux2Raw?.toUShort(),
+        sleepStateRaw = sleepStateRaw?.toUByte(),
+        rawU828 = null,
+        rawU829 = null,
+        rawU1630 = null,
+        rawF32105 = rawF32105,
     )
 
     // ---- PRIMARY seam: HistorySummary → the flat map keys the offload loop reads (no native lib) --------
@@ -119,5 +140,38 @@ class RustAdapterTest {
         assertTrue(!ef.residual.containsKey("battery_pct")) // deci 1200 > 1100 store gate
         assertTrue(!ef.residual.containsKey("battery_mV")) // 4382 > 4300 store gate
         assertEquals("a3500000", ef.residual["event_payload_hex"])
+    }
+
+    // ---- the per-second channels the funnel used to decode and drop ---------------------------------
+
+    @Test
+    fun `summaryToHistMap carries the aux channels and omits the absent ones`() {
+        val m = RustAdapter.summaryToHistMap(
+            summary(
+                tempAux1Raw = 337, tempAux2Raw = 345, recordIndex = 24_557_414L, sleepStateRaw = 1,
+                opticalBaselineA = 157, opticalAmpA = 48, opticalSignalPoor = false, rawF32105 = -4.87f,
+            ),
+        )
+        assertEquals(337, m["temp_aux_1_raw"])
+        assertEquals(345, m["temp_aux_2_raw"])
+        assertEquals(24_557_414L, m["record_index"]) // Long: a u32 record index overflows an Int
+        assertEquals(1, m["sleep_state_raw"])
+        assertEquals(157, m["optical_baseline_a"])
+        assertEquals(48, m["optical_amp_a"])
+        assertEquals(false, m["optical_signal_poor"])
+        assertEquals(-4.87, m["raw_f32_105"] as Double, 1e-6)
+        // Absent stays absent: a key must never appear holding a fabricated zero.
+        val bare = RustAdapter.summaryToHistMap(summary())
+        listOf("temp_aux_1_raw", "record_index", "sleep_state_raw", "optical_amp_a", "raw_f32_105")
+            .forEach { assertTrue("$it must be absent", !bare.containsKey(it)) }
+    }
+
+    @Test
+    fun `a false signal-poor flag is banked, not treated as absent`() {
+        // The flag is only meaningful beside the amplitudes, so `false` is a reading and must survive
+        // the nullable mapping that drops genuinely-absent keys.
+        val m = RustAdapter.summaryToHistMap(summary(opticalSignalPoor = false))
+        assertTrue(m.containsKey("optical_signal_poor"))
+        assertEquals(false, m["optical_signal_poor"])
     }
 }

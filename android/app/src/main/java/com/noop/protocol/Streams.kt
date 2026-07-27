@@ -275,6 +275,13 @@ internal fun Map<String, Any?>.intOrNull(key: String): Int? = when (val v = this
     else -> null
 }
 
+/** Widening accessor for the u32 keys an Int cannot hold across their full range. */
+internal fun Map<String, Any?>.longOrNull(key: String): Long? = when (val v = this[key]) {
+    is Long -> v
+    is Int -> v.toLong()
+    else -> null
+}
+
 internal fun Map<String, Any?>.doubleOrNull(key: String): Double? = when (val v = this[key]) {
     is Double -> v
     is Int -> v.toDouble()
@@ -283,6 +290,8 @@ internal fun Map<String, Any?>.doubleOrNull(key: String): Double? = when (val v 
 }
 
 internal fun Map<String, Any?>.stringOrNull(key: String): String? = this[key] as? String
+
+internal fun Map<String, Any?>.booleanOrNull(key: String): Boolean? = this[key] as? Boolean
 
 @Suppress("UNCHECKED_CAST")
 internal fun Map<String, Any?>.intArrayOrNull(key: String): List<Int>? = this[key] as? List<Int>

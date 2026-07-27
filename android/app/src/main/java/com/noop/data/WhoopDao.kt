@@ -63,6 +63,9 @@ interface WhoopDao : DeviceRegistryDao {
     suspend fun insertSkinTemp(rows: List<SkinTempSample>): List<Long>
 
     @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertV18(rows: List<V18Sample>): List<Long>
+
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertSteps(rows: List<StepSample>): List<Long>
 
     /** The strap's OWN band sleep_state per record (#175). Idempotent by (deviceId, ts). */

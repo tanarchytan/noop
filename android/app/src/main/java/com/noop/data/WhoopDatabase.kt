@@ -50,6 +50,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         LabMarkerRow::class,
         LiveSessionRow::class,
         PpgWaveformSampleEntity::class,
+        V18Sample::class,
     ],
     version = 101,
     exportSchema = false,
@@ -84,13 +85,23 @@ abstract class WhoopDatabase : RoomDatabase() {
         }
 
         /**
-         * Records the beat's position within its second, so RMSSD reads beats in emission order
-         * instead of by magnitude. Additive and nullable: existing rows never held the order, so they
-         * stay NULL and keep reading as before.
+         * Two additive steps off the v1-tan base: the beat's position within its second, so RMSSD
+         * reads beats in emission order instead of by magnitude, and the v18 per-second channels the
+         * stream funnel was decoding and dropping. All nullable, so existing rows read back null.
          */
         internal val MIGRATION_100_101 = object : Migration(100, 101) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE rrInterval ADD COLUMN ord INTEGER")
+                db.execSQL("ALTER TABLE skinTempSample ADD COLUMN auxRaw1 INTEGER")
+                db.execSQL("ALTER TABLE skinTempSample ADD COLUMN auxRaw2 INTEGER")
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `v18Sample` (" +
+                        "`deviceId` TEXT NOT NULL, `ts` INTEGER NOT NULL, `recordIndex` INTEGER, " +
+                        "`sleepStateRaw` INTEGER, `opticalBaselineA` INTEGER, `opticalBaselineB` INTEGER, " +
+                        "`opticalAmpA` INTEGER, `opticalAmpB` INTEGER, `opticalSignalPoor` INTEGER, " +
+                        "`rawU8At28` INTEGER, `rawU8At29` INTEGER, `rawU16At30` INTEGER, `rawF32At105` REAL, " +
+                        "PRIMARY KEY(`deviceId`, `ts`))",
+                )
             }
         }
 

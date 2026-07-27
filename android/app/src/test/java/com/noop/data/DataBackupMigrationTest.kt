@@ -115,36 +115,40 @@ class DataBackupMigrationTest {
     // ── planMigrationPath (greedy longest-jump, catch-all aware) ──────────────
 
     private val migrations = WhoopDatabase.ALL_MIGRATIONS
-    private val target = WhoopDatabase.SCHEMA_VERSION // 101 (v1-tan + rr ord)
+    private val target = WhoopDatabase.SCHEMA_VERSION // v1-tan plus every additive step since
 
     private fun path(from: Int) = DataBackup.planMigrationPath(from, target, migrations)
+
+    /** The additive per-version steps from the v1-tan base up to the target, so a schema bump that adds
+     *  one more additive migration does not have to be written into three expectations by hand. */
+    private val tailFrom100 = (100 until target).map { it to it + 1 }
 
     @Test
     fun planPath_upstreamV20_stepsToV22ThenLeapsToTarget() {
         // v20 steps 20->21, 21->22; at 22 the catch-all leaps to v100 (v1-tan, the single base), then
-        // the additive rr-ord step carries it to the target.
+        // the additive steps carry it to the target.
         val p = path(20)
         assertNull(p.error)
-        assertEquals(listOf(20 to 21, 21 to 22, 22 to 100, 100 to target), p.path!!.map { it.startVersion to it.endVersion })
+        assertEquals(listOf(20 to 21, 21 to 22, 22 to 100) + tailFrom100, p.path!!.map { it.startVersion to it.endVersion })
     }
 
     @Test
     fun planPath_catchAllVersions_leapStraightToTarget() {
-        // Each upstream v22..99 leaps directly to v100 (v1-tan) via the catch-all, then takes the one
-        // additive step to the target.
+        // Each upstream v22..99 leaps directly to v100 (v1-tan) via the catch-all, then takes the
+        // additive steps to the target.
         for (v in listOf(22, 50, 99)) {
             val p = path(v)
             assertNull("v$v", p.error)
-            assertEquals("v$v", listOf(v to 100, 100 to target), p.path!!.map { it.startVersion to it.endVersion })
+            assertEquals("v$v", listOf(v to 100) + tailFrom100, p.path!!.map { it.startVersion to it.endVersion })
         }
     }
 
     @Test
-    fun planPath_v100_takesTheSingleAdditiveStep() {
-        // v100 (v1-tan) predates the rr-ord column, so it takes exactly one additive step.
+    fun planPath_v100_takesTheAdditiveStepsOneAtATime() {
+        // v100 (v1-tan) predates every column added since, so it walks them one version at a time.
         val p = path(100)
         assertNull(p.error)
-        assertEquals(listOf(100 to target), p.path!!.map { it.startVersion to it.endVersion })
+        assertEquals(tailFrom100, p.path!!.map { it.startVersion to it.endVersion })
     }
 
     @Test
