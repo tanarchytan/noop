@@ -192,7 +192,7 @@ Each still reproduces the numbers its predecessor produced.
 |---|---|
 | **Resting HR** | Reads about 10 bpm below a reference band. The gap is consistent, and it is not a sensor or wrist difference — two bands agree to within 2 bpm on the same statistic. Left unchanged because the evidence says something is off, not what the right answer is |
 | **Body Age** | Every input cites a published mortality study, but only cardio fitness is published as a per-unit figure; the others are our interpolations of grouped results, and the sleep-duration weight is ours. A wellness comparison, not a clinical age |
-| **Blood oxygen (4.0)** | Computed from raw red/IR with generic constants, so uncalibrated. The 5.0/MG reading is unaffected |
+| **Blood oxygen (4.0)** | **Not reported.** The 4.0's red/IR channels carry a once-a-second baseline, not the beat-to-beat waveform a ratio-of-ratios needs: across two straps and 2.1 million samples, 89% and 98% of windows held no pulsation at all. The percent that came out (~80%) was an artifact of the few that flickered, so the app now declines rather than publishing it. The 5.0/MG reading is the strap's own and is unaffected |
 | **Rhythm Age** | Has never yet produced a value — it needs 7 days of continuous on-chip motion, and its scale factor is unconfirmed |
 | **Everything on WHOOP 4.0** | The decoders are written and unit-tested but have never run against a real 4.0 band |
 
