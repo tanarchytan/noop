@@ -243,34 +243,50 @@ All three were tested and none of them can work against an aliased signal.
 
 ---
 
-## 11. R-R read order is undefined, and RMSSD depends on it — CONFIRMED 2026-07-27
+## 11. R-R is read in magnitude order — CONFIRMED 2026-07-27, impact measured small
 
 `WhoopDao.rrIntervals` reads `ORDER BY ts ASC, seq ASC`, and the comment above it says this fixed a
-magnitude-sort bug. It did not. `assignRrSeq` keys on `(ts, rrMs)`, so `seq` counts repeats of an
-IDENTICAL beat and every DISTINCT beat within a second carries 0. The rows therefore tie, and SQLite
-returns tied rows in whatever order the plan happens to produce.
+magnitude-sort bug. It did not, and the reason is visible in the query plan: the read walks the
+primary-key index `(deviceId, ts, rrMs, seq)`, which already delivers rows in `rrMs` order, then uses
+a temp b-tree for the last ORDER BY term only. `assignRrSeq` keys on `(ts, rrMs)`, so every DISTINCT
+beat in a second carries `seq = 0` and that sort is a no-op over ties.
 
-Measured across five straps (David 5.0 and 4.0, killa 5.0, and two other users):
+Measured on five straps: 99-100% of same-second groups with distinct beats carry all-zero `seq`
+(2.07M groups), and running the app's own query returns **98.8-100% of multi-beat seconds in
+ascending `rrMs` order**. So the behaviour is not undefined, it is the magnitude sort the fix was
+meant to remove.
 
-| strap | same-second groups with distinct beats | all `seq == 0` |
+| strap | multi-beat seconds | returned ascending by rrMs |
 |---|---|---|
-| David 5.0 | 600,382 | 592,308 (99%) |
-| David 4.0 | 9,407 | 9,362 (100%) |
-| killa 5.0 | 249,666 | 249,467 (100%) |
-| other-A | 555,578 | 554,591 (100%) |
-| other-B | 660,676 | 656,441 (99%) |
+| David 5.0 | 135,277 | 133,633 (98.8%) |
+| killa 5.0 | 129,509 | 129,509 (100%) |
+| other-B | 142,948 | 142,948 (100%) |
 
-2.07M groups, 99-100% fully tied every time. RMSSD is built from successive differences, so the order
-is not cosmetic: re-reading the same nights under two different orderings moved nightly RMSSD by a
-mean of 1.3 to 16.8 ms and a worst case of 42.8 ms, against typical values of 30-60 ms.
+**The impact is small.** Against a within-second unsorted baseline (25 shuffles per night, order
+preserved across seconds), nightly RMSSD moves by **-1.2 to +0.4 ms** on typical values of 68-195 ms:
 
-**Caveat on that magnitude.** The two orderings compared were `ORDER BY rowid` and `ORDER BY ts, rrMs`.
-rowid is only emission order if the rows were inserted in emission order and never rewritten — and the
-backup importer copies rows by content, so a restored database's rowids need not preserve it. The
-spread is therefore a sound measure of HOW MUCH the order matters, and not a sound attribution of which
-direction our current read is wrong in. Upstream reports the sorted order biases RMSSD down; two of our
-five straps agree and two do not, which the rowid caveat explains without resolving.
+| strap | nights | today | unsorted | difference |
+|---|---|---|---|---|
+| David 5.0 | 14 | 93.0 | 93.4 | +0.4 ms |
+| killa 5.0 | 14 | 81.4 | 80.4 | -1.0 ms |
+| other-A | 13 | 194.6 | 193.4 | -1.2 ms |
+| other-B | 9 | 104.1 | 104.0 | -0.1 ms |
+| David 4.0 | 1 | 68.7 | 68.0 | -0.7 ms |
 
-Upstream's fix (`ryanbr/noop` #830) is an `ord` column stamped at decode time, leading the read sort,
-as an additive Room migration. That removes the ambiguity rather than arguing about it, and is the
-right shape. Ours would be Room v100 to v101.
+Beats inside one second are adjacent in time and physiologically similar, so reordering them barely
+changes the successive differences RMSSD is built from. Upstream's -22.14 ms figure is a five-beat
+illustrative example, not a corpus mean.
+
+**CORRECTION.** An earlier version of this section claimed a 42.8 ms worst case. That was wrong. It
+compared `ORDER BY rowid` against `ORDER BY ts, rrMs`, taking rowid as a stand-in for emission order
+— but rowid is not even time-ordered on a restored database: David 5.0 steps backward in time on 1.3%
+of rowid-adjacent rows and other-B on 0.4%, while killa (never restored) is perfectly monotonic. The
+large deltas came from comparing beats ACROSS seconds, not from the within-second ordering. That also
+explains the direction disagreement the earlier note could not account for: the two straps with big
+deltas are exactly the two with non-monotonic rowids.
+
+**So: fix it for determinism and correctness, not for the numbers.** Upstream's `ord` column
+(`ryanbr/noop` #830), stamped at decode time and leading the read sort, is the right shape — ours
+would be Room v100 to v101, additive. It removes a documented-but-false claim from the code and makes
+the read order a property of the data rather than of the query plan. Expect nightly RMSSD to move by
+about a millisecond, not to be corrected.
