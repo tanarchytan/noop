@@ -49,21 +49,9 @@ jobs:
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
           echo "ver=$VER" >> "$GITHUB_OUTPUT"
 
-          # Body = the curated notes for this candidate when they exist, else a short placeholder.
+          # Body = this version's notes plus the shared download template (Tools/release-notes.py).
           BODY=$(mktemp)
-          NOTES_MD="docs/releases/${TAG}.md"
-          if [ -f "$NOTES_MD" ]; then
-            awk 'NR==1 && $0=="---"{fm=1; next} fm && $0=="---"{fm=0; next} !fm{print}' "$NOTES_MD" > "$BODY"
-          else
-            echo "::warning::No ${NOTES_MD} — using a placeholder body."
-            printf 'NOOP **%s** — release candidate.\n' "$VER" > "$BODY"
-          fi
-          {
-            printf '\n---\n\n**Download** — sideload on Android (minSdk %s):\n' "$MINSDK"
-            printf -- '- **NOOP** — `NOOP-android-v%s.apk` (`%s`) — debuggable, and installs over a release build keeping your data.\n' "$VER" "$APPID"
-            printf -- '- **NOOP Mock** — `NOOP-android-mock-v%s.apk` (`%s.mock`) — preloaded with synthetic data, installs alongside.\n' "$VER" "$APPID"
-            printf '\n*Release candidate: not yet verified on hardware.*\n'
-          } >> "$BODY"
+          python3 Tools/release-notes.py --version "$VER" --appid "$APPID" --min-sdk "$MINSDK" --channel rc > "$BODY"
 
           if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             echo "Release $TAG exists — refreshing its assets, leaving the notes alone."

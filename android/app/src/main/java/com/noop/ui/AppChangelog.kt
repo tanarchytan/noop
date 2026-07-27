@@ -11,7 +11,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 //
 // Single source of truth for the in-app "What's New" sheet and the expectation-setting
 // copy used in onboarding. Mirrored from the macOS `AppChangelog` enum so every surface
-// — macOS, Android, the repo CHANGELOG.md — tells the exact same story.
+// — from docs/releases/<tag>.md, via Tools/appchangelog-gen.py at release time.
 //
 // Icon mapping (SF Symbol → Material, all verified to resolve in material-icons-extended):
 //   flask           → Icons.Outlined.Science        (independent / experimental)

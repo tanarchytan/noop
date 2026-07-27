@@ -108,19 +108,8 @@ jobs:
           if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             echo "Release $TAG already exists — re-run: platform jobs will refresh its assets."
           else
-            # Release body = the maintained per-version changelog docs/releases/<TAG>.md, plus a
-            # downloads footer. Warn (don't fail) if that file is missing so you notice a forgotten
-            # changelog. (CHANGELOG.md is the stale legacy file; docs/releases/ is the source of truth.)
             BODY=$(mktemp)
-            NOTES_MD="docs/releases/${TAG}.md"
-            if [ -f "$NOTES_MD" ]; then
-              # Strip a leading YAML front-matter block (the `whatsnew:` used by appchangelog-gen) so it
-              # never leaks into the GitHub release body; files without front-matter pass through unchanged.
-              awk 'NR==1 && $0=="---"{fm=1; next} fm && $0=="---"{fm=0; next} !fm{print}' "$NOTES_MD" > "$BODY"
-            else
-              echo "::warning::No ${NOTES_MD} — write the release notes there first. Using a placeholder."
-              printf 'NOOP **%s** — release build.\n' "$NEW" > "$BODY"
-            fi
+            EXTRA=$(mktemp)
             # Auto "What's Changed" breakdown: GitHub's generate-notes API lists every merged PR since the
             # previous RELEASE (non-prerelease, so testing-latest snapshots are ignored), + contributors +
             # a full-changelog compare link. Appended below the curated notes. Skipped on the very first
@@ -141,15 +130,8 @@ jobs:
             else
               echo "First release (no prior release tag) — skipping the auto PR breakdown."
             fi
-            # App id read from the gradle file so a rename can never leave the notes advertising a
-            # package that no longer ships.
-            APPID=$(grep -m1 'applicationId = ' "$GRADLE" | sed -E 's/.*"([^"]+)".*/\1/')
-            MINSDK=$(grep -m1 'minSdk = ' "$GRADLE" | sed -E 's/.*minSdk = ([0-9]+).*/\1/')
-            {
-              printf '\n---\n\n**Download** — sideload on Android (minSdk %s). Installs beside any other NOOP fork, with its own data:\n' "$MINSDK"
-              printf -- '- **NOOP** — `NOOP-android-v%s.apk` (`%s`) — the app.\n' "$NEW" "$APPID"
-              printf -- '- **NOOP Mock** — `NOOP-android-mock-v%s.apk` (`%s.mock`) — preloaded with synthetic data, installs alongside. For trying it out with no strap.\n' "$NEW" "$APPID"
-            } >> "$BODY"
+            # One shape for every release: this version's notes, the generated list, then downloads.
+            python3 Tools/release-notes.py --version "$NEW" --appid "$APPID"               --min-sdk "$MINSDK" --channel stable --extra-file "$EXTRA" > "$BODY"
             # Uniform title: NOOP <version>-stable · <date>. The versionName carries no "stable"
             # marker, so it is added here; a candidate keeps its -rcN through the rc workflow.
             gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --target "$(git rev-parse HEAD)" \
