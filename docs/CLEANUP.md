@@ -286,3 +286,45 @@ so that measured cross-second jumbling. The second concluded the impact was abou
 not worth chasing; that computed RMSSD over the whole night's flat sequence, including the
 cross-second pairs the gap-aware algorithm never uses. Both understated a real 25% error on this
 fork's own band by measuring something the shipped code does not do.
+
+
+---
+
+## 12. Open points as of 2026-07-27
+
+Everything below is unstarted or waiting on a decision. Nothing here is broken; it is the queue.
+
+### Needs David
+
+- **Enable raw capture, sync the WHOOP 4.0.** The only route to a real 4.0 blood oxygen: the strap
+  computes a value the official app shows, and the question is whether it banks it in a record byte
+  nobody has mapped. Capture now works on the 4.0 (it was gated to 5.0/MG), so this is one toggle and
+  one sync. Until the capture exists there is nothing to analyse. See section 9.
+- **Health Connect per-metric fill — a policy call.** WHOOP publishes a real SpO2 to Health Connect
+  and we already read `OxygenSaturationRecord`, but the importer gates on DAY coverage, so on a 4.0
+  day the band was worn we discard WHOOP's value while our own is null. Filling per METRIC instead of
+  per day is right in principle, and also changes HRV, resting HR, sleep and respiratory rate on
+  historical days for every user. Narrower option: scope it to SpO2, where our value is provably null.
+- **Smoke-test 9.0.1-stable.** Released, never launched. Same commit as the verified rc3, so this is
+  a formality rather than a risk.
+- **The rc3 UI items that need a strap.** Body Clock card, End sleep card and the Health cards were
+  never checked, because Health Monitor is live-only and reads "No biometrics yet" without a band.
+
+### Mine, ready to start
+
+- **Upstream #848 — bank the v18 per-second fields the storage funnel discards.** The last substantial
+  item from the 2026-07-27 sweep and the bigger prize behind #845's inventory of 23 decoded-but-unread
+  fields. Verify against our own decoder first: we already decode several of them, so the loss may be
+  at extraction rather than at decode.
+- **Wire `optical_signal_poor` through the FFI.** Decoded and tested in whoop-rs, read by nothing. It
+  is a first-party per-second flag that the band's own beat detection failed, which the HRV windows
+  and the sleep stager currently infer from motion instead. Needs the four-step regen.
+- **Upstream #872/#873 — the 4.0 feature-flag probe.** Reads what the 4.0 firmware exposes; may bear
+  on the blood-oxygen hunt.
+- **Upstream #874/#875, #818.** Sync robustness and the `pagesBehind` field offsets. Unassessed.
+
+### Cut 9.0.2 when the above settles
+
+`docs/releases/v9.0.2-tan.md` is written. Cut `rc/9.0.2-tan` off `noop-tan`, bump to `9.0.2-rc1-tan`,
+dispatch the rc workflow — it resolves the notes from the version file automatically. Promote with
+`bump: none`.
