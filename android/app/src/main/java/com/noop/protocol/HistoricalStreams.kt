@@ -196,6 +196,9 @@ fun extractHistoricalStreams(
     // (unchanged). Kept in lockstep with the Swift extractHistoricalStreams session args.
     sessionOldestUnix: Long? = null,
     sessionNewestUnix: Long? = null,
+    // Diagnostic tap, off unless a caller supplies it: receives each frame's decoded property map and
+    // the frame itself, including frames this funnel drops. Must not alter what is ingested.
+    recordSink: ((Map<String, Any?>?, ByteArray) -> Unit)? = null,
     // Retained caller/Swift-signature arg (Test Centre → Experimental algorithms). The v26 PPG-HR now
     // runs through whoop-rs's adjudicated sub-lag estimator (always sub-lag), so this flag no longer
     // gates the estimate; it is kept so the caller contract is unchanged.
@@ -323,7 +326,10 @@ fun extractHistoricalStreams(
                 // type-47 carries the strap RTC's real-unix seconds. Correct for a grossly-stale RTC
                 // (FIX #72); a normal strap is unchanged (offset < threshold). whoop-rs supplies the
                 // field map; ts stays app-side.
-                val p = RustAdapter.recordFields(frame, family) ?: continue
+                // Tapped BEFORE the null-skip: a frame with no decoder is exactly what a capture wants.
+                val p = RustAdapter.recordFields(frame, family)
+                recordSink?.invoke(p, frame)
+                if (p == null) continue
                 // #547: correctedWall is now nullable — it returns null for an implausible (far-past /
                 // future-dated) record, so the `?: continue` below skips a bad-clock record entirely
                 // instead of letting its garbage `unix` enter the DB and pollute the day-windowed analytics.

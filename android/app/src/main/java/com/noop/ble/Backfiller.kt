@@ -61,6 +61,11 @@ class Backfiller(
      */
     private val onConsoleChunk: () -> Unit = {},
     /**
+     * Diagnostic tap, null unless the debug capture switch is on: receives every decoded record's
+     * property map, including the fields the stream funnel does not name. Write-only, never read back.
+     */
+    private val recordSink: ((Map<String, Any?>?, ByteArray) -> Unit)? = null,
+    /**
      * Diagnostic sink into the strap log. Lets [finishChunk] surface a chunk that arrived with frames
      * but decoded to ZERO rows - the otherwise-invisible silent-data-loss case (frames failing CRC or
      * an unmapped layout are dropped, the chunk looks empty, and the trim acks past them).
@@ -330,6 +335,7 @@ class Backfiller(
                 applyStaleClockCorrection = false,
                 sessionOldestUnix = sessionOldestUnix, sessionNewestUnix = sessionNewestUnix,
                 ppgHrSubLagInterp = ppgHrSubLagInterp(),
+                recordSink = recordSink,
             )
             // Observability: which historical layout does this strap emit? Only the unmapped/reject path
             // logged a version before, so a healthy sync never revealed v24/v25 (4.0) or v18/v26 (5/MG).

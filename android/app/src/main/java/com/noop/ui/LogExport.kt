@@ -151,6 +151,17 @@ object LogExport {
                 }
                 out.add(rawFile)
             }
+            // The decoded-record JSONL from the same capture switch: every field whoop-rs produced for
+            // each second, which the stream tables cannot carry because they only store named columns.
+            val recMain = File(context.filesDir, com.noop.ingest.HistoryRecordSink.FILE)
+            val recPrev = File(context.filesDir, com.noop.ingest.HistoryRecordSink.PREV_FILE)
+            if (recMain.exists() || recPrev.exists()) {
+                val recFile = File(dir, "noop-records-${exportStamp(nowMs)}.jsonl")
+                recFile.outputStream().bufferedWriter().use { w ->
+                    for (f in listOf(recPrev, recMain)) if (f.exists()) f.bufferedReader().use { r -> r.copyTo(w) }
+                }
+                out.add(recFile)
+            }
             out.toList()
         }.getOrDefault(emptyList())
 
