@@ -4,26 +4,13 @@ import org.json.JSONArray
 import org.json.JSONObject
 
 /**
- * Reshape a sleep session's stored stage breakdown to a hand-corrected [newStart]..[newEnd] window, so a
- * bed-time (onset) and/or wake-time edit updates the hypnogram and the stage footer, not just the
- * displayed "Woke" / "Bed" label. Pure + deterministic (no store, no raw signals, no I/O). Port of
- * SleepWindowReclip.swift.
- *
- * START-AWARE on BOTH ends (#0): a pure onset edit (newStart moves, newEnd unchanged) must drop the
- * stages BEFORE the corrected bed time, not leave them in place. Otherwise an imported / pre-sync night
- * keeps sleep that happened before the user got into bed while the displayed window shrank.
- *
- * Two stagesJSON formats (matching the two writers):
- *   • Segment array `[{"start":epoch,"end":epoch,"stage":"wake"|"light"|"deep"|"rem"}]` — computed
- *     nights. Clip to [newStart]..[newEnd]: drop segments wholly outside it, clip a straddling
- *     segment's start up to [newStart] and end down to [newEnd]; if the window grew at the tail,
- *     append a trailing "wake" segment (extra time in bed reads as awake).
- *   • Minute dict `{"awake":…,"light":…,"deep":…,"rem":…}` — imported nights. No timeline, so
- *     shift by the duration delta `(newEnd - newStart) - (oldEnd - sessionStart)`: trim from the
- *     tail-most stages (awake→light→rem→deep) when shortened, add to awake when lengthened.
- *
- * Returns re-encoded JSON in the SAME shape received, or null when there is nothing usable to
- * reclip (callers then keep the existing JSON).
+ * Reshapes a sleep session's stored stage breakdown to a hand-corrected [newStart]..[newEnd] window, so a
+ * bed-time/wake-time edit updates the hypnogram and stage footer, not just the label. Pure, deterministic,
+ * no store/I-O. An onset-only edit (newStart moves) must drop stages before the new bed time, not keep them.
+ * Segment-array nights (computed) are clipped to [newStart]..[newEnd], appending a trailing "wake" segment
+ * if the window grew. Minute-dict nights (imported, no timeline) shift by the duration delta, trimming
+ * tail-most stages (awake→light→rem→deep) when shortened or adding to awake when lengthened. Returns
+ * re-encoded JSON in the same shape, or null if nothing is usable.
  */
 object SleepWindowReclip {
 

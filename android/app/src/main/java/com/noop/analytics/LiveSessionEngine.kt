@@ -1,23 +1,20 @@
 package com.noop.analytics
 
 // LiveSessionEngine.kt — the "silent guardian" coach for a Live Session. Pure, deterministic, DB-free.
-// Byte-for-byte mirror of Strand/Packages/StrandAnalytics/Sources/StrandAnalytics/LiveSessionEngine.swift.
 //
-// Watches a live heart-rate stream against a recovery-gated target BAND and emits at most two haptic cues:
-// a gentle PUSH nudge when you drift too easy for today, and a firmer EASE-OFF when you push harder than
-// today's recovery can pay for. Silence means you are on track — the whole point.
+// Watches a live heart-rate stream against a recovery-gated target BAND and emits at most two haptic
+// cues: a gentle PUSH nudge when you drift too easy, and a firmer EASE-OFF when you push harder than
+// today's recovery can pay for. Silence means you are on track.
 //
 // A single instance per session; time is passed in on every update(now, bpm) so a session replays
-// deterministically from a synthetic HR trace with no clock, no BLE, no UI. The GOLDEN VECTORS in
-// LiveSessionEngineTest mirror LiveSessionEngineTests.swift exactly — the cross-platform parity contract.
-// Design contract: docs/superpowers/specs/2026-07-04-live-sessions-design.md.
+// deterministically from a synthetic HR trace, pinned by the golden vectors in LiveSessionEngineTest.
 //
-//   1. A WRONG buzz is unforgivable; a MISSED buzz is fine → bias hard toward silence (dwell/cool-down/hysteresis).
+//   1. A WRONG buzz is unforgivable; a MISSED buzz is fine → bias hard toward silence.
 //   2. Never fabricate → impossible samples rejected before they can cue; a stale stream pauses coaching.
 class LiveSessionEngine(private val config: Config, private val startTs: Int) {
 
     companion object {
-        // ── Tuning constants (pinned by test; mirror the Swift twin exactly) ──
+        // ── Tuning constants (pinned by test) ──
         const val ceilingPctAtLowCharge: Double = 0.60
         const val ceilingPctAtHighCharge: Double = 0.82
         const val bandWidthPctHRR: Double = 0.15

@@ -805,10 +805,9 @@ object HealthConnectImporter {
         return min
     }
 
-    /** Build the `[{stage,min},...]` stagesJSON (same shape as the WHOOP CSV / Xiaomi importers) from a
-     *  Health Connect sleep session's per-stage segments (#983). Returns null when the session carries no
-     *  sub-stage breakdown (e.g. a generic STAGE_TYPE_SLEEPING-only record), so the night rides on its
-     *  total minutes alone. */
+    /** Build the `[{stage,min},...]` stagesJSON (same shape as the WHOOP CSV / Xiaomi importers) from
+     *  per-stage segments. Returns null when the session has no sub-stage breakdown (e.g. a generic
+     *  STAGE_TYPE_SLEEPING-only record), so the night rides on its total minutes alone. */
     private fun hcStagesJson(r: SleepSessionRecord): String? {
         if (r.stages.isEmpty()) return null
         var light = 0.0; var deep = 0.0; var rem = 0.0; var awake = 0.0
@@ -840,35 +839,27 @@ object HealthConnectImporter {
     )
 
     /**
-     * #528 — true when a record's origin is NOOP itself, so [readAll] skips it on import. Without this,
-     * turning on "share back" makes a later import re-read NOOP's own daily totals and SUM them on top
-     * of the original source records (cumulative steps / active energy / sleep would ~double). HC's
-     * `dataOriginFilter` is include-only, so the exclusion has to be a code-level package check here.
-     * Empty [selfPackage] (origin undeterminable) never skips, so we err toward keeping data.
+     * True when a record's origin is NOOP itself, so [readAll] skips it — otherwise "share back" would
+     * re-read our own writes and double-count steps / active energy / sleep on the next import. HC's
+     * origin filter is include-only, so this check is done in code. Empty [selfPackage] never skips.
      */
     internal fun isSelfWritten(originPackage: String, selfPackage: String): Boolean =
         selfPackage.isNotEmpty() && originPackage == selfPackage
 
     /**
-     * #589 de-overlap for a per-source step map: SUM is already folded WITHIN each source by the read
-     * lambda, so the day total is the MAX source (a phone AND a watch both report the same walk, so the
-     * cross-source SUM would ~double-count). An empty map (no sources that day) yields 0. Factored out
-     * (and internal) so the de-overlap semantics can be unit-tested without a HealthConnectClient,
-     * mirroring the iOS/macOS `stepsBySource.values.max()` and the Android XML importer's `maxOrNull()`.
+     * De-overlap for a per-source step map: SUM is folded WITHIN each source by the read lambda, so the
+     * day total is the MAX across sources (a phone and a watch reporting the same walk must not double-
+     * count). Empty map -> 0. Matches the Android XML importer's de-overlap.
      */
     internal fun maxSourceLong(bySource: Map<String, Long>): Long = bySource.values.maxOrNull() ?: 0L
 
-    /** #589 de-overlap for a per-source calorie map (Double twin of [maxSourceLong]); empty -> 0.0. */
+    /** De-overlap for a per-source calorie map (Double twin of [maxSourceLong]); empty -> 0.0. */
     internal fun maxSourceDouble(bySource: Map<String, Double>): Double = bySource.values.maxOrNull() ?: 0.0
 
     /**
-     * #951 — the BMI value the importer stores for a day, DERIVED from the day's weight + the user's
-     * profile height (Health Connect has no BMI record, unlike Apple Health). Returns null — so no
-     * "bmi" metricSeries point is written — when there's no weight that day or no usable profile
-     * height (heightCm <= 0), so a missing height never fabricates a value. Uses the same
-     * [FitnessAgeEngine.bmi] the calorie / fitness-age estimates use, rounded to two places like the
-     * other body-composition series. Factored out (and internal) so the derive-or-skip contract can be
-     * unit-tested without a HealthConnectClient.
+     * BMI stored for a day: [FitnessAgeEngine.bmi] applied to the day's weight + profile height
+     * (Health Connect carries no BMI record). Returns null — so no "bmi" point is written — when
+     * there's no weight that day or heightCm <= 0, so a missing height never fabricates a value.
      */
     internal fun derivedBmi(weightKg: Double?, heightCm: Double): Double? {
         if (heightCm <= 0.0) return null
@@ -878,8 +869,8 @@ object HealthConnectImporter {
 
     /**
      * Derive basal kcal = total - active when both are present and positive; else null.
-     * Takes the already de-overlapped per-day totals (#589 max-across-sources), not the raw [DayAcc],
-     * so basal is computed from the same source-deduplicated totals the row writes for active.
+     * Takes the already de-overlapped per-day totals, not the raw [DayAcc], so basal is computed
+     * from the same source-deduplicated totals the row writes for active.
      */
     private fun basalKcal(totalKcal: Double, activeKcal: Double): Double? {
         if (totalKcal <= 0.0) return null
@@ -887,14 +878,6 @@ object HealthConnectImporter {
         return if (basal > 0.0) round1(basal) else null
     }
 
-    /**
-     * Active-calorie kcal attributable to an exercise session: for every active-calorie record that
-     * overlaps [startS, endS], credit the kcal in proportion to the overlap fraction. Time-weighting
-     * (not a flat overlap test) means a per-minute record fully inside the session counts in full,
-     * while a day-spanning total record only contributes the session's slice — so neither under- nor
-     * grossly over-credits. Returns null when nothing overlaps, so an energy-less session stays blank
-     * rather than showing 0. (#117)
-     */
     /** One energy record: its source, its window, and the kilocalories it carries. */
     internal data class KcalRecord(val source: String, val startS: Long, val endS: Long, val kcal: Double)
 
@@ -925,6 +908,11 @@ object HealthConnectImporter {
      * and prorating BASAL is sound in a way prorating a workout's active burn is not — basal really is
      * near-uniform. Taking the larger lets real session cover win without a threshold.
      */
+    /**
+     * Active-calorie kcal attributable to an exercise session: for every active-calorie record
+     * overlapping [startS, endS], credit kcal in proportion to the overlap fraction (time-weighted,
+     * not a flat overlap test), so neither a per-minute nor a day-spanning record mis-credits.
+     */
     internal fun sessionKcal(
         active: List<KcalRecord>,
         total: List<KcalRecord>,
@@ -954,12 +942,9 @@ object HealthConnectImporter {
     }
 
     /**
-     * Map of common ExerciseSessionRecord.EXERCISE_TYPE_* constants to readable labels. We reference the
-     * library constants directly rather than hardcoding ints — the old hardcoded values were WRONG (e.g.
-     * 79 was mapped to "Swimming" but 79 is actually WALKING, so a walking session showed as swimming —
-     * issue #53; 80 was "Swimming" but is WATER_POLO; 82 was "Walking" but is WHEELCHAIR; etc.). Using
-     * the constants makes the int↔label mapping impossible to get wrong, and a renamed/removed constant
-     * becomes a compile error instead of a silent mismatch. Unknown types fall back to "Workout".
+     * Map of ExerciseSessionRecord.EXERCISE_TYPE_* constants to readable labels. References the library
+     * constants directly (not hardcoded ints), so a renamed/removed constant is a compile error rather
+     * than a silent int-mismatch. Unknown types fall back to "Workout".
      */
     private val EXERCISE_TYPE_NAMES: Map<Int, String> = mapOf(
         ExerciseSessionRecord.EXERCISE_TYPE_RUNNING to "Running",
@@ -983,9 +968,7 @@ object HealthConnectImporter {
         ExerciseSessionRecord.EXERCISE_TYPE_BASKETBALL to "Basketball",
         ExerciseSessionRecord.EXERCISE_TYPE_SOCCER to "Soccer",
         ExerciseSessionRecord.EXERCISE_TYPE_WEIGHTLIFTING to "Weightlifting",
-        // Racket / team / misc sports that were missing from the map (found via a volleyball session
-        // that imported as a generic "Workout"): an untitled session of any type below used to lose
-        // its sport identity even though the record itself imported fine.
+        // Additional racket / team / misc sport types.
         ExerciseSessionRecord.EXERCISE_TYPE_VOLLEYBALL to "Volleyball",
         ExerciseSessionRecord.EXERCISE_TYPE_TENNIS to "Tennis",
         ExerciseSessionRecord.EXERCISE_TYPE_TABLE_TENNIS to "Table Tennis",
@@ -1029,9 +1012,9 @@ object HealthConnectImporter {
 
     /** Per-local-day accumulator. */
     private class DayAcc {
-        // #589: per-SOURCE sums (keyed by dataOrigin.packageName), reduced by MAX across sources at
-        // write-out so a phone+watch pair that both report the same steps/calories doesn't double-count.
-        // Mirrors the iOS/macOS + Android-XML de-overlap (sum within a source, max across sources).
+        // Per-SOURCE sums (keyed by dataOrigin.packageName), reduced by MAX across sources at write-out
+        // so a phone+watch pair reporting the same steps/calories doesn't double-count. Matches the
+        // Android XML importer's de-overlap (sum within a source, max across sources).
         val stepsBySource = HashMap<String, Long>()
         val totalKcalBySource = HashMap<String, Double>()
         val activeKcalBySource = HashMap<String, Double>()

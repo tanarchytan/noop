@@ -9,16 +9,15 @@ import kotlin.math.sqrt
 /*
  * Baselines.kt — personal rolling baselines per nightly metric.
  *
- * The production model is a Winsorized EWMA: robust, recency-weighted center with an
- * EWMA-of-absolute-deviation spread tracker, cold-start gating, hard outlier rejection,
- * and Winsor clamping ([update] / [foldHistory]). Produces a [BaselineState] that
- * RecoveryScorer consumes.
+ * Production model is a Winsorized EWMA: robust, recency-weighted center, EWMA-of-absolute-
+ * deviation spread, cold-start gating, hard outlier rejection, and Winsor clamping
+ * ([update] / [foldHistory]). Produces a [BaselineState] that RecoveryScorer consumes.
  *
  * Value types ([MetricCfg], [BaselineStatus], [BaselineState], [Deviation]) live in
- * AnalyticsModels.kt. All `ts` elsewhere are wall-clock unix SECONDS (Long); baselines
- * work on per-night scalar values and carry no timestamps.
+ * AnalyticsModels.kt. `ts` values elsewhere are wall-clock unix seconds; baselines work on
+ * per-night scalar values and carry no timestamps.
  *
- * Outputs are APPROXIMATE, not medical advice.
+ * Outputs are approximate, not medical advice.
  */
 
 /** Personal rolling baselines, one state per metric. */
@@ -28,10 +27,10 @@ object Baselines {
     // Constants
     // ─────────────────────────────────────────────────────────────────────────
 
-    /** Winsorization clamp: fold only within ±WINSOR_K × spread. */
+    /** Winsorization clamp: fold only within ±`winsorK` × spread. */
     const val winsorK: Double = 3.0
 
-    /** Hard-reject gate: drop the night if > HARD_OUTLIER_K × spread away. */
+    /** Hard-reject gate: drop the night if beyond `hardOutlierK` × spread. */
     const val hardOutlierK: Double = 5.0
 
     /** Minimum valid nights before "provisionally" trusted. */
@@ -47,12 +46,10 @@ object Baselines {
     // Early-life anti-anchoring
     // ─────────────────────────────────────────────────────────────────────────
     //
-    // A cold-start seed with an artificially HIGH first night can lock the baseline high for
-    // weeks: the still-tight floor spread makes the hard-outlier gate REJECT the user's genuine
-    // LOWER nights as "seen but not folded", and makes the z-score hypersensitive, crushing Charge.
-    //
-    // Fix: during the baseline's EARLY life let reality pull the center down quickly, then settle
-    // to the normal long-term smoothing (unchanged after earlyAdaptNights, once spread has lifted).
+    // A cold-start seed with an artificially high first night can lock the baseline high for
+    // weeks: the tight floor spread makes the hard-outlier gate reject genuine lower nights and
+    // makes the z-score hypersensitive. Early life adapts the center fast and suspends that gate
+    // until spread has widened (settles back to normal smoothing after earlyAdaptNights).
 
     /** Valid-night count below which the baseline is "young": fast center adaptation + suspended
      *  hard-outlier gate. Chosen so convergence happens in days, not weeks. */
@@ -69,20 +66,15 @@ object Baselines {
      *  0 / absent = no recalibration. Written by the Settings "Recalibrate HRV baseline" button. */
     const val hrvBaselineEpochKey: String = "noop.hrvBaselineEpoch"
 
-    /** SharedPreferences key for the manual RECOVERY-baseline recalibration epoch (epoch SECONDS).
-     *  0 / absent = no recalibration. Charge-wide sibling of [hrvBaselineEpochKey]: HRV re-anchors
-     *  on its own epoch, while resting-HR / respiration / skin-temp re-anchor on this one. The
-     *  Settings "Recalibrate Charge baseline" button writes both keys (see [recalibrateRecoveryBaselines]). */
+    /** SharedPreferences key for the manual recovery-baseline recalibration epoch (epoch SECONDS).
+     *  0 / absent = no recalibration. HRV re-anchors on [hrvBaselineEpochKey]; resting-HR,
+     *  respiration, and skin-temp re-anchor on this one; [recalibrateRecoveryBaselines] writes both. */
     const val recoveryBaselineEpochKey: String = "noop.recoveryBaselineEpoch"
 
     /**
-     * Default per-metric configurations (HRV, resting HR, respiration, skin temp, daily
-     * Effort/strain).
-     *
-     * "strain" bounds match `StrainScorer.maxStrain`'s 0-100 scale. Its floorSpread is wider
-     * than the physiological metrics (5.0 vs ~1-2% of range) because day-to-day training load
-     * swings hard by nature; a tight floor would make the z-score hypersensitive to routine
-     * variation. Same half-lives as the other metrics.
+     * Default per-metric configurations (HRV, resting HR, respiration, skin temp, daily Effort/strain).
+     * "strain" bounds match `StrainScorer.maxStrain`'s 0-100 scale with a wider floorSpread, since
+     * day-to-day training load swings hard and a tight floor would make the z-score hypersensitive.
      */
     // The validity bands, spread floors and EWMA half-lives are read from whoop-rs, so the app cannot
     // carry a second copy that drifts from the one the baseline maths actually uses.
@@ -118,12 +110,9 @@ object Baselines {
     // ─────────────────────────────────────────────────────────────────────────
 
     /**
-     * Incorporate one new nightly value into the baseline state.
-     *
-     * - `state == null`: seed the first night.
-     * - `value == null` or out-of-range: skip-and-hold (carry forward).
-     * - hard outlier (> HARD_OUTLIER_K × spread): seen but not folded.
-     * - otherwise: Winsorized EWMA center + EWMA-abs-dev spread update.
+     * Incorporate one new nightly value into the baseline state: seeds on null state, skip-and-holds
+     * a null or out-of-range value, marks a value beyond `hardOutlierK` × spread as seen-but-not-
+     * folded, and otherwise folds it via Winsorized EWMA center + EWMA-abs-dev spread update.
      */
     fun update(state: BaselineState?, value: Double?, cfg: MetricCfg): BaselineState {
         val ffiState = state?.let { uniffi.whoop_ffi.BaselineStateInfo(
@@ -146,16 +135,9 @@ object Baselines {
         RustScores.baselineFoldHistory(values, cfg)
 
     /**
-     * Replay an ordered sequence of nightly values (oldest first) to build state, honouring a manual
-     * recalibration [baselineEpoch] (epoch SECONDS; 0 = no recalibration).
-     *
-     * [dayKeys] runs parallel to [values] ("yyyy-MM-dd", same order/length). Any night whose day
-     * STARTS (UTC) before [baselineEpoch] is dropped entirely (not skip-and-hold), so the baseline
-     * re-seeds from the first on-or-after-epoch night — this is what lets "Recalibrate HRV baseline"
-     * in Settings reset a baseline that anchored too high.
-     *
-     * When [baselineEpoch] <= 0 this is byte-identical to plain [foldHistory]. The caller reads the
-     * persisted epoch from SharedPreferences (the analytics layer is Context-free).
+     * Replay nightly values (oldest first), honouring a manual recalibration [baselineEpoch] (epoch
+     * seconds; 0 = disabled). [dayKeys] parallels [values]; a night starting (UTC) before the epoch
+     * is dropped, not skip-and-held, so the baseline re-seeds from the first night on or after it.
      */
     fun foldHistory(
         values: List<Double?>,
@@ -190,29 +172,18 @@ object Baselines {
     // ─────────────────────────────────────────────────────────────────────────
 
     /**
-     * Recalibration epoch (seconds, UTC start-of-day) at the LATEST device-era boundary in a
-     * source-tagged nightly history — feeds [foldHistory]'s `baselineEpoch` so a baseline can't mix
-     * two brands' incompatible HRV scales (Oura RMSSD ~120-155 ms vs WHOOP ~72-112 ms, no overlap: a
-     * straddling window would read the newer brand's early nights as suppressed against the old mean).
-     *
-     * [sourceDays] must be exactly ONE `(dayKey, sourceId)` per night — the day's WINNING source, not
-     * one row per source — or a same-day multi-brand tie could misread which brand is current.
-     *
-     * Walks newest-to-oldest over the contiguous run matching the newest night's brand and returns
-     * that run's first day's start; a lone off-brand day inside the run truncates it (drops more
-     * history, never mixes scales). Returns 0.0 (no recalibration) when the whole history is one brand.
-     *
-     * Brand bucketing is coarse (every WHOOP-origin id is one brand; each wearable-export brand is
-     * its own) and must be read from the ORIGINAL per-source rows before any merge re-homes them.
+     * Recalibration epoch (UTC start-of-day, seconds) at the latest device-era boundary in a
+     * source-tagged history, so [foldHistory]'s `baselineEpoch` never mixes brands' incompatible HRV
+     * scales (Oura RMSSD ~120-155 ms vs WHOOP ~72-112 ms). [sourceDays] must carry exactly one
+     * winning `(dayKey, sourceId)` per night; returns 0.0 when the whole history is one brand.
      */
     fun deviceEraEpoch(sourceDays: List<Pair<String, String>>): Double {
         if (sourceDays.isEmpty()) return 0.0
-        // Total order by (day, sourceId) — a same-day mixed-brand row (an overlap night) must break the
-        // tie IDENTICALLY to the Swift twin, so a plain by-day sort (stable in Kotlin, unstable in Swift)
-        // can't diverge the computed epoch across platforms.
+        // Total order by (day, sourceId): a same-day mixed-brand row breaks the tie by sourceId,
+        // not insertion order, so the computed epoch is deterministic regardless of input order.
         val sorted = sourceDays.sortedWith(compareBy({ it.first }, { it.second }))
         val currentBrand = brandBucket(sorted.last().second)
-        // No brand change anywhere → no epoch (byte-identical fold for every single-brand user).
+        // No brand change anywhere → no recalibration epoch.
         if (sorted.none { brandBucket(it.second) != currentBrand }) return 0.0
         // Walk back over the contiguous current-brand suffix; its first day opens the current era.
         var eraStartDay = sorted.last().first
@@ -227,10 +198,9 @@ object Baselines {
     }
 
     /**
-     * Coarse HRV-scale brand for a source id (#459). Every WHOOP-origin id shares ONE scale; each
-     * wearable-export brand is its own. Unknown ids bucket to "whoop" (the strap source and its Apple/
-     * Health-Connect riders), so only a positively-identified wearable export changes the era. Mirrors
-     * the Swift twin.
+     * Coarse HRV-scale brand for a source id. Every WHOOP-origin id shares one scale; each
+     * wearable-export brand is its own. Unknown ids bucket to "whoop" (the strap source and its
+     * Apple/Health-Connect riders), so only a positively-identified wearable export changes the era.
      */
     internal fun brandBucket(sourceId: String): String = when {
         // `startsWith` deliberately catches BOTH the export id ("oura-import") and the cloud id
@@ -266,17 +236,9 @@ object Baselines {
     // ─────────────────────────────────────────────────────────────────────────
 
     /**
-     * Recalibrate every baseline that feeds Charge: drop the anchor so the ~4-night build-up restarts
-     * from [nowSeconds]. This is the single source of truth behind the Settings "Recalibrate Charge
-     * baseline" button — it writes [nowSeconds] (epoch SECONDS, whole) to BOTH the HRV epoch and the
-     * recovery epoch, so HRV (the dominant driver, already wired) and the resting-HR / respiration /
-     * skin-temp baselines re-anchor together. It does NOT delete any stored day: only the day from
-     * which the baselines re-learn moves. After this the next foldHistory re-seeds from the first
-     * on-or-after-[nowSeconds] night, so Today honestly shows the calibrating/building state again.
-     *
-     * The analytics layer is Context-free, so the caller passes in the prefs editor. Epochs are stored
-     * as whole seconds in a Long (SharedPreferences has no putDouble; the readers do getLong→toDouble),
-     * matching the "epoch SECONDS" the keys document and the iOS UserDefaults values byte-for-byte.
+     * Recalibrates every baseline that feeds Charge: writes [nowSeconds] to both the HRV and recovery
+     * epoch keys so they re-anchor together, without deleting any stored day (only the re-learn point
+     * moves). Stored as a Long since SharedPreferences has no putDouble; caller supplies the editor.
      */
     fun recalibrateRecoveryBaselines(editor: android.content.SharedPreferences.Editor, nowSeconds: Long) {
         editor.putLong(hrvBaselineEpochKey, nowSeconds)

@@ -12,19 +12,15 @@ import uniffi.whoop_ffi.mainNightSelection as ffiMainNightSelection
 
 /**
  * Decode a sleep session's `stagesJSON` into stage MINUTE totals, and aggregate a night's blocks into
- * the sleep-derived daily fields. Pure + deterministic, so the daily-aggregate recompute that honors a
- * user's bed/wake-time edit can run off the stored (reshaped) stages — no raw streams needed.
+ * the sleep-derived daily fields. Pure and deterministic, so a bed/wake-time edit's recompute can run
+ * off the stored (reshaped) stages with no raw streams needed.
  *
- * Faithful Kotlin port of StrandAnalytics/Sources/StrandAnalytics/SleepStageTotals.swift (the iOS
- * `dailyAggregateHonoringEdits` seam from PR #395), adapted to Android's two stagesJSON shapes:
- *   - on-device COMPUTED (what the IntelligenceEngine writes via [AnalyticsEngine.encodeStages]):
- *     `[{start,end,stage}]` — per-segment unix SECONDS spans;
- *   - IMPORTED (WhoopCsvImporter.stagesJson): `[{stage,min}]` — per-stage MINUTE totals.
- * The on-device stager calls awake "wake"; the importer "awake" — both map to `awake`.
+ * Handles two stagesJSON shapes: on-device COMPUTED (written via [AnalyticsEngine.encodeStages]) as
+ * `[{start,end,stage}]` per-segment unix SECONDS spans, and IMPORTED (WhoopCsvImporter.stagesJson) as
+ * `[{stage,min}]` per-stage MINUTE totals. Both "wake" and "awake" stage names map to `awake`.
  *
  * The edit/recompute path only ever feeds the COMPUTED (`-noop`) source's `[{start,end,stage}]` stages
- * here (the daily override is computed-source-only, mirroring iOS scope), but [minutes] handles both
- * shapes so the helper is a complete twin of the Swift one and is robust to either input.
+ * here, but [minutes] handles both shapes so it is robust to either input.
  */
 object SleepStageTotals {
 
@@ -41,9 +37,8 @@ object SleepStageTotals {
 
     /**
      * The sleep-derived daily fields for a night, or null if nothing decodes. `efficiency` is
-     * asleep / in-bed (TST / Σ stage minutes) in [0,1]. For the segment stages noop stores (which TILE
-     * the window), Σ stage minutes equals the clock span, so this coincides with the SleepStager's
-     * TST/(end−start). Mirrors Swift `SleepStageTotals.DailySleep`.
+     * asleep / in-bed (TST / sum of stage minutes) in [0,1]. For the segment stages noop stores (which
+     * tile the window), this coincides with SleepStager's TST/(end−start).
      */
     data class DailySleep(
         val totalSleepMin: Double,
@@ -55,8 +50,7 @@ object SleepStageTotals {
 
     /**
      * Stage minutes for one session's `stagesJSON`, or null if it decodes to nothing usable.
-     * Handles both Android shapes — `[{start,end,stage}]` (seconds spans) and `[{stage,min}]`
-     * (minute totals). Mirrors Swift `minutes(fromStagesJSON:)`.
+     * Handles both shapes: `[{start,end,stage}]` (seconds spans) and `[{stage,min}]` (minute totals).
      */
     fun minutes(stagesJSON: String?): Minutes? {
         val json = stagesJSON ?: return null
@@ -65,8 +59,7 @@ object SleepStageTotals {
         } catch (e: Throwable) {
             android.util.Log.w("SleepStages", "minutes: failed to parse stages JSONArray, returning null", e)
             // Object/dict shape {"awake":N,"light":N,"deep":N,"rem":N} of minute totals (imported
-            // sessions). Mirrors Swift minutes(fromStagesJSON:)'s dict branch so imported sleep decodes
-            // on Android too, not just the segment-array shapes.
+            // sessions), decoded here too so imported sleep isn't limited to segment-array shapes.
             val dict = try { JSONObject(json) } catch (e: Throwable) { android.util.Log.w("SleepStages", "minutes: failed JSONObject parse, returning null", e); return null }
             val md = Minutes()
             md.awake = dict.optDouble("awake", 0.0)
@@ -102,13 +95,9 @@ object SleepStageTotals {
     }
 
     /**
-     * #259: return `stagesJSON` with its `[{start,end,stage}]` segments trimmed to begin no earlier than
-     * [onsetSec] — segments fully before the onset are dropped, one straddling it is cut to `[onsetSec, end]`.
-     * Only the computed segment-array shape carries the timestamps a trim needs, so the `{stage,min}` /
-     * dict (imported) shapes and any unparseable JSON are returned UNCHANGED. A no-op when every segment
-     * already starts at/after the onset (the common, already-consistent case). The result is re-parsed by
-     * [minutes] / [dailyAggregate] on the SAME platform, so only the decoded minute totals need
-     * cross-platform parity, not the exact string. Mirrors Swift `clampStagesToOnset`.
+     * Trims a computed `[{start,end,stage}]` stagesJSON so no segment begins before [onsetSec]:
+     * segments fully before it are dropped, one straddling it is cut to `[onsetSec, end]`. The
+     * `{stage,min}` / dict (imported) shape and unparseable JSON pass through UNCHANGED.
      */
     internal fun clampStagesToOnset(stagesJSON: String?, onsetSec: Long): String? {
         val json = stagesJSON ?: return null
@@ -125,16 +114,15 @@ object SleepStageTotals {
         return out.toString()
     }
 
-    // ── Canonical main-night selection (#525 / #547 — learned-timing scored pick) ────────────────────
+    // ── Canonical main-night selection (learned-timing scored pick) ──────────────────────────────────
 
     /** Broad overnight band used ONLY for the cold-start alignment bonus (NOT a gate). The band is
      *  [OVERNIGHT_START_HOUR, OVERNIGHT_END_HOUR) local, reconciled with the detector's
-     *  `SleepStager.isOvernightOnset` window [20:00, 11:00) so the selector and detector agree (removes the
-     *  old [10:00, 11:00) off-by-one). Mirrors Swift. (#547) */
+     *  `SleepStager.isOvernightOnset` window [20:00, 11:00) so the selector and detector agree. */
     const val OVERNIGHT_START_HOUR = 20
 
-    /** Local hour (exclusive) that closes the cold-start overnight band. Now 11 (was 10) to match the
-     *  detector's [20:00, 11:00) onset window. A block onset in [OVERNIGHT_END_HOUR, OVERNIGHT_START_HOUR)
+    /** Local hour (exclusive) that closes the cold-start overnight band, matching the detector's
+     *  [20:00, 11:00) onset window. A block onset in [OVERNIGHT_END_HOUR, OVERNIGHT_START_HOUR)
      *  is daytime; everything else is overnight. */
     const val OVERNIGHT_END_HOUR = 11
 
@@ -142,32 +130,25 @@ object SleepStageTotals {
     const val SECONDS_PER_DAY = 86_400L
 
     /** Fixed alignment credit (MINUTES) added to a block's asleep minutes when its midpoint sits on the
-     *  habitual midsleep (or, cold-start, the overnight band center). A BONUS, not a gate — a long enough
-     *  off-timing block can still out-score a short well-timed one. ~90 min ≈ one sleep cycle. Mirrors
-     *  Swift `alignmentBonusMin`. (#547) */
+     *  habitual midsleep (or, cold-start, the overnight band center). A BONUS, not a gate: a long enough
+     *  off-timing block can still out-score a short well-timed one. ~90 min ≈ one sleep cycle. */
     const val ALIGNMENT_BONUS_MIN: Double = 90.0
 
     /** Full alignment bonus within this many seconds (circular) of the habitual midsleep; decays linearly
-     *  to 0 at [ALIGNMENT_ZERO_SEC]. ±2h full, →0 by ±5h. Mirrors Swift. */
+     *  to 0 at [ALIGNMENT_ZERO_SEC]. ±2h full, →0 by ±5h. */
     const val ALIGNMENT_FULL_WINDOW_SEC = 2 * 3_600L
 
-    /** Circular distance (seconds) at/after which the alignment bonus is 0. Mirrors Swift. */
+    /** Circular distance (seconds) at/after which the alignment bonus is 0. */
     const val ALIGNMENT_ZERO_SEC = 5 * 3_600L
 
     /** Adjacent sleep runs separated by a wake gap shorter than this (minutes) are bridged into one block
      *  for selection, so a biphasic / briefly-interrupted main sleep is scored as one night. Matches the
-     *  research's <60 min "same sleep period" threshold. Mirrors Swift `gapBridgeMaxMin`. (#547) */
+     *  research's <60 min "same sleep period" threshold. */
     const val GAP_BRIDGE_MAX_MIN = 60
 
-    /** Wider wake-gap bridge (minutes) applied ONLY to an overnight night-tail fragment, so a single
-     *  overnight sleep broken by a real but longer mid-night wake (>= [GAP_BRIDGE_MAX_MIN], < this) is not
-     *  over-fragmented into a NAP + a main sleep, the #861 report ("night sleeps are split into naps and
-     *  sleep"). Mirrors the detector's own `SleepStager.nightContinuationGapMin` (90 min), the same "this is
-     *  the night's tail, not an isolated nap" threshold the detection spine already trusts. Applied (in
-     *  [mainNightGroupIndices]) ONLY when the later fragment's onset is still in the overnight band
-     *  ([isOvernightOnset]), so a genuine daytime nap (hours away AND begun in daytime) can never be
-     *  folded into the night. Below [GAP_BRIDGE_MAX_MIN] the unconditional short-wake bridge is unchanged.
-     *  Mirrors Swift `nightTailBridgeMaxMin`. (#861) */
+    /** Wider wake-gap bridge (minutes) for an overnight night-tail fragment: a wake gap (>= [GAP_BRIDGE_MAX_MIN],
+     *  < this) still bridges rather than splitting one night into a nap plus a main sleep. Applies only when
+     *  the later fragment's onset is still in the overnight band, so a daytime nap is never folded in. */
     const val NIGHT_TAIL_BRIDGE_MAX_MIN = 90
 
     /** One candidate block for main-night selection: its effective onset and end (unix seconds). A user
@@ -178,9 +159,9 @@ object SleepStageTotals {
     }
 
     /** True when a block's onset falls in the cold-start overnight band (>= [OVERNIGHT_START_HOUR] or
-     *  < [OVERNIGHT_END_HOUR], local). Retained for callers/tests that still ask the binary question, but
-     *  the scored selector no longer GATES on it — it only feeds the cold-start alignment bonus. Mirrors
-     *  `SleepStager.isOvernightOnset`. [offsetSec] is seconds EAST of UTC. (#525 / #547) */
+     *  < [OVERNIGHT_END_HOUR], local; kept in sync with `SleepStager.isOvernightOnset`). No longer a
+     *  gate for the scored selector, only feeds the cold-start alignment bonus. [offsetSec] is seconds
+     *  EAST of UTC. */
     fun isOvernightOnset(ts: Long, offsetSec: Long): Boolean {
         val local = ts + offsetSec
         val secOfDay = ((local % SECONDS_PER_DAY) + SECONDS_PER_DAY) % SECONDS_PER_DAY
@@ -188,15 +169,14 @@ object SleepStageTotals {
         return hour >= OVERNIGHT_START_HOUR || hour < OVERNIGHT_END_HOUR
     }
 
-    /** Local time-of-day, in seconds [0, 86400), of a unix timestamp shifted east by [offsetSec].
-     *  Mirrors Swift `localSecOfDay`. */
+    /** Local time-of-day, in seconds [0, 86400), of a unix timestamp shifted east by [offsetSec]. */
     internal fun localSecOfDay(ts: Long, offsetSec: Long): Long {
         val local = ts + offsetSec
         return ((local % SECONDS_PER_DAY) + SECONDS_PER_DAY) % SECONDS_PER_DAY
     }
 
     /** Smallest circular distance (seconds, 0..43200) between two times-of-day, so 23:30 and 00:30 are
-     *  3600s apart, not 82800. Both inputs are seconds-of-day in [0, 86400). Mirrors Swift. */
+     *  3600s apart, not 82800. Both inputs are seconds-of-day in [0, 86400). */
     internal fun circularDistanceSec(a: Long, b: Long): Long {
         val raw = Math.abs(a - b) % SECONDS_PER_DAY
         return minOf(raw, SECONDS_PER_DAY - raw)
@@ -204,7 +184,7 @@ object SleepStageTotals {
 
     /** The cold-start anchor: the CENTER of the overnight band [OVERNIGHT_START_HOUR, OVERNIGHT_END_HOUR),
      *  as a time-of-day in seconds. The band wraps midnight (20:00 → 11:00 = 15h wide) so the center is
-     *  03:30 local. Mirrors Swift `coldStartAnchorSec`. (#547) */
+     *  03:30 local. */
     val coldStartAnchorSec: Long
         get() {
             val startSec = OVERNIGHT_START_HOUR * 3_600L
@@ -214,8 +194,7 @@ object SleepStageTotals {
 
     /** The alignment bonus (MINUTES) a block earns for sitting near the target midsleep. Full
      *  [ALIGNMENT_BONUS_MIN] within [ALIGNMENT_FULL_WINDOW_SEC], decaying linearly to 0 by
-     *  [ALIGNMENT_ZERO_SEC]. [blockMidSec]/[targetMidSec] are local times-of-day in seconds. Mirrors
-     *  Swift `alignmentBonusMinutes`. (#547) */
+     *  [ALIGNMENT_ZERO_SEC]. [blockMidSec]/[targetMidSec] are local times-of-day in seconds. */
     internal fun alignmentBonusMinutes(blockMidSec: Long, targetMidSec: Long): Double {
         val d = circularDistanceSec(blockMidSec, targetMidSec)
         if (d <= ALIGNMENT_FULL_WINDOW_SEC) return ALIGNMENT_BONUS_MIN
@@ -225,98 +204,58 @@ object SleepStageTotals {
     }
 
     /** The target midsleep time-of-day (seconds) the scorer aligns to: the learned [habitualMidsleepSec]
-     *  when supplied, else the cold-start overnight-band center. Mirrors Swift `targetMidsleepSec`. */
+     *  when supplied, else the cold-start overnight-band center. */
     internal fun targetMidsleepSec(habitualMidsleepSec: Long?): Long =
         habitualMidsleepSec ?: coldStartAnchorSec
 
     /** One bridged night group over the whole input: the fragments (as ORIGINAL indices, ascending) plus
-     *  the group's inter-fragment wake seams (start, end) pairs. Produced by [bridgedNightGroups] for the
-     *  consumers that must present a briefly-interrupted night as ONE night — the Health Connect export
-     *  and the Sleep screen — so they group exactly as the day totals do and can fold each seam in as an
-     *  explicit wake segment. Mirrors Swift `BridgedNightGroup`. (#364) */
+     *  the group's inter-fragment wake seams (start, end) pairs. Produced by [bridgedNightGroups] for
+     *  consumers (Health Connect export, Sleep screen) that must fold a briefly-interrupted night into one. */
     data class BridgedNightGroup(val indices: List<Int>, val gaps: List<Pair<Long, Long>>)
 
-    /** EVERY bridged group over [blocks] — the same two-tier bridge [mainNightGroupIndices] applies (#561
-     *  short-wake, plus the #861 overnight night-tail widening), WITHOUT the winner pick. A negative gap
-     *  (a block starting inside the previous span) does not bridge — pinned legacy semantics, `gap >= 0` —
-     *  and never fabricates a seam. Groups ordered by start; pure and deterministic. Mirrors Swift
-     *  `bridgedNightGroups`. (#364) */
+    /** EVERY bridged group over [blocks]: the same two-tier bridge [mainNightGroupIndices] applies
+     *  (short-wake plus overnight night-tail widening), WITHOUT the winner pick. A negative gap (a block
+     *  starting inside the previous span) never bridges (`gap >= 0` required); groups are ordered by start. */
     fun bridgedNightGroups(blocks: List<NightBlock>, offsetSec: Long): List<BridgedNightGroup> =
         ffiBridgedNightGroups(blocks.map { MainNightBlock(it.start, it.end) }, offsetSec)
             .map { g -> BridgedNightGroup(g.indices.map { it.toInt() }, g.gaps.map { it.start to it.end }) }
 
     /** The indices (into the ORIGINAL [blocks]) of the MAIN-NIGHT GROUP: the main night plus any adjacent
-     *  fragments bridged into it. A biphasic / briefly-interrupted main sleep that reaches the selector still
-     *  split into two blocks (a wake gap shorter than [GAP_BRIDGE_MAX_MIN] between them) is scored as ONE
-     *  night rather than two competing fragments, then the winning bridged group's fragments are ALL returned
-     *  so the caller can SUM their stages for the day's headline figure. (#561)
-     *
-     *  Pipeline:
-     *   1. [bridgedNightGroups] merges blocks whose gap is in `[0, GAP_BRIDGE_MAX_MIN*60)` (or the #861
-     *      night-tail window) into bridged groups, in `start` order;
-     *   2. [mainNightIndex] scores the BRIDGED spans (so a two-fragment night's combined span out-scores a
-     *      lone nap) and picks the winning bridged group;
-     *   3. the original indices of that winning group are returned, ascending.
-     *
-     *  Null only for an empty list. A day with no bridgeable gap collapses to the single-block group the bare
-     *  [mainNightIndex] would pick — byte-identical to the old behaviour for the common case. Pure +
-     *  deterministic; shares the [bridgedNightGroups] pass + [mainNightIndex] so the pick stays
-     *  cross-platform stable. Mirrors Swift `mainNightGroupIndices`. (#561) */
+     *  fragments bridged into it, so a biphasic sleep split by a short wake gap scores as ONE night and the
+     *  caller can SUM all its fragments' stages. Null only for an empty list. */
     fun mainNightGroupIndices(blocks: List<NightBlock>, offsetSec: Long, habitualMidsleepSec: Long? = null): List<Int>? =
         ffiMainNightGroupIndices(blocks.map { MainNightBlock(it.start, it.end) }, offsetSec, habitualMidsleepSec)
             ?.map { it.toInt() }
 
-    /** Index of the day's MAIN night among [blocks], by the LEARNED-TIMING SCORE (replaces the old hard
-     *  overnight gate). score(block) = asleepMinutes + alignmentBonus, crediting a block whose midpoint
-     *  sits near [habitualMidsleepSec] (or, cold-start, the overnight-band center). No hard duration floor
-     *  and no overnight gate: a short main sleep or a nap-only day still resolves, and a genuine long
-     *  daytime sleep can win on score. Highest score wins; exact ties break toward the EARLIER onset
-     *  (stable across platforms). Null only for an empty list. This `NightBlock` overload has no decoded
-     *  stages, so "asleep minutes" is the clock span — preserving the prior duration semantics for callers
-     *  that rank by span (`analyzeDay`). Mirrors Swift `mainNightIndex`. (#525 / #547) */
+    /** Index of the day's MAIN night: score(block) = asleepMinutes + alignmentBonus, crediting a midpoint
+     *  near [habitualMidsleepSec] (or the overnight-band center, cold-start); no duration floor or overnight
+     *  gate, ties break to the EARLIER onset, null only when [blocks] is empty; asleep = clock span here. */
     fun mainNightIndex(blocks: List<NightBlock>, offsetSec: Long, habitualMidsleepSec: Long? = null): Int? =
         ffiMainNightIndex(blocks.map { MainNightBlock(it.start, it.end) }, offsetSec, habitualMidsleepSec)?.toInt()
 
     // ── Selection REASON (explainability — why THIS block won) ───────────────────────────────────────
 
-    /** Why the main-night selector chose the block it chose, the EXACT truth the score used, so the UI can
-     *  explain the pick in plain English. Computed from the SAME signals the score does (asleep duration vs
-     *  the alignment bonus). Mirrors Swift `MainNightReason`. (#547 explainability)
-     *  - [onlyBlock]        — the day had a single block, so there was nothing to choose between.
-     *  - [longest]          — the chosen block won on raw asleep duration (cold-start, or no meaningful
-     *                         timing credit); it is simply the longest. The default / fallback reason.
-     *  - [longestNearUsual] — the chosen block was BOTH the longest by duration AND earned a meaningful
-     *                         alignment bonus (a learned habitual is present and the block sits within the
-     *                         bonus window of it): longest, and near the usual sleep time.
-     *  - [alignedToUsual]   — the alignment bonus (NOT raw duration) flipped the pick: a shorter block that
-     *                         sits near the usual sleep time out-scored the longest block. Timing decided it. */
+    /** Why the main-night selector chose the block it chose, from the same signals the score used (asleep
+     *  duration vs the alignment bonus), so the UI can explain the pick in plain English.
+     *  - [onlyBlock] — the day had a single block, nothing to choose between.
+     *  - [longest] — won on raw asleep duration (cold-start or no timing credit); the default reason.
+     *  - [longestNearUsual] — longest by duration AND earned a meaningful alignment bonus (near the
+     *    learned habitual).
+     *  - [alignedToUsual] — the alignment bonus, not raw duration, flipped the pick: a shorter block near
+     *    the usual sleep time out-scored the longest one. */
     enum class MainNightReason { onlyBlock, longest, longestNearUsual, alignedToUsual }
 
-    /** The resolved main-night pick PLUS the truth needed to explain it: which block won ([index]), WHY it
+    /** The resolved main-night pick plus the truth needed to explain it: which block won ([index]), WHY it
      *  won ([reason]), and the chosen block's ASLEEP duration ([asleepSec]) so the UI can fill "Xh Ym". For
-     *  the [NightBlock] overload "asleep" is the block's clock span (no decoded stages), matching
-     *  [mainNightIndex]'s scoring semantics exactly. Mirrors Swift `MainNightSelection`. (#547) */
+     *  the [NightBlock] overload "asleep" is the block's clock span, matching [mainNightIndex]'s scoring. */
     data class MainNightSelection(val index: Int, val reason: MainNightReason, val asleepSec: Long) {
         /** The chosen block's asleep duration in whole MINUTES (floored), for "Xh Ym" copy. */
         val asleepMin: Long get() = asleepSec / 60L
     }
 
-    /** The day's MAIN night AND why it won, over [blocks]. A sibling to [mainNightIndex] (same score, same
-     *  tie-break, same null-on-empty) that additionally returns the [MainNightReason] derived from the SAME
-     *  signals the score used, and the chosen block's asleep duration, so the UI can explain the pick without
-     *  re-deriving anything. Existing [mainNightIndex] callers are untouched.
-     *
-     *  The reason is decided exactly as the spec lays out, in this order:
-     *   1. one block            → [MainNightReason.onlyBlock];
-     *   2. the bonus flipped it  → [MainNightReason.alignedToUsual]  (the score winner differs from the
-     *      duration-only winner, so timing — not raw duration — decided the pick);
-     *   3. longest + near usual  → [MainNightReason.longestNearUsual] (the score winner IS the duration-only
-     *      winner AND a learned [habitualMidsleepSec] is present AND the chosen block earns a non-zero
-     *      alignment bonus, i.e. its midpoint is within the bonus window of the learned habitual);
-     *   4. otherwise             → [MainNightReason.longest] (incl. cold-start: no learned habitual, or the
-     *      chosen longest block earns no meaningful timing credit).
-     *
-     *  Mirrors Swift `mainNightSelection`. (#547 explainability) */
+    /** The day's MAIN night and why it won: like [mainNightIndex] (same score/tie-break/null-on-empty),
+     *  plus [MainNightReason] checked in order: one block → onlyBlock; the bonus flipped the winner →
+     *  alignedToUsual; winner is also longest and earns a bonus → longestNearUsual; else → longest. */
     fun mainNightSelection(blocks: List<NightBlock>, offsetSec: Long, habitualMidsleepSec: Long? = null): MainNightSelection? {
         val sel = ffiMainNightSelection(
             blocks.map { MainNightBlock(it.start, it.end) }, offsetSec, habitualMidsleepSec,
@@ -330,18 +269,13 @@ object SleepStageTotals {
         return MainNightSelection(sel.index.toInt(), reason, sel.asleepSec)
     }
 
-    /** The night's daily sleep aggregate over these blocks' `stagesJSON`, or null if none decode.
-     *  Mirrors Swift `dailyAggregate`. */
+    /** The night's daily sleep aggregate over these blocks' `stagesJSON`, or null if none decode. */
     fun dailyAggregate(stagesJSONs: List<String?>): DailySleep? =
         dailyAggregate(stagesJSONs, interFragmentAwakeSeconds = 0.0)
 
-    /** As [dailyAggregate], but folds the OUT-OF-BED time between bridged main-night fragments into the
-     *  night's AWAKE total (and therefore its in-bed denominator). #777/#705 regression fix: a main sleep
-     *  bridged from two fragments split by a 20-min wake gap was reporting that gap as nowhere (it is in no
-     *  fragment's own span), so 20+ min of real awake read as ~4 min. The caller computes the gap once
-     *  (sum of gaps between consecutive fragments' effective ends and onsets) and passes it here so both the
-     *  analytics rollup and the edit/recompute seam apply ONE consistent definition: gap → awake → in-bed.
-     *  `interFragmentAwakeSeconds` <= 0 reproduces the legacy sum-of-stages behaviour. Mirrors Swift. */
+    /** As [dailyAggregate], but folds the out-of-bed time between bridged main-night fragments into the
+     *  night's awake total, and so into its in-bed denominator. The caller sums those gaps once and
+     *  passes them, so the rollup and the edit seam apply one definition. A value <= 0 sums stages alone. */
     fun dailyAggregate(stagesJSONs: List<String?>, interFragmentAwakeSeconds: Double): DailySleep? {
         val total = Minutes()
         var any = false
@@ -364,12 +298,9 @@ object SleepStageTotals {
         )
     }
 
-    /** The OUT-OF-BED time (seconds) BETWEEN consecutive bridged sleep fragments - the inter-fragment wake
-     *  gaps the #561 gap-bridge spans but no fragment's own `[start,end)` covers. Each fragment is one
-     *  (start,end) span; sorted by start, the gap after fragment i is `max(0, start[i+1] - end[i])`. Sums
-     *  only positive gaps. The single shared definition of "awake between fragments" both `analyzeDay` and
-     *  the edit/recompute seam fold into AWAKE, so the two paths agree (no seam double-count). Mirrors
-     *  Swift `interFragmentAwakeSeconds`. (#777/#705) */
+    /** The out-of-bed time (seconds) between consecutive bridged sleep fragments: sorted by start, the gap
+     *  after fragment i is `max(0, start[i+1] - end[i])`, summing only positive gaps. Both `analyzeDay` and
+     *  the edit/recompute seam fold this into AWAKE, so the two paths agree (no double-count). */
     fun interFragmentAwakeSeconds(spans: List<Pair<Long, Long>>): Double {
         if (spans.size <= 1) return 0.0
         val sorted = spans.sortedBy { it.first }
@@ -385,47 +316,34 @@ object SleepStageTotals {
     data class HonoredAggregate(val sleep: DailySleep, val editApplied: Boolean)
 
     /**
-     * The night's daily sleep aggregate, substituting any USER-EDITED block for its detected twin before
-     * summing, then UNIONING in any user-added block that has no detected twin. [detected] is the
-     * auto-detected blocks (their stable startTs + stages); [edited] maps a block's startTs → its
-     * hand-corrected (reshaped) stages — a bed/wake-time edit never moves startTs, so the edited block
-     * lands exactly on its detected twin. [manual] is user-added blocks (e.g. a hand-logged nap) the
-     * detector never found; each is keyed by its own stable startTs and FOLDED IN so its minutes count
-     * toward the day's totals (a detector-found nap already folds via [detected]). De-duped by startTs
-     * so a block already in [detected] (or substituted via [edited]) is never double-counted. Returns the
-     * aggregate plus whether an edit OR a manual block actually contributed (so the caller only overrides
-     * the day when it did), or null when nothing decodes.
-     *
-     * Faithful twin of Swift `dailyAggregateHonoringEdits` (#518 / #508): substitute an edited block's
-     * stages ONLY when the edit has usable (non-null) stages — an edit that reshaped to null must fall
-     * back to the detected stages, never DROP the block (which would collapse the night's sleep total).
-     * `editApplied` likewise reflects a real substitution or a folded manual block. Pure: unit-tested
-     * with synthetic data, no store/stager.
+     * The night's daily sleep aggregate: substitutes any USER-EDITED block for its detected twin (matched
+     * by the stable startTs, since a bed/wake edit never moves it) before summing, then unions in any
+     * user-added [manual] block with no detected twin, de-duped by startTs so nothing double-counts.
+     * An edit with non-null stages substitutes; one that reshaped to null falls back to the detected
+     * stages rather than dropping the block, which would otherwise collapse the night's sleep total.
+     * Returns the aggregate plus whether an edit or manual block actually contributed, or null if
+     * nothing decodes. Pure; unit-tested with synthetic data, no store/stager.
      */
     fun dailyAggregateHonoringEdits(
         detected: List<Pair<Long, String?>>,
         edited: Map<Long, String?>,
         manual: List<Pair<Long, String?>> = emptyList(),
-        // The block's effective onset (a wake/bed edit moves end, not the detected start key) keyed by
-        // startTs, plus the device's UTC offset, so the MAIN-NIGHT pick reads the user's local clock.
-        // When a caller can't supply onsets, leave null and the legacy SUM-of-all-blocks behaviour is
-        // preserved (no regression for older callers); the day rollup passes them so the daily total
-        // matches the Sleep tab. Mirrors Swift `onsetByStart` / `offsetSec`. (#525)
+        // The block's effective onset (a wake/bed edit moves end, not the start key), keyed by startTs,
+        // plus the device's UTC offset, so the main-night pick reads the user's local clock. When null,
+        // falls back to the legacy sum-of-all-blocks behaviour.
         onsetByStart: Map<Long, Long>? = null,
         offsetSec: Long = 0L,
         // The learned habitual midsleep (local time-of-day seconds) so the scored pick aligns to the
-        // user's real bedtime, not a fixed clock band. null = cold-start. Existing callers compile
-        // unchanged. Mirrors Swift `habitualMidsleepSec`. (#547)
+        // user's real bedtime, not a fixed clock band. null = cold-start.
         habitualMidsleepSec: Long? = null,
     ): HonoredAggregate? {
         var applied = false
         // (startTs, effective stages) for every block on the day — detected (edit-substituted) then any
         // twinless manual block UNIONED in. Identity is preserved for the main-night selection.
         val blocks = detected.map { (startTs, detectedStages) ->
-            // `edited[startTs]` is null both when the key is ABSENT and when it maps to NULL stages
-            // (an edit that reshaped to nothing) — in both cases we fall back to the detected stages
-            // and do NOT mark `applied`. Only a present, non-null edit substitutes, mirroring Swift's
-            // `edited[d.startTs] ?? nil` requiring a non-nil value.
+            // `edited[startTs]` is null both when the key is ABSENT and when it maps to NULL stages (an
+            // edit that reshaped to nothing); in both cases we fall back to detected stages and do NOT
+            // mark `applied`. Only a present, non-null edit substitutes.
             val editStages = edited[startTs]
             if (editStages != null) {
                 applied = true
@@ -435,7 +353,7 @@ object SleepStageTotals {
             }
         }.toMutableList()
         // Union: a user-added block the detector never found (no detected twin) must still be on the day
-        // so the main-night pick (or the legacy sum) sees it — otherwise a manually-logged nap is dropped.
+        // so the main-night pick (or the plain sum) sees it, otherwise a manually-logged nap is dropped.
         // Match on the stable startTs and add ONLY rows absent from [detected], with usable stages.
         val detectedStarts = detected.map { it.first }.toHashSet()
         for ((startTs, manualStages) in manual) {
@@ -445,31 +363,25 @@ object SleepStageTotals {
                 applied = true
             }
         }
-        // Canonical per-day total (#525): with block onsets supplied, the daily figure is the MAIN NIGHT
-        // only (the longest, overnight-preferring block — the SAME block the Sleep tab shows), so
-        // Intelligence / Sleep Need / the debt ledger / the card all read the same number as the Sleep
-        // tab. Nap blocks stay their own session rows elsewhere; they are NOT summed into this figure.
-        // No onsets supplied → the legacy sum-of-all-blocks total (older callers unchanged).
+        // With block onsets supplied, the daily figure is the MAIN NIGHT only (the same block the Sleep
+        // tab shows), so Intelligence / Sleep Need / the debt ledger / the card all read the same number.
+        // Nap blocks stay their own rows and are NOT summed in; with no onsets, this sums all blocks.
         if (onsetByStart != null) {
-            // BIPHASIC GAP-BRIDGE (#561): bridge adjacent blocks split by a short wake gap into the
-            // main-night GROUP and SUM that group's stages, so the edit/recompute seam reports the SAME
-            // night `analyzeDay` does. Naps outside the group remain their own rows. Mirrors Swift.
+            // BIPHASIC GAP-BRIDGE: bridge adjacent blocks split by a short wake gap into the main-night
+            // GROUP and SUM that group's stages, so the edit/recompute seam reports the SAME night
+            // `analyzeDay` does. Naps outside the group remain their own rows.
             val group = mainNightGroupIndicesByStages(blocks, onsetByStart, offsetSec, habitualMidsleepSec)
                 ?: return null
-            // #259: trim each SELECTED block's stages to its EFFECTIVE onset before summing. A hand-edited
-            // or onset-trimmed bedtime that the raw was too sparse to re-stage (WHOOP 4.0) leaves pre-onset
-            // segments in the stored stagesJSON; summing them in full pushes asleep past time-in-bed (the
-            // impossible "6h41m asleep / 4h33m in bed" card). Selection above ran on the ORIGINAL blocks, so
-            // no #525/#547 pick regression — only the SUMMED main-night total is clamped. A block already
-            // staged from its onset (the common case) is unchanged. Mirrors Swift.
+            // Trim each SELECTED block's stages to its EFFECTIVE onset before summing: a hand-edited or
+            // onset-trimmed bedtime the raw was too sparse to re-stage (WHOOP 4.0) leaves pre-onset segments
+            // in stagesJSON, which would push asleep past time-in-bed (an impossible "asleep > in-bed" card).
             val clampedStages = group.map { i ->
                 val onset = onsetByStart[blocks[i].first]
                 if (onset != null) clampStagesToOnset(blocks[i].second, onset) else blocks[i].second
             }
-            // OUT-OF-BED time between the bridged fragments counts as AWAKE (#777/#705), using the SAME
-            // single definition `analyzeDay` applies so the seam can't double-count it. Each fragment's
-            // effective span is `[onset, onset + decoded in-bed]`; the gap between consecutive fragments is
-            // awake the fragments' own stages don't cover. Mirrors Swift.
+            // OUT-OF-BED time between bridged fragments counts as AWAKE, using the SAME definition
+            // `analyzeDay` applies so the seam can't double-count it. Each fragment's effective span is
+            // `[onset, onset + decoded in-bed]`; the gap between fragments is awake time no stages cover.
             val spans = group.mapIndexed { gi, i ->
                 val onset = onsetByStart[blocks[i].first] ?: blocks[i].first
                 val inBedSec = ((minutes(clampedStages[gi])?.inBed ?: 0.0) * 60.0).toLong()
@@ -484,13 +396,8 @@ object SleepStageTotals {
     }
 
     /** The original-index group (ascending) of the day's MAIN night on the STAGES path: the main night plus
-     *  any adjacent fragments bridged into it (a wake gap shorter than [GAP_BRIDGE_MAX_MIN]), so the edit/
-     *  recompute seam SUMS the same fragments `analyzeDay` does for a biphasic night. Each block's effective
-     *  span is `[onset, onset + decoded in-bed]`; bridging tests the gap between one block's effective end and
-     *  the next block's onset. The bridged spans are scored by [mainNightIndexByStages] (decoded asleep
-     *  minutes + alignment), and the winning group's original indices are returned. Null only for an empty
-     *  list. A day with no bridgeable gap returns the single block [mainNightIndexByStages] would pick — no
-     *  #525 regression. Mirrors Swift `mainNightGroupIndicesByStages`. (#561) */
+     *  adjacent fragments bridged into it (a wake gap shorter than [GAP_BRIDGE_MAX_MIN]), so the edit/
+     *  recompute seam sums the same fragments `analyzeDay` does. Null only for an empty list. */
     internal fun mainNightGroupIndicesByStages(
         blocks: List<Pair<Long, String?>>,
         onsetByStart: Map<Long, Long>,
@@ -511,11 +418,9 @@ object SleepStageTotals {
             val last = groupEnd.lastOrNull()
             if (last != null) {
                 val gap = onset(b) - last
-                // Same two-tier bridge as `mainNightGroupIndices` so the summed daily total folds in EXACTLY
-                // the fragments the Sleep tab folds into the main night (no nap/total divergence): the
-                // unconditional short-wake bridge (< GAP_BRIDGE_MAX_MIN), then the wider overnight night-tail
-                // bridge ([GAP_BRIDGE_MAX_MIN, NIGHT_TAIL_BRIDGE_MAX_MIN) only when the fragment's onset is
-                // still in the overnight band) that stops one night being split into a nap + a main sleep. (#861)
+                // Same two-tier bridge as `mainNightGroupIndices`: short-wake bridge below GAP_BRIDGE_MAX_MIN,
+                // then the wider night-tail bridge up to NIGHT_TAIL_BRIDGE_MAX_MIN only when the fragment's
+                // onset is still in the overnight band, so this folds in the same fragments as the Sleep tab.
                 val bridges = gap >= 0 &&
                     (gap < bridgeS ||
                         (gap < nightTailBridgeS && isOvernightOnset(onset(b), offsetSec)))
@@ -545,9 +450,8 @@ object SleepStageTotals {
     }
 
     /** A synthetic minute-dict `stagesJSON` whose per-stage minutes are the SUM of the inputs' decoded
-     *  minutes — used only to SCORE a bridged group as one block (decoded asleep minutes + in-bed span).
-     *  Pure; null when nothing decodes (the group then scores 0, like an undecodable block). Mirrors Swift
-     *  `summedStagesJSON`. (#561) */
+     *  minutes: used only to SCORE a bridged group as one block (decoded asleep minutes + in-bed span).
+     *  Pure; null when nothing decodes (the group then scores 0, like an undecodable block). */
     internal fun summedStagesJSON(stagesJSONs: List<String?>): String? {
         val total = Minutes()
         var any = false
@@ -558,18 +462,14 @@ object SleepStageTotals {
             any = true
         }
         if (!any) return null
-        // Keys alphabetical (awake, deep, light, rem) to match Swift's .sortedKeys, though the decoder is
-        // key-order-independent — this is only ever fed back into `minutes(...)` to score the group.
+        // Keys alphabetical (awake, deep, light, rem), though the decoder is key-order-independent;
+        // this is only ever fed back into `minutes(...)` to score the group.
         return "{\"awake\":${total.awake},\"deep\":${total.deep},\"light\":${total.light},\"rem\":${total.rem}}"
     }
 
-    /** Index into [blocks] of the day's MAIN night, by the LEARNED-TIMING SCORE: score(block) =
-     *  asleepMinutes + alignmentBonus, where "asleepMinutes" is the block's decoded ASLEEP minutes (the
-     *  real restorative sleep, not in-bed) and the bonus credits a midpoint near [habitualMidsleepSec]
-     *  (or, cold-start, the overnight band). [onsetByStart] gives each block's effective onset; the
-     *  midpoint is `onset + (in-bed span)/2` from the decoded minutes. Blocks whose stages don't decode
-     *  are still candidates with a 0-minute score. Exact-score ties break toward the EARLIER onset (stable
-     *  across platforms). Mirrors Swift `mainNightIndexByStages`. (#525 / #547) */
+    /** Index into [blocks] of the day's MAIN night: score(block) = asleepMinutes + alignmentBonus, where asleepMinutes
+     *  is the block's decoded ASLEEP minutes (not in-bed) and the bonus credits a midpoint near [habitualMidsleepSec]
+     *  (or the overnight band, cold-start). Undecoded blocks score 0; exact ties break toward the EARLIER onset. */
     internal fun mainNightIndexByStages(
         blocks: List<Pair<Long, String?>>,
         onsetByStart: Map<Long, Long>,
@@ -605,23 +505,19 @@ object SleepStageTotals {
 
     /** One detected sleep block from the trailing history, for learning the user's habitual timing.
      *  [start]/[end] are unix seconds; [dayKey] groups blocks by local calendar day so the LONGEST block
-     *  per day can be picked selection-independently (no chicken-and-egg with main-night selection).
-     *  Mirrors Swift `HistoryBlock`. (#547) */
+     *  per day can be picked selection-independently (no chicken-and-egg with main-night selection). */
     data class HistoryBlock(val start: Long, val end: Long, val dayKey: String) {
         val durationS: Long get() = end - start
         val midpointSec: Long get() = start + (end - start) / 2
     }
 
     /** Minimum number of DAYS (with at least one block) before a habitual midsleep is trusted; a shorter
-     *  history returns null (cold-start). ~2 weeks. Mirrors Swift `habitualMinDays`. (#547) */
+     *  history returns null (cold-start). ~2 weeks. */
     const val HABITUAL_MIN_DAYS = 14
 
-    /** The user's habitual midsleep as a LOCAL TIME-OF-DAY (seconds in [0, 86400)), or null when there is
-     *  too little history (cold-start). The CIRCULAR MEAN of the midpoint-time-of-day of the LONGEST block
-     *  per local day across [history]. Longest-per-day is selection-INDEPENDENT, so no circular dependency
-     *  on main-night selection. Circular math makes 23:30 and 00:30 an hour apart, not 23h. [offsetSec]
-     *  turns each midpoint local; [minDays] is the cold-start floor. Mirrors Swift `habitualMidsleepSec`.
-     *  (#547) */
+    /** The user's habitual midsleep as a LOCAL TIME-OF-DAY (seconds in [0, 86400)), or null when history is
+     *  too short (cold-start): the CIRCULAR MEAN of the midpoint-time-of-day of the LONGEST block per local
+     *  day. Longest-per-day is selection-independent, avoiding a circular dependency on main-night selection. */
     fun habitualMidsleepSec(
         history: List<HistoryBlock>,
         offsetSec: Long,

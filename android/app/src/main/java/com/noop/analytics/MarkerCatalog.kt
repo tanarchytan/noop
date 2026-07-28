@@ -1,26 +1,19 @@
 package com.noop.analytics
 
 /*
- * MarkerCatalog.kt — Kotlin twin of StrandImport/MarkerCatalog.swift: the small
- * dictionary of common, NON-DIAGNOSTIC marker definitions for the Health Records
- * "Lab Book" pillar (spec 2026-06-19-v5-health-records-design.md).
+ * Small dictionary of common, non-diagnostic marker definitions for the Health Records
+ * "Lab Book" pillar.
  *
- * Per the spec §"New" and §"Non-clinical / legal framing":
- *   - Ships NO reference-range tables. `referenceTextHint` is a neutral placeholder
- *     prompting the user to copy the range FROM THEIR OWN REPORT — NOOP never defines,
- *     computes, or asserts a normal range.
- *   - `higherIsBetter` is intentionally null for every entry: NOOP makes no value
- *     judgement about a marker's direction.
- *   - The catalog is NOT a gate: a user can always add a custom marker (free name +
- *     unit), so the store is never limited by this dictionary.
+ * Ships no reference-range tables — `referenceTextHint` is a neutral placeholder prompting
+ * the user to copy the range from their own report; NOOP never defines, computes, or asserts
+ * a normal range. `higherIsBetter` is always null: NOOP makes no value judgement about a
+ * marker's direction. The catalog is not a gate — a user can always add a custom marker.
  *
- * Pure data — no DB, no Android deps. The entries (keys, names, categories, units,
- * decimals) are byte-identical to the Swift builtIn list so a marker logged on one
- * platform reads the same on the other.
+ * Pure data — no DB, no Android deps.
  */
 
-/** The category a marker belongs to — value-for-value with the Swift `LabMarkerCategory`
- *  raw strings (the value stored in the `labMarker.category` column). */
+/** The category a marker belongs to. `raw` is the value stored in the `labMarker.category`
+ *  column. */
 enum class LabMarkerCategory(val raw: String, val displayName: String) {
     BLOOD_PANEL("bloodPanel", "Blood panel"),
     BLOOD_PRESSURE("bloodPressure", "Blood pressure"),
@@ -35,8 +28,8 @@ enum class LabMarkerCategory(val raw: String, val displayName: String) {
     }
 }
 
-/** A non-diagnostic marker definition: how to label and format one marker. Carries NO
- *  clinical thresholds. Mirrors the Swift `MarkerDefinition`. */
+/** A non-diagnostic marker definition: how to label and format one marker. Carries no clinical
+ *  thresholds. */
 data class MarkerDefinition(
     /** Stable key stored on every marker row (e.g. "ldl", "bp_systolic"). */
     val key: String,
@@ -53,14 +46,14 @@ data class MarkerDefinition(
     val higherIsBetter: Boolean? = null,
 )
 
-/** The built-in, non-diagnostic marker dictionary. Extensible at runtime via [custom]. */
+/** The built-in, non-diagnostic marker dictionary. Custom markers a user adds are stored
+ *  separately, not here. */
 object MarkerCatalog {
 
     /** Neutral hint shown in the range field — the user copies their own report's range; NOOP ships none. */
     private const val FROM_REPORT = "From your own report (optional)"
 
-    /** ~30 common markers across the categories. Order is the suggested picker order.
-     *  Byte-identical to the Swift builtIn list. */
+    /** ~30 common markers across the categories. Order is the suggested picker order. */
     val builtIn: List<MarkerDefinition> = listOf(
         // Lipids (blood panel)
         MarkerDefinition("total_cholesterol", "Total cholesterol", LabMarkerCategory.BLOOD_PANEL, "mmol/L", 2, FROM_REPORT),

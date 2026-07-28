@@ -3,14 +3,13 @@ package com.noop.analytics
 import android.content.Context
 
 /**
- * NapPrefs — the small on-device pref surface for on-device short-nap detection (reimplemented from
- * @cbarrado's PR #569 under NoopApp identity). Single toggle plus the conservative thresholds, all
- * opt-in / manual-first (the feature defaults OFF). SharedPreferences-backed via the shared "noop_prefs"
- * store, single-user, on-device — nothing here leaves the device.
+ * NapPrefs — the small on-device pref surface for short-nap detection. Single toggle plus the
+ * conservative thresholds, opt-in / manual-first (defaults OFF). SharedPreferences-backed via the
+ * shared "noop_prefs" store, single-user, on-device — nothing here leaves the device.
  *
- * Kept tiny and dependency-free (Context only) so the BLE-layer hook can read [config] without pulling in
- * the UI layer, exactly like the inactivity reminder reads InactivityPrefs. The Automations screen writes
- * the same key. Key strings MATCH the macOS twin so the platforms read consistent prefs.
+ * Kept tiny and dependency-free (Context only) so the BLE-layer hook can read [config] without
+ * pulling in the UI layer, exactly like the inactivity reminder reads InactivityPrefs. The
+ * Automations screen writes the same key.
  */
 object NapPrefs {
 
@@ -50,7 +49,7 @@ object NapPrefs {
         return nowSec
     }
 
-    /** Build the engine config from the persisted toggle for the central offload hook. Thresholds use the
-     *  engine defaults (no per-user UI for them yet — keep parity with macOS's fixed NapConfig). */
+    /** Build the engine config from the persisted toggle for the central offload hook. Thresholds
+     *  use the engine defaults; no per-user UI for them yet. */
     fun config(context: Context): NapConfig = NapConfig(enabled = enabled(context))
 }

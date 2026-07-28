@@ -5,67 +5,35 @@ import kotlin.math.ln
 import kotlin.math.roundToLong
 
 /*
- * StrainScorer.kt — cardiovascular load (NOOP "Effort") on a 0–100 logarithmic scale.
+ * Cardiovascular load ("Effort"), a 0–100 logarithmic scale. Independent implementation of
+ * published exercise-physiology methods (WHOOP-like, not the proprietary algorithm; not
+ * medical advice, an estimate).
  *
- * Faithful Kotlin port of StrandAnalytics/StrainScorer.swift (verified on macOS),
- * itself ported from server/ingest/app/analysis/strain.py. INDEPENDENT implementation
- * of published exercise-physiology methods (WHOOP-*like*, not a reproduction of the
- * proprietary algorithm; not medical advice).
- *
- * SCALE: the internal metric key stays `strain`, but the published axis is now 0–100
- * ("Effort"). This is a pure RESCALE — `maxStrain` went 21.0 → 100.0 while the
- * denominator D = 7201 is UNCHANGED, so the log curve and its saturation point
- * (TRIMP 7200 ≈ max) are preserved: a max-Effort day stays exactly as rare as a 21.0
- * day was. trimpToStrain now returns 0–100.
- *
- * Pipeline:
- *   1. Heart-Rate Reserve (Karvonen): HRR = HRmax − RHR.
- *   2. Per-sample intensity as %HRR = (HR − RHR) / HRR × 100, clamped 0..100.
- *   3. TRIMP accumulated over the window:
- *        a. Edwards 5-zone summation (default): sample contributes its zone weight
- *           (1..5 at 50/60/70/80/90 %HRR cut-offs) × duration.
- *        b. Banister exponential: sample contributes duration × x × 0.64 × e^(b·x).
- *   4. Logarithmic compression onto [0, 100]:
- *        effort = 100 × ln(TRIMP + 1) / ln(D),  D = STRAIN_DENOMINATOR.
- *
- * References: Karvonen 1957 (%HRR); Edwards 1993 (5-zone TRIMP); Banister 1991
- * (exponential TRIMP, b = 1.92 men / 1.67 women); Tanaka 2001 (HRmax = 208 − 0.7×age).
- *
- * Operates on the Room [HrSample] (ts:Long unix seconds, bpm:Int). The HRR-based
- * zone math here is INDEPENDENT of the %HRmax display zones in [HrZones]; this port
- * uses [HrZones] only where the Swift used HRZones (none in this file — strain has
- * its own Edwards %HRR thresholds).
+ * Karvonen %HRR = (HR − RHR) / HRR × 100 (clamped 0..100) accumulates into TRIMP (Edwards
+ * 5-zone weights 1..5 at 50/60/70/80/90 %HRR, or Banister duration × x × 0.64 × e^(b·x)), then
+ * effort = 100 × ln(TRIMP + 1) / ln(D). D = 7201 keeps the log curve fixed across the 21→100
+ * rescale. Operates on Room [HrSample]; HRR zone math is independent of [HrZones]'s %HRmax zones.
  */
 object StrainScorer {
 
-    // ---- Constants (strain.py) ----
+    // ---- Constants ----
 
     /** Minimum HR readings before computing strain on a DENSE stream (≈10 min at 1 Hz). */
     const val minReadings: Int = 600
-    /**
-     * Sparse-stream acceptance (#482/#480): a low-cadence strap — the WHOOP 5/MG sends live
-     * standard HR only ~every 30 s — would need ~5 h of continuous wear to reach [minReadings], so
-     * Effort sat un-scored (null → a stale prior-day value on the gauge) for most of the day. Also
-     * accept once the HR series SPANS at least [minSpanSeconds] of wall-clock with a small sample
-     * floor. This never fabricates load: TRIMP still integrates honestly, so a genuine low-HR day
-     * scores 0 either way — it just lets the live gauge reflect TODAY. A dense 1 Hz stream is
-     * unaffected (it clears [minReadings] first).
-     */
+    /** Sparse-stream floor: a low-cadence strap (HR sample ~every 30 s) would take hours to reach
+     *  [minReadings], so also accept once the series spans [minSpanSeconds] of wall-clock. TRIMP
+     *  still integrates honestly — a genuine low-HR day scores 0 either way. */
     const val minSparseReadings: Int = 20
     /** Wall-clock coverage (seconds) qualifying a sparse stream. 600 s = 10 min, matching the dense
      *  gate's ≈10 min of 600 × 1 Hz samples, so both cadences trust the number at the same age. */
     const val minSpanSeconds: Int = 600
 
-    /** Top of the Effort scale (was 21.0 — rescaled to 0–100 for "Effort"). */
+    /** Top of the Effort scale (0–100). */
     const val maxStrain: Double = 100.0
 
-    /**
-     * Logarithmic-map denominator D. Chosen so the Edwards daily ceiling
-     * (top zone weight 5 sustained 24 h = 7200) maps to exactly maxStrain:
-     * D = 7200 + 1 = 7201 makes ln(7201)/ln(7201) = 1, so the curve shape and
-     * its saturation point are independent of maxStrain (the 21→100 rescale is a
-     * pure linear scaling of the whole curve).
-     */
+    /** Log-map denominator D = 7200 + 1: the Edwards daily ceiling (zone weight 5 for 24 h = 7200)
+     *  maps to exactly maxStrain, so ln(7201)/ln(7201) = 1 and the curve's saturation point is
+     *  independent of maxStrain (the rescale is a pure linear scale of the curve). */
     const val strainDenominator: Double = 7201.0
     val lnStrainDenominator: Double get() = ln(strainDenominator)
 
@@ -161,18 +129,15 @@ object StrainScorer {
     // ---- Public API ----
 
     /**
-     * Cardiovascular Effort (0–100) from an HR series. APPROXIMATE.
+     * Cardiovascular Effort (0–100) from an HR series. Approximate.
      *
-     * Returns null when there isn't yet enough data to trust the number — fewer than [minReadings]
-     * samples AND less than [minSpanSeconds] of HR coverage (the sparse-strap path, #482) — or when
-     * maxHR ≤ restingHR (invalid HRR).
+     * Returns null when there isn't yet enough data to trust the number (below [minReadings]
+     * samples and below [minSpanSeconds] of HR coverage) or when maxHR ≤ restingHR (invalid HRR).
      *
      * @param hr time-ordered [HrSample] list.
      * @param maxHR HRmax (bpm). Defaults to 220 − defaultAge when null.
      * @param restingHR resting HR (bpm) for the HRR denominator (default 60).
-     * @param method [Method.EDWARDS] (default) or [Method.BANISTER].
      * @param sex "male"/"female" — selects the Banister coefficient (ignored by Edwards).
-     * @param denominator log-map D (default [strainDenominator]).
      */
     fun strain(
         hr: List<HrSample>,
@@ -182,7 +147,7 @@ object StrainScorer {
         sex: String = "male",
         denominator: Double = strainDenominator,
     ): Double? {
-        // Delegated to whoop-rs (per-interval integration since 2026-07-20).
+        // Delegates to RustScores.
         return RustScores.strain(hr, maxHR, restingHR, method, sex, denominator)
     }
 }

@@ -3,24 +3,20 @@ package com.noop.analytics
 import kotlin.math.roundToInt
 
 /**
- * HydrationGoal — the pure, testable daily fluid-goal engine for the Hydration tracker (MVP).
+ * Pure, testable daily fluid-goal engine for the Hydration tracker.
  *
- * Kotlin twin of the Swift `HydrationGoal` helper; keep every constant + rounding rule BYTE-IDENTICAL so
- * iOS and Android resolve the same goal from the same inputs. No I/O, no Android types — a closed-form
- * function over the user's biological sex and today's Effort/strain score, unit-tested on the JVM.
+ * Daily goal (ml) = sexBaseline + effortBump, rounded to the nearest 50.
+ *   - sexBaseline: male 3700, female 2700, unspecified/other 3200, from `UserProfile.sex`
+ *     ("male" | "female" | "nonbinary").
+ *   - effortBump: round(effort / 100 * 700) capped to 0..700 when today's Effort/strain (0..100)
+ *     is available, else 0.
  *
- * Daily GOAL (ml) = sexBaseline + effortBump, rounded to the nearest 50.
- *   - sexBaseline: male 3700, female 2700, unspecified/other 3200 (read from the profile sex field;
- *     `UserProfile.sex` carries "male" | "female" | "nonbinary").
- *   - effortBump: when today's Effort/strain (0..100) is available, round(effort / 100 * 700), capped
- *     to 0..700; when there's no Effort yet, 0.
- *
- * The output never depends on how much the user has logged — it's a TARGET, derived only from the body
- * profile and the day's load. Logging totals live in the metric-series store, not here.
+ * A target derived only from the body profile and the day's load — never from logged totals,
+ * which live in the metric-series store.
  */
 object HydrationGoal {
 
-    /** Sex baselines (ml), matching the Swift source exactly. */
+    /** Sex baselines (ml). */
     const val BASELINE_MALE: Int = 3700
     const val BASELINE_FEMALE: Int = 2700
     const val BASELINE_OTHER: Int = 3200
@@ -37,9 +33,8 @@ object HydrationGoal {
     const val BOTTLE_ML: Int = 500
 
     /**
-     * The sex baseline (ml) for a profile `sex` tag. Anything that isn't "male" / "female" (i.e.
-     * "nonbinary", unspecified, an unknown value) falls to the neutral [BASELINE_OTHER]. Case- and
-     * whitespace-insensitive, matching the Swift normalisation.
+     * The sex baseline (ml) for a profile `sex` tag. Anything besides "male" / "female" (nonbinary,
+     * unspecified, or unknown) falls to the neutral [BASELINE_OTHER]. Case- and whitespace-insensitive.
      */
     fun baselineForSex(sex: String): Int = when (sex.trim().lowercase()) {
         "male", "m" -> BASELINE_MALE
@@ -67,8 +62,7 @@ object HydrationGoal {
         return roundToNearest(raw, ROUND_TO)
     }
 
-    /** Round [value] to the nearest multiple of [step] (step > 0). Half rounds up, matching Swift's
-     *  `(value / step).rounded() * step`. */
+    /** Round [value] to the nearest multiple of [step] (step > 0), rounding half up. */
     fun roundToNearest(value: Int, step: Int): Int {
         if (step <= 0) return value
         return ((value + step / 2) / step) * step

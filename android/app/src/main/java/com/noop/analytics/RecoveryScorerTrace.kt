@@ -2,30 +2,22 @@ package com.noop.analytics
 
 import kotlin.math.abs
 
-// RecoveryScorerTrace.kt - Kotlin twin of RecoveryScorer+Trace.swift. The Charge TERM-BREAKDOWN
-// diagnostic for the Recovery test mode.
+// The Charge TERM-BREAKDOWN diagnostic for the Recovery test mode.
 //
-// Recomputes the four-plus-one weighted Charge terms from the SAME inputs RecoveryScorer.recovery
-// reads, then reuses recovery(...) verbatim for the final score so the trace can never disagree with
-// the number the dashboard shows. Pure and side-effect-free: no clock, no I/O, so a fixture night pins
-// the exact lines. The Recovery test mode gates this behind TestCentre.active(RECOVERY) at the call
-// site (IntelligenceEngine recomputeRecovery); when the mode is off it is never called, so there is zero
-// cost. Byte-aligned with the Swift line shape so the parity test passes. No em-dashes.
+// Recomputes the four-plus-one weighted Charge terms from the same inputs RecoveryScorer.recovery
+// reads, then reuses recovery(...) verbatim for the final score so the trace can never disagree
+// with the number the dashboard shows. Pure and side-effect-free, so a fixture night pins the
+// exact lines. Gated behind TestCentre.active(RECOVERY) at the call site (IntelligenceEngine
+// recomputeRecovery); when the mode is off it is never called, so there is zero cost.
 
 object RecoveryScorerTrace {
 
     private fun r2(x: Double): Double = Math.round(x * 100.0) / 100.0
 
     /**
-     * Side-effect-free diagnostic twin of [RecoveryScorer.recovery]: returns the SAME score recovery(...)
-     * would, plus the per-term Charge breakdown trace. The four inputs (hrv / rhr / resp / sleepPerf) plus
-     * the skin-temp deviation each get a baseline line (mean / spread / nValid / status), a term line
-     * (z * weight), the renormalization (total weight, composite z), and the final logistic score + band.
-     * Crucially the trace names WHICH TERM WAS NIL and forced the renorm (or the nil score).
-     *
-     * Every number is computed with the EXACT same expressions as recovery(...) (the same zScore call, the
-     * same skin-temp penalty, the same weights), and the returned score IS recovery(...) verbatim, so the
-     * trace and the headline can never diverge. Mirrors the Swift RecoveryScorer.recoveryTrace.
+     * Diagnostic twin of [RecoveryScorer.recovery]: returns the SAME score recovery(...) would,
+     * plus a per-term Charge breakdown (baseline, z*weight, renorm, final score) using the exact
+     * same expressions, so the trace can never diverge from the headline. Names which term was nil.
      */
     fun recoveryTrace(
         hrv: Double,
@@ -43,10 +35,9 @@ object RecoveryScorerTrace {
         val lines = ArrayList<String>()
         val nilTerms = ArrayList<String>()
 
-        // The score the dashboard reads, verbatim, so the trace cannot diverge from it. This is the
-        // SAME whoop-rs physio-algo path the store sites now use ([RustScores.recovery]); the per-term
-        // breakdown lines below are recomputed locally (via [RecoveryScorer.zScore] etc.) purely for
-        // display, but the headline number is the Rust score.
+        // The score the dashboard reads, verbatim, so the trace cannot diverge from it — the same
+        // whoop-rs path the store sites use ([RustScores.recovery]). The per-term lines below are
+        // recomputed locally purely for display; the headline number is the Rust score.
         val score = RustScores.recovery(
             hrv = hrv, rhr = rhr, resp = resp,
             hrvBaseline = hrvBaseline, rhrBaseline = rhrBaseline,
@@ -86,9 +77,9 @@ object RecoveryScorerTrace {
         // Per-term z * weight, built with the EXACT expressions recovery(...) uses, in the SAME append order.
         val terms = ArrayList<Pair<Double, Double>>() // (z, weight)
 
-        // L9: every WEIGHT / SCALE / centre constant goes through r2() too (not just the z-scores), so a
-        // future non-round weight (e.g. 0.333) renders identically on Swift and Kotlin and the parity
-        // fixture cannot silently desync. The values render the same as before today.
+        // Every WEIGHT / SCALE / centre constant goes through r2() too, not just the z-scores, so a
+        // future non-round weight (e.g. 0.333) still renders consistently and the parity fixture
+        // cannot silently desync.
         // HRV term: higher is better. (Always present once usable; the cold-start guard above returned.)
         val hrvZ = RecoveryScorer.zScore(hrv, hrvBaseline.baseline, hrvBaseline.spread)
         terms.add(hrvZ to RecoveryScorer.wHRV)

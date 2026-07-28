@@ -4,53 +4,14 @@ import kotlin.math.abs
 import kotlin.math.roundToInt
 
 /*
- * ActivityCostEngine.kt — "what each activity costs your recovery".
+ * ActivityCostEngine — what each activity costs your recovery.
  *
- * Faithful Kotlin mirror of StrandAnalytics/ActivityCostEngine.swift. Keep the tunables,
- * the baseline/next-morning/delta math, the bounce-back trajectory, the confidence gate,
- * and the ranking byte-identical to Swift — cross-platform parity is the contract.
- *
- * Pure, deterministic, DB-free. Given which days you tagged each SPORT on and your daily
- * Charge (recovery, 0–100) history, this answers, per sport: how far does your next-
- * morning Charge sit BELOW your rest-day baseline after a session, and how many days
- * does it take to bounce back?
- *
- * This is a descriptive AVERAGE, not a measurement of any single session — it leans on
- * the levers that are actually in the data (the day a session was tagged, and the Charge
- * values on the days after) and stays explainable line by line. Nothing here is learned;
- * it is plain means over aligned day keys.
- *
- * Per sport S:
- *
- *   restDays      = days with a Charge value that are neither tagged with ANY sport NOR inside
- *                   a session forward recovery window (D+1…D+maxLookahead) — your UNTOUCHED days.
- *   baselineMean  = mean Charge over restDays. The "untouched" recovery bar each sport
- *                   is measured against. (Shared across all sports.)
- *
- *   For each tagged day D of sport S that HAS a Charge value on D+1:
- *     nextMorning(D) = Charge[D+1]
- *   meanNextMorning = mean of those nextMorning(D).
- *   n               = how many tagged days contributed a D+1 value.
- *
- *   delta ("cost")  = baselineMean - meanNextMorning. POSITIVE → the morning after this
- *                     sport your Charge sits BELOW your rest baseline (it cost you);
- *                     negative → you wake higher.
- *
- *   daysToBaseline  = build an AVERAGED forward trajectory traj[k] = mean over tagged
- *                     days D (that have a Charge on D+k) of Charge[D+k], k = 1…maxLookahead.
- *                     daysToBaseline = the smallest k whose traj[k] ≥ baselineMean - tol
- *                     (tol = 3 pts); null if it never gets within tol inside the window or
- *                     n is too thin.
- *
- * Confidence (reuses ScoreConfidence): a sport with fewer than minSessions tagged next-
- * morning pairs is OMITTED entirely; minSessions…<solidSessions → BUILDING; ≥ solidSessions
- * → SOLID.
- *
- * Ranking: biggest |delta| first, SOLID ahead of BUILDING on a tie, then sport name
- * ascending — a fully deterministic, stable order.
- *
- * Day arithmetic mirrors Swift's CorrelationEngine.shiftDay (fixed UTC / proleptic-
- * Gregorian, null on unparseable input) and all means are self-contained.
+ * Pure, deterministic, DB-free. Given which days each sport was tagged and daily Charge
+ * (recovery, 0-100) history, computes per sport how far next-morning Charge sits below the
+ * rest-day baseline (days untouched by any tagged sport or its D+1..D+maxLookahead
+ * after-effect window), and how many days it takes to climb back within tolerance. A
+ * descriptive average over aligned day keys, not a measurement of any single session -
+ * nothing here is learned.
  */
 
 /**
@@ -100,7 +61,7 @@ data class ActivityCost(
 
 object ActivityCostEngine {
 
-    // Tunables (documented, deterministic — NOT learned). Mirror Swift exactly.
+    // Tunables: documented, deterministic constants, not learned.
 
     /** Tagged next-morning pairs below which a sport is OMITTED (too thin to report). */
     const val minSessions: Int = 4
@@ -133,11 +94,9 @@ object ActivityCostEngine {
     ): List<ActivityCost> {
         if (activityDaysBySport.isEmpty() || recoveryByDay.isEmpty()) return emptyList()
 
-        // Rest days = days WITH a Charge value that are neither tagged with ANY sport NOR inside the
-        // forward recovery window (D+1 … D+maxLookahead) of any tagged day. Excluding the after-effect
-        // window matters: the mornings AFTER a session are exactly the days the cost suppresses, so
-        // counting them as "rest" would contaminate the baseline with the very thing we measure
-        // (understating every cost). The baseline must be your genuinely UNTOUCHED days. (Swift parity.)
+        // Rest days = days with a Charge value not tagged with any sport and not inside the
+        // forward recovery window (D+1 … D+maxLookahead) of any tagged day. Excluding that window
+        // keeps the baseline genuinely untouched, since those mornings are what the cost measures.
         val activeUnion = HashSet<String>()
         for ((_, days) in activityDaysBySport) activeUnion.addAll(days)
         val affected = HashSet(activeUnion)
@@ -194,10 +153,9 @@ object ActivityCostEngine {
     // Bounce-back trajectory.
 
     /**
-     * Smallest k in 1…maxLookahead where the AVERAGED forward Charge trajectory
-     * traj[k] = mean over tagged days D (with a Charge on D+k) of Charge[D+k] climbs to
-     * within [tolerance] of [baselineMean]. null if it never does inside the window or no
-     * day contributed a value at that horizon.
+     * Smallest k in 1..maxLookahead where the averaged forward trajectory (mean Charge[D+k]
+     * over tagged days with a D+k value) reaches within [tolerance] of [baselineMean]; null
+     * if it never does, or no day has a value at that horizon.
      */
     internal fun forwardDaysToBaseline(
         taggedDays: Set<String>,
@@ -235,20 +193,19 @@ object ActivityCostEngine {
         ScoreConfidence.CALIBRATING -> 0
     }
 
-    // Stats (self-contained so the Swift mirror is line-for-line).
+    // Stats (self-contained).
 
     internal fun mean(values: List<Double>): Double {
         if (values.isEmpty()) return 0.0
         return values.sum() / values.size
     }
 
-    /** Round half away from zero to an Int — matches Swift's roundToInt over the
-     *  non-negative magnitudes used in [ActivityCost.sentence]. */
+    /** Round half away from zero to an Int, for the non-negative magnitudes used in
+     *  [ActivityCost.sentence]. */
     internal fun roundToIntHalfUp(x: Double): Int = x.roundToInt()
 
-    // Day arithmetic — mirrors Swift's CorrelationEngine.shiftDay (fixed UTC calendar;
-    // null on unparseable input). Integer-only proleptic-Gregorian, so it is timezone-
-    // and locale-free and byte-identical to the Swift result.
+    // Day arithmetic: fixed UTC calendar, null on unparseable input. Integer-only
+    // proleptic-Gregorian, so it stays timezone- and locale-free.
 
     /** Shift a "yyyy-MM-dd" day by [delta] days (may be negative). null if unparseable. */
     internal fun shiftDay(day: String, delta: Int): String? {

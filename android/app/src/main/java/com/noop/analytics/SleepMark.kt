@@ -8,21 +8,16 @@ import java.util.Locale
 import java.util.TimeZone
 
 /*
- * SleepMark.kt — tap-to-mark "going to sleep" / "awake" (#461 Phase 1).
+ * Tap-to-mark "going to sleep" / "awake" logging (Phase 1). A user-tapped sleep boundary,
+ * captured for the record only — it does NOT feed the sleep detector (that stays the strap's
+ * job). Every mark is persisted into the existing long-format `metricSeries` store under the
+ * key "sleep_mark", AND appended as a human-readable line to the shareable strap log.
  *
- * Faithful Kotlin mirror of Strand/Data/SleepMark.swift. A user-tapped sleep boundary, captured for
- * the record only — it does NOT feed the sleep detector (that stays the strap's job). Phase 1 is pure
- * logging: every mark is persisted into the existing long-format `metricSeries` store under the key
- * "sleep_mark" AND appended as a human-readable line to the shareable strap log, so a mark shows up in
- * a debug export.
- *
- * The store's natural key is (deviceId, day, key) with a single REAL `value`, so the mark TYPE is
- * encoded in the value (0 = bedtime, 1 = wake) and the row is keyed on the mark's local calendar day.
- * The precise wall-clock instant lives in the strap-log line (and [tsMs] here).
- *
- * Pure + DB-free so it unit-tests without a UI: encode -> MetricSeriesRow, decode <- MetricSeriesRow,
- * and the formatted log line. The screen is the only place that does I/O. Keep the value encoding and
- * the "sleep_mark" key byte-identical to Swift — both clients read the same series.
+ * The store's natural key is (deviceId, day, key) with a single REAL `value`, so the mark TYPE
+ * is encoded in the value (0 = bedtime, 1 = wake) and the row is keyed on the mark's local
+ * calendar day. The precise wall-clock instant lives in the strap-log line (and [tsMs] here).
+ * Pure and DB-free, so it unit-tests without a UI; keep the value encoding and the "sleep_mark"
+ * key stable so existing rows keep decoding.
  */
 
 /** One sleep boundary the user tapped. */
@@ -42,8 +37,8 @@ enum class SleepMarkType(val seriesValue: Int) {
 }
 
 /**
- * A captured mark: a type plus the wall-clock instant it was tapped (unix MILLISECONDS — the `tsMs`
- * the spec asks for). The calendar [dayKey] is derived locally for the store's natural key.
+ * A captured mark: a type plus the wall-clock instant it was tapped (unix MILLISECONDS, `tsMs`).
+ * The calendar [dayKey] is derived locally for the store's natural key.
  */
 data class SleepMark(
     val type: SleepMarkType,
@@ -75,16 +70,15 @@ data class SleepMark(
     }
 
     companion object {
-        /** The metric-series key all sleep marks share. Identical to Swift. */
+        /** The metric-series key all sleep marks share. */
         const val SERIES_KEY = "sleep_mark"
 
         /** Capture a mark at the current instant. */
         fun now(type: SleepMarkType): SleepMark = SleepMark(type, System.currentTimeMillis())
 
-        /** Capture a mark at the current instant for a NON-UI caller (the double-tap automation), which
-         *  has no bedtime/wake picker. A single physical double-tap can't tell us which boundary the user
-         *  means, so default to BEDTIME — the boundary a double-tap-to-sleep gesture most naturally marks.
-         *  Additive convenience over [now]; the UI's two-button card keeps choosing the type explicitly. */
+        /** Capture a mark at the current instant for a NON-UI caller (double-tap automation) with no
+         *  bedtime/wake picker. Defaults to BEDTIME, the boundary a double-tap-to-sleep gesture most
+         *  naturally marks; the UI's two-button card keeps choosing the type explicitly. */
         fun nowDefault(): SleepMark = now(SleepMarkType.BEDTIME)
 
         /** Reconstruct a mark from a persisted row — the round-trip read-back. The row carries no

@@ -1,25 +1,17 @@
 package com.noop.analytics
 
 /**
- * Recovery/Charge from DAILY aggregates (Apple Watch / Health Connect / an Oura/Fitbit/Garmin export).
- * Kotlin twin of the Swift `WatchRecovery`.
+ * Recovery/Charge from daily aggregates (Apple Watch / Health Connect / an Oura/Fitbit/Garmin export).
  *
- * A WHOOP strap gives dense overnight R-R intervals, so RecoveryScorer runs off raw-derived nightly RMSSD.
- * A daily-aggregate source does NOT: it gives a daily HRV (SDNN-ish) reading plus a resting HR. So this is
- * a genuinely lower-density computation.
+ * A WHOOP strap runs RecoveryScorer off dense overnight RMSSD; a daily-aggregate source gives only a
+ * daily HRV (SDNN-ish) reading plus a resting HR. We do not invent a new formula: every recovery term
+ * is relative to the person's OWN baseline, so the metric scale cancels out (SDNN-vs-baseline behaves
+ * like RMSSD-vs-baseline) — this builds HRV/RHR baselines via [Baselines] and feeds the SAME
+ * [RecoveryScorer.recovery] the strap uses, landing on the same 0-100 scale.
  *
- * We do NOT invent a new formula. Recovery is HRV-and-RHR-vs-personal-baseline, and because every term is
- * relative to the person's OWN baseline, the metric scale cancels out: SDNN-vs-SDNN-baseline behaves like
- * RMSSD-vs-RMSSD-baseline. So we build HRV and RHR baselines through the existing [Baselines] machinery and
- * feed them straight into the SAME [RecoveryScorer.recovery] the strap uses. Source-only recovery and strap
- * recovery therefore land on the same 0-100 scale and read against the same bands.
- *
- * What we drop vs the strap path: the respiration, sleep-performance and skin-temp terms are not supplied
- * here, so RecoveryScorer renormalises the remaining HRV + RHR weights. The HRV term stays dominant.
- *
- * Honesty rule: return null recovery + CALIBRATING when today's HRV is missing, OR the HRV baseline isn't
- * usable yet, OR there are fewer than [minBaselineNights] nights of history. We NEVER fabricate a number to
- * fill a sparse week. Confidence comes from the existing [ScoreConfidence.forCharge].
+ * Dropped vs the strap: respiration, sleep-performance and skin-temp terms aren't supplied, so the
+ * scorer renormalises to HRV + RHR (HRV stays dominant). Honesty rule: null recovery + CALIBRATING
+ * when today's HRV or a usable baseline is missing, or history is under [minBaselineNights] nights.
  */
 object WatchRecovery {
 
@@ -27,9 +19,9 @@ object WatchRecovery {
     data class Result(val recovery: Double?, val confidence: ScoreConfidence)
 
     /**
-     * Minimum nights of HRV history before we score recovery from a daily-aggregate source. Sits ABOVE the
-     * baseline's own seed gate (4) deliberately: a strap user crosses the seed faster on dense data, but a
-     * sparse daily HRV deserves a longer warm-up before we trust it. Mirrors the Swift constant.
+     * Minimum nights of HRV history before scoring recovery from a daily-aggregate source. Sits
+     * above the baseline's own seed gate (4) deliberately: a strap user crosses the seed faster on
+     * dense data, but a sparse daily HRV deserves a longer warm-up before it's trusted.
      */
     const val minBaselineNights = 7
 

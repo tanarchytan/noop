@@ -3,8 +3,7 @@ package com.noop.analytics
 /**
  * Decides which single device owns a given day's displayed/scored metrics, so scores are never
  * computed from a mix of sources (invariant I2). Pure — the caller supplies the candidates (each
- * device with any data near the day, plus a priority) and any locked override from the dayOwnership
- * table. Port of the Swift `DayOwnerResolver` in Packages/StrandAnalytics.
+ * device with any data near the day, plus a priority) and any locked override from the dayOwnership table.
  */
 object DayOwnerResolver {
     /** A device in contention for owning [day]. [priority]: 0 = active strap, 1 = other live straps,

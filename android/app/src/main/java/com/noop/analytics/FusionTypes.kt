@@ -1,20 +1,16 @@
 package com.noop.analytics
 
 /*
- * Fusion value types (v5 — Local Multi-Device Fusion).
- *
- * Value-for-value Kotlin twin of Packages/StrandAnalytics/.../FusionTypes.swift. The plain
- * inputs/outputs for the pure fusion engine in
- * docs/superpowers/specs/2026-06-19-v5-local-multi-device-fusion-design.md. No I/O, no model, no
- * network — the repository feeds these rows it already loads, the engine returns a resolved point.
- * Mirrors the existing DailyMetricSource / SourcedDailyMetric provenance vocabulary, generalised so a
- * future Polar/Garmin/Oura is a table entry, not a type change.
+ * Fusion value types (v5 — Local Multi-Device Fusion): plain inputs/outputs for the pure fusion
+ * engine. No I/O, no model, no network — the repository feeds these rows it already loads, the
+ * engine returns a resolved point. Generalised so a future Polar/Garmin/Oura source is a table
+ * entry, not a type change.
  */
 
 /**
- * Where a fused number came from — a superset of the legacy macOS DailyMetricSource, extended to every
- * source the importers already write. [id] is the canonical source id ("my-whoop" etc.) so a
- * FusionSource round-trips to/from the stored deviceId / source string without a lookup table.
+ * Where a fused number came from, covering every source the importers already write. [id] is the
+ * canonical source id ("my-whoop" etc.) so a FusionSource round-trips to/from the stored deviceId /
+ * source string without a lookup table.
  */
 enum class FusionSource(val id: String, val displayName: String) {
     /** Imported WHOOP record (CSV/zip export under the strap's deviceId, e.g. "my-whoop"). */

@@ -4,25 +4,20 @@ import kotlin.math.abs
 import kotlin.math.sqrt
 
 /*
- * IllnessDistance.kt, an ALTERNATIVE, multivariate illness-anomaly distance (Mahalanobis).
- *
- * Byte-for-byte twin of StrandAnalytics/IllnessDistance.swift. PARALLEL PATH, NOT the default scorer: the
- * shipped IllnessSignalEngine keeps its per-signal z-sum + >=2 corroboration + confounder suppression
- * exactly as-is. This adds a SECOND way to measure "how far is today's 4-signal vector from my personal
- * baseline", behind an explicit flag, so the UI lane can A/B it without touching the live alert path.
+ * Alternative multivariate illness-anomaly distance (Mahalanobis). PARALLEL PATH, not the default
+ * scorer - IllnessSignalEngine's per-signal z-sum + corroboration + confounder suppression stays
+ * as-is; this measures how far today's 4-signal vector sits from personal baseline, behind an
+ * explicit flag, so the UI lane can A/B it without touching the live alert path.
  *
  *     D^2 = (x - mu)^T * C^-1 * (x - mu)
  *
- * The four illness signals (RHR up, RMSSD down, skin-temp up, respiration up) are CORRELATED; summing
- * per-signal z's double-counts shared variance. Feeding z-scored features (so mu = 0 and the covariance of
- * z's is the correlation matrix C) and using C^-1 discounts that shared variance: two correlated signals
- * both up count as ONE coordinated move. D is in standard-deviation-equivalent units, so threshold 2.5 is
- * comparable to the existing per-signal z≈2 gate.
- *
- * Honest gating preserved: fires only when D > distanceThreshold AND >= minDeviatingFeatures features are
- * themselves deviating ILLNESS-WARD; the caller still applies the same confounder suppression afterwards.
- * The correlation inverse is solved by Gauss-Jordan; a singular matrix falls back to the DIAGONAL inverse
- * (independent features) rather than producing NaNs. Pure, deterministic, DB-free. APPROXIMATE, non-clinical.
+ * The four illness signals (RHR up, RMSSD down, skin-temp up, respiration up) are CORRELATED, so
+ * z-scored features (mu = 0, covariance = the personal correlation matrix C) with C^-1 discount the
+ * shared variance instead of double-counting it: two correlated signals moving together count as ONE
+ * coordinated move. D is in SD-equivalent units, so threshold 2.5 matches the per-signal z~=2 gate.
+ * Fires only when D > distanceThreshold AND >= minDeviatingFeatures are themselves illness-ward. The
+ * correlation inverse is Gauss-Jordan; a singular matrix falls back to the DIAGONAL inverse rather
+ * than producing NaNs. Pure, deterministic, DB-free, APPROXIMATE, non-clinical.
  */
 object IllnessDistance {
 
@@ -54,10 +49,9 @@ object IllnessDistance {
     )
 
     /**
-     * Mahalanobis distance of today's illness-oriented z-vector from the personal baseline. Because the
-     * features are ALREADY z-scored, the baseline mean is the zero vector and the covariance of the z's is
-     * the personal CORRELATION matrix. [correlation] is the NxN personal correlation over the PRESENT
-     * features in fixed order, or null for identity (which makes D == the Euclidean norm of the z-vector).
+     * Mahalanobis distance of today's z-vector from baseline. Features are already z-scored, so the
+     * mean is 0 and the covariance is the personal correlation matrix. [correlation] is the NxN matrix
+     * over present features in fixed order; null means identity, so D is the Euclidean norm.
      */
     fun evaluate(features: FeatureVector, correlation: List<List<Double>>? = null): Result {
         val x = features.present()
@@ -75,9 +69,9 @@ object IllnessDistance {
             } else {
                 identity(k)
             }
-        // Ridge the diagonal for conditioning, but ONLY a supplied correlation. The identity (null) case must
-        // invert to itself exactly so D equals the Euclidean norm of the z-vector to full precision; a
-        // Tikhonov term there would shrink it by ~ridge and break the documented contract. Mirrors Swift.
+        // Ridge the diagonal for conditioning, but only on a supplied correlation. The identity (null)
+        // case must invert to itself exactly so D equals the Euclidean norm to full precision - a
+        // Tikhonov term there would shrink it by ~ridge and break that contract.
         if (suppliedCorrelation) for (i in 0 until k) corr[i][i] += ridge
 
         val (inv, fellBack) = invertOrDiagonal(corr)

@@ -1,20 +1,16 @@
 package com.noop.analytics
 
 /**
- * Calibration milestones — the WHOOP-familiar countdown timeline surfaced on Today (gamification).
+ * WHOOP-familiar countdown timeline surfaced on Today (gamification).
  *
- * PRESENTATION LAYER ONLY. These targets drive the milestone COUNTDOWN CARDS; they do NOT change the
- * baseline math in [Baselines]. noop keeps its own honest gates (seed [Baselines.minNightsSeed] = 4,
- * trust [Baselines.minNightsTrust] = 14, with early-adapt) — a milestone reaching "done" here is a UI
- * badge, not a claim the analytics changed. The night count fed in is the SAME valid-HRV-night tally the
- * recovery seed uses (see `bankedCalibrationNights` in TodayScreen), so a progress bar can never
- * over-state what the baseline has actually banked.
+ * Presentation layer only — drives the milestone countdown cards, never the baseline math in
+ * [Baselines] (seed [Baselines.minNightsSeed] = 4, trust [Baselines.minNightsTrust] = 14). The
+ * night count fed in is the same valid-HRV-night tally the recovery seed uses, so a progress bar
+ * can never over-state what the baseline has actually banked.
  *
- * These are NOOP's own baseline gates (seed 4, trust 14) plus two round coaching targets, NOT WHOOP's
- * per-feature unlock schedule — that lives in whoop-rs `physio-algo::calibration`, where Recovery
- * unlocks at 3 nights, sleep consistency at 5 and VO2 max at 14. The two schedules answer different
- * questions: this one is "how far is my baseline", that one is "is this metric shown yet".
- * Mirrors the Swift `CalibrationMilestones`.
+ * These targets (seed 4, trust 14, plus two round coaching targets) answer "how far is my
+ * baseline" — a different question from the app's per-feature unlock schedule (Recovery 3
+ * nights, sleep consistency 5, VO2 max 14), which answers "is this metric shown yet".
  */
 object CalibrationMilestones {
 
@@ -26,7 +22,7 @@ object CalibrationMilestones {
 
     /** A single calibration checkpoint. [nights] is the banked valid-night count at which it unlocks. */
     data class Milestone(
-        /** Stable id (persisted / cross-platform / analytics-safe). Never renumber. */
+        /** Stable id (persisted, analytics-safe). Never renumber. */
         val id: String,
         val title: String,
         val nights: Int,
@@ -62,8 +58,8 @@ object CalibrationMilestones {
         ),
     )
 
-    /** The furthest target. Banked ≥ this ⇒ calibration is fully complete and the card retires.
-     *  `maxOfOrNull ?: 0` matches the Swift twin's empty-safe default (never throws on an empty list). */
+    /** The furthest target. Banked ≥ this means calibration is fully complete and the card retires.
+     *  `maxOfOrNull ?: 0` is the empty-safe default (never throws on an empty list). */
     val finalNights: Int get() = all.maxOfOrNull { it.nights } ?: 0
 
     /** DONE = already reached; ACTIVE = the live countdown (first unreached); LOCKED = still ahead. */
@@ -81,9 +77,8 @@ object CalibrationMilestones {
 
     /**
      * Resolve every milestone's [Progress] for a user who has banked [nightsBanked] valid nights. The
-     * FIRST not-yet-reached milestone is [State.ACTIVE] (the live countdown); earlier ones are DONE,
-     * later ones LOCKED. Fraction is absolute (banked ÷ target) so the bar text ("9/14 nights") and the
-     * fill agree. Pure + unit-tested; mirrors the Swift twin.
+     * first not-yet-reached milestone is [State.ACTIVE]; earlier ones are DONE, later ones LOCKED.
+     * Fraction is absolute (banked ÷ target) so the bar text ("9/14 nights") and the fill agree.
      */
     fun progress(nightsBanked: Int): List<Progress> {
         val n = nightsBanked.coerceAtLeast(0)

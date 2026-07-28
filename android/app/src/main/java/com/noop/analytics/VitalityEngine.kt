@@ -1,13 +1,12 @@
 package com.noop.analytics
 
 
-// VitalityEngine.kt — 0–100 "Vitality" wellness score + optional "Body Age in years".
-// Byte-for-byte mirror of Strand/Packages/StrandAnalytics/Sources/StrandAnalytics/VitalityEngine.swift.
+// Vitality: 0-100 wellness score + optional Body Age in years.
 //
 // The app-shaped door over the whoop-rs vitality model: each wearable input maps to its published
 // all-cause-mortality log-hazard, the sum is overlap-corrected and divided by the Gompertz slope to
 // become a "years of ageing" offset. Body Age = chronological age + that offset; average = own age,
-// healthier = younger. The maths, the coefficients and their citations live in whoop-rs.
+// healthier = younger. The maths and coefficients live in whoop-rs.
 // A wellness comparison, never a clinical biological age.
 object VitalityEngine {
 

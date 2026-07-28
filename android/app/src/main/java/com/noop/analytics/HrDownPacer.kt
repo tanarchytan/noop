@@ -3,14 +3,9 @@ package com.noop.analytics
 import kotlin.math.roundToInt
 
 /*
- * HrDownPacer.kt — the L2 "buzz-below-heart-rate" relaxation metronome. Give the heart a felt rhythm a few
- * bpm BELOW its current rate; HR tends to drift toward an external rhythmic cue (ISWC 2025). PURE +
- * unit-tested; the live controller reads smoothed HR, calls [next], fires ONE light buzz per returned
- * interval, and re-asks every recompute window. No I/O / BLE here.
- *
- * Faithful Kotlin mirror of StrandAnalytics/HRDownPacer.swift — keep the safety envelope + interval math
- * byte-identical to Swift (cross-platform parity is the contract, pinned by matching golden-vector tests).
- * See docs/superpowers/specs/2026-06-19-v5-haptic-biofeedback-design.md (L2).
+ * HrDownPacer.kt — the L2 "buzz-below-heart-rate" relaxation metronome: a felt rhythm a few bpm
+ * BELOW current HR (HR drifts toward an external rhythmic cue). PURE + unit-tested; the live
+ * controller reads smoothed HR, calls [next], fires ONE buzz per interval, no I/O/BLE here.
  *
  * SAFETY ENVELOPE (a relaxation metronome, NOT cardiac control — bounded, never therapeutic):
  *   • Target tempo T = smoothedHR − Δ, where Δ RAMPS from [Config.startDeltaBpm] to [Config.maxDeltaBpm]
@@ -25,7 +20,7 @@ import kotlin.math.roundToInt
 object HrDownPacer {
 
     /**
-     * The L2 safety + behaviour envelope. Defaults are conservative (spec §L2 / Open Q4). All bpm values
+     * The L2 safety + behaviour envelope. Defaults are conservative. All bpm values
      * are beats/min; durations are seconds.
      */
     data class Config(

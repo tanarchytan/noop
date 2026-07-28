@@ -11,24 +11,14 @@ import kotlin.math.sqrt
 /*
  * WorkoutDetector.kt — retroactive workout detection from the 1 Hz store.
  *
- * Faithful Kotlin port of StrandAnalytics/WorkoutDetector.swift (verified on macOS),
- * itself ported from server/ingest/app/analysis/exercise.py (+ activity.py, calories.py).
+ * A workout is a sustained window (>= MIN_EXERCISE_MIN) of elevated HR (resting + HR_MARGIN_BPM)
+ * AND sustained motion (gravity intensity above MOTION_THRESHOLD); both gates must hold. Per
+ * bout: avg/peak HR, duration, Edwards zone time-%, mean %HRR, strain, and estimated calories
+ * (Keytel active + revised Harris-Benedict BMR resting, age/sex/weight/height adjusted). All
+ * intensity/energy outputs are APPROXIMATE, not medical advice.
  *
- * A workout is a SUSTAINED window (≥ MIN_EXERCISE_MIN) of elevated HR (above
- * resting + HR_MARGIN_BPM) AND sustained motion (gravity-derived intensity above
- * MOTION_THRESHOLD). Both gates must hold for a sample to count as active.
- *
- * Per detected bout: avg/peak HR, duration, Edwards zone time-%, mean %HRR,
- * strain (StrainScorer), and estimated calories (Keytel 2005 active + revised
- * Harris–Benedict BMR resting, age/sex/weight/height adjusted).
- *
- * All intensity/energy outputs are APPROXIMATE and not medical advice.
- *
- * Types note: [UserProfile], [ExerciseSession] and [ActivityPoint] live in
- * AnalyticsModels.kt (shared value types) and are NOT redefined here. Inputs are
- * the Room entities com.noop.data.HrSample (ts:Long seconds, bpm:Int) and
- * com.noop.data.GravitySample (ts:Long seconds, x/y/z:Double). All `ts`/`start`/`end`
- * are unix SECONDS as Long. The Swift source used Int seconds.
+ * [UserProfile]/[ExerciseSession]/[ActivityPoint] live in AnalyticsModels.kt. Inputs are Room
+ * entities HrSample/GravitySample; ts/start/end are unix SECONDS as Long.
  */
 object WorkoutDetector {
 

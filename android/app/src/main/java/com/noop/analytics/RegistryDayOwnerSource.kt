@@ -6,15 +6,14 @@ import com.noop.data.SourceKind
 import com.noop.protocol.DeviceFamily
 
 /**
- * [IntelligenceEngine.DayOwnerSource] backed by the [DeviceRegistry] (Phase 1B-4). Supplies the engine
- * with the per-day owner-resolution inputs so a day is scored from exactly ONE device (invariant I2),
+ * [IntelligenceEngine.DayOwnerSource] backed by the [DeviceRegistry]. Supplies the engine with
+ * per-day owner-resolution inputs so a day is scored from exactly ONE device (invariant I2),
  * without giving the pure-JVM engine a Room dependency.
  *
- * Priorities mirror the Swift IntelligenceEngine.resolveDayOwner exactly:
- *   0 = the active strap, 1 = other live (BLE/historyBLE) straps, 2 = imports (cloud/file). Lower wins.
- * Archived devices are excluded. With only the seeded active 'my-whoop' row paired (the default and
- * every single-WHOOP install), the sole candidate is priority 0, so the engine resolves to "my-whoop"
- * for every day and the reads stay byte-identical to the single-source path.
+ * Priority: 0 = the active strap, 1 = other live (BLE/historyBLE) straps, 2 = imports
+ * (cloud/file). Lower wins; archived devices are excluded. With only the seeded active
+ * "my-whoop" row paired (the default, single-WHOOP case), the sole candidate is priority 0,
+ * so the engine resolves to "my-whoop" for every day.
  */
 class RegistryDayOwnerSource(private val registry: DeviceRegistry) : IntelligenceEngine.DayOwnerSource {
 
@@ -25,9 +24,9 @@ class RegistryDayOwnerSource(private val registry: DeviceRegistry) : Intelligenc
             .map { d ->
                 val isImport = d.sourceKind == SourceKind.cloudImport.name ||
                     d.sourceKind == SourceKind.fileImport.name
-                // #137: an activity-file ride ranks BELOW whole-day imports (priority 3 vs 2), so a
-                // full-day WHOOP CSV/cloud import keeps ownership of a day it has HR for; the ride only
-                // wins a day nothing else covers. Mirrors Swift IntelligenceEngine.resolveDayOwner.
+                // An activity-file ride ranks below whole-day imports (priority 3 vs 2), so a
+                // full-day WHOOP CSV/cloud import keeps ownership of a day it has HR for; the
+                // ride only wins a day nothing else covers.
                 val priority = when {
                     d.id == activeId -> 0
                     d.sourceKind == SourceKind.activityFile.name -> 3
@@ -38,20 +37,18 @@ class RegistryDayOwnerSource(private val registry: DeviceRegistry) : Intelligenc
             }
     }
 
-    // Any dayOwnership override wins outright, regardless of its `locked` flag — matching the Swift
-    // `(try? registry.dayOwner(day))?.deviceId` read in IntelligenceEngine.resolveDayOwner, which uses
-    // the stored owner as an authoritative override (the `locked` flag gates the UI, not the read).
+    // Any dayOwnership override wins outright, regardless of its `locked` flag: it is treated
+    // as an authoritative override (the `locked` flag gates the UI, not this read).
     override suspend fun lockedOwner(day: String): String? = registry.dayOwner(day)?.deviceId
 
     // CAPTURE-B: the registry's active strap id, for the universal dayOwner diagnostic's writeActiveId.
-    // This is the SAME id the live read path resolves to (BLEManager/AppModel's activeDeviceId), so the
-    // universal line can prove the read owner and the write target are the same device (or surface it
-    // when they diverge, the #814/#799 spine symptom).
+    // Matches the id the live read path resolves to, so the diagnostic line can prove the read
+    // owner and the write target are the same device, or surface it when they diverge.
     override suspend fun activeWriteId(): String? = registry.activeDeviceId()
 
-    // #938: resolve the strap family that wrote [deviceId]'s rows from its registry model. The model-label
-    // → family mapping (and the WHOOP5 fallback for unknowns) lives in DeviceFamily.forRegistryModel (#171).
-    // Mirrors the Swift IntelligenceEngine.skinTempFamily(forOwner:devices:).
+    // Resolve the strap family that wrote [deviceId]'s rows from its registry model. The
+    // model-label → family mapping (and the WHOOP5 fallback for unknowns) lives in
+    // DeviceFamily.forRegistryModel.
     override suspend fun skinTempFamily(deviceId: String): DeviceFamily {
         val model = registry.all().firstOrNull { it.id == deviceId }?.model
         return DeviceFamily.forRegistryModel(model)

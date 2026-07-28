@@ -4,13 +4,10 @@ import kotlin.math.ln
 import kotlin.math.pow
 
 /*
- * CaffeineDecay.kt — caffeine window (#526): a simple, honest on-device half-life decay estimate.
- *
- * Faithful Kotlin mirror of Strand/Data/CaffeineLog.swift (the CaffeineDecay enum + CaffeineActiveEstimate
- * struct). The user logs a caffeine intake (time + OPTIONAL mg); NOOP shows a rough "still active" hint.
- * This is a GUIDE from what the user logged using a ~5–6 h population-average half-life, NOT a measurement
- * and NOT a health claim. The honesty rules — unknown dose stays unknown, future-dated logs can't amplify
- * a dose — are enforced here and pinned by CaffeineDecayTest. Cross-platform parity is the contract.
+ * A simple, honest on-device half-life decay estimate for logged caffeine intake (time +
+ * OPTIONAL mg). NOOP shows a rough "still active" hint using a ~5–6 h population-average
+ * half-life — a GUIDE, NOT a measurement or health claim. Honesty rules: unknown dose stays
+ * unknown, future-dated logs can't amplify a dose. Pinned by CaffeineDecayTest.
  */
 object CaffeineDecay {
 
@@ -51,13 +48,9 @@ object CaffeineDecay {
         halfLifeHours: Double = DEFAULT_HALF_LIFE_HOURS,
     ): Boolean = fractionRemaining(hoursElapsed, halfLifeHours) > threshold
 
-    // MARK: - Cutoff window (PR#566, mvanhorn) — the latest caffeine time before bed.
-    //
-    // Reframes [hoursUntilFraction] as a clock-friendly "stop drinking after" cutoff: given a bedtime and
-    // an acceptable residual fraction at bedtime, the cutoff is [bedtime − hoursUntilFraction(target)]. A
-    // dose taken at the cutoff decays to exactly [targetResidualFraction] by bedtime; anything later still
-    // has more than that on board. The math is the same decay model as the "still active" hint — only the
-    // framing changes — so the honesty rules carry over (population-average half-life, a guide not a rule).
+    // Cutoff window: the latest caffeine time before bed. Reframes [hoursUntilFraction] as bedtime
+    // minus lead time — a dose taken at the cutoff decays to [targetResidualFraction] by bedtime.
+    // Same decay model as the "still active" hint; same honesty rules apply.
 
     /** Default acceptable residual at bedtime: a quarter of the dose. Two half-lives' worth (~11 h on the
      *  5.5 h default), matching the [isStillActive] active threshold so "still active" and "past cutoff"
@@ -88,10 +81,9 @@ object CaffeineDecay {
     }
 
     /**
-     * True when an intake at [intakeMinutes] (minutes since midnight) is LATER than the cutoff for
-     * [bedtimeMinutes] — i.e. it'll still have more than [targetResidualFraction] on board at bedtime.
-     * Both times are same-day wall-clock minutes; daytime intakes well before the cutoff return false.
-     * A cutoff that wrapped to the previous evening (early bedtime) means any same-day intake is "late".
+     * True when an intake at [intakeMinutes] is LATER than the cutoff for [bedtimeMinutes] — it will
+     * still have more than [targetResidualFraction] on board at bedtime. Both are same-day wall-clock
+     * minutes; a cutoff wrapped to the previous evening means any same-day intake counts as late.
      */
     fun isPastCutoff(
         intakeMinutes: Int,
@@ -116,8 +108,7 @@ data class CaffeineIntake(
     val mg: Double? = null,
 )
 
-/** A computed, honest summary of the caffeine still active right now from the logged intakes. Mirror of
- *  Swift CaffeineActiveEstimate. */
+/** A computed, honest summary of the caffeine still active right now from the logged intakes. */
 data class CaffeineActiveEstimate(
     val activeIntakeCount: Int,
     /** Total mg still active across intakes that HAD a known dose; null when none did (so the UI shows the

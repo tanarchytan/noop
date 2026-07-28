@@ -3,25 +3,17 @@ package com.noop.analytics
 /*
  * HrZones.kt — the 5 heart-rate zone bands for a known max HR (display helper).
  *
- * Faithful Kotlin port of StrandAnalytics/HRZones.swift (verified on macOS).
- *
- * The five zones are the conventional %HRmax bands used across consumer wearables:
- *
  *   Zone 1 (50–60% HRmax) — very light / recovery
  *   Zone 2 (60–70% HRmax) — light / fat-burn
  *   Zone 3 (70–80% HRmax) — moderate / aerobic
  *   Zone 4 (80–90% HRmax) — hard / threshold
  *   Zone 5 (90–100% HRmax) — maximum
  *
- * This is the "display" zone model; it is independent of the HRR-based strain math
- * in StrainScorer. The age-derived zone set and time-in-zone accumulation were routed
- * to whoop-rs physio-algo and deleted (see the note on [HrZones] below).
- *
- * Named [HrZones] (NOT Zones) to avoid clashing with the existing
- * com.noop.analytics.Zones object in Analytics.kt.
+ * Independent of the HRR-based strain math in StrainScorer. Named [HrZones], not
+ * Zones, to avoid clashing with the Zones object in Analytics.kt.
  */
 
-/** A single heart-rate zone defined as a bpm interval [lower, upper). Mirrors Swift `HRZone`. */
+/** A single heart-rate zone: a bpm interval [lower, upper). */
 data class HrZone(
     /** Zone number 1..5. */
     val number: Int,
@@ -35,10 +27,7 @@ data class HrZone(
     val upperPct: Double,
 )
 
-/**
- * Five HR zones derived from a max HR, plus the max HR itself and its source.
- * Mirrors Swift `HRZoneSet`.
- */
+/** Five HR zones derived from a max HR, plus the max HR itself and its source. */
 data class HrZoneSet(
     /** The five zones, z1..z5, in ascending order. */
     val zones: List<HrZone>,
@@ -62,12 +51,9 @@ data class HrZoneSet(
 }
 
 /*
- * The age-derived zone split and time-in-zone accumulation (`zones(age)` / `timeInZone`, plus the
- * `tanakaMaxHR` and `medianInterval` helpers and the `TimeInZone` result type) were the analytics
- * "score" here and have been routed to whoop-rs physio-algo (`hr_zones_for_age` / `hr_time_in_zone`,
- * via RustScores) and deleted, proven bit-for-bit by RustHrZonesParityTest. What remains below is the
- * frontend display helper: build a zone set from a known max HR (used by the live-workout / health /
- * automations rails and the zone-coach), which the FFI's age-only door does not cover.
+ * Age-derived zones + time-in-zone live in whoop-rs physio-algo (hr_zones_for_age /
+ * hr_time_in_zone via RustScores), parity-verified by RustHrZonesParityTest. This file
+ * keeps only the display builder: a zone set from an already-known max HR.
  */
 object HrZones {
 

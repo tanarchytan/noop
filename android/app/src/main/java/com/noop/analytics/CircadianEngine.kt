@@ -9,22 +9,17 @@ import kotlin.math.roundToInt
 import kotlin.math.sin
 import kotlin.math.sqrt
 
-// CircadianEngine.kt — on-device body-clock phase estimate + a jet-lag / shift-work LIGHT & SLEEP-TIMING plan.
-// Byte-for-byte mirror of Strand/Packages/StrandAnalytics/Sources/StrandAnalytics/CircadianEngine.swift.
+// Body-clock phase estimate (consumed via FFI, see [fromRust]) plus a jet-lag / shift-work light and
+// sleep-timing plan computed locally. Independent implementation of published methods: cosinor phase
+// estimation (rest-activity rhythm, corroborated by the nightly skin-temp minimum) and a
+// phase-response-curve direction rule for the shift advisory — ADVANCE (earlier) gets morning light,
+// dim evenings, earlier sleep, stepped ~1 h/day; DELAY (later) is the reverse.
 //
-// INDEPENDENT implementation of published methods:
-//   • Single-component COSINOR (Halberg's cosine fit) over the rest-activity rhythm → acrophase + amplitude.
-//     The accelerometer rest-activity rhythm is the primary phase signal; the nightly skin-temperature
-//     minimum corroborates it (wrist skin temp runs broadly ANTI-phase to core temperature; CBTmin is the
-//     canonical phase marker ~2–3 h before habitual wake).
-//   • Phase-response-curve DIRECTION rule for the advisory: ADVANCE (eastward / earlier) → morning bright
-//     light, dim evenings, earlier sleep, stepped ~1 h/day; DELAY (westward / later) → the reverse.
-//
-// WELLNESS / BEHAVIOURAL AWARENESS ONLY — APPROXIMATE. Light + sleep TIMING only. NEVER melatonin or any
-// supplement/drug; never a guarantee. Irregular schedules → "your rhythm is hard to read right now."
+// Wellness/behavioural awareness only, approximate. Light and sleep timing only — never melatonin
+// or a supplement/drug, never a guarantee.
 object CircadianEngine {
 
-    // ── Tuning constants (pinned by test; mirror the Swift twin exactly) ──
+    // ── Tuning constants (pinned by test) ──
     const val minDaysForFit: Int = 7
     const val goodDaysForFit: Int = 14
     const val minRelativeAmplitude: Double = 0.10
@@ -53,7 +48,7 @@ object CircadianEngine {
         val note: String,
     )
 
-    /** Map a whoop-rs phase estimate onto the UI type, generating the note the card renders. */
+    /** Map an FFI phase estimate onto the UI type, generating the note the card renders. */
     fun fromRust(info: uniffi.whoop_ffi.PhaseEstimateInfo): PhaseEstimate {
         val confidence = when (info.confidence) {
             "solid" -> PhaseConfidence.SOLID
@@ -175,7 +170,7 @@ object CircadianEngine {
         return d
     }
 
-    /** Format a clock hour as "HH:MM" (24 h). Locale-free for cross-platform string parity. */
+    /** Format a clock hour as "HH:MM" (24 h), locale-free. */
     internal fun clock(hour: Double): String {
         val h = wrap24(hour)
         var hh = h.toInt()
@@ -186,7 +181,7 @@ object CircadianEngine {
         return "$hp:$mpad"
     }
 
-    /** "%.1f" without locale surprises (Swift String(format:) uses '.'); mirror it for parity. */
+    /** Locale-free "%.1f"-equivalent format (avoids a comma decimal separator in some locales). */
     internal fun formatOneDecimal(x: Double): String {
         val scaled = (x * 10.0).roundToInt()
         val whole = scaled / 10

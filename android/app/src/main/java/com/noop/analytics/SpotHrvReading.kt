@@ -1,31 +1,18 @@
 package com.noop.analytics
 
 /**
- * On-demand "take an HRV reading now" — the single-value spot RMSSD path (#537, @sunny-noop).
+ * On-demand "take an HRV reading now" — the single-value spot RMSSD path.
  *
- * This wraps NOOP's canonical [HrvAnalyzer] for the LIVE, user-triggered HRV snapshot the Live screen
- * captures over ~60 s of beat-to-beat (R-R) intervals. It exists so the spot value, its honesty gate,
- * and its data-quality caveat live in ONE tested place rather than being re-derived in the view.
+ * Wraps [HrvAnalyzer] for the live, user-triggered snapshot over ~60 s of R-R intervals, so the spot
+ * value, its honesty gate, and its data-quality caveat live in one tested place.
  *
- * Why delegate to [HrvAnalyzer] (and NOT roll our own RMSSD):
- *  - RMSSD is the textbook root-mean-square of successive R-R differences:
- *        RMSSD = sqrt( mean( (RR[i+1] - RR[i])^2 ) )   in ms.
- *  - NOOP's nightly HRV (`avgHrv`, fed into Vitality / Fitness Age) uses [HrvAnalyzer.rmssdRaw], which
- *    takes the Task Force (1996) SAMPLE denominator (n-1) over the cleaned NN series. To keep a spot
- *    reading COMPARABLE to the overnight number a user sees elsewhere, this path computes RMSSD the
- *    SAME way (same cleaning pipeline, same (n-1) denominator). Using a population (n) denominator —
- *    as a from-scratch port might — would make the same beats read a few percent lower than the
- *    nightly figure, which is misleading. Consistency with the existing scorer is the whole point.
+ *     RMSSD = sqrt( mean( (RR[i+1] - RR[i])^2 ) )   in ms
  *
- * Honesty is built in, not bolted on:
- *  - A number is returned ONLY when enough CLEAN beats survive ([HrvAnalyzer.MIN_BEATS]); otherwise the
- *    result is [Insufficient] with the surviving/needed counts so the UI can say so plainly (never a
- *    fabricated value, unknown stays "—").
- *  - The caveat ([caveatFor]) is source-aware: a 60 s spot reading is not the overnight baseline, it
- *    needs enough beats, and R-R derived from a WHOOP 5/MG's optical PPG is noisier than a chest strap's
- *    electrical R-R. Pure strings, US-neutral, no em-dashes.
- *
- * Pure arithmetic + small data holders, no I/O — fully unit-testable against a known RR series.
+ * Uses the SAME (n-1) denominator as the nightly HRV path, not a population (n) one — otherwise the
+ * same beats would read a few percent lower than the overnight figure. Returns a value only when
+ * enough clean beats survive ([HrvAnalyzer.MIN_BEATS]); otherwise [Insufficient] with the
+ * survived/needed counts, never a fabricated value. The caveat ([caveatFor]) is source-aware: optical
+ * PPG (WHOOP 5/MG) is noisier than a chest strap's electrical R-R.
  */
 object SpotHrvReading {
 
@@ -58,17 +45,16 @@ object SpotHrvReading {
     }
 
     /**
-     * Compute a single spot HRV reading from the raw R-R intervals (ms) gathered during the live
-     * capture window. Runs NOOP's canonical cleaning + RMSSD (range filter -> Malik ectopic rejection
-     * -> (n-1) RMSSD), so the value matches the nightly HRV math. Returns [Outcome.Insufficient] rather
-     * than a number when too few clean beats survive — never a fabricated figure.
+     * Compute a spot HRV reading from raw R-R intervals (ms) using the same cleaning + RMSSD
+     * pipeline as nightly HRV (range filter, Malik ectopic rejection, (n-1) RMSSD). Returns
+     * [Outcome.Insufficient] instead of a number when too few clean beats survive.
      *
      * @param rrMs the raw R-R intervals in milliseconds, in capture order (untrusted BLE input — the
      *   analyzer's range filter bounds-checks each to [HrvAnalyzer.RR_MIN_MS]..[HrvAnalyzer.RR_MAX_MS]).
-     * @param maxRejectedFraction the spot honesty gate (#585) — refuse the reading when more than this
-     *   fraction of beats was dropped as noise (out-of-range / ectopic), even if [HrvAnalyzer.MIN_BEATS]
-     *   clean beats survive. Defaults to [HrvAnalyzer.DEFAULT_SPOT_MAX_REJECTED_FRACTION] (0.35). The
-     *   nightly windowed path does NOT use this, so overnight HRV is unchanged.
+     * @param maxRejectedFraction the spot honesty gate — refuse the reading when more than this
+     *   fraction of beats was dropped as noise, even if [HrvAnalyzer.MIN_BEATS] clean beats survive.
+     *   Defaults to [HrvAnalyzer.DEFAULT_SPOT_MAX_REJECTED_FRACTION] (0.35); the nightly windowed
+     *   path does not use this.
      */
     fun compute(
         rrMs: List<Int>,

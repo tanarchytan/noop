@@ -48,28 +48,19 @@ import kotlin.math.roundToInt
 
 /**
  * Foreground service that keeps the WHOOP BLE connection alive while the app is backgrounded or
- * closed.
+ * closed. Android tears the process down shortly after the last Activity goes away; a started
+ * foreground service with an ongoing notification keeps the process — and the
+ * [com.noop.NoopApplication]-owned [WhoopBleClient]'s GATT link — resident, so heart rate keeps
+ * streaming and offloads keep landing in the background.
  *
- * Android tears a process down shortly after its last Activity goes away, which is exactly why
- * people on Reddit saw the strap disconnect the moment they closed NOOP. A started foreground
- * service — with an ongoing notification — keeps the process (and therefore the
- * [com.noop.NoopApplication]-owned [WhoopBleClient] and its GATT link) resident, so heart rate
- * keeps streaming and offloads keep landing in the background.
- *
- * It does **not** own or drive the connection: it simply holds the process up and mirrors the
- * client's [LiveState] into the notification. Start/stop is gated by a Settings toggle (see
- * `NoopPrefs.backgroundConnection`) and only ever happens from the foreground (on connect / when
- * the user flips the toggle), so we never trip Android 12+'s background-start restriction.
- *
- * The matching capability on macOS is free: `AppModel` is an app-level `@StateObject` kept alive by
- * the menu-bar extra, so closing the window leaves the strap connected.
+ * Does not own or drive the connection, only holds the process up and mirrors the client's
+ * [LiveState] into the notification. Start/stop is gated by `NoopPrefs.backgroundConnection` and
+ * only ever runs from the foreground, so it never trips Android 12+'s background-start restriction.
  */
 /**
- * One tick of the ongoing-notification/widget stream. Carries TWO day rows on purpose (#911):
- * [todayRow] is the naive/unscored today row the notification's Recovery line reads (honest-null until
- * tonight is scored), while [anchorRow] is the widget-only carried anchor (today when scored, else the
- * freshest prior scored day) so the widget describes the same day as Today without the notification ever
- * showing a carried figure as if it were live.
+ * One tick of the ongoing-notification/widget stream. [todayRow] is the unscored today row the
+ * notification reads (honest-null until scored); [anchorRow] is the widget-only carried anchor
+ * (today if scored, else the latest prior scored day), so the widget matches Today's day.
  */
 private data class NotifyTick(
     val state: LiveState,
@@ -87,9 +78,9 @@ class WhoopConnectionService : Service() {
      *  connect, plus any OS restart), so we cancel the old one before launching a new one. */
     private var notifyJob: Job? = null
 
-    /** Watches [GpsSession] and runs the platform location stream while a GPS workout is active. This
-     *  is what makes route tracking survive the screen turning off (#215): the collection lives on the
-     *  always-on service, not the Activity-scoped ViewModel that Android cancels when it's cleared. */
+    /** Watches [GpsSession] and runs the platform location stream while a GPS workout is active. Runs
+     *  on the always-on service, not the Activity-scoped ViewModel Android cancels when the screen
+     *  turns off, so route tracking survives it. */
     private var gpsGateJob: Job? = null
 
     /** The actual location collector, alive only while a GPS workout is in flight. Cancelled (which
@@ -109,11 +100,9 @@ class WhoopConnectionService : Service() {
      *  actual SoC change keeps the predictive path as cheap as the SoC-only alert beside it. */
     private var lastRuntimeEvalPct: Int? = null
 
-    /** Smart-alarm light-sleep watcher (#207). Feeds the live HR while we're inside the wake window
-     *  and, on a lighter-phase reading, advances the GUARANTEED alarm earlier. It can only ever move
-     *  the alarm earlier within the window — the hard deadline scheduled via AlarmManager is the floor
-     *  of safety, so if BLE drops or no light sleep is found the user is still woken at the window end.
-     *  The detector is reset each time we (re)enter a window. */
+    /** Smart-alarm light-sleep watcher, reset each time the wake window is (re)entered. Feeds live HR
+     *  inside the window and, on a lighter-phase reading, advances the alarm earlier only — the hard
+     *  AlarmManager deadline is the floor, so a BLE drop or no light sleep still wakes at window end. */
     private val sleepWatcher = SleepWindowWatcher()
     private var inAlarmWindow = false
 
@@ -124,13 +113,9 @@ class WhoopConnectionService : Service() {
     private val repo get() = (application as NoopApplication).repository
 
     /**
-     * Watches the OS Bluetooth radio so turning it off immediately tears down NOOP's orphaned GATT
-     * link (#314). Without this there is no ACTION_STATE_CHANGED listener at all, so the radio going off
-     * never reaches [WhoopBleClient] — the link stays "connected", the UI keeps showing live HR/buzz/sync
-     * that isn't real, and the next write crashes on a dead binder (iOS/macOS are immune because
-     * CoreBluetooth's send() is state-guarded). Registered while the FGS is alive (it is the long-lived
-     * owner of the connection) and unregistered in [onDestroy]. STATE_TURNING_OFF/OFF → teardown +
-     * connected=false; STATE_ON → resume the connection.
+     * Watches the OS Bluetooth radio so turning it off tears down the GATT link at once: without
+     * this, [WhoopBleClient] never learns the radio died, stays "connected", and the next write
+     * crashes on a dead binder. STATE_TURNING_OFF/OFF tears down; STATE_ON resumes.
      */
     private val bluetoothStateReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
@@ -168,7 +153,7 @@ class WhoopConnectionService : Service() {
             return START_NOT_STICKY
         }
 
-        // Listen for the OS Bluetooth radio toggling so turning it off tears the link down at once (#314).
+        // Listen for the OS Bluetooth radio toggling so turning it off tears the link down at once.
         // Guarded so repeat onStartCommands (every connect / OS restart) don't stack registrations.
         if (!bluetoothReceiverRegistered) {
             runCatching {
@@ -181,37 +166,26 @@ class WhoopConnectionService : Service() {
             }.onSuccess { bluetoothReceiverRegistered = true }
         }
 
-        // Keep the ongoing notification in step with the live connection state AND today's recovery
-        // (the 15-min IntelligenceEngine recompute), so it re-posts when either changes — a glanceable
-        // poor-man's Live Activity (#42). daysMergedFlow is the same merged store the dashboard reads.
+        // Keep the ongoing notification in step with the live connection state and today's recovery (the
+        // 15-min IntelligenceEngine recompute), so it re-posts when either changes. Reads the same merged
+        // store the dashboard uses.
         notifyJob?.cancel()
         notifyJob = scope.launch {
             combine(
                 ble.state,
-                // Defence-in-depth: a Room/disk error in this flow would otherwise propagate uncaught
-                // out of scope.launch and kill the process — the FGS exists to protect the connection,
-                // not to take it down. (Audited during #82, which proved unrelated/unreproducible —
-                // this guard is belt-and-braces, not a diagnosed fix.) After catch{emit} the inner
-                // flow completes; combine keeps running on ble.state with days frozen.
-                // #797: the bounded merge (recentDaysMergedFlow) is enough here, the notification only reads
-                // today's row; this stops a years-deep import re-merging the whole history on every change.
+                // Defence-in-depth: if this flow errors, catch{emit} keeps combine running on ble.state
+                // with days frozen rather than killing the process. The bounded merge suffices since the
+                // notification reads only today's row, not the full re-merged history.
                 repo.recentDaysMergedFlow("my-whoop").catch { emit(emptyList()) },
             ) { state, days ->
-                // #911: resolve the day the way the dashboard does, via the LOGICAL local day (rolls at
-                // 04:00, with the #304 pre-04:00 carve-out), NOT a naive LocalDate.now() that rolls at
-                // midnight and starts looking up a brand-new, not-yet-scored calendar day. Two DISTINCT
-                // rows come out, so the two surfaces keep their own honest contracts:
+                // Resolve the day the way the dashboard does, via the logical local day (rolls at 04:00),
+                // not a naive LocalDate.now() that rolls at midnight and looks up a not-yet-scored day.
+                // Two distinct rows come out, so each surface keeps its own honest contract.
                 val logicalKey = com.noop.ui.logicalDayKeyNow()
                 val localKey = java.time.LocalDate.now().toString()
-                //  - todayRow: the naive/unscored today row. The ongoing notification's Recovery line must
-                //    stay on THIS (honest-null until tonight is scored), never on a carried prior-day
-                //    figure, or the lock-screen would silently show yesterday's Recovery% as if it were
-                //    live, with no provenance caption.
-                //  - anchorRow: today's row when scored, else the freshest STRICTLY-PRIOR scored day carried
-                //    over (via the SHARED `widgetAnchorRow`, mirroring TodayScreen + the #547 future-day
-                //    guard). ONLY the widget uses this, so the 2x2 widget shows the same day as Today rather
-                //    than blanking in the small hours before tonight is scored. This keeps the service
-                //    symmetric with AppViewModel, where only the widget push reads the anchor.
+                // todayRow is the naive/unscored today row: Recovery stays honest-null until scored so
+                // the lock screen never shows a stale carried figure as live. anchorRow is today's row
+                // once scored, else the latest prior scored day; only the widget reads it, matching Today.
                 val todayRow = com.noop.ui.resolveTodayRow(days, logicalKey, localKey)
                 val anchorRow = com.noop.ui.widgetAnchorRow(days, logicalKey, localKey)
                 NotifyTick(
@@ -224,14 +198,13 @@ class WhoopConnectionService : Service() {
                     illness = if (NoopPrefs.illnessWatch(this@WhoopConnectionService)) IllnessWatch.evaluate(days) else null,
                 )
             }.catch { /* belt-and-braces: a frozen notification beats a dead process */ }
-                // conflate + collect, NOT collectLatest (#82): the widget push suspends in Glance
-                // machinery longer than the live-HR emission interval, so collectLatest cancelled
-                // every push mid-flight and the widget starved on stale data the moment HR started
-                // streaming. Conflation still processes only the latest value — just without the axe.
+                // conflate + collect, not collectLatest: the widget push suspends in Glance machinery
+                // longer than the live-HR emission interval, so collectLatest would cancel every push
+                // mid-flight and starve the widget on stale data. Conflation still keeps only the latest value.
                 .conflate()
                 .collect { (state, todayRow, anchorRow, illness) ->
-                // Honest-null: the notification's Recovery line reads the NAIVE today row, never the
-                // carried anchor, so it stays blank until tonight's recovery actually lands (#911).
+                // Honest-null: the notification's Recovery line reads the naive today row, never the
+                // carried anchor, so it stays blank until tonight's recovery actually lands.
                 postNotification(state, todayRow?.recovery)
                 // Banner transition (clear → raised) → real system notification; the notifier's
                 // persisted day gate dedupes against the app-open (AppViewModel) call site.
@@ -246,12 +219,9 @@ class WhoopConnectionService : Service() {
                     currPct = state.batteryPct?.roundToInt(),
                     charging = state.charging,
                 )
-                // Predictive runtime alert (iOS/macOS twin: BatteryNotifier.onRuntimeEstimate):
-                // re-fit the "~X left" estimate from the persisted SoC series and warn at ≤24 h of
-                // runtime, whatever the strap generation. Evaluated only when the battery % actually
-                // changes (~8-min strap cadence), so the Room read + slope fit never rides every
-                // live-state emission. Same samples/rated inputs as the Today badge, so the alert can
-                // never disagree with the number on screen.
+                // Predictive runtime alert: re-fits the "~X left" estimate from persisted SoC samples and
+                // warns at <=24h remaining, evaluated only when battery % changes (~8-min cadence) so the
+                // Room read + slope fit skips redundant emissions, using the same inputs as the Today badge so the two can't disagree.
                 val runtimePct = state.batteryPct?.roundToInt()
                 if (runtimePct != null && runtimePct != lastRuntimeEvalPct) {
                     lastRuntimeEvalPct = runtimePct
@@ -277,8 +247,8 @@ class WhoopConnectionService : Service() {
                         WidgetSnapshot(
                             recoveryPct = anchorRow?.recovery?.roundToInt(),
                             // Rest = the sleep_performance composite from the anchor row's banked stage
-                            // figures (pure, honest-null until last night is scored); Effort = the 0-100
-                            // strain. Widget-only carry, so it shows the same day as Today. (#516/#911)
+                            // figures (honest-null until last night is scored); Effort = the 0-100 strain.
+                            // Widget-only carry, so it shows the same day as Today.
                             restPct = anchorRow?.let { RestScorer.restFromDaily(it)?.roundToInt() },
                             effortPct = anchorRow?.strain?.roundToInt(),
                             heartRate = state.heartRate,
@@ -291,11 +261,9 @@ class WhoopConnectionService : Service() {
             }
         }
 
-        // Drive GPS route tracking from here so it OUTLIVES the UI (#215). While a GPS workout is
-        // active we collect the platform location stream into the process-level [GpsSession]; the
-        // ViewModel only observes that shared route. Gated on the active flag so the location radio is
-        // off (and the FGS's location type unused) outside a GPS workout. Re-`start`s land here, so we
-        // cancel + relaunch the gate, never stack collectors.
+        // Drive GPS route tracking from here so it outlives the UI. While a workout is active, collect
+        // the platform location stream into the process-level [GpsSession]; the ViewModel only observes
+        // that shared route, gated on the active flag; re-`start`s cancel + relaunch rather than stacking.
         gpsGateJob?.cancel()
         gpsGateJob = scope.launch {
             GpsSession.state
@@ -305,10 +273,9 @@ class WhoopConnectionService : Service() {
                     gpsJob?.cancel()
                     gpsJob = null
                     if (active) {
-                        // Re-post with the location service type added so background location is
-                        // permitted while tracking; on Android 14+ a service that reads location in the
-                        // background must declare the location FGS type. Reverted to connectedDevice-only
-                        // when the workout ends (active=false re-posts the base type).
+                        // Re-post with the location service type added so background location is permitted
+                        // while tracking; Android 14+ requires a service reading location in the background
+                        // to declare the location FGS type. Reverts to connectedDevice-only when the workout ends.
                         startForegroundCompat(buildNotification(ble.state.value, null), tracking = true)
                         // Workouts & GPS test mode (Test Centre): wire the GpsSession fix-progress sink to the
                         // .workouts-tagged strap log ONLY when the WORKOUTS mode is on (one SharedPreferences
@@ -335,13 +302,9 @@ class WhoopConnectionService : Service() {
                 }
         }
 
-        // Smart alarm light-sleep watcher (#207). While the alarm is enabled and we're inside the wake
-        // window, feed each live HR reading to the pure detector; on a lighter-phase reading, advance
-        // the GUARANTEED alarm earlier (the scheduler clamps to the window and can never move it later
-        // or cancel it — the hard deadline set via AlarmManager is independent of this collector). The
-        // FGS is the only long-lived BLE collector, so this is what lets the smart move happen with the
-        // app closed. If the service isn't running (user opted out of background) the hard deadline
-        // still fires — that's the point of the fallback.
+        // Smart-alarm light-sleep watcher. While enabled and inside the wake window, feed live HR to
+        // the detector; on a lighter-phase reading, advance the alarm earlier only, since the scheduler
+        // clamps to the window and the hard AlarmManager deadline still fires if this service isn't running.
         alarmJob?.cancel()
         alarmJob = scope.launch {
             val store = SmartAlarmStore.from(this@WhoopConnectionService)
@@ -364,11 +327,9 @@ class WhoopConnectionService : Service() {
                 }
         }
 
-        // START_NOT_STICKY: the FGS's job is to keep this process *alive* (which it does while
-        // running, making OS kills unlikely). We deliberately do NOT resurrect after a kill, because
-        // a fresh process has no strap/model context to reconnect with — the user reopening the app
-        // re-establishes it. Resurrecting would only show a "Reconnecting…" notification that never
-        // resolves.
+        // START_NOT_STICKY: the FGS's job is to keep this process alive while running, not to
+        // resurrect after a kill — a fresh process has no strap/model context to reconnect with, so
+        // resurrecting would only show a "Reconnecting…" notification that never resolves.
         return START_NOT_STICKY
     }
 
@@ -386,9 +347,9 @@ class WhoopConnectionService : Service() {
         ServiceCompat.startForeground(this, NOTIF_ID, notification, type)
     }.isSuccess
 
-    /** Signature of the fields the notification actually renders (#216). The live HR stream emits ~1 Hz
-     *  but the notification no longer shows BPM, so we only re-post when one of THESE changes — turning
-     *  a per-beat wakeup into a handful of updates a day. */
+    /** Signature of the fields the notification actually renders. The live HR stream emits ~1 Hz but
+     *  the notification no longer shows BPM, so we only re-post when one of these changes, turning a
+     *  per-beat wakeup into a handful of updates a day. */
     private var lastNotificationKey: String? = null
 
     private fun postNotification(state: LiveState, recoveryPct: Double? = null) {
@@ -409,10 +370,9 @@ class WhoopConnectionService : Service() {
     }
 
     private fun buildNotification(state: LiveState, recoveryPct: Double?): Notification {
-        // #216: deliberately NO live BPM in the title. A per-beat-changing notification forces the
-        // foreground service to re-post (and wake the device) ~once a second all day, which is a real
-        // battery cost for a number nobody reads off the lock screen. The title now reflects only the
-        // connection / sync state, which changes rarely — see postNotification's dedup.
+        // Deliberately no live BPM in the title: a per-beat-changing notification forces the foreground
+        // service to re-post (and wake the device) ~once a second, a real battery cost for a number
+        // nobody reads off the lock screen. The title reflects only the connection/sync state.
         val title = when {
             !state.connected   -> "Reconnecting to your WHOOP…"
             state.backfilling  -> "Syncing strap history…"
@@ -491,9 +451,8 @@ class WhoopConnectionService : Service() {
 
         /**
          * Promote the process to the foreground so the strap stays connected. Safe to call when
-         * already running. MUST be called from a foreground context (we call it from connect / the
-         * Settings toggle) to satisfy Android 12+'s background-start rule. Defensive: any failure is
-         * swallowed so it can never break the core connect flow.
+         * already running; must be called from a foreground context to satisfy Android 12+'s
+         * background-start rule. Any failure is swallowed so it can never break the connect flow.
          */
         fun start(context: Context) {
             runCatching {

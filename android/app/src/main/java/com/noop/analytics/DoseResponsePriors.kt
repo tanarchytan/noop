@@ -1,30 +1,20 @@
 package com.noop.analytics
 
 /*
- * DoseResponsePriors.kt — documented, conservative POPULATION priors that the per-user
- * dose-response fit shrinks toward until the user has logged enough nights.
- *
- * Faithful Kotlin mirror of StrandAnalytics/DoseResponsePriors.swift. Keep the enum raw
- * strings, the slope magnitudes, the clamp ranges, and the default-outcome mapping
- * byte-identical to Swift — cross-platform parity tests enforce it.
- *
- * These are deliberately CONSERVATIVE, clearly-labelled "typical patterns, not yours"
- * constants — never learned from any user, never updated from the field. The shrinkage in
- * DoseResponseEngine blends the user's own OLS slope with one of these priors weighted by
- * how much data they have; with no data the user sees the prior, with enough data it fades
- * out entirely.
+ * Documented, conservative POPULATION priors that the per-user dose-response fit shrinks
+ * toward until the user has logged enough nights. Never learned from any user, never updated
+ * from the field. DoseResponseEngine blends the user's own OLS slope with a prior weighted by
+ * how much data they have; with no data the user sees the prior, with enough it fades out.
  *
  * Each prior is an EFFECT PER INCREMENTAL UNIT of dose on a named outcome:
  *   - Alcohol  → Charge (recovery, 0–100): roughly −Δ points per extra drink.
- *   - Caffeine → HRV (ms): roughly −Δ ms per step LATER in the day a caffeine dose lands
- *     (the caffeine "dose" axis is a TIMING bucket, not mg — copy says so).
- *
- * (Spec: 2026-06-19-v5-insights-correlation-engine-design.md.)
+ *   - Caffeine → HRV (ms): roughly −Δ ms per step LATER in the day a dose lands (the
+ *     "dose" axis is a TIMING bucket, not mg).
  */
 
 /**
  * Identifies a dosed behaviour whose dose-response has a documented population prior.
- * The raw string is the stable storage / lookup key (mirrors Swift's enum raw value).
+ * The raw string is the stable storage / lookup key.
  */
 enum class DosedBehavior(val raw: String) {
     /** Alcoholic drinks, dose = number of drinks (0/1/2/3+ ⇒ 0,1,2,3). */
@@ -64,7 +54,7 @@ object DoseResponsePriors {
     }
 
     /**
-     * The documented, conservative priors. Mirror Swift exactly.
+     * The documented, conservative priors.
      * - Alcohol → Charge: ≈ −5 Charge points per extra drink (clamped −15…+2).
      * - Caffeine → HRV:   ≈ −4 ms per step later in the day (clamped −20…+4).
      */

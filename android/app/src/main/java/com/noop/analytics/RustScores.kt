@@ -46,14 +46,9 @@ internal object RustScores {
     private fun baseline(b: RecoveryScorer.DriverBaseline?): DriverBaselineInfo? =
         b?.let { DriverBaselineInfo(it.mean, it.spread) }
 
-    /** Fold consecutive same-`ts` R-R into one run (preserving intra-second beat order), like the stager.
-     *  Clamp each rrMs into the UShort range before the cast so a value above u16 can't WRAP into a bogus
-     *  in-[300,2000] beat (the aliasing gap `respRateFromRr` guards against by pre-filtering the cast). Unlike
-     *  that wrapper we CLAMP rather than drop: the gap-aware RMSSD needs an out-of-physio-range beat to still
-     *  reach the whoop-rs clean, which drops it there WITH a contiguity break — dropping (or omitting) it here
-     *  would splice its neighbours into a spurious successive pair and diverge from the Kotlin reference. A
-     *  clamped value stays > RR_MAX_MS, so the Rust clean drops it with the same break; every real R-R (u16 on
-     *  the wire) is in range and passes through unchanged. */
+    /** Folds consecutive same-`ts` R-R into one run, preserving intra-second beat order. Clamps each rrMs
+     *  into UShort range rather than dropping it: an out-of-range beat still reaches the whoop-rs clean,
+     *  which drops it WITH a contiguity break, instead of splicing its neighbours into a spurious pair. */
     private fun groupRuns(rr: List<RrInterval>): List<RrRun> {
         val out = ArrayList<RrRun>()
         for (r in rr) {
@@ -103,11 +98,9 @@ internal object RustScores {
     )
 
     /**
-     * [BaselineState] convenience overload (mirrors the deleted `RecoveryScorer.recovery` twin): converts
-     * each [BaselineState] to a [RecoveryScorer.DriverBaseline] and derives the cold-start gate from
-     * `hrvBaseline.usable`, exactly as the Kotlin scorer did, then delegates to the FFI path above. This is
-     * what the store sites ([AnalyticsEngine]/[IntelligenceEngine.recomputeRecovery]/[WatchRecovery]) and
-     * the [RecoveryScorerTrace] call.
+     * [BaselineState] convenience overload: converts each [BaselineState] to a [RecoveryScorer.DriverBaseline],
+     * derives the cold-start gate from `hrvBaseline.usable`, then delegates to the FFI path above. Called by
+     * [AnalyticsEngine], [IntelligenceEngine.recomputeRecovery], [WatchRecovery] and [RecoveryScorerTrace].
      */
     fun recovery(
         hrv: Double,
@@ -226,10 +219,9 @@ internal object RustScores {
 
     // ── SpO2 (4.0 paired red/IR) ─────────────────────────────────────────────
 
-    /** Blood oxygen % from a 4.0 night's paired red/IR ADC via ratio-of-ratios, over the in-bed samples
-     *  only. The 4.0 counterpart to the 5.0/MG strap-computed percent, so both generations bank the SAME
-     *  DailyMetric.spo2Pct and render on the same card. Null when the channel is not pulsatile enough
-     *  to carry a ratio, which is the usual case on this hardware. */
+    /** Blood oxygen % from a 4.0 night's paired red/IR ADC via ratio-of-ratios, over in-bed samples only.
+     *  The 4.0 counterpart to the 5.0/MG strap-computed percent; both bank DailyMetric.spo2Pct. Null when
+     *  the channel isn't pulsatile enough to carry a ratio — the usual case on this hardware. */
     /** The multi-night 4.0 blood-oxygen readout: anchors the 30-night median and reports the 7-night
      *  median at that offset, so the night-to-night movement survives a per-device DC offset the
      *  absolute value cannot. [recentNightly] is oldest to newest. */
@@ -301,7 +293,7 @@ internal object RustScores {
         state, enabled, autoNudge, quietHoursEnabled, quietStartMin, quietEndMin, nowSec, tzOffsetSec,
     )
 
-    // ── Deep-sleep HRV window (#141) ────────────────────────────────────────────
+    // ── Deep-sleep HRV window ────────────────────────────────────────────────
 
     /** Session avgHrv (ms) from 5-min buckets whose centre falls in deep-sleep spans. */
     fun windowedAvgHrvDeep(start: Long, end: Long, rr: List<RrInterval>, segments: List<SleepSegment>): Double? =
@@ -386,9 +378,8 @@ internal object RustScores {
     // ── Frequency-domain HRV (Lomb-Scargle LF/HF) ────────────────────────────
 
     /** Frequency-domain HRV bands (LF/HF/LF-HF/total power, ms²) over a time-ordered R-R series (ms) —
-     *  twin of [HrvFreqDomain.freqDomainRaw]. Range + Malik-ectopic clean, the tachogram build, the 60 s
-     *  HF and 250 s LF span gates and the 20-beat floor all live in whoop-rs. R-R are integer ms (u16 on
-     *  the wire); `null` below the HF span gate or the 20-beat floor. */
+     *  twin of [HrvFreqDomain.freqDomainRaw]. Range + Malik-ectopic clean, tachogram build, and the 60 s
+     *  HF / 250 s LF span gates + 20-beat floor live in whoop-rs; `null` below either gate. */
     fun freqDomain(rawRR: List<Double>): HrvFreqDomain.Bands? =
         uniffi.whoop_ffi.hrvFreqDomain(rawRR.map { it.toInt().toUShort() })?.let {
             HrvFreqDomain.Bands(lf = it.lf, hf = it.hf, lfhf = it.lfhf, totalPower = it.totalPower)

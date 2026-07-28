@@ -4,24 +4,22 @@ import java.util.Locale
 import kotlin.math.roundToLong
 
 /**
- * "~X days left" for a strap, worked out from its battery state-of-charge (SoC) history (#713). Neither
- * the WHOOP app nor WHOOP's API ever give you a runtime estimate, but NOOP already banks a SoC time
- * series from the strap over BLE, so no manual logging is needed. We fit the recent DISCHARGE slope and
- * divide the current charge by it. When the discharge run is too short or too flat to trust, we fall back
- * to the device's typical full-charge life for its generation.
+ * "~X days left" for a strap, worked out from its battery state-of-charge (SoC) history. Neither the
+ * WHOOP app nor WHOOP's API give a runtime estimate, but NOOP already banks a SoC series from the strap
+ * over BLE. We fit the recent DISCHARGE slope and divide the current charge by it; when the run is too
+ * short or too flat to trust, we fall back to the device's typical full-charge life for its generation.
  *
- * The measured slope already bakes in how the user actually runs their strap (HR broadcast, strain,
- * recording), so there are no hand-tuned usage multipliers. The discharge curve IS the personalisation.
+ * The measured slope bakes in how the user actually runs their strap, so there are no hand-tuned usage
+ * multipliers — the discharge curve IS the personalisation.
  *
- * Honest about the limits: battery drain is non-linear (faster near full and near empty) and the strap
- * reports SoC sparsely, so this is an estimate, not a guarantee. Behaviour-identical twin of the Swift
- * BatteryEstimator (same fixtures, same numbers).
+ * Battery drain is non-linear (faster near full and near empty) and SoC reports are sparse, so this is
+ * an ESTIMATE, not a guarantee.
  */
 object BatteryEstimator {
 
     /** Typical full-charge life in hours per WHOOP generation, used before enough of the user's own
-     *  discharge has been seen to fit a slope. WHOOP 4.0 is about 4.5 days, WHOOP 5.0 / MG about 12 days
-     *  (the figures cited in #713). The caller maps its connected strap to one of these. */
+     *  discharge has been seen to fit a slope. WHOOP 4.0 is about 4.5 days, WHOOP 5.0 / MG about 12 days.
+     *  The caller maps its connected strap to one of these. */
     const val ratedLifeHoursWhoop4 = 108.0   // 4.5 days
     const val ratedLifeHoursWhoop5 = 288.0   // 12 days
 
@@ -34,11 +32,9 @@ object BatteryEstimator {
      *  The discharge run restarts after it, so we never fit a rate across a charge. */
     const val chargeStepPct = 1.0
 
-    /** A charge only ANCHORS a fresh discharge run when it returns the strap NEAR FULL (#8). A mere partial
-     *  top-up (e.g. 40% -> 55% on a quick desk charge) used to reset the run exactly like a 0% -> 100%
-     *  charge, discarding the long clean discharge history before it and inflating "days left" off the short
-     *  post-top-up tail. So a rise is treated as a run-reset anchor only when the post-rise SoC reaches this;
-     *  a partial top-up is instead stepped over, and the fit prefers the longer pre-top-up discharge segment. */
+    /** A charge only ANCHORS a fresh discharge run when it returns the strap NEAR FULL. A partial top-up
+     *  (e.g. 40% -> 55%) does not reset the run — that would discard the long clean discharge history and
+     *  inflate "days left" off a short tail — so a rise anchors only when post-rise SoC reaches this. */
     const val nearFullPct = 90.0
 
     /** Where the drain rate came from: the user's own measured discharge, or the rated fallback. */
@@ -60,10 +56,9 @@ object BatteryEstimator {
     /**
      * Estimate remaining runtime from a SoC series.
      *
-     * [samples] = (unix-seconds, SoC%) pairs in any order. The caller drops nil-SoC rows and maps the
-     * banked battery series into this shape. [ratedHours] = the strap's typical full-charge life, one of
-     * the `ratedLifeHours…` constants, chosen by the caller from the connected strap's generation.
-     * Returns null only when there isn't a single reading to anchor to. Mirrors the Swift estimate().
+     * [samples] = (unix-seconds, SoC%) pairs in any order; the caller drops nil-SoC rows first.
+     * [ratedHours] = the strap's typical full-charge life (one of the `ratedLifeHours…` constants) for
+     * its generation. Returns null only when there isn't a single reading to anchor to.
      */
     fun estimate(samples: List<Pair<Long, Double>>, ratedHours: Double): Estimate? {
         val sorted = samples.sortedBy { it.first }
@@ -71,14 +66,13 @@ object BatteryEstimator {
         val current = last.second
 
         // The discharge segment whose slope we fit: anchored at the most recent NEAR-FULL charge, and ending
-        // before any later partial top-up, so neither a charge earlier in the buffer nor a quick desk top-up
-        // distorts the fitted slope (#8).
+        // before any later partial top-up, so neither an earlier charge nor a quick desk top-up distorts the
+        // fitted slope.
         val dischargeRun = dischargeFitWindow(sorted)
 
-        // Fit the discharge slope over the segment as a simple endpoints rate (%/h). The series is short and
-        // monotone-ish within a segment, so endpoints are as good as a least-squares line and far cheaper,
-        // and they keep the test fixtures exact. null when it's too short, too flat, or not discharging. The
-        // estimate stays anchored to `current` (the latest SoC), even when the fit window ends earlier.
+        // Fit the discharge slope over the segment as a simple endpoints rate (%/h): the series is short and
+        // monotone-ish, so endpoints are as good as least-squares and far cheaper. null when too short, too
+        // flat, or not discharging. The estimate stays anchored to `current` even when the fit window ends earlier.
         val measuredRate: Double? = run {
             if (dischargeRun.size < 2) return@run null
             val first = dischargeRun.first()
@@ -92,27 +86,17 @@ object BatteryEstimator {
 
         val rate = measuredRate ?: (100.0 / maxOf(ratedHours, 1.0))
         val remaining = maxOf(0.0, current) / rate
-        // #99: cap scaled to the CURRENT SoC, not a flat multiple of the FULL rated life. The old
-        // `ratedHours * 1.5` ignored SoC, so a too-slow measured slope at low charge (idle/off-wrist spans,
-        // sparse 5/MG SoC readings) extrapolated 9% to ~3 days — more than a full 12-day MG charge. You can't
-        // realistically stretch the rated per-% runtime past ~1.5x, so bound to that scaled to `current`%.
+        // Cap scaled to the CURRENT SoC, not a flat multiple of the FULL rated life: a too-slow measured
+        // slope at low charge (idle/off-wrist spans, sparse 5/MG readings) could extrapolate 9% to ~3 days,
+        // more than a full 12-day MG charge. Bound to ~1.5x the rated per-% runtime, scaled to `current`%.
         val clamped = minOf(remaining, ratedHours * 1.5 * (maxOf(0.0, current) / 100.0))
         return Estimate(clamped, if (measuredRate != null) Source.MEASURED else Source.RATED, current)
     }
 
     /**
-     * The slice of the sorted SoC series whose endpoints we fit the discharge slope on (#8). Two rules,
-     * both keyed off "is this rise a real charge or a partial top-up":
-     *  1. START at the most recent NEAR-FULL charge: the most recent rise > chargeStepPct that LANDS at
-     *     >= nearFullPct. A partial top-up (rise that doesn't reach near-full) is NOT an anchor: the scan
-     *     steps over it and keeps looking further back, so a quick 40->55 desk charge no longer throws away
-     *     the long clean discharge before it. If there is no near-full charge in the buffer, start = 0.
-     *  2. END before the most recent partial top-up that falls AFTER the start anchor (a rise > chargeStepPct
-     *     that does NOT reach near-full), so the fitted slope is the longer pre-top-up discharge segment,
-     *     never the short, slope-flattening post-top-up tail.
-     * `current` (the latest SoC the estimate is anchored to) is taken by the caller from the series end, not
-     * from this window, so trimming the tail changes only the slope, never the SoC the runtime divides into.
-     * Pure; the Swift twin is `dischargeFitWindow`.
+     * The slice of the sorted SoC series whose endpoints we fit the discharge slope on. Starts at the most
+     * recent NEAR-FULL charge (a partial top-up is stepped over) and ends before the next partial top-up,
+     * so the fit uses the longer pre-top-up segment; `current` is read from the series end, not this window.
      */
     fun dischargeFitWindow(sorted: List<Pair<Long, Double>>): List<Pair<Long, Double>> {
         if (sorted.size < 2) return sorted
@@ -126,18 +110,9 @@ object BatteryEstimator {
             }
         }
 
-        // 1b. #919: with no near-full (>=90%) charge to anchor on - common on a 12-day WHOOP 5.0 that rarely
-        //     tops past 90% between charges - anchor at the HIGHEST SoC (the top of the most recent
-        //     discharge) rather than the oldest reading, which can sit below a later charge and net to a
-        //     NON-discharge window (drop < 0 -> stuck on rated). The max is >= every later reading, so the
-        //     window can only discharge; the >=minDropPct gate still rejects a flat run. Preserves #8: its
-        //     buffer starts at the max, so this stays index 0 there. Last occurrence of the max (>=).
-        //     #99: that max search used to scan the WHOLE buffer, so a strap that tops up short of full
-        //     every day (never tripping rule 1) could anchor on a peak several CYCLES back, netting the fit
-        //     across multiple undetected intermediate top-ups and flattening the slope into something that
-        //     no longer reflects how the strap is actually draining "today". Bounding the search to at most
-        //     the last two charge-step cycles keeps it anchored to the CURRENT usage pattern; a buffer with
-        //     0 or 1 charge-steps searches from the start exactly as before (#8, #919 unaffected).
+        // 1b. With no near-full charge to anchor on, anchor at the HIGHEST SoC instead of the oldest
+        //     reading — the max is >= every later reading, so the window can only discharge. Bounded to
+        //     the last two charge-step cycles so a strap that rarely tops to full anchors on CURRENT usage.
         if (startIdx == 0) {
             val chargeStepIdxs = mutableListOf<Int>()
             for (i in 1 until sorted.size) {
@@ -165,11 +140,9 @@ object BatteryEstimator {
     }
 
     /**
-     * Side-effect-free diagnostic twin of [estimate]: returns the SAME Estimate plus a list of trace
-     * lines describing the full (t, soc) series, the detected charge step(s), the trailing discharge run
-     * start/span/drop, the fitted slope, and which gate (minSpanHours / minDropPct) decided source =
-     * measured vs rated. The Battery test mode gates this behind TestCentre.active(BATTERY); when the mode
-     * is off it is never called, so there is zero cost. Pure: no clock, no I/O. Twin of the Swift trace.
+     * Side-effect-free diagnostic twin of [estimate]: returns the SAME Estimate plus trace lines describing
+     * the full (t, soc) series, charge step(s), discharge-run start/span/drop, fitted slope, and which gate
+     * decided source = measured vs rated. Gated behind TestCentre.active(BATTERY); off, it is never called.
      */
     fun estimateTrace(samples: List<Pair<Long, Double>>, ratedHours: Double):
         Pair<Estimate?, List<String>> {
@@ -183,7 +156,7 @@ object BatteryEstimator {
         lines.add("battery series=${sorted.size} readings span ${first0.first}..${last.first}s")
         for (s in sorted) lines.add("battery read t=${s.first}s soc=${soc(s.second)}")
 
-        // The most recent NEAR-FULL charge anchors the run start (same scan as estimate, #8); a partial
+        // The most recent NEAR-FULL charge anchors the run start (same scan as estimate); a partial
         // top-up does NOT anchor and is reported separately below.
         var startIdx = 0
         if (sorted.size >= 2) {
@@ -198,7 +171,7 @@ object BatteryEstimator {
             }
         }
         // The most recent PARTIAL top-up after the anchor (a rise that does NOT reach near-full): the fit
-        // ends before it and prefers the longer pre-top-up discharge segment (#8).
+        // ends before it and prefers the longer pre-top-up discharge segment.
         if (sorted.size >= 2 && startIdx < sorted.size - 1) {
             for (i in sorted.size - 1 downTo startIdx + 1) {
                 if (sorted[i].second > sorted[i - 1].second + chargeStepPct && sorted[i].second < nearFullPct) {
@@ -243,8 +216,8 @@ object BatteryEstimator {
     private fun hrs(v: Double) = String.format(Locale.US, "%.1f", v)
     private fun slope(v: Double) = String.format(Locale.US, "%.1f", v)
 
-    /** Display rule from #713: hours under 48h ("~14h"), days above ("~4.5 days"). Unit text only, the UI
-     *  adds the "left" / "remaining" copy. Locale-fixed so the tests stay stable. */
+    /** Display rule: hours under 48h ("~14h"), days above ("~4.5 days"). Unit text only, the UI adds the
+     *  "left" / "remaining" copy. Locale-fixed so the tests stay stable. */
     fun label(hours: Double): String =
         if (hours < 48) "~${hours.roundToLong()}h"
         else "~${String.format(Locale.US, "%.1f", hours / 24)} days"
@@ -263,13 +236,9 @@ object BatteryEstimator {
     data class RuntimeAlertDecision(val fire: Boolean, val newAlerted: Boolean)
 
     /**
-     * Crossing-with-hysteresis decision for the predictive alert, mirroring BatteryAlertPolicy's
-     * shape: PERSISTED `alerted` gate in, fire decision plus next gate state out. Behaviour-identical
-     * twin of the Swift `BatteryEstimator.runtimeAlert` (same fixtures, same numbers).
-     *
-     * `charging == null` means unknown — the alert still fires (only a confirmed `true` suppresses
-     * it), the same null-tolerant rule as the SoC low alert: the strap reports its charge bit only
-     * every ~8 min, and a strap that never reports one should still warn.
+     * Crossing-with-hysteresis decision for the predictive alert, mirroring BatteryAlertPolicy's shape:
+     * PERSISTED `alerted` gate in, fire decision plus next gate state out. `charging == null` means unknown,
+     * so the alert still fires — only a confirmed `true` suppresses it (the strap reports its charge bit rarely).
      */
     fun runtimeAlert(remainingHours: Double, charging: Boolean?, alerted: Boolean): RuntimeAlertDecision {
         var armedOff = alerted

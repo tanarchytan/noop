@@ -7,16 +7,14 @@ import kotlin.math.sqrt
 /**
  * Heart-rate variability.
  *
- * Ported verbatim from `AppModel.rmssd` in the hardware-verified Swift reference
- * (`Strand/App/AppModel.swift`). RMSSD = root-mean-square of successive R-R
- * interval differences (milliseconds in, milliseconds out).
+ * RMSSD = root-mean-square of successive R-R interval differences (milliseconds in,
+ * milliseconds out).
  */
 object Hrv {
     /**
      * Root mean square of successive differences over a list of R-R intervals (ms).
      *
-     * Returns 0.0 when fewer than two intervals are available (matching the Swift
-     * guard `rr.count >= 2`).
+     * Returns 0.0 when fewer than two intervals are available.
      */
     fun rmssd(rr: List<Int>): Double {
         if (rr.size < 2) return 0.0
@@ -34,15 +32,14 @@ object Hrv {
 /**
  * Heart-rate training zones.
  *
- * Ported from the zone ladder in `AppModel.coachZone` (`Strand/App/AppModel.swift`):
- * pct >= 0.9 → 5, >= 0.8 → 4, >= 0.7 → 3, >= 0.6 → 2, else 1.
+ * Zone ladder on pct = hr / maxHR: pct >= 0.9 → 5, >= 0.8 → 4, >= 0.7 → 3, >= 0.6 → 2, else 1.
  */
 object Zones {
     /**
      * Zone (1..5) for a heart rate given an estimated maximum heart rate.
      *
-     * Mirrors the Swift `pct = hr / maxHR` ladder. If [hrMax] is non-positive the
-     * percentage is undefined, so we fall back to the lowest zone.
+     * If [hrMax] is non-positive the percentage is undefined, so this falls back to the
+     * lowest zone.
      */
     fun zone(hr: Int, hrMax: Int): Int {
         if (hrMax <= 0) return 1
@@ -65,20 +62,19 @@ object Zones {
 /**
  * Illness / strain early-warning.
  *
- * Ported from `AppModel.evaluateIllness` (`Strand/App/AppModel.swift`). Compares the
- * last ~2 days against a ~28-day baseline ending 3 days ago across resting HR, HRV,
- * skin-temperature deviation and respiration. Two or more anomalies surface a banner;
- * the classic early-illness signature is RHR up + HRV down + skin-temp up.
+ * Compares the last ~2 days against a ~28-day baseline ending 3 days ago across resting
+ * HR, HRV, skin-temperature deviation and respiration. Two or more anomalies surface a
+ * banner; the classic early-illness signature is RHR up + HRV down + skin-temp up.
  *
- * The Swift method also gates on a user toggle (`behavior.illnessWatch`); that toggle
- * is a UI concern, so this pure function omits it. Callers decide whether to run it.
+ * Gating on a user toggle is a UI concern this pure function omits; callers decide
+ * whether to run it.
  */
 object IllnessWatch {
     /**
      * Evaluate the [days] history (oldest -> newest). Returns a human-readable banner
      * message when 2+ anomaly flags fire, otherwise null.
      *
-     * Requires at least 14 days of history (matching `days.count >= 14`).
+     * Requires at least 14 days of history.
      */
     fun evaluate(days: List<DailyMetric>): String? {
         if (days.size < 14) return null
@@ -122,12 +118,9 @@ object IllnessWatch {
         }
 
         run {
-            // respRateBpm may be a clean cloud value OR a higher-variance on-device RSA estimate
-            // (WHOOP5 BLE-only). The field carries no source flag, so gate conservatively for BOTH:
-            //  - require enough valid baseline nights for a stable baseline mean (RSA history can be sparse),
-            //  - only compare physiologically plausible sleeping-RR values (~8-25 bpm), rejecting RSA outliers,
-            //  - use a wider +2.5 bpm margin so one noisy night (averaged over the 2 recent days) can't fire,
-            //    while a sustained genuine rise (both recent nights up) still does.
+            // respRateBpm may be a clean cloud value or a noisier on-device RSA estimate, with no
+            // source flag to tell them apart, so this gates conservatively: needs >=10 baseline
+            // nights, restricts to physiologically plausible 8-25 bpm, and uses a wide +2.5 bpm margin.
             val respBase = base.mapNotNull { it.respRateBpm }
             val r = rm { it.respRateBpm }
             val b = bm { it.respRateBpm }

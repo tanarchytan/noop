@@ -10,8 +10,7 @@ import kotlin.math.abs
 
 /**
  * One night's contribution to the ledger: its day key, minutes slept, and the signed
- * delta against need (positive = surplus, negative = deficit). Mirrors Swift
- * `SleepDebtNight`.
+ * delta against need (positive = surplus, negative = deficit).
  */
 data class SleepDebtNight(
     /** "yyyy-MM-dd" day key for the night (as carried on the DailyMetric). */
@@ -23,8 +22,7 @@ data class SleepDebtNight(
 )
 
 /**
- * The rolling sleep-debt ledger over the capped trailing window. Mirrors Swift
- * `SleepDebtLedger`.
+ * The rolling sleep-debt ledger over the capped trailing window.
  */
 data class SleepDebtLedger(
     /** Net running balance (minutes): Σ(slept − need). Negative = net DEBT, positive = net SURPLUS. */

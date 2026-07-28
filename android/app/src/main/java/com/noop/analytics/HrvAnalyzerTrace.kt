@@ -1,32 +1,23 @@
 package com.noop.analytics
 
-// HrvAnalyzerTrace.kt - Kotlin twin of HRVAnalyzer+Trace.swift. The HRV & Autonomic test-mode cleaning
-// trace.
+// HrvAnalyzerTrace.kt - the HRV & Autonomic test-mode cleaning trace.
 //
-// Recomputes the cleaning-pipeline counts (range filter, Malik ectopic rejection, the minBeats gate, the
-// spot rejected-fraction gate) from the SAME raw RR the analyzer reads, then reuses analyzeRaw(...)
-// verbatim for the result so the trace can never disagree with the RMSSD/SDNN the screen shows. Pure and
-// side-effect-free: no clock, no I/O, so a fixture beat series pins the exact lines. The HRV test mode
-// gates this behind TestCentre.active(HRV) at the call site (the spot reading); when the mode is off it
-// is never called, so there is zero cost. Byte-aligned with the Swift line shape. No em-dashes.
+// Recomputes the cleaning-pipeline counts (range filter, Malik ectopic rejection, the minBeats gate,
+// the spot rejected-fraction gate) from the same raw RR the analyzer reads, then reuses analyzeRaw(...)
+// verbatim so the trace can never disagree with the RMSSD/SDNN the screen shows. Pure and side-effect
+// free, so a fixture beat series pins the exact lines. Gated behind TestCentre.active(HRV) at the call
+// site; when the mode is off it is never called.
 
 object HrvAnalyzerTrace {
 
     private fun r2(x: Double): Double = Math.round(x * 100.0) / 100.0
 
     /**
-     * Side-effect-free diagnostic twin of [HrvAnalyzer.analyzeRaw]: returns the SAME HrvResult
-     * analyzeRaw(...) would, plus the cleaning trace. Reports nInput / nClean / rejected fraction,
-     * RMSSD / SDNN / meanNN, whether the [HrvAnalyzer.MIN_BEATS] gate cleared, the range + Malik ectopic
-     * rejection counts, and (when a ceiling is supplied) the spot rejected-fraction honesty gate. [path]
-     * tags the reading "spot" or "continuous" so a report shows which window produced it.
+     * Side-effect-free diagnostic twin of [HrvAnalyzer.analyzeRaw]: returns the same result plus a
+     * cleaning trace (counts, RMSSD/SDNN/meanNN, the [HrvAnalyzer.MIN_BEATS] gate, the spot
+     * rejected-fraction gate), recomputed with the exact same filters so trace and result can never diverge.
      *
-     * The returned result IS analyzeRaw(...) verbatim, and every count is recomputed with the EXACT same
-     * filters (rangeFilter then rejectEctopic), so the trace and the headline can never diverge. Mirrors
-     * the Swift HRVAnalyzer.analyzeTrace.
-     *
-     * @param maxRejectedFraction the SPOT-ONLY ceiling (#585). null (the nightly/continuous default)
-     *   skips the rejected-fraction gate, exactly like analyzeRaw(...).
+     * @param maxRejectedFraction spot-only ceiling; null (nightly/continuous default) skips the gate.
      * @param path "spot" for a live snapshot, "continuous" for the nightly windowed path.
      */
     fun analyzeTrace(
@@ -64,7 +55,7 @@ object HrvAnalyzerTrace {
                 if (minBeatsCleared) "CLEARED" else "FAILED",
         )
 
-        // Spot honesty gate (#585): only when a ceiling is supplied AND minBeats cleared.
+        // Spot honesty gate: only when a ceiling is supplied and minBeats cleared.
         if (maxRejectedFraction != null && minBeatsCleared) {
             val gatePass = !(rejectedFraction > maxRejectedFraction)
             lines.add(

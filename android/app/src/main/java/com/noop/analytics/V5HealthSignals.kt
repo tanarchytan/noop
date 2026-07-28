@@ -4,20 +4,13 @@ import com.noop.data.DailyMetric
 import kotlin.math.sqrt
 
 /**
- * V5HealthSignals — the small, pure adapter that turns the app's cached merged [DailyMetric] history into
- * the per-night z-scored inputs the three v5 skin-temp-suite engines consume, and runs them once per
- * analytics pass. It owns NO I/O and NO state: the caller (AppViewModel) hands it the already-loaded
- * `recentDays` list + a few prefs/profile flags and gets back a [Snapshot] of engine RESULTS to publish.
- *
- * Why a lightweight z here (not the full [Baselines] EWMA): the cards only need a deviation-against-your-
- * own-recent-range read ("further from your baseline than usual"), and the cached daily columns already
- * carry RHR / HRV / skin-temp-deviation / respiration. A rolling mean+SD over the trailing window is an
- * honest, transparent statistic (an observation about your own number) that keeps this pass cheap + DB-free.
- * The engines themselves (CyclePhaseEngine / CircadianEngine / IllnessSignalEngine) own the maths; this
- * file is only the Android-side input plumbing.
- *
- * NON-CLINICAL: every output is an approximation about the user's own series — never a diagnosis. Cycle
- * awareness is OPT-IN (the caller gates on a default-OFF pref before reading [Snapshot.cycle]).
+ * Pure adapter turning cached [DailyMetric] history into per-night z-scored inputs for the three v5
+ * skin-temp-suite engines (CyclePhaseEngine / CircadianEngine / IllnessSignalEngine), run once per
+ * analytics pass. No I/O, no state — caller hands `recentDays` + prefs/profile flags, gets a [Snapshot].
+ * Uses a lightweight rolling mean+SD z, not the full [Baselines] EWMA, since the cards only need a
+ * deviation-against-your-own-range read, kept cheap and DB-free. NON-CLINICAL: every output is an
+ * approximation, never a diagnosis. Cycle awareness is opt-in, gated on a default-off pref before
+ * [Snapshot.cycle] is read.
  */
 object V5HealthSignals {
 
@@ -33,10 +26,9 @@ object V5HealthSignals {
         val bodyClock: CircadianEngine.PhaseEstimate?,
         val illness: IllnessSignalEngine.Result,
         /**
-         * Parallel Mahalanobis illness-distance read (IllnessDistance), computed on the SAME illness-ward
-         * z-vector as [illness] but NEVER gating the alert: [IllnessSignalEngine] stays the sole fire gate.
-         * This only surfaces a "how strong" confidence readout in the Heads-Up card when the engine has
-         * already raised. Nullable so an absent illness pass leaves it null. (Augment-only, Option A.)
+         * Parallel Mahalanobis illness-distance read, computed on the same illness-ward z-vector as [illness]
+         * but never gating the alert — [IllnessSignalEngine] stays the sole fire gate. Only surfaces a "how
+         * strong" confidence readout in the Heads-Up card once the engine has already raised; null if absent.
          */
         val illnessDistance: IllnessDistance.Result?,
         /** True once there are enough trusted nights for any of these to be more than "learning". */
@@ -44,10 +36,9 @@ object V5HealthSignals {
     )
 
     /**
-     * Run the three engines over [days] (oldest→newest). [cycleOptedIn] gates whether the cycle classifier
-     * is run at all (it returns a cheap LEARNING result when off, so the caller can publish unconditionally
-     * and the UI's opt-in card still shows). [loggedPeriodStarts] are optional "yyyy-MM-dd" period-start
-     * days. [journalContext] supplies the same-day confounder flags for illness suppression.
+     * Runs the three engines over [days] (oldest to newest). [cycleOptedIn] gates the cycle classifier
+     * (off returns a cheap LEARNING result so the UI's opt-in card still shows). [loggedPeriodStarts] are
+     * optional "yyyy-MM-dd" period-start days; [journalContext] carries same-day confounder flags for illness suppression.
      */
     fun evaluate(
         days: List<DailyMetric>,
@@ -111,11 +102,9 @@ object V5HealthSignals {
             firedLabels = firedLabels,
         )
 
-        // PARALLEL Mahalanobis distance on the SAME illness-ward z-vector (RHR up, HRV negated, skin-temp
-        // up, respiration up). This NEVER gates the alert: the IllnessSignalEngine above remains the sole
-        // fire gate. Computed here only so the Heads-Up card can show a "how strong" confidence band when
-        // the engine has already raised. null where a z is absent (dropped from the distance). correlation
-        // = null (identity), validated to agree ~100% with the z-sum detector. Mirrors iOS exactly.
+        // Parallel Mahalanobis distance on the same illness-ward z-vector (RHR up, HRV negated, skin-temp up,
+        // respiration up); never gates the alert — IllnessSignalEngine above is the sole fire gate, this only
+        // drives the Heads-Up card's "how strong" band. A null z drops out; correlation = null (identity).
         val illnessDistance = IllnessDistance.evaluate(
             features = IllnessDistance.FeatureVector(
                 restingHR = latest?.rhrZ,

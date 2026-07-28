@@ -3,35 +3,28 @@ package com.noop.analytics
 import kotlin.math.abs
 
 /*
- * FusionResolver (v5 — Local Multi-Device Fusion).
+ * FusionResolver — Local Multi-Device Fusion.
  *
- * Value-for-value Kotlin twin of Packages/StrandAnalytics/.../FusionResolver.swift. Pure,
- * deterministic, on-device fusion per
- * docs/superpowers/specs/2026-06-19-v5-local-multi-device-fusion-design.md §1–§2. Given the per-source
- * values for ONE (metric, day), it:
+ * Pure, deterministic, on-device fusion. Given the per-source values for ONE (metric, day), it:
  *   1. ranks sources by trust tier (MetricArbitrationPolicy), stable tiebreak, and picks the winner's
  *      value VERBATIM (best signal wins — never an average);
  *   2. cross-validates the other sources against the winner and classifies agreement as
- *      single / agree / minorDelta / conflict (the honest part — conflicts are shown, not merged).
+ *      single / agree / minorDelta / conflict (conflicts are shown, not merged).
  * No I/O — the repository feeds it rows it already loads.
  */
 object FusionResolver {
 
     /**
-     * Resolve one metric for one day from each source's value. [metricKey] is the resolver series key
-     * (e.g. "rhr", "steps", "sleep_total_min"); it picks the trust tiers and tolerance via
-     * [MetricArbitrationPolicy]. Returns null only when [inputs] is empty (no source has the metric).
-     *
-     * The winner is the lowest-tier source, ties broken by sourcePriority (stable, deterministic). Its
-     * value passes through unchanged. The agreement state classifies how far the OTHER sources sit from
-     * the winning value, per the metric's tolerance band.
+     * Resolve one metric for one day from each source's value, via [MetricArbitrationPolicy] trust
+     * tiers and tolerance. Returns null only when [inputs] is empty. The winner is the lowest-tier
+     * source (ties by sourcePriority) passed through unchanged; agreement reflects how far the rest sit from it.
      */
     fun resolve(metricKey: String, inputs: List<FusionInput>): FusedMetricPoint? {
         if (inputs.isEmpty()) return null
         val kind = MetricArbitrationPolicy.kind(metricKey)
 
         // Build a contributor for every source, tagged with its trust tier + reason. Keep the input
-        // index so the sort's final tiebreak is stable across platforms.
+        // index so the sort's final tiebreak is fully deterministic.
         val indexed = inputs.mapIndexed { index, input ->
             index to ContributingSource(
                 source = input.source,

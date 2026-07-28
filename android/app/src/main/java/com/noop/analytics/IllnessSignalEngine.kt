@@ -12,7 +12,7 @@ package com.noop.analytics
 // rest" / "consider taking it easy".
 object IllnessSignalEngine {
 
-    // ── Tuning constants (pinned by test; mirror the Swift twin exactly) ──
+    // ── Tuning constants (pinned by test) ──
     const val raiseThreshold: Double = 50.0
     const val mildThreshold: Double = 25.0
     const val minCorroboratingSignals: Int = 2
@@ -21,16 +21,15 @@ object IllnessSignalEngine {
     const val perSignalCap: Double = 40.0
     const val confounderDampen: Double = 0.45
 
-    /** Standing not-a-diagnosis tail reused verbatim from the shipped IllnessNotifier copy. */
+    /** Standing not-a-diagnosis tail reused verbatim from the illness alert notification copy. */
     const val disclaimerTail = "On-device estimate - not a diagnosis."
 
     // ── Inputs ──
 
     /**
-     * One signal's recent-vs-baseline reading, already z-scored against the personal baseline by the
-     * caller. [zIllnessward] is the deviation ORIENTED so positive always means "more illness-like":
-     * RHR ↑, skin-temp ↑, respiration ↑ pass their raw z; HRV ↓ passes the NEGATED z. [present] = false
-     * means the signal had no usable data and is skipped (not counted as corroboration).
+     * One signal's recent-vs-baseline reading, already z-scored by the caller. [zIllnessward] is
+     * oriented so positive always means "more illness-like" (RHR/skin-temp/respiration pass raw z,
+     * HRV passes the NEGATED z). [present] = false means no usable data; it's skipped, not corroboration.
      */
     data class SignalReading(val zIllnessward: Double, val present: Boolean = true)
 
@@ -84,7 +83,7 @@ object IllnessSignalEngine {
      * for signals that clear [signalZThreshold] are surfaced.
      */
     fun evaluate(inputs: Inputs, context: Context, firedLabels: Map<String, String> = emptyMap()): Result {
-        // Order is fixed so firedSignals is deterministic across platforms.
+        // Order is fixed so firedSignals is deterministic.
         val ordered: List<Pair<String, SignalReading?>> = listOf(
             "restingHR" to inputs.restingHR,
             "skinTemp" to inputs.skinTemp,

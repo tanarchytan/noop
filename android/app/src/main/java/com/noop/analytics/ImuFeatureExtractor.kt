@@ -5,18 +5,15 @@ import com.noop.protocol.Whoop5ImuFrame
 import kotlin.math.roundToInt
 import kotlin.math.sqrt
 
-// ImuFeatureExtractor.kt — activity features from decoded WHOOP 5/MG raw 6-axis IMU (#423). Kotlin twin
-// of StrandAnalytics/ImuFeatureExtractor.swift (parity contract).
+// Activity features from decoded WHOOP 5/MG raw 6-axis IMU. The offload buffer decodes to 100 Hz
+// 3-axis accel (g) + 3-axis gyro (deg/s); at that rate the accelerometer resolves gait cadence,
+// impact/jerk, and rotational energy the 1 Hz gravity vector cannot (a 1.8 Hz step rate is above its
+// Nyquist limit). Turns a window of raw samples into a compact feature vector for coarse sport/HAR
+// classification.
 //
-// The 5/MG offload buffer decodes (Whoop5RawImu) to 100 Hz 3-axis accel (g) + 3-axis gyro (deg/s). At
-// 100 Hz the accelerometer resolves gait cadence, impact/jerk, and rotational energy the 1 Hz gravity
-// vector physically cannot (a 1.8 Hz step rate is above the 1 Hz stream's Nyquist limit). This turns a
-// window of raw samples into a compact activity-feature vector for coarse sport / HAR classification.
-//
-// Per the repo's derived-signal rule: cadence here is an autocorrelation peak on the accel-magnitude AC
-// over a genuinely high-rate stream (not a fixed-N-per-record buffer), reported with its own strength so
-// a caller can ignore a weak/absent peak; it is a FEATURE, never fed to a physiological gate. Validated
-// to recover MULTIPLE injected cadences, not one lucky match (see ImuFeatureExtractorTest).
+// Cadence is an autocorrelation peak on the accel-magnitude AC over the high-rate stream, reported
+// with its own strength so a weak/absent peak can be ignored; it is a feature, never fed to a
+// physiological gate. Validated to recover multiple injected cadences, not one match.
 
 /** Compact activity features over a window of raw IMU samples. */
 data class ImuActivityFeatures(
