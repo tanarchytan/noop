@@ -269,6 +269,11 @@ data class DailyMetric(
     // alone by AnalyticsEngine (Keytel active + Harris–Benedict BMR). Null when the day has no
     // scored HR window. NOT cloud/clinical parity, a heart-rate estimate.
     val activeKcalEst: Double? = null,
+    // Minutes the day's heart rate spent in the age-derived %HRmax bands, binned from the strap's own
+    // samples rather than a workout's imported percentages, so a day without a logged session still
+    // carries a real split. Null when the day has no HR.
+    val zone1to3Min: Double? = null,
+    val zone4to5Min: Double? = null,
     // WHOOP 4.0 raw SpO2 PPG ADC means over detected sleep. The raw red/IR channels banked on the
     // v24 historical layout (spo2_red@68 / spo2_ir@70), NOT a calibrated blood-oxygen %: that
     // needs WHOOP's proprietary curve. Nullable and on-device only, so old rows + non-4.0 nights

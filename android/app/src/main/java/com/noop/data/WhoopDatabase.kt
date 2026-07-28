@@ -79,13 +79,16 @@ abstract class WhoopDatabase : RoomDatabase() {
         }
 
         /**
-         * Two additive columns: the beat's position within its second (so RMSSD reads beats
-         * in emission order, not by magnitude), and the v18 per-second channels the stream
-         * funnel was decoding but dropping. All nullable, so existing rows read back null.
+         * Additive columns off the v1-tan base: the beat's position within its second (so RMSSD reads
+         * beats in emission order, not by magnitude), the daily heart-rate zone minutes, and the v18
+         * per-second channels the stream funnel was decoding but dropping. All nullable, so existing
+         * rows read back null.
          */
         internal val MIGRATION_100_101 = object : Migration(100, 101) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE rrInterval ADD COLUMN ord INTEGER")
+                db.execSQL("ALTER TABLE dailyMetric ADD COLUMN zone1to3Min REAL")
+                db.execSQL("ALTER TABLE dailyMetric ADD COLUMN zone4to5Min REAL")
                 db.execSQL("ALTER TABLE skinTempSample ADD COLUMN auxRaw1 INTEGER")
                 db.execSQL("ALTER TABLE skinTempSample ADD COLUMN auxRaw2 INTEGER")
                 db.execSQL(

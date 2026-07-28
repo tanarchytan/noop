@@ -484,6 +484,15 @@ object AnalyticsEngine {
             )
         }
 
+        // ── Time in the heart-rate zone bands ─────────────────────────────────
+        // Binned from the day's own HR samples against the age-derived %HRmax zones, so a day with no
+        // logged session still splits honestly. Grouped low (1-3) and high (4-5) the way the dashboard
+        // reads them. Null when the day carries no HR, never a fabricated zero.
+        val zoneMinutes: List<Double>? = if (dayHrFiltered.isEmpty()) null else {
+            val secs = RustScores.hrTimeInZone(dayHrFiltered, age = profile.age, maxHrOverride = effMaxHR).seconds
+            secs.map { it / 60.0 }.takeIf { m -> m.any { it > 0.0 } }
+        }
+
         // ── Assemble DailyMetric ──────────────────────────────────────────────
         // deviceId is stamped by the caller (IntelligenceEngine persists under
         // "<deviceId>-noop"); use the imported source id as a placeholder here so
@@ -508,6 +517,8 @@ object AnalyticsEngine {
             respRateBpm = respRateDaily,
             steps = stepsTotal,
             activeKcalEst = activeKcalEst,
+            zone1to3Min = zoneMinutes?.take(3)?.sum(),
+            zone4to5Min = zoneMinutes?.drop(3)?.sum(),
             spo2Red = nightlySpo2Raw?.first,
             spo2Ir = nightlySpo2Raw?.second,
             // Persist the Rest inputs so restFromDaily recomputes the same score off the stored row.
