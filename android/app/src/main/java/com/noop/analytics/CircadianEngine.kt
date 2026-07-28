@@ -162,14 +162,6 @@ object CircadianEngine {
         return x
     }
 
-    /** Signed shortest delta in hours from [a] to [b] on the 24 h clock, in (−12, 12]. */
-    internal fun signedHourDelta(a: Double, b: Double): Double {
-        var d = (b - a) % 24.0
-        if (d > 12.0) d -= 24.0
-        if (d <= -12.0) d += 24.0
-        return d
-    }
-
     /** Format a clock hour as "HH:MM" (24 h), locale-free. */
     internal fun clock(hour: Double): String {
         val h = wrap24(hour)

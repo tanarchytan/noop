@@ -98,13 +98,6 @@ object Baselines {
     /** Convert a half-life in nights to an EWMA smoothing factor. */
     internal fun lambda(halfLife: Double): Double = 1.0 - 0.5.pow(1.0 / halfLife)
 
-    internal fun computeStatus(nValid: Int, nightsSinceUpdate: Int): BaselineStatus {
-        if (nightsSinceUpdate > staleDays && nValid >= minNightsSeed) return BaselineStatus.STALE
-        if (nValid < minNightsSeed) return BaselineStatus.CALIBRATING
-        if (nValid < minNightsTrust) return BaselineStatus.PROVISIONAL
-        return BaselineStatus.TRUSTED
-    }
-
     // ─────────────────────────────────────────────────────────────────────────
     // Winsorized EWMA update (production model)
     // ─────────────────────────────────────────────────────────────────────────

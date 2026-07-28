@@ -320,7 +320,7 @@ private fun ContributorBar(label: String, readout: String, fraction: Double?, co
  * manual "Recalibrate HRV baseline" (each night dated before the epoch is discarded, not skip-and-held).
  * A genuinely-calibrating user who had >= seed old in-range nights therefore read `count >= seed → null`,
  * and the Today score side fell through to [ScoreState.NeedsStrap] while the post-recalibration baseline
- * was still seeding (Bug B, #393 follow-up). `nValid` is the exact count Baselines.computeStatus gates
+ * was still seeding. `nValid` is the exact count the baseline engine gates
  * CALIBRATING on, so N now tracks the baseline the Charge ring rides and can never over-state it.
  * [days] is oldest→newest (same order the engine folds). Pure + unit-tested (RecoveryCalibrationTest).
  * (PR #85)
