@@ -270,6 +270,176 @@ object IntelligenceEngine {
         flagSet()
     }
 
+    /**
+     * Persist one per-session series for every KEPT session, taking the last value a scored night gave
+     * for a start. A session the producer omitted has no key and stays NULL: an absent signal stays
+     * absent rather than becoming a fabricated empty array.
+     */
+    /**
+     * Score a day that arrived as a daily aggregate with no raw HR behind it, so the raw-HR loop never
+     * saw it. An import-only user (Health Connect, or an Apple/Oura/Fitbit/Garmin export) has HRV and
+     * resting HR but no stream, and their Charge stayed blank.
+     *
+     * Appends to [dailies], [restRows] and [out]. A day already scored this pass is skipped, and an
+     * export carrying its own recovery wins and is never overwritten. The engine returns null until the
+     * baseline is usable, so an import-only day stays calibrating rather than showing an invented number.
+     */
+    private suspend fun foldSourceOnlyDays(
+        repo: WhoopRepository,
+        importedDeviceId: String,
+        computedId: String,
+        oldestDay: String,
+        newestDay: String,
+        dailies: MutableList<DailyMetric>,
+        restRows: MutableList<MetricSeriesRow>,
+        out: MutableList<Computed>,
+    ) {
+        val importScoredDays = HashSet<String>().apply { addAll(dailies.map { it.day }) }
+        val importSourceIds = buildList {
+            add(importedDeviceId) // Health Connect imports its DailyMetric rows under the strap source.
+            add(WhoopRepository.APPLE_HEALTH_SOURCE)
+            add(WhoopRepository.HEALTH_CONNECT_SOURCE)
+            addAll(WEARABLE_IMPORT_SOURCES)
+        }.distinct()
+        for (source in importSourceIds) {
+            val rows = repo.dailyMetrics(source, oldestDay, newestDay)
+            // A real export that already carries its OWN recovery WINS , never overwrite a verbatim imported
+            // score; those days also pre-claim the slot so the fold doesn't re-score them.
+            val byDay = rows.associateBy { it.day }
+            for (r in rows) if (r.recovery != null) importScoredDays.add(r.day)
+            for (w in watchRecoveries(rows, importScoredDays)) {
+                val recovery = w.recovery ?: continue
+                val row = byDay[w.day] ?: continue
+                val scored = row.copy(deviceId = computedId, recovery = recovery)
+                dailies.add(scored)
+                importScoredDays.add(w.day)
+                RestScorer.restFromDaily(scored)?.let { rest ->
+                    restRows.add(MetricSeriesRow(deviceId = computedId, day = w.day, key = "sleep_performance", value = rest))
+                }
+                out.add(
+                    Computed(
+                        day = w.day,
+                        recovery = recovery,
+                        strain = scored.strain,
+                        sleepMin = scored.totalSleepMin,
+                        hrv = scored.avgHrv,
+                        rhr = scored.restingHr,
+                    ),
+                )
+            }
+        }
+    }
+
+    /** The three baseline states a night is scored against, seeded before any pass-1 value folds in. */
+    private data class SeededBaselines(val hrv: BaselineState, val rhr: BaselineState, val resp: BaselineState)
+
+    /**
+     * Seed the HRV, resting-HR and respiration baselines from history alone, so a night is never scored
+     * against a baseline it contributed to. Pass-1 values fold in incrementally afterwards.
+     */
+    private fun seedBaselines(
+        hist: List<DailyMetric>,
+        nightlyHrvByDay: Map<String, Double?>,
+        nightlyRhrByDay: Map<String, Double?>,
+        nightlyRespByDay: Map<String, Double?>,
+        hrvCfg: MetricCfg,
+        rhrCfg: MetricCfg,
+        respCfg: MetricCfg,
+        baselineEpoch: Double,
+        recoveryEpoch: Double,
+    ): SeededBaselines {
+        val histHrvByDay = LinkedHashMap<String, Double?>()
+        val histRhrByDay = LinkedHashMap<String, Double?>()
+        val histRespByDay = LinkedHashMap<String, Double?>()
+        for (d in hist) {
+            histHrvByDay[d.day] = d.avgHrv
+            histRhrByDay[d.day] = d.restingHr?.toDouble()
+            histRespByDay[d.day] = d.respRateBpm
+        }
+        // Imported (cloud) nightly values WIN per day: the on-device estimate only fills days the
+        // import doesn't cover AT ALL, so an import user's baseline is unchanged. Use a key-absence
+        // check, NOT putIfAbsent: Java's putIfAbsent treats a key mapped to NULL as absent, so an
+        // imported day whose avgHrv/restingHr is blank would be REPLACED by the computed estimate —
+        // diverging from the Swift mirror (`histHrvByDay[day] == nil` is true only when the KEY is
+        // absent), which keeps that imported day as a missing night. HRV/RHR are the dominant
+        // recovery drivers (~60%/~20%), so this substitution skewed Charge vs iOS. (The author already
+        // fixed this for the low-weight resp term below; HRV/RHR were missed.)
+        mergeNightlyIntoHistory(histHrvByDay, nightlyHrvByDay)
+        mergeNightlyIntoHistory(histRhrByDay, nightlyRhrByDay)
+        mergeNightlyIntoHistory(histRespByDay, nightlyRespByDay)
+        // Seed baseline state from IMPORTED history only (represents state BEFORE any pass-1 night).
+        // Pass-1 nightly values are folded INCREMENTALLY in the pass-2 loop below: each night is
+        // scored against strictly prior state, then its values fold in for the next night. This
+        // prevents a day from contributing to its own baseline (the old shared-baseline bug).
+        val hrvImported = histHrvByDay.entries.sortedBy { it.key }.map { it.value }
+        val hrvImportedKeys = histHrvByDay.entries.sortedBy { it.key }.map { it.key }
+        val rhrImported = histRhrByDay.entries.sortedBy { it.key }.map { it.value }
+        val rhrImportedKeys = histRhrByDay.entries.sortedBy { it.key }.map { it.key }
+        val respImported = histRespByDay.entries.sortedBy { it.key }.map { it.value }
+        val respImportedKeys = histRespByDay.entries.sortedBy { it.key }.map { it.key }
+        var hrvState = Baselines.foldHistory(hrvImported, hrvImportedKeys, hrvCfg, baselineEpoch)
+        var rhrState = Baselines.foldHistory(rhrImported, rhrImportedKeys, rhrCfg, recoveryEpoch)
+        var respState = Baselines.foldHistory(respImported, respImportedKeys, respCfg, recoveryEpoch)
+        return SeededBaselines(hrvState, rhrState, respState)
+    }
+
+    /**
+     * The whole-window effort baseline the recovery Activity-Balance term scores against: imported
+     * strain, with each scored night filling a day the import does not cover. Order-independent.
+     */
+    private fun effortBaselineOver(strainByDay: Map<String, Double?>): BaselineState? =
+        Baselines.foldHistory(
+            strainByDay.entries.sortedBy { it.key }.map { it.value }, Baselines.strainCfg,
+        ).takeIf { it.usable }
+
+    private suspend fun <T> perKeptSession(
+        scoredNights: List<DayResult>,
+        keptStarts: Set<Long>,
+        select: (DayResult) -> Map<Long, List<T>>,
+        persist: suspend (Long, List<T>) -> Unit,
+    ) {
+        val byStart = LinkedHashMap<Long, List<T>>()
+        for (res in scoredNights) {
+            for ((start, series) in select(res)) if (start in keptStarts) byStart[start] = series
+        }
+        for ((start, series) in byStart) persist(start, series)
+    }
+
+    /**
+     * Collapse re-banked duplicates of the same night and delete the stale copies, returning how many
+     * went. An unstable strap clock re-banks a night on a shifted timebase, and the (deviceId, startTs)
+     * key lets the second copy land beside the first. Returns the count so the caller can re-run.
+     *
+     * Scoped to sessions whose wake day is inside the reconcile window, so a row is never deleted from
+     * under a daily row this pass did not refresh. The rows just banked are the recency witness, and
+     * edited rows are never dropped. Deletes the row ONLY: the user-facing delete writes a dismissal
+     * tombstone, which would overlap the surviving night and suppress its re-detection for good.
+     */
+    private suspend fun healOverlappingSessions(
+        repo: WhoopRepository,
+        computedId: String,
+        windowStart: Long,
+        nowSeconds: Long,
+        tzOffsetSeconds: Long,
+        oldestDay: String,
+        newestDay: String,
+        keptStarts: Set<Long>,
+        diag: (String) -> Unit,
+    ): Int {
+        val healable = repo.sleepSessions(computedId, windowStart, nowSeconds, 4000).filter {
+            AnalyticsEngine.dayString(it.endTs, tzOffsetSeconds) in oldestDay..newestDay
+        }
+        val dropped = SleepSessionDedup.dedupe(healable, freshStarts = keptStarts).dropped
+        for (stale in dropped) repo.deleteSleepSessionRowOnly(stale)
+        if (dropped.isNotEmpty()) {
+            diag(
+                "Dedup(#899): removed ${dropped.size} overlapping duplicate sleep " +
+                    "session(s) re-banked under a shifted strap timebase; re-scoring the affected days.",
+            )
+        }
+        return dropped.size
+    }
+
     private suspend fun analyzeRecentOnCpu(
         repo: WhoopRepository,
         profile: UserProfile = UserProfile(),
@@ -653,49 +823,25 @@ object IntelligenceEngine {
         // and recovery lights up. We fold over the in-memory pass-1 values rather than
         // re-reading repo.days(computedId) to avoid a read-before-persist ordering hazard.
         // Chronological (oldest-first) replay: a day present in both takes the computed value.
-        val histHrvByDay = LinkedHashMap<String, Double?>()
-        val histRhrByDay = LinkedHashMap<String, Double?>()
-        val histRespByDay = LinkedHashMap<String, Double?>()
-        for (d in hist) {
-            histHrvByDay[d.day] = d.avgHrv
-            histRhrByDay[d.day] = d.restingHr?.toDouble()
-            histRespByDay[d.day] = d.respRateBpm
-        }
-        // Imported (cloud) nightly values WIN per day: the on-device estimate only fills days the
-        // import doesn't cover AT ALL, so an import user's baseline is unchanged. Use a key-absence
-        // check, NOT putIfAbsent: Java's putIfAbsent treats a key mapped to NULL as absent, so an
-        // imported day whose avgHrv/restingHr is blank would be REPLACED by the computed estimate —
-        // diverging from the Swift mirror (`histHrvByDay[day] == nil` is true only when the KEY is
-        // absent), which keeps that imported day as a missing night. HRV/RHR are the dominant
-        // recovery drivers (~60%/~20%), so this substitution skewed Charge vs iOS. (The author already
-        // fixed this for the low-weight resp term below; HRV/RHR were missed.)
-        mergeNightlyIntoHistory(histHrvByDay, nightlyHrvByDay)
-        mergeNightlyIntoHistory(histRhrByDay, nightlyRhrByDay)
-        mergeNightlyIntoHistory(histRespByDay, nightlyRespByDay)
-        // Seed baseline state from IMPORTED history only (represents state BEFORE any pass-1 night).
-        // Pass-1 nightly values are folded INCREMENTALLY in the pass-2 loop below: each night is
-        // scored against strictly prior state, then its values fold in for the next night. This
-        // prevents a day from contributing to its own baseline (the old shared-baseline bug).
-        val hrvImported = histHrvByDay.entries.sortedBy { it.key }.map { it.value }
-        val hrvImportedKeys = histHrvByDay.entries.sortedBy { it.key }.map { it.key }
-        val rhrImported = histRhrByDay.entries.sortedBy { it.key }.map { it.value }
-        val rhrImportedKeys = histRhrByDay.entries.sortedBy { it.key }.map { it.key }
-        val respImported = histRespByDay.entries.sortedBy { it.key }.map { it.value }
-        val respImportedKeys = histRespByDay.entries.sortedBy { it.key }.map { it.key }
-        var hrvState = Baselines.foldHistory(hrvImported, hrvImportedKeys, hrvCfg, baselineEpoch)
-        var rhrState = Baselines.foldHistory(rhrImported, rhrImportedKeys, rhrCfg, recoveryEpoch)
-        var respState = Baselines.foldHistory(respImported, respImportedKeys, respCfg, recoveryEpoch)
+        val seeded = seedBaselines(
+            hist, nightlyHrvByDay, nightlyRhrByDay, nightlyRespByDay,
+            hrvCfg, rhrCfg, respCfg, baselineEpoch, recoveryEpoch,
+        )
+        var hrvState = seeded.hrv
+        var rhrState = seeded.rhr
+        var respState = seeded.resp
         // Skin-temp baseline is on-device-only; seed from nothing (imported rows carry skinTempDevC, not raw mean).
         var skinState: BaselineState? = null
         // Daily-strain series for the recovery Activity-Balance term, keyed by day: imported strain, each
         // scored night's computed strain filling a day the import doesn't cover. Both uses are order-
         // independent: a whole-window effort baseline (mirroring the driver fold) + a prior-calendar-day lookup.
+        // Daily-strain series for the recovery Activity-Balance term, keyed by day: imported strain, each
+        // scored night's computed strain filling a day the import doesn't cover. Read twice below: the
+        // whole-window effort baseline, and a prior-calendar-day lookup in the scoring loop.
         val strainByDay = LinkedHashMap<String, Double?>()
         for (d in hist) strainByDay[d.day] = d.strain
         for (res in scoredNights) if (res.daily.day !in strainByDay) strainByDay[res.daily.day] = res.daily.strain
-        val effortBaseline = Baselines.foldHistory(
-            strainByDay.entries.sortedBy { it.key }.map { it.value }, Baselines.strainCfg,
-        ).takeIf { it.usable }
+        val effortBaseline = effortBaselineOver(strainByDay)
         fun currentBaselines() = ProfileBaselines(
             hrv = hrvState, restingHR = rhrState,
             resp = respState.takeIf { it.usable },
@@ -947,53 +1093,7 @@ object IntelligenceEngine {
         )
         val newestDay = AnalyticsEngine.dayString(nowLocalMidnight, tzOffsetSeconds)
 
-        // ── Source-only Charge/Rest fold for imported-only days (#823) ──────────────────────────────────
-        // A user who ONLY imports (Health Connect, or an Oura/Fitbit/Garmin export, or Apple Health) has
-        // DAILY aggregates (HRV + resting HR) but no raw HR stream, so the raw-HR scoring loop above never
-        // touched their days and the import left recovery null , Today/Recovery show a blank Charge. Score it
-        // from the daily aggregate vs the person's own baseline with the [watchRecoveries] engine (which
-        // reuses RecoveryScorer.recovery verbatim), then write the score under the COMPUTED ("-noop") source
-        // so it merges onto Today exactly like a live day. The imported daily row keeps its raw values
-        // untouched; the computed row carries the NOOP-derived Charge + the Rest composite. HONEST DATA: the
-        // engine returns null + calibrating until the HRV baseline is usable, so an import-only day stays
-        // calibrating rather than faking a number. Strap/WHOOP-import days keep winning , we skip any day
-        // already scored this pass. Health Connect writes its DailyMetric rows under the strap source
-        // ("my-whoop"), so importedDeviceId is included; a row already carrying its OWN recovery is left
-        // alone. Mirrors the Swift fold.
-        val importScoredDays = HashSet<String>().apply { addAll(dailies.map { it.day }) }
-        val importSourceIds = buildList {
-            add(importedDeviceId) // Health Connect imports its DailyMetric rows under the strap source.
-            add(WhoopRepository.APPLE_HEALTH_SOURCE)
-            add(WhoopRepository.HEALTH_CONNECT_SOURCE)
-            addAll(WEARABLE_IMPORT_SOURCES)
-        }.distinct()
-        for (source in importSourceIds) {
-            val rows = repo.dailyMetrics(source, oldestDay, newestDay)
-            // A real export that already carries its OWN recovery WINS , never overwrite a verbatim imported
-            // score; those days also pre-claim the slot so the fold doesn't re-score them.
-            val byDay = rows.associateBy { it.day }
-            for (r in rows) if (r.recovery != null) importScoredDays.add(r.day)
-            for (w in watchRecoveries(rows, importScoredDays)) {
-                val recovery = w.recovery ?: continue
-                val row = byDay[w.day] ?: continue
-                val scored = row.copy(deviceId = computedId, recovery = recovery)
-                dailies.add(scored)
-                importScoredDays.add(w.day)
-                RestScorer.restFromDaily(scored)?.let { rest ->
-                    restRows.add(MetricSeriesRow(deviceId = computedId, day = w.day, key = "sleep_performance", value = rest))
-                }
-                out.add(
-                    Computed(
-                        day = w.day,
-                        recovery = recovery,
-                        strain = scored.strain,
-                        sleepMin = scored.totalSleepMin,
-                        hrv = scored.avgHrv,
-                        rhr = scored.restingHr,
-                    ),
-                )
-            }
-        }
+        foldSourceOnlyDays(repo, importedDeviceId, computedId, oldestDay, newestDay, dailies, restRows, out)
 
         // Snapshot the persisted/merged daily history BEFORE the delete+re-upsert below rewrites the
         // computed window. This is the accumulated view the readiness card + dashboard read ("N of 7
@@ -1045,13 +1145,7 @@ object IntelligenceEngine {
         // returned. A session whose gravity wouldn't grid was omitted from the map and is left as NULL , an
         // absent motion series stays absent, never a fabricated zero array. Mirrors Swift.
         val keptStarts = sleepKept.map { it.startTs }.toHashSet()
-        val motionByStart = HashMap<Long, List<Double>>()
-        for (res in scoredNights) {
-            for ((start, motion) in res.sessionMotionByStart) {
-                if (start in keptStarts) motionByStart[start] = motion
-            }
-        }
-        for ((start, motion) in motionByStart) {
+        perKeptSession(scoredNights, keptStarts, { it.sessionMotionByStart }) { start, motion ->
             repo.persistSessionMotion(computedId, start, motion)
         }
         // ── Persist per-epoch BAND sleep_state (#175) beside each kept session's stagesJSON ──────────────
@@ -1060,13 +1154,7 @@ object IntelligenceEngine {
         // persist it here so the NEXT pass's bandSleepStateSamples read (the H7 confirm) and the display can
         // see the strap's OWN scored band. ONLY for kept (not edited/dismissed) sessions; a session with no
         // band samples was omitted (no key) and stays NULL — an absent signal stays absent. Mirrors Swift.
-        val sleepStateByStart = HashMap<Long, List<Int>>()
-        for (res in scoredNights) {
-            for ((start, states) in res.sessionSleepStateByStart) {
-                if (start in keptStarts) sleepStateByStart[start] = states
-            }
-        }
-        for ((start, states) in sleepStateByStart) {
+        perKeptSession(scoredNights, keptStarts, { it.sessionSleepStateByStart }) { start, states ->
             repo.persistSessionSleepState(computedId, start, states)
         }
         // ── Overlap-aware banked-sleep heal (#899) ────────────────────────────────────────────────────
@@ -1079,20 +1167,9 @@ object IntelligenceEngine {
         // reconcile window: exactly the days this pass re-scored/evicted, so a session row is never
         // deleted out from under a daily row the pass did not refresh. Edited rows are never dropped.
         // Mirrors the Swift analyzeRecent heal.
-        val storedSessions = repo.sleepSessions(computedId, windowStart, nowSeconds, 4000)
-        val healable = storedSessions.filter {
-            AnalyticsEngine.dayString(it.endTs, tzOffsetSeconds) in oldestDay..newestDay
-        }
-        val healDropped = SleepSessionDedup.dedupe(healable, freshStarts = keptStarts).dropped
-        // Row-only delete: the user-facing deleteSleepSession writes a #33 dismissal tombstone, which
-        // would overlap the SURVIVING night's window and permanently suppress its re-detection.
-        for (stale in healDropped) repo.deleteSleepSessionRowOnly(stale)
-        if (healDropped.isNotEmpty()) {
-            diag(
-                "Dedup(#899): removed ${healDropped.size} overlapping duplicate sleep " +
-                    "session(s) re-banked under a shifted strap timebase; re-scoring the affected days.",
-            )
-        }
+        val healDroppedCount = healOverlappingSessions(
+            repo, computedId, windowStart, nowSeconds, tzOffsetSeconds, oldestDay, newestDay, keptStarts, diag,
+        )
         // Make re-detection idempotent across runs: clear the prior computed detected workouts
         // in the scored window (a bout's startTs can drift as more HR arrives, which would
         // otherwise orphan stale rows under the (deviceId,startTs,sport) key), then re-insert.
@@ -1104,7 +1181,7 @@ object IntelligenceEngine {
         // under-sampled ones from that denser data.
         rescoreManualWorkouts(repo, profile, importedDeviceId, maxHROverride, nowSeconds)
 
-        return out to healDropped.size
+        return out to healDroppedCount
     }
 
     /**
