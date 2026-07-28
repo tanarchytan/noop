@@ -5,33 +5,16 @@ import kotlin.math.abs
 import kotlin.math.sqrt
 
 /*
- * HrvAnalyzer.kt — RMSSD + SDNN from RR intervals with cleaning.
+ * RMSSD + SDNN from RR intervals with cleaning.
  *
- * Faithful Kotlin port of StrandAnalytics/HRVAnalyzer.swift (verified on macOS).
- * The Task Force (1996) RMSSD and SDNN definitions are reproduced exactly:
+ *   RMSSD = sqrt( mean( (NN[i+1] − NN[i])^2 ) )      (Task Force 1996)
+ *   SDNN  = sample standard deviation of NN, ddof=1  (Task Force 1996)
  *
- *   RMSSD = sqrt( mean( (NN[i+1] − NN[i])^2 ) )           (Task Force 1996)
- *   SDNN  = sample standard deviation of NN (ddof = 1)     (Task Force 1996)
- *
- * Cleaning pipeline:
- *   1. Range filter: drop intervals outside [RR_MIN_MS, RR_MAX_MS] = [300, 2000] ms.
- *   2. Ectopic rejection: drop beats whose RR deviates > ~20% from a local median
- *      (Malik-style filter).
- *   3. Require >= MIN_BEATS (20) valid intervals before a trustworthy result.
- *
- * Gap-aware successive differences: cleaning DROPS beats, which makes two beats that were not
- * adjacent in the source become neighbours in the cleaned list. A successive-difference metric
- * (RMSSD, pNN50) must NOT count the difference across such a splice, or one removed beat injects a
- * spurious large delta that dominates the mean. [cleanRRGapAware] cleans while remembering where beats
- * were dropped, and [rmssdGapAware] / [pnn50GapAware] skip any difference that straddles a gap. On a
- * series with no drops these are identical to the plain versions, so clean data is unchanged. Kept in
- * lockstep with the Swift twin `StrandAnalytics/HRVAnalyzer.cleanRRGapAware` / `rmssdGapAware` /
- * `pnn50GapAware` (ported alongside; both platforms are gap-aware).
- *
- * Named [HrvAnalyzer] (NOT Hrv) to avoid clashing with the existing
- * com.noop.analytics.Hrv object in Analytics.kt. The two compute RMSSD the same
- * way (sqrt of mean successive squared diffs); HrvAnalyzer additionally cleans
- * the RR series and reports SDNN / meanNN / pNN50.
+ * Cleaning: range filter [300, 2000] ms, then Malik-style ectopic rejection (beats deviating
+ * > ~20% from a local median are dropped), then require >= 20 clean intervals to trust the result.
+ * Gap-aware cleaning remembers where beats were dropped, so a successive-difference metric (RMSSD,
+ * pNN50) never spans a splice into a spurious delta. Distinct from Hrv in Analytics.kt, which
+ * shares the RMSSD math but skips cleaning and the SDNN/meanNN/pNN50 outputs.
  */
 object HrvAnalyzer {
 
@@ -58,14 +41,14 @@ object HrvAnalyzer {
     const val ECTOPIC_WINDOW_RADIUS: Int = 2
 
     /**
-     * Default ceiling on the fraction of input beats the cleaning pipeline may reject before a SPOT
-     * reading is refused as too noisy (#585). Spot-only: passed by the on-demand callers, never by the
-     * nightly windowed path. 0.35 == refuse once more than 35% of beats were dropped as out-of-range or
-     * ectopic, even if [MIN_BEATS] clean intervals survive — a quiet honesty gate on a short live capture.
+     * Ceiling on the fraction of input beats the cleaning pipeline may reject before a SPOT reading
+     * is refused as too noisy. Spot-only: on-demand callers pass this, the nightly windowed path
+     * never does. 0.35 refuses once more than 35% of beats were dropped as out-of-range/ectopic,
+     * even if [MIN_BEATS] clean intervals survive — an honesty gate on a short live capture.
      */
     const val DEFAULT_SPOT_MAX_REJECTED_FRACTION: Double = 0.35
 
-    /** Result of an HRV computation over a window. Mirrors Swift `HRVResult`. */
+    /** Result of an HRV computation over a window. */
     data class HrvResult(
         /** RMSSD in milliseconds, or null when too few valid beats. */
         val rmssd: Double?,
@@ -236,20 +219,19 @@ object HrvAnalyzer {
      * Compute HRV from raw RR-interval values (ms), applying the full cleaning
      * pipeline. Returns an empty result when fewer than [MIN_BEATS] survive.
      *
-     * @param maxRejectedFraction SPOT-ONLY honesty gate (#585). When non-null, the reading is ALSO refused
-     *   (empty result) if the fraction of input beats dropped by cleaning exceeds this value — even when
-     *   [MIN_BEATS] clean intervals survive — because a short live capture that threw away most of its
-     *   beats is too noisy to trust. null (the default, and what the NIGHTLY windowed path passes) skips
-     *   the gate entirely, so the nightly RMSSD is byte-identical to before this parameter existed.
+     * @param maxRejectedFraction SPOT-ONLY honesty gate. When non-null, also refuses (empty result) if
+     *   the fraction of input beats dropped by cleaning exceeds this value, even when [MIN_BEATS]
+     *   clean intervals survive — a short live capture that threw away most of its beats is too noisy
+     *   to trust. null (the default; what the nightly windowed path passes) skips the gate entirely.
      */
     fun analyzeRaw(rawRR: List<Double>, maxRejectedFraction: Double? = null): HrvResult =
         RustScores.analyzeRaw(rawRR, maxRejectedFraction)
 
-    /** #257: total heartbeat-time (sum of NN intervals, ms) ÷ wall-clock span of the R-R window (ms).
-     *  A value > ~1.0 is physically impossible — you can't record more beat-time than elapsed time — so
-     *  it directly flags DOUBLE-COUNTED / overlapping R-R (e.g. a live + historical merge storing the same
-     *  beat under two timestamps, which inflates HRV and drags resting HR down, #257). Returns 0.0 for
-     *  < 2 beats or a zero span. Byte-parity twin of Swift `HRVAnalyzer.rrCoverage`. */
+    /** Total heartbeat-time (sum of NN intervals, ms) ÷ wall-clock span of the R-R window (ms). A
+     *  value > ~1.0 is physically impossible — you can't record more beat-time than elapsed time —
+     *  so it flags DOUBLE-COUNTED / overlapping R-R (e.g. a live + historical merge storing the same
+     *  beat under two timestamps, which inflates HRV and drags resting HR down). Returns 0.0 for
+     *  < 2 beats or a zero span. */
     fun rrCoverage(tsSec: List<Long>, rrMs: List<Double>): Double {
         if (tsSec.size < 2 || rrMs.isEmpty()) return 0.0
         val hi = tsSec.maxOrNull() ?: return 0.0
@@ -259,9 +241,8 @@ object HrvAnalyzer {
         return rrMs.sum() / spanMs
     }
 
-    /** #257: how many R-R rows are EXACT duplicates of another — same (ts, rrMs). Extra copies of one
-     *  beat; `total − distinct(ts, rrMs)`. Points at the double-insert mechanism when [rrCoverage] > 1.
-     *  Byte-parity twin of Swift `HRVAnalyzer.duplicateBeatCount`. */
+    /** How many R-R rows are EXACT duplicates of another — same (ts, rrMs). Extra copies of one beat;
+     *  `total − distinct(ts, rrMs)`. Points at the double-insert mechanism when [rrCoverage] > 1. */
     fun duplicateBeatCount(tsSec: List<Long>, rrMs: List<Double>): Int {
         val n = minOf(tsSec.size, rrMs.size)
         val seen = HashSet<Pair<Long, Double>>()
@@ -270,16 +251,13 @@ object HrvAnalyzer {
         return dups
     }
 
-    // ── Rolling / windowed rMSSD (#803) ──────────────────────────────────────
+    // ── Rolling / windowed rMSSD ─────────────────────────────────────────────
     //
-    // The Deep Timeline's "HRV" trace used to plot RAW RR-interval values (ms) and label them "HRV",
-    // which is dishonest: an RR interval is NOT an HRV number, and the spikiness it shows is just the
-    // beat-to-beat heart period, not variability. [rollingRmssd] is the pure, on-device twin of the
-    // Swift HRVAnalyzer.rollingRmssd: it slides a [windowSec] window across the cleaned RR series and,
-    // for each RR sample, emits the Task-Force rMSSD over the beats inside that trailing window. The
-    // SAME Malik/range artifact filter the nightly path uses ([cleanRR]) is applied first, so an
-    // ectopic beat or an out-of-range RR can't inflate the curve. The Deep Timeline plots THIS, relabelled
-    // to honest windowed rMSSD. Pure: no clock, no IO. (#803)
+    // Slides a [windowSec] window across the cleaned RR series and emits the Task-Force rMSSD over
+    // the beats in each trailing window. Applies the same Malik/range filter as the nightly path
+    // ([cleanRR]) first, so an ectopic or out-of-range beat can't inflate the curve. A raw RR
+    // interval is beat-to-beat heart period, not variability — this is what the Deep Timeline plots
+    // as its windowed rMSSD trace. Pure: no clock, no IO.
 
     /** Default rolling-window width (seconds) for the Deep Timeline windowed rMSSD trace. ~5 min, the
      *  shortest span the Task Force calls a short-term recording, so the curve has enough beats to mean
@@ -290,21 +268,17 @@ object HrvAnalyzer {
      * Rolling/windowed rMSSD over an RR series. For each input sample (ascending by ts), computes the
      * Task-Force rMSSD over the cleaned beats whose ts falls in the trailing window `(ts - windowSec, ts]`,
      * emitting `(ts, rmssd)` only when at least [minBeatsPerWindow] clean beats survive in that window (a
-     * 2-beat window is one successive difference = a noisy spike, not HRV — matches the Swift twin's
-     * minBeatsPerWindow gate). Range + Malik ectopic filtering ([cleanRR]) is applied to the WHOLE series
-     * once, so artifacts never enter any window. Empty when fewer than [minBeatsPerWindow] input rows.
-     * Pure, deterministic.
+     * 2-beat window is one successive difference — a noisy spike, not HRV). Range + Malik ectopic
+     * filtering ([cleanRR]) is applied to the WHOLE series once, so artifacts never enter any window.
+     * Empty when fewer than [minBeatsPerWindow] input rows. Pure, deterministic.
      *
-     * @param rr the RR intervals (each carries a ts in unix SECONDS and rrMs); the Android twin of the
-     *   Swift `[RRSample]`.
+     * @param rr the RR intervals; each carries a ts in unix SECONDS and rrMs.
      * @param windowSec the trailing window width in seconds (defaults to [DEFAULT_ROLLING_WINDOW_SEC]).
      * @param stepSec emit at most one point per this many seconds of advance — a thinning stride so a 1 Hz
-     *   RR stream does not emit a point per beat (and flood the chart). 0 (the default) emits at every
-     *   qualifying window. Mirrors the Swift HRVAnalyzer.rollingRmssd `stepSec`.
-     * @param minBeatsPerWindow minimum clean beats required inside a window before it emits (default 8,
-     *   matching the Swift twin) — a smaller window is a noisy spike, not a trustworthy rMSSD.
-     *
-     * Android parity port of ryanbr's #1035 (minBeatsPerWindow gate) + #1036 (stepSec thinning stride).
+     *   RR stream does not emit a point per beat and flood the chart. 0 (the default) emits at every
+     *   qualifying window.
+     * @param minBeatsPerWindow minimum clean beats required inside a window before it emits (default 8)
+     *   — a smaller window is a noisy spike, not a trustworthy rMSSD.
      */
     fun rollingRmssd(
         rr: List<RrInterval>,
@@ -340,13 +314,13 @@ object HrvAnalyzer {
             val tStart = tEnd - window
             // Advance the trailing edge so only beats with ts in (tStart, tEnd] remain.
             while (lo < hi && kept[lo].ts <= tStart) lo++
-            // Thinning stride (#1036): skip emitting until at least [stepSec] has passed since the last
-            // EMITTED point (measured against emits, not candidates), matching the Swift twin's stepSec branch.
+            // Thinning stride: skip emitting until at least [stepSec] has passed since the last
+            // EMITTED point (measured against emits, not candidates).
             val last = lastEmitTs
             if (stepSec > 0 && last != null && tEnd - last < stepSec) continue
             val span = kept.subList(lo, hi + 1).map { it.rrMs.toDouble() }
             // A window with too few clean beats is a noisy spike, not a trustworthy rMSSD — require
-            // [minBeatsPerWindow] survivors (#1035), matching the Swift HRVAnalyzer.rollingRmssd default (8).
+            // [minBeatsPerWindow] survivors.
             if (span.size < minBeatsPerWindow) continue
             val r = rmssdRaw(span) ?: continue
             out.add(tEnd to r)
@@ -359,9 +333,9 @@ object HrvAnalyzer {
 
     /**
      * Median of a non-empty array. (Caller guarantees non-empty.) Returns 0.0 for
-     * an empty input, matching the Swift `n == 0 → 0` guard.
+     * an empty input.
      *
-     * Shared with SleepStager / AnalyticsEngine ports (Swift `HRVAnalyzer.median`).
+     * Shared with SleepStager / AnalyticsEngine.
      */
     fun median(values: List<Double>): Double {
         val s = values.sorted()

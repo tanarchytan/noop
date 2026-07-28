@@ -5,12 +5,7 @@ import kotlin.math.exp
 import kotlin.math.sqrt
 
 /*
- * EffectRanker.kt — the unified, LAG-AWARE "what moves your Charge" ranker.
- *
- * Faithful Kotlin mirror of StrandAnalytics/EffectRanker.swift. Keep the lag set, the
- * shift-by-lag alignment, the Welch t / Cohen's d effect math, the best-lag selection, the
- * confidence ladder, and the ranking byte-identical to Swift — cross-platform parity is the
- * contract.
+ * The unified, LAG-AWARE "what moves your Charge" ranker.
  *
  * Pure, deterministic, DB-free. Generalises ActivityCostEngine's single-sport D+1 to EVERY
  * logged journal behaviour against EVERY daily outcome, searching a small fixed lag set
@@ -22,21 +17,16 @@ import kotlin.math.sqrt
  *      re-key outcome[D+L] under D via shiftDay(day, -L). (Same arithmetic ActivityCostEngine
  *      uses for D+1, parameterised over the lag.)
  *   3. Compute the effect (means, delta, Cohen's d via pooled SD, Welch p via a normal-CDF
- *      tail) — the byte-identical port of Swift BehaviorInsights.effect — gated at
- *      min(nWith, nWithout) ≥ 5.
+ *      tail), gated at min(nWith, nWithout) ≥ 5.
  *   4. Keep, per (b, o), the lag with the LARGEST |cohensD| among lags that cleared the gate.
  *
  * HONESTY (effect-size first): the primary signal is the effect SIZE + n + a ScoreConfidence
  * tier, never a bare "significant" stamp; the lag set is capped so the comparison count stays
  * bounded; copy never claims a behaviour "causes" anything.
- *
- * (Spec: 2026-06-19-v5-insights-correlation-engine-design.md — "Lag-aware effect ranking".)
  */
 
 /**
- * The measured effect of one behaviour on one outcome metric at a single lag. Byte-identical
- * port of Swift's BehaviorEffect (the shared correlation substrate has no standalone Kotlin
- * BehaviorInsights, so the struct + math live here).
+ * The measured effect of one behaviour on one outcome metric at a single lag.
  */
 data class BehaviorEffect(
     val behavior: String,
@@ -94,8 +84,7 @@ object EffectRanker {
     /** The fixed, bounded lag set searched per (behaviour, outcome). */
     val lagSet: List<Int> = listOf(0, 1, 2)
 
-    /** Minimum group size (each side) for an effect to be flagged significant. Mirrors Swift
-     *  BehaviorInsights.minGroupForSignificance. */
+    /** Minimum group size (each side) for an effect to be flagged significant. */
     const val minGroupForSignificance: Int = 5
 
     /** Significance threshold on the approximate p-value. */
@@ -111,7 +100,7 @@ object EffectRanker {
 
     /**
      * Rank every behaviour against one outcome across the lag set, keeping each behaviour's
-     * best lag. Mirrors Swift's ordering on the surviving rows.
+     * best lag.
      *
      * @param behaviors per behaviour name, the SET of "yyyy-MM-dd" days it was logged (dose ≥ 1).
      * @param outcomeByDay the daily outcome series keyed "yyyy-MM-dd".
@@ -179,7 +168,7 @@ object EffectRanker {
         return out
     }
 
-    // Effect (byte-identical port of Swift BehaviorInsights.effect + helpers).
+    // Effect.
 
     /**
      * Compute the effect of [behavior] on [outcome]. Days are partitioned into "with"
@@ -223,7 +212,7 @@ object EffectRanker {
         )
     }
 
-    /** Render an effect as a plain-English sentence (byte-identical to Swift BehaviorInsights). */
+    /** Render an effect as a plain-English sentence. */
     internal fun sentence(e: BehaviorEffect): String {
         val directionWord = when {
             e.delta > 0 -> "higher"
@@ -259,7 +248,7 @@ object EffectRanker {
                 .thenBy { it.behavior },
         )
 
-    // Statistics helpers (byte-identical to Swift).
+    // Statistics helpers.
 
     /** Sample variance (ddof = 1). 0 for fewer than 2 values. */
     internal fun sampleVariance(values: List<Double>, mean: Double): Double {
@@ -306,15 +295,14 @@ object EffectRanker {
 
     // Formatting helpers.
 
-    /** Round to nearest integer, HALF AWAY FROM ZERO — matches Swift's Int(x.rounded())
-     *  (Kotlin's Math.round / roundToInt round half toward +∞, which would diverge on a
-     *  negative .5; we replicate Swift's .toNearestOrAwayFromZero rule exactly). */
+    /** Round to nearest integer, HALF AWAY FROM ZERO — Kotlin's Math.round / roundToInt round
+     *  half toward +∞ instead, which diverges from this on a negative .5. */
     internal fun roundedInt(x: Double): Int {
         val sign = if (x < 0) -1.0 else 1.0
         return (sign * Math.floor(abs(x) + 0.5)).toInt()
     }
 
-    /** Round to one decimal place, half away from zero (mirrors Swift (x*10).rounded()/10). */
+    /** Round to one decimal place, half away from zero. */
     internal fun round1(x: Double): Double {
         val scaled = x * 10.0
         val sign = if (scaled < 0) -1.0 else 1.0

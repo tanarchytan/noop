@@ -12,39 +12,28 @@ import java.time.LocalDate
 import java.time.ZoneOffset
 
 /**
- * Imports a nutrition CSV (daily calories / macros / body weight) into the local Room store.
+ * Imports a nutrition CSV (daily calories / macros / body weight) into the local Room store,
+ * under deviceId "nutrition-csv" with metricSeries keys calories_in (kcal), protein_g, carbs_g,
+ * fat_g, weight (kg).
  *
- * Kotlin mirror of the macOS Swift nutrition lane: SAME source id and SAME long-format
- * metricSeries keys, so charts and the AI coach read one vocabulary on both platforms:
+ * Recognises NOOP-native, MyFitnessPal, and Cronometer-daily headers explicitly (see
+ * [resolveColumns]), plus a tolerant fallback matching any date column with a calorie/energy,
+ * protein, carb, fat or weight-like column. Saturated/trans/poly/mono/body fat and "burned"/
+ * "goal" energy columns are never bound as intake or total fat; a lb/lbs weight header converts
+ * to kilograms so the stored `weight` key is always kg.
  *
- *   source (deviceId) : "nutrition-csv"
- *   keys              : calories_in (kcal), protein_g, carbs_g, fat_g, weight (kg)
- *
- * Three header shapes are recognised explicitly (after [HeaderNorm] normalization):
- *
- *   1. NOOP native      — `date, calories_in, protein_g, carbs_g, fat_g, weight`
- *   2. MyFitnessPal     — `Date, Meal, Calories, Protein (g), Carbohydrates (g), Fat (g)`
- *                          (per-meal rows; intake values are SUMMED per day)
- *   3. Cronometer daily — `Date, Completed, Energy (kcal), Protein (g), Carbs (g), Fat (g)`
- *
- * plus a tolerant fallback: any CSV with a recognisable date column and at least one column
- * whose normalized header *contains* calorie/energy, protein, carb, fat or weight imports too.
- * "Saturated/trans/poly/mono/body fat" are never mistaken for total fat, and "burned"/"goal"
- * energy columns are never mistaken for intake. A weight column whose header says lb/lbs is
- * converted to kilograms so the stored `weight` key is always kg.
- *
- * The whole pipeline is tolerant: rows without a parsable date are skipped, blank cells
- * contribute nothing, duplicate-day intake rows (meal logs) sum, and the last weight of a
- * day wins. Parsing is pure ([parse]) so it is JVM unit-testable (NutritionCsvImporterTest).
+ * Rows without a parsable date are skipped, blank cells contribute nothing, duplicate-day
+ * intake rows (meal logs) sum, and the last weight of a day wins. Parsing ([parse]) is pure,
+ * so it is JVM unit-testable.
  */
 object NutritionCsvImporter {
 
-    /** Room deviceId for everything this importer writes — identical to the Swift lane. */
+    /** Room deviceId for everything this importer writes. */
     const val SOURCE_ID = "nutrition-csv"
 
     private const val SOURCE_LABEL = "Nutrition"
 
-    /** metricSeries keys — identical to the Swift lane. */
+    /** metricSeries keys written by this importer. */
     internal const val KEY_CALORIES_IN = "calories_in"
     internal const val KEY_PROTEIN_G = "protein_g"
     internal const val KEY_CARBS_G = "carbs_g"
@@ -245,12 +234,9 @@ object NutritionCsvImporter {
     private val DMY_OR_MDY = Regex("""^(\d{1,2})[./-](\d{1,2})[./-](\d{4})""")
 
     /**
-     * Parse a nutrition CSV date cell into "YYYY-MM-DD".
-     *
-     *   - "2026-06-01", "2026/6/1", "2026-06-01 08:30" → ISO prefix wins.
-     *   - "06/02/2026" → month-first (US convention — MyFitnessPal et al), unless the first
-     *     number is > 12 ("13/02/2026"), which forces day-first.
-     *   - Full ISO-8601 datetimes (with Z / offsets) fall through to [WhoopTime] at UTC.
+     * Parse a nutrition CSV date cell into "YYYY-MM-DD". A leading "YYYY-MM-DD" or "YYYY/M/D" wins outright;
+     * otherwise a "D/M/Y"-shaped value defaults to month-first unless the first number is > 12, which forces day-first.
+     * A full ISO-8601 datetime (with Z / offset) falls through to [WhoopTime] at UTC.
      */
     internal fun parseDay(raw: String?): String? {
         val s = raw?.trim() ?: return null

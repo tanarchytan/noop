@@ -21,41 +21,32 @@ import kotlinx.coroutines.sync.withLock
 /**
  * Runs exactly ONE device's live BLE at a time, driven by [DeviceRegistry]'s active device id.
  *
- * Faithful Kotlin twin of Strand/BLE/SourceCoordinator.swift.
+ * A no-op whenever the active device is WHOOP (id "my-whoop", brand "WHOOP", or an unknown id) — the
+ * existing WHOOP flow ([WhoopBleClient.connect] via [AppViewModel.connect]) runs untouched. Only acts
+ * for a non-WHOOP Oura ring:
  *
- * WHOOP-FIRST, ZERO REGRESSION
- * ----------------------------
- * This coordinator is a deliberate NO-OP whenever the active device is the WHOOP (id "my-whoop", any
- * `brand == "WHOOP"` row, OR an unknown id). That is the default state and EVERY state where no Oura ring
- * is paired: WHOOP is active, the coordinator does nothing, and the existing WHOOP flow
- * ([WhoopBleClient.connect] via [AppViewModel.connect]) runs exactly as it does today. It only ever
- * *acts* when the active device is a NON-WHOOP Oura ring:
- *
- *   • switching TO an Oura ring → [stopWhoop] (WHOOP's existing disconnect), then start the isolated
+ *   • switching TO one → [stopWhoop] (WHOOP's existing disconnect), then start the isolated
  *     [OuraLiveSource] for that ring's deviceId.
- *   • switching BACK to WHOOP   → stop the [OuraLiveSource], then [startWhoop] (WHOOP's existing scan
- *     entry) — but only if we had actually been on a ring, so a plain launch with WHOOP active does NOT
+ *   • switching BACK to WHOOP → stop the [OuraLiveSource], then [startWhoop] (WHOOP's existing scan
+ *     entry) — but only if we were actually on a ring, so a plain launch with WHOOP active does NOT
  *     re-trigger a redundant WHOOP scan.
  *
- * It never imports or references [WhoopBleClient] internals: the WHOOP start/stop are injected closures
- * from the composition root, so the two BLE flows stay fully decoupled (mirrors [OuraLiveSource]'s
- * isolation). Live HR from a ring is pushed through [liveSink]; the app wires that to the SAME live
+ * WHOOP start/stop are injected closures from the composition root, so the two BLE flows stay fully
+ * decoupled. Live HR from a ring is pushed through [liveSink]; the app wires that to the SAME live
  * state the UI observes (e.g. `ble::publishExternalLiveHr`).
  *
- * On Android the registry exposes the active id as a one-shot suspend read (not a published flow like
- * Swift's `@Published activeDeviceId`), so the app calls [onActiveDeviceChanged] after any registry
- * mutation that can change the active device (the Devices screen's setActive — the next task), and
- * [start] reconciles once against the current active id at launch (a no-op for a single-WHOOP install).
+ * The registry exposes the active id as a one-shot suspend read, so the app calls
+ * [onActiveDeviceChanged] after any registry mutation that can change the active device, and [start]
+ * reconciles once against the current active id at launch (a no-op for a single-WHOOP install).
  */
 class SourceCoordinator(
-    /** Android [Context] for the strap source's own scanner/GATT. Non-null in production (set at the
-     *  composition root); nullable ONLY so the registry-driven paths (e.g. identity adoption) are
-     *  exercisable on the plain JVM without Android — required at the single strap-path use site. */
+    /** Android [Context] for the strap source's own scanner/GATT. Non-null in production; nullable
+     *  only so registry-driven paths (e.g. identity adoption) are exercisable on the plain JVM
+     *  without Android. */
     private val context: Context?,
     private val registry: DeviceRegistry,
-    /** The store the strap source persists into. Non-null in production; nullable for the same JVM-test
-     *  reason as [context] — required at the single strap-path use site, untouched by the WHOOP/adoption
-     *  paths. */
+    /** The store the strap source persists into. Non-null in production; nullable for the same
+     *  JVM-test reason as [context]. */
     private val repository: WhoopRepository?,
     /** Push a strap's live HR/R-R into whatever the UI observes (e.g. `ble::publishExternalLiveHr`). */
     private val liveSink: (hr: Int, rr: List<Int>) -> Unit,
@@ -64,47 +55,46 @@ class SourceCoordinator(
     /** Pause WHOOP via its EXISTING teardown (e.g. `AppViewModel.disconnect` → `ble.disconnect`). */
     private val stopWhoop: () -> Unit,
     /**
-     * Pin the WHOOP connection to ONE strap by its persisted `peripheralId` (the MAC address), or null to
-     * clear the pin back to "connect to the first WHOOP found". Wraps [WhoopBleClient.preferredAddress].
-     * Called only on a WHOOP transition; nil on the legacy "my-whoop" path (unchanged). Default no-op keeps
-     * the existing `SourceCoordinator(...)` call sites compiling unchanged. (MW-2/MW-3)
+     * Pin the WHOOP connection to ONE strap by its persisted `peripheralId` (the MAC address), or
+     * null to clear the pin back to "connect to the first WHOOP found". Wraps
+     * [WhoopBleClient.preferredAddress]; called only on a WHOOP transition, null on the legacy
+     * "my-whoop" path. Default no-op keeps existing call sites compiling.
      */
     private val setWhoopPreferredAddress: (String?) -> Unit = {},
     /**
-     * Re-point which device id live WHOOP samples store under. Wraps [WhoopBleClient.setActiveDeviceId].
-     * Called ONLY when the active WHOOP is NOT the seeded "my-whoop" — the single-WHOOP path never invokes
-     * it, so the id stays "my-whoop". Default no-op keeps existing call sites compiling unchanged. (MW-3)
+     * Re-point which device id live WHOOP samples store under. Wraps
+     * [WhoopBleClient.setActiveDeviceId]. Called only when the active WHOOP is not the seeded
+     * "my-whoop" — the single-WHOOP path never invokes it. Default no-op keeps existing call sites
+     * compiling.
      */
     private val setWhoopActiveDeviceId: (String) -> Unit = {},
     /** Background scope for the suspend registry reads + persist. SupervisorJob keeps one failure from
      *  cancelling the others; IO keeps DB work off the main thread. */
     private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.IO),
-    /** Diagnostic sink for the multi-WHOOP identity-adoption "different strap connected" notice — the
-     *  Android analogue of Swift's `live.append(log:)`. Defaults to logcat; tests inject a capturing
-     *  closure to assert the wording. Inert on the single-WHOOP path (the message only fires on a
-     *  registered-but-mismatched strap). */
+    /** Diagnostic sink for the multi-WHOOP identity-adoption "different strap connected" notice.
+     *  Defaults to logcat; tests inject a capturing closure to assert the wording. Inert on the
+     *  single-WHOOP path (the message only fires on a registered-but-mismatched strap). */
     private val log: (String) -> Unit = { Log.i("SourceCoordinator", it) },
-    /** Diagnostic sink for the ISOLATED Oura source's connect/auth/stream lifecycle. Wired at the
-     *  composition root to [WhoopBleClient.externalLog] so those lines land in the SAME in-app strap log the
-     *  user exports (issue #421). Passed into [OuraLiveSource] as its `log`; kept SEPARATE from [log] above
-     *  (which defaults to logcat and only carries the multi-WHOOP adoption notice). Default no-op keeps
-     *  existing call sites compiling. */
+    /** Diagnostic sink for the isolated Oura source's connect/auth/stream lifecycle. Wired at the
+     *  composition root to [WhoopBleClient.externalLog] so those lines land in the same exported
+     *  strap log. Kept separate from [log] above, which only carries the multi-WHOOP adoption
+     *  notice. Default no-op keeps existing call sites compiling. */
     private val straplog: (String) -> Unit = {},
-    /** Push an Oura ring's battery percent into the live state (e.g. `ble::publishExternalBattery`), so it
-     *  surfaces its charge where the WHOOP strap battery does. Default no-op keeps existing call sites +
-     *  JVM tests compiling unchanged. */
+    /** Push an Oura ring's battery percent into the live state (e.g. `ble::publishExternalBattery`),
+     *  so it surfaces where the WHOOP strap battery does. Default no-op keeps existing call sites
+     *  and JVM tests compiling. */
     private val batterySink: (Int) -> Unit = {},
 ) {
 
-    /** The active Oura source's live adopt outcome, mirrored so the Add-Oura wizard can leave its Adopting
-     *  step (success -> close, failed -> the honest Failed step). [AdoptPhase.Idle] whenever no Oura source
-     *  is live, so a stale outcome never drives a wizard transition. Mirrors Swift `AppModel.ouraAdoptPhase`. */
+    /** The active Oura source's live adopt outcome, mirrored so the Add-Oura wizard can leave its
+     *  Adopting step (success -> close, failed -> the honest Failed step). [AdoptPhase.Idle] whenever
+     *  no Oura source is live, so a stale outcome never drives a wizard transition. */
     private val _ouraAdoptPhase = MutableStateFlow(OuraLiveSource.AdoptPhase.Idle)
     val ouraAdoptPhase: StateFlow<OuraLiveSource.AdoptPhase> = _ouraAdoptPhase.asStateFlow()
 
-    /** The active Oura source's honest needs-pairing message (null when none). The wizard treats a non-null
-     *  value during Adopting as an honest failure too (covers no-ack / ack!=OK paths). null whenever no Oura
-     *  source is live. Mirrors Swift `AppModel.ouraNeedsPairing`. */
+    /** The active Oura source's honest needs-pairing message (null when none). The wizard treats a
+     *  non-null value during Adopting as failure too (covers no-ack / ack != OK paths). null whenever
+     *  no Oura source is live. */
     private val _ouraNeedsPairing = MutableStateFlow<String?>(null)
     val ouraNeedsPairing: StateFlow<String?> = _ouraNeedsPairing.asStateFlow()
 
@@ -113,33 +103,31 @@ class SourceCoordinator(
     private var ouraStateJob: kotlinx.coroutines.Job? = null
 
     /** The single non-WHOOP source currently live — an Oura ring — held behind the [LiveHrSource]
-     *  interface. null while WHOOP is active or nothing else is paired. Exactly one non-WHOOP source is
-     *  ever live at a time, and the coordinator only ever connects / scans / stops it. Built by
-     *  [makeSource]; the source owns its OWN scanner/GATT and never touches the WHOOP BLE client, so the
-     *  WHOOP path cannot regress. (An Oura ring surfaces only its OWN raw signals + open event tags — NOOP
-     *  computes its own Charge/Rest — never Oura's encrypted scores.) */
+     *  interface. null while WHOOP is active or nothing else is paired; exactly one non-WHOOP source
+     *  is ever live at a time. Built by [makeSource]; owns its own scanner/GATT and never touches the
+     *  WHOOP BLE client, so the WHOOP path cannot regress. */
     private var activeSource: LiveHrSource? = null
     /** The deviceId the active non-WHOOP source ([activeSource]) runs for. */
     private var activeStrapId: String? = null
-    /** The WHOOP registry id we last pointed the connection at, so a WHOOP→WHOOP switch is detected and a
-     *  repeat activation of the SAME WHOOP is a no-op. null until the first WHOOP activation. (MW-3) */
+    /** The WHOOP registry id we last pointed the connection at, so a WHOOP→WHOOP switch is detected
+     *  and a repeat activation of the same WHOOP is a no-op. null until the first WHOOP activation. */
     private var activeWhoopId: String? = null
     /** True once we've transitioned onto a generic strap. While false (the default / WHOOP-active state)
      *  switching to WHOOP is a pure no-op — we never issue a redundant WHOOP (re)scan. */
     private var onStrap = false
-    /** The last active id we reconciled, so a repeated [onActiveDeviceChanged] for the same id is a no-op
-     *  (mirrors Swift's `removeDuplicates()` on the published active id). */
+    /** The last active id we reconciled, so a repeated [onActiveDeviceChanged] for the same id is a
+     *  no-op. */
     private var lastSeenId: String? = null
-    /** The address of the strap the WHOOP link is CURRENTLY connected to, learned from
-     *  [connectedPeripheralChanged]. Lets a WHOOP→WHOOP make-active adopt IN PLACE when the newly-activated
-     *  row is the same physical strap (#74 keep): a stop/start churn there would drop the live link and
-     *  reconnect through the scan path. Cleared on disconnect (null address). */
+    /** The address of the strap the WHOOP link is currently connected to, learned from
+     *  [connectedPeripheralChanged]. Lets a WHOOP→WHOOP make-active adopt in place when the
+     *  newly-activated row is the same physical strap — a stop/start churn there would drop the live
+     *  link and force a scan reconnect. Cleared on disconnect (null address). */
     private var connectedWhoopAddress: String? = null
 
-    /** Serializes [reconcile] so two device switches — or [start] racing [onActiveDeviceChanged] — can't
-     *  interleave on the multi-threaded [scope] (Dispatchers.IO is a pool) and leak a half-torn-down live
-     *  source. The Swift twin gets this free from `@MainActor`; on Android we serialize the state machine
-     *  explicitly. The persist launches stay OUTSIDE this lock (they touch no coordinator state). (ryanbr, #1031) */
+    /** Serializes [reconcile] so two device switches — or [start] racing [onActiveDeviceChanged] —
+     *  can't interleave on the multi-threaded [scope] (Dispatchers.IO is a pool) and leak a
+     *  half-torn-down live source. Persist launches stay outside this lock (they touch no
+     *  coordinator state). */
     private val reconcileLock = Mutex()
 
     /**
@@ -154,32 +142,32 @@ class SourceCoordinator(
     }
 
     /**
-     * Called by the app after a registry mutation that can change the active device (Devices-screen
-     * setActive). Resolves the device for [id] and reconciles which live source runs. Idempotent: a
-     * repeated call for the same id is dropped (the `removeDuplicates()` equivalent).
+     * Called by the app after a registry mutation that can change the active device (the Devices
+     * screen's setActive). Resolves the device for [id] and reconciles which live source runs.
+     * Idempotent: a repeated call for the same id is dropped.
      */
     fun onActiveDeviceChanged(id: String) {
         scope.launch { reconcileLock.withLock { reconcile(id) } }
     }
 
     /**
-     * The BLE engine connected to a WHOOP strap at [address] (null on disconnect). Persist that stable
-     * identity onto the CURRENTLY ACTIVE device when it's a WHOOP and hasn't adopted one yet — so the
-     * legacy "my-whoop" learns its strap's address on first connect, and a freshly-paired WHOOP confirms
-     * its identity. Faithful twin of macOS `SourceCoordinator.connectedPeripheralChanged(to:)` (the sink
-     * fed by `BLEManager.connectedPeripheralUUID`), INCLUDING the different-strap guard.
+     * The BLE engine connected to a WHOOP strap at [address] (null on disconnect). Persist that
+     * stable identity onto the currently active device when it's a WHOOP and hasn't adopted one yet
+     * — so the legacy "my-whoop" learns its strap's address on first connect, and a freshly-paired
+     * WHOOP confirms its identity.
      *
      * Guards (so this never corrupts the registry):
      *   • null address (a disconnect/never-connected republish) → ignore.
-     *   • the active device is NOT a WHOOP (a generic strap is active) → ignore; this connection isn't ours.
-     *   • the active WHOOP already has a DIFFERENT non-null peripheralId → a different strap connected; LOG
-     *     it and do NOT clobber the stored identity (would mis-map another strap's samples onto this row).
+     *   • the active device is not a WHOOP (a generic strap is active) → ignore, this connection isn't ours.
+     *   • the active WHOOP already has a different non-null peripheralId → a different strap
+     *     connected; log it and do not clobber the stored identity (would mis-map another strap's
+     *     samples onto this row).
      *   • it already matches → nothing to write.
      */
     fun connectedPeripheralChanged(address: String?) {
-        // Track the live strap's address for the WHOOP->WHOOP adopt-in-place skip (#74). A null address is a
-        // disconnect/never-connected republish: clear it so a later make-active can't wrongly match a stale
-        // link, then fall through to the existing ignore.
+        // Track the live strap's address for the WHOOP->WHOOP adopt-in-place skip. A null address is
+        // a disconnect/never-connected republish: clear it so a later make-active can't wrongly match
+        // a stale link, then fall through to the existing ignore.
         connectedWhoopAddress = address
         if (address == null) return
         scope.launch {
@@ -211,14 +199,11 @@ class SourceCoordinator(
         if (id == lastSeenId) return
         lastSeenId = id
         val devices = registry.all()
-        // CONTAIN every device-switch failure here. reconcile is the single entry point for both
-        // start() (launch, against the PERSISTED active id) and onActiveDeviceChanged(), and it runs
-        // inside a bare `scope.launch {}` — a SupervisorJob does NOT stop an uncaught throw from
-        // killing the process, so before this guard a throw while activating a generic strap crashed
-        // the app, and because the active id is persisted it crash-LOOPED on every launch (#421
-        // regression: making a Polar H10 active bricked the app). A strap switch must never crash the
-        // app. We log the exception into the EXPORTABLE strap log too, so the next shared log reveals
-        // the exact underlying throw, and reset lastSeenId so the user can retry after switching away.
+        // Contain every device-switch failure here. reconcile is the single entry point for both
+        // start() and onActiveDeviceChanged(), running inside a bare `scope.launch {}` — a
+        // SupervisorJob does NOT stop an uncaught throw from killing the process, and since the
+        // active id is persisted, an uncaught throw here would crash-loop on every launch. Log the
+        // exception into the exportable strap log too, and reset lastSeenId so the user can retry.
         try {
             if (isWhoop(id, devices)) switchToWhoop(id, devices) else switchToStrap(id, devices)
         } catch (t: Throwable) {
@@ -230,12 +215,12 @@ class SourceCoordinator(
     }
 
     /**
-     * Active device is a WHOOP ([id]). Three churn-guarded sub-cases, mirroring macOS
-     * `SourceCoordinator.switchToWhoop`:
-     *   • Already streaming this exact WHOOP with no strap in between → pure no-op (the dormant default;
-     *     the single-WHOOP launch lands here and touches nothing but the initial preferred-address).
+     * Active device is a WHOOP ([id]). Three churn-guarded sub-cases:
+     *   • Already streaming this exact WHOOP with no strap in between → pure no-op (the dormant
+     *     default; the single-WHOOP launch lands here and touches nothing but the initial
+     *     preferred-address).
      *   • Coming back from a generic strap → stop that source, point WHOOP at this id, resume its scan.
-     *   • A DIFFERENT WHOOP → drop the current link, re-point (preferred address + deviceId), reconnect.
+     *   • A different WHOOP → drop the current link, re-point (preferred address + deviceId), reconnect.
      */
     private fun switchToWhoop(id: String, devices: List<PairedDeviceRow>) {
         // Already streaming this exact WHOOP with no strap in between → nothing to do.
@@ -253,17 +238,16 @@ class SourceCoordinator(
                 startWhoop()
             }
             activeWhoopId == null -> {
-                // First WHOOP activation of the session (the normal launch path). Set the targeting so the
-                // existing WHOOP flow — kicked off elsewhere on launch — uses it. For the seeded "my-whoop"
-                // (peripheralId null, id "my-whoop") this is setWhoopPreferredAddress(null) and NO
-                // setActiveDeviceId / NO scan / NO disconnect: byte-for-byte today's behaviour.
+                // First WHOOP activation of the session (the normal launch path). Sets the targeting
+                // so the existing WHOOP flow uses it. For the seeded "my-whoop" (peripheralId null)
+                // this is setWhoopPreferredAddress(null) with no setActiveDeviceId / scan / disconnect.
                 pointWhoop(id, peripheralId)
             }
             peripheralId != null && peripheralId.equals(connectedWhoopAddress, ignoreCase = true) -> {
-                // WHOOP → the SAME physical strap (make-active on the row we're already connected to, e.g. the
-                // pick-same-strap Add flow): adopt IN PLACE. A stop/start churn here would drop the #74-kept
-                // live link and force a scan reconnect (wrong-family default + OS-bond status=133). Just
-                // re-point the targeting so samples land under this id; the connection is untouched.
+                // WHOOP → the same physical strap (make-active on the row already connected, e.g. the
+                // pick-same-strap Add flow): adopt in place. A stop/start churn here would drop the
+                // live link and force a scan reconnect (wrong-family default + OS-bond status=133).
+                // Just re-point the targeting; the connection is untouched.
                 pointWhoop(id, peripheralId)
             }
             else -> {
@@ -276,11 +260,10 @@ class SourceCoordinator(
     }
 
     /**
-     * Apply the WHOOP targeting for the now-active WHOOP [id]. Always sets the preferred address (null for
-     * the legacy "my-whoop" → connect to any WHOOP, unchanged). Re-points the sample deviceId ONLY for a
-     * non-legacy WHOOP — the seeded "my-whoop" keeps the bootstrap-set id, so the single-WHOOP path never
-     * calls setActiveDeviceId. Records [activeWhoopId] for future change detection. Mirrors macOS
-     * `pointWhoop`.
+     * Apply the WHOOP targeting for the now-active WHOOP [id]. Always sets the preferred address
+     * (null for the legacy "my-whoop" → connect to any WHOOP). Re-points the sample deviceId only for
+     * a non-legacy WHOOP, since the seeded "my-whoop" keeps the bootstrap-set id. Records
+     * [activeWhoopId] for future change detection.
      */
     private fun pointWhoop(id: String, peripheralId: String?) {
         setWhoopPreferredAddress(peripheralId)
@@ -299,12 +282,11 @@ class SourceCoordinator(
 
         val row = devices.firstOrNull { it.id == id }
 
-        // GUARD before we touch the current link: the only non-WHOOP LIVE source is the Oura ring. Any other
-        // registered kind (an imported "Workout files" / GPX device, or a legacy non-Oura strap row persisted
-        // from before straps were removed) has no live BLE stream. Bail as a harmless no-op HERE. If we
-        // instead paused WHOOP / tore down the current source and only THEN discovered there was nothing to
-        // build (makeSource throws for a non-Oura kind), the live link would be stranded with no source until
-        // a manual reconnect — activating an import row must never brick WHOOP.
+        // Guard before touching the current link: the only non-WHOOP live source is the Oura ring.
+        // Any other registered kind (an imported "Workout files"/GPX device, or a legacy non-Oura
+        // strap row) has no live BLE stream — bail as a harmless no-op here. Pausing/tearing down
+        // first and only then discovering nothing to build would strand the live link with no source
+        // until a manual reconnect; activating an import row must never brick WHOOP.
         if (row?.sourceKind != SourceKind.oura.name) {
             log("SourceCoordinator: device '$id' (kind=${row?.sourceKind}) has no live BLE source; " +
                 "only WHOOP and Oura stream live. Leaving the current source active.")
@@ -316,12 +298,12 @@ class SourceCoordinator(
 
         val address = row.peripheralId
 
-        // Build the isolated Oura source (the ONE place that maps a kind to a concrete driver), then bring it
-        // up. Adding a brand adds ONE arm in [makeSource] plus a conforming source; nothing else changes.
+        // Build the isolated Oura source (the one place mapping a kind to a concrete driver), then
+        // bring it up. Adding a brand adds one arm in [makeSource] plus a conforming source.
         val source = makeSource(id, row)
-        // CONNECT to the active strap's known BLE address, don't just scan. A bare scan discovers + lists
-        // the strap but never connects — so a Polar H10 etc. showed up as "found" yet never streamed
-        // (#421). connect(address) connects directly via getRemoteDevice; a bare scan is the fallback only
+        // Connect to the active strap's known BLE address rather than scan. A bare scan discovers and
+        // lists the strap but never connects it, so it shows as "found" yet never streams.
+        // connect(address) connects directly via getRemoteDevice; a bare scan is the fallback only
         // when the registry row has no address.
         if (!address.isNullOrEmpty()) source.connect(address) else source.scan()
         activeSource = source
@@ -330,16 +312,15 @@ class SourceCoordinator(
     }
 
     /**
-     * Build the isolated [LiveHrSource] for a device from its registered `sourceKind` — the ONE place that
-     * maps a kind to a concrete driver. The only non-WHOOP live source NOOP supports is the EXPERIMENTAL
-     * Oura ring (OuraLiveSource); every other device kind (imports) has no live BLE stream, so this fails
-     * loudly for them (caught by [reconcile]'s guard, which keeps the previous source and logs it). Returns
-     * the source WITHOUT connecting — the caller ([switchToStrap]) does the connect-by-address-else-scan
-     * bring-up. Mirrors macOS `SourceCoordinator.makeSource(for:)`.
+     * Build the isolated [LiveHrSource] for a device from its registered `sourceKind` — the one place
+     * that maps a kind to a concrete driver. The only non-WHOOP live source NOOP supports is the
+     * experimental Oura ring; every other device kind (imports) has no live BLE stream, so this fails
+     * loudly for them (caught by [reconcile]'s guard). Returns the source without connecting — the
+     * caller ([switchToStrap]) does the connect-by-address-else-scan bring-up.
      */
     private fun makeSource(id: String, row: PairedDeviceRow?): LiveHrSource {
-        // Non-null in production (set at the composition root); only the JVM-test paths that never reach a
-        // source switch leave it null. Fail loudly rather than silently no-op if that invariant breaks.
+        // Non-null in production; only JVM-test paths that never reach a source switch leave it null.
+        // Fail loudly rather than silently no-op if that invariant breaks.
         val ctx = requireNotNull(context) { "SourceCoordinator.context is required to run a live source" }
         return when (row?.sourceKind) {
             SourceKind.oura.name -> makeOuraSource(id, ctx, row)
@@ -351,45 +332,43 @@ class SourceCoordinator(
     }
 
     /**
-     * Build the EXPERIMENTAL Oura ring source (gen3 / gen4 / gen5) for [id]. Also wires the adopt-outcome
-     * mirror ([ouraStateJob]) and consumes the one-shot adopt consent — side effects the coordinator owns,
-     * so they live here rather than in the plain [makeSource] dispatch. Mirrors the Oura branch of macOS
-     * `makeOuraSource`.
+     * Build the experimental Oura ring source (gen3 / gen4 / gen5) for [id]. Also wires the
+     * adopt-outcome mirror ([ouraStateJob]) and consumes the one-shot adopt consent — side effects
+     * the coordinator owns, so they live here rather than in the plain [makeSource] dispatch.
      */
     private fun makeOuraSource(id: String, ctx: Context, row: PairedDeviceRow?): OuraLiveSource {
         val repo = requireNotNull(repository) { "SourceCoordinator.repository is required to persist Oura samples" }
-        // The ring generation is carried on the row's model ("Oura Ring 3/4/5"); recover it so the transport
-        // clamps the MTU + picks the gen-appropriate live-HR enable command set. Defaults to gen3 if the
-        // model is missing/unrecognised (OuraRingGen.from).
+        // Ring generation is carried on the row's model ("Oura Ring 3/4/5"); recovering it lets the
+        // transport clamp the MTU and pick the gen-appropriate live-HR enable command set. Defaults to
+        // gen3 if the model is missing/unrecognised.
         val ringGen = OuraRingGen.from(row?.model ?: "")
         val source = OuraLiveSource(
             context = ctx,
             deviceId = id,
             ringGen = ringGen,
             liveSink = { hr, rr -> liveSink(hr, rr) },   // ring HR + R-R → the existing live recorder
-            // The 16-byte application install key, read from the at-rest-encrypted key store keyed by this
-            // ring's device id. INJECTED, never hardcoded; null drives OuraLiveSource's honest needs-pairing
-            // path (no faked data). Read fresh on each connect so a key provisioned mid-session (the adopt
-            // install) is picked up on the post-install re-auth.
+            // 16-byte application install key, read from the at-rest-encrypted key store keyed by this
+            // ring's device id. Injected, never hardcoded; null drives the honest needs-pairing path
+            // (no faked data). Read fresh on each connect so a key provisioned mid-session is picked
+            // up on the post-install re-auth.
             authKey = { OuraInstallKeyStore.load(ctx, id) },
             persist = { batch: StreamBatch, deviceId: String ->
                 scope.launch { runCatching { repo.insert(batch, deviceId) } }
             },
-            log = straplog,           // Oura connect/auth/stream lifecycle → the SAME exported strap log (#421)
+            log = straplog,           // Oura connect/auth/stream lifecycle → the same exported strap log
             onBattery = batterySink,  // ring battery → the same live state the WHOOP strap battery uses
         )
-        // CONSUME the one-shot adopt-intent the wizard armed after its irreversible-consent gate AND its
-        // second "Take over" confirm (and ONLY then). True permits the DANGEROUS post-factory-reset key
-        // install for THIS session; the Advanced-key path and every later read-only reconnect read false, so
-        // they NEVER provision a key. One-shot by design: a single consent provisions
-        // ONE install. setAdoptIntent must run BEFORE connect (the driver is built per connect with
-        // allowKeyInstall wired from it) — the caller connects only after this returns, so the order holds.
+        // Consume the one-shot adopt-intent the wizard armed after its irreversible-consent gate and
+        // second "Take over" confirm. True permits the post-factory-reset key install for this session
+        // only; every later read-only reconnect reads false, so it never re-provisions a key.
+        // setAdoptIntent must run before connect — the driver is built per connect with
+        // allowKeyInstall wired from it — and the caller connects only after this returns.
         if (OuraInstallKeyStore.consumePendingAdopt(ctx, id)) {
             source.setAdoptIntent(true)
             straplog("Oura: adopt consent granted - this session may install NOOP's key")
         }
-        // Mirror this source's live adopt outcome + honest needs-pairing message so the wizard can leave its
-        // Adopting step on a confirmed streaming (success) or an honest Failed. Reset on teardown.
+        // Mirror this source's live adopt outcome and needs-pairing message so the wizard can leave
+        // its Adopting step on confirmed streaming or an honest Failed. Reset on teardown.
         ouraStateJob?.cancel()
         ouraStateJob = scope.launch {
             launch { source.adoptPhase.collect { _ouraAdoptPhase.value = it } }
@@ -412,10 +391,9 @@ class SourceCoordinator(
 
     companion object {
         /**
-         * Classify a device id as WHOOP vs a generic strap. WHOOP if the id is the canonical "my-whoop",
-         * the registry row's `brand` is "WHOOP" (case-insensitive), OR the id is unknown — unknown ids
-         * default to WHOOP so the coordinator stays dormant rather than ever stealing the WHOOP's BLE.
-         * Mirrors Swift `SourceCoordinator.isWhoop`.
+         * Classify a device id as WHOOP vs a generic strap. WHOOP if the id is the canonical
+         * "my-whoop", the registry row's `brand` is "WHOOP" (case-insensitive), or the id is unknown —
+         * unknown ids default to WHOOP so the coordinator stays dormant rather than stealing its BLE.
          */
         fun isWhoop(id: String, devices: List<PairedDeviceRow>): Boolean {
             if (id == WhoopBleClient.DEFAULT_DEVICE_ID) return true

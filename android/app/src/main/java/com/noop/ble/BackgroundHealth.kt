@@ -8,19 +8,17 @@ import android.os.PowerManager
 import android.provider.Settings
 
 /**
- * Android background-survival helpers (#386). NOOP already runs a foreground service + exact alarms,
- * but aggressive OEM battery managers kill even those, so the reliable lever is a USER action:
- * whitelist NOOP from battery optimisation (and, on the worst vendors, enable auto-start). This
- * centralises the detection and the intents that fix it, so the Settings "Keep NOOP alive overnight"
- * toggle and the Test Centre diagnostics share ONE source of truth for the vendor set + exempt check.
+ * Android background-survival helpers. NOOP runs a foreground service + exact alarms, but aggressive
+ * OEM battery managers kill even those, so the reliable lever is a USER action: whitelist NOOP from
+ * battery optimisation (and, on the worst vendors, enable auto-start). Centralises the detection + the
+ * intents that fix it, so the Settings toggle and the Test Centre diagnostics share ONE source of truth.
  *
- * POPUP DISCIPLINE: nothing here ever fires a system dialog on its own. [batteryExemptionIntent] and
- * [oemAutostartIntent] only build Intents — the caller starts one exactly when the user taps, and the
- * toggle reflects live [isBatteryExempt] state so an already-exempt user is never prompted again.
+ * POPUP DISCIPLINE: nothing here fires a system dialog on its own - [batteryExemptionIntent] and
+ * [oemAutostartIntent] only build Intents; the caller starts one on a user tap, and the toggle reflects
+ * live [isBatteryExempt] state so an already-exempt user is never re-prompted.
  *
- * The whitelist adds NO battery cost of its own: it removes a premature kill, it does not add work.
- * The real cost is the existing "Keep connected in the background" / "Continuous HRV" / "Overnight only"
- * toggles; this only makes the overnight work the user already enabled actually survive the night.
+ * The whitelist adds NO battery cost of its own - it removes a premature kill, not extra work. The real
+ * cost is the sync toggles the user already enabled; this only lets that work survive the night.
  */
 object BackgroundHealth {
 
@@ -59,11 +57,10 @@ object BackgroundHealth {
             .setData(Uri.parse("package:${context.packageName}"))
 
     /**
-     * Best-effort deep-link to the OEM's proprietary auto-start / protected-app screen — the setting the
-     * generic exemption can't reach on these ROMs. Component names DRIFT per ROM version, so each is tried
-     * with [packageManager.resolveActivity] and the first that resolves wins; null → the caller uses the
-     * generic battery screen. This is a SECOND, separate action (never chained onto the exemption dialog),
-     * so a single user tap never spawns two popups. Never throws.
+     * Best-effort deep-link to the OEM's proprietary auto-start screen the generic exemption can't reach.
+     * Component names DRIFT per ROM version, so each candidate is tried via resolveActivity and the first
+     * hit wins; null means the caller falls back to the generic battery screen. A SECOND, separate action
+     * from the exemption dialog, so one user tap never spawns two popups. Never throws.
      */
     fun oemAutostartIntent(context: Context): Intent? {
         val m = Build.MANUFACTURER.lowercase()

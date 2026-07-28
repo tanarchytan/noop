@@ -66,8 +66,8 @@ object FitnessAgeEngine {
     const val goodCoverageDays = 6
 
     /** Nights of resting-HR still needed before the headline can compute AT ALL — the countdown the
-     *  not-ready card shows ("N more nights of wear…"). 0 once [minCoverageDays] is met. Assumes continued
-     *  nightly wear. Shared with the iOS engine so both platforms show the same number. */
+     *  not-ready card shows ("N more nights of wear…"). 0 once [minCoverageDays] is met. Assumes
+     *  continued nightly wear. */
     fun nightsUntilReady(rhrDays: Int): Int = maxOf(0, minCoverageDays - rhrDays)
 
     private fun coverageStatus(days: Int, floor: Int): FitnessReadinessStatus = when {

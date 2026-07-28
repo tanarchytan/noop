@@ -43,28 +43,18 @@ import kotlin.math.round
 import kotlin.reflect.KClass
 
 /**
- * Native Android Health Connect importer.
+ * Native Android Health Connect importer. Reads a fixed set of record types via
+ * `androidx.health.connect:connect-client`, aggregates them per local calendar day, and upserts
+ * into the same Room store [WhoopRepository] uses. Timestamps are wall-clock unix seconds.
  *
- * Reads a fixed set of record types out of the on-device Health Connect store via
- * `androidx.health.connect:connect-client`, aggregates them **per LOCAL calendar day**
- * (the device's default zone), and upserts them into the same Room store the WHOOP/Apple
- * importers write to (see [WhoopRepository]). All timestamps written are wall-clock UNIX
- * **seconds** (Long), matching the rest of the data layer.
+ * Device-id mapping: daily aggregates (steps/calories/VO2max/weight/avg-HR) -> [AppleDaily] under
+ * "apple-health"; autonomic markers (resting-HR/HRV/sleep/SpO2/respiration) -> [DailyMetric] under
+ * "my-whoop", but only for days the strap doesn't already cover (a raw "my-whoop" row or computed
+ * "my-whoop-noop" row — a strap-only user is covered via the computed rows); exercise sessions ->
+ * [WorkoutRow] under "health-connect".
  *
- * Device-id mapping (so this co-exists with real WHOOP + Apple Health data):
- *   - Daily "Apple-style" aggregates (steps / calories / VO2max / weight / avg-HR)
- *     -> [AppleDaily] under deviceId "apple-health".
- *   - WHOOP-style autonomic markers (resting-HR / HRV / sleep-minutes / SpO2 / respiration)
- *     -> [DailyMetric] under deviceId "my-whoop", BUT only for days the strap does NOT already
- *     cover — where "cover" means either a raw "my-whoop" daily row OR a computed "my-whoop-noop"
- *     row (the derived recovery/strain/sleep source). Strap data is richer (recovery/strain/
- *     stages), so we never clobber it — we only backfill days the strap left empty. A strap-only
- *     user has NO raw "my-whoop" rows, so the computed source is what marks their days as owned.
- *   - Exercise sessions -> [WorkoutRow] with source "health-connect".
- *
- * Permissions are assumed to have been granted by the UI (via the Health Connect permission
- * flow) BEFORE [import] is called. If Health Connect is unavailable, or the required
- * read permissions are not in fact granted, [import] returns [ImportSummary.failure].
+ * Permissions are assumed granted before [import] is called; otherwise it returns
+ * [ImportSummary.failure].
  */
 object HealthConnectImporter {
 
@@ -75,15 +65,14 @@ object HealthConnectImporter {
 
     private const val WHOOP = "my-whoop"
     // The computed/derived source IntelligenceEngine writes recovery/strain/sleep+stages under,
-    // namely "<importedDeviceId>-noop" with importedDeviceId == WHOOP. For a strap-only WHOOP user
-    // there are NO raw "my-whoop" daily rows — the strap's nights live only here — so the backfill
-    // guard below must treat a day the strap COMPUTED as already-owned too, or the sparse HC row
-    // (recovery/strain/stages all null) shadows it and blanks Today / regresses Sleep stages (#112).
+    // namely "<importedDeviceId>-noop" with importedDeviceId == WHOOP. A strap-only WHOOP user has
+    // NO raw "my-whoop" daily rows — their nights live only here — so the backfill guard below must
+    // treat a day the strap computed as already-owned too, or the sparse HC row shadows it.
     private const val WHOOP_COMPUTED = "$WHOOP-noop"
-    // Health Connect data is stored under its OWN source ("health-connect"), NOT the shared
-    // "apple-health" bucket — otherwise it's mis-attributed to Apple Health in the UI (issue #34).
-    // (The recovery/sleep backfill still lands under "my-whoop"; only the external-health aggregates
-    // + workouts carry this source.)
+    // Health Connect data is stored under its own source ("health-connect"), not the shared
+    // "apple-health" bucket, so it isn't mis-attributed to Apple Health in the UI. (The
+    // recovery/sleep backfill still lands under "my-whoop"; only the external-health
+    // aggregates + workouts carry this source.)
     const val HC_DEVICE = "health-connect"
     private const val HC_WORKOUT_SOURCE = "health-connect"
 
@@ -94,8 +83,8 @@ object HealthConnectImporter {
     private const val PAGE_SIZE = 5000
 
     /** Slack (seconds) when matching a DistanceRecord to a workout session — a relay app can write the
-     *  distance record offset by up to a few minutes from the session it belongs to (#215). Overlap
-     *  clipping keeps a neighbouring activity inside this window from over-counting. */
+     *  distance record offset by up to a few minutes from the session it belongs to. Overlap clipping
+     *  keeps a neighbouring activity inside this window from over-counting. */
     private const val DISTANCE_MATCH_BUFFER_S = 300L
 
     /** The record types this importer reads, in one place so PERMISSIONS stays in sync. */
@@ -130,9 +119,8 @@ object HealthConnectImporter {
         READ_RECORDS.map { HealthPermission.getReadPermission(it) }.toSet()
 
     /**
-     * Whether Health Connect is installed/available on this device.
-     * One of [HealthConnectClient.SDK_AVAILABLE],
-     * [HealthConnectClient.SDK_UNAVAILABLE],
+     * Whether Health Connect is installed/available on this device — one of
+     * [HealthConnectClient.SDK_AVAILABLE], [HealthConnectClient.SDK_UNAVAILABLE], or
      * [HealthConnectClient.SDK_UNAVAILABLE_PROVIDER_UPDATE_REQUIRED].
      */
     fun sdkStatus(context: Context): Int = HealthConnectClient.getSdkStatus(context)
@@ -141,12 +129,9 @@ object HealthConnectImporter {
     fun client(context: Context): HealthConnectClient = HealthConnectClient.getOrCreate(context)
 
     /**
-     * Read all configured record types, aggregate per local day, and upsert into [repo].
-     * Assumes [PERMISSIONS] have already been granted. Returns [ImportSummary.failure] when
-     * Health Connect is unavailable or the permissions are not actually granted.
-     *
-     * [heightCm] is the user's profile height, used ONLY to derive BMI on days that carry a weight
-     * (Health Connect has no BMI record, unlike Apple Health). Pass 0.0 to skip BMI derivation.
+     * Reads all configured record types, aggregates per local day, and upserts into [repo]. Assumes
+     * [PERMISSIONS] are already granted; returns [ImportSummary.failure] otherwise. [heightCm] (the
+     * user's profile height) derives BMI on days with a weight; pass 0.0 to skip BMI derivation.
      */
     suspend fun import(
         context: Context,
@@ -158,14 +143,12 @@ object HealthConnectImporter {
             return ImportSummary.failure(SOURCE, "Health Connect is not available on this device.")
         }
 
-        // Refile any legacy Health Connect data that landed in the shared "apple-health" bucket before
-        // #34 BEFORE importing, so a re-import refiles cleanly instead of duplicating across both sources.
+        // Refile any legacy Health Connect data that landed in the shared "apple-health" bucket, before
+        // importing, so a re-import refiles cleanly instead of duplicating across both sources.
         try { repo.refileLegacyHealthConnect() } catch (_: Exception) { /* best-effort */ }
-        // #112 follow-up heal: purge the shadow rows earlier imports wrote while the covered-days
-        // gate missed active-strap ids — sparse HC-shaped "my-whoop" sleep/daily rows sitting over
-        // nights the strap's computed ("-noop") source already covers. Runs BEFORE this import's
-        // own gate is read so the healed coverage is what gets consulted. Idempotent, best-effort
-        // like the refile above.
+        // Purge sparse HC-shaped "my-whoop" sleep/daily rows sitting over nights the strap's computed
+        // ("-noop") source already covers, before this import's own coverage gate is read so the
+        // healed state is what gets consulted. Idempotent, best-effort like the refile above.
         try { repo.purgeHcShadowedStrapDays() } catch (_: Exception) { /* best-effort */ }
 
         val client = client(context)
@@ -176,11 +159,9 @@ object HealthConnectImporter {
         } catch (e: Exception) {
             return ImportSummary.failure(SOURCE, "Could not read Health Connect permissions: ${e.message}")
         }
-        // Partial permissions are fine (#150): import the record types the user DID grant and skip the
-        // rest, instead of refusing the whole import when any single type is missing. Each per-type read
-        // below is already independently fault-tolerant — a type whose read permission was revoked throws
-        // and is caught/skipped in [readAll] (same path as #34) — so we only need to bail when NOTHING is
-        // granted. The user choosing exactly what NOOP can see is the intended behaviour.
+        // Partial permissions are fine: import the record types the user granted and skip the rest,
+        // instead of refusing the whole import when a single type is missing. A revoked type throws and
+        // is caught/skipped in [readAll], so we only bail when nothing at all is granted.
         if (granted.none { it in PERMISSIONS }) {
             return ImportSummary.failure(
                 SOURCE,
@@ -192,7 +173,7 @@ object HealthConnectImporter {
         val end = Instant.now()
         val start = LocalDate.now(zone).minusYears(WINDOW_YEARS).atStartOfDay(zone).toInstant()
         val filter = TimeRangeFilter.between(start, end)
-        // #528: skip our own writes on import (see readAll / isSelfWritten).
+        // Skip our own writes on import (see readAll / isSelfWritten).
         val selfPackage = context.packageName
         // Height and weight are profile facts, not daily series: the newest reading wins and goes
         // back to the caller for the profile, where BMI, BMR and the VO2 max estimate read them.
@@ -212,25 +193,23 @@ object HealthConnectImporter {
         // a phone and a watch both logging one ride must not be summed twice.
         val activeKcalRecords = ArrayList<KcalRecord>()
         val totalKcalRecords = ArrayList<KcalRecord>()
-        // #983: HC-only users (no strap) had NO sleep at all — the importer collapsed each
-        // SleepSessionRecord to a per-day minute total and never wrote a SleepSession row, so the Sleep
-        // screen (which reads repo.sleepSessions) fell to its empty state. Keep each night's bounds +
-        // per-stage minutes here, paired with its wake day for the coveredDays gate at write-out.
+        // The Sleep screen reads repo.sleepSessions, so a per-day minute total alone leaves it empty.
+        // Keep each night's bounds + per-stage minutes here, paired with its wake day for the
+        // coveredDays gate at write-out.
         val hcSleepSessions = ArrayList<Pair<String, SleepSession>>()
 
         try {
             // --- Steps ---
-            // #589: per-SOURCE sums. A phone AND a watch both writing Health Connect steps count the same
-            // walk, so summing across sources double-counts (~2x). Sum WITHIN a source (keyed by the record's
-            // dataOrigin package), then take the MAX source per day at write-out, mirroring the de-overlap
-            // already shipped on iOS/macOS and the Android XML importer.
+            // Per-source sums: a phone and a watch both writing Health Connect steps count the same walk,
+            // so summing across sources double-counts. Sum within a source (dataOrigin package), then
+            // take the max source per day at write-out, matching the Android XML importer's de-overlap.
             readAll(client, StepsRecord::class, filter, selfPackage) { r ->
                 val b = bucket(dayOf(r.startTime))
                 val src = r.metadata.dataOrigin.packageName
                 b.stepsBySource[src] = (b.stepsBySource[src] ?: 0L) + r.count
             }
             // --- Total calories burned (basal + active) ---
-            // #589: per-SOURCE sums, max-across-sources at write-out (same overlap reasoning as steps).
+            // Per-source sums, max across sources at write-out (same overlap reasoning as steps).
             readAll(client, TotalCaloriesBurnedRecord::class, filter, selfPackage) { r ->
                 val b = bucket(dayOf(r.startTime))
                 val src = r.metadata.dataOrigin.packageName
@@ -238,9 +217,9 @@ object HealthConnectImporter {
                 totalKcalRecords.add(KcalRecord(src, r.startTime.epochSecond, r.endTime.epochSecond, r.energy.inKilocalories))
             }
             // --- Active calories burned ---
-            // #589: per-SOURCE sums, max-across-sources at write-out (same overlap reasoning as steps). The
-            // per-record window list below still gets EVERY record (it credits workouts by time-overlap, a
-            // separate de-overlap), so the per-source map only governs the day total.
+            // Per-source sums, max across sources at write-out (same reasoning as steps). The per-record
+            // window list below still gets every record, since it credits workouts by time overlap
+            // separately; the per-source map only governs the day total.
             readAll(client, ActiveCaloriesBurnedRecord::class, filter, selfPackage) { r ->
                 val b = bucket(dayOf(r.startTime))
                 val src = r.metadata.dataOrigin.packageName
@@ -277,10 +256,9 @@ object HealthConnectImporter {
                 else (r.endTime.epochSecond - r.startTime.epochSecond) / 60.0
                 b.sleepMin += totalMin
                 b.hasSleep = true
-                // #983: also keep the session itself so the Sleep screen has a night to show. startTs/endTs
-                // are epoch SECONDS (what repo.sleepSessions queries). Per-stage minutes -> stagesJSON in the
-                // same shape the WHOOP CSV / Xiaomi importers use; a generic-SLEEPING-only night has no
-                // sub-stage breakdown so stagesJSON is null and the row rides on totalSleepMin.
+                // Also keep the session itself so the Sleep screen has a night to show. startTs/endTs are
+                // epoch seconds (what repo.sleepSessions queries). Per-stage minutes become stagesJSON in
+                // the same shape the WHOOP CSV / Xiaomi importers use; null (no sub-stage) rides on totalSleepMin.
                 hcSleepSessions.add(day to SleepSession(
                     deviceId = WHOOP,
                     startTs = r.startTime.epochSecond,
@@ -355,8 +333,8 @@ object HealthConnectImporter {
                 }
             }
             // --- Body fat (%) -> latest value of the day wins. Health Connect's Percentage.value is
-            // already 0-100 (unlike Apple's 0..1 fraction), so it stores as-is and matches the iOS
-            // "body_fat" key. ---
+            // already 0-100 (the Apple Health import uses a 0..1 fraction), so it stores as-is and
+            // matches AppleHealthImporter's "body_fat" key. ---
             readAll(client, BodyFatRecord::class, filter, selfPackage) { r ->
                 val b = bucket(dayOf(r.time))
                 if (r.time.epochSecond >= b.bodyFatTs) {
@@ -364,7 +342,7 @@ object HealthConnectImporter {
                     b.bodyFatTs = r.time.epochSecond
                 }
             }
-            // --- Lean body mass (kg) -> latest value of the day wins (iOS "lean_mass" twin). ---
+            // --- Lean body mass (kg) -> latest value of the day wins (AppleHealthImporter's "lean_mass" key). ---
             readAll(client, LeanBodyMassRecord::class, filter, selfPackage) { r ->
                 val b = bucket(dayOf(r.time))
                 if (r.time.epochSecond >= b.leanMassTs) {
@@ -397,12 +375,10 @@ object HealthConnectImporter {
                 bucket(dayOf(r.startTime)).exerciseCount += 1
             }
 
-            // Fill per-workout HR (#77): an ExerciseSessionRecord carries no summary HR, so avg/max
-            // were stored null and every imported workout showed "–". Intersect each session's window
-            // with its HeartRateRecord samples — a targeted per-session read, bounded by workout count
-            // (the day-aggregate HeartRateRecord pass above streams the full range and must not be
-            // buffered). readAll swallows a per-session failure, so one bad session can't fail the
-            // import. ≥60 samples (~1 min) required so a few strays can't fabricate an average.
+            // Fill per-workout HR: ExerciseSessionRecord carries no summary HR, so intersect each
+            // session's window with its HeartRateRecord samples (a per-session read; the day-aggregate
+            // pass above streams the full range and must not be buffered). readAll swallows a
+            // per-session failure; needs >=60 samples (~1 min) so a few strays can't fabricate an average.
             for (i in workouts.indices) {
                 val w = workouts[i]
                 if (w.endTs <= w.startTs) continue
@@ -430,22 +406,18 @@ object HealthConnectImporter {
                 }
             }
 
-            // Fill per-workout distance (#215): an ExerciseSessionRecord carries no distance, so
-            // distanceM was stored null and the "(Total) Distance" tile read 0. Sum the DistanceRecord
-            // metres inside each session window — a targeted per-session read, bounded by workout count,
-            // mirroring the HR fill above. readAll swallows a per-session failure / revoked permission
-            // (partial-permissions design, #150), so one bad session can't fail the import. iOS/macOS
-            // already source workout distance from Apple Health; this is the Android-only equivalent.
+            // Fill per-workout distance: ExerciseSessionRecord carries no distance, so sum the
+            // DistanceRecord metres inside each session window (a per-session read, mirroring the HR
+            // fill above). readAll swallows a per-session failure or revoked permission, so one bad
+            // session can't fail the import.
             for (i in workouts.indices) {
                 val w = workouts[i]
                 if (w.endTs <= w.startTs) continue
                 var meters = 0.0
-                // #215: a relay app (e.g. Suunto → Health Sync) often writes the cumulative DistanceRecord
-                // with start/end offset by seconds-to-minutes from the ExerciseSession it belongs to, so a
-                // strict between(session.start, session.end) read returned nothing and distance stayed 0
-                // even though the distance was in Health Connect. Read a buffered window so an offset record
-                // is found, then count only the portion of each record that OVERLAPS the actual session —
-                // so a neighbouring activity's record inside the buffer can't over-count.
+                // A relay app (e.g. Suunto -> Health Sync) can write the cumulative DistanceRecord offset
+                // by seconds to minutes from the session it belongs to, so read a buffered window to find
+                // it, then count only the portion of each record that overlaps the actual session — so a
+                // neighbouring activity's record inside the buffer can't over-count.
                 val ws = w.startTs
                 val we = w.endTs
                 readAll(
@@ -494,15 +466,9 @@ object HealthConnectImporter {
             )
         }
 
-        // Days the strap already covers: read ONCE so we never clobber richer strap data. This is
-        // the UNION across EVERY strap-native source id — the canonical raw "my-whoop" + computed
-        // "my-whoop-noop" pair AND any actively paired strap's "whoop-<mac>" / "whoop-<mac>-noop"
-        // rows (#112 follow-up: the gate previously knew only the canonical pair, so a re-paired
-        // strap's fresh nights were invisible to it and the sparse HC backfill shadowed them). The
-        // computed rows are the ONLY source for a strap-only WHOOP user (no raw daily rows exist),
-        // so without them the sparse HC backfill (recovery/strain/stages = null) shadows the computed
-        // day and blanks Today / regresses Sleep stages (#112). Each read is wrapped so a missing
-        // source is empty, not fatal; HC still gap-fills any day the strap did NOT cover.
+        // Days the strap already covers: read once, unioned across every strap-native source id — raw
+        // "my-whoop" + computed "my-whoop-noop", plus any paired strap's "whoop-<mac>" / "-noop" rows.
+        // A strap-only user has only the computed rows; a missing source degrades to empty, not fatal, and HC still gap-fills any uncovered day.
         val coveredDays: Set<String> = buildSet {
             for (id in strapSourceIds(repo)) addAll(strapDays(repo, id))
         }
@@ -514,17 +480,15 @@ object HealthConnectImporter {
 
         val appleRows = ArrayList<AppleDaily>(acc.size)
         val dailyRows = ArrayList<DailyMetric>(acc.size)
-        // Flattened (day, "weight", kg) points so the cross-source resolver Compare reads can SEE a
-        // Health-Connect-only weight history — previously only the Apple-Health *file* importer emitted
-        // these, so HC weight showed on Today but was invisible in Compare (#443). Mirrors
-        // AppleHealthImporter's metricSeries emission; HC_DEVICE source is treated as apple-equivalent
-        // in WhoopRepository.sourceCandidates.
+        // Flattened (day, "weight", kg) points so the cross-source resolver Compare reads can see a
+        // Health-Connect-only weight history, matching AppleHealthImporter's metricSeries emission.
+        // HC_DEVICE is treated as apple-equivalent in WhoopRepository.sourceCandidates.
         val metricSeriesRows = ArrayList<MetricSeriesRow>(acc.size)
 
         for ((day, a) in acc) {
-            // #589: de-overlap the per-source maps by MAX (sum within a source, max across sources) so a
-            // phone+watch pair doesn't double-count the day's steps / calories. Mirrors the iOS/macOS and
-            // Android-XML de-overlap (stepsBySource.values.max()).
+            // De-overlap the per-source maps by max (sum within a source, max across sources) so a
+            // phone+watch pair doesn't double-count the day's steps / calories, matching the Android
+            // XML importer's de-overlap.
             val daySteps = maxSourceLong(a.stepsBySource)
             val dayTotalKcal = maxSourceDouble(a.totalKcalBySource)
             val dayActiveKcal = maxSourceDouble(a.activeKcalBySource)
@@ -548,21 +512,17 @@ object HealthConnectImporter {
                     )
                 )
                 a.weightKg?.let { metricSeriesRows += MetricSeriesRow(HC_DEVICE, day, "weight", round2(it)) }
-                // Health Connect has NO BMI record (Apple Health carries one, which iOS imports directly),
-                // so DERIVE it from the day's weight + the user's PROFILE height — the same height NOOP
-                // already uses for its calorie / fitness-age estimates (it defaults to 178 cm until the user
-                // sets theirs, so this reflects the profile, not a measured BMI). It sits inside the weight
-                // gate because BMI needs a weight; the heightCm > 0 guard skips it when a caller passes none.
-                // Compare labels this as profile-derived so it isn't mistaken for a measured reading.
+                // Health Connect has no BMI record, so derive it from the day's weight and the user's
+                // profile height (defaults to 178 cm until set, so this reflects the profile, not a
+                // measured BMI). Sits inside the weight gate since BMI needs a weight; heightCm <= 0 skips it.
                 derivedBmi(a.weightKg, heightCm)?.let {
                     metricSeriesRows += MetricSeriesRow(HC_DEVICE, day, "bmi", it)
                 }
             }
 
-            // Body composition from a smart scale (e.g. a Garmin Index synced via Garmin Connect) is
-            // metricSeries-only (no AppleDaily column), so emit it OUTSIDE the hasApple gate — a scale-only
-            // day with no steps/HR still records its readings. Same keys + units as the iOS Apple Health
-            // import: body_fat as a 0-100 percent, lean_mass in kg.
+            // Body composition from a smart scale (e.g. synced via Garmin Connect) is metricSeries-only,
+            // so emit it outside the hasApple gate — a scale-only day with no steps/HR still records its
+            // readings. Same keys/units as AppleHealthImporter: body_fat as 0-100 percent, lean_mass in kg.
             a.bodyFatPct?.let { metricSeriesRows += MetricSeriesRow(HC_DEVICE, day, "body_fat", round2(it)) }
             if (a.periodStart) {
                 metricSeriesRows += MetricSeriesRow(HC_DEVICE, day, KEY_PERIOD_START, 1.0)
@@ -627,8 +587,8 @@ object HealthConnectImporter {
                 repo.upsertDevice(WHOOP, name = "WHOOP")
                 repo.upsertDailyMetrics(dailyRows)
             }
-            // #983: write the collected sleep sessions under WHOOP, but ONLY for days the strap does not
-            // already cover (same guard as the daily rows) so a real strap night is never shadowed.
+            // Write the collected sleep sessions under WHOOP, but only for days the strap does not
+            // already cover (same guard as the daily rows), so a real strap night is never shadowed.
             val sleepRows = hcSleepSessions.filter { it.first !in coveredDays }.map { it.second }
             if (sleepRows.isNotEmpty()) {
                 repo.upsertDevice(WHOOP, name = "WHOOP")
@@ -676,16 +636,9 @@ object HealthConnectImporter {
     }
 
     /**
-     * Live top-up of TODAY's Health Connect step total (#150 follow-up). [import] is a manual
-     * one-shot, so today's stored steps freeze at import time while the real count keeps climbing —
-     * past days were fine, today wasn't. This does ONE StepsRecord read over [startOfDay, now],
-     * bucketed by record START day exactly like [import], and rewrites only today's "health-connect"
-     * [AppleDaily] row. The existing row is read first and updated via `copy(steps = …)` because
-     * [WhoopRepository.upsertAppleDaily] is a Room `@Upsert` — on a (deviceId, day) conflict it
-     * REPLACES the whole row, so a fresh steps-only row would null every other column.
-     *
-     * Returns the live sum, or the stored count when today read zero, or null when Health Connect
-     * is unavailable / steps aren't granted / there's nothing at all. Never throws.
+     * Live top-up of today's Health Connect step total, since [import] freezes it until the next
+     * manual run. Reads StepsRecord since today's start (bucketed like [import]) and updates the
+     * "health-connect" [AppleDaily] row via copy — a fresh @Upsert row would null every other column.
      */
     suspend fun refreshTodaySteps(context: Context, repo: WhoopRepository): Int? {
         if (sdkStatus(context) != HealthConnectClient.SDK_AVAILABLE) return null
@@ -700,10 +653,10 @@ object HealthConnectImporter {
         val zone = ZoneId.systemDefault()
         val today = LocalDate.now(zone)
         val dayKey = today.toString()
-        // #589: per-SOURCE sums so the live top-up de-overlaps a phone+watch pair exactly like [import]
-        // (sum within a source, MAX across sources), instead of summing them into a ~2x inflated count.
+        // Per-source sums so the live top-up de-overlaps a phone+watch pair exactly like [import] (sum
+        // within a source, max across sources), instead of a ~2x inflated cross-source count.
         val stepsBySource = HashMap<String, Long>()
-        val selfPackage = context.packageName // #528: skip our own writes (see readAll / isSelfWritten)
+        val selfPackage = context.packageName // Skip our own writes (see readAll / isSelfWritten)
         // readAll swallows a failed read (the map stays empty), so a flaky provider degrades to the stored
         // row below rather than clobbering it with zero.
         readAll(
@@ -718,7 +671,7 @@ object HealthConnectImporter {
                 stepsBySource[src] = (stepsBySource[src] ?: 0L) + r.count
             }
         }
-        val sum = maxSourceLong(stepsBySource) // #589 de-overlap: max source, not cross-source sum
+        val sum = maxSourceLong(stepsBySource) // De-overlap: max source, not cross-source sum
 
         val existing = try {
             repo.appleDaily(HC_DEVICE, dayKey, dayKey).firstOrNull()
@@ -764,8 +717,8 @@ object HealthConnectImporter {
                     )
                 )
                 for (record in response.records) {
-                    // #528: never re-ingest what NOOP itself wrote to Health Connect, or "share back"
-                    // + import would double-count our own daily totals (steps / active energy / sleep).
+                    // Never re-ingest what NOOP itself wrote to Health Connect, or "share back" + import
+                    // would double-count our own daily totals (steps / active energy / sleep).
                     if (isSelfWritten(record.metadata.dataOrigin.packageName, selfPackage)) continue
                     onRecord(record)
                 }
@@ -773,9 +726,8 @@ object HealthConnectImporter {
             } while (pageToken != null)
         } catch (e: Exception) {
             // One record type failing (e.g. a device/SDK validation quirk like "count must not be less
-            // than 1" seen on some Health Connect builds) must NOT abort the whole import — log it and
-            // keep whatever was read, so every other data type still comes in (issue #34). The reads
-            // accumulate into shared buckets, so a partial type is simply absent, never corrupt.
+            // than 1" seen on some Health Connect builds) must not abort the whole import — log it and
+            // keep whatever was read; a partial type is simply absent, never corrupt.
             android.util.Log.w("HealthConnect", "read of ${type.simpleName} failed; skipping: ${e.message}")
         }
     }
@@ -798,7 +750,7 @@ object HealthConnectImporter {
     /**
      * The set of "YYYY-MM-DD" days the strap already covers under [deviceId], read defensively:
      * a missing/empty source (the normal case for raw "my-whoop" on a strap-only user) yields an
-     * empty set rather than throwing. The caller unions every strap-native source (#112).
+     * empty set rather than throwing. The caller unions every strap-native source.
      */
     private suspend fun strapDays(repo: WhoopRepository, deviceId: String): Set<String> =
         try {
@@ -808,10 +760,9 @@ object HealthConnectImporter {
         }
 
     /**
-     * Every source id whose daily rows count as STRAP coverage for the #112 skip-set: the discovered
-     * strap-native ids present in the daily cache, always unioned with the canonical
-     * [WHOOP] / [WHOOP_COMPUTED] pair (so an empty/failed discovery degrades to the old behaviour,
-     * never below it). Read defensively — a DB error must not fail the import.
+     * Every source id whose daily rows count as strap coverage: discovered strap-native ids in the
+     * daily cache, always unioned with the canonical [WHOOP] / [WHOOP_COMPUTED] pair so a failed
+     * discovery still falls back to that pair. Read defensively — a DB error must not fail the import.
      */
     private suspend fun strapSourceIds(repo: WhoopRepository): Set<String> =
         try {
@@ -823,12 +774,9 @@ object HealthConnectImporter {
         }
 
     /**
-     * True when [id] is a strap-native daily-metric source: the canonical raw "my-whoop", ANY
-     * on-device computed "-noop" source, or an actively paired strap's raw "whoop-<mac>" id.
-     * These are the sources whose days the HC backfill must never shadow; importer-owned sources
-     * ("health-connect", "apple-health", band importers) are NOT strap coverage. Internal (not
-     * private) so the #112 skip-set semantics stay unit-testable without Room/Context, like
-     * [coveredDaySet].
+     * True when [id] is a strap-native daily-metric source: the canonical raw "my-whoop", any
+     * on-device computed "-noop" source, or an actively paired strap's raw "whoop-<mac>" id — the
+     * sources the HC backfill must never shadow. Importer-owned sources are not strap coverage.
      */
     internal fun isStrapNativeSourceId(id: String): Boolean {
         val s = id.lowercase()
@@ -836,10 +784,9 @@ object HealthConnectImporter {
     }
 
     /**
-     * Pure mapper: the distinct local days carried by [rows]. Factored out (and internal) so the
-     * #112 skip-set semantics — a strap-only user is covered by their COMPUTED rows — can be
-     * unit-tested without Room/Context. Unioning two of these (raw + computed) is what stops the
-     * sparse Health Connect backfill from shadowing a day the strap already covered.
+     * Pure mapper: the distinct local days carried by [rows]. Factored out so the skip-set semantics
+     * — a strap-only user is covered by their computed rows — can be unit-tested without Room.
+     * Unioning raw + computed is what stops the HC backfill from shadowing an already-covered day.
      */
     internal fun coveredDaySet(rows: List<DailyMetric>): Set<String> =
         rows.mapTo(HashSet()) { it.day }

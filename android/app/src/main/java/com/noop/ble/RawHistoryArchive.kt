@@ -8,28 +8,27 @@ import java.io.File
 import java.io.FileOutputStream
 
 /**
- * Append-only on-device archive of HISTORICAL_DATA record frames that FAILED to decode (#77 / #91).
+ * Append-only on-device archive of HISTORICAL_DATA record frames that failed to decode.
  *
- * WHY this exists: the strap FREES history once the phone acks its trim cursor. If a chunk's records
- * can't be decoded (CRC failure, or an unmapped firmware layout the v24 plausibility gate rejects),
- * acking anyway permanently destroys the user's ONLY copy of those records while the UI says "History
- * synced". So the Backfiller archives the raw bytes HERE — durably — BEFORE acking. The archive then
- * lets a later release that maps the layout recover the data, and is itself the corpus that mapping
- * needs. Frames carry sensor payloads, not identifiers (no serials/MACs).
+ * The strap frees history once the phone acks its trim cursor. If a chunk's records can't be decoded
+ * (CRC failure, or an unmapped firmware layout the v24 plausibility gate rejects), acking anyway
+ * permanently destroys the user's only copy while the UI says "History synced". So the Backfiller
+ * archives the raw bytes here, durably, before acking — the archive then lets a later release that
+ * maps the layout recover the data, and is itself the corpus that mapping needs. Frames carry sensor
+ * payloads only, no identifiers.
  *
  * Format: one JSON object per line (JSONL) in the app-private filesDir, file [REJECTED_ARCHIVE_FILE]:
  *   {"capturedAtMs":<Long>,"trim":<Long>,"family":"whoop4"|"whoop5","frameHex":"<hex>"}
- * Each [append] flushes + fsyncs before returning, so a row is durable before the caller acks.
+ * Each [append] flushes and fsyncs before returning, so a row is durable before the caller acks.
  *
- * Size cap ([maxBytes], ~5 MB): if appending would push the file past the cap, [append] EVICTS oldest
- * surplus lines to make room rather than refusing the write — but only down to a per-version retention
- * floor ([PER_VERSION_FLOOR]), so a brand-new layout version is never binned merely because common
- * versions filled the file. Only when the incoming frames alone can't fit even an empty archive does
- * [append] skip them ([AppendResult.written] = false); the caller records those as unarchived so the
- * sync status never falsely claims they were preserved. (#344)
+ * Size cap ([maxBytes], ~5 MB): past the cap, [append] evicts oldest surplus lines to make room
+ * rather than refusing the write, down to a per-version retention floor ([PER_VERSION_FLOOR]) so a
+ * brand-new layout version is never binned by common versions filling the file. Only when the
+ * incoming frames alone can't fit even an empty archive does [append] skip them
+ * ([AppendResult.written] = false); the caller records those as unarchived.
  *
- * A genuine WRITE FAILURE (I/O error) instead throws — the caller treats that as "do NOT ack", so the
- * strap keeps the records and re-sends them on the next offload. No data is lost either way.
+ * A genuine write failure (I/O error) instead throws — the caller must not ack, so the strap keeps
+ * the records and re-sends them on the next offload.
  */
 class RawHistoryArchive(
     private val context: Context,

@@ -6,10 +6,6 @@ package com.noop.analytics
  * the live session controller paces each candidate via [BreathPacer] + the buzz path, feeds the clean R-R
  * it ingested per pace back in here, and persists the locked pace as a pref.
  *
- * Faithful Kotlin mirror of StrandAnalytics/ResonanceEngine.swift — keep the per-pace RSA score and the
- * locked-pace selection byte-identical to Swift (cross-platform parity is the contract, pinned by matching
- * golden-vector tests). See docs/superpowers/specs/2026-06-19-v5-haptic-biofeedback-design.md (L1).
- *
  * THEORY (Lehrer/Gevirtz, approach not code): there is a personal pace — usually 4.5–7 br/min — at which
  * the 0.1 Hz baroreflex and RSA align and the heart-rate oscillation amplitude peaks. We find it by
  * pacing the user through candidate paces and reading the RSA response at each.
@@ -38,7 +34,7 @@ object ResonanceEngine {
     const val FALLBACK_BPM: Double = 5.5
 
     // ── Tunables ──────────────────────────────────────────────────────────────
-    /** Drop this many leading seconds of each pace as a settling transient before scoring (spec ~30 s). */
+    /** Drop this many leading seconds of each pace as a settling transient before scoring (~30 s). */
     const val TRANSIENT_DROP_SECONDS: Int = 30
 
     /** Minimum clean beats over a pace's steady window before its RSA/RMSSD are trusted (mirrors
@@ -55,8 +51,8 @@ object ResonanceEngine {
 
     /**
      * One beat — a plain (ts, rrMs) pair, decoupled from the storage entities so the engine takes pure
-     * inputs (the Swift twin carries the identical shape). ts is wall-clock unix SECONDS; rrMs the R-R
-     * interval in ms. The caller maps its [com.noop.data.RrInterval] rows onto these.
+     * inputs. ts is wall-clock unix SECONDS; rrMs the R-R interval in ms. The caller maps its
+     * [com.noop.data.RrInterval] rows onto these.
      */
     data class RrBeat(val ts: Int, val rrMs: Int)
 
@@ -183,7 +179,7 @@ object ResonanceEngine {
             return SweepResult(scores = scores, lockedBpm = FALLBACK_BPM, didLock = false)
         }
         // Max RSA amplitude; tie → higher RMSSD; final tie → slower pace (lower bpm, the calmer choice).
-        // Mirrors the Swift `max { a, b -> ... }` (a "less-than" comparator returning the greater).
+        // maxWithOrNull's comparator is "less-than" style; returning the greater value picks that candidate.
         val best = scored.maxWithOrNull { a, b ->
             val ra = a.rsaAmplitude ?: 0.0
             val rb = b.rsaAmplitude ?: 0.0

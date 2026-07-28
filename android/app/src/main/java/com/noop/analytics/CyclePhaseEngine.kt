@@ -4,22 +4,17 @@ import java.time.LocalDate
 import kotlin.math.abs
 import kotlin.math.roundToInt
 
-// CyclePhaseEngine.kt — on-device menstrual-cycle PHASE AWARENESS from the nightly skin-temperature series,
-// corroborated by the luteal resting-HR rise and the luteal HRV drop.
-// Byte-for-byte mirror of Strand/Packages/StrandAnalytics/Sources/StrandAnalytics/CyclePhaseEngine.swift.
+// Menstrual-cycle phase awareness from the nightly skin-temperature series, corroborated by the
+// luteal resting-HR rise and HRV drop. Skin temperature runs ~0.3-0.5 °C higher in the luteal phase
+// than the follicular phase with a nadir around ovulation (documented cycle-tracking method, e.g.
+// PMC11294004); re-derived from the user's own banked signals against their own baseline.
 //
-// INDEPENDENT implementation of a publicly documented method (wrist skin-temperature cycle tracking,
-// e.g. PMC11294004, plus the biphasic-ovulatory-shift literature): skin temperature runs ~0.3–0.5 °C
-// HIGHER in the luteal phase than the follicular phase, with a nadir around ovulation, mirrored by a
-// luteal RESTING-HR RISE and a luteal HRV (RMSSD) DROP. NOOP re-derives this from the user's OWN banked
-// signals against their OWN baseline.
-//
-// WELLNESS / AWARENESS ONLY — APPROXIMATE. NOT contraception, NOT a fertility/ovulation predictor, NOT a
-// medical device, NOT a diagnosis. Never a "fertile window" / "safe days", never a single confident period
-// DATE (only a probabilistic WINDOW), never a condition verdict — flat/irregular → "no clear pattern".
+// WELLNESS / AWARENESS ONLY — APPROXIMATE. Not contraception, not a fertility/ovulation predictor, not
+// a medical device, not a diagnosis. Never a single confident period date (only a probabilistic
+// window); flat/irregular gives "no clear pattern", never a condition verdict.
 object CyclePhaseEngine {
 
-    // ── Tuning constants (pinned by test; mirror the Swift twin exactly) ──
+    // ── Tuning constants (pinned by test) ──
     const val wTemp: Double = 0.6
     const val wRHR: Double = 0.2
     const val wHRV: Double = 0.2
@@ -207,7 +202,7 @@ object CyclePhaseEngine {
         Phase.LEARNING -> "Learning your pattern - keep wearing it overnight."
     }
 
-    // ── Small stats / day helpers (self-contained, parity-clean) ──
+    // ── Small stats / day helpers (self-contained) ──
 
     internal fun median(xs: List<Double>): Double {
         if (xs.isEmpty()) return 0.0

@@ -1,15 +1,13 @@
 package com.noop.analytics
 
 /*
- * MetricArbitrationPolicy (v5 — Local Multi-Device Fusion).
+ * MetricArbitrationPolicy — Local Multi-Device Fusion.
  *
- * Value-for-value Kotlin twin of Packages/StrandAnalytics/.../MetricArbitrationPolicy.swift — the
- * heart of v5 per docs/superpowers/specs/2026-06-19-v5-local-multi-device-fusion-design.md: a DATA
- * table (not if/else branches) keyed by metric × source that yields a trust tier + a plain, published
- * reason string, plus the per-metric cross-validation tolerances. The single place a future
- * Polar/Garmin/Oura source is registered. Pure constants + two lookups.
+ * A DATA table (not if/else branches) keyed by metric × source that yields a trust tier + a plain,
+ * published reason string, plus the per-metric cross-validation tolerances. The single place a
+ * future Polar/Garmin/Oura source is registered. Pure constants + two lookups.
  *
- * Trust tiers (lower = more trusted), grounded in what a device MEASURES vs ESTIMATES (spec §1):
+ * Trust tiers (lower = more trusted), grounded in what a device MEASURES vs ESTIMATES:
  *   0 — Direct dedicated sensor for this metric (WHOOP R-R for HRV; a wrist band's pedometer for
  *       steps; chest/PPG strap for avg/max/resting HR; ring/strap temp for skin temp).
  *   1 — Derived on-device from raw by NOOP (computed recovery/strain/sleep from strap streams).
@@ -39,8 +37,8 @@ object MetricArbitrationPolicy {
     }
 
     /**
-     * Map a resolver series key onto a [MetricKind]. Keys mirror the macOS Repository.appleCompatibleKey
-     * vocabulary so the policy lines up with the existing cross-source resolver.
+     * Map a resolver series key onto a [MetricKind], so the policy lines up with the existing
+     * cross-source resolver's key vocabulary.
      */
     fun kind(forKey: String): MetricKind = when (forKey) {
         "rhr", "resting_hr" -> MetricKind.RESTING_HR
@@ -141,7 +139,7 @@ object MetricArbitrationPolicy {
     /**
      * Stable tiebreak WITHIN a tier (lower wins). Mirrors the existing precedence baked into
      * sourceCandidates: imported WHOOP first, then NOOP-computed, then phone (Apple before Health
-     * Connect, matching the #443 ordering), then a dedicated band, then single-source, then cache.
+     * Connect), then a dedicated band, then single-source, then cache.
      * Used only when two sources land on the SAME tier, so the resolver stays deterministic.
      */
     fun sourcePriority(source: FusionSource): Int = when (source) {
@@ -190,11 +188,10 @@ object MetricArbitrationPolicy {
 
     // Cross-validation tolerances ------------------------------------------------------------------
     //
-    // Per-metric hand-set bands for the agreement classifier (spec §2). A delta inside [agree] is
-    // agreement; inside [minorDelta] is a plausible measurement spread (show both, no alarm); anything
-    // larger is a conflict (flag, never merge). Both platforms read the SAME constants. Some metrics
-    // use a percentage band (steps), most use an absolute band; [Tolerance] carries both and the
-    // classifier picks per [isPercent].
+    // Per-metric hand-set bands for the agreement classifier. A delta inside [agree] is agreement;
+    // inside [minorDelta] is a plausible measurement spread (show both, no alarm); anything larger
+    // is a conflict (flag, never merge). Some metrics use a percentage band (steps), most use an
+    // absolute band; [Tolerance] carries both and the classifier picks per [isPercent].
 
     data class Tolerance(
         /** Within this delta from the winning value → agree. */
@@ -206,8 +203,8 @@ object MetricArbitrationPolicy {
     )
 
     /**
-     * The tolerance band for a metric. Defaults (spec §2 / Open question 3): RHR ±3 bpm, asleep ±20
-     * min, steps ±10%. [Tolerance.minorDelta] is the outer plausible-spread edge before a conflict.
+     * The tolerance band for a metric: RHR ±3 bpm, asleep ±20 min, steps ±10%. [Tolerance.minorDelta]
+     * is the outer plausible-spread edge before a conflict.
      */
     fun tolerance(metric: MetricKind): Tolerance = when (metric) {
         MetricKind.RESTING_HR -> Tolerance(agree = 3.0, minorDelta = 8.0, isPercent = false)    // bpm

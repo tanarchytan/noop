@@ -8,14 +8,10 @@ import kotlin.math.sqrt
  * On-device "Readiness" intelligence.
  *
  * Synthesizes a handful of established, non-medical sports-science signals from the daily-metrics
- * history into a single readiness read plus the drivers behind it. Everything here is a pure,
- * deterministic function of the rows you pass in — no networking, no strap commands, no state.
+ * history into a single readiness read plus the drivers behind it. Pure, deterministic function of
+ * the rows passed in — no networking, no strap commands, no state.
  *
- * Faithful Kotlin port of
- * Packages/StrandAnalytics/Sources/StrandAnalytics/ReadinessEngine.swift (verified on macOS).
- * Same windows, same thresholds, same outputs.
- *
- * Signals and their references:
+ * Signals:
  * - **HRV readiness** — z-score of today's HRV against the personal trailing baseline. A drop of
  *   roughly half a standard deviation flags autonomic fatigue (Plews et al. 2013; Buchheit 2014).
  * - **Resting-HR drift** — elevated resting HR vs baseline is a classic overtraining / illness
@@ -48,8 +44,8 @@ object ReadinessEngine {
         val label: String,          // short human label
         val detail: String,         // one-line plain-English read
         val flag: Flag,
-        // The numbers behind the signal, e.g. "48 vs 55 ms" or "7d 12.1 / 28d 9.4". Optional and
-        // backward-compatible (defaults null); rendered as a small caption under the signal in the UI.
+        // The numbers behind the signal, e.g. "48 vs 55 ms" or "7d 12.1 / 28d 9.4". Optional
+        // (defaults null); rendered as a small caption under the signal in the UI.
         val evidence: String? = null,
     )
 
@@ -75,10 +71,10 @@ object ReadinessEngine {
     // Resp-rate signal is sourced from either clean cloud RR or a higher-variance on-device RSA
     // estimate (no source flag on the field), so it uses wider z thresholds than HRV/RHR and a
     // physiologic sanity band. A single noisy RSA night should not reach BAD (which feeds recoveryDown).
-    private const val respZWatch = 1.5      // raised vs HRV/RHR (was 1.0) to absorb RSA night-to-night noise
-    private const val respZBad = 2.0        // raised vs HRV/RHR (was 1.5) so one off-night can't trigger RUNDOWN
-    // Single canonical band, owned by the producer so the stored RSA value can't disagree with this
-    // gate (#78): SleepStager.respRateFromRR now NaNs anything outside it before persisting.
+    private const val respZWatch = 1.5      // raised vs HRV/RHR to absorb RSA night-to-night noise
+    private const val respZBad = 2.0        // raised vs HRV/RHR so one off-night can't trigger RUNDOWN
+    // Single canonical band, owned by the producer so the stored RSA value can't disagree with
+    // this gate: SleepStager.respRateFromRR NaNs anything outside it before persisting.
     private val respPlausibleRange = SleepStager.respPlausibleRangeBpm // plausible sleeping RR (bpm)
 
     // MARK: Entry point
@@ -87,13 +83,11 @@ object ReadinessEngine {
      * Evaluate readiness from daily metrics. [days] may be in any order; the most recent day is
      * treated as "today" unless [today] (a YYYY-MM-DD string) is given.
      *
-     * #1034 (ryanbr) perf: [evaluateUncached] SORTS the entire daily history and walks trailing windows on
-     * every call, and it is read from Compose recompositions (TodayScreen / CoupledScreen) — so a recompose
-     * on each ~1 Hz live-HR tick re-ran the full-history sort. Some call sites `remember{}` it; this
-     * engine-level memo additionally shields the un-remembered ones and the first/uncached read, mirroring
-     * the Swift ReadinessEngine.evaluateCache. Key = [today] + an ORDER-INDEPENDENT fingerprint over ONLY
-     * the rows' readiness fields (day + avgHrv/restingHr/respRateBpm/strain), so a new sync re-keys but a
-     * cosmetic reorder does not. The cached result is a small immutable [Readiness]; no row arrays retained.
+     * [evaluateUncached] sorts the full daily history and walks trailing windows on every call, and
+     * is read from Compose recompositions on each ~1 Hz live-HR tick, so the result is cached here.
+     * Key is [today] plus an order-independent fingerprint over the readiness-relevant fields (day +
+     * avgHrv/restingHr/respRateBpm/strain), so a new sync re-keys but a cosmetic reorder does not.
+     * The cached value is a small immutable [Readiness]; no row data is retained.
      */
     fun evaluate(days: List<DailyMetric>, today: String? = null): Readiness {
         val key = readinessKey(today, days)
@@ -109,8 +103,8 @@ object ReadinessEngine {
 
     private const val EVALUATE_CACHE_CAP = 16
 
-    /** Access-order LRU (cap [EVALUATE_CACHE_CAP]); every access is under [evaluateCacheLock] because a
-     *  LinkedHashMap in access order mutates on `get`. Twin of Swift's AnalyticsMemoCache(capacity: 16). */
+    /** Access-order LRU (cap [EVALUATE_CACHE_CAP]); every access is under [evaluateCacheLock] because
+     *  a LinkedHashMap in access order mutates on `get`. */
     private val evaluateCache: LinkedHashMap<ReadinessKey, Readiness> =
         object : LinkedHashMap<ReadinessKey, Readiness>(EVALUATE_CACHE_CAP, 0.75f, true) {
             override fun removeEldestEntry(eldest: MutableMap.MutableEntry<ReadinessKey, Readiness>): Boolean =
@@ -118,10 +112,9 @@ object ReadinessEngine {
         }
     private val evaluateCacheLock = Any()
 
-    /** Order-independent fingerprint of the readiness-relevant columns — a new sync re-keys, a cosmetic
-     *  reorder does not. Internal to this process's cache only (never compared cross-platform), so it need
-     *  NOT match the Swift hash byte-for-byte; a collision only costs one extra recompute. Mirrors Swift
-     *  `rowsFingerprint`: FNV-style commutative fold over (day, avgHrv, restingHr, respRateBpm, strain). */
+    /** Order-independent fingerprint of the readiness-relevant columns — a new sync re-keys, a
+     *  cosmetic reorder does not. A collision only costs one extra recompute. FNV-style commutative
+     *  fold over (day, avgHrv, restingHr, respRateBpm, strain). */
     private fun readinessKey(today: String?, days: List<DailyMetric>): ReadinessKey {
         var sum = 1469598103934665603L
         var minDay = 0
@@ -139,15 +132,13 @@ object ReadinessEngine {
         return ReadinessKey(today, days.size, minDay, maxDay, sum)
     }
 
-    /** The uncached readiness synthesis (formerly the body of [evaluate]). [days] may be in any order; the
-     *  most recent day is "today" unless [today] is given. */
+    /** The uncached readiness synthesis. [days] may be in any order; the most recent day is "today"
+     *  unless [today] is given. */
     private fun evaluateUncached(days: List<DailyMetric>, today: String? = null): Readiness {
         val sorted = days.sortedBy { it.day }
-        // When an explicit [today] is given (the dashboard passes the device's real local day key), use
-        // the row for THAT day and nothing else: a stale historical import has no row for today, so the
-        // readiness card reads "insufficient" rather than synthesizing off the newest stored — possibly
-        // months-old — row (issue #23/#24). With no [today] (live-strap default callers) fall back to the
-        // most recent row exactly as before, so nothing wearing the strap nightly changes.
+        // With an explicit [today] (dashboard's device-local day key), use only that day's row: a
+        // stale import has no row for today, so the card reads "insufficient" instead of synthesizing
+        // off the newest stored (possibly months-old) row. With no [today], fall back to the latest row.
         val latest = if (today != null) sorted.firstOrNull { it.day == today } else sorted.lastOrNull()
         if (latest == null) {
             return Readiness(
@@ -190,11 +181,9 @@ object ReadinessEngine {
         if (rhrSignal != null) signals.add(rhrSignal)
 
         // Respiratory-rate drift (illness early signal) ----------------------
-        // respRateBpm may be a clean cloud value OR a higher-variance on-device RSA estimate
-        // (WHOOP5 BLE-only) and carries no source flag, so gate conservatively for BOTH: keep the
-        // minBaseline + sd>0 guard, only act on physiologically plausible sleeping-RR (~8-25 bpm),
-        // and use wider resp-only z thresholds (WATCH 1.5 / BAD 2.0) so a single noisy night can't
-        // reach BAD (which would feed recoveryDown), while a sustained genuine rise still flags.
+        // respRateBpm may be clean cloud data or a higher-variance on-device RSA estimate (no source
+        // flag), so gate conservatively: minBaseline + sd>0, a plausible sleeping-RR band (~8-25 bpm),
+        // and wider z thresholds (WATCH 1.5 / BAD 2.0) so one noisy night can't trigger BAD/recoveryDown.
         val rr = latest.respRateBpm
         if (rr != null && rr in respPlausibleRange) {
             val base = history.takeLast(baselineWindow).mapNotNull { it.respRateBpm }
@@ -293,20 +282,17 @@ object ReadinessEngine {
     }
 
     /**
-     * Format a metric value with the given number of decimals. Mirrors Swift's helper char-for-char:
-     * the 0-decimal case uses round-half-AWAY-from-zero (Swift `Int(x.rounded())`, here `Math.round`)
-     * — NOT printf's "%.0f" which is round-half-to-EVEN and would disagree at an exact .5; the >0 case
-     * uses "%.Nf" (round-half-to-even) to match Swift's `String(format:)`. Locale.US so the separator
-     * is always ".".
+     * Format a metric value with the given number of decimals. Locale.US pins the separator to ".".
+     * The 0-decimal case rounds half-away-from-zero (`Math.round`); the >0 case rounds half-to-even
+     * ("%.Nf") — the two branches disagree at an exact .5, so don't unify them without checking callers.
      */
     private fun fmt(x: Double, decimals: Int): String =
         if (decimals == 0) Math.round(x).toString()
         else String.format(Locale.US, "%.${decimals}f", x)
 
     private fun acwrSignal(ratio: Double, acute: Double, chronic: Double): Signal {
-        // #1033 (ryanbr): route the acute:chronic ratio through the Locale.US-pinned [fmt] helper (matching
-        // the evidence line below) so a comma-decimal device locale can't render "1,15" — iOS's
-        // String(format:) is already locale-independent. Pure separator fix, no behavior change.
+        // Route through the Locale.US-pinned [fmt] helper so a comma-decimal device locale can't
+        // render "1,15" for the ratio.
         val pct = fmt(ratio, 2)
         // Evidence: the two strain loads the ratio is built from, 1 dp each.
         val evidence = "7d ${fmt(acute, 1)} / 28d ${fmt(chronic, 1)}"

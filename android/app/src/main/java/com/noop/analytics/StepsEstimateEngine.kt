@@ -7,20 +7,16 @@ import kotlin.math.sqrt
 
 /**
  * Estimate daily steps for a WHOOP 4.0 from the strap's MOTION, calibrated per-user against a phone
- * step count (Apple Health / Health Connect). Byte-for-byte twin of the Swift StepsEstimateEngine.
+ * step count (Apple Health / Health Connect).
  *
- * WHY A CALIBRATED ESTIMATE, NOT A PEDOMETER. A WHOOP 4.0 does not send a step count over BLE, and the
- * gravity data we DO get is sparse (~one vector per stored record, ~minute granularity) — far below the
- * ~25–50 Hz a true step counter needs to see footfalls. So we cannot count steps. We CAN measure movement
- * VOLUME (how much the gravity vector moved over the day) and map it to steps with a coefficient learned
- * from days where the phone ALSO counted steps. The output is always framed as an estimate.
- *
- * THE MODEL. `steps ≈ k · motionIntensity`, through-origin. `k` (steps per unit of motion) is the only free
- * parameter and is PERSONAL (wrist placement, gait, how the strap rides) — hence calibrated per user, not a
- * global constant. We fit `k` robustly (a MOTION-WEIGHTED median of per-day steps/motion ratios) so one odd
- * day can't drag it AND high-activity days drive the fit (#682): a busy 15,000-step day pins the ratio far
- * more reliably than a near-still 500-step day, so motion VOLUME votes, not every day equally. A user with no
- * phone step history can set `k` by hand with the calibration slider.
+ * A WHOOP 4.0 sends no step count over BLE, and its gravity data is sparse (~one vector per record,
+ * ~minute granularity) — far below the ~25-50 Hz a true step counter needs. So instead we measure
+ * movement VOLUME (gravity-vector change over the day) and map it to steps via
+ * `steps ≈ k · motionIntensity`, through-origin. `k` is personal (wrist placement, gait, strap fit):
+ * fit as a MOTION-WEIGHTED median of per-day steps/motion ratios so one odd day can't drag it and
+ * high-activity days (which pin the ratio more reliably) drive the fit more than near-still ones. A
+ * user with no phone step history can set `k` by hand via the calibration slider. Output is always
+ * framed as an estimate, never a measured count.
  */
 object StepsEstimateEngine {
 
@@ -45,9 +41,9 @@ object StepsEstimateEngine {
     )
 
     /**
-     * A coarse confidence tier for the auto-fit, for a one-word badge on the steps tile/Settings. Derived
-     * from the engine's 0–1 confidence by fixed thresholds so iOS + Android show the SAME word. A manual `k`
-     * is reported as [HIGH] (the user asserted it). Mirror of Swift `ConfidenceTier`. (#760/#792)
+     * A coarse confidence tier for the auto-fit, for a one-word badge on the steps tile/Settings.
+     * Derived from the engine's 0-1 confidence by fixed thresholds. A manual `k` is always reported
+     * as [HIGH] (the user asserted it).
      */
     enum class ConfidenceTier(val word: String) {
         LOW("low confidence"),
@@ -55,7 +51,7 @@ object StepsEstimateEngine {
         HIGH("high confidence");
 
         companion object {
-            /** 0–1 confidence → tier. < 0.34 low, < 0.67 medium, else high. Byte-identical to Swift. */
+            /** 0-1 confidence -> tier: < 0.34 low, < 0.67 medium, else high. */
             fun from(confidence: Double): ConfidenceTier = when {
                 confidence < 0.34 -> LOW
                 confidence < 0.67 -> MEDIUM
@@ -67,26 +63,23 @@ object StepsEstimateEngine {
     /**
      * A readable read-out of the calibration state, for the Today steps tile and the Settings section.
      * Pure data (no UI strings beyond a single short status line) so both surfaces stay in step.
-     * Mirror of Swift `CalibrationStatus`.
      */
     sealed interface CalibrationStatus {
         /** True when an estimate can be produced right now (manual or a usable auto-fit). */
         val canEstimate: Boolean
 
-        /** A short, honest one-liner for the tile/Settings. US-neutral, no em-dashes. */
+        /** A short, honest one-liner for the tile/Settings, locale-neutral (no em-dashes). */
         val headline: String
 
-        /** The confidence tier for the steps estimate. [Calibrated] maps its 0–1 confidence; [Manual] is
-         *  HIGH (asserted by the user); [NeedsMoreDays] is LOW. Mirror of Swift `confidenceTier`. (#760/#792) */
+        /** The confidence tier for the steps estimate. [Calibrated] maps its 0-1 confidence; [Manual] is
+         *  HIGH (asserted by the user); [NeedsMoreDays] is LOW. */
         val confidenceTier: ConfidenceTier
 
-        /** The personal coefficient `k` in force, or null when none is fit/set yet. Mirror of Swift
-         *  `coefficient`. (#760/#792) */
+        /** The personal coefficient `k` in force, or null when none is fit/set yet. */
         val coefficientOrNull: Double?
 
         /** A denser status line (numbers, vs the plain-English [headline]): confidence tier plus, when
-         *  calibrated/manual, `k` and the day count, so a frozen or dashed steps tile self-explains. Mirror of
-         *  Swift `detail`. (#760/#792) */
+         *  calibrated/manual, `k` and the day count, so a frozen or dashed steps tile self-explains. */
         val detail: String
 
         /** A manual `k` is in force. [sampleDays] = auto-fit days that exist alongside it (informational). */
@@ -123,16 +116,14 @@ object StepsEstimateEngine {
         }
     }
 
-    /** Format the steps coefficient `k` to one decimal place for the status line (US-neutral, locale-free so
-     *  iOS + Android match byte-for-byte). Mirror of Swift `formatK`. (#760/#792) */
+    /** Format the steps coefficient `k` to one decimal place for the status line, fixed to Locale.US so
+     *  the format never varies with a device's regional settings. */
     internal fun formatK(k: Double): String = String.format(java.util.Locale.US, "%.1f", k)
 
     /**
-     * Classify the current calibration state from the same inputs [calibrate] sees, so the UI can explain
-     * WHY the steps tile is (or isn't) showing an estimate without re-deriving the fit. A positive
-     * [manualOverride] always reports [CalibrationStatus.Manual]. Otherwise count the usable overlapping
-     * days (same filter the fit uses) and report [CalibrationStatus.Calibrated] once [MIN_CALIBRATION_DAYS]
-     * are met, else [CalibrationStatus.NeedsMoreDays]. Mirror of Swift `status(...)`.
+     * Classify the current calibration state from the inputs [calibrate] sees. A positive
+     * [manualOverride] always reports [CalibrationStatus.Manual]; otherwise, once usable days reach
+     * [MIN_CALIBRATION_DAYS], report [CalibrationStatus.Calibrated], else [CalibrationStatus.NeedsMoreDays].
      */
     fun status(points: List<CalibrationPoint>, manualOverride: Double? = null): CalibrationStatus {
         val usableDays = points.count { it.motion >= MIN_MOTION_FOR_FIT && it.steps > 0 }
@@ -149,8 +140,8 @@ object StepsEstimateEngine {
 
     /**
      * Total daily MOTION INTENSITY = sum of per-record gravity-vector deltas (L2 magnitude of the change
-     * between consecutive samples). Movement VOLUME over the day — the same proxy the sleep stager uses for
-     * stillness, integrated. (Mirror of Swift dayMotionIntensity.)
+     * between consecutive samples) — the same movement-volume proxy the sleep stager uses for stillness,
+     * integrated over the day.
      */
     fun dayMotionIntensity(grav: List<GravitySample>): Double {
         if (grav.size < 2) return 0.0
@@ -166,11 +157,10 @@ object StepsEstimateEngine {
     }
 
     /**
-     * Fit the personal coefficient from days that have BOTH a motion volume and a reference step count.
-     * Robust: MOTION-WEIGHTED median of each day's steps/motion ratio (days below MIN_MOTION_FOR_FIT skipped),
-     * so outliers don't pull `k` AND high-activity days — which pin the ratio far more reliably — drive the fit
-     * instead of every day counting equally (#682). Each day's ratio carries weight = its motion volume. Returns
-     * null below MIN_CALIBRATION_DAYS unless a positive [manualOverride] is supplied (which always wins, conf 1).
+     * Fit the personal coefficient from days with both a motion volume and a reference step count: a
+     * MOTION-WEIGHTED median of each day's steps/motion ratio (days below MIN_MOTION_FOR_FIT skipped, each
+     * ratio weighted by its motion volume so high-activity days drive the fit). Returns null below
+     * MIN_CALIBRATION_DAYS unless a positive [manualOverride] is supplied (always wins, confidence 1).
      */
     fun calibrate(points: List<CalibrationPoint>, manualOverride: Double? = null): Calibration? {
         if (manualOverride != null && manualOverride > 0) {
@@ -212,11 +202,10 @@ object StepsEstimateEngine {
     }
 
     /**
-     * Weighted median of [xs] with per-element [weights] (#682). Sort by value, walk the cumulative weight,
-     * and return the value at which it first reaches half the total weight. When the cumulative weight lands
-     * EXACTLY on the half-mass boundary, average the two straddling values — so with equal weights this reduces
-     * to the plain even-count midpoint average and the unweighted fits stay byte-identical with Swift. Falls
-     * back to the plain median if weights are absent/degenerate (empty, mismatched, or non-positive total).
+     * Weighted median of [xs] with per-element [weights]. Sort by value, walk the cumulative weight, and
+     * return the value at which it first reaches half the total weight; on an exact half-mass boundary,
+     * average the two straddling values (reduces to the plain even-count midpoint when weights are equal).
+     * Falls back to the plain median if weights are absent/degenerate (empty, mismatched, non-positive total).
      */
     internal fun weightedMedian(xs: List<Double>, weights: List<Double>): Double {
         if (xs.isEmpty()) return 0.0

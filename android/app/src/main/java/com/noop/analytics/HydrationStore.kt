@@ -7,15 +7,15 @@ import java.util.TimeZone
 /**
  * HydrationStore — the logging + read seam for the Hydration tracker (MVP, opt-in, local-only).
  *
- * Kotlin twin of the Swift hydration store calls. The day total is banked in the generic metric-series
- * store under the [KEY] series, keyed by the device's LOCAL calendar day — the SAME `metricSeries`
- * table + `WhoopRepository.upsertMetricSeries` path every other generic daily series uses (no schema
- * change). Because that table holds one row per (deviceId, day, key), a tap reads the day's running
- * total and re-upserts total + amount, so the stored value IS "the sum of today's hydration logged for
- * this local day". Everything stays on-device; nothing is synced.
+ * The day total is banked in the generic metric-series store under the [KEY] series, keyed by the
+ * device's LOCAL calendar day — the SAME `metricSeries` table + `WhoopRepository.upsertMetricSeries`
+ * path every other generic daily series uses (no schema change). Because that table holds one row per
+ * (deviceId, day, key), a tap reads the day's running total and re-upserts total + amount, so the
+ * stored value IS "the sum of today's hydration logged for this local day". Everything stays
+ * on-device; nothing is synced.
  *
- * `ts` (a wall-clock unix second) selects which local day a log lands on; the goal itself comes from the
- * pure [HydrationGoal] engine, never from here.
+ * `ts` (a wall-clock unix second) selects which local day a log lands on; the goal itself comes from
+ * the pure [HydrationGoal] engine, never from here.
  */
 object HydrationStore {
 

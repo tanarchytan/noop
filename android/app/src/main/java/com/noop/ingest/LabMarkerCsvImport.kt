@@ -15,31 +15,22 @@ import java.util.TimeZone
 import java.util.UUID
 
 /**
- * Lab Book markers CSV import (source "lab-csv") — Kotlin twin of
- * Packages/StrandImport/Sources/StrandImport/LabMarkerCsvImport.swift. Keep the two
- * byte-identical (the LabBookProjection twin pattern): same column resolution, same
- * marker aliases, same value/date grammar, same bounds.
+ * Lab Book markers CSV import (source "lab-csv"): a generic markers CSV with
+ * (date, marker, value, unit) rows, matching what the in-app import card promises.
  *
- * The Phase-2 bulk import for the Health Records "Lab Book" pillar (spec
- * 2026-06-19-v5-health-records-design.md §"Phasing"): a generic markers CSV with
- * (date, marker, value, unit) rows, exactly the shape the in-app import card promises.
+ * Marker names map onto [MarkerCatalog] by key, display name and alias (systolic/SBP →
+ * bp_systolic, A1c → hba1c, …); unrecognised names import as a CUSTOM marker under the
+ * same `custom_<slug>` key the manual editor mints, so CSV and hand-added customs fold
+ * onto one history. A combined "120/80" blood-pressure cell splits into the
+ * bp_systolic/bp_diastolic pair so diastolic is never silently dropped.
  *
- * Marker names map onto [MarkerCatalog] by key, display name and a small alias table
- * (systolic/SBP → bp_systolic, A1c → hba1c, …); anything unrecognised imports as a
- * CUSTOM marker under the same `custom_<slug>` key the manual editor mints, so a CSV
- * custom marker and a hand-added one fold onto one history. A combined blood-pressure
- * cell ("120/80") splits into the bp_systolic/bp_diastolic pair so diastolic is never
- * silently dropped.
- *
- * NON-CLINICAL: units are stored VERBATIM — this importer never converts mg/dL to
- * mmol/L or judges a value. Malformed rows are skipped and counted, never fatal, and
- * never guessed. Import-DoS bounds: a byte cap on the file and a row cap on the parse.
- *
- * Parsing is pure ([parse]) so it is JVM unit-testable (LabMarkerCsvImportTest).
+ * NON-CLINICAL: units are stored VERBATIM, never converted (e.g. mg/dL to mmol/L).
+ * Malformed rows are skipped and counted, never fatal or guessed. Bounded by a byte
+ * cap on the file and a row cap on the parse. Parsing is pure ([parse]), JVM unit-testable.
  */
 object LabMarkerCsvImport {
 
-    /** Provenance/source id stored on every imported reading. Identical to the Swift lane. */
+    /** Provenance/source id stored on every imported reading. */
     const val SOURCE_ID = "lab-csv"
 
     /** Byte cap — a markers CSV is a few KB in real life; 32 MB is already absurd. */
@@ -66,7 +57,7 @@ object LabMarkerCsvImport {
         val isCustomMarker: Boolean,
     )
 
-    /** Result of parsing a markers CSV. Mirrors the Swift LabMarkerCsvResult. */
+    /** Result of parsing a markers CSV. */
     data class LabMarkerCsvResult(
         /** Deduped per (markerKey, day) — the LAST row in the file wins — sorted by (day, markerKey). */
         val rows: List<LabMarkerCsvRow>,
@@ -86,12 +77,9 @@ object LabMarkerCsvImport {
     }
 
     /**
-     * Public entry point the Lab Book screen calls. Reads the SAF [uri] via the content
-     * resolver (byte-capped), parses, upserts the readings through [repo] under
-     * [deviceId] (the projection to metricSeries rides the existing upsert) and returns
-     * an [ImportSummary]. `takenAt` is local noon of the row's literal day so a
-     * re-import of the same file updates in place (natural key
-     * deviceId+markerKey+takenAt+source) instead of duplicating.
+     * Public entry point the Lab Book screen calls: reads [uri] via the content resolver
+     * (byte-capped), parses, and upserts through [repo] under [deviceId]. `takenAt` is noon of
+     * the row's day, so a re-import upserts by natural key (deviceId+markerKey+takenAt+source).
      */
     suspend fun importCsv(
         context: Context,
@@ -174,10 +162,9 @@ object LabMarkerCsvImport {
         return parse(CsvTable.fromData(data), MAX_ROWS)
     }
 
-    /** Parse CSV text. */
     fun parse(text: String): LabMarkerCsvResult = parse(CsvTable.fromText(text), MAX_ROWS)
 
-    /** Core parse; the row cap is injectable for tests. Mirrors Swift parseTable. */
+    /** Core parse; the row cap is injectable for tests. */
     internal fun parse(table: CsvTable, maxRows: Int): LabMarkerCsvResult {
         val headers = table.normalizedHeaders
 
@@ -235,7 +222,7 @@ object LabMarkerCsvImport {
 
             // Blood pressure: a combined "120/80" cell (under any bp-family name) becomes
             // the systolic/diastolic PAIR — a one-row-one-marker mapping would silently
-            // drop diastolic (spec §"Blood pressure modelling").
+            // drop diastolic.
             val resolved = resolveMarker(rawName)
             val pair = if (resolved.isBloodPressureFamily) bloodPressurePair(rawValue) else null
             if (pair != null) {
@@ -290,7 +277,7 @@ object LabMarkerCsvImport {
         )
     }
 
-    // MARK: - Column resolution (NutritionCsvImporter idiom, Swift parity)
+    // MARK: - Column resolution (NutritionCsvImporter idiom)
 
     private fun resolve(
         headers: List<String>,
@@ -347,7 +334,7 @@ object LabMarkerCsvImport {
     }
 
     /** Catalog keys + normalized display names + hand-picked common aliases → key.
-     *  Built once. Alias keys are in [matchNorm] form. Byte-identical to Swift. */
+     *  Built once. Alias keys are in [matchNorm] form. */
     private val aliasTable: Map<String, String> by lazy {
         val t = HashMap<String, String>()
         for (def in MarkerCatalog.builtIn) {
@@ -411,10 +398,9 @@ object LabMarkerCsvImport {
     }
 
     /**
-     * The `custom_<slug>` key for an unrecognised marker name. MUST stay byte-identical to the slug the
-     * Swift lab-marker editor produces — the manual marker-editor UI was removed from the Android app in
-     * the Lab Book UI cleanup, but the on-disk `custom_<slug>` keys and that Swift parity contract are
-     * unchanged, so a CSV custom marker still folds onto an existing one. "" for a name with no usable chars.
+     * The `custom_<slug>` key for an unrecognised marker name. Must stay stable so a CSV
+     * custom marker folds onto an already-existing one instead of forking a new key.
+     * "" for a name with no usable chars.
      */
     internal fun customKey(name: String): String {
         val lowered = name.trim().lowercase()
@@ -430,10 +416,8 @@ object LabMarkerCsvImport {
 
     /**
      * Parse a value cell as a number. Handles plain decimals, a European decimal comma
-     * ("5,2"), a thousands-grouped integer ("1,234"), and a trailing unit accidentally
-     * left in the cell ("5.2 mmol/L"). Anything else — text results, empty cells, a
-     * slash pair outside the BP path — is null, so the row is SKIPPED and counted,
-     * never guessed. Byte-identical to the Swift grammar.
+     * ("5,2"), a thousands-grouped integer ("1,234"), and a trailing unit left in the
+     * cell ("5.2 mmol/L"). Anything else is null, so the row is skipped and counted.
      */
     internal fun parseValue(raw: String): Double? {
         val t = raw.trim()
@@ -448,15 +432,13 @@ object LabMarkerCsvImport {
         return numberToken(t.substring(0, i))
     }
 
-    /** A finite-only Double parse: NaN / +Inf / -Inf (from "NaN"/"Infinity"/"1e999") are REJECTED so a
-     *  hostile or typo'd cell skips-and-counts instead of storing a non-finite "reading" that reaches the
-     *  chart math (the importer's "nothing guessed" contract). Also rejects the Java-only "5f"/"5d" and
-     *  hex-float tokens java Double.parseDouble accepts but Swift Double() does not, so both platforms
-     *  import the same file byte-identically. */
+    /** Finite-only Double parse: NaN and the infinities are rejected, so a hostile or typo'd cell is
+     *  skipped and counted rather than stored as a reading the chart math would consume. Also rejects
+     *  the "5f"/"5d" and hex-float tokens Double.parseDouble otherwise accepts. */
     private fun finiteDouble(s: String): Double? {
-        // toDoubleOrNull tolerates a trailing f/F/d/D suffix (a Java float/double literal) that Swift's
-        // Double() rejects; drop those so both platforms accept the SAME tokens. (Hex floats like 0x1p3
-        // parse on both, so they are left alone.)
+        // toDoubleOrNull tolerates a trailing f/F/d/D suffix (a Java float/double literal); those are
+        // rejected here to keep the accepted token set strict. Hex floats like 0x1p3 still parse and
+        // are left alone.
         if (s.any { it == 'f' || it == 'F' || it == 'd' || it == 'D' }) return null
         val d = s.toDoubleOrNull() ?: return null
         return if (d.isFinite()) d else null
@@ -471,8 +453,8 @@ object LabMarkerCsvImport {
             val intPart = t.substringBefore(',')
             val afterComma = t.substringAfter(',').length
             // A bare-zero (or leading-zero) integer part can only be a DECIMAL comma: "0,500" is 0.5, never
-            // a 500 thousands group (a real thousands number never starts with a lone 0). So the 3-digit
-            // thousands rule must NOT fire for those - it used to store "0,500" as 500 (1000x). Mirrors Swift.
+            // a 500 thousands group (a real thousands number never starts with a lone 0). The 3-digit
+            // thousands rule must NOT fire for those.
             val intIsZeroLed = intPart.startsWith("0") || intPart.startsWith("+0") || intPart.startsWith("-0")
             return if (afterComma == 3 && !intIsZeroLed) {
                 finiteDouble(t.replace(",", ""))
@@ -506,13 +488,9 @@ object LabMarkerCsvImport {
     private val DMY_OR_MDY = Regex("""^(\d{1,2})[./-](\d{1,2})[./-](\d{4})(?!\d)""")
 
     /**
-     * Canonicalise a date cell to "yyyy-MM-dd". Accepted (a trailing time after the
-     * date is tolerated and ignored):
-     *   • ISO-first: "2026-06-15", "2026/6/1", "2026-06-15 08:30".
-     *   • Day/month-first with a 4-digit year: "15/01/2026" (day-first when the first
-     *     number can only be a day), otherwise month-first ("01/15/2026" — the US
-     *     spreadsheet default, same rule as NutritionCsvImporter.parseDay).
-     * Anything else is null, so the row is skipped and counted.
+     * Canonicalise a date cell to "yyyy-MM-dd" (a trailing time is tolerated and ignored).
+     * Accepts ISO-first ("2026-06-15", "2026/6/1") or day/month-first with a 4-digit year:
+     * day-first only when the first number can't be a month, else month-first; else null.
      */
     internal fun canonicalDay(raw: String): String? {
         val t = raw.trim()
@@ -534,7 +512,7 @@ object LabMarkerCsvImport {
     }
 
     /** "yyyy-MM-dd" when the components form a real calendar date, else null.
-     *  Pure math (leap-aware) — byte-identical to the Swift twin. */
+     *  Pure math, leap-aware. */
     private fun validDay(year: Int, month: Int, day: Int): String? {
         if (month !in 1..12 || day < 1 || day > daysInMonth(year, month)) return null
         return "%04d-%02d-%02d".format(Locale.US, year, month, day)
@@ -549,11 +527,9 @@ object LabMarkerCsvImport {
 
     // MARK: - takenAt derivation (wrapper only, not part of the pure parse)
 
-    /** Epoch seconds of UTC noon on a "yyyy-MM-dd" day — a deterministic, LOCATION-INDEPENDENT takenAt
-     *  for imported rows, so re-importing the same file (even after travelling to another zone) upserts
-     *  in place instead of minting a duplicate. Pinned to UTC on BOTH platforms so the natural key
-     *  (deviceId, markerKey, takenAt, source) never shifts with the device zone. History dates render
-     *  from the stored `day` string, not this takenAt. */
+    /** Epoch seconds of UTC noon on a "yyyy-MM-dd" day: a deterministic, location-independent
+     *  takenAt so re-importing the same file upserts in place by natural key (deviceId,
+     *  markerKey, takenAt, source) instead of duplicating. History renders from `day`, not this. */
     private fun labNoonEpoch(day: String): Long {
         val fmt = SimpleDateFormat("yyyy-MM-dd", Locale.US).apply {
             timeZone = TimeZone.getTimeZone("UTC")

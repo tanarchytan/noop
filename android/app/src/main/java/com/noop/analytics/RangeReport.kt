@@ -3,32 +3,22 @@ package com.noop.analytics
 import kotlin.math.abs
 
 /*
- * RangeReport.kt — the data model for a shareable offline "trends report" over a date
- * range. Faithful Kotlin mirror of StrandAnalytics/RangeReport.swift. Keep the metric
- * set, the per-metric trend thresholds, the half-split, the trend mapping, and the
- * headline ranking byte-identical to Swift — cross-platform parity is the contract.
+ * RangeReport.kt — data model for a shareable offline "trends report" over a date range.
+ * Pure aggregation only, no rendering (the UI builds the PDF/PNG view from this struct).
  *
- * Pure aggregation ONLY — there is NO rendering here. The UI layer builds the PDF/PNG
- * view from this struct; this file just turns sparse day→value series into a clean,
- * explainable set of per-metric range statistics.
- *
- * Pure, deterministic, DB-free. Given each metric's daily series as a Map<dayKey, Double>
- * (any metric may be missing, any day may be absent) and an inclusive [start, end]
- * "yyyy-MM-dd" range, this produces a RangeReport with, per metric that has at least one
- * value in range: n, mean, min/max (value + the day it fell on), first-half vs
- * second-half mean, a rising/falling/flat trend (OLS slope-per-day vs a small per-metric
- * threshold), and the latest value. Plus the range (start/end/totalDays) and a short
- * headline stat set.
+ * Given each metric's day→value series (sparse ok) and an inclusive [start, end]
+ * "yyyy-MM-dd" range, produces per metric with >= 1 in-range value: n, mean, min/max
+ * (value + day), first/second-half mean, a rising/falling/flat trend, and the latest
+ * value, plus totalDays and a headline set.
  *
  * Day keys are the same "yyyy-MM-dd" strings AnalyticsEngine emits; lexicographic order
- * IS chronological order for zero-padded ISO days, so we sort/compare on the raw string
- * (exactly the way WeeklyDigest does) — no Date, no timezone, no locale. Self-contained:
- * does NOT depend on WeeklyDigest.
+ * is chronological for zero-padded ISO days, so days compare as raw strings — no Date,
+ * timezone, or locale. Self-contained: does not depend on WeeklyDigest.
  */
 
 /**
- * The metrics a range report can summarise. WORKOUTS and STRESS (#457) lead the list so
- * they rank first in the report; the rest keep their established order.
+ * The metrics a range report can summarise. WORKOUTS and STRESS lead the list so they
+ * rank first in the report; the rest keep their established order.
  */
 enum class ReportMetric {
     WORKOUTS,      // logged workouts per day, count
@@ -91,10 +81,8 @@ enum class ReportMetric {
 
     /**
      * Whether a rising/falling move carries a clear good/bad valence. False for a signed
-     * deviation metric (skin-temp Δ) and for workout count (more or fewer sessions is a
-     * lifestyle choice, not inherently good/bad) — the report then shows the trend
-     * direction without a "good sign / worth a look" verdict and colours the change chip
-     * neutrally.
+     * deviation metric (skin-temp) and for workout count (a lifestyle choice, not
+     * inherently good/bad) — those show trend direction with no verdict, chip neutral.
      */
     val framesGoodBad: Boolean
         get() = when (this) {
@@ -121,7 +109,7 @@ enum class ReportMetric {
         }
 
     companion object {
-        /** Stable iteration order, mirroring Swift's ReportMetric.allCases. */
+        /** Fixed iteration order used when building the report and its headlines. */
         val allCases: List<ReportMetric> =
             listOf(
                 WORKOUTS, STRESS, RECOVERY, SLEEP_HOURS, HRV, RESTING_HR, STRAIN,
@@ -359,7 +347,7 @@ object RangeReportEngine {
         return d + (153 * mm + 2) / 5 + 365 * yy + yy / 4 - yy / 100 + yy / 400 - 32045
     }
 
-    // Stats (self-contained so the Swift mirror is line-for-line)
+    // Stats (self-contained, deterministic)
 
     internal fun mean(values: List<Double>): Double {
         if (values.isEmpty()) return 0.0
@@ -383,8 +371,8 @@ object RangeReportEngine {
     }
 
     /**
-     * Round to one decimal place, half-away-from-zero, matching Swift's Double.rounded()
-     * so the headline strings are byte-identical across platforms.
+     * Round to one decimal place, half-away-from-zero (not banker's rounding), so
+     * headline numbers round predictably regardless of sign.
      */
     internal fun round1(x: Double): Double {
         val scaled = x * 10.0

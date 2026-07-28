@@ -4,7 +4,6 @@ import kotlin.math.abs
 
 /*
  * VitalBands.kt — personal-baseline banding for the Health Monitor's vital tiles.
- * Faithful Kotlin port of StrandAnalytics/VitalBands.swift (verified on macOS).
  *
  * In-range is judged against the user's OWN trailing baseline (the Winsorized EWMA the rest
  * of [Baselines] builds) once it is trusted — minNightsTrust (14) valid nights and not stale.

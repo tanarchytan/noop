@@ -17,36 +17,20 @@ import java.io.InputStream
 import java.util.zip.ZipInputStream
 
 /**
- * Apple Health export importer — Kotlin port of the macOS source of truth at
- * `Packages/StrandImport/Sources/StrandImport/AppleHealthImporter.swift`,
- * `AppleHealthAggregator.swift`, and `ImportModels.swift`.
+ * Apple Health export importer. Streams the XML via `Xml.newPullParser()` (never a DOM or a
+ * whole file in memory), aggregating per day with running sums/counts so memory scales with
+ * days, not records. Skips `<Record>`s nested in `<Correlation>` and dedupes on
+ * `type|start|end|source|value`; `OxygenSaturation` converts its 0..1 fraction to percent.
+ * Per-day reduction: mean for HR/HRV/SpO2/resp/walking/resting/avgHr, max for maxHr, sum for
+ * steps/active/basal, latest-by-end for VO2Max/BodyMass. Sample day = local day of `start`;
+ * sleep day = local day of `end` (wake day); asleep = core+deep+rem+unspecified.
  *
- * Reproduces FAITHFULLY:
- *  - the relevant `HKQuantityTypeIdentifier` / `HKCategoryTypeIdentifier` set and prefix stripping,
- *  - the `<Correlation>`-nested `<Record>` skip + `type|start|end|source|value` dedupe,
- *  - `OxygenSaturation` 0..1 fraction -> percent,
- *  - the `SleepAnalysis` category-value -> stage mapping,
- *  - per-day reduction rules (means for HR/HRV/SpO2/resp/walking/resting/avgHr, max for maxHr,
- *    sums for steps/active/basal, latest-by-end for VO2Max / BodyMass),
- *  - sample bucketing on the LOCAL day of `start`, sleep bucketing on the LOCAL day of `end`
- *    (the wake day), with `asleep = core + deep + rem + asleepUnspecified`.
- *
- * Streams with `Xml.newPullParser()` over the raw `InputStream` — never a DOM, never the whole
- * (multi-hundred-MB / multi-GB) file in memory. Aggregation is bucketed per day; per-day
- * accumulators hold running sums/counts (not raw sample arrays) so peak memory stays bounded by
- * the number of distinct days, not the number of records.
- *
- * Maps the macOS `AppleDailyAggregate` onto the Android Room schema (package `com.noop.data`):
- *  - AppleDaily(deviceId="apple-health"): steps, activeKcal, basalKcal, vo2max, avgHr, maxHr,
- *    walkingHr, weightKg
- *  - DailyMetric(deviceId="apple-health"): restingHr, avgHrv, totalSleepMin, deepMin, remMin,
- *    lightMin (= sleep core), spo2Pct, respRateBpm
- *  - WorkoutRow(source="apple-health"): one per `<Workout>` element
- *  - MetricSeriesRow(deviceId="apple-health"): the flattened (day, key, value) metric points
- *
- * Body-composition extras the macOS aggregator also computes (bodyFatPct, leanMassKg, bmi) have
- * no column in the Android schema and are intentionally dropped (only `weightKg` survives, in
- * AppleDaily). See `risks` in the task summary.
+ * Maps onto the Room schema (package `com.noop.data`): AppleDaily(deviceId="apple-health"):
+ * steps, activeKcal, basalKcal, vo2max, avgHr, maxHr, walkingHr, weightKg; DailyMetric: restingHr,
+ * avgHrv, totalSleepMin, deepMin, remMin, lightMin (= sleep core), spo2Pct, respRateBpm;
+ * WorkoutRow(source="apple-health"): one per `<Workout>`; MetricSeriesRow: the flattened
+ * (day, key, value) metric points. Body-composition extras (bodyFatPct, leanMassKg, bmi) have no
+ * Android column and are dropped; only `weightKg` survives, on AppleDaily.
  */
 object AppleHealthImporter {
 
@@ -54,15 +38,14 @@ object AppleHealthImporter {
     const val DEFAULT_DEVICE_ID = "apple-health"
 
     /**
-     * Factory for the streaming pull-parser. Defaults to the Android framework's
-     * `Xml.newPullParser()`. JVM unit tests (where `android.util.Xml` is a throwing stub) swap in a
-     * kXML2 parser via `XmlPullParserFactory` so the sanitizer + tolerant-parse logic can be
-     * exercised off-device. Production code never touches this.
+     * Factory for the streaming pull-parser. Defaults to `Xml.newPullParser()`; JVM unit tests
+     * (where that's a throwing stub) swap in a kXML2 parser so the sanitizer and tolerant-parse
+     * logic can run off-device. Production code never touches this.
      */
     @Volatile
     internal var newPullParser: () -> XmlPullParser = { Xml.newPullParser() }
 
-    /** Health types Strand cares about (HK prefix already stripped). Mirrors `relevantTypes`. */
+    /** Health types this importer recognizes (HK prefix already stripped). */
     private val RELEVANT_TYPES: Set<String> = setOf(
         "HeartRate",
         "RestingHeartRate",
@@ -89,14 +72,9 @@ object AppleHealthImporter {
     // ------------------------------------------------------------------------
 
     /**
-     * Import an Apple Health export from a SAF [uri]. The uri may point at:
-     *  - an `export.zip` (Apple nests the XML under `apple_health_export/export.xml`), or
-     *  - a raw `export.xml`.
-     *
-     * The content is read via `context.contentResolver.openInputStream(uri)` and stream-parsed.
-     * Aggregated rows are upserted into [repo] under [deviceId] (DailyMetric / AppleDaily /
-     * MetricSeriesRow) and "apple-health" as `source` (WorkoutRow). Returns an [ImportSummary]
-     * keyed by table name; on any failure returns [ImportSummary.failure].
+     * Import an Apple Health export from a SAF [uri] (`export.zip`, with XML nested under
+     * `apple_health_export/export.xml`, or a raw `export.xml`). Upserts aggregated rows into
+     * [repo] under [deviceId]; returns [ImportSummary], or [ImportSummary.failure] on error.
      */
     suspend fun importExport(
         context: Context,
@@ -146,10 +124,9 @@ object AppleHealthImporter {
     }
 
     /**
-     * Stream the zip with [ZipInputStream], find the first entry whose basename is `export.xml`
-     * (case-insensitive — Apple nests it under `apple_health_export/`), and stream-parse it WITHOUT
-     * inflating to disk or RAM first. The entry stream is parsed directly off the inflating stream;
-     * a guarded wrapper prevents the pull-parser from closing the underlying zip stream.
+     * Stream the zip, find the first entry whose basename is `export.xml` (case-insensitive), and
+     * parse it directly off the inflating stream without buffering to disk or RAM. A guarded
+     * wrapper stops the pull-parser from closing the underlying zip stream.
      */
     private fun parseZip(input: InputStream, agg: Aggregator) {
         val zip = ZipInputStream(input)
@@ -184,18 +161,14 @@ object AppleHealthImporter {
     // ------------------------------------------------------------------------
 
     /**
-     * Pull-parse the export, tracking `<Correlation>` nesting so `<Record>`s inside a correlation
-     * are skipped (they also appear top-level). Dispatches each top-level `<Record>` and every
-     * `<Workout>` straight into the [Aggregator], which buckets by day immediately — no per-record
-     * objects are retained.
+     * Pull-parse the export, tracking `<Correlation>` nesting so nested `<Record>`s are skipped
+     * (they also appear top-level). Dispatches each top-level `<Record>` and every `<Workout>`
+     * into the [Aggregator], which buckets by day immediately — no per-record objects retained.
      */
     private fun parseXml(input: InputStream, agg: Aggregator) {
-        // SANITIZER: wrap the (possibly decade-old, possibly mojibake) byte stream so XML-1.0-illegal
-        // control bytes and broken UTF-8 are scrubbed in fixed-size chunks BEFORE the pull-parser sees
-        // them. Without this a single bad byte mid-file aborts the whole multi-year import. The
-        // sanitizer is itself a streaming FilterInputStream, so memory stays bounded. Its scrubbed-run
-        // count is folded into the import summary so a partial import is never silently presented as
-        // complete. Mirrors `SanitizingInputStream` in the macOS source of truth.
+        // Scrubs XML-1.0-illegal control bytes and broken UTF-8 in fixed-size chunks before the
+        // pull-parser sees them, so one bad byte mid-file doesn't abort a multi-year import. Its
+        // scrubbed-run count folds into the summary so a partial import is never presented as complete.
         val sanitized = SanitizingInputStream(input)
 
         val parser: XmlPullParser = newPullParser()
@@ -220,13 +193,9 @@ object AppleHealthImporter {
                 event = parser.next()
             }
         } catch (e: Exception) {
-            // TOLERANT PARSE: a hard, structural XML error can still slip past the byte sanitizer
-            // (e.g. a truncated/garbled tag, not just a bad byte). The pull-parser may signal this as
-            // either an XmlPullParserException or an IOException (truncated stream) — both mean "the
-            // parser cannot continue". If we already parsed at least one record, KEEP the partial
-            // result rather than discarding a whole 15-year import over the tail; count the dropped
-            // tail as one skipped span and surface it. If nothing was parsed yet, rethrow so a
-            // completely broken file still fails loudly (the caller turns it into a failure summary).
+            // A structural XML error (truncated/garbled tag) can slip past the sanitizer, signaled as
+            // XmlPullParserException or IOException. If at least one record was already parsed, keep
+            // the partial result and count the dropped tail as one skipped span; otherwise rethrow.
             if (e is XmlPullParserException || e is java.io.IOException) {
                 if (agg.hasAnyRecord()) {
                     agg.noteSkippedSpan()
@@ -244,7 +213,7 @@ object AppleHealthImporter {
 
     private fun attr(parser: XmlPullParser, name: String): String? = parser.getAttributeValue(null, name)
 
-    // MARK: Record handling — mirrors HealthXMLDelegate.handleRecord + Aggregator rules.
+    // MARK: Record handling — dispatch into the Aggregator.
 
     private fun handleRecord(parser: XmlPullParser, agg: Aggregator) {
         val rawType = attr(parser, "type") ?: return
@@ -262,10 +231,9 @@ object AppleHealthImporter {
 
         if (type == "SleepAnalysis") {
             val stage = SleepStage.from(rawValue ?: "")
-            // Faithful to the macOS importer: sleep-stage intervals are appended UNCONDITIONALLY
-            // (the dedupe set there only protects the generic *sample* sink, not `sleepIntervals`).
-            // Top-level records are already de-correlated, so duplicates are not expected in
-            // practice, but we match the Swift behaviour exactly rather than dedupe here.
+            // Sleep-stage intervals are appended unconditionally, not deduped like samples —
+            // top-level records are already de-correlated, so duplicates aren't expected in
+            // practice.
             agg.addSleep(stage, start, end, end.offsetMin)
             return
         }
@@ -284,7 +252,7 @@ object AppleHealthImporter {
         agg.addSample(type, numeric, unit, start, end, start.offsetMin, source)
     }
 
-    // MARK: Workout handling — mirrors HealthXMLDelegate.handleWorkout.
+    // MARK: Workout handling and per-workout totals.
 
     private fun handleWorkout(parser: XmlPullParser, agg: Aggregator) {
         val startStr = attr(parser, "startDate") ?: return
@@ -309,11 +277,9 @@ object AppleHealthImporter {
             }
         }
 
-        // Per-workout totals: iOS <=15 put them on the <Workout> element as `totalDistance` /
-        // `totalEnergyBurned` attributes; iOS 16+ moved them into nested <WorkoutStatistics> children
-        // (energy/distance now `type`+`sum`, heart rate `average`/`maximum`). Read the legacy attributes
-        // first, then let the children FILL any still absent — a modern export carries no legacy
-        // attributes so nothing a legacy value set is clobbered. Mirrors HealthXMLDelegate.handleWorkout.
+        // Per-workout totals may be `totalDistance`/`totalEnergyBurned` attributes on `<Workout>`,
+        // or nested `<WorkoutStatistics>` children (energy/distance as `sum`, HR as
+        // `average`/`maximum`). Attributes are read first; children fill in whatever is still null.
         var distanceM: Double? = attr(parser, "totalDistance")?.toDoubleOrNull()
             ?.let { distanceMeters(it, attr(parser, "totalDistanceUnit")) }
         var energyKcal: Double? = attr(parser, "totalEnergyBurned")?.toDoubleOrNull()
@@ -416,14 +382,14 @@ object AppleHealthImporter {
                     avgHrv = d.hrvSDNN,
                     spo2Pct = d.spo2Pct,
                     respRateBpm = d.respRate,
-                    // #89: Apple Health steps must land in DailyMetric.steps too — FusionDayAdapter reads the
-                    // daily step total via WhoopRepository.dailyColumn("steps") = d.steps, so leaving it null
-                    // (the pre-fix state) meant imported Apple steps never surfaced. `d.steps` is a Double.
+                    // DailyMetric.steps must be populated: FusionDayAdapter reads the daily step total
+                    // via `WhoopRepository.dailyColumn("steps")`, so leaving it null means imported
+                    // steps never surface elsewhere in the app.
                     steps = d.steps?.let { Math.round(it).toInt() },
                 )
             }
 
-            // Flattened metric points — mirrors AppleHealthAggregator.metricPoints key set.
+            // Flattened (day, key, value) metric points for the series table.
             fun add(key: String, value: Double?) {
                 if (value != null) metricSeriesRows += MetricSeriesRow(deviceId, d.day, key, value)
             }
@@ -519,10 +485,9 @@ object AppleHealthImporter {
     internal class DailyAggView(val day: String, val avgHr: Double?, val maxHr: Double?, val steps: Double?)
 
     /**
-     * Run the SAME sanitizer + tolerant pull-parse + per-day aggregation that production uses, over a
-     * raw [input] stream, and return an observable probe. This is the JVM entry point for tests: it
-     * avoids `Context`/`Uri`/Room while exercising the real `parseXml` choke point (sanitizer and
-     * tolerant-parse layers included). Production import goes through `importExport`, never this.
+     * Runs the same sanitizer + tolerant pull-parse + per-day aggregation production uses, over a
+     * raw [input] stream. The JVM entry point for tests: avoids `Context`/`Uri`/Room while exercising
+     * the real `parseXml` path. Production import goes through `importExport`, never this.
      */
     internal fun parseStreamForTest(input: InputStream): ParseProbe {
         val agg = Aggregator()
@@ -544,7 +509,7 @@ object AppleHealthImporter {
     /**
      * Strip the HealthKit identifier prefix. `HKQuantityTypeIdentifierHeartRate` -> `HeartRate`,
      * `HKCategoryTypeIdentifierSleepAnalysis` -> `SleepAnalysis`,
-     * `HKWorkoutActivityTypeRunning` -> `Running`. Mirrors `AppleHealthImporter.stripPrefix`.
+     * `HKWorkoutActivityTypeRunning` -> `Running`.
      */
     private val PREFIXES = arrayOf(
         "HKQuantityTypeIdentifier",
@@ -558,14 +523,13 @@ object AppleHealthImporter {
         return raw
     }
 
-    /** Dedupe key per spec: `type|start|end|source|value` (epoch seconds as Double, like Swift). */
+    /** Dedupe key: `type|start|end|source|value` (epoch seconds as a Double). */
     private fun dedupeKey(type: String, start: Double, end: Double, source: String?, value: String): String =
         "$type|$start|$end|${source ?: ""}|$value"
 }
 
 /**
- * Canonical sleep stages Strand recognises from Apple Health `HKCategoryValueSleepAnalysis*`
- * values. Mirrors `SleepStage` + `SleepStage.from(rawValue:)` in `ImportModels.swift`.
+ * Canonical sleep stages recognised from Apple Health `HKCategoryValueSleepAnalysis*` values.
  */
 private enum class SleepStage {
     IN_BED, ASLEEP_UNSPECIFIED, ASLEEP_CORE, ASLEEP_DEEP, ASLEEP_REM, AWAKE, UNKNOWN;
@@ -595,7 +559,7 @@ private class HealthDate(val epoch: Double, val offsetMin: Int) {
     companion object {
         /**
          * Parse `yyyy-MM-dd HH:mm:ss ±HHMM` / `±HH:MM` / `Z`. Also tolerates an ISO-8601 `T`
-         * separator. Returns null on anything unparseable (matching the Swift importer's silent skip).
+         * separator. Returns null on anything unparseable.
          */
         fun parse(raw: String): HealthDate? {
             val s = raw.trim()
@@ -653,8 +617,7 @@ private class HealthDate(val epoch: Double, val offsetMin: Int) {
         }
 
         /**
-         * Extract the trailing UTC offset (`+0100`, `-0500`, `+01:00`, `Z`) in minutes. Mirrors
-         * `HealthDateParser.offsetMinutes`.
+         * Extract the trailing UTC offset (`+0100`, `-0500`, `+01:00`, `Z`) in minutes.
          */
         fun offsetMinutes(raw: String): Int {
             val trimmed = raw.trim()
@@ -685,17 +648,12 @@ private class HealthDate(val epoch: Double, val offsetMin: Int) {
 }
 
 /**
- * Bounded, streaming per-day aggregator. Holds running statistics (sums + counts for means,
- * running max, latest-by-end value) per distinct day — NOT raw sample lists — so memory scales
- * with the number of days, not the number of records.
- *
- * Reproduces the reduction rules from `AppleHealthAggregator`:
- *  - mean: restingHr, hrvSDNN, spo2, respRate, walkingHr, avgHr
- *  - max: maxHr
- *  - sum: steps, activeEnergy, basalEnergy
- *  - latest by sample `end`: vo2max, bodyMass(weightKg), bodyFat, leanMass, bmi
- *  - sample day = local day of `start`; sleep day = local day of `end` (wake day)
- *  - asleep = core + deep + rem + asleepUnspecified
+ * Bounded, streaming per-day aggregator: running sums/counts/max/latest values per distinct day,
+ * not raw sample lists, so memory scales with days, not records. Per-day reduction: mean for
+ * restingHr/hrvSDNN/spo2/respRate/walkingHr/avgHr; max for maxHr; sum for steps/activeEnergy/
+ * basalEnergy; latest-by-end for vo2max/bodyMass(weightKg)/bodyFat/leanMass/bmi. Sample day =
+ * local day of `start`; sleep day = local day of `end` (wake day); asleep =
+ * core + deep + rem + asleepUnspecified.
  */
 private class Aggregator {
 
@@ -725,8 +683,8 @@ private class Aggregator {
         val hr = Mean()
         var maxHr = Double.NEGATIVE_INFINITY
         var hasHr = false
-        // #589: per-SOURCE step sums — iPhone + Watch both count the same walk, so summing across
-        // sources double-counts (~2x). Take the MAX source per day at read-out (mirrors Apple Health).
+        // Per-SOURCE step sums: iPhone + Watch both count the same walk, so summing across sources
+        // double-counts (~2x). Take the MAX source per day at read-out, matching Apple Health itself.
         val stepsBySource = mutableMapOf<String, Double>()
         var active = 0.0; var hasActive = false
         var basal = 0.0; var hasBasal = false
@@ -746,14 +704,14 @@ private class Aggregator {
     }
 
     private val byDay = HashMap<String, DayAcc>()
-    // Dedupe over sample keys, stored as the key's 64-bit HASH not the full String (#183). A large Apple
-    // Health export has tens of millions of unique samples; retaining a ~50-100 B String each was ~1-2 GB
-    // of RAM, enough to hang the import under memory pressure. 8 B/entry is ~10x smaller. See [hash64].
+    // Dedupe over sample keys, stored as the key's 64-bit hash, not the full String. A large export
+    // has tens of millions of unique samples; a ~50-100 B String each is ~1-2 GB of RAM, enough to
+    // hang the import under memory pressure. 8 B/entry is ~10x smaller. See [hash64].
     private val seen = HashSet<Long>()
     private val workouts = ArrayList<PendingWorkout>()
 
     /** True once any relevant, date-valid record / workout / sleep row was dispatched. Drives the
-     * tolerant-parse decision (keep partial vs. fail). Mirrors `HealthXMLDelegate.hasAnyRecord`. */
+     * tolerant-parse decision (keep partial vs. fail). */
     private var sawAnyRecord = false
     /** Count of XML spans dropped during a tolerant import (sanitizer-scrubbed illegal-byte runs +
      * a hard-error-truncated tail). Surfaced in the summary so a partial import is never hidden. */
@@ -771,7 +729,7 @@ private class Aggregator {
     )
 
     /** Returns true if [key] was not seen before (i.e. this row should be processed). Dedupes on the
-     *  key's 64-bit hash, not the full String, to bound memory on a huge export (#183). */
+     *  key's 64-bit hash, not the full String, to bound memory on a huge export. */
     fun markSeen(key: String): Boolean = seen.add(hash64(key))
 
     /** 64-bit FNV-1a over [s]'s UTF-16 code units. Kotlin's `String.hashCode` is only 32-bit — that's
@@ -833,7 +791,7 @@ private class Aggregator {
             "LeanBodyMass" -> a.lean.consider(if (unitLooksLikePounds(unit)) value * 0.453592 else value, end.epoch)
             "BodyMassIndex" -> a.bmi.consider(value, end.epoch)
             // BodyTemperature / AppleSleepingWristTemperature pass the relevant-type filter but
-            // have no daily aggregate slot in the macOS aggregator either — intentionally dropped.
+            // have no daily aggregate slot — intentionally dropped.
             else -> { /* ignore */ }
         }
     }
@@ -881,7 +839,7 @@ private class Aggregator {
                 avgHr = a.hr.value(),
                 maxHr = if (a.hasHr) a.maxHr else null,
                 walkingHr = a.walking.value(),
-                steps = a.stepsBySource.values.maxOrNull(),   // #589 max source, not cross-source sum
+                steps = a.stepsBySource.values.maxOrNull(),   // max source per day, not cross-source sum
                 activeKcal = if (a.hasActive) a.active else null,
                 basalKcal = if (a.hasBasal) a.basal else null,
                 vo2max = a.vo2.value,
@@ -901,8 +859,8 @@ private class Aggregator {
 
     /**
      * Finalize workout rows. The Room `workout` table PK is (deviceId, startTs, sport), so any
-     * Apple Health workouts colliding on that key collapse via the upsert (matching how the macOS
-     * cache keys workouts). `durationS` falls back to (endTs - startTs) when absent.
+     * Apple Health workouts colliding on that key collapse via the upsert. `durationS` falls back
+     * to (endTs - startTs) when absent.
      */
     fun finishWorkouts(deviceId: String): List<WorkoutRow> = workouts.map { w ->
         WorkoutRow(
@@ -945,7 +903,7 @@ private class Aggregator {
     }
 }
 
-/** Finalized per-day aggregate mirroring `AppleDailyAggregate`. */
+/** Finalized per-day aggregate. */
 private class DailyAgg(
     val day: String,
     val restingHr: Double?,
@@ -972,28 +930,23 @@ private class DailyAgg(
 )
 
 /**
- * A streaming [FilterInputStream] that scrubs every byte XML 1.0 forbids — and every invalid UTF-8
- * sequence — as it streams, in fixed-size chunks, before the bytes reach the pull-parser. Kotlin
- * port of `SanitizingInputStream` in the macOS source of truth
- * (`Packages/StrandImport/Sources/StrandImport/AppleHealthImporter.swift`).
+ * A streaming [FilterInputStream] that scrubs every byte XML 1.0 forbids, and every invalid UTF-8
+ * sequence, in fixed-size chunks, before the bytes reach the pull-parser. A single malformed byte
+ * in a multi-year `export.xml` (a stray control char, or mojibake/truncated UTF-8 from an old
+ * phone) otherwise makes the pull-parser abort with a hard error, discarding everything parsed so
+ * far; scrubbing up front lets the parse run to EOF.
  *
- * WHY: a single malformed byte in a multi-year Apple Health `export.xml` (a stray control char, or
- * mojibake / truncated UTF-8 from a decade-old phone) makes the pull-parser abort with a hard error,
- * discarding everything parsed up to that point. Repairing the byte stream up front lets the parse
- * run to EOF so the import survives.
- *
- * It holds at most one source chunk plus the ≤ 3 trailing bytes of a UTF-8 sequence that straddles a
+ * Holds at most one source chunk plus the <= 3 trailing bytes of a UTF-8 sequence straddling a
  * chunk boundary, so memory stays bounded — the file is never inflated to RAM.
  *
- * Rules (UTF-8 only — Apple Health exports declare UTF-8):
- *  - Bytes `< 0x20` that are not TAB (0x09), LF (0x0A) or CR (0x0D) → dropped (XML-1.0 illegal).
- *    0x20..0x7F (incl. DEL 0x7F, which XML 1.0 permits) pass through.
+ * Rules (UTF-8 only):
+ *  - Bytes `< 0x20` that are not TAB/LF/CR → dropped (XML-1.0 illegal); 0x20..0x7F (incl. DEL) pass.
  *  - Any byte sequence that is not valid UTF-8 → replaced with U+FFFD (`EF BF BD`).
  *  - Valid multi-byte sequences pass through byte-for-byte, including ones split across a chunk
- *    boundary (the incomplete tail is carried into the next read).
+ *    boundary (the incomplete tail carries into the next read).
  *
- * [scrubbedRunCount] counts CONTIGUOUS runs of dropped/replaced bytes (one per run, not per byte) so
- * the import summary can report "N spans skipped" honestly.
+ * [scrubbedRunCount] counts contiguous runs of dropped/replaced bytes (one per run, not per byte),
+ * so the import summary can report "N spans skipped" honestly.
  */
 internal class SanitizingInputStream(
     source: InputStream,
@@ -1071,9 +1024,9 @@ internal class SanitizingInputStream(
     }
 
     /**
-     * Consume [carry], emit sanitized bytes into [out]. When [holdIncompleteTail] is true the trailing
-     * bytes of a not-yet-complete (but so-far-valid) UTF-8 sequence are left in [carry] for the next
-     * chunk. Mirrors the Swift `scrub(holdIncompleteTail:)`.
+     * Consume [carry], emit sanitized bytes into [out]. When [holdIncompleteTail] is true, the
+     * trailing bytes of a not-yet-complete (but so-far-valid) UTF-8 sequence are left in [carry]
+     * for the next chunk.
      */
     private fun scrub(holdIncompleteTail: Boolean) {
         val bytes = carry
@@ -1160,7 +1113,7 @@ internal class SanitizingInputStream(
     /**
      * Validate a UTF-8 sequence of [length] bytes starting at [start], including overlong / surrogate
      * / out-of-range constraints (RFC 3629), so only encodings a strict XML parser accepts pass
-     * through. Mirrors the Swift `isValidUTF8Sequence`.
+     * through.
      */
     private fun isValidUtf8Sequence(bytes: ByteArray, start: Int, length: Int): Boolean {
         val b0 = bytes[start].toInt() and 0xFF

@@ -1,17 +1,16 @@
 package com.noop.analytics
 
-// ImportTrace.kt - Kotlin twin of ImportTrace.swift. Pure line formatters + the live-readout parser for
-// the Import & Data Ingest test mode (TestDomain.IMPORT, wire id "import"), byte-aligned with the Swift
-// line shapes so a shared report reads identically on either platform.
+// ImportTrace.kt - pure line formatters + the live-readout parser for the Import & Data Ingest test
+// mode (TestDomain.IMPORT, wire id "import").
 //
-// What an import run reports: parserVersion (importer + version), fileMeta (kind + ext + size BUCKET, never
-// a path/name), perStageRows (rows parsed/mapped in vs rows the store reported out), rejectCounts (rows the
-// parser/map dropped + tolerant XML spans scrubbed), dayDeltas (distinct days mapped vs persisted), and a
-// REDACTED, length-capped firstFailingRow / failingFileSample.
+// What an import run reports: parserVersion (importer + version), fileMeta (kind + ext + size BUCKET,
+// never a path/name), perStageRows (rows parsed/mapped in vs rows the store reported out), rejectCounts
+// (rows the parser/map dropped + tolerant XML spans scrubbed), dayDeltas (distinct days mapped vs
+// persisted), and a REDACTED, length-capped firstFailingRow / failingFileSample.
 //
-// HARD privacy rule (matches Swift): firstFailingRow + failingFileSample are user data; they are masked
-// (digits -> #, letters -> x, structure kept) + capped HERE, before the line reaches the redacting log
-// sink, and the export re-scrubs every line again. No clock, no IO, no raw PII. No em-dashes.
+// HARD privacy rule: firstFailingRow + failingFileSample are user data; they are masked (digits -> #,
+// letters -> x, structure kept) + capped HERE, before the line reaches the redacting log sink, and the
+// export re-scrubs every line again. No clock, no IO, no raw PII. No em-dashes.
 
 object ImportTrace {
 

@@ -1,21 +1,17 @@
 package com.noop.ble
 
 /**
- * Pure parser for the standard BLE Heart Rate Measurement characteristic (0x2A37).
+ * Pure parser for the standard BLE Heart Rate Measurement characteristic (0x2A37). Returns the heart
+ * rate (bpm) and any R-R intervals (ms). Pure → unit-testable away from android.bluetooth.
  *
- * Faithful Kotlin twin of Strand/BLE/StandardHeartRate.swift. Returns the heart rate (bpm) and any
- * R-R intervals (ms). Pure → unit-testable away from android.bluetooth.
- *
- * This is a SEPARATE parser from [WhoopBleClient.parseStandardHr] on purpose: the new isolated
- * [StandardHrSource] uses THIS one so the WHOOP client's inline parse stays untouched (slight
- * duplication is fine — it keeps the hardware-verified WHOOP path from regressing). Both encode the
- * same Bluetooth SIG layout:
+ * This is a SEPARATE parser from [WhoopBleClient.parseStandardHr] on purpose: the isolated
+ * [StandardHrSource] uses THIS one so the WHOOP client's inline parse stays untouched, keeping the
+ * hardware-verified WHOOP path from regressing. Both encode the same Bluetooth SIG layout:
  *   - flags bit0 (0x01): HR is u16 (else u8)
  *   - flags bit3 (0x08): Energy-Expended field present → skip its 2 bytes before R-R
  *   - flags bit4 (0x10): one or more R-R intervals follow, each a u16 in 1/1024-second units
  *
- * R-R is converted to milliseconds as `round(raw / 1024 * 1000)` to match the Swift parser exactly
- * (the WHOOP store keeps R-R in ms).
+ * R-R is converted to milliseconds as `round(raw / 1024 * 1000)`; the WHOOP store keeps R-R in ms.
  */
 object StandardHeartRate {
 
@@ -24,7 +20,7 @@ object StandardHeartRate {
 
     /**
      * Parse one 0x2A37 notification payload. Returns null on an empty or truncated packet (a packet
-     * whose declared HR/R-R bytes run past the buffer), matching the Swift `guard` bounds checks.
+     * whose declared HR/R-R bytes run past the buffer).
      */
     fun parse(data: ByteArray): Reading? {
         if (data.isEmpty()) return null

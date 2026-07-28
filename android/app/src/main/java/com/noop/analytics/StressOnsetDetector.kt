@@ -2,29 +2,23 @@ package com.noop.analytics
 
 /*
  * StressOnsetDetector.kt — the L3 closed-loop JITAI ("just-in-time adaptive intervention") detector.
- * Generalises the math currently inline in AppModel.evaluateStress() into an EDGE-triggered, motion-gated,
- * REPLAY-SAFE detector that decides — at the moment it matters — whether to offer a 60-s guided breathing
- * cue. PURE + DB-free, carrying its OWN de-dup state exactly like [SedentaryDetector.evaluate]: the caller
- * persists [Decision.nextState] and feeds it back, so a replayed window can't re-fire. No I/O / BLE here.
+ * An EDGE-triggered, motion-gated, REPLAY-SAFE detector that decides — at the moment it matters —
+ * whether to offer a 60-s guided breathing cue. PURE + DB-free, carrying its OWN de-dup state exactly
+ * like [SedentaryDetector.evaluate]: the caller persists [Decision.nextState] and feeds it back, so a
+ * replayed window can't re-fire. No I/O / BLE here.
  *
- * Faithful Kotlin mirror of StrandAnalytics/StressOnsetDetector.swift — keep the EMA baseline, the drop
- * threshold, the edge trigger, the exercise gate, and the rate-limit/quiet-hours suppressors byte-identical
- * to Swift (cross-platform parity is the contract, pinned by matching golden-vector tests).
- * See docs/superpowers/specs/2026-06-19-v5-haptic-biofeedback-design.md (L3).
- *
- * WHAT IT GENERALISES (from AppModel.evaluateStress): a rolling clean-R-R buffer → a SLOW RMSSD baseline
- * (the shipped 0.98/0.02 EMA) + a resting-HR band gate (55–100 bpm) + a `rmssd < baseline × 0.6` drop +
- * a once-per-15-min limiter + a single confirming buzz. What this engine ADDS, per spec:
+ * Math: a rolling clean-R-R buffer feeds a SLOW RMSSD baseline (0.98/0.02 EMA) gated by a resting-HR
+ * band (55–100 bpm), fires on a `rmssd < baseline × 0.6` drop, rate-limited to once per 15 min with a
+ * single confirming buzz. This engine adds on top:
  *   1. A FAST short-window RMSSD (the latest beats) vs the slow baseline.
  *   2. EDGE trigger: fire ONCE on the fresh crossing (was-above → now-below), not every tick.
- *   3. The EXERCISE GATE (the credibility line): suppress when HR is out of the resting band AND/OR recent
- *      motion says "metabolic, not stress". A brisk walk's HRV dip must NOT fire a "you're stressed" cue.
+ *   3. The EXERCISE GATE (the credibility line): suppress when HR is out of the resting band AND/OR
+ *      recent motion says "metabolic, not stress". A brisk walk's HRV dip must NOT fire a "stressed" cue.
  *   4. Rate-limit + quiet hours + master toggle, and never while a manual Breathe/L1/L2 session runs.
  *
  * HONEST / NON-CLINICAL: "stress" is an autonomic PROXY (HRV-down vs the user's OWN baseline), never a
- * diagnosis. The card the caller shows says "HRV dipped while you were still" — never "you are stressed".
- * On fire: a single confirming buzz + a passive in-app card; NEVER a push notification unless the user
- * opted into notifications (matches DaytimeStress's "passive suggestion, never a notification" stance).
+ * diagnosis. The card says "HRV dipped while you were still" — never "you are stressed". On fire: a
+ * single confirming buzz + a passive in-app card, matching DaytimeStress's "never a notification" stance.
  *
  * All `ts`/`nowSec` are wall-clock unix SECONDS. Outputs are APPROXIMATE, not medical advice.
  */
@@ -135,8 +129,8 @@ object StressOnsetDetector {
      *
      * The EXERCISE GATE suppresses when EITHER signal says metabolic: HR outside [55,100], OR recent motion
      * at/above [MOTION_GATE_G]. A missing HR is treated as out-of-band (can't confirm resting); missing
-     * motion alone does NOT gate (HR-band can carry it — gravity is offloaded and lags, spec Q3), so the
-     * resting-HR band is the real-time gate and motion is a secondary confirm when present.
+     * motion alone does NOT gate (gravity is offloaded and lags, so HR-band carries it), so the resting-HR
+     * band is the real-time gate and motion is a secondary confirm when present.
      */
     fun evaluate(
         rrBuffer: List<Int>,

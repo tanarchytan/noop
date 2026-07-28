@@ -6,25 +6,14 @@ import kotlin.math.sqrt
 
 // WeeklyDigest.kt — a deterministic, offline "week in review".
 //
-// Faithful Kotlin port of the Swift StrandAnalytics/WeeklyDigest.swift. Keep the two
-// in lockstep — cross-platform parity is required.
-//
-// Pure, deterministic, DB-free. Given the daily series for each tracked metric
-// (keyed by "yyyy-MM-dd"), it builds a Monday-anchored "this week" summary:
-//   • per-metric this-week stats (mean / median / min / max / SD / OLS slope),
-//   • week-over-week comparison (this week vs the immediately preceding Mon–Sun week),
-//   • a "vs baseline" delta (this-week mean vs the trailing [baselineWeeks] weeks),
-//   • Rest-score steadiness (SD of this week's Rest values; lower = steadier),
-//   • a strain-vs-recovery balance read, the biggest movers, and 1–2 plain-English
-//     focal points.
-//
-// Consumes plain Map<String, Double> day→value series so it stays decoupled from the
-// Room DailyMetric type (the UI extracts the metrics and hands them in). No AI required.
-//
-// Week math is timezone/locale-free: weekday is derived from the "yyyy-MM-dd" string
-// with a pure Sakamoto day-of-week, week windows are inclusive ISO-string ranges
-// (string comparison is chronological for ISO days), matching the day strings the
-// engine emits exactly.
+// Pure, deterministic, DB-free. Given daily series per metric (keyed "yyyy-MM-dd"), builds a
+// Monday-anchored "this week" summary: per-metric stats (mean / median / min / max / SD / OLS
+// slope), a week-over-week comparison (vs the preceding Mon-Sun week), a vs-baseline delta
+// (this week's mean vs the trailing [baselineWeeks] weeks), Rest-score steadiness (SD of Rest
+// values, lower = steadier), a strain-vs-recovery balance read, and 1-2 plain-English focal
+// points. Consumes plain Map<String, Double> series, decoupled from the Room DailyMetric type.
+// Week math is timezone/locale-free: weekday via Sakamoto's algorithm, week windows as
+// inclusive ISO-string ranges (string comparison is chronological for ISO dates).
 
 /** The five headline metrics a weekly digest reports on. */
 enum class WeeklyMetric(val key: String) {
@@ -58,8 +47,8 @@ enum class WeeklyMetric(val key: String) {
 
     /**
      * A coarse "typical day-to-day range" used to normalise week-over-week deltas so
-     * movers on different scales are rankable against each other. Deterministic constants
-     * (not personal baselines), byte-identical to Swift.
+     * movers on different scales are rankable against each other. Deterministic constants,
+     * not personal baselines.
      */
     val typicalSpread: Double
         get() = when (this) {
@@ -71,7 +60,7 @@ enum class WeeklyMetric(val key: String) {
         }
 }
 
-/** Summary statistics for one slice of a daily series. Mirrors Swift SeriesStat. */
+/** Summary statistics for one slice of a daily series. */
 data class SeriesStat(
     val mean: Double,
     val median: Double,
@@ -86,7 +75,7 @@ data class SeriesStat(
     }
 }
 
-/** The comparison of a `current` period against a `previous` one. Mirrors Swift PeriodComparison. */
+/** The comparison of a `current` period against a `previous` one. */
 data class PeriodComparison(
     val current: SeriesStat,
     val previous: SeriesStat,
@@ -129,11 +118,9 @@ data class WeeklyMetricSummary(
         }
 
     /**
-     * True when the week-over-week comparison rests on a sparse side: both weeks carry at
-     * least one reading, but either has fewer than [WeeklyDigestEngine.MIN_DAYS_FOR_FOCUS]
-     * days. A rough comparison still shows its raw arrow + %, but the UI shouldn't dress it
-     * in a confident good/bad verdict — a 43% "drop" off 2 days isn't a trend (the #463
-     * chips-vs-summary contradiction). Mirrors Swift `isRoughComparison`.
+     * True when the week-over-week comparison is sparse: both weeks have a reading, but
+     * either has fewer than [WeeklyDigestEngine.MIN_DAYS_FOR_FOCUS] days. Still shown with
+     * its raw arrow + %, but not dressed as a confident good/bad verdict.
      */
     val isRoughComparison: Boolean
         get() {
@@ -149,7 +136,7 @@ data class WeeklyMetricSummary(
 enum class BalanceRead {
     OVERREACHING, BALANCED, UNDERLOADED, INSUFFICIENT;
 
-    /** Plain-English line for the UI. Byte-identical to Swift. */
+    /** Plain-English line for the UI. */
     val sentence: String
         get() = when (this) {
             OVERREACHING ->
@@ -203,11 +190,10 @@ object WeeklyDigestEngine {
      * Build the weekly digest anchored on the Monday of the week containing [anchorDay]
      * ("yyyy-MM-dd", typically today). A non-parseable string yields an all-empty digest.
      *
-     * [effortDisplayFactor] is a multiplier applied to EFFORT averages (and the pts
-     * fallback magnitude) in the rendered focal-point sentences ONLY, so a user on the
-     * 0–21 Effort scale (#268) never reads a stored 0–100 mean in prose. Percent changes
-     * are scale-invariant and stay untouched. Defaults to 1.0 (stored scale) so existing
-     * callers are byte-identical. Display-only: no stat, delta or threshold changes.
+     * [effortDisplayFactor] rescales EFFORT averages (and the pts fallback magnitude) in
+     * the rendered focal-point sentences ONLY, so a user on a non-0-100 Effort scale never
+     * reads a stored 0–100 mean in prose. Percent changes are scale-invariant and untouched.
+     * Defaults to 1.0 (stored scale); display-only, no stat/delta/threshold changes.
      */
     fun build(
         byMetric: Map<WeeklyMetric, Map<String, Double>>,
@@ -254,7 +240,7 @@ object WeeklyDigestEngine {
         )
     }
 
-    // MARK: - Single-slice statistics (ported from ComparisonEngine.swift)
+    // MARK: - Single-slice statistics
 
     /** Summarise a slice into a SeriesStat. Slope is OLS vs the 0-based index. EMPTY when empty. */
     fun stat(values: List<Double>): SeriesStat {
@@ -340,13 +326,9 @@ object WeeklyDigestEngine {
             lines.add(moverSentence(movers[1], effortDisplayFactor))
         }
 
-        // Nothing cleared the mover bar. Distinguish three very different reasons:
-        //   • a SPARSE CURRENT week (too few days to call a week-over-week trend — saying
-        //     "nothing moved" there contradicts the per-metric chips, the #463 report),
-        //   • a SPARSE PREVIOUS week (typical new user in week 2): movers are gated on
-        //     previous.n ≥ MIN_DAYS_FOR_FOCUS, so nothing can surface even when the chips
-        //     show big raw %s off last week's 1–2 days — the same contradiction, mirrored,
-        //   • a genuinely steady full week.
+        // Nothing cleared the mover bar. Three causes: a SPARSE CURRENT week (too few days
+        // for a trend), a SPARSE PREVIOUS week (movers need previous.n >= MIN_DAYS_FOR_FOCUS,
+        // so a new user's raw chip % has no mover behind it), or a genuinely steady week.
         if (lines.isEmpty()) {
             val currentDays = summaries.maxOfOrNull { it.weekOverWeek.current.n } ?: 0
             val prevDays = summaries.maxOfOrNull { it.weekOverWeek.previous.n } ?: 0
@@ -373,7 +355,7 @@ object WeeklyDigestEngine {
     }
 
     /**
-     * Render one mover as a plain-English sentence with good/bad framing. Mirrors Swift.
+     * Render one mover as a plain-English sentence with good/bad framing.
      * [effortDisplayFactor] rescales the EFFORT averages (and its pts fallback) for
      * display only — % is scale-invariant.
      */

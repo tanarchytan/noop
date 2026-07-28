@@ -9,18 +9,14 @@ import androidx.security.crypto.MasterKey
 /**
  * Secure, at-rest-encrypted storage for an Oura ring's 16-byte application install key.
  *
- * Backed by Jetpack Security [EncryptedSharedPreferences] - values are encrypted with a key held in
- * the Android Keystore (hardware-backed where available), so the install key is never written to disk
- * in the clear. This is the Android counterpart to storing the key in the macOS Keychain, and the same
- * pattern the AI Coach key uses ([com.noop.ai.AiKeyStore]).
+ * Backed by Jetpack Security [EncryptedSharedPreferences], encrypted with a key held in the Android
+ * Keystore (hardware-backed where available) - the install key is never written to disk in the clear.
+ * Same pattern as the AI Coach key ([com.noop.ai.AiKeyStore]).
  *
- * The install key is the 16-byte application-layer secret the ring's challenge handshake authenticates
- * against (docs/OURA_PROTOCOL.md s3). It is injected into [OuraLiveSource] via its `authKey` closure;
- * this store NEVER hardcodes a key and only ever holds a key the app provisioned. When no key is stored
- * for a ring, [load] returns null and [OuraLiveSource] drives its honest needs-pairing path (no faked
- * data) rather than authenticating.
- *
- * Keys are stored per ring (keyed by the registry device id), so a future second ring keeps its own.
+ * Injected into [OuraLiveSource] via its `authKey` closure; never hardcodes a key, only holds one the
+ * app provisioned. [load] returns null when none is stored, driving [OuraLiveSource]'s honest
+ * needs-pairing path instead of a faked reading. Keyed per ring (registry device id), so a second ring
+ * keeps its own key.
  */
 object OuraInstallKeyStore {
 
@@ -31,7 +27,7 @@ object OuraInstallKeyStore {
      *  file as the key so the two move together when a ring is forgotten. */
     private const val ADOPT_PREFIX = "adopt_intent_"
 
-    /** The exact byte length of an Oura application install key (s3). A stored value of any other length
+    /** The exact byte length of an Oura application install key. A stored value of any other length
      *  is treated as absent so a corrupt entry can never be sent as a malformed proof input. */
     const val KEY_LENGTH = 16
 
@@ -43,7 +39,7 @@ object OuraInstallKeyStore {
 
     /**
      * Open (or lazily create) the encrypted preferences file. The [MasterKey] uses the AES256_GCM key
-     * scheme and lives in the Android Keystore (mirrors [com.noop.ai.AiKeyStore]).
+     * scheme and lives in the Android Keystore.
      */
     private fun prefs(ctx: Context): SharedPreferences {
         val masterKey = MasterKey.Builder(ctx.applicationContext)
@@ -99,14 +95,9 @@ object OuraInstallKeyStore {
 
     /**
      * Record that the user explicitly consented to ADOPT [deviceId] (the wizard's destructive
-     * factory-reset-and-adopt path, after its irreversible-consent gate). This is the ONLY signal that
-     * permits [OuraLiveSource] to send the dangerous `0x24` install opcode: the live source reads it via
-     * [consumePendingAdopt] when it builds its [com.noop.oura.OuraDriver] and passes it straight to the
-     * driver's `allowKeyInstall` gate. Default-absent means the Advanced-key and
-     * every read-only connect NEVER provision a key.
-     *
-     * Stored alongside the per-ring install key (encrypted at rest); [pass true] to arm, false is the
-     * same as never set (the Advanced path explicitly does NOT arm it).
+     * factory-reset-and-adopt path). The ONLY signal permitting [OuraLiveSource] to send the dangerous
+     * `0x24` install opcode; default-absent means the Advanced-key path and every read-only connect
+     * never provision a key. Stored alongside the per-ring key (encrypted at rest); `intent` true arms it.
      */
     fun setPendingAdopt(ctx: Context, deviceId: String, intent: Boolean) {
         if (intent) {
@@ -117,10 +108,9 @@ object OuraInstallKeyStore {
     }
 
     /**
-     * Read AND clear the one-shot adopt-intent marker for [deviceId]: returns true exactly once after
-     * [setPendingAdopt] armed it, then false on every later read. One-shot by design so a single
-     * consent provisions ONE install attempt; a later read-only reconnect cannot re-fire the dangerous
-     * `0x24` write. [OuraLiveSource] consumes it when constructing its driver.
+     * Read AND clear the one-shot adopt-intent marker for [deviceId]: true exactly once after
+     * [setPendingAdopt] armed it, then false on every later read. One-shot so a single consent
+     * provisions ONE install attempt; a later reconnect cannot re-fire the dangerous `0x24` write.
      */
     fun consumePendingAdopt(ctx: Context, deviceId: String): Boolean {
         val p = prefs(ctx)

@@ -1,16 +1,13 @@
 package com.noop.analytics
 
-// DisplayTrace.kt - Kotlin twin of DisplayTrace.swift. Pure values + line formatters for the Display &
-// Performance test mode: the device-metrics summary, the rolling frame-time / hitch summary, and the
-// memory high-water line, plus the tagged-tail parsers for the deviceMetricsNow / frameSummaryNow ids.
-// No state, no IO, no em-dashes. Byte-aligned with the Swift line shapes so a shared report reads
-// identically on either platform.
+// DisplayTrace.kt - pure values + line formatters for the Display & Performance test mode: the
+// device-metrics summary, the rolling frame-time / hitch summary, and the memory high-water line,
+// plus the tagged-tail parsers for the deviceMetricsNow / frameSummaryNow ids. No state, no IO.
 
 /**
- * A platform-resolved snapshot of the display environment (Kotlin twin of the Swift DisplayMetrics).
- * Every field is already read by the caller (the Android Configuration / window insets), so this type is
- * pure data and the formatter below has no platform dependency. Nullable fields are for metrics a platform
- * cannot offer; the formatter prints "n/a" for a null, never fabricating a value.
+ * A snapshot of the display environment, already read by the caller (Android Configuration / window
+ * insets) so this type is pure data. Nullable fields are metrics a platform cannot offer; the
+ * formatter prints "n/a" for a null, never fabricating a value.
  */
 data class DisplayMetrics(
     val horizontalSizeClass: String?,
@@ -28,15 +25,14 @@ data class DisplayMetrics(
 )
 
 /**
- * A platform-resolved snapshot of the on-device DATA VOLUME (CAPTURE-D / #797), the Kotlin twin of the
- * Swift DataVolume: the read-set that backs the screens, so an import-driven-lag report shows what it is
- * rendering over, not just frame stats. Every count is already read from the STORE by the caller (never via
- * the reactive view-model caches), so this type is pure data and the formatter has no store dependency.
+ * A snapshot of the on-device DATA VOLUME: the read-set that backs the screens, so an
+ * import-driven-lag report shows what it renders over, not just frame stats. Counts are read
+ * from the STORE directly (never the view-model caches), so this type stays store-independent.
  */
 data class DataVolume(
     /** Total raw stream rows in the store (HR + RR + events + the biometric streams), the dominant cost. */
     val dbRows: Int,
-    /** Number of distinct days that carry IMPORTED daily metrics (the #799 import surface). */
+    /** Number of distinct days that carry imported daily metrics. */
     val importedDays: Int,
     /** Total detected/recorded workout rows. */
     val workouts: Int,
@@ -46,19 +42,18 @@ data class DataVolume(
 
 object DisplayTrace {
 
-    /** The data-volume line (CAPTURE-D / #797): one upfront DISPLAY summary of the store's read-set, so a
-     *  "feels laggy after import" report shows HOW MUCH data the screens render over (db rows, imported
-     *  days, workouts, last render's row count), not only frame timings. A null lastRenderRows (no render
-     *  measured yet) prints "n/a" rather than fabricating a 0. Byte-identical to the Swift formatter. */
+    /** The data-volume line: one upfront summary of the store's read-set, so a "feels laggy after
+     *  import" report shows how much data the screens render over (db rows, imported days, workouts,
+     *  last render's row count). A null lastRenderRows prints "n/a" rather than fabricating a 0. */
     fun dataVolumeLine(v: DataVolume): String {
         val last = v.lastRenderRows?.toString() ?: "n/a"
         return "dataVolume dbRows=${v.dbRows} importedDays=${v.importedDays} " +
             "workouts=${v.workouts} lastRenderRows=$last"
     }
 
-    /** The device-metrics line: one upfront DISPLAY summary of the resolved DisplayMetrics, so a "screen
-     *  looks wrong" report carries the exact layout environment. Whole-point rounding; a null size class /
-     *  Dynamic Type prints "n/a". Mirrors the Swift formatter exactly. */
+    /** The device-metrics line: one upfront summary of the resolved DisplayMetrics, so a "screen looks
+     *  wrong" report carries the exact layout environment. Whole-point rounding; a null size class or
+     *  Dynamic Type prints "n/a". */
     fun deviceMetricsLine(m: DisplayMetrics): String {
         val h = m.horizontalSizeClass ?: "n/a"
         val v = m.verticalSizeClass ?: "n/a"
@@ -70,29 +65,27 @@ object DisplayTrace {
             "dynamicType=$dt orientation=${m.orientation} theme=${m.theme}"
     }
 
-    /** The rolling frame-time / hitch summary line: a periodic digest (NOT a per-frame line) of the frame
-     *  monitor's last window. Mirrors the Swift formatter. */
+    /** The rolling frame-time / hitch summary line: a periodic digest (not a per-frame line) of the
+     *  frame monitor's last window. */
     fun frameSummaryLine(
         frames: Int, meanMs: Double, p95Ms: Double, hitches: Int, worstMs: Double, hitchThresholdMs: Double,
     ): String =
         "frameSummary frames=$frames mean=${ms(meanMs)}ms p95=${ms(p95Ms)}ms " +
             "hitches=$hitches worst=${ms(worstMs)}ms threshold=${ms(hitchThresholdMs)}ms"
 
-    /** The memory high-water line: the peak resident footprint (MB) seen while the mode was active.
-     *  Mirrors the Swift formatter. */
+    /** The memory high-water line: the peak resident footprint (MB) seen while the mode was active. */
     fun memoryHighWaterLine(peakMB: Double): String = "memoryHighWater peak=${ms(peakMB)}MB"
 
-    /** Round a point value to a whole number; negatives clamp to 0 (an inset is never negative). Mirrors
-     *  the Swift helper (Int(rounded())). */
+    /** Round a point value to a whole number; negatives clamp to 0 (an inset is never negative). */
     internal fun pt(v: Double): String = maxOf(0.0, v).let { Math.round(it).toInt().toString() }
 
-    /** Backing scale to one decimal; "?" when the caller could not read it (0). Mirrors the Swift helper. */
+    /** Backing scale to one decimal; "?" when the caller could not read it (0). */
     internal fun scaleLabel(v: Double): String = if (v > 0) oneDecimal(v) else "?"
 
-    /** Millisecond / MB value to one decimal, clamped at 0, matching the Swift `%.1f`. */
+    /** Millisecond / MB value to one decimal, clamped at 0. */
     internal fun ms(v: Double): String = oneDecimal(maxOf(0.0, v))
 
-    /** Locale-stable one-decimal format so the line reads identically everywhere (the Swift `%.1f` is
-     *  locale-independent; String.format with Locale.US matches it). */
+    /** Locale-stable one-decimal format so the line reads identically everywhere (Locale.US avoids a
+     *  device's default locale changing the decimal separator). */
     private fun oneDecimal(v: Double): String = String.format(java.util.Locale.US, "%.1f", v)
 }

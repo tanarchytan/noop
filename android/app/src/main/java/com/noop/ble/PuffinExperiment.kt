@@ -6,15 +6,14 @@ import android.content.SharedPreferences
 /**
  * Opt-in switch for the EXPERIMENTAL WHOOP 5.0/MG ("puffin") protocol probes.
  *
- * Direct port of the macOS `PuffinExperiment` (Strand/BLE/PuffinExperiment.swift). Live HR on a
- * 5/MG strap already works over the standard profile after CLIENT_HELLO. These probes go further —
- * sending puffin-framed commands (e.g. asking the strap to start its realtime stream) to learn what
- * a real 5/MG strap responds to. They are guesses, so they are OFF by default and only ever written
- * to the puffin command characteristic (fd4b0002). A 5/MG owner can flip this on under Settings →
- * Experimental to help map the protocol; everyone else is unaffected. It never touches WHOOP 4.0.
+ * Live HR on a 5/MG strap already works over the standard profile after CLIENT_HELLO. These probes go
+ * further — sending puffin-framed commands (e.g. asking the strap to start its realtime stream) to
+ * learn what a real 5/MG strap responds to. They are guesses, so they are off by default and only ever
+ * written to the puffin command characteristic (fd4b0002). A 5/MG owner can flip this on under
+ * Settings → Experimental to help map the protocol; everyone else is unaffected. It never touches
+ * WHOOP 4.0.
  *
- * The macOS app stored this in `UserDefaults` under the key `noopPuffinExperiments`; the Android
- * equivalent is [SharedPreferences]. The same key name is reused for parity.
+ * Backed by [SharedPreferences] under the key [KEY].
  */
 class PuffinExperiment(private val prefs: SharedPreferences) {
 
@@ -24,38 +23,35 @@ class PuffinExperiment(private val prefs: SharedPreferences) {
         set(v) = prefs.edit().putBoolean(KEY, v).apply()
 
     /** True if the user opted in to recording raw 5/MG backfill frames to a shareable JSONL file
-     *  (default false). SEPARATE from [isEnabled]: probes SEND commands at the strap; capture only
-     *  RECORDS what arrives — different risk profiles, so different switches. (#78 fork) */
+     *  (default false). Separate from [isEnabled]: probes send commands at the strap, capture only
+     *  records what arrives — different risk profiles, different switches. */
     var isCaptureEnabled: Boolean
         get() = prefs.getBoolean(KEY_CAPTURE, false)
         set(v) = prefs.edit().putBoolean(KEY_CAPTURE, v).apply()
 
-    /** True if the user opted in to the WHOOP 5/MG "R22" deep-data unlock — the one probe that WRITES
-     *  a persistent feature flag to the strap (the `enable_r22_*` SET_CONFIG sequence). Kept distinct
-     *  from [isEnabled] because it changes strap state; reversible, default false. Mirrors the macOS
-     *  `PuffinExperiment.deepDataKey`. Driven only from `WhoopBleClient.enableWhoop5DeepData()`. (#174) */
+    /** True if the user opted in to the WHOOP 5/MG "R22" deep-data unlock — the one probe that writes a
+     *  persistent feature flag to the strap (`enable_r22_*` SET_CONFIG sequence). Distinct from [isEnabled]
+     *  since it changes strap state (reversible, default false); driven only from `enableWhoop5DeepData()`. */
     var isDeepDataEnabled: Boolean
         get() = prefs.getBoolean(KEY_DEEP_DATA, false)
         set(v) = prefs.edit().putBoolean(KEY_DEEP_DATA, v).apply()
 
-    /** HR-from-PPG sub-lag interpolation always runs: the v26 optical-PPG gap-fill HR estimator (now
-     *  whoop-rs's adjudicated sub-lag estimator) refines its integer autocorrelation lag with a parabolic
-     *  interpolation of the ACF peak, removing the ~+-8 bpm lag-quantization near a high HR. It only ever
-     *  fills seconds the strap never reported an HR for (NEVER overrides a WHOOP-stored HR). Threaded from
-     *  the app-layer call site (Backfiller / archive replay / capture import); noop-tan hardwires it on. */
+    /** HR-from-PPG sub-lag interpolation always runs: refines the v26 optical-PPG HR estimator's integer
+     *  autocorrelation lag with a parabolic interpolation of the ACF peak, removing ~+-8 bpm lag-quantization
+     *  near a high HR. Only fills seconds the strap never reported an HR for; never overrides a stored HR. */
     val ppgHrSubLagInterp: Boolean get() = true
 
     companion object {
         /** Persisted preferences file. */
         private const val PREFS = "noop_experiments"
 
-        /** Shared key name with the macOS build (`PuffinExperiment.defaultsKey`). */
+        /** Preferences key for [isEnabled]. */
         const val KEY = "noopPuffinExperiments"
 
         /** 5/MG raw backfill capture (research aid for the puffin biometric decode). */
         const val KEY_CAPTURE = "noopWhoop5Capture"
 
-        /** 5/MG R22 deep-data unlock opt-in (mirrors macOS `PuffinExperiment.deepDataKey`). */
+        /** 5/MG R22 deep-data unlock opt-in. */
         const val KEY_DEEP_DATA = "noopWhoop5DeepData"
 
         fun from(context: Context): PuffinExperiment =

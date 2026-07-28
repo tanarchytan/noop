@@ -5,18 +5,16 @@ import com.noop.analytics.ImuFeatureExtractor
 import com.noop.protocol.Whoop5RawImu
 
 /**
- * Pure predicates + inline-IMU summary for the durable WHOOP 5.0/MG **high-rate deep-buffer** research
- * log (#423) — the large type-0x2F (R22) packets that carry tens-of-Hz sensor data (motion + optical)
- * rather than the 1 Hz historical rollup NOOP already decodes. Kotlin twin of the Swift
- * `PuffinDeepBufferLog` (its pure, unit-testable core); the file I/O + capture-toggle gating live in
- * [WhoopBleClient.writeWhoop5DeepBufferIfBig], mirroring the existing `whoop5-events.jsonl` writer.
+ * Pure predicates + inline-IMU summary for the durable WHOOP 5.0/MG high-rate deep-buffer research
+ * log — the large type-0x2F (R22) packets that carry tens-of-Hz sensor data (motion + optical) rather
+ * than the 1 Hz historical rollup NOOP already decodes. File I/O + capture-toggle gating live in
+ * [WhoopBleClient.writeWhoop5DeepBufferIfBig], alongside the existing `whoop5-events.jsonl` writer.
  *
- * On-strap probing (#423) established that the 5/MG has no live raw-IMU stream, but it DOES bank
- * high-rate motion and ships it inside big type-0x2F buffers during the connect-time offload burst —
- * 124 B (~1 Hz record), 1244 B and 2140 B (~32 and ~59 sub-records per timestamped second). NOOP's
- * historical decoder pulls the 1 Hz gravity vector out and DISCARDS the high-rate remainder. Keeping the
- * big (>= [minBufferBytes]) type-0x2F buffers raw, in their own file, lets a byte-perfect decoder be
- * reversed offline from many (raw buffer, wall-clock) pairs across days of ordinary wear.
+ * The 5/MG has no live raw-IMU stream, but banks high-rate motion inside big type-0x2F buffers during
+ * the connect-time offload burst — 124 B (~1 Hz record), 1244 B and 2140 B (~32 and ~59 sub-records per
+ * timestamped second). NOOP's historical decoder pulls the 1 Hz gravity vector out and discards the
+ * high-rate remainder; keeping the big (>= [minBufferBytes]) buffers raw lets a decoder be reversed
+ * offline from many (raw buffer, wall-clock) pairs across days of ordinary wear.
  */
 object PuffinDeepBufferLog {
 
@@ -45,9 +43,8 @@ object PuffinDeepBufferLog {
     }
 
     /** Decoded-IMU field for the JSONL line: `,"imu":{...features...}` when [frame] is the 1244-B 6-axis
-     *  IMU buffer, else `""` (the 2140-B optical buffer and everything else). Pure and non-throwing — a
-     *  decode miss just omits the field, so a diagnostics-only summary can never disturb the capture path.
-     *  The first CALLER of [Whoop5RawImu.decode] outside its own tests. */
+     *  IMU buffer, else `""` (2140-B optical buffer and everything else). Pure and non-throwing — a decode
+     *  miss omits the field, so a diagnostics-only summary never disturbs the capture path. */
     fun decodedImuField(frame: ByteArray): String {
         if (frame.size != Whoop5RawImu.bufferLength) return ""
         val decoded = Whoop5RawImu.decode(frame) ?: return ""
@@ -56,12 +53,9 @@ object PuffinDeepBufferLog {
         return ",\"imu\":$json"
     }
 
-    /** Canonical JSON for [ImuActivityFeatures] — same keys, same declaration order as the Swift `Codable`
-     *  output; `cadenceHz` is OMITTED when null (Swift's synthesized `encodeIfPresent`). Returns null if any
-     *  value is non-finite (Swift's JSONEncoder throws on non-conforming floats → the field is dropped),
-     *  matching parity. VALUE-parity, not byte-text-parity: a near-zero Double serializes as e.g. `5.0E-4`
-     *  here vs `0.0005` from Swift's JSONEncoder — both valid JSON that parse to the identical number (this
-     *  is a research JSONL the analysis tool parses, not a byte-stable stored value crossing `.noopbak`). */
+    /** Canonical JSON for [ImuActivityFeatures]. `cadenceHz` is omitted from the object when null. Returns
+     *  null if any value is non-finite, so the caller drops the field rather than emit invalid JSON. This
+     *  is a research JSONL for offline analysis, not a byte-stable value crossing `.noopbak`. */
     private fun encodeFeatures(f: ImuActivityFeatures): String? {
         val nums = listOfNotNull(f.accelEnergyG, f.gyroEnergyDps, f.jerkRms, f.cadenceHz, f.cadenceStrength)
         if (nums.any { !it.isFinite() }) return null

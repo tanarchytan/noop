@@ -44,36 +44,16 @@ import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 
 /**
- * EXPERIMENTAL, ISOLATED live-BLE source for the Oura ring (gen3 / gen4 / gen5).
+ * EXPERIMENTAL, ISOLATED live-BLE source for the Oura ring (gen3/4/5). Speaks the ring's own protocol to
+ * authenticate with the 16-byte app key, enable daytime-HR, and decode its raw HR/IBI/RMSSD/SpO2/skin-temp/
+ * sleep-phase signals. NOOP computes its own Charge/Rest from those raw signals; the ring's own encrypted
+ * scores are never read or surfaced.
  *
- * Faithful Kotlin twin of Strand/BLE/OuraLiveSource.swift. This replaced an earlier honest dead-end
- * probe: where that probe only proved "there's no OPEN stream", this transport speaks the
- * ring's OWN documented protocol (clean-room, see docs/OURA_PROTOCOL.md) to authenticate with the
- * 16-byte application key, enable the daytime-HR feature, and decode the ring's RAW signals
- * (HR / IBI / RMSSD / SpO2 / skin-temp / sleep-phase tags). NOOP computes its OWN Charge/Rest from
- * those raw signals; the ring's encrypted readiness/sleep SCORES are never read or surfaced
- * (honest-data invariant).
- *
- * All BLE specifics live here; all protocol specifics live in the JVM-pure [OuraDriver] (which holds
- * NO BluetoothGatt). This class owns the transport and feeds the driver only bytes + transition events.
- *
- * WHOOP-FIRST ISOLATION: this class runs its OWN scan + [BluetoothGatt] and never imports, calls, or
- * shares state with the WHOOP BLE client. The
- * WHOOP path cannot regress because of anything here. The only shared surfaces are injected closures:
- *   - [liveSink]  pushes the ring's live HR (bpm) + R-R (ms) into whatever the UI observes (the
- *                 [SourceCoordinator] wires it to the same live state a WHOOP/strap reading uses).
- *   - [persist]   wired by the app to `repository.insert(StreamBatch, deviceId)` for the active ring.
- *   - [log]       the SAME exportable strap log (issue #421); every line is prefixed "Oura: ".
- *   - [onBattery] surfaces the ring's battery percent the same place a strap's does.
- *
- * HONEST FALLBACK: when no install key is available ([authKey] returns null) or the
- * ring reports it is in factory reset, the ring needs a pairing/provisioning handshake the live flow
- * does not silently perform. This source then publishes an HONEST message via [needsPairing] and stays
- * disconnected from data - it NEVER fabricates a reading and never displays Oura's own scores.
- *
- * Android runtime-permission notes (same contract as the other sources): the caller must hold
- * BLUETOOTH_SCAN + BLUETOOTH_CONNECT before [scan]/[connect]. Every android.bluetooth call is
- * @SuppressLint("MissingPermission") - the caller owns the grant.
+ * Runs its own scan + [BluetoothGatt], fully isolated from the WHOOP BLE client. Shared surfaces are the
+ * injected [liveSink] (live HR/R-R), [persist] (batch insert), [log] (exportable strap log, "Oura: "
+ * prefixed) and [onBattery]. With no install key or a factory-reset ring, publishes an honest
+ * [needsPairing] message rather than fabricating data. Caller must hold BLUETOOTH_SCAN +
+ * BLUETOOTH_CONNECT before [scan]/[connect].
  */
 @SuppressLint("MissingPermission")
 class OuraLiveSource(
@@ -92,26 +72,20 @@ class OuraLiveSource(
     private val authKey: () -> IntArray?,
     /** Persist a batch under [deviceId] - wired to `repository.insert`. Mirrors the other sources. */
     private val persist: (StreamBatch, String) -> Unit = { _, _ -> },
-    /** Diagnostic sink for the connect/auth/stream lifecycle - the SAME exportable strap log (#421).
-     *  Every line is prefixed "Oura: ". Statuses / UUIDs / counts only, NEVER a device address. Default
-     *  no-op keeps existing call sites compiling and tests silent. */
+    /** Diagnostic sink for the connect/auth/stream lifecycle - the same exportable strap log. Every line
+     *  is prefixed "Oura: ". Statuses/UUIDs/counts only, never a device address. Default no-op keeps
+     *  existing call sites compiling and tests silent. */
     private val log: (String) -> Unit = {},
     /** Fired with the ring's battery percent (0-100) when decoded. */
     private val onBattery: (Int) -> Unit = {},
-    /**
-     * Source of cryptographically-random bytes for a freshly-generated install key (adopt flow step 1).
-     * Injected so a test can pin a deterministic key; production defaults to [java.security.SecureRandom]
-     * (the platform CSPRNG) so a forgotten injection is still secure, never a predictable key. Returns null
-     * on RNG failure (then provisioning stays honest rather than installing a weak key).
-     */
+    /** Source of cryptographically-random bytes for a fresh install key. Injected so a test can pin a
+     *  deterministic key; production defaults to the platform CSPRNG so a forgotten injection is still
+     *  secure. Returns null on RNG failure, so provisioning stays honest rather than install a weak key. */
     private val randomKey: () -> IntArray? = { secureRandom16() },
 ) : LiveHrSource {
 
-    /**
-     * The live outcome of an in-flight adopt (the wizard observes this to leave its Adopting step). Kotlin
-     * twin of Swift's `OuraLiveSource.AdoptPhase`. Reset to [Idle] on every connect/stop/disconnect so a
-     * stale outcome never drives a transition.
-     */
+    /** The live outcome of an in-flight adopt (the wizard observes this to leave its Adopting step). Reset
+     *  to [Idle] on every connect/stop/disconnect so a stale outcome never drives a transition. */
     enum class AdoptPhase {
         /** No adopt in flight (the default; a read-only connect never leaves this until streaming). */
         Idle,
@@ -126,9 +100,9 @@ class OuraLiveSource(
         Failed,
     }
 
-    /** An Oura ring seen during a scan (UI affordance). [detectedGen] is a best-effort generation guess
-     *  from the advertised name (null when the name carries no generation marker); the wizard confirms it
-     *  via the model the user picks. Mirrors the Swift DiscoveredRing.detectedGen. */
+    /** An Oura ring seen during a scan (UI affordance). [detectedGen] is a best-effort guess from the
+     *  advertised name (null when it carries no generation marker); the wizard confirms it via the model
+     *  the user picks. */
     data class DiscoveredRing(
         val address: String,
         val name: String,
@@ -162,30 +136,21 @@ class OuraLiveSource(
 
     // MARK: - Adopt consent (gates the DANGEROUS post-factory-reset key install)
 
-    /**
-     * EXPLICIT user-granted adopt consent for the NEXT connection. Default FALSE. The dangerous `0x24`
-     * install opcode may be sent ONLY when this is true (it is wired straight to the per-connection driver's
-     * `allowKeyInstall` gate). The Advanced-key path and every read-only connect leave it false, so they
-     * NEVER provision a key (they stay honest via [announceNeedsPairing] when no valid key authenticates).
-     */
+    /** Explicit user-granted adopt consent for the next connection. Default false. The dangerous `0x24`
+     *  install opcode is sent only when this is true (wired to the per-connection driver's
+     *  `allowKeyInstall` gate); every read-only connect leaves it false and stays honest via
+     *  [announceNeedsPairing]. */
     private var adoptIntent: Boolean = false
 
-    /**
-     * The freshly-generated install key, held in memory ONLY between writing the `0x24` install and the
-     * `0x25` ack. It is persisted to the keystore ONLY once the ring acks OK (see [handleKeyInstallAck]), so
-     * a failed/absent ack never leaves a wrongly-trusted key the next session would authenticate against.
-     * The key is never logged. Mirrors Swift's `pendingInstallKey`.
-     */
+    /** The freshly-generated install key, held in memory only between writing the `0x24` install and the
+     *  `0x25` ack. Persisted to the keystore only once the ring acks OK (see [handleKeyInstallAck]), so a
+     *  failed/absent ack never leaves a wrongly-trusted key. Never logged. */
     private var pendingInstallKey: IntArray? = null
 
-    /**
-     * Grant (or revoke) adopt consent for the NEXT connection. The wizard's destructive adopt path calls
-     * this with true AFTER its irreversible-consent gate AND its second "Take over" confirm, BEFORE
-     * connecting, so the fresh per-connection driver is built with `allowKeyInstall == true` and the
-     * dangerous install can run for exactly that session. It takes effect on the next connect (the driver
-     * is re-created per connection); a connection already mid-flight is not retro-granted. Default-false
-     * everywhere else keeps the dangerous opcode unreachable. Kotlin twin of Swift's `setAdoptIntent`.
-     */
+    /** Grant (or revoke) adopt consent for the next connection. The wizard's destructive adopt path calls
+     *  this with true after its irreversible-consent gate and second "Take over" confirm, before connecting,
+     *  so the fresh per-connection driver is built with `allowKeyInstall == true` for exactly that session -
+     *  a connection already mid-flight is not retro-granted. Default-false elsewhere keeps it unreachable. */
     fun setAdoptIntent(intent: Boolean) {
         adoptIntent = intent
     }
@@ -210,12 +175,9 @@ class OuraLiveSource(
     private var retried133 = false
     /** Logs the FIRST live-HR sample of a connection only; reset on stop/disconnect. */
     private var loggedFirstHr = false
-    /**
-     * True once the driver first reached Streaming this connection, so the one-shot streaming work
-     * (adoptPhase, re-engage timer, history-fetch kick-off, battery request) runs exactly once and is NOT
-     * re-run when the driver returns to Streaming after each history-fetch pass completes. Reset on
-     * stop/disconnect. Kotlin twin of Swift's `reachedStreaming`.
-     */
+    /** True once the driver first reached Streaming this connection, so the one-shot streaming work
+     *  (adoptPhase, re-engage timer, history-fetch kick-off, battery request) runs exactly once and is not
+     *  re-run when the driver returns to Streaming after each history-fetch pass. Reset on stop/disconnect. */
     private var reachedStreaming = false
     /** Logs the FIRST skin-temp sample DECODED THIS SESSION only (never every record); reset on
      *  stop/disconnect. These are last-night values from the history fetch, not live pushes, but we still
@@ -223,54 +185,46 @@ class OuraLiveSource(
     private var loggedFirstTemp = false
     /** Logs the FIRST SpO2 sample decoded this session only. Twin of [loggedFirstTemp]. */
     private var loggedFirstSpo2 = false
-    /** Logs the FIRST ring-time -> UTC anchor of this session only (s5.5); reset on stop/disconnect. */
+    /** Logs the FIRST ring-time -> UTC anchor of this session only; reset on stop/disconnect. */
     private var loggedAnchor = false
-    /** Tier-B (UNVERIFIED) kinds ("activity" / "real_steps" / "sleep_summary" / "spo2_smoothed") already
-     *  logged this session, so a repeated tag logs once per KIND, not once per record. INVESTIGATION
-     *  ONLY (see the `allowTierB = true` comment at driver construction) - the log is how we collect raw
-     *  captures to validate these layouts; nothing here ever persists or scores. Reset on stop/disconnect. */
+    /** Tier-B (unverified) kinds ("activity"/"real_steps"/"sleep_summary"/"spo2_smoothed") already logged
+     *  this session, so a repeated tag logs once per kind, not once per record. Investigation only - the
+     *  log validates these layouts; nothing here ever persists or scores. Reset on stop/disconnect. */
     private val loggedTierBKinds = mutableSetOf<String>()
 
-    // MARK: - Auto-reconnect (#912)
+    // MARK: - Auto-reconnect
 
     /**
-     * The paired ring's address we should keep re-reaching. Set by [connect]/[connectToDevice], cleared by
-     * [stop]. While it is non-null an INVOLUNTARY drop (or a failed connect) re-issues a connect on a capped
-     * backoff, so the ring comes back on its own once it's in range again, exactly like the WHOOP strap's
-     * auto-reconnect. WHOOP has this loop; the non-WHOOP sources never did, so a dropped Oura ring stayed
-     * down until a manual reconnect. This never touches the WHOOP path or its client.
+     * The paired ring's address to keep re-reaching. Set by [connect]/[connectToDevice], cleared by [stop].
+     * While non-null, an involuntary drop or failed connect re-issues a connect on a capped backoff, so the
+     * ring reconnects once back in range. Never touches the WHOOP path.
      *
-     * @Volatile: written from [connect]/[stop] (main) and read in [scheduleReconnect]'s posted block and
-     * the GATT-delivery-thread disconnect handler, so it needs cross-thread visibility - matching the WHOOP
-     * client's reconnect state.
+     * @Volatile: written from [connect]/[stop] (main) and read from [scheduleReconnect]'s posted block and
+     * the GATT-delivery-thread disconnect handler - needs cross-thread visibility.
      */
     @Volatile
     private var reconnectAddress: String? = null
     /**
-     * True while a teardown was USER/COORDINATOR-initiated ([stop]), so the disconnect handler suppresses
-     * the auto-reconnect (twin of the Swift `intentionalDisconnect` / the WHOOP client's flag). Cleared on
-     * every [connect].
+     * True while a teardown was user/coordinator-initiated ([stop]), so the disconnect handler suppresses
+     * auto-reconnect. Cleared on every [connect].
      *
      * @Volatile: read on the GATT-delivery thread (onConnectionStateChange) and written on main
-     * ([connect]/[stop]/[announceNeedsPairing]), so it needs cross-thread visibility - same as the WHOOP client.
+     * ([connect]/[stop]/[announceNeedsPairing]), so it needs cross-thread visibility.
      */
     @Volatile
     private var intentionalDisconnect = false
     /**
      * Consecutive involuntary reconnect attempts, feeding the capped-exponential [ReconnectBackoff] (3, 6,
      * 12, 24, 48, 60s). Reset to 0 on a successful connect and on an explicit [connect] so a ring genuinely
-     * out of range doesn't hammer BLE. Twin of the WHOOP client's `failedReconnectAttempts` (which is
-     * `@Volatile` for exactly this reason: it's read/reset on the GATT-delivery thread and written on main).
+     * out of range doesn't hammer BLE. @Volatile: read/reset on the GATT-delivery thread, written on main.
      */
     @Volatile
     private var failedReconnectAttempts = 0
 
     /**
-     * The pending auto-reconnect, held as a NAMED field (not an anonymous lambda) so [stop] can remove it
-     * from the main-looper handler via [handler.removeCallbacks] - exactly like [reengageRunnable] /
-     * [cancelReengage]. An anonymous `postDelayed` lambda would otherwise be retained by the handler for the
-     * full backoff (up to 60s) after a teardown. It reads the CURRENT [reconnectAddress]: a [stop] nulls
-     * that (and sets [intentionalDisconnect]) so a firing runnable bails, and a fresh [connect] repoints it.
+     * The pending auto-reconnect, held as a named field so [stop] can remove it via
+     * [handler.removeCallbacks] - an anonymous lambda would otherwise be retained for the full backoff (up
+     * to 60s) after a teardown. Reads the current [reconnectAddress] at fire time.
      */
     private val reconnectRunnable = Runnable {
         val address = reconnectAddress
@@ -278,9 +232,9 @@ class OuraLiveSource(
     }
 
     /**
-     * The one-shot status-133 retry, held as a NAMED field (like [reconnectRunnable]) so [stop] can remove
-     * it from the handler rather than letting an anonymous lambda linger for its 1s window after a teardown.
-     * Reads the CURRENT [lastDevice] at fire time (the newest connect target is the right one to retry).
+     * The one-shot status-133 retry, held as a named field (like [reconnectRunnable]) so [stop] can remove
+     * it from the handler rather than let it linger for its 1s window after a teardown. Reads the current
+     * [lastDevice] at fire time.
      */
     private val retry133Runnable = Runnable {
         val device = lastDevice
@@ -288,11 +242,9 @@ class OuraLiveSource(
     }
 
     /**
-     * Schedule an auto-reconnect to the paired ring after a backoff delay, unless the teardown was
-     * intentional or there is no known ring. Guarded again inside [reconnectRunnable]: a [stop] that lands
-     * in the meantime removes the callback AND nulls the target/sets the flag, so a deliberate teardown
-     * never races a stale reconnect. Re-posts the SAME named runnable (removing any prior one first) so at
-     * most one reconnect is ever pending.
+     * Schedule an auto-reconnect after a backoff delay, unless the teardown was intentional or there is no
+     * known ring. Guarded again inside [reconnectRunnable] so a [stop] racing in the meantime bails. Re-posts
+     * the same named runnable (removing any prior one) so at most one reconnect is ever pending.
      */
     private fun scheduleReconnect() {
         if (intentionalDisconnect) return
@@ -304,19 +256,17 @@ class OuraLiveSource(
         handler.postDelayed(reconnectRunnable, delay)
     }
 
-    /** All BLE work hops onto the main looper, matching the other sources + CBCentralManager(queue:.main). */
+    /** All BLE work hops onto the main looper, matching the other sources. */
     private val handler = Handler(Looper.getMainLooper())
 
     // MARK: - Protocol state (the pure driver + reassembler own all protocol logic)
 
-    /**
-     * The transport-agnostic protocol state machine. Recreated on each connect with a fresh snapshot of
-     * the app key so a key provisioned mid-session is picked up on the next connect, and so a Stopped
-     * driver never lingers. JVM-pure: holds NO BluetoothGatt.
-     */
+    /** The transport-agnostic protocol state machine. Recreated on each connect with a fresh snapshot of
+     *  the app key, so a key provisioned mid-session is picked up next connect and a stopped driver never
+     *  lingers. JVM-pure: holds no BluetoothGatt. */
     private var driver: OuraDriver? = null
 
-    /** Reassembles BLE notification fragments into complete TLV records (s2.4). Reset on disconnect so a
+    /** Reassembles BLE notification fragments into complete TLV records. Reset on disconnect so a
      *  half-record never bleeds into the next session. */
     private val reassembler = OuraReassembler()
 
@@ -339,22 +289,19 @@ class OuraLiveSource(
         }
     }
 
-    // MARK: - History fetch (GetEvents, s5) - the ONLY path skin temp / SpO2 / HRV / sleep-phase ever
-    // arrive by. Neither temp nor SpO2 is ever pushed live on this hardware; both are banked overnight and
-    // retrievable only by asking the ring for its history. Kotlin twin of the Swift lane9 history wiring.
+    // MARK: - History fetch (GetEvents) - the only path skin temp / SpO2 / HRV / sleep-phase ever arrive
+    // by. Neither is ever pushed live on this hardware; both are banked overnight and retrievable only by
+    // asking the ring for its history.
 
-    /**
-     * The GetEvents cursor to resume from, loaded from [OuraHistoryCursorStore] on connect and advanced as
-     * `0x11` summaries arrive. 0 = fetch everything the ring has banked (first-ever connect for this ring;
-     * OURA_PROTOCOL.md s5.1). Held as a Long (the unsigned 32-bit ring timestamp).
-     */
+    /** The GetEvents cursor to resume from, loaded from [OuraHistoryCursorStore] on connect and advanced
+     *  as `0x11` summaries arrive. 0 = fetch everything the ring has banked. Held as a Long (the unsigned
+     *  32-bit ring timestamp). */
     private var historyCursor: Long = 0
 
     /**
      * Periodic re-fetch while connected, so an overnight-connected session (or one left open after a nap)
-     * picks up freshly-banked sleep data without needing a reconnect. Mirrors the WHOOP ~15 min periodic
-     * history-offload floor. Held as a NAMED runnable so [stop]/disconnect can remove it from the handler,
-     * matching [reengageRunnable] / [reconnectRunnable].
+     * picks up freshly-banked sleep data without a reconnect. Matches the WHOOP client's ~15 min periodic
+     * history-offload floor. Held as a named runnable so [stop]/disconnect can remove it from the handler.
      */
     private var historyFetchScheduled = false
     private val historyFetchIntervalMs = 900_000L
@@ -367,22 +314,16 @@ class OuraLiveSource(
     }
 
     /**
-     * History-fetched events decoded BEFORE a ring-time -> UTC anchor exists this session, held here (with
-     * their own ring timestamp) until the anchor lands ([drainPendingAnchorEvents]), so they get their real
-     * historical time instead of a premature wall-clock guess. The ring's 0x42 time-sync can arrive
-     * anywhere in a history-fetch stream, not necessarily first, so records that land before it are parked
-     * here and re-stamped the moment an anchor lands. Drained with an honest wall-clock fallback at teardown
-     * if no anchor ever arrived this session (never silently dropped). Reset on stop/disconnect. Kotlin twin
-     * of Swift's `pendingAnchorEvents`.
+     * History-fetched events decoded before a ring-time -> UTC anchor exists this session, parked here with
+     * their own ring timestamp until the anchor lands ([drainPendingAnchorEvents]). The 0x42 time-sync can
+     * arrive anywhere in a history-fetch stream, so events ahead of it wait, then drain with an honest
+     * wall-clock fallback at teardown if no anchor ever arrived. Reset on stop/disconnect.
      */
     private val pendingAnchorEvents = ArrayList<Pair<OuraEvent, Long>>()
 
-    /**
-     * Kick a history-fetch pass at the current cursor, but ONLY when the driver is idle-streaming (never
-     * overlaps a fetch already in flight - the driver's own phase is the guard, so this is safe to call
-     * both right after reaching Streaming and from the periodic timer). Kotlin twin of Swift's
-     * `fetchHistoryIfIdle`.
-     */
+    /** Kick a history-fetch pass at the current cursor, only when the driver is idle-streaming - it never
+     *  overlaps a fetch already in flight, since the driver's own phase is the guard. Safe to call both
+     *  right after reaching Streaming and from the periodic timer. */
     private fun fetchHistoryIfIdle(): Unit = guardedCallback("history-fetch") {
         val d = driver ?: return@guardedCallback
         if (d.phase != OuraDriverPhase.Streaming) return@guardedCallback
@@ -402,21 +343,19 @@ class OuraLiveSource(
     }
 
     /**
-     * Handle a `0x11` GetEvents response: persist the advanced cursor (so a LATER
-     * connection resumes rather than re-fetching everything) and drive the driver's cursor-loop state
-     * machine, which asks for another ack-fetch while `moreData` or returns to Streaming once caught up.
+     * Handle a `0x11` GetEvents response: persist the advanced cursor (so a later connection resumes
+     * instead of re-fetching everything) and drive the cursor-loop state machine, which asks for another
+     * ack-fetch while `moreData` or returns to Streaming once caught up.
      *
-     * The ring's terminal "no more data" response (moreData=false, status 0x00) zero-fills the cursor
-     * field, whereas a mid-fetch response (moreData=true) carries a real advancing nonzero cursor. So the
-     * cursor is only trusted/persisted while the response is actually carrying new data - persisting the
-     * terminal zero would reset the cursor to 0 on every fetch and force a full backlog re-fetch forever.
+     * The terminal "no more data" response (moreData=false, status 0x00) zero-fills the cursor field, while
+     * a mid-fetch response (moreData=true) carries a real advancing nonzero cursor - so the cursor is only
+     * trusted/persisted while genuinely carrying new data, or persisting the terminal zero would force a
+     * full backlog re-fetch forever.
      *
-     * A cursor persisted from one BLE connection can come back SMALLER on the next connection's first real
-     * cursor: `ringTimestamp = (session << 16) | counter` (s2.3), and the ring's internal `session`
-     * component can shift across reconnects/restarts. Resuming from a cursor whose session no longer matches
-     * the ring's current one is not a real resume - the ring just re-dumps its whole backlog anyway - so we
-     * detect the regression and reset to an honest, explicit 0 rather than feed the ring a now-meaningless
-     * reference. Kotlin twin of Swift's `handleHistorySummary`.
+     * `ringTimestamp = (session << 16) | counter`, and the ring's `session` component can shift across
+     * reconnects/restarts, so a persisted cursor can come back smaller than the next connection's first real
+     * one. A session mismatch means the ring re-dumps its whole backlog anyway, so we detect the regression
+     * and reset to an honest 0 rather than feed a now-meaningless reference.
      */
     private fun handleHistorySummary(summary: com.noop.oura.GetEventsSummary): Unit = guardedCallback("history-summary") {
         if (summary.moreData) {
@@ -439,11 +378,9 @@ class OuraLiveSource(
 
     /**
      * One buffered batch of decoded events, stamped with its own [ts] (unix seconds): live-push events
-     * (HR, IBI, battery) are stamped at wall-clock arrival time; history-fetched events (temp, SpO2, HRV,
-     * sleep-phase) are stamped with their REAL ring-time-anchored UTC (s5.5) when an anchor is available,
-     * so last night's data is never mis-recorded as happening right now. Mirrors the Swift buffer
-     * `(events, ts)`. [flush] folds each batch through the unit-tested [OuraStreamMapping] so the SAME pure
-     * mapping the tests pin is the production path.
+     * (HR, IBI, battery) get wall-clock arrival time; history-fetched events (temp, SpO2, HRV, sleep-phase)
+     * get their real ring-time-anchored UTC, so last night's data is never mis-recorded as happening now.
+     * [flush] folds each batch through the unit-tested [OuraStreamMapping] production mapping.
      */
     private data class Batch(val events: List<OuraEvent>, val ts: Int)
 
@@ -495,8 +432,8 @@ class OuraLiveSource(
     override fun connect(address: String) {
         stopScan()
         _needsPairing.value = null
-        // Remember the paired ring so an involuntary drop auto-reconnects to it (#912). An explicit connect
-        // is never the intentional-teardown case, so clear the suppression flag.
+        // Remember the paired ring so an involuntary drop auto-reconnects to it. An explicit connect is
+        // never the intentional-teardown case, so clear the suppression flag.
         reconnectAddress = address
         intentionalDisconnect = false
         val device = seen[address] ?: runCatching { adapter?.getRemoteDevice(address) }.getOrNull()
@@ -511,13 +448,12 @@ class OuraLiveSource(
         gatt?.let { runCatching { it.disconnect(); it.close() } }
         // A fresh driver per connection: the app key is session-scoped (the proof handshake re-runs on
         // every connection), and a key provisioned since the last attempt is picked up here. allowKeyInstall
-        // is wired straight from the connection's adoptIntent so the dangerous 0x24 write is reachable ONLY
-        // under an explicit adopt consent.
-        // allowTierB = true - INVESTIGATION ONLY (activity/real_steps/sleep-summary/smoothed-SpO2 tags,
-        // OURA_PROTOCOL.md s7.3 Tier B, UNVERIFIED layouts; PR #960). This lets `emit` LOG what the ring
-        // actually sends (raw bytes per kind, decoded MET for 0x50) so the layouts can be validated
-        // against real captures. It can never leak a value into scoring: OuraStreamMapping drops
-        // TierB/ActivityInfo unconditionally - the Tier-discipline gate that matters lives there, not here.
+        // is wired from the connection's adoptIntent, so the dangerous 0x24 write is reachable only under
+        // an explicit adopt consent.
+        // allowTierB = true - investigation only (activity/real_steps/sleep-summary/smoothed-SpO2 tags,
+        // unverified layouts). Lets `emit` log what the ring actually sends (raw bytes per kind, decoded MET
+        // for 0x50) so the layouts can be validated against real captures. Never leaks into scoring:
+        // OuraStreamMapping drops TierB/ActivityInfo unconditionally.
         driver = OuraDriver(ringGen = ringGen, authKey = authKey(), allowTierB = true,
                             allowKeyInstall = adoptIntent)
         reassembler.reset()
@@ -530,8 +466,8 @@ class OuraLiveSource(
         loggedAnchor = false
         loggedTierBKinds.clear()
         pendingAnchorEvents.clear()
-        // Resume the GetEvents cursor from where the LAST connection to this ring left off (s5.1/5.3), so a
-        // routine reconnect doesn't re-fetch the ring's entire banked history every time.
+        // Resume the GetEvents cursor from where the last connection to this ring left off, so a routine
+        // reconnect doesn't re-fetch the ring's entire banked history every time.
         historyCursor = OuraHistoryCursorStore.read(appContext, deviceId)
         // connectGatt can throw (SecurityException if BLUETOOTH_CONNECT was revoked mid-session,
         // IllegalArgumentException on a stale device) - never let that crash the app; a failed start
@@ -551,10 +487,9 @@ class OuraLiveSource(
 
     /** Tear down: cancel the connection and stop scanning, persisting anything still buffered. Idempotent. */
     override fun stop() {
-        // A deliberate teardown (device switch / removal) must NOT auto-reconnect: mark it intentional and
-        // drop the reconnect target so any pending backoff bails and no fresh one is scheduled (#912). Remove
-        // any already-posted reconnect from the main-looper handler too, so it isn't retained for the full
-        // backoff (mirrors cancelReengage's removeCallbacks).
+        // A deliberate teardown must not auto-reconnect: mark it intentional and drop the reconnect
+        // target, so a pending backoff bails and no fresh one is scheduled. Also clears an
+        // already-posted reconnect from the main-looper handler.
         intentionalDisconnect = true
         reconnectAddress = null
         failedReconnectAttempts = 0
@@ -564,8 +499,8 @@ class OuraLiveSource(
         pendingConnectAddress = null
         cancelReengage()
         cancelHistoryFetch()
-        // Drain BEFORE driver.stop() clears its anchor, so a pending event still gets a real anchored time
-        // if one exists rather than always falling back to wall-clock at teardown (mirrors Swift's stop()).
+        // Drain before driver.stop() clears its anchor, so a pending event still gets a real anchored time
+        // if one exists, rather than always falling back to wall-clock at teardown.
         drainPendingAnchorEvents()
         driver?.stop()
         gatt?.let { runCatching { it.disconnect(); it.close() } }
@@ -590,8 +525,7 @@ class OuraLiveSource(
     // MARK: - Buffer / persistence
 
     /** Buffer one batch of decoded events under the supplied [ts] (unix seconds: wall-clock for live
-     *  pushes, ring-time-anchored for history-fetched records), flushing on count/interval. Mirrors the
-     *  Swift `enqueue(_ events:ts:)`. */
+     *  pushes, ring-time-anchored for history-fetched records), flushing on count/interval. */
     private fun enqueue(events: List<OuraEvent>, ts: Int) {
         if (events.isEmpty()) return
         val shouldFlush = synchronized(bufferLock) {
@@ -609,13 +543,9 @@ class OuraLiveSource(
             if (buffer.isEmpty()) return
             snapshot = ArrayList(buffer); buffer.clear()
         }
-        // PRODUCTION PATH THROUGH THE TESTED MAPPING: fold each batch's raw events into a protocol Streams
+        // Production path through the tested mapping: fold each batch's raw events into a protocol Streams
         // via the unit-tested [OuraStreamMapping] (its Tier-B-drop + honest-data invariants), then widen to
-        // the Room StreamBatch via [StreamPersistence.toBatch]. Each batch carries its OWN resolved ts
-        // (wall-clock for live pushes; the ring-time-anchored UTC (s5.5) for history-fetched records), so
-        // the mapping's per-batch constant anchor `{ batch.ts }` matches the Swift twin's
-        // `OuraStreamMapping.streams(from: entry.events, at: entry.ts)`. Routing through the mapping (not
-        // hand-built rows) is what keeps the production persist parity with Swift and under test.
+        // the Room StreamBatch via [StreamPersistence.toBatch]. Each batch carries its own resolved ts.
         for (batch in snapshot) {
             val streams = OuraStreamMapping.streams(batch.events) { batch.ts }
             val out = StreamPersistence.toBatch(streams)
@@ -627,13 +557,9 @@ class OuraLiveSource(
         }
     }
 
-    /**
-     * Flush every event parked in [pendingAnchorEvents], now that `driver.unixSeconds` can resolve them
-     * (called right after the anchor is set) - OR, if called at session teardown with NO anchor ever having
-     * arrived, with an honest wall-clock fallback (a rough stamp beats silently dropping real decoded
-     * samples). Reset the buffer afterward so nothing is drained twice. Kotlin twin of Swift's
-     * `drainPendingAnchorEvents`.
-     */
+    /** Flush every event parked in [pendingAnchorEvents], now that `driver.unixSeconds` can resolve them -
+     *  or, at session teardown with no anchor ever having arrived, with an honest wall-clock fallback
+     *  (a rough stamp beats silently dropping real decoded samples). Buffer is cleared afterward. */
     private fun drainPendingAnchorEvents(): Unit = guardedCallback("drain-pending") {
         if (pendingAnchorEvents.isEmpty()) return@guardedCallback
         val d = driver ?: return@guardedCallback
@@ -687,7 +613,7 @@ class OuraLiveSource(
                         log("Oura: WARNING connected with non-success status=$status")
                     }
                     retried133 = false   // a real connection clears the one-shot 133 retry guard
-                    failedReconnectAttempts = 0   // a real connection clears the reconnect backoff (#912)
+                    failedReconnectAttempts = 0   // a real connection clears the reconnect backoff
                     log("Oura: connected (status=$status) - discovering services")
                     g.discoverServices()
                 }

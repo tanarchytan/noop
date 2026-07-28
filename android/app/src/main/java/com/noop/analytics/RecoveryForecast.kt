@@ -8,10 +8,6 @@ import kotlin.math.sqrt
 /*
  * RecoveryForecast.kt — an evening estimate of TOMORROW-morning Charge.
  *
- * Faithful Kotlin mirror of StrandAnalytics/RecoveryForecast.swift. Keep the tunables,
- * the three signed adjustments, the band math, and the confidence tier byte-identical
- * to Swift — cross-platform parity is the contract.
- *
  * Pure, deterministic, DB-free. Given the recent Charge (recovery) history, the recent
  * Effort (strain) history, today's Effort, and how much sleep is planned / banked
  * tonight against the personal sleep need, this projects what tomorrow's Charge is
@@ -76,7 +72,7 @@ data class RecoveryForecast(
 
 object RecoveryForecaster {
 
-    // Tunables (documented, deterministic — NOT learned). Mirror Swift exactly.
+    // Tunables (documented, deterministic — NOT learned).
 
     /** Trailing Charge nights used for the baseline mean / SD / slope. */
     const val baselineWindow: Int = 14
@@ -180,11 +176,10 @@ object RecoveryForecaster {
         if (nights < trustedNights) band += thinBandPoints
         band = band.roundToInt().toDouble()
 
-        // Confidence rides the SAME calibrating/building/solid ladder as the daily
-        // scores. The forecast always clears minBaselineNights to reach here (so it is
-        // never CALIBRATING), then it is BUILDING on a thin baseline OR an unrefined
-        // sleep-need default, and SOLID only when both the baseline is full
-        // (≥ trustedNights) and the personal need is informed.
+        // Confidence rides the SAME calibrating/building/solid ladder as the daily scores.
+        // The forecast always clears minBaselineNights (never CALIBRATING here): BUILDING
+        // on a thin baseline or unrefined sleep-need default, SOLID only when the baseline
+        // is full (≥ trustedNights) and the personal need is informed.
         val confidence = if (nights >= trustedNights && needNights >= solidNeedNights) {
             ScoreConfidence.SOLID
         } else {
@@ -202,7 +197,7 @@ object RecoveryForecaster {
         )
     }
 
-    // Stats (self-contained so the Swift mirror is line-for-line).
+    // Stats (self-contained).
 
     internal fun mean(values: List<Double>): Double {
         if (values.isEmpty()) return 0.0

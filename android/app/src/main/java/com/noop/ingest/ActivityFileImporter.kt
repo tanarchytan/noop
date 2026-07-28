@@ -18,33 +18,25 @@ import java.util.Locale
 import kotlin.math.roundToInt
 
 /**
- * On-device import of a single exported activity FILE — GPX, TCX or FIT — from ANY brand (Garmin,
+ * On-device import of a single exported activity FILE — GPX, TCX or FIT — from any brand (Garmin,
  * Coros, Suunto, Wahoo, Polar, Strava, WHOOP, Apple…), fully offline.
  *
- * Kotlin mirror of the macOS/iOS source of truth
- *   Packages/StrandImport/Sources/StrandImport/ActivityFileImporter.swift (+ Gpx/Tcx/FitParser.swift)
- * so the three formats decode the same on every platform and a file imports identically.
+ *   • GPX (XML)    — universal GPS track: <trkpt lat lon><ele/><time/> + Garmin TrackPointExtension hr.
+ *   • TCX (XML)    — Garmin Training Center: Trackpoint Time/Position/HeartRateBpm + per-Lap summaries.
+ *   • FIT (binary) — Garmin/ANT: header + definition/data records (little-endian); decodes the
+ *                    common file_id / record / lap / session messages.
  *
- *   • GPX  (XML)    — universal GPS track: <trkpt lat lon><ele/><time/> + Garmin TrackPointExtension hr.
- *   • TCX  (XML)    — Garmin Training Center: Trackpoint Time/Position/HeartRateBpm + per-Lap summaries.
- *   • FIT  (binary) — Garmin/ANT: header + definition/data records (little-endian); we decode the
- *                     common file_id / record / lap / session messages.
- *
- * Parsing is PURE ([parse]) so it is JVM unit-testable. The result is mapped 1:1 onto the existing
- * [WorkoutRow] store path (source "activity-file"), with the GPS route stored as a [RouteMath] polyline
- * (Android's WorkoutRow.routePolyline) where present. Never touches live data, scoring, or the WHOOP
- * import paths.
+ * Parsing is PURE ([parse]), JVM unit-testable, and mapped 1:1 onto the existing [WorkoutRow] store
+ * (source "activity-file"); the GPS route is stored as a [RouteMath] polyline where present. Never
+ * touches live data, scoring, or the WHOOP import paths.
  *
  * SECURITY: every byte is UNTRUSTED. The byte budget caps the read; the XML parsers disable external
  * entities/DTDs (XXE / billion-laughs) and cap depth + point count; the FIT decoder bounds every field
  * read and caps record/field counts. A malformed file yields an empty result, never a crash.
- *
- * Patterns conceptually adapted from CoreGPX (MIT) / ticofab android-gpx-parser (Apache) /
- * FitnessKit TcxDataProtocol+FitDataProtocol (MIT) / muktihari/fit (BSD); NOOP's own clean code.
  */
 object ActivityFileImporter {
 
-    /** Room deviceId / workout source for everything this importer writes — identical to the Swift lane. */
+    /** Room deviceId / workout source for everything this importer writes. */
     const val SOURCE_ID = "activity-file"
 
     private const val SOURCE_LABEL = "Workout file"
@@ -57,14 +49,14 @@ object ActivityFileImporter {
 
     enum class Kind { GPX, TCX, FIT }
 
-    // MARK: - Normalized model (mirrors Swift ActivityFile)
+    // MARK: - Normalized model
 
     data class RoutePoint(val lat: Double, val lon: Double)
 
     /**
-     * #137: one persisted HR sample — unix-second timestamp + bpm. Mirrors the Swift `ActivityHRSample`
-     * (a LOCAL type, not the Room [com.noop.data.HrSample] entity, so the pure-JVM importer needs no
-     * Room dependency; the app layer maps this 1:1 onto `HrSample` when writing to the HR store).
+     * One persisted HR sample — unix-second timestamp + bpm. A LOCAL type, not the Room
+     * [com.noop.data.HrSample] entity, so the pure-JVM importer needs no Room dependency; the app
+     * layer maps this 1:1 onto `HrSample` when writing to the HR store.
      */
     data class HrPoint(val ts: Long, val bpm: Int)
 
@@ -81,15 +73,10 @@ object ActivityFileImporter {
         val gpsPointCount: Int,
         val hrSampleCount: Int,
         val route: List<RoutePoint>,
-        // #137: the REAL per-sample HR time series the file carried — historically folded into
-        // avg/max/hrSampleCount and then discarded (an imported file never fed the HR-based Effort). We
-        // now keep it so the app layer can persist it under the `activity-file` source; on a strap-less
-        // day that lets the ride's measured HR light the day Effort ring (the day-owner resolver picks
-        // `activity-file` as the sole source with HR that day — see IntelligenceEngine.resolveDayOwner).
-        // Measured data, not a fabricated strain, so it doesn't reintroduce the fabricated-strain the
-        // WorkoutRow `strain = null` guard avoids. Only samples carrying BOTH a timestamp and a valid HR
-        // appear here (a sample with no time can't key into the (deviceId, ts) HR store), so in general
-        // hrSamples.size <= hrSampleCount. Defaulted so the no-data build paths need no change.
+        // Per-sample HR time series, persisted under the `activity-file` source so a strap-less day's
+        // ride HR can light the day Effort ring (IntelligenceEngine.resolveDayOwner picks activity-file
+        // as sole HR source that day) — measured, not fabricated, so it respects the WorkoutRow
+        // `strain = null` guard. Only timestamped+valid-HR samples appear, so hrSamples.size <= hrSampleCount.
         val hrSamples: List<HrPoint> = emptyList(),
     ) {
         val durationS: Double? get() = (endTs - startTs).takeIf { it > 0 }?.toDouble()
@@ -121,12 +108,11 @@ object ActivityFileImporter {
     )
 
     /**
-     * #137: fold the parsed track samples into the persisted HR series. SHARED by every format path
-     * (GPX/TCX via [build], FIT via [FitDecoder.build]) so the three decode to a byte-identical HR
-     * stream and stay in parity with the Swift twin. A sample is kept only when it carried BOTH a
-     * timestamp and a valid HR: without a time it can't key into the (deviceId, ts) HR store, and
-     * without HR there's nothing to store. The epoch is range-checked with the same 2100-01-01 sanity
-     * ceiling the FIT decoder uses, so a crafted file with an absurd timestamp is dropped, not stored.
+     * Folds parsed track samples into the persisted HR series. Shared by every format path (GPX/TCX
+     * via [build], FIT via [FitDecoder.build]) so all three decode to the same HR stream. A sample is
+     * kept only when it carries BOTH a timestamp and a valid HR — without a time it can't key into the
+     * (deviceId, ts) HR store. The epoch is range-checked against the same 2100-01-01 ceiling the FIT
+     * decoder uses, so an absurd timestamp is dropped, not stored.
      */
     internal fun hrSamples(samples: List<Sample>): List<HrPoint> =
         samples.mapNotNull { s ->
@@ -216,11 +202,11 @@ object ActivityFileImporter {
         repo.upsertDevice(deviceId, name = "Workout files")
         repo.upsertWorkouts(listOf(row))
 
-        // #137 (A): persist the ride's real per-sample HR under the activity-file source. The insert is
-        // keyed on (deviceId, ts) (OnConflict.REPLACE), so re-importing the same file is idempotent — an
+        // Persist the ride's real per-sample HR under the activity-file source. The insert is keyed on
+        // (deviceId, ts) with OnConflict.REPLACE, so re-importing the same file is idempotent — an
         // identical ts overwrites, never duplicates. Skipped when the file carried no timestamped HR (a
-        // pure GPS track), leaving day Effort honestly dark. Registering activity-file as a `.fileImport`
-        // owner candidate (B1) happens in the UI caller (DataSourcesScreen), mirroring the Swift lane.
+        // pure GPS track), leaving day Effort dark. DataSourcesScreen registers activity-file as a
+        // `.fileImport` owner candidate.
         if (activity.hrSamples.isNotEmpty()) {
             repo.insertHr(activity.hrSamples.map { HrSample(deviceId = deviceId, ts = it.ts, bpm = it.bpm) })
         }
@@ -395,7 +381,7 @@ object ActivityFileImporter {
         return build(kind, samples, sport, summaryDistance, summaryEnergy, null, lapMaxHr.takeIf { kind == Kind.TCX }, null, skipped)
     }
 
-    // MARK: - Shared post-processing (mirrors Swift ActivityFileImporter.build)
+    // MARK: - Shared post-processing
 
     internal fun build(
         kind: Kind,
@@ -443,14 +429,14 @@ object ActivityFileImporter {
             gpsPointCount = route.size,
             hrSampleCount = hrs.size,
             route = cappedRoute(route),
-            // #137: carry the real per-sample HR through (only timestamped+HR samples survive). The
+            // Carries the real per-sample HR through (only timestamped+HR samples survive). The
             // no-timestamp path above leaves this empty — those samples have no epoch to key the store.
             hrSamples = hrSamples(samples),
         )
         return Result(a, kind, skipped)
     }
 
-    // MARK: - Geo / summary math (parity with Swift + RouteMath)
+    // MARK: - Geo / summary math
 
     internal fun routeDistanceM(points: List<RoutePoint>): Double {
         if (points.size < 2) return 0.0
@@ -478,12 +464,12 @@ object ActivityFileImporter {
     internal fun cappedRoute(route: List<RoutePoint>): List<RoutePoint> =
         if (route.size <= MAX_POINTS) route else route.take(MAX_POINTS)
 
-    // MARK: - Coordinate / value validation (shared, parity with Swift)
+    // MARK: - Coordinate / value validation (shared)
 
     internal fun validCoordinate(lat: Double?, lon: Double?): RoutePoint? {
         if (lat == null || lon == null || !lat.isFinite() || !lon.isFinite()) return null
         if (lat < -90 || lat > 90 || lon < -180 || lon > 180) return null
-        if (lat == 0.0 && lon == 0.0) return null // "null island" pre-lock fix
+        if (lat == 0.0 && lon == 0.0) return null // "null island": no GPS lock yet, not a real point
         return RoutePoint(lat, lon)
     }
 
@@ -505,7 +491,7 @@ object ActivityFileImporter {
         return (if (colon >= 0) n.substring(colon + 1) else n).lowercase()
     }
 
-    // MARK: - App-layer mapping helpers (parity with Swift workoutSport / summaryText)
+    // MARK: - App-layer mapping helpers
 
     /** Sport label the imported workout is filed under; unknown/absent → neutral "Activity". */
     fun workoutSport(raw: String?): String {
@@ -554,14 +540,13 @@ object ActivityFileImporter {
     }.getOrNull()
 }
 
-// MARK: - FIT binary decoder (mirrors Swift FitParser / FitDecoder)
+// MARK: - FIT binary decoder
 
 /**
  * Decodes the FIT binary format: a 12/14-byte header, then definition + data records (little- or
  * big-endian). Decodes the common file_id(0) / record(20) / lap(19) / session(18) messages. Every read
- * is bounds-checked; field/record counts are capped. Deferred (see lane risks): developer fields
- * (their bytes are skipped, not decoded), compressed-timestamp accumulation across records, and the
- * long tail of message types (skipped gracefully).
+ * is bounds-checked; field/record counts are capped. Not decoded: developer fields (their bytes are
+ * skipped), compressed-timestamp accumulation across records, and other message types (skipped gracefully).
  */
 internal class FitDecoder(raw: ByteArray) {
 
@@ -675,7 +660,7 @@ internal class FitDecoder(raw: ByteArray) {
 
     private fun consume(def: Definition, start: Int) {
         when (def.globalNum) {
-            0 -> { /* file_id — type field; we don't gate on it, parity with Swift */ }
+            0 -> { /* file_id — type field; not gated on */ }
             20 -> consumeRecord(def, start)
             19 -> consumeLap(def, start)
             18 -> consumeSession(def, start)
@@ -820,8 +805,8 @@ internal class FitDecoder(raw: ByteArray) {
             gpsPointCount = gpsPointCount,
             hrSampleCount = hrSampleCount,
             route = ActivityFileImporter.cappedRoute(route),
-            // #137: the real per-record HR series, via the SHARED extractor so FIT persists a
-            // byte-identical HR stream to the GPX/TCX paths (and the Swift twin).
+            // The real per-record HR series, via the shared extractor so FIT persists the same HR
+            // stream as the GPX/TCX paths.
             hrSamples = ActivityFileImporter.hrSamples(samples),
         )
         return ActivityFileImporter.Result(activity, ActivityFileImporter.Kind.FIT, skipped)

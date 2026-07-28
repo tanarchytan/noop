@@ -16,10 +16,8 @@ enum class WhoopModel(val displayName: String, val service: UUID) {
 
     /**
      * The OTHER WHOOP family to try when a service-filtered scan for this model finds nothing. A
-     * stale/missing persisted preference (after an update or restore) can point the scan at the wrong
-     * service so it runs forever with the strap right there; rotating to the other family — and
-     * persisting whichever one actually advertises — recovers reconnect automatically. Mirrors macOS
-     * `WhoopModel.fallbackScanModel`. (PR#195)
+     * stale or missing persisted preference can point the scan at the wrong service forever with the
+     * strap right there; rotating to the other family and persisting whichever advertises recovers it.
      */
     val fallbackScanModel: WhoopModel
         get() = when (this) {
@@ -30,9 +28,8 @@ enum class WhoopModel(val displayName: String, val service: UUID) {
     companion object {
         /**
          * Resolve the WHOOP family from a strap's advertised GATT service UUIDs. The merged onboarding
-         * scan lists BOTH families at once (a ScanFilter list is OR'd), so each found strap's family is
-         * read back from which service it advertised. Returns null when neither WHOOP service is present
-         * (e.g. an advert with no service UUID) — the caller labels it "WHOOP" and resolves at connect.
+         * scan lists BOTH families at once (a ScanFilter list is OR'd), so each strap's family is read
+         * back from which service it advertised. Null (no service UUID) resolves at connect instead.
          */
         fun fromServiceUuids(uuids: List<UUID>?): WhoopModel? {
             if (uuids.isNullOrEmpty()) return null

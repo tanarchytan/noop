@@ -20,20 +20,17 @@ import kotlin.math.floor
 import kotlin.math.round
 
 /**
- * Serializes NOOP's own cached rows back into WHOOP's 4-CSV export shape so NOOP's OWN importer
- * (WhoopCsvImporter here, WhoopExportImporter on macOS) re-imports them losslessly. The round-trip
- * is the point and is pinned by the test suite (Android exporter test + the macOS suite, which
- * re-parses this output with the REAL importer) so header/format drift fails a test rather than
- * silently producing an un-reimportable zip.
+ * Serializes NOOP's own cached rows into WHOOP's 4-CSV export shape so NOOP's own importer
+ * (WhoopCsvImporter) re-imports them losslessly; the round-trip is pinned by the test suite, so
+ * header/format drift fails a test rather than silently producing an un-reimportable zip.
  *
- * Header strings are byte-identical to a real WHOOP export — the importer normalises them down to
- * keys like `recovery_score_pct`, so they must match exactly. Everything is emitted in UTC with a
- * literal "UTC+00:00" timezone column: NOOP stores epoch seconds and tz-less day strings, so UTC is
- * the only encoding that round-trips a timestamp back to the same instant. A trailing "Source"
- * column (which both parsers provably ignore — they key off named columns, never position) marks
- * on-device computed rows as "noop (APPROXIMATE)" per the house rules. A noop_metric_series.json
- * sidecar carries the full metricSeries for fidelity and is deliberately NOT re-imported — the
- * .noopdb backup remains the lossless restore path; this zip is the portable, WHOOP-shaped one.
+ * Header strings are byte-identical to a real WHOOP export (the importer normalises them down to
+ * keys like `recovery_score_pct`). Everything is emitted in UTC with a literal "UTC+00:00"
+ * timezone column, since NOOP stores epoch seconds and tz-less day strings. A trailing "Source"
+ * column (ignored by both parsers, which key off named columns, never position) marks on-device
+ * computed rows as "noop (APPROXIMATE)". A noop_metric_series.json sidecar carries the full
+ * metricSeries for fidelity and is deliberately NOT re-imported — the .noopdb backup remains the
+ * lossless restore path; this zip is the portable, WHOOP-shaped one.
  */
 object WhoopCsvExporter {
 
@@ -51,7 +48,7 @@ object WhoopCsvExporter {
      * executed as a formula by Excel/Sheets/LibreOffice when the CSV is opened there (quoting alone
      * does NOT prevent that). Neutralise with a leading apostrophe — the spreadsheet convention for
      * "literal text". Numbers never pass through csvField (they use num()), so this only ever
-     * touches free text such as source names. Mirrors the Swift exporter's field().
+     * touches free text such as source names.
      */
     internal fun csvField(raw: String?): String {
         if (raw.isNullOrEmpty()) return ""
@@ -83,8 +80,8 @@ object WhoopCsvExporter {
 
     /**
      * Stage minutes recovered from any persisted stagesJSON shape NOOP has ever written:
-     *   {"light":min,…}            — macOS WHOOP import
-     *   [{"stage","min"}]          — Android import / demo seeds
+     *   {"light":min,…}            — object form
+     *   [{"stage","min"}]          — array form (import / demo seeds)
      *   [{"start","end","stage"}]  — the on-device sleep stager ("wake" == awake)
      * Unusable / empty input → all-null, so the column exports blank rather than a bogus zero.
      */
@@ -128,9 +125,9 @@ object WhoopCsvExporter {
     }
 
     /**
-     * Z1–Z5 percents from zonesJSON. macOS import writes "z1"…"z5"; Android writes "zone1"…"zone5".
-     * Self-contained on purpose (own decoder, not the Workouts-screen helper) so the exporter is
-     * decoupled from the UI layer. null when there's no usable zone data → the columns export blank.
+     * Z1–Z5 percents from zonesJSON: keys may be "z1"…"z5" or "zone1"…"zone5" depending on import
+     * source. Self-contained on purpose (own decoder, not the Workouts-screen helper) so the
+     * exporter is decoupled from the UI layer. Null when there's no usable zone data → blank columns.
      */
     internal fun zonePercents(zonesJSON: String?): List<Double>? {
         if (zonesJSON.isNullOrBlank()) return null
@@ -175,10 +172,9 @@ object WhoopCsvExporter {
                 listOf(
                     d.day + " 00:00:00", "", "UTC+00:00",
                     num(d.recovery), num(d.restingHr), num(d.avgHrv), num(d.skinTempDevC),
-                    // Day Strain column is WHOOP's 0–21 scale → down-convert our 0–100 Effort so the CSV
-                    // is WHOOP-format and a NOOP→NOOP round-trip is lossless (import scales back ×100/21).
-                    // Divide by the SAME 100.0/21.0 constant the importer multiplies by (and that Swift's
-                    // whoopDayStrainFromEffort uses) so the byte output matches macOS/iOS exactly.
+                    // Day Strain column is WHOOP's 0–21 scale; down-convert our 0–100 Effort so the
+                    // CSV is WHOOP-format and the round-trip is lossless (import scales back ×100/21).
+                    // Divide by the same 100.0/21.0 constant the importer multiplies by.
                     num(d.spo2Pct), num(d.strain?.let { it / (100.0 / 21.0) }),
                     "", "", "",            // energy / max HR / avg HR — not on the Android daily row
                     "", "",                // sleep/wake onset live in sleeps.csv
@@ -186,13 +182,12 @@ object WhoopCsvExporter {
                     "",                    // in-bed not stored on the Android daily row
                     num(d.lightMin), num(d.deepMin), num(d.remMin),
                     // "Awake duration (min)" is MINUTES — the daily row doesn't carry it, so leave
-                    // the cell empty. (Writing the disturbance COUNT here exported a wrong unit
-                    // that round-tripped on reimport — PR #97 review, tigercraft4. Swift parity.)
+                    // the cell empty. Writing the disturbance COUNT here would export a wrong unit
+                    // that silently round-trips as minutes on reimport.
                     "",
                     // "Sleep efficiency %" is WHOOP's 0–100 column → lift the stored 0–1 fraction,
                     // rounded to 4 decimals of a percent so num()'s shortest-round-trip Double
-                    // printing can't leak FP dust into the cell. Keep byte-identical to Swift
-                    // (WhoopExportImporter.whoopEfficiencyPctFromFraction).
+                    // printing can't leak FP dust into the cell.
                     num(d.efficiency?.let { round(it * 100.0 * 10_000) / 10_000 }),
                     num(s["sleep_consistency"]), num(s["sleep_need_min"]),
                     num(s["sleep_debt_min"]), csvField(sourceByDay[d.day]),
@@ -205,12 +200,12 @@ object WhoopCsvExporter {
     /**
      * sleeps.csv. Stage durations from the tolerant decoder; in-bed derived from the span.
      *
-     * [cycleStart] returns the "Cycle start time" for a session — the LOCAL day-midnight of the cycle the
-     * sleep belongs to (the caller passes `AnalyticsEngine.dayString(endTs, offset) + " 00:00:00"`, the same
-     * end-day key analyze/mergeSleep use). It MUST match the corresponding physiological_cycles row's
-     * "Cycle start time" so the two CSVs reconcile by cycle; the previous `utc(startTs)` put a non-UTC user's
-     * night on a different date than its cycle (#715). Onset/Wake stay the real UTC session times, so the
-     * NOOP→NOOP round-trip is unchanged (the importer keys on sleep_onset, not Cycle start time).
+     * [cycleStart] gives the "Cycle start time" for a session: the LOCAL day-midnight of the cycle
+     * it belongs to (callers pass `AnalyticsEngine.dayString(endTs, offset) + " 00:00:00"`, the same
+     * end-day key analyze/mergeSleep use). It MUST match the physiological_cycles row's "Cycle start
+     * time" so the two CSVs reconcile by cycle — `utc(startTs)` would put a non-UTC user's night on
+     * the wrong date. Onset/Wake stay the real UTC session times, so the round-trip is unchanged
+     * (the importer keys on sleep_onset, not Cycle start time).
      */
     internal fun sleepsCsv(
         sessions: List<SleepSession>,
@@ -319,15 +314,13 @@ object WhoopCsvExporter {
      * can't mis-attribute them as WHOOP data) and write a zip to [uri]. Returns a human summary for
      * the toast.
      *
-     * [deviceId] is the registry's ACTIVE strap id (SPINE / #814) and has NO default on purpose
-     * (#458): the old `= "my-whoop"` default meant a live-BLE install — whose engine banks computed
-     * scores under `"<strapId>-noop"` — exported `0 days, 0 sleeps, 0 journal entries` while the app
-     * displayed months of history. It survived the #359 sweep because that grep targeted the
-     * hardcoded `"my-whoop-noop"` string, not default parameters. Every read below goes through the
-     * active∪canonical union resolvers ([WhoopRepository.importedSourceIds] /
-     * [WhoopRepository.computedSourceIds]), so BOTH install shapes export in full: live-BLE rows
-     * under the strap id AND canonical `"my-whoop"` rows from a prior CSV import (a single-canonical
-     * install collapses to one id, byte-identical to before).
+     * [deviceId] is the registry's active strap id and has NO default on purpose: a `"my-whoop"`
+     * default would silently redirect a live-BLE install (whose engine banks computed scores under
+     * `"<strapId>-noop"`) into exporting `0 days, 0 sleeps, 0 journal entries` while the app still
+     * displays months of history. Every read below goes through the active∪canonical union
+     * resolvers ([WhoopRepository.importedSourceIds] / [WhoopRepository.computedSourceIds]), so
+     * BOTH install shapes export in full: live-BLE rows under the strap id AND canonical
+     * `"my-whoop"` rows from a prior CSV import (a single-canonical install collapses to one id).
      */
     suspend fun exportZip(
         context: Context,
@@ -336,13 +329,13 @@ object WhoopCsvExporter {
         deviceId: String,
     ): String {
         val hi = System.currentTimeMillis() / 1000 + 86_400
-        // physiological_cycles keys each row by the LOCAL calendar day (analyze, #277); the sleeps
-        // "Cycle start time" must use the SAME local end-day so the two CSVs reconcile by cycle — else a
-        // non-UTC user's night lands on a different date in each file (#715). Current device offset,
+        // physiological_cycles keys each row by the LOCAL calendar day; the sleeps "Cycle start
+        // time" must use the SAME local end-day so the two CSVs reconcile by cycle — else a
+        // non-UTC user's night lands on a different date in each file. Current device offset,
         // matching how analyze bucketed the stored days.
         val tzOffsetSec = java.time.ZoneId.systemDefault().rules.getOffset(java.time.Instant.now()).totalSeconds.toLong()
 
-        // The active∪canonical union ids (#458): active strap FIRST, so a per-row dedup keeps the
+        // The active∪canonical union ids: active strap FIRST, so a per-row dedup keeps the
         // live/measured copy; a single-canonical install collapses to one id each.
         val importedIds = repo.importedSourceIds(deviceId)
         val computedIds = repo.computedSourceIds(deviceId)
@@ -358,11 +351,10 @@ object WhoopCsvExporter {
 
         val sleeps = repo.sleepSessionsMerged(deviceId, 0L, hi)
         // Workouts: imported WHOOP ∪ on-device detected (which carries the "-noop" device id), each
-        // side read across its union ids (#458). Apple Health / Health Connect workouts are
-        // intentionally omitted, matching the cycles/sleep cut. Dedup by (startTs, sport), imported
-        // first so it wins — the same session can exist under both sides (e.g. a reimported export +
-        // BLE re-detection), which double-counted it in the CSV and inflated totals on reimport.
-        // (PR #97 review, tigercraft4. Swift parity.)
+        // side read across its union ids. Apple Health / Health Connect workouts are intentionally
+        // omitted, matching the cycles/sleep cut. Dedup by (startTs, sport), imported first so it
+        // wins — the same session can exist under both sides (e.g. a reimported export + BLE
+        // re-detection), which would double-count it and inflate totals on reimport.
         val seenWorkouts = HashSet<String>()
         val workouts = (repo.workoutsUnion(deviceId, 0L, hi) + repo.detectedWorkoutsUnion(deviceId, 0L, hi))
             .filter { seenWorkouts.add("${it.startTs}|${it.sport}") }

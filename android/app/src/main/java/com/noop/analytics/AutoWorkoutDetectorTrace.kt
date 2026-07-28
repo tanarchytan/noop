@@ -3,8 +3,7 @@ package com.noop.analytics
 import com.noop.data.GravitySample
 import com.noop.data.HrSample
 
-// AutoWorkoutDetectorTrace.kt - Kotlin twin of AutoWorkoutDetector+Trace.swift. The Workouts & GPS
-// test-mode auto-detect trace + line formatters.
+// AutoWorkoutDetectorTrace.kt - the Workouts & GPS test-mode auto-detect trace + line formatters.
 //
 // detectTrace(...) is the side-effect-free twin of AutoWorkoutDetector.detect(...): it returns the SAME
 // List<DetectedWorkout> detect would (it reuses detect verbatim), plus a trace that names the detector's
@@ -12,18 +11,16 @@ import com.noop.data.HrSample
 // offered or dropped (too short, motion-not-confirmed, overlaps a saved session). So a "workout went
 // missing / auto-detect didn't fire" report shows exactly which gate kept or dropped each window.
 //
-// WorkoutsTrace adds the line formatters the app emitters use for the session lifecycle, the GPS-fix count
-// and the cross-source dedup decisions. Everything is pure, no clock, no IO, no PII. Byte-aligned with the
-// Swift line shapes so a shared report reads identically on either platform. No em-dashes.
+// WorkoutsTrace adds the line formatters the app emitters use for the session lifecycle, the GPS-fix
+// count and the cross-source dedup decisions. Everything is pure, no clock, no IO, no PII. No em-dashes.
 
 object AutoWorkoutDetectorTrace {
 
     /**
-     * Side-effect-free diagnostic twin of [AutoWorkoutDetector.detect]: returns the SAME
-     * List<DetectedWorkout> detect would (it reuses detect verbatim), plus the trace. The trace logs the
-     * inputs + thresholds, then walks the detector's own gates (sustained-minutes, motion-confirm,
-     * saved-overlap) to name why each merged window survived or dropped, mirroring the algorithm exactly.
-     * Mirrors the Swift AutoWorkoutDetector.detectTrace. [path] tags the entry point.
+     * Diagnostic twin of [AutoWorkoutDetector.detect]: returns the SAME List<DetectedWorkout> detect
+     * would (it reuses detect verbatim), plus the trace. The trace logs the inputs + thresholds, then
+     * walks the detector's own gates (sustained-minutes, motion-confirm, saved-overlap) to name why each
+     * merged window survived or dropped. [path] tags the entry point.
      */
     fun detectTrace(
         hr: List<HrSample>,
@@ -135,9 +132,8 @@ object AutoWorkoutDetectorTrace {
 }
 
 /**
- * Pure line formatters for the Workouts & GPS test mode. Kotlin twin of the Swift WorkoutsTrace. The app
- * emitters own the live state; these own the line SHAPE so both platforms read identically. No state, no
- * IO, no PII. No em-dashes.
+ * Pure line formatters for the Workouts & GPS test mode. The app emitters own the live state; these
+ * own the line SHAPE. No state, no IO, no PII. No em-dashes.
  */
 object WorkoutsTrace {
 
@@ -159,10 +155,9 @@ object WorkoutsTrace {
     /**
      * A GPS-fix-progress line: raw fixes seen, how many the filter accepted, and the running distance.
      *
-     * [rawFixes] is OPTIONAL: macOS sees the pre-filter raw stream and passes a real count so the line shows
-     * a true accept rate. Android's LocationTracker pre-filters upstream, so the raw count is NOT available
-     * at the GpsSession seam (every fix here is already accepted); it passes null and the line renders
-     * `rawFixes=n/a` rather than implying an accept rate the platform cannot measure. Mirrors Swift gpsLine.
+     * [rawFixes] is OPTIONAL: Android's LocationTracker pre-filters upstream, so the raw count is NOT
+     * available at the GpsSession seam (every fix here is already accepted); it passes null and the line
+     * renders `rawFixes=n/a` rather than implying an accept rate that cannot be measured.
      */
     fun gpsLine(rawFixes: Int?, acceptedPoints: Int, distanceM: Double): String =
         "gps rawFixes=${rawFixes?.toString() ?: "n/a"} accepted=$acceptedPoints " +
@@ -180,12 +175,11 @@ object WorkoutsTrace {
             "dropped=$droppedSource(richness=$droppedRichness) (same activity, richer kept)"
 
     /**
-     * An engine detected-bout decision line (#975): the IntelligenceEngine derives a bout from raw HR then
+     * An engine detected-bout decision line: the IntelligenceEngine derives a bout from raw HR then
      * either PERSISTS it (source "-noop", sport "detected") or DROPS it because it overlaps a real logged
      * session (manual / imported), so the same bout is never counted twice. `verdict` is "persisted" /
      * "droppedOverlap" / "droppedShadow"; `durMin` is the whole-minute bout length; on a drop, `overlapSource`
-     * names the real row it collided with. No PII (a source label + minutes + bpm only). Swift twin
-     * AutoWorkoutDetector.detectedBoutLine.
+     * names the real row it collided with. No PII (a source label + minutes + bpm only).
      */
     fun detectedBoutLine(
         verdict: String,

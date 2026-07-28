@@ -3,32 +3,23 @@ package com.noop.analytics
 import com.noop.data.GravitySample
 
 /*
- * SedentaryDetector.kt — the pure core of the "inactivity reminder" (wrist buzz after sitting too long).
+ * SedentaryDetector.kt — pure core of the inactivity reminder (wrist buzz after sitting too long).
+ * One deterministic, DB-free engine covering bout detection, active/quiet-hours gating, and the
+ * buzz/re-nudge de-dup decision.
  *
- * Faithful Kotlin mirror of StrandAnalytics/SedentaryDetector.swift. Keep the detector tunables, the
- * active/quiet-hours window math, and the de-dup decision byte-identical to Swift — cross-platform
- * parity is the contract. This folds the PR #419 logic (ActivityDetector.detectSedentaryBouts +
- * InactivityPrefs.mayBuzzInactivity + WhoopBleClient.maybeBuzzInactivity de-dup) into ONE pure,
- * deterministic, DB-free engine. The human wires this into the existing Android service +
- * InactivityPrefs persistence afterward.
+ * WHY GRAVITY, NOT STEPS: WHOOP 4.0 exposes no step count over BLE, only the wrist accelerometer via
+ * the ~15-min historical offload, so sedentary time is inferred from gravity. [detectSedentaryBouts]
+ * smooths the per-record gravity delta ([WorkoutDetector.activitySeries]) over [smoothWindowS] and
+ * treats any stretch at/under [moveThresholdG] — no sustained walking — as a sedentary bout. Typing and
+ * isolated reaches average out; sustained walking crosses the threshold and ends it. Calibrated from
+ * on-wrist data (desk ~0.05-0.10 g smoothed, walking ~0.2-0.4 g).
  *
- * WHY GRAVITY, NOT STEPS: the WHOOP 4.0 exposes no step count over BLE — only the wrist accelerometer,
- * and only via the ~15-min historical offload. Sedentary time is therefore inferred from gravity. The
- * wrist moves constantly at a desk (typing, reaching), so "wrist stillness" is the wrong signal; what a
- * "time to move" reminder needs is the ABSENCE OF AMBULATION (walking around). [detectSedentaryBouts]
- * smooths the per-record gravity delta (reusing [WorkoutDetector.activitySeries]) over [smoothWindowS]
- * and calls any stretch where that smoothed signal stays at/under [moveThresholdG] — i.e. no sustained
- * walking — a sedentary bout. Typing and isolated reaches average out and keep the bout alive; sustained
- * walking pushes the smoothed signal over the threshold and ends it. Defaults were calibrated from
- * on-wrist data (desk ≈ 0.05–0.10 g smoothed, walking ≈ 0.2–0.4 g).
+ * PURE: no I/O, no clock reads — `nowSec` and `tzOffsetSec` (seconds east of UTC) are passed in.
+ * Active/quiet hours are evaluated against the bout's LOCAL END TIME, not `now`: gravity only reaches
+ * the app on the strap's offload flush, so an overnight bout is processed the next morning, and a
+ * `now`-based check would wrongly admit it.
  *
- * PURITY: no I/O, no wall-clock reads. `nowSec` and `tzOffsetSec` (seconds east of UTC) are passed IN.
- * Active-hours / quiet-hours are evaluated against the candidate bout's LOCAL END TIME, not `now`:
- * gravity only reaches the app on the strap's offload flush, so an overnight bout is processed in the
- * morning; a `now`-based check would wrongly admit it. Checking the bout's own end time is what makes
- * "active hours excludes nighttime sleep" actually hold.
- *
- * All `ts`/`start`/`end`/`nowSec` are wall-clock unix SECONDS. Outputs are APPROXIMATE, not medical advice.
+ * `ts`/`start`/`end`/`nowSec` are unix SECONDS. Outputs are APPROXIMATE, not medical advice.
  */
 
 /**
@@ -88,7 +79,7 @@ data class SedentaryConfig(
     val enabled: Boolean = false,
     /** Global notification master switch (NotifPrefs.MASTER, default OFF). Buzz is inert if off. */
     val notificationsMasterOn: Boolean = false,
-    // Detector tunables (ActivityDetector).
+    // Detector tunables.
     /** Smoothed wrist-motion above this (g) counts as "walking around", ending a sedentary bout. */
     val moveThresholdG: Double = SedentaryDetector.DEFAULT_MOVE_THRESHOLD_G,
     /** Minimum sedentary-bout length (minutes) before the first nudge (InactivityPrefs threshold). */
@@ -121,7 +112,7 @@ data class SedentaryConfig(
 
 object SedentaryDetector {
 
-    // ── Detector defaults (ActivityDetector parity) ──────────────────────────
+    // ── Detector defaults ─────────────────────────────────────────────────────
     /** Smoothed wrist-motion above this (g) counts as "walking around", ending a sedentary bout. */
     const val DEFAULT_MOVE_THRESHOLD_G: Double = 0.15
 
@@ -137,10 +128,10 @@ object SedentaryDetector {
     /** Default minimum sedentary-bout length (minutes) — InactivityPrefs threshold default. */
     const val DEFAULT_THRESHOLD_MINUTES: Int = 45
 
-    /** The detector's own floor when a caller doesn't pass a user threshold (ActivityDetector default). */
+    /** The detector's own floor when a caller doesn't pass a user threshold. */
     const val DEFAULT_MIN_MINUTES: Int = 15
 
-    // ── Config defaults (InactivityPrefs / NotifPrefs parity) ────────────────
+    // ── Config defaults (InactivityPrefs / NotifPrefs) ───────────────────────
     const val DEFAULT_RENUDGE_MINUTES: Int = 30
     const val DEFAULT_BUZZ_LOOPS: Int = 2
     const val DEFAULT_ACTIVE_START_MIN: Int = 9 * 60   // 09:00
@@ -148,7 +139,7 @@ object SedentaryDetector {
     const val DEFAULT_QUIET_START_MIN: Int = 22 * 60   // 22:00
     const val DEFAULT_QUIET_END_MIN: Int = 7 * 60      // 07:00
 
-    // ── Detection (ActivityDetector.detectSedentaryBouts parity) ─────────────
+    // ── Bout detection ────────────────────────────────────────────────────────
 
     /**
      * Detect SEDENTARY bouts: stretches where the smoothed wrist-motion stays at/under [moveThresholdG]
@@ -191,7 +182,7 @@ object SedentaryDetector {
         return out
     }
 
-    // ── Pure time helpers (InactivityPrefs parity) ───────────────────────────
+    // ── Pure time helpers (InactivityPrefs) ──────────────────────────────────
 
     /** Local minute-of-day [0,1440) for a unix-seconds instant given a tz offset (seconds east of UTC). */
     fun localMinuteOfDay(epochSec: Long, tzOffsetSec: Long): Int =
@@ -204,8 +195,8 @@ object SedentaryDetector {
 
     /**
      * The global + active/quiet-hours gate, evaluated against the bout's LOCAL END TIME. True only when
-     * the inactivity reminder may buzz for a bout ending at [boutEndEpochSec]. Mirrors
-     * InactivityPrefs.mayBuzzInactivity (master / quiet hours / worn / active-hours-by-bout-end-time).
+     * the inactivity reminder may buzz for a bout ending at [boutEndEpochSec]: master switch, quiet
+     * hours, worn, then active-hours-by-bout-end-time, in that order.
      */
     fun mayBuzz(config: SedentaryConfig, worn: Boolean, boutEndEpochSec: Long, tzOffsetSec: Long): Boolean {
         if (!config.enabled) return false
@@ -222,13 +213,13 @@ object SedentaryDetector {
         return true
     }
 
-    // ── The decision (WhoopBleClient.maybeBuzzInactivity parity) ─────────────
+    // ── The decision (called by WhoopBleClient.maybeBuzzInactivity) ──────────
 
     /**
      * Run the inactivity reminder over the freshly-arrived [gravity] window and decide whether to buzz.
      * Pure: pass [nowSec] (the offload-completion instant) and [tzOffsetSec] IN; never read a clock.
      *
-     * Mirrors the Android live path exactly:
+     * Steps:
      *   1. Disabled → never buzz; state unchanged.
      *   2. Only act when this offload advanced the newest gravity ts (replayed / no-new-rows → no-op);
      *      when it did advance, persist the new `lastProcessedGravityTs`.

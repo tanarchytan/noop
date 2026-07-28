@@ -11,15 +11,13 @@ import kotlin.math.sqrt
  *
  * Why a lightweight z here (not the full [Baselines] EWMA): the cards only need a deviation-against-your-
  * own-recent-range read ("further from your baseline than usual"), and the cached daily columns already
- * carry RHR / HRV / skin-temp-deviation / respiration. A rolling mean+SD over the trailing window is the
- * honest, transparent statistic the spec asks for (an observation about your own number) and keeps this
- * pass cheap + DB-free. The engines themselves (CyclePhaseEngine / CircadianEngine / IllnessSignalEngine)
- * are the byte-for-byte cross-platform maths; this file is only the Android-side input plumbing.
+ * carry RHR / HRV / skin-temp-deviation / respiration. A rolling mean+SD over the trailing window is an
+ * honest, transparent statistic (an observation about your own number) that keeps this pass cheap + DB-free.
+ * The engines themselves (CyclePhaseEngine / CircadianEngine / IllnessSignalEngine) own the maths; this
+ * file is only the Android-side input plumbing.
  *
  * NON-CLINICAL: every output is an approximation about the user's own series — never a diagnosis. Cycle
  * awareness is OPT-IN (the caller gates on a default-OFF pref before reading [Snapshot.cycle]).
- *
- * See docs/superpowers/specs/2026-06-19-v5-skin-temp-suite-design.md and the umbrella IA (§2.4 Health hub).
  */
 object V5HealthSignals {
 

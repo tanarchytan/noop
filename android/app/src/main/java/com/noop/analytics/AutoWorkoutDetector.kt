@@ -5,32 +5,23 @@ import com.noop.data.HrSample
 import kotlin.math.sqrt
 
 /*
- * AutoWorkoutDetector.kt — MVP retroactive "did you just work out?" detector.
+ * AutoWorkoutDetector.kt — MVP retroactive "did you just work out?" detector. Separate from
+ * [WorkoutDetector] (computes calories/zones/strain, writes the durable "detected" rows): this
+ * one only ever SUGGESTS a workout via a dismissible Today card, never writes on its own. The
+ * user taps "Save" to turn a suggestion into a manual workout, or X to dismiss it forever.
  *
- * Faithful Kotlin port of StrandAnalytics/AutoWorkoutDetector.swift — the two MUST stay
- * BYTE-PARITY on the detection logic (same thresholds, same span/merge/overlap rules,
- * same outputs), verified by the mirrored unit tests on each platform.
+ * Thresholds are intentionally CONSERVATIVE (low sensitivity): a sustained ≥12-min elevation of
+ * HR ≥ resting+30 bpm, brief (≤90 s) dips tolerated, near windows merged — avoids false positives
+ * from stress / caffeine / a flight of stairs at the cost of missing gentle sessions. An OPTIONAL
+ * continuous motion signal, when supplied, is required as confirmation; else it runs HR-only.
  *
- * This is DELIBERATELY SEPARATE from [WorkoutDetector] (the exercise.py port that computes
- * calories / zones / strain and writes the durable "detected" rows the IntelligenceEngine
- * churns). This one is the lightweight, OPT-IN, NON-DESTRUCTIVE MVP that only ever SUGGESTS
- * a workout via a dismissible Today card — it never writes a row on its own. The user taps
- * "Save" to turn a suggestion into a manual workout, or X to dismiss it forever.
- *
- * The thresholds here are intentionally CONSERVATIVE (low sensitivity): a sustained ≥12-min
- * elevation of HR ≥ resting+30 bpm, brief (≤90 s) dips tolerated, near windows merged. This
- * is tuned to avoid false positives from stress / caffeine / a brief flight of stairs, at the
- * cost of missing the odd short or gentle session — exactly right for a SUGGESTION you can
- * decline. An OPTIONAL continuous motion signal, when one is readily available, is required as
- * confirmation; with no motion series it runs HR-only.
- *
- * Pure / headless: no Android, no I/O, no clock. Inputs are the Room entities
- * com.noop.data.HrSample (ts:Long seconds, bpm:Int) and com.noop.data.GravitySample
- * (ts:Long seconds, x/y/z:Double). All ts/start/end are unix SECONDS as Long. NOT medical advice.
+ * Pure / headless: no Android, no I/O, no clock. Inputs are Room entities HrSample (ts:Long
+ * seconds, bpm:Int) and GravitySample (ts:Long seconds, x/y/z:Double). All ts/start/end are unix
+ * SECONDS as Long. NOT medical advice.
  */
 object AutoWorkoutDetector {
 
-    // ---- Constants (keep byte-identical with the Swift twin) ----
+    // ---- Constants ----
 
     /** Elevated gate: bpm must be at least restingHR + this margin to count as "working". */
     const val elevatedMarginBPM: Int = 30
@@ -58,7 +49,6 @@ object AutoWorkoutDetector {
     /**
      * A detected workout window. All fields are derived purely from the HR samples inside the window.
      * `startSec`/`endSec` are unix seconds; `avgBpm`/`peakBpm` are rounded; `durationMin` is whole minutes.
-     * Mirrors the Swift `DetectedWorkout` struct field-for-field.
      */
     data class DetectedWorkout(
         val startSec: Long,
@@ -97,20 +87,12 @@ object AutoWorkoutDetector {
     }
 
     /**
-     * Detect candidate sustained-elevated-HR workout windows.
-     *
-     * Algorithm (kept byte-identical with the Swift twin):
-     *  1. Sort HR ascending. Floor = restingHR + [elevatedMarginBPM]. Walk the samples; a sample is
-     *     "elevated" when bpm >= floor.
-     *  2. Grow a contiguous span across elevated samples. A run of NON-elevated samples is tolerated
-     *     (does not end the span) ONLY while the dip's wall-clock duration stays <= [maxDipS]; a longer
-     *     dip closes the span. The span's [start, end] are the first/last ELEVATED sample timestamps.
-     *  3. Keep a span only when it lasts >= [minSustainedMin].
-     *  4. Merge two kept spans when the gap between them is strictly < [mergeGapS].
-     *  5. If a motion series is supplied, drop a window unless its mean motion intensity over the window
-     *     is >= [motionConfirmMean] (confirmation). With no motion series, HR-only — keep it.
-     *  6. Drop a window that OVERLAPS any [savedWorkouts] [start, end] span (never re-suggest a logged one).
-     *  7. Emit a [DetectedWorkout] per surviving window (avg/peak bpm + whole-minute duration).
+     * Detects sustained-elevated-HR workout windows: samples >= restingHR + [elevatedMarginBPM] are
+     * "elevated"; a span grows across them, tolerating dips up to [maxDipS] before closing, and is
+     * kept only once it lasts >= [minSustainedMin]; kept spans within [mergeGapS] of each other merge.
+     * A supplied motion series must average >= [motionConfirmMean] over the window to confirm (else
+     * HR-only); a window overlapping a [savedWorkouts] span is dropped so a logged workout is never
+     * re-suggested. Each surviving window becomes a [DetectedWorkout] (avg/peak bpm, whole-minute duration).
      *
      * @param hr the day's (or last day or two's) HR samples; any order; empty → [].
      * @param restingHR the nightly resting HR for the day; null → [defaultRestingHR] (60).
@@ -196,7 +178,7 @@ object AutoWorkoutDetector {
 
             val bpms = window.map { it.bpm }
             val avg = Math.round(bpms.sum().toDouble() / bpms.size.toDouble()).toInt()
-            // window is non-empty so max() always exists; `?: avg` mirrors the Swift twin's fallback exactly.
+            // window is non-empty so max() always exists; `?: avg` is just a non-null fallback.
             val peak = bpms.maxOrNull() ?: avg
             val durMin = ((end - start) / 60L).toInt()
             results.add(DetectedWorkout(startSec = start, endSec = end, avgBpm = avg, peakBpm = peak, durationMin = durMin))

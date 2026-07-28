@@ -33,17 +33,14 @@ import kotlin.reflect.KClass
 
 /**
  * OPT-IN writeback: pushes NOOP's on-device computed nightly metrics (resting HR, HRV RMSSD, sleep
- * SpO2, respiratory rate) INTO Health Connect, so other apps can see what the strap measured.
- * Inverse of [HealthConnectImporter]; default OFF (NoopPrefs.hcWriteback), toggled in Data Sources.
+ * SpO2, respiratory rate) into Health Connect, so other apps can see what the strap measured.
+ * Inverse of [HealthConnectImporter]; default off (NoopPrefs.hcWriteback), toggled in Data Sources.
  *
- * Two deliberate scope limits:
- *  - **Computed days only** (`repo.days(computedDeviceId)`) — never imported ones. Echoing imported
- *    WHOOP-export or Health-Connect-sourced rows back into HC would duplicate another app's data
- *    (or loop our own import). What NOOP computed from the strap is genuinely ours to contribute.
- *  - **Idempotent by clientRecordId** (`noop-<metric>-<day>`): Health Connect does NOT auto-dedupe
- *    on re-insert the way HealthKit does — without a client id every 15-min recompute would stack
- *    duplicates. With it, HC upserts: same id + higher [Metadata.clientRecordVersion] replaces, so
- *    we stamp the version with the write time and the latest computation always wins.
+ * Two scope limits: writes only computed days (`repo.days(computedDeviceId)`), never imported
+ * ones, so it never echoes another app's data back into itself or loops its own import. And every
+ * write is idempotent by clientRecordId (`noop-<metric>-<day>`) with a version stamp — Health
+ * Connect upserts same id + higher [Metadata.clientRecordVersion], so a recompute replaces the
+ * day instead of stacking duplicates.
  */
 object HealthConnectWriter {
 
@@ -73,9 +70,9 @@ object HealthConnectWriter {
      * 0 when HC is unavailable / nothing computed yet. Assumes [PERMISSIONS] are granted (HC
      * throws SecurityException otherwise — callers wrap in runCatching).
      *
-     * [deviceId] must be the registry's ACTIVE strap id (SPINE / #814): a wizard-paired strap banks
-     * rows under `whoop-<address>`, so a hardcoded legacy "my-whoop" id reads empty tables and
-     * exports nothing.
+     * [deviceId] must be the registry's active strap id: a wizard-paired strap banks rows under
+     * `whoop-<address>`, so a hardcoded legacy "my-whoop" id reads empty tables and exports
+     * nothing.
      */
     suspend fun write(context: Context, repo: WhoopRepository, deviceId: String): Int {
         if (HealthConnectClient.getSdkStatus(context) != HealthConnectClient.SDK_AVAILABLE) return 0
@@ -140,11 +137,9 @@ object HealthConnectWriter {
             }
         }
 
-        // NOTE: steps + active-calories are deliberately NOT written back (was #528). NOOP's strap
-        // step/kcal figures are estimates, and the phone pedometer / a watch already feed Health
-        // Connect the authoritative values — writing ours too would double-count in the OS's daily
-        // totals. iOS (#249) excludes them for the same reason; this keeps the two platforms aligned.
-        // The unique strap signals (vitals, HR, sleep, workouts) are still written below.
+        // Steps + active-calories are deliberately not written back: NOOP's strap step/kcal
+        // figures are estimates, and the phone pedometer / a watch already feed Health Connect
+        // the authoritative values — writing ours too would double-count in the OS's daily totals.
 
         // Each export concern inserts independently (own runCatching) so a failure in one — e.g. a
         // revoked per-type WRITE permission — can't suppress the others.
@@ -216,11 +211,9 @@ object HealthConnectWriter {
     }
 
     /**
-     * #528 — export NOOP's heart-rate samples (raw [deviceId], not computed) above the persisted
-     * frontier. Inside workout/sleep windows the series is kept at full resolution; elsewhere it is
-     * decimated to ~1 sample / 30 s so a continuous day doesn't flood Health Connect. The frontier
-     * (a single epoch-second cursor in [NoopPrefs]) advances past every sample seen, so each 15-min
-     * writeback only emits NEW samples and decimated-away points are never reconsidered.
+     * Exports NOOP's heart-rate samples (raw [deviceId], not computed) above the persisted frontier:
+     * full resolution inside workout/sleep windows, ~1 sample / 30 s elsewhere so a continuous day doesn't flood Health Connect.
+     * The frontier ([NoopPrefs]) advances past every sample seen, so each writeback only emits new ones.
      */
     private suspend fun writeHeartRate(client: HealthConnectClient, context: Context, repo: WhoopRepository, deviceId: String, version: Long): Int {
         val now = System.currentTimeMillis() / 1000
@@ -264,15 +257,9 @@ object HealthConnectWriter {
     }
 
     /**
-     * #528 — export finalized sleep sessions as a session + AWAKE/SLEEPING stages (no deep/REM/light
-     * split yet — only the validated asleep-vs-awake distinction is shared so we don't over-claim the
-     * stager's precision). Uses the MERGED view (imported wins, on-device-computed gap-fills) so a
-     * strap-only user's locally-computed nights (stored under the "-noop" computed id) are included.
-     * #364 — fragments are grouped into BRIDGED NIGHTS (the same #561 bridge the daily totals score
-     * with), so a night split by a brief mid-night wake exports as ONE record whose gap is an AWAKE
-     * stage; the clientRecordId keys off the group's earliest fragment's immutable detected startTs,
-     * and the absorbed fragments' old per-fragment records are DELETED (HC upserts by id but never
-     * removes an id we stop writing).
+     * Exports finalized sleep sessions as AWAKE/SLEEPING-only stages, from the merged view (imported wins, on-device-computed gap-fills) so a strap-only user's locally-computed nights (the "-noop" computed id) are included.
+     * A night bridged from fragments split by a brief mid-night wake exports as one record, its gap an AWAKE stage, keyed by the earliest fragment's startTs.
+     * The absorbed fragments' old per-fragment records are deleted, since HC upserts by id but never removes one that stops being written.
      */
     private suspend fun writeSleep(client: HealthConnectClient, repo: WhoopRepository, deviceId: String): Int {
         val now = System.currentTimeMillis() / 1000
@@ -302,8 +289,8 @@ object HealthConnectWriter {
                 metadata = meta(p.clientId, p.endSec),
             )
         }
-        // Clear absorbed fragments' old records BEFORE the merged upsert, so a night previously
-        // exported as two entries never lingers as one merged + one stale fragment. (#364)
+        // Clear absorbed fragments' old records before the merged upsert, so a night previously
+        // exported as two entries never lingers as one merged + one stale fragment.
         val absorbed = plans.flatMap { it.absorbedClientIds }
         if (absorbed.isNotEmpty()) {
             runCatching {
@@ -314,7 +301,7 @@ object HealthConnectWriter {
         return insertChunked(client, records)
     }
 
-    // --- Workout (ExerciseSession) writeback (GPS workouts, v1.71) ---
+    // --- Workout (ExerciseSession) writeback (GPS workouts) ---
 
     /** Write-permission strings for exercise sessions + distance; union into the writeback request. */
     val EXERCISE_PERMISSIONS: Set<String> = setOf(

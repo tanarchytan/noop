@@ -1,14 +1,12 @@
 package com.noop.analytics
 
 // IllnessSignalEngine.kt — multi-signal "Heads-Up" early-warning with explicit false-positive suppression.
-// Byte-for-byte mirror of Strand/Packages/StrandAnalytics/Sources/StrandAnalytics/IllnessSignalEngine.swift.
 //
 // INDEPENDENT implementation of the published multi-parameter pre-symptomatic signature documented across
-// the wearable literature (e.g. the Stanford/Snyder resting-HR-elevation work and successor studies):
-// resting HR ↑, skin temperature ↑, HRV (RMSSD) ↓ and respiration ↑ move TOGETHER, days before symptoms.
-// NOOP re-derives the PATTERN, transparently, against the user's OWN rolling baseline — never a population
-// cutoff. Replaces the blunt 2-of-4 threshold rule with a calibrated 0–100 score, a ≥2-signal
-// corroboration gate, and EXPLICIT confounder suppression cross-checked against the same-day journal tags.
+// the wearable literature: resting HR ↑, skin temperature ↑, HRV (RMSSD) ↓ and respiration ↑ move TOGETHER,
+// days before symptoms. NOOP re-derives the PATTERN against the user's OWN rolling baseline, never a
+// population cutoff, via a calibrated 0–100 score, a ≥2-signal corroboration gate, and EXPLICIT confounder
+// suppression cross-checked against the same-day journal tags.
 //
 // WELLNESS ONLY — APPROXIMATE, NOT A DIAGNOSIS. Never names a condition; copy is always "a heads-up to
 // rest" / "consider taking it easy".

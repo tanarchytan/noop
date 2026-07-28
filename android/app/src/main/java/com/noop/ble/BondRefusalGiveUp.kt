@@ -1,28 +1,23 @@
 package com.noop.ble
 
 /**
- * Mirror of the Swift `BondRefusalGiveUp` (Strand/BLE/BLEManager.swift).
+ * Decides when a strap that keeps REFUSING the encrypted bond (INSUFFICIENT_AUTHENTICATION/_ENCRYPTION,
+ * no genuine bond in between) has refused enough times that hammering it further is pointless. Pure so
+ * it's unit-testable without a BLE seam.
  *
- * #747 / #750: decides when a strap that keeps REFUSING the encrypted bond
- * (INSUFFICIENT_AUTHENTICATION/_ENCRYPTION, no genuine bond in between) has refused enough times that
- * hammering it further is pointless. Two responsibilities, both pure so they're unit-testable without a
- * BLE seam:
+ *  - PAUSE: after [giveUpThreshold] consecutive refusals auto-reconnect stops re-kicking and surfaces an
+ *    honest hint instead of looping forever and draining the battery.
+ *  - EPITAPH: at the same moment, emit one summary line recording how the bond attempt died (the streak +
+ *    an opaque, install-local id), with no PII (no MAC, no serial).
  *
- *  - #747 PAUSE: after [giveUpThreshold] consecutive refusals the auto-reconnect should STOP re-kicking
- *    (it can't bond without the user freeing the strap / re-pairing), so the caller pauses the rescan and
- *    surfaces an honest hint instead of looping forever and draining the battery.
- *  - #750 EPITAPH: at the same moment, emit ONE summary "epitaph" line recording how the bond attempt
- *    died (the streak + an opaque, install-local id), so a shared strap log carries the cause without any
- *    PII (no MAC, no serial, just the count and a short opaque token).
- *
- * The streak accumulates across the reconnect loop (a disconnect does NOT reset it) and is cleared only by
- * a genuine bond or an explicit user reconnect, exactly like the client's existing [bondRefusalStreak].
+ * The streak accumulates across the reconnect loop (a disconnect does NOT reset it), cleared only by a
+ * genuine bond or an explicit user reconnect, like the client's existing [bondRefusalStreak].
  */
 class BondRefusalGiveUp(
     /**
-     * Consecutive bond refusals before we pause auto-reconnect + write the epitaph. 5 (not 2, where the
-     * pairing HINT already shows): the hint asks the user to act; we give them several reconnect cycles to
-     * do it before we stop hammering. A genuinely held/stale strap reaches 5 within a couple of minutes.
+     * Consecutive bond refusals before auto-reconnect pauses + writes the epitaph. 5, not 2 (where the
+     * pairing hint already shows): gives the user several reconnect cycles to act before we stop
+     * hammering. A genuinely held/stale strap reaches 5 within a couple of minutes.
      */
     private val giveUpThreshold: Int = 5,
 ) {
@@ -57,10 +52,9 @@ class BondRefusalGiveUp(
 
     companion object {
         /**
-         * #750: the one-line bond-refusal EPITAPH. Records the streak + an OPAQUE install-local id only,
-         * never a MAC or serial. [opaqueId] should be a short token derived from the per-install local
-         * device id, which carries no PII. Pure so a fixture pins it. No em-dash (project rule).
-         * Byte-identical to the Swift `BondRefusalGiveUp.epitaphLine`.
+         * The one-line bond-refusal epitaph. Records the streak + an OPAQUE install-local id only, never
+         * a MAC or serial. [opaqueId] is a short token derived from the per-install local device id, so it
+         * carries no PII. Pure so a fixture pins it; no em-dash.
          */
         fun epitaphLine(refusals: Int, opaqueId: String): String =
             "Bond epitaph: the strap [$opaqueId] refused the encrypted bond ${refusals}x in a row with no " +
@@ -69,8 +63,8 @@ class BondRefusalGiveUp(
                 "the strap in pairing mode, forget it in Bluetooth settings) then reconnect in NOOP."
 
         /**
-         * #747: the honest user-facing hint shown when auto-reconnect pauses. Tells them WHY it stopped and
-         * how to get going again. Pure; no em-dash. Byte-identical to the Swift `BondRefusalGiveUp.pausedHint`.
+         * The honest user-facing hint shown when auto-reconnect pauses. Tells them why it stopped and how
+         * to get going again. Pure; no em-dash.
          */
         fun pausedHint(): String =
             "NOOP stopped retrying because your strap keeps refusing to pair. It is likely still held by the " +
@@ -79,13 +73,9 @@ class BondRefusalGiveUp(
                 "settings choose Forget This Device. Then tap Connect to try again."
 
         /**
-         * #750: a short OPAQUE token for the epitaph, derived from the strap's device id.
-         *
-         * DIVERGENCE FROM SWIFT (deliberate, PII): on iOS the source is a CoreBluetooth-local UUID
-         * (per-install, NOT a hardware address), so the Swift twin can keep its hex prefix directly. On
-         * Android the strap id IS a MAC address (PII), so we must NEVER expose its bytes. We therefore HASH
-         * it (SHA-256, first 8 hex of the digest) so the token is stable within a log, lets us tell two
-         * straps apart, but is irreversible and carries no device-identifying PII. Pure + deterministic.
+         * A short OPAQUE token for the epitaph, derived from the strap's device id. The strap id IS a MAC
+         * address (PII), so we must NEVER expose its bytes: hash it (SHA-256, first 4 bytes as 8 hex
+         * chars) for a token stable within a log, distinct per strap, but irreversible. Pure + deterministic.
          */
         fun opaqueId(localId: String): String = try {
             val digest = java.security.MessageDigest.getInstance("SHA-256")

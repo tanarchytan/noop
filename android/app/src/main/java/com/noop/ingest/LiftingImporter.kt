@@ -20,25 +20,19 @@ import java.util.Locale
  * Imports strength-training history from a lifting tracker into the local Room store, as one
  * "Strength Training" [WorkoutRow] per workout (source "lifting").
  *
- * Kotlin mirror of the macOS/iOS source of truth
- *   Packages/StrandImport/Sources/StrandImport/LiftingImporter.swift
- * so the same two formats, the same volume-load arithmetic and the same honest labelling apply on
- * every platform:
+ * Two formats: Hevy CSV export (one row per set, grouped into a session by title + start_time)
+ * and Liftosaur JSON export (a `history` array of records with startTime/endTime ms and nested
+ * entries[].sets[]).
  *
- *   • Hevy CSV export        — one row per set; grouped into a session by (title + start_time).
- *   • Liftosaur JSON export  — a `history` array of records with `startTime`/`endTime` (ms) and
- *                              nested `entries[].sets[]`.
- *
- * The headline figure is a TRANSPARENT volume load — Σ(weight × reps) across the working sets —
- * surfaced as a training-VOLUME estimate, never a measured cardiovascular strain: the rows carry no
- * `strain`, so imported lifting never feeds the HR-based Effort score. Weights normalise to
- * kilograms (Hevy `weight_kg` is kg; lb columns and Liftosaur's `lb` unit convert). Tolerant
- * throughout: a malformed set / record is skipped and counted, never fatal. Parsing is pure
- * ([parseHevy] / [parseLiftosaur]) so it is JVM unit-testable (LiftingImporterTest).
+ * The headline figure is a training-volume estimate — Σ(weight × reps) across the working sets,
+ * never a measured cardiovascular strain: the rows carry no `strain`, so imported lifting never
+ * feeds the HR-based Effort score. Weights normalise to kilograms (Hevy `weight_kg` is kg; lb
+ * columns and Liftosaur's `lb` unit convert). A malformed set or record is skipped and counted,
+ * never fatal. Parsing is pure ([parseHevy] / [parseLiftosaur]) so it is unit-testable.
  */
 object LiftingImporter {
 
-    /** Room deviceId / workout source for everything this importer writes — identical to the Swift lane. */
+    /** Room deviceId / workout source for everything this importer writes. */
     const val SOURCE_ID = "lifting"
 
     /** Sport name every imported lifting session is filed under (maps to the dumbbell icon). */
@@ -54,7 +48,7 @@ object LiftingImporter {
 
     enum class Format { HEVY_CSV, LIFTOSAUR_JSON }
 
-    // MARK: - One parsed session (mirrors Swift LiftingSession)
+    // MARK: - One parsed session
 
     data class Session(
         val startTs: Long,        // unix seconds, UTC
@@ -178,7 +172,7 @@ object LiftingImporter {
     /**
      * Parse raw bytes, auto-detecting the format.
      *
-     * [zone] interprets Hevy's zoneless local wall-clock timestamps (#649); defaults to the device
+     * [zone] interprets Hevy's zoneless local wall-clock timestamps; defaults to the device
      * timezone. Liftosaur stamps are absolute epoch ms and ignore it.
      */
     internal fun parse(data: ByteArray, zone: ZoneId = ZoneId.systemDefault()): Result =
@@ -194,9 +188,9 @@ object LiftingImporter {
      * Parse a Hevy CSV (one row per set) into one session per workout.
      *
      * Hevy writes zoneless **local wall-clock** timestamps (e.g. "12 Jun 2026, 18:30"), so a session
-     * logged at 18:30 must land at 18:30 in [zone], not 18:30 UTC (#649). The export carries no
-     * offset, so the device timezone is the honest interpretation; defaults to [ZoneId.systemDefault]
-     * and is injectable for deterministic tests.
+     * logged at 18:30 must land at 18:30 in [zone], not UTC. The export carries no offset, so the
+     * device timezone is the honest interpretation; defaults to [ZoneId.systemDefault] and is
+     * injectable for deterministic tests.
      */
     internal fun parseHevy(table: CsvTable, zone: ZoneId = ZoneId.systemDefault()): Result {
         // Grouped by (title, start_time); the start_time string alone is a stable key, title
@@ -217,10 +211,9 @@ object LiftingImporter {
             val weightKg: Double? = (row.double("weight_kg", "weight", "weight_kgs")
                 ?: row.double("weight_lb", "weight_lbs", "weight_lbf")?.let { it * LB_TO_KG })
                 ?.takeIf { it.isFinite() }
-            // Crafted-import guard (parity with Swift): Kotlin's Double.toInt() SATURATES a
-            // non-finite/out-of-range value (NaN→0, +inf→MAX) and would store garbage rather than
-            // crash; bound reps to a sane finite range and drop-and-skip otherwise so both platforms
-            // reject the same hostile CSV (e.g. reps "1e9999" → +inf).
+            // Crafted-import guard: Kotlin's Double.toInt() SATURATES a non-finite/out-of-range
+            // value (NaN→0, +inf→MAX) and would store garbage rather than crash. Bound reps to a
+            // sane finite range and drop-and-skip otherwise (e.g. reps "1e9999" → +inf).
             val reps = row.double("reps", "rep_count")
                 ?.takeIf { it.isFinite() && it >= 0 && it < 1e6 }?.toInt()
 
@@ -375,10 +368,9 @@ object LiftingImporter {
     }
 
     /**
-     * Finite + Int-range checked Double→Int conversion (parity with Swift's `safeInt`). Kotlin's
-     * `Double.toInt()` SATURATES non-finite/out-of-range values (NaN→0, +inf→Int.MAX_VALUE) and so
-     * would silently store garbage from a crafted import; return null instead so the set is dropped
-     * and skipped, agreeing with the Swift importer's drop-and-skip.
+     * Finite + range-checked Double→Int conversion. Kotlin's `Double.toInt()` SATURATES
+     * non-finite/out-of-range values (NaN→0, +inf→Int.MAX_VALUE) and would silently store garbage
+     * from a crafted import; return null instead so the set is dropped and skipped.
      */
     private fun safeInt(d: Double): Int? =
         if (d.isFinite() && d >= -9e18 && d <= 9e18) d.toInt() else null
@@ -413,9 +405,9 @@ object LiftingImporter {
      * Parse a lifting date string into UTC epoch seconds, interpreting it in [zone].
      *
      * A timestamp carrying its own ISO-8601 offset ("…Z" / "…+01:00") is authoritative and ignores
-     * [zone]. Everything else — Hevy's English "d MMM yyyy, HH:mm" and plain "yyyy-MM-dd HH:mm:ss"
-     * forms — is **zoneless local wall-clock**, so it is resolved against [zone] (the device timezone),
-     * not UTC (#649). `atZone` is DST-correct, unlike a fixed offset.
+     * [zone]. Everything else — Hevy's "d MMM yyyy, HH:mm" and plain "yyyy-MM-dd HH:mm:ss" forms —
+     * is zoneless local wall-clock, resolved against [zone] (the device timezone). `atZone` is
+     * DST-correct, unlike a fixed offset.
      */
     internal fun parseEpochSeconds(raw: String, zone: ZoneId): Long? {
         val t = raw.trim()

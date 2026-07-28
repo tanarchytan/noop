@@ -3,26 +3,24 @@ package com.noop.analytics
 import com.noop.data.StepSample
 import kotlin.math.max
 
-// StepsEstimateEngineTrace.kt - Kotlin twin of StepsEstimateEngine+Trace.swift. The Steps test-mode traces.
+// StepsEstimateEngineTrace.kt — the Steps test-mode traces.
 //
-// Two pure, side-effect-free twins for the two ways NOOP produces a step number:
+// Two pure, side-effect-free traces for the two ways NOOP produces a step number:
 //
-//  1. calibrationTrace(...) - the WHOOP-4 motion-volume path. Reports each calibration day's motion VOLUME
+//  1. calibrationTrace(...) — the WHOOP-4 motion-volume path. Reports each calibration day's motion VOLUME
 //     and phone reference count, then the fitted (or manual) calibration state (k / sampleDays / confidence
 //     / manual) by reusing StepsEstimateEngine.calibrate VERBATIM, so the trace can never disagree with the
 //     coefficient the Settings/Steps screen shows; when withheld it names the status (the "Need N more days"
 //     reason), the same status the tile renders.
 //
-//  2. rawCounterTrace(...) - the WHOOP 5/MG raw path. Reports the cumulative step_motion_counter series and
-//     its WRAP-AWARE deltas (cur - prev) and 0xFFFF, the dropped deltas (>= 512, a sync-gap / reboot
+//  2. rawCounterTrace(...) — the WHOOP 5/MG raw path. Reports the cumulative step_motion_counter series and
+//     its WRAP-AWARE deltas ((cur - prev) & 0xFFFF), the dropped deltas (>= 512, a sync-gap / reboot
 //     boundary, not real steps), and the same total AnalyticsEngine.analyzeDay sums, with the SAME
 //     maxStepDelta gate and the SAME ticks-per-step scaling, so the trace and the daily steps_est can never
 //     diverge.
 //
-// No clock, no IO, no PII (counts and ratios only). The Steps test mode gates each call behind
-// TestCentre.active(STEPS) at the call site (IntelligenceEngine); when the mode is off neither is ever
-// called, so there is zero cost. Byte-aligned with the Swift line shapes so a shared report reads
-// identically on either platform. No em-dashes.
+// No clock, no IO, no PII (counts and ratios only). Gated behind TestCentre.active(STEPS) at the call
+// site (IntelligenceEngine); when the mode is off neither is ever called, so there is zero cost.
 
 object StepsEstimateEngineTrace {
 
@@ -31,9 +29,9 @@ object StepsEstimateEngineTrace {
     /**
      * The WHOOP-4 motion-volume calibration trace. Given the per-day calibration points (each a motion volume
      * + a phone reference step count) and the optional manual override, it logs one `stepsCal point` line per
-     * usable day, then the calibration outcome - built by reusing [StepsEstimateEngine.calibrate] VERBATIM
+     * usable day, then the calibration outcome — built by reusing [StepsEstimateEngine.calibrate] VERBATIM
      * (so k / sampleDays / confidence / manual match the stored coefficient), or the [StepsEstimateEngine.status]
-     * line naming why the fit was withheld. Mirrors the Swift StepsEstimateEngine.calibrationTrace.
+     * line naming why the fit was withheld.
      */
     fun calibrationTrace(
         points: List<StepsEstimateEngine.CalibrationPoint>,
@@ -90,7 +88,7 @@ object StepsEstimateEngineTrace {
      * runs over the cumulative step_motion_counter series: the time-ordered records filtered to the LOCAL day,
      * each consecutive (cur - prev) and 0xFFFF increment, the dropped deltas (>= maxStepDelta), and the
      * ticksPerStep scaling. Reports the counter series length, kept/dropped delta counts, raw tick total and
-     * scaled steps - the SAME value the daily steps_est carries. Mirrors the Swift StepsEstimateEngine.rawCounterTrace.
+     * scaled steps — the SAME value the daily steps_est carries.
      */
     fun rawCounterTrace(
         daySteps: List<StepSample>,
@@ -107,12 +105,10 @@ object StepsEstimateEngineTrace {
             .sortedBy { it.ts }
 
         val lines = ArrayList<String>()
-        // #810: a WHOOP 4.0 sends NO raw step counter over BLE at all, so `daySteps` is empty for it; its
-        // steps are MOTION-ESTIMATED (the calibrationTrace path), not counted. Emitting the bare
-        // "counterSamples=0 (need >=2 for a delta)" line made a 4.0 export read as BROKEN. When there is
-        // no counter sample at all, say so honestly so the trace reflects the model, not a fault. (A 5/MG
-        // with a single counter sample still falls through to the "need >=2" line: it HAS a counter, just
-        // one read this window.)
+        // A WHOOP 4.0 sends NO raw step counter over BLE at all, so `daySteps` is empty for it; its steps
+        // are MOTION-ESTIMATED (the calibrationTrace path), not counted. Say so honestly rather than
+        // reading like a fault. (A 5/MG with a single counter sample still falls through to the "need >=2"
+        // line: it HAS a counter, just one read this window.)
         if (sorted.isEmpty()) {
             lines.add(
                 "stepsRaw day=$dayKey counterSamples=0 noRawCounter " +
@@ -167,9 +163,9 @@ object StepsEstimateEngineTrace {
         } else {
             0
         }
-        // L7: production analyzeDay returns `scaled > 0 ? scaled : null`, so a tiny rawTotal that rounds to 0
-        // yields NO steps_est for the day. Render "none" (not 0) so the trace matches the null headline rather
-        // than implying a real zero-step measurement.
+        // Production analyzeDay returns `scaled > 0 ? scaled : null`, so a tiny rawTotal that rounds to 0
+        // yields NO steps_est for the day. Render "none" (not 0) so the trace matches the null headline
+        // rather than implying a real zero-step measurement.
         val scaledText = if (scaled > 0) scaled.toString() else "none"
         lines.add(
             "stepsRaw total rawTicks=$rawTotal ticksPerStep=${r2(ticksPerStep)} " +

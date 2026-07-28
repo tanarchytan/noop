@@ -1,23 +1,16 @@
 package com.noop.ble
 
 /**
- * Mirror of the Swift `PostBondTimeoutLoopDetector` (Strand/BLE/BLEManager.swift).
+ * Detects a WHOOP 4 "bond-loop": the strap bonds, then the encrypted link drops ~1s later with a
+ * CONNECTION TIMEOUT (Android `GATT_CONN_TIMEOUT` / `0x08`), auto-rescan reconnects, it bonds again,
+ * and dies again — an endless bond-then-timeout cycle that never settles.
  *
- * Detects a WHOOP 4 "bond-loop" (#617): the strap bonds successfully, then the encrypted link drops
- * ~1s later with a CONNECTION TIMEOUT (Android `GATT_CONN_TIMEOUT` / `0x08`, the twin of iOS
- * `CBError.connectionTimeout`), the auto-rescan reconnects, it bonds again, and dies again — an
- * endless bond->timeout cycle that never settles and never tells the user why.
+ * The tell is a TIMEOUT drop shortly after a GENUINE bond; a bond that survives well past the window
+ * is healthy and breaks the streak, since links flap for benign reasons later on and a late drop must
+ * not be blamed on the bond. One quick drop is noise; >= [tripThreshold] CONSECUTIVE bond-then-quick-
+ * timeout cycles trips it, and the client then surfaces the existing re-pair guide (`reconnectGuide`).
  *
- * The tell is a TIMEOUT drop that lands shortly after a GENUINE bond: bond -> die-soon -> rescan ->
- * bond -> die-soon. A bond that survives well past the window is healthy and breaks the streak — links
- * flap for benign reasons minutes in, and a late drop must NOT be blamed on the bond. We don't trip on a
- * single cycle (one quick drop is noise); we trip on >= [tripThreshold] CONSECUTIVE
- * bond-then-quick-timeout cycles. Once tripped, the client surfaces the EXISTING re-pair guide
- * (`reconnectGuide`) so the user gets the forget-and-re-pair steps instead of watching a silent loop
- * drain the battery.
- *
- * Pure value type -> unit-testable without a BLE seam — same shape as the Swift detector and
- * [EmptySyncTracker].
+ * Pure value type, unit-testable without a BLE seam — same shape as [EmptySyncTracker].
  */
 class PostBondTimeoutLoopDetector(
     /**
@@ -26,11 +19,9 @@ class PostBondTimeoutLoopDetector(
      */
     private val tripThreshold: Int = 2,
     /**
-     * A timeout only counts as "right after bonding" if it lands within this many milliseconds of the
-     * bond. A drop well into a healthy session is unrelated to bonding and must NOT count (that would
-     * mis-trip a good link that merely flapped later). Generous vs the radio detector's 20s: the loop's
-     * signature is a near-immediate (~1s) drop, but pre-loop links can limp a few seconds before timing
-     * out. 8s, matching the Swift `quickTimeoutWindow` of 8 seconds.
+     * A timeout counts as "right after bonding" only within this many milliseconds of the bond; a drop
+     * well into a healthy session is unrelated and must not count. Generous vs the radio detector's 20s,
+     * since the loop's signature is a near-immediate (~1s) drop but pre-loop links can limp a few seconds.
      */
     val quickTimeoutWindowMs: Long = 8_000L,
 ) {
@@ -42,11 +33,9 @@ class PostBondTimeoutLoopDetector(
         private set
 
     /**
-     * A connection ended. [wasBonded] = the link reached a genuine encrypted bond this connection;
-     * [msSinceBond] = how long after bonding the link ended in milliseconds (null if we never bonded);
-     * [timedOut] = the drop looks like a connection timeout (vs an intentional disconnect, a bond reset,
-     * a clean close). Returns true if THIS event tripped the loop (a freshly-crossed threshold), so the
-     * caller can log/surface the guide exactly once.
+     * A connection ended. [wasBonded] = reached a genuine encrypted bond this connection; [msSinceBond] =
+     * ms from bond to end (null if never bonded); [timedOut] = looks like a connection timeout vs an
+     * intentional disconnect or clean close. Returns true only if THIS event freshly tripped the loop.
      */
     fun connectionEnded(wasBonded: Boolean, msSinceBond: Long?, timedOut: Boolean): Boolean {
         // Only a timeout that lands within the window after we actually bonded is evidence of the loop.

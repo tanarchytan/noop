@@ -3,14 +3,13 @@ package com.noop.ingest
 /**
  * Pure (Android-free, HC-SDK-free) planning logic for what NOOP exports INTO Health Connect.
  *
- * Everything here operates on plain Kotlin types so it is unit-testable on the JVM, mirroring
+ * Operates on plain Kotlin types so it is unit-testable on the JVM, mirroring
  * [HealthConnectImporter.sumActiveKcalInWindow]. [HealthConnectWriter] turns these descriptors into
- * actual Health Connect records (the untestable SDK glue is kept thin, as in `buildExerciseRecords`).
+ * actual Health Connect records, keeping the untestable SDK glue thin.
  *
- * #528 (reimplemented from @sunny-noop): close the export gaps so a strap-only user surfaces the
- * metrics NOOP genuinely computed — daily steps, active energy, heart-rate series, sleep sessions —
- * into Health Connect for other apps. Honest: only days/samples NOOP actually has are emitted; a
- * day with no steps and no active kcal produces nothing (never a fabricated zero).
+ * Closes the export gap so a strap-only user surfaces daily steps, active energy, heart-rate
+ * series, and sleep sessions into Health Connect. Only days/samples NOOP actually has are emitted;
+ * a day with no steps and no active kcal produces nothing, never a fabricated zero.
  */
 object HealthExportPlan {
 
@@ -27,10 +26,9 @@ object HealthExportPlan {
     data class HrPlan(val chunks: List<HrChunk>, val newFrontierSec: Long)
 
     /**
-     * Build chunked HR series from samples newer than [frontierSec]. Inside any [windows] interval
-     * every sample is kept; outside, at most one sample per [decimateSec]. Each chunk spans at most
-     * [chunkSec] seconds and holds at most [maxSamplesPerChunk] points. [HrPlan.newFrontierSec]
-     * advances past every fresh sample seen (so decimated-away tail samples are not revisited).
+     * Builds chunked HR series from samples newer than [frontierSec]: every sample inside a [windows]
+     * interval is kept, otherwise at most one per [decimateSec]. Each chunk spans at most [chunkSec]
+     * seconds and [maxSamplesPerChunk] points; [HrPlan.newFrontierSec] advances past every fresh sample seen.
      */
     fun heartRate(
         samples: List<HrPoint>,
@@ -77,8 +75,8 @@ object HealthExportPlan {
     // ---- Sleep sessions: AWAKE vs SLEEPING only (fine stages deferred until stager validated) ----
 
     /** One stored fragment as the export sees it: [keyStartTs] is the immutable detected onset (the
-     *  dedup identity — a user edit must never change it), [startTs] the EFFECTIVE onset that drives
-     *  the exported span (`startTsAdjusted ?: startTs`, iOS parity #318). */
+     *  dedup identity — a user edit must never change it); [startTs] is the effective onset that
+     *  drives the exported span (`startTsAdjusted ?: startTs`). */
     data class SleepInput(val keyStartTs: Long, val startTs: Long, val endTs: Long, val stagesJSON: String?)
     data class StagePlan(val startSec: Long, val endSec: Long, val asleep: Boolean)
     data class SleepPlan(
@@ -87,19 +85,15 @@ object HealthExportPlan {
         val endSec: Long,
         val stages: List<StagePlan>,
         /** The non-representative fragments' old per-fragment ids (`noop-sleep-<keyStartTs>`). Health
-         *  Connect upserts by clientRecordId but never removes an id we stop writing, so a night that
-         *  previously exported as two records would orphan the second when it becomes one — the
-         *  writer deletes these explicitly. Empty for a single-fragment night. (#364) */
+         *  Connect upserts by clientRecordId but never removes an id that stops being written, so the
+         *  writer deletes these explicitly when fragments merge into one record. Empty otherwise. */
         val absorbedClientIds: List<String> = emptyList(),
     )
 
-    /** Finalized sessions (endTs <= [nowSec]) only; never the currently-open night. Fragments are
-     *  grouped into BRIDGED NIGHTS (#364) via [SleepStageTotals.bridgedNightGroups] — the SAME
-     *  two-tier bridge the daily totals score with (#561/#861) — so a night the detector split on a
-     *  brief mid-night wake exports as ONE session whose gap is an explicit AWAKE stage; naps never
-     *  bridge and stay their own records. The clientRecordId keys off the group's EARLIEST fragment's
-     *  immutable detected onset. [offsetSec] is seconds EAST of UTC (the night-tail bridge reads the
-     *  local clock). */
+    /** Finalized sessions (endTs <= [nowSec]) only, never the open night. Bridges fragments via
+     *  [SleepStageTotals.bridgedNightGroups] (same bridge the daily totals use), so a mid-night wake
+     *  exports as one session with an explicit AWAKE gap stage; naps never bridge. clientRecordId
+     *  keys off the earliest fragment's onset; [offsetSec] is seconds east of UTC. */
     fun sleepSessions(sessions: List<SleepInput>, nowSec: Long, offsetSec: Long): List<SleepPlan> {
         val finalized = sessions.filter { it.endTs > it.startTs && it.endTs <= nowSec }
         if (finalized.isEmpty()) return emptyList()
@@ -130,12 +124,9 @@ object HealthExportPlan {
         return out
     }
 
-    /** Parse the `{start,end,stage}` segment array; classify `wake`/`awake` as awake, else asleep;
-     *  coalesce consecutive same-class segments. Returns empty on null/malformed JSON.
-     *
-     *  The asleep test mirrors [HealthConnectImporter] / `WhoopRepository.sleepEfficiency`, which
-     *  treat any stage that is not `wake`/`awake` as asleep — so the exported AWAKE/SLEEPING split
-     *  matches what the rest of NOOP already considers asleep. */
+    /** Parses the `{start,end,stage}` segment array: `wake`/`awake` classify as awake, everything
+     *  else as asleep — same rule as [HealthConnectImporter] / `WhoopRepository.sleepEfficiency`, so
+     *  the split matches the rest of NOOP. Coalesces same-class runs; empty on null/malformed JSON. */
     private fun parseStages(json: String?): List<StagePlan> {
         json ?: return emptyList()
         val arr = runCatching { org.json.JSONArray(json) }.getOrNull() ?: return emptyList()

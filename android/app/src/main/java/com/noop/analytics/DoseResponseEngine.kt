@@ -8,23 +8,15 @@ import kotlin.math.min
  * DoseResponseEngine.kt — a personal dose→outcome slope that SHRINKS toward a documented
  * population prior until the user has logged enough nights.
  *
- * Faithful Kotlin mirror of StrandAnalytics/DoseResponseEngine.swift. Keep the tunables
- * (shrinkageK, the dose gates), the L=1 pairing, the OLS slope, the shrinkage blend, the
- * clamp, the contradiction rule, the confidence ladder, and the curve byte-identical to
- * Swift — cross-platform parity is the contract.
- *
  *   1. Pair (dose_d, outcome_{d+1}) for each logged day with a next-day outcome (L=1 align via
  *      ActivityCostEngine.shiftDay).
- *   2. β_user = OLS slope of outcome on dose (the same slope Swift's CorrelationEngine.pearson
- *      returns; null if < 3 pairs or no spread). n_user = paired days.
+ *   2. β_user = OLS slope of outcome on dose; null if < 3 pairs or no spread. n_user = paired days.
  *   3. β = w·β_user + (1−w)·β_prior, w = n_user/(n_user + k); clamp to the prior's range.
  *   4. Report per-unit Δ (= β), the curve, and a ScoreConfidence from n_user.
  *
  * HONESTY: below the dose gate → priorDominated ("typical patterns, not yet yours"); once over
  * the gate a personal slope whose SIGN disagrees with the prior flags contradictsPrior (the
  * person overrides the population). Caffeine "dose" is a TIMING proxy, not mg. No causal claims.
- *
- * (Spec: 2026-06-19-v5-insights-correlation-engine-design.md.)
  */
 
 /**
@@ -59,7 +51,7 @@ data class DoseResponse(
     /** The signed Δ for going from [fromDose] to [toDose] units (each unit contributes perUnit). */
     fun delta(fromDose: Int, toDose: Int): Double = (toDose - fromDose) * perUnit
 
-    /** Plain-English read. Honest about prior-vs-yours. Mirrors Swift exactly. */
+    /** Plain-English read. Honest about prior-vs-yours. */
     fun sentence(): String {
         val mag = DoseResponseEngine.round1(abs(perUnit))
         val dir = if (perUnit <= 0) "lower" else "higher"
@@ -79,7 +71,7 @@ data class DoseResponse(
 
 object DoseResponseEngine {
 
-    // Tunables (documented, deterministic — NOT learned). Mirror Swift exactly.
+    // Tunables (documented, deterministic — NOT learned).
 
     /** Pseudo-count of "prior days": the shrinkage constant k in w = n/(n+k). */
     const val shrinkageK: Double = 8.0
@@ -148,7 +140,7 @@ object DoseResponseEngine {
 
         val curve = ArrayList<DoseCurvePoint>()
         for (dose in 0..maxCurveDose) {
-            curve.add(DoseCurvePoint(dose, dose * perUnit + 0.0)) // + 0.0 normalises -0.0 → 0.0 (signed-zero parity)
+            curve.add(DoseCurvePoint(dose, dose * perUnit + 0.0)) // + 0.0 normalises -0.0 → 0.0
         }
 
         return DoseResponse(
@@ -167,11 +159,11 @@ object DoseResponseEngine {
         return if (nUser >= solidDoseDays) ScoreConfidence.SOLID else ScoreConfidence.BUILDING
     }
 
-    // OLS slope (byte-identical to the slope Swift's CorrelationEngine.pearson returns).
+    // OLS slope of outcome on dose.
 
     /**
      * OLS slope of y on x for the (x, y) pairs: Σ(x−x̄)(y−ȳ) / Σ(x−x̄)². Returns null when
-     * < 3 pairs OR either axis has zero variance — exactly the cases Swift's pearson rejects.
+     * < 3 pairs or either axis has zero variance.
      */
     internal fun olsSlope(xy: List<Pair<Double, Double>>): Double? {
         val n = xy.size
@@ -198,13 +190,13 @@ object DoseResponseEngine {
             sxy += dx * dy
         }
 
-        // Zero variance in either variable → slope undefined (matches Swift's pearson nil).
+        // Zero variance in either variable → slope undefined.
         if (sxx <= 0.0 || syy <= 0.0) return null
 
         return sxy / sxx
     }
 
-    // Helpers (self-contained so the Swift mirror is line-for-line).
+    // Helpers (self-contained).
 
     /** True when a and b share a sign; a flat slope (0) contradicts a non-zero prior. */
     internal fun sameSign(a: Double, b: Double): Boolean = when {
@@ -216,7 +208,7 @@ object DoseResponseEngine {
 
     internal fun clamp(x: Double, lo: Double, hi: Double): Double = min(max(x, lo), hi)
 
-    /** Round to one decimal place, half away from zero (mirrors Swift (x*10).rounded()/10). */
+    /** Round to one decimal place, half away from zero. */
     internal fun round1(x: Double): Double {
         val scaled = x * 10.0
         val sign = if (scaled < 0) -1.0 else 1.0

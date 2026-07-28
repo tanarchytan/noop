@@ -3,11 +3,6 @@ package com.noop.ingest
 /*
  * Tolerant, header-name-driven CSV reader.
  *
- * Direct Kotlin port of the macOS source of truth:
- *   Packages/StrandImport/Sources/StrandImport/CSVParsing.swift
- *
- * It must behave identically to the Swift `CSVTable` / `HeaderNorm` / `WhoopTime`
- * so the same column aliases, date parsing and unit handling apply:
  *   - UTF-8 BOM is stripped (raw bytes and decoded string).
  *   - Headers are normalized: lowercase, `%`->`pct`, drop parens (keep inner
  *     content), collapse non-alphanumerics to `_`, trim `_`.
@@ -49,7 +44,7 @@ internal object HeaderNorm {
      */
     fun normalize(header: String): String {
         // Fold diacritics first so localized headers normalize deterministically (ä->a, ö->o,
-        // ü->u), regardless of NFC/NFD form. English headers are unaffected. (issue #3)
+        // ü->u), regardless of NFC/NFD form. English headers are unaffected.
         var s = java.text.Normalizer.normalize(header.lowercase().trim(), java.text.Normalizer.Form.NFD)
             .replace(Regex("\\p{Mn}+"), "")
         s = s.replace("%", "pct")
@@ -71,14 +66,14 @@ internal object HeaderNorm {
         var result = out.toString()
         while (result.startsWith("_")) result = result.substring(1)
         while (result.endsWith("_")) result = result.substring(0, result.length - 1)
-        // Map localized column headers onto the canonical English keys the parsers look up. (issue #3)
+        // Map localized column headers onto the canonical English keys the parsers look up.
         return foreignAliases[result] ?: result
     }
 
     /**
      * Localized WHOOP export column headers -> canonical English normalized keys. Keys are the
-     * diacritic-folded normalized form of the foreign header. German added from a real export
-     * (issue #3); more languages can be appended here. Mirrors the Swift HeaderNorm.foreignAliases.
+     * diacritic-folded normalized form of the foreign header. German added from a real export;
+     * more languages can be appended here.
      */
     private val foreignAliases: Map<String, String> = mapOf(
         "startzeit_des_zyklus" to "cycle_start_time",
@@ -120,7 +115,7 @@ internal object HeaderNorm {
         "fragetext" to "question_text",
         "beantwortet_mit_ja" to "answered_yes_no",
         "anmerkungen" to "notes",
-        // — Spanish (issue #76): physiological_cycles keeps its English filename but Spanish columns;
+        // — Spanish: physiological_cycles keeps its English filename but Spanish columns;
         //   sueño.csv / entrenamientos.csv. Headers supplied by a real export. —
         "hora_de_inicio_del_ciclo" to "cycle_start_time",
         "hora_de_finalizacion_del_ciclo" to "cycle_end_time",
@@ -154,7 +149,7 @@ internal object HeaderNorm {
         "hora_de_finalizacion_del_entrenamiento" to "workout_end_time",
         "nombre_de_la_actividad" to "activity_name",
         "esfuerzo_de_la_actividad" to "activity_strain",
-        // — French (issue #79): physiological_cycles keeps its English filename; sommeil.csv /
+        // — French: physiological_cycles keeps its English filename; sommeil.csv /
         //   entrainements.csv. Full header set incl. workouts, from a real export. Apostrophes and the
         //   non-breaking space before % both fold to "_" in normalize, so these keys are exact. —
         "heure_de_debut_du_cycle" to "cycle_start_time",
@@ -193,10 +188,9 @@ internal object HeaderNorm {
         "zone_fc_3_pct" to "hr_zone_3_pct",
         "zone_fc_4_pct" to "hr_zone_4_pct",
         "zone_fc_5_pct" to "hr_zone_5_pct",
-        // — Brazilian Portuguese (ciclos_fisiológicos / sonos / treinos / entradas_diário), issue #692.
-        //   Full header set across cycles, sleeps, workouts and journal, from a real pt-BR export. Note
-        //   "FC máx." folds to the same key as the French "FC max." alias above; in a Kotlin mapOf a
-        //   duplicate key would shadow rather than extend, so it is deliberately NOT repeated here. —
+        // — Brazilian Portuguese (ciclos_fisiológicos / sonos / treinos / entradas_diário): full header
+        //   set from a real pt-BR export. "FC máx." folds to the same key as the French "FC max." alias
+        //   above; a duplicate mapOf key would shadow rather than extend, so it is not repeated here. —
         "hora_de_inicio_do_ciclo" to "cycle_start_time",
         "hora_de_fim_do_ciclo" to "cycle_end_time",
         "fuso_horario_do_ciclo" to "cycle_timezone",
@@ -242,7 +236,7 @@ internal object HeaderNorm {
 
 /**
  * A parsed CSV table. Rows are normalized-key -> cell-value maps; callers match
- * columns by name. Mirrors Swift `CSVTable`.
+ * columns by name.
  */
 internal class CsvTable private constructor(
     val headers: List<String>,
@@ -269,13 +263,11 @@ internal class CsvTable private constructor(
             }
         }
 
-        /** Parse CSV text. */
         fun fromText(rawText: String): CsvTable {
             val text = Bom.stripString(rawText)
             // Detect the field delimiter from the header line. WHOOP exports are comma-separated, but a
             // real Oura account-export CSV uses `;` (and some locales' exports use `;`/tab). Sniffing per
             // file lets one parser read all of them; default stays `,` so the WHOOP path is unchanged.
-            // (issue #862)
             val delimiter = detectDelimiter(text)
             val records = parseRecords(text, delimiter).toMutableList()
             if (records.isEmpty()) {
@@ -309,7 +301,7 @@ internal class CsvTable private constructor(
         /**
          * Sniff the field delimiter from the FIRST (header) line: whichever of `,`, `;` or tab appears
          * most outside quotes. Defaults to `,` (WHOOP / Fitbit unaffected) when none is present. Only
-         * the header line is scanned. Mirrors Swift `CSVTable.detectDelimiter`. (issue #862)
+         * the header line is scanned.
          */
         fun detectDelimiter(text: String): Char {
             var commas = 0; var semis = 0; var tabs = 0
@@ -333,9 +325,8 @@ internal class CsvTable private constructor(
 
         /**
          * Split CSV text into records of fields, honouring quotes and `""` escapes,
-         * and treating CRLF / CR / LF uniformly as row terminators.
-         * Faithful port of `CSVTable.parseRecords` (operates on Unicode code points).
-         * [delimiter] is the field separator (auto-detected per file; `,` by default).
+         * and treating CRLF / CR / LF uniformly as row terminators. Operates on Unicode
+         * code points. [delimiter] is the field separator (auto-detected per file; `,` by default).
          */
         fun parseRecords(text: String, delimiter: Char = ','): List<List<String>> {
             val records = ArrayList<List<String>>()
@@ -344,7 +335,7 @@ internal class CsvTable private constructor(
             var inQuotes = false
             var sawAnyField = false
 
-            // Iterate over Unicode code points (parity with Swift's unicodeScalars).
+            // Iterate over Unicode code points.
             val codePoints = ArrayList<Int>(text.length)
             var idx = 0
             while (idx < text.length) {
@@ -433,7 +424,7 @@ internal class CsvTable private constructor(
     }
 }
 
-// MARK: - Cell accessors (mirror the Swift Dictionary extension)
+// MARK: - Cell accessors
 
 /** First non-empty cell among the given normalized keys, trimmed; null if absent/blank. */
 internal fun Map<String, String>.cell(vararg keys: String): String? {
@@ -479,7 +470,7 @@ internal fun Map<String, String>.bool(vararg keys: String): Boolean? {
     return null
 }
 
-// MARK: - Whoop timestamp parsing (mirror Swift WhoopTime)
+// MARK: - Whoop timestamp parsing
 
 internal object WhoopTime {
 
@@ -521,13 +512,9 @@ internal object WhoopTime {
     }
 
     /**
-     * Parse a Whoop CSV timestamp interpreted in the timezone given by
-     * [offsetMinutes], returning **UTC unix epoch SECONDS** (Long), or null.
-     *
-     * Mirrors Swift `WhoopTime.parse`:
-     *   1. ISO-8601 with embedded offset (e.g. "...T...Z", "...+01:00", fractional secs) wins.
-     *   2. Otherwise plain "YYYY-MM-DD HH:MM:SS" / " HH:MM" / "YYYY-MM-DD",
-     *      interpreted at the supplied offset.
+     * Parse a Whoop CSV timestamp interpreted in the timezone given by [offsetMinutes],
+     * returning UTC unix epoch SECONDS, or null. ISO-8601 with an embedded offset wins;
+     * otherwise plain "YYYY-MM-DD HH:MM:SS" / " HH:MM" / "YYYY-MM-DD" is read at that offset.
      */
     fun parseEpochSeconds(raw: String?, offsetMinutes: Int): Long? {
         val s0 = raw?.trim() ?: return null
@@ -579,10 +566,9 @@ internal object WhoopTime {
     }
 
     /**
-     * Parse only an ISO-8601 timestamp that carries an **embedded UTC offset** (e.g. "…Z",
-     * "…+01:00"), returning epoch seconds; null for a zoneless string. Mirror of Swift
-     * `WhoopTime.parseISOWithOffset` — lets callers tell an authoritative-offset timestamp apart from
-     * a zoneless wall-clock one that must be interpreted in a chosen zone (Hevy lifting importer, #649).
+     * Parse only an ISO-8601 timestamp that carries an embedded UTC offset (e.g. "…Z",
+     * "…+01:00"), returning epoch seconds; null for a zoneless string. Lets callers tell an
+     * authoritative-offset timestamp apart from a zoneless wall-clock one interpreted in a chosen zone.
      */
     fun parseIsoWithOffsetEpochSeconds(raw: String?): Long? {
         val s = raw?.trim() ?: return null

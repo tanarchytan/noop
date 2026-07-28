@@ -34,12 +34,9 @@ object IntelligenceEngine {
     private val analyzeGate = Mutex()
 
     /**
-     * Per-day owner resolution source (invariant I2 , a day's scores come from exactly ONE device).
-     * Pure abstraction so [analyzeRecent] resolves the owning device without taking an Android Context
-     * or a Room dependency (mirrors how the engine already stays pure-JVM testable). A null source
-     * (the default) preserves the legacy single-source path BYTE-FOR-BYTE: every day reads from
-     * [importedDeviceId]. A DeviceRegistry-backed implementation lives in the app layer and is passed
-     * in by the UI scoring pass. Mirrors the Swift IntelligenceEngine.resolveDayOwner read-through (1B-4).
+     * Per-day owner resolution source (invariant I2: a day's scores come from exactly ONE device).
+     * A null source (the default) preserves the legacy single-source path byte-for-byte: every day
+     * reads from [importedDeviceId]. A DeviceRegistry-backed implementation is passed in by the UI.
      */
     interface DayOwnerSource {
         /** Non-archived paired devices, each as a [DayOwnerResolver.Candidate] WITHOUT its hasData flag
@@ -49,29 +46,27 @@ object IntelligenceEngine {
         /** A locked owner override for [day] from the dayOwnership table, or null. Wins outright. */
         suspend fun lockedOwner(day: String): String?
 
-        /** The registry's currently-active strap id (CAPTURE-B universal `writeActiveId`). The default
-         *  returns null so legacy/test sources are unaffected; [RegistryDayOwnerSource] supplies the real
-         *  active id so the universal dayOwner diagnostic can name where new data is being WRITTEN, which
-         *  is the read-vs-write mismatch the #814/#799 spine bug was about. */
+        /** The registry's currently-active strap id (CAPTURE-B universal `writeActiveId`). Defaults to
+         *  null so legacy/test sources are unaffected; [RegistryDayOwnerSource] supplies the real active
+         *  id so the universal dayOwner diagnostic can name where new data is being written vs read. */
         suspend fun activeWriteId(): String? = null
 
-        /** The strap family that wrote [deviceId]'s rows (#938), so the nightly skin-temp funnel converts
-         *  the raw register on the right scale (5/MG centidegrees vs a WHOOP 4.0 v24 raw ADC). The default
-         *  returns WHOOP5 (the prior /100 behaviour), so legacy/test sources are byte-identical;
-         *  [RegistryDayOwnerSource] resolves a positively-identified 4.0 to WHOOP4. */
+        /** The strap family that wrote [deviceId]'s rows, so the nightly skin-temp funnel converts the raw
+         *  register on the right scale (5/MG centidegrees vs a WHOOP 4.0 v24 raw ADC). Defaults to WHOOP5
+         *  (the prior /100 behaviour); [RegistryDayOwnerSource] resolves a positively-identified 4.0. */
         suspend fun skinTempFamily(deviceId: String): DeviceFamily = DeviceFamily.WHOOP5
     }
 
     /** Minimum HR samples in a day's window before it is worth scoring. */
     const val MIN_HR_SAMPLES: Int = 200
 
-    /** Read cap per stream read , matches the Swift 200_000 bound. */
+    /** Read cap per stream read: 200_000 samples. */
     const val STREAM_LIMIT: Int = 200_000
 
     private const val SECONDS_PER_DAY: Long = 86_400L
 
-    /** Imported wearable-export source ids whose DAILY aggregates can be scored for a NOOP Charge/Rest on
-     *  an import-only day. Historical rows keep these ids after the file importer was retired. */
+    /** Imported wearable-export source ids whose daily aggregates can score a NOOP Charge/Rest for an
+     *  import-only day. */
     private val WEARABLE_IMPORT_SOURCES = listOf("oura-import", "fitbit-import", "garmin-import")
 
     /** CAPTURE-B: a day's resolved read owner + the HR-row count read for it, captured in pass 1 and
@@ -89,12 +84,9 @@ object IntelligenceEngine {
     )
 
     /**
-     * Score each of the last [maxDays] that carries raw HR and persist it under
-     * "<importedDeviceId>-noop". Baselines fold from that source's nightly history, so even a first
-     * live night scores against the user's own norm.
-     *
-     * Hops to [Dispatchers.Default] first: the pass runs the stager and scorers over up to 21 nights of
-     * 1 Hz data, and on the caller's main thread that is an ANR.
+     * Score each of the last [maxDays] that carries raw HR and persist it under "<importedDeviceId>-noop".
+     * Baselines fold from that source's nightly history, so even a first live night scores against the
+     * user's own norm. Hops to [Dispatchers.Default]: 21 nights of 1 Hz data would ANR the main thread.
      *
      * @param maxHROverride explicit HRmax in bpm; null derives it from [profile].
      * @param nowSeconds wall-clock now, injectable so a test is deterministic.
@@ -117,12 +109,9 @@ object IntelligenceEngine {
         baselineEpoch: Double = 0.0,
         // The same anchor for the rest of Charge: resting HR, respiration and skin temperature.
         recoveryEpoch: Double = 0.0,
-        // Per-day scoring diagnostic sink (Sleep overhaul §2.5). Each scored day emits ONE concise,
-        // privacy-safe line ("sleep day=… totalSleepMin=… matched=… source=…") so a shared strap log
-        // ships PROOF of what was computed per day , the project's log-failures-not-successes blind spot,
-        // and the data to settle "Rest repeats across days". Defaults to no-op so tests / other callers
-        // are unaffected; the AppViewModel wires it to the BLE client's strap log (ble.externalLog),
-        // which PII-scrubs every line at the sink. Pure-JVM (a closure), matching persistStepsCalibration.
+        // Per-day scoring diagnostic sink. Each scored day emits ONE privacy-safe line ("sleep day=…
+        // totalSleepMin=… matched=… source=…"). Defaults to no-op; the AppViewModel wires it to the BLE
+        // client's strap log, which PII-scrubs every line at the sink.
         diag: (String) -> Unit = {},
         // Test-mode trace sinks; null means no lines and no change to any score. See the public
         // overload for the contract.
@@ -151,27 +140,13 @@ object IntelligenceEngine {
         }
     }
 
-    /** History span for the one-shot Effort rescore , large enough to cover any real wear history,
-     *  matching the Swift `historyDays` default. */
+    /** History span for the one-shot Effort rescore: large enough to cover any real wear history. */
     const val EFFORT_RESCORE_HISTORY_DAYS: Int = 4000
 
     /**
-     * One-shot, on-upgrade FULL-history Effort rescore (#313 PART B). The Effort hero gauge + numbers
-     * moved from the old 0–21 axis to NOOP's own 0–100 axis. On-device computed rows since v2.6.0 already
-     * store 0–100, but rows the engine computed on an OLDER build (capped at [maxDays] per run, so deep
-     * history was never revisited) may still hold 0–21 strain.
-     *
-     * The SAFE fix is to recompute strain FROM SOURCE for every day with raw HR , those regenerate at
-     * 0–100 with NO double-rescale risk , rather than a blind `strain*100/21` multiply that would
-     * double-rescale the large population already on 0–100 (→ ~0–476). We do that by running the normal
-     * [analyzeRecent] once with the [maxDays] cap lifted to the full history, then persist a flag (via the
-     * injected [flagGet]/[flagSet]) so it runs exactly once. IMPORTED rows are never rewritten here (the
-     * engine only ever writes under the "-noop" computed source) , those are handled by re-import. A day
-     * already on 0–100 is recomputed from the same raw HR and lands on 0–100 again: UNCHANGED axis.
-     *
-     * The flag get/set are passed in so this stays a pure-JVM analytics object (no Android Context). The
-     * caller (AppViewModel) wires them to [com.noop.ui.NoopPrefs]. Mirrors Swift
-     * IntelligenceEngine.runEffortRescoreIfNeeded.
+     * One-shot, on-upgrade full-history Effort rescore: recomputes strain FROM SOURCE for every day with
+     * raw HR so pre-migration 0-21-axis rows land on NOOP's 0-100 axis (never a blind `strain*100/21`,
+     * which would double-rescale rows already on 0-100). Gated via [flagGet]/[flagSet] to run once.
      */
     suspend fun runEffortRescoreIfNeeded(
         repo: WhoopRepository,
@@ -194,13 +169,9 @@ object IntelligenceEngine {
     }
 
     /**
-     * Score a day that arrived as a daily aggregate with no raw HR behind it, so the raw-HR loop never
-     * saw it. An import-only user (Health Connect, or an Apple/Oura/Fitbit/Garmin export) has HRV and
-     * resting HR but no stream, and their Charge stayed blank.
-     *
-     * Appends to [dailies], [restRows] and [out]. A day already scored this pass is skipped, and an
-     * export carrying its own recovery wins and is never overwritten. The engine returns null until the
-     * baseline is usable, so an import-only day stays calibrating rather than showing an invented number.
+     * Scores a day that arrived as a daily aggregate with no raw HR behind it (Health Connect, or an
+     * Apple/Oura/Fitbit/Garmin export): appends to [dailies]/[restRows]/[out]. An export carrying its own
+     * recovery wins and is never overwritten; returns null (calibrating) until the baseline is usable.
      */
     private suspend fun foldSourceOnlyDays(
         repo: WhoopRepository,
@@ -274,21 +245,15 @@ object IntelligenceEngine {
             histRhrByDay[d.day] = d.restingHr?.toDouble()
             histRespByDay[d.day] = d.respRateBpm
         }
-        // Imported (cloud) nightly values WIN per day: the on-device estimate only fills days the
-        // import doesn't cover AT ALL, so an import user's baseline is unchanged. Use a key-absence
-        // check, NOT putIfAbsent: Java's putIfAbsent treats a key mapped to NULL as absent, so an
-        // imported day whose avgHrv/restingHr is blank would be REPLACED by the computed estimate —
-        // diverging from the Swift mirror (`histHrvByDay[day] == nil` is true only when the KEY is
-        // absent), which keeps that imported day as a missing night. HRV/RHR are the dominant
-        // recovery drivers (~60%/~20%), so this substitution skewed Charge vs iOS. (The author already
-        // fixed this for the low-weight resp term below; HRV/RHR were missed.)
+        // Imported (cloud) nightly values WIN per day: the on-device estimate only fills days the import
+        // doesn't cover at all. Uses a key-absence check, NOT putIfAbsent, since Java's putIfAbsent treats
+        // a NULL-mapped key as absent and would replace a blank imported HRV/RHR (~60%/~20% of recovery weight).
         mergeNightlyIntoHistory(histHrvByDay, nightlyHrvByDay)
         mergeNightlyIntoHistory(histRhrByDay, nightlyRhrByDay)
         mergeNightlyIntoHistory(histRespByDay, nightlyRespByDay)
-        // Seed baseline state from IMPORTED history only (represents state BEFORE any pass-1 night).
-        // Pass-1 nightly values are folded INCREMENTALLY in the pass-2 loop below: each night is
-        // scored against strictly prior state, then its values fold in for the next night. This
-        // prevents a day from contributing to its own baseline (the old shared-baseline bug).
+        // Seed baseline state from IMPORTED history only (state BEFORE any pass-1 night). Pass-1 nightly
+        // values fold in INCREMENTALLY in the pass-2 loop below: each night scores against strictly prior
+        // state, then folds in for the next — so a day never contributes to its own baseline.
         val hrvImported = histHrvByDay.entries.sortedBy { it.key }.map { it.value }
         val hrvImportedKeys = histHrvByDay.entries.sortedBy { it.key }.map { it.key }
         val rhrImported = histRhrByDay.entries.sortedBy { it.key }.map { it.value }
@@ -329,14 +294,9 @@ object IntelligenceEngine {
     }
 
     /**
-     * Collapse re-banked duplicates of the same night and delete the stale copies, returning how many
-     * went. An unstable strap clock re-banks a night on a shifted timebase, and the (deviceId, startTs)
-     * key lets the second copy land beside the first. Returns the count so the caller can re-run.
-     *
-     * Scoped to sessions whose wake day is inside the reconcile window, so a row is never deleted from
-     * under a daily row this pass did not refresh. The rows just banked are the recency witness, and
-     * edited rows are never dropped. Deletes the row ONLY: the user-facing delete writes a dismissal
-     * tombstone, which would overlap the surviving night and suppress its re-detection for good.
+     * Collapses re-banked duplicates of the same night (dedup key (deviceId, startTs)), deleting the
+     * stale copies within the reconcile window and returning the count. Deletes the row ONLY — never a
+     * dismissal tombstone, which would suppress re-detection for good — and never touches edited rows.
      */
     private suspend fun healOverlappingSessions(
         repo: WhoopRepository,
@@ -376,31 +336,30 @@ object IntelligenceEngine {
         baselineEpoch: Double = 0.0,
         recoveryEpoch: Double = 0.0,
         diag: (String) -> Unit = {},
-        // Sleep & Rest test-mode trace sink (Test Centre E5). null = byte-identical default; when non-null
-        // each scored day threads it into AnalyticsEngine.analyzeDay so detectSleep's gate trace + the Rest
-        // sub-score line forward line-by-line to the .sleep-tagged strap log. Mirrors Swift.
+        // Sleep & Rest test-mode trace sink. null = byte-identical default; when non-null each scored
+        // day threads it into AnalyticsEngine.analyzeDay so detectSleep's gate trace + the Rest
+        // sub-score line forward line-by-line to the .sleep-tagged strap log.
         sleepTraceSink: ((String) -> Unit)? = null,
-        // Recovery (Charge) test-mode trace sink (Test Centre Group G). null = byte-identical default; when
-        // non-null each scored night emits its Charge term-breakdown to the .recovery-tagged strap log via
-        // RecoveryScorerTrace.recoveryTrace, whose score is RecoveryScorer.recovery verbatim. Mirrors Swift.
+        // Recovery (Charge) test-mode trace sink. null = byte-identical default; when non-null each
+        // scored night emits its Charge term-breakdown to the .recovery-tagged strap log via
+        // RecoveryScorerTrace.recoveryTrace, whose score is RecoveryScorer.recovery verbatim.
         recoveryTraceSink: ((String) -> Unit)? = null,
-        // Steps test-mode trace sink (Test Centre). null = byte-identical default; when non-null each scored
-        // day emits its 5/MG raw-counter trace and (after the fit) the WHOOP-4 calibration trace to the
-        // .steps-tagged strap log. The trace recomputes the SAME wrap-aware sum + reuses calibrate verbatim,
-        // so the steps total is unchanged. Mirrors Swift.
+        // Steps test-mode trace sink. null = byte-identical default; when non-null each scored day
+        // emits its 5/MG raw-counter trace and (after the fit) the WHOOP-4 calibration trace to the
+        // .steps-tagged strap log. The trace reuses the SAME wrap-aware sum + calibrate verbatim.
         stepsTraceSink: ((String) -> Unit)? = null,
-        // CAPTURE-B universal diagnostic sink. null = byte-identical default (no lines); when non-null each
-        // scored day emits the verbatim `dayOwner …` line. See the public overload's doc.
+        // CAPTURE-B universal diagnostic sink. null = byte-identical default (no lines); when non-null
+        // each scored day emits the verbatim `dayOwner …` line.
         universalSink: ((String) -> Unit)? = null,
-        // Workouts & GPS test-mode trace sink (#975). null = byte-identical default (no lines); when non-null
-        // each detected bout emits a `detectedBout verdict=persisted|droppedOverlap …` line to the .workouts-
-        // tagged strap log, so an "auto workout appeared then vanished" is explainable from an export. Swift twin.
+        // Workouts & GPS test-mode trace sink. null = byte-identical default (no lines); when non-null
+        // each detected bout emits a `detectedBout verdict=persisted|droppedOverlap …` line to the
+        // .workouts-tagged strap log, so an "auto workout appeared then vanished" is explainable.
         workoutsTraceSink: ((String) -> Unit)? = null,
-        // HRV & Autonomic test-mode sink (#141). null = byte-identical default (no lines); when non-null,
-        // analyzeDay forwards the nightly per-window RMSSD (by stage) + the whole-night/deep-only/last-SWS
-        // summary to the .hrv-tagged strap log. Swift twin.
+        // HRV & Autonomic test-mode sink. null = byte-identical default (no lines); when non-null,
+        // analyzeDay forwards the nightly per-window RMSSD (by stage) + the whole-night/deep-only/
+        // last-SWS summary to the .hrv-tagged strap log.
         hrvTraceSink: ((String) -> Unit)? = null,
-        // #141: nightly HRV over DEEP-sleep windows only (WHOOP-style) when true; whole-night default when
+        // Nightly HRV over DEEP-sleep windows only (WHOOP-style) when true; whole-night default when
         // false. Threaded into analyzeDay per scored night.
         deepHrvWindow: Boolean = false,
         // The second component is how many duplicate sleep sessions the heal deleted, so the wrapper
@@ -413,21 +372,15 @@ object IntelligenceEngine {
 
         val computedId = importedDeviceId + "-noop"
 
-        // Device wall-clock offset (seconds east of UTC) for the sleep detector's daytime
-        // false-sleep guard (#90): the stager places each window's center on the LOCAL clock so
-        // only genuinely-daytime windows face the stricter nap bar. getOffset(nowMillis) folds in
-        // the current DST state (a DST boundary inside a single window is a negligible edge case
-        // for an hour-of-day band). Computed once per run.
+        // Device wall-clock offset (seconds east of UTC) for the sleep detector's daytime false-sleep
+        // guard: the stager places each window's center on the LOCAL clock so only genuinely-daytime
+        // windows face the stricter nap bar. getOffset(nowMillis) folds in current DST; computed once per run.
         val tzOffsetSeconds =
             java.util.TimeZone.getDefault().getOffset(nowSeconds * 1_000L) / 1_000L
 
-        // Device-registry snapshot for per-day owner resolution (invariant I2 , a day's scores come from
-        // exactly ONE source). Read ONCE before the loop: the paired-device list is stable for the run.
-        // With only the seeded 'my-whoop' row paired (the default and every single-WHOOP install) the
-        // active strap == [importedDeviceId], so [resolveDayOwner] returns [importedDeviceId] for every
-        // day and the per-day reads are BYTE-IDENTICAL to the pre-I2 path. A null [ownerSource] (the
-        // default, e.g. the backfill-triggered pass) skips resolution entirely. Mirrors the Swift
-        // IntelligenceEngine.analyzeRecent registry snapshot + resolveDayOwner. (1B-4)
+        // Device-registry snapshot for per-day owner resolution (invariant I2: a day's scores come from
+        // exactly ONE source), read ONCE before the loop since the paired-device list is stable for the
+        // run. A single-WHOOP install resolves every day to [importedDeviceId]; a null [ownerSource] skips resolution.
         val candidatePriorities = ownerSource?.candidatePriorities().orEmpty()
 
         // CAPTURE-B: the registry's active strap id (the universal `writeActiveId`). Resolved ONCE; falls
@@ -435,74 +388,57 @@ object IntelligenceEngine {
         // id the read path resolves to, and the universal line proves read == write rather than diverging.
         val activeWriteId = (universalSink?.let { ownerSource?.activeWriteId() }) ?: importedDeviceId
 
-        // ── Pass 1: detect + aggregate each offloaded night, scoring against the
-        // imported-only baseline. For a BLE-only user repo.days(importedDeviceId) is
-        // empty, so the HRV baseline is NOT usable and res.recovery is null here , but
-        // the per-night avgHrv/restingHr are computed WITHOUT any baseline dependency
-        // (SleepStager + AnalyticsEngine), so we harvest them to SEED the baseline and
-        // re-score in pass 2. Collected oldest-first to match foldHistory's replay order.
-        // foldHistory winsorizes outliers. days() is oldest-first (Swift ascending).
+        // ── Pass 1: detect + aggregate each offloaded night against the imported-only baseline. For a
+        // BLE-only user repo.days() is empty, so recovery is null here — but avgHrv/restingHr are
+        // baseline-independent, harvested to seed pass 2. Collected oldest-first (foldHistory winsorizes).
         val hist = repo.days(importedDeviceId)
         // CAPTURE-B: per-day resolved read owner + HR-row count, captured in pass 1, consumed by pass 2's
-        // universal dayOwner emit (which reuses the SAME importedWhoopDays / appleHealthDays sets pass 2
-        // builds for daySourceToken, so there is no extra read). Only populated when the universal sink is
-        // on. Keyed by the local day.
+        // universal dayOwner emit (reuses the SAME importedWhoopDays/appleHealthDays sets pass 2 builds
+        // for daySourceToken, so no extra read). Only populated when the universal sink is on.
         val readOwnerByDay = LinkedHashMap<String, OwnerRead>()
         // HRV baseline honours the manual "Recalibrate baseline" epoch (noop.hrvBaselineEpoch): pass the
-        // per-value "yyyy-MM-dd" day keys (parallel to the values) so foldHistory drops every night before
-        // the epoch. baselineEpoch is threaded down from the Context-aware caller (0.0 = no recalibration).
-        // rhr/resp/skin stay on the 2-arg fold , recalibration is HRV-only.
+        // per-value day keys (parallel to the values) so foldHistory drops every night before the epoch
+        // (0.0 = no recalibration). rhr/resp/skin stay on the 2-arg fold — recalibration is HRV-only.
         val hrvBase1 = Baselines.foldHistory(hist.map { it.avgHrv }, hist.map { it.day }, hrvCfg, baselineEpoch)
         val rhrBase1 = Baselines.foldHistory(hist.map { it.restingHr?.toDouble() }, hist.map { it.day }, rhrCfg, recoveryEpoch)
         val baselines1 = ProfileBaselines(hrv = hrvBase1, restingHR = rhrBase1)
 
-        // Keep each night's small DayResult (daily metrics + detected sessions), NOT the raw
-        // streams: every field except recovery is baseline-independent, so pass 2 only re-scores
-        // the cheap recovery composite. The raw hr/rr/... lists are freed after each analyzeDay,
-        // keeping memory bounded over a full multi-night offload history.
+        // Keep each night's small DayResult (daily metrics + detected sessions), NOT the raw streams:
+        // every field except recovery is baseline-independent, so pass 2 only re-scores the cheap
+        // recovery composite. Raw hr/rr/... lists are freed after each analyzeDay, keeping memory bounded.
         val scoredNights = ArrayList<DayResult>()
 
         // In-memory nightly values harvested in pass 1, used to seed the pass-2 baseline.
         // Keyed by day so the union with imported history de-dupes cleanly per UTC day.
         val nightlyHrvByDay = LinkedHashMap<String, Double?>()
         val nightlyRhrByDay = LinkedHashMap<String, Double?>()
-        // Wear-gated nightly skin-temp means (on-device only , imported rows carry the deviation, not
-        // the raw mean, so the skin-temp baseline is seeded purely from these). (PR #85)
+        // Wear-gated nightly skin-temp means (on-device only — imported rows carry the deviation, not
+        // the raw mean, so the skin-temp baseline is seeded purely from these).
         val nightlySkinByDay = LinkedHashMap<String, Double?>()
         // On-device RSA respiration estimates, unioned with imported respRateBpm below to seed the
         // resp baseline the recovery composite's wResp=0.05 term scores against.
         val nightlyRespByDay = LinkedHashMap<String, Double?>()
 
-        // Floor `now` to LOCAL midnight (#277) so each `dayStart` lands on a local-day boundary and the
-        // day keys are LOCAL calendar days, consistent with the dashboard's local "today" lookup. A
-        // west-of-UTC user's evening crosses midnight UTC; bucketing by UTC put it in the next UTC day,
-        // which the local read never found (Toronto/UTC-4 report).
+        // Floor `now` to LOCAL midnight so each `dayStart` lands on a local-day boundary and the day keys
+        // are LOCAL calendar days, consistent with the dashboard's local "today" lookup. A west-of-UTC
+        // user's evening crosses midnight UTC; bucketing by UTC would put it in the wrong day.
         val nowLocalMidnight = midnightLocal(nowSeconds, tzOffsetSeconds)
 
-        // ── Learned habitual midsleep (#547) ──────────────────────────────────
-        // Compute the user's habitual midsleep ONCE per run from the trailing sleep history so the
-        // main-night scored pick aligns to their REAL bedtime (a late/shift sleeper), not a fixed clock
-        // band. Read the stored sleep sessions (imported WHOOP-export + computed "-noop") over the
-        // analysis window, make one HistoryBlock per session keyed by the LOCAL calendar day of its
-        // midpoint, and let the learner keep the longest block per day (so naps drop out automatically).
-        // null under HABITUAL_MIN_DAYS of history → cold-start: every analyzeDay/sleepEditedDaily call
-        // below stays on the overnight-band bonus. The same value threads into both seams so analytics and
-        // the Sleep tab resolve to the identical block. Mirrors Swift. (#547)
+        // ── Learned habitual midsleep ──────────────────────────────────
+        // Computed ONCE per run from the trailing sleep history so the main-night pick aligns to the
+        // user's REAL bedtime (a late/shift sleeper), not a fixed clock band. Keeps the longest sleep
+        // block per LOCAL calendar day (so naps drop out); null under HABITUAL_MIN_DAYS of history is
+        // cold-start (falls back to the overnight-band bonus). Threads into both analytics and the Sleep tab.
         val habitualMidsleepSec = computeHabitualMidsleep(
             repo, importedDeviceId, computedId,
             nowLocalMidnight - maxDays * SECONDS_PER_DAY - 30 * 3_600L, nowSeconds, tzOffsetSeconds,
         )
 
-        // #970 read efficiency, skin-temp leg: [RegistryDayOwnerSource.skinTempFamily] resolves the family
-        // via registry.all() — a Room query — and the loop below wants it once per DAY, so a 21-day scan
-        // re-read the paired-devices table ~21× for what is almost always ONE owner. Swift never paid this:
-        // it resolves the family from the in-memory regDevices snapshot loaded once per run
-        // (skinTempFamily(forOwner:devices:)). Memoise per owner across the scan so the DB read happens once
-        // per DISTINCT owner (once total on the common single-WHOOP install). A pure read-through — the
-        // registry is stable for the run (same assumption [candidatePriorities] above already makes), so
-        // every day sees the exact value the per-day call would have returned: byte-identical scoring.
+        // Skin-temp family memoised per owner: [RegistryDayOwnerSource.skinTempFamily] runs a Room query,
+        // and a 21-day scan would otherwise re-read it once per day for what is almost always ONE owner.
+        // The registry is stable for the run, so every day sees the same value the per-day call would give.
         val skinFamilyByOwner = HashMap<String, DeviceFamily>()
-        // #938: the WHOOP 4.0 ADC offset is per-device, not per-night. Learn one anchor per owner from the
+        // The WHOOP 4.0 ADC offset is per-device, not per-night. Learn one anchor per owner from the
         // whole scan window and reuse it for every night so cross-night deviations survive.
         val skinAnchorScanFrom = nowLocalMidnight - (maxDays - 1).toLong() * SECONDS_PER_DAY - 30 * 3_600L
         val skinAnchorScanTo = nowLocalMidnight + 18 * 3_600L
@@ -524,28 +460,21 @@ object IntelligenceEngine {
             val day = AnalyticsEngine.dayString(dayStart, tzOffsetSeconds)
             // Read a generous window around the night that ends on `day`; the stager finds the span.
             val from = dayStart - 30 * 3_600L
-            // Sleep read-window END. For a PAST day the night may end any time before the NEXT local
-            // midnight (late sleepers / weekend lie-ins / shift workers wake well after noon), so a
-            // hard `dayStart + 18h` (6 PM) bound TRUNCATED the read at exactly 18:00 , and a real wake
-            // past it was reported as a flat 18:00 wake (#500). Read a PAST day through to the next
-            // local midnight so the stager sees the whole night; TODAY keeps the 18:00 cap (the DAO
-            // clamps to now anyway, and an in-progress nap shouldn't be read as a finished night).
-            // Matches the Swift window.
+            // Sleep read-window END. A PAST day's night may end any time before the NEXT local midnight
+            // (late sleepers wake well after noon), so it reads through to the next local midnight rather
+            // than a hard `dayStart + 18h` cap; TODAY keeps the 18:00 cap (DAO clamps to now anyway).
             val nextMidnight = dayStart + SECONDS_PER_DAY
             val to = if (dayStart < nowLocalMidnight) nextMidnight else dayStart + 18 * 3_600L
 
-            // I2: pick the single device that OWNS this day, and read ITS streams below. With one device
-            // this resolves to [importedDeviceId] (active strap, has data → priority 0), so nothing
-            // changes; with multiple sources the day is scored from exactly one (active strap > other
-            // live straps > imports, or a locked override). Falls back to [importedDeviceId] when no
-            // owner source is supplied or the registry yields no owner.
+            // I2: pick the single device that OWNS this day, and read ITS streams below. Single-device
+            // installs resolve to [importedDeviceId] (priority 0); with multiple sources the day is
+            // scored from exactly one (active strap > other live straps > imports, or a locked override).
             val owner = resolveDayOwner(repo, ownerSource, candidatePriorities, day, from, to, importedDeviceId)
 
             val hr = repo.hrSamples(owner, from, to, STREAM_LIMIT)
-            // CAPTURE-B: capture this day's resolved read owner + HR-row count so PASS 2 can emit the
-            // verbatim universal `dayOwner …` line per SCORED day (matching the iOS emit, which is in the
-            // scored-days loop, NOT here). Only when the universal sink is on. A day skipped below for too
-            // few rows is never scored, so it emits no line, byte-identical to the iOS behaviour.
+            // CAPTURE-B: capture this day's resolved read owner + HR-row count so pass 2 can emit the
+            // verbatim universal `dayOwner …` line per SCORED day. Only when the universal sink is on;
+            // a day skipped below for too few rows is never scored, so it emits no line.
             if (universalSink != null) readOwnerByDay[day] = OwnerRead(owner, hr.size)
             if (hr.size < MIN_HR_SAMPLES) {
                 diag("sleep day=$day SKIPPED hrSamples=${hr.size} (need >=$MIN_HR_SAMPLES)")
@@ -555,31 +484,24 @@ object IntelligenceEngine {
             val grav = repo.gravitySamples(owner, from, to, STREAM_LIMIT)
             val steps = repo.stepSamples(owner, from, to, STREAM_LIMIT)
             val skin = repo.skinTempSamples(owner, from, to, STREAM_LIMIT)
-            // #93: WHOOP 4.0 raw SpO2 PPG samples for the night; analyzeDay banks the nightly red/IR ADC
-            // means on the DailyMetric. Empty on a 5/MG (no v24 spo2 channels) → the raw means stay null.
+            // WHOOP 4.0 raw SpO2 PPG samples for the night; analyzeDay banks the nightly red/IR ADC means
+            // on the DailyMetric. Empty on a 5/MG (no v24 spo2 channels) → the raw means stay null.
             val spo2 = repo.spo2Samples(owner, from, to, STREAM_LIMIT)
             // WHOOP 5.0/MG sleep SpO2 percent (v18 @frame-82); analyzeDay banks the nightly MEDIAN on
             // DailyMetric.spo2Pct. Empty on a WHOOP 4.0 (which banks raw red/IR instead) → spo2Pct stays null.
             val spo2Pct = repo.spo2PctSamples(owner, from, to, STREAM_LIMIT)
-            // #938: the strap family that WROTE this owner's skin-temp rows, so analyzeDay converts the raw
-            // register on the right scale (5/MG banks centidegrees, a WHOOP 4.0 v24 banks a raw ADC). The
-            // owner source resolves it from the registry; unknown/non-WHOOP owners fall back to WHOOP5 (the
-            // prior /100 behaviour), so only a device positively identified as a 4.0 changes scale.
-            // Resolved once per DISTINCT owner via [skinFamilyByOwner] (#970 read efficiency, see above).
+            // The strap family that WROTE this owner's skin-temp rows, so analyzeDay converts the raw
+            // register on the right scale (5/MG banks centidegrees, a WHOOP 4.0 v24 banks a raw ADC).
+            // Unknown/non-WHOOP owners fall back to WHOOP5; resolved once per DISTINCT owner (see above).
             val skinFamily = skinFamilyByOwner.getOrPut(owner) {
                 ownerSource?.skinTempFamily(owner) ?: DeviceFamily.WHOOP5
             }
-            // #938 (second capture): learn THIS device's worn skin-temp anchor raw ONCE, WINDOW-WIDE (the
-            // whole scan window's skin samples), not per-night. The @72 skin-temp ADC's register offset is
-            // per-device — a second real 4.0 strap shares the no-contact floor (~509) + 11-bit saturation
-            // (2047) but a worn band ~1100–1600 (nightly mean raw ~1290), which the global 826 anchor maps to
-            // 47–72 °C, so 100% of its worn samples fail the 28–42 °C gate (kept=0, no baseline, no signal).
-            // WINDOW-WIDE, not per-night: a per-night re-centre would subtract each night's own mean and ERASE
-            // the cross-night deviation the skinTempDevC signal exists to carry. Deterministic per run; SAFE
-            // because the skin baseline is re-folded from the SAME window's nightly means every run, so this
-            // constant offset cancels in the deviation. null for a non-4.0 owner (WHOOP5 ignores the anchor)
-            // or when <100 in-band samples exist → the conversion falls back to the global anchor (byte-
-            // identical to today). Computed here once per owner alongside the family resolution.
+            // Learn THIS device's worn skin-temp anchor raw ONCE, WINDOW-WIDE, not per-night: the @72
+            // ADC's register offset is per-device (a real 4.0 strap's worn band ~1100-1600 vs the global
+            // 826 anchor fails the 28-42 °C wear gate entirely). A per-night re-centre would ERASE the
+            // cross-night deviation the skinTempDevC signal exists to carry; the constant offset cancels
+            // in the deviation since the baseline re-folds from the same window every run. null for a
+            // non-4.0 owner or <100 in-band samples, falling back to the global anchor.
             val skinAnchorRaw = if (skinFamily == DeviceFamily.WHOOP4) {
                 if (!skinAnchorResolvedOwners.contains(owner)) {
                     val windowSkin = repo.skinTempSamples(owner, skinAnchorScanFrom, skinAnchorScanTo, STREAM_LIMIT)

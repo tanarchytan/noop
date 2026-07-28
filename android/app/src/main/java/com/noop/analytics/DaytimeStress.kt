@@ -8,29 +8,19 @@ import uniffi.whoop_ffi.HourPointInfo
  * DaytimeStress.kt — an intraday (hour-by-hour) read of the SAME autonomic stress proxy
  * the daily Stress monitor shows, computed from the day's banked HR + R-R.
  *
- * Faithful Kotlin port of StrandAnalytics/DaytimeStress.swift (verified on macOS).
+ * The daily Stress score maps "resting HR up + HRV down vs a personal baseline" onto a
+ * 0–3 logistic. This applies that SAME math per waking hour — mean HR (up = stress) and
+ * RMSSD over the hour's clean R-R (down = stress) — z-scored against the day's OWN quiet
+ * reference (calm-hour quartile + spread across hours), then squashed onto 0–3 via
+ * stress = 3 / (1 + e^(−raw)). 0 calm · 1.5 baseline · 3 high, same bands as the daily
+ * score. The day is its own baseline, no history needed beyond the day itself.
  *
- * The daily Stress score (StressScreen / StressView) maps "resting HR up + HRV down vs a
- * personal baseline" onto a 0–3 logistic. This helper applies that SAME math at the
- * per-hour grain so the Stress screen can show *when* in the day stress ran high — not a
- * new score. For each waking hour it computes:
+ * "Sustained high stress" fires only when the most recent [sustainedHours] covered hours
+ * ALL sit in the HIGH band (≥ [highBandFloor]); drives a passive Breathe suggestion, never
+ * a notification.
  *
- *   • mean HR over the hour                    (HR up   = stress, like daily RHR)
- *   • RMSSD over the hour's clean R-R          (HRV down = stress, like daily avgHRV)
- *
- * and z-scores each against the day's OWN quiet reference (the calm-hour quartile + the
- * spread across hours), then squashes the z-sum onto 0–3 with the identical logistic
- *   stress = 3 / (1 + e^(−raw)). 0 calm · 1.5 baseline · 3 high — same bands as the daily
- * score. The day is its own baseline: a desk day with one tense afternoon reads that
- * afternoon as elevated *relative to that person's own calm hours*, no cloud, no history
- * needed beyond the day itself.
- *
- * "Sustained high stress" is an honest, conservative flag: the most recent
- * [sustainedHours] covered hours must ALL sit in the HIGH band (≥ [highBandFloor]). It
- * drives a passive in-app suggestion to run a Breathe session — never a notification.
- *
- * APPROXIMATE and non-clinical: an hour with too little data (few HR samples / too few
- * clean beats) is reported with a null level and never invented.
+ * APPROXIMATE and non-clinical: an hour with too little data is reported with a null level
+ * and never invented.
  */
 object DaytimeStress {
 

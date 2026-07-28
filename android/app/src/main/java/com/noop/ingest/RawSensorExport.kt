@@ -11,26 +11,21 @@ import java.io.File
 import java.util.Locale
 
 /**
- * EXPERIMENTAL diagnostic: dump the decoded per-sample sensor streams NOOP already stores to ONE
- * combined long-format CSV and share it. Lets power users / external devs prototype
- * sleep / activity / VBT algorithms on real data without a BLE stream (#308/#276/#322).
+ * EXPERIMENTAL diagnostic: dump the decoded per-sample sensor streams NOOP already stores into
+ * one combined long-format CSV and share it, for prototyping sleep / activity / VBT algorithms on
+ * real data without a BLE stream.
  *
- * Long format = one row per sample, with a `stream` discriminator and ONLY that stream's columns
- * filled (the rest blank). Streams: hr / rr / gravity / steps / ppghr / spo2 / skintemp / resp /
- * event. All rows are merged then sorted by ts ascending. Plain text only — never any BLE hex.
+ * Long format = one row per sample with a `stream` discriminator; only that stream's columns are
+ * filled, the rest blank. Streams: hr / rr / gravity / steps / ppghr / spo2 / skintemp / resp /
+ * event, merged and sorted by ts ascending. Plain text only, never any BLE hex.
  *
- * The `hr` stream reads the RAW `hrSample` table (NOT WhoopDao.hrSamples, which COALESCE-unions in
- * the v26 PPG-derived HR); PPG HR is its own `ppghr` stream so a measured sensor HR is never
- * confused with a derived estimate. Columns and semantics MATCH the Swift exporter byte-for-byte:
- *   unix_s,iso_utc,stream,hr_bpm,rr_ms,grav_x,grav_y,grav_z,step_counter,ppg_bpm,ppg_conf,
- *   spo2_red,spo2_ir,skintemp_raw,resp_raw,event_kind,event_payload
- *
- * On-device only — the file is written to cache/logs (the existing FileProvider path) and shared via
- * the same ACTION_SEND mechanism as the strap-log export; nothing leaves the phone unless shared.
+ * `hr` reads the RAW `hrSample` table (NOT WhoopDao.hrSamples, which COALESCE-unions in the v26
+ * PPG-derived HR); PPG HR is its own `ppghr` stream so a measured HR is never confused with a
+ * derived estimate. On-device only: written to cache/logs and shared via ACTION_SEND.
  */
 object RawSensorExport {
 
-    /** 18 columns, in the contract order shared with the Swift exporter (band_sleep_state added, #175). */
+    /** 18 columns, in the fixed CSV contract order. */
     private const val HEADER =
         "unix_s,iso_utc,stream,hr_bpm,rr_ms,grav_x,grav_y,grav_z,step_counter,ppg_bpm,ppg_conf," +
             "spo2_red,spo2_ir,skintemp_raw,resp_raw,band_sleep_state,event_kind,event_payload"
@@ -47,16 +42,9 @@ object RawSensorExport {
     private fun n(v: Int): String = v.toString()
 
     /**
-     * Read each stream for [deviceId] over [from, to] (inclusive, unix seconds), merge by ts ascending,
-     * and STREAM the combined long-format CSV body straight through [out] (CSV header row first). A high
-     * per-stream [limit] caps a runaway window without truncating a normal day. Returns a per-stream
-     * count map.
-     *
-     * Memory: we hold one short CSV-line String per sample, sort by ts, and write each through [out]'s
-     * buffer. The previous version built a multi-MB StringBuilder of the whole file AND then a second
-     * full copy via `header + csv` before writing — on a busy window that doubling tipped the export
-     * into an OutOfMemoryError (#406). Keeping only the raw query rows + one line each, and never
-     * materialising the whole file as a String, holds peak allocation roughly to the data itself.
+     * Reads each stream for [deviceId] over [from, to] (unix seconds), merges by ts ascending, and
+     * streams the long-format CSV through [out] one line at a time (never buffers the whole file, to
+     * avoid OOM on a busy window). [limit] caps a runaway per-stream window; returns per-stream counts.
      */
     internal suspend fun writeCsv(
         out: java.io.Writer,
@@ -103,8 +91,8 @@ object RawSensorExport {
         counts["resp"] = resp.size
         for (s in resp) rows += LineRow(s.ts, line("resp", s.ts, 11 to n(s.raw)))
 
-        // Band sleep_state (#175): the strap's OWN @81 high-nibble state (0 wake/1 still/2 asleep/3 up),
-        // carried verbatim. Column 12, before the event columns (matches the Swift exporter order).
+        // The strap's own @81 high-nibble state (0 wake/1 still/2 asleep/3 up), carried verbatim.
+        // Column 12, before the event columns.
         val sleepState = repo.sleepStateSamples(deviceId, from, to, limit)
         counts["band_sleep_state"] = sleepState.size
         for (s in sleepState) rows += LineRow(s.ts, line("band_sleep_state", s.ts, 12 to n(s.state)))
@@ -155,7 +143,7 @@ object RawSensorExport {
             val now = System.currentTimeMillis() / 1000
             val dir = File(context.cacheDir, "logs").apply { mkdirs() }
             val file = File(dir, "noop-raw-sensors.csv")
-            // Stream straight to disk through an 8 KB buffer — never hold the whole CSV as a String (#406).
+            // Stream straight to disk through an 8 KB buffer — never hold the whole CSV as a String.
             val counts = file.bufferedWriter().use { w ->
                 w.append("# NOOP raw sensor export · last 24h · long-format CSV\n")
                 w.append("# App: ${BuildConfig.VERSION_NAME} (${BuildConfig.TIER}) · Android ${Build.VERSION.RELEASE} (SDK ${Build.VERSION.SDK_INT}) · ${Build.MANUFACTURER} ${Build.MODEL}\n")

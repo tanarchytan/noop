@@ -4,59 +4,33 @@ import com.noop.data.HrSample
 import kotlin.math.max
 
 /*
- * RecoveryScorer.kt — resting HR during sleep + a transparent 0–100 recovery score
+ * RecoveryScorer.kt — resting HR during sleep + a transparent 0-100 recovery score
  * (NOOP "Charge").
  *
- * Faithful Kotlin port of StrandAnalytics/RecoveryScorer.swift (verified on macOS),
- * itself ported from server/ingest/app/analysis/recovery.py.
+ * recovery() is a z-score + logistic composite, APPROXIMATE and not WHOOP-identical
+ * (WHOOP's model is proprietary). Weights: HRV vs baseline W_HRV=0.55 (dominant,
+ * higher is better), resting HR W_RHR=0.20 (lower better), respiration W_RESP=0.05
+ * (lower better), sleep performance W_SLEEP=0.15 (higher better), skin-temp deviation
+ * W_SKIN_TEMP=0.05 (SYMMETRIC: either direction away from baseline lowers Charge).
+ * Two optional terms — resting-HR decline slope W_RECOVERY_INDEX=0.05, previous-day
+ * Effort vs its EWMA baseline W_ACTIVITY_BALANCE=0.05 — fold in only when supplied;
+ * a null term drops out and the remaining weights renormalize, so the score is
+ * unchanged without it.
  *
- * recovery() is a z-score + logistic composite. It is APPROXIMATE — not
- * WHOOP-identical (WHOOP's model is proprietary). It is a transparent,
- * HRV-dominant, baseline-normalized proxy.
+ * Each metric is a robust z-score vs its personal baseline (mean + EWMA-abs-dev
+ * spread); the composite squashes through a logistic anchored so Z=0 -> ~58%
+ * (WHOOP's published population average). Returns null (cold-start) until the HRV
+ * baseline has MIN_NIGHTS_SEED valid nights; [populationMean] (58.0) is a fallback
+ * callers should flag.
  *
- * Weighting (documented, grounded, explainable):
- *   higher HRV vs baseline        → higher recovery  (W_HRV   = 0.55, dominant)
- *   lower resting HR vs baseline   → higher recovery  (W_RHR   = 0.20)
- *   lower resp vs baseline         → higher recovery  (W_RESP  = 0.05)
- *   higher sleep performance       → higher recovery  (W_SLEEP = 0.15)
- *   skin temp NEAR baseline        → higher recovery  (W_SKIN_TEMP = 0.05)
- *
- * Skin temp is a SYMMETRIC penalty: further from the personal baseline in EITHER
- * direction (illness / overreach) lowers Charge. It enters as −|dev| / scale, like
- * the "lower is better" terms but on the absolute deviation. When skinTempDev is null
- * the term drops and the remaining weights renormalize, so the score is IDENTICAL to
- * the pre-skin-temp model (the no-skin-temp path is byte-for-byte unchanged).
- *
- * Two OPTIONAL Oura-Readiness-style terms (dormant until a caller supplies them):
- *   overnight resting-HR DECLINE slope ("Recovery Index")      → W_RECOVERY_INDEX    = 0.05
- *   previous-day Effort vs personal baseline ("Activity Balance" /
- *   "Previous Day Activity", collapsed into one term)          → W_ACTIVITY_BALANCE  = 0.05
- * Both are ADDITIVE and NON-BREAKING: each is null unless the caller supplies it, in which
- * case it folds in with its small weight above; when null the term drops and the weights
- * renormalize exactly like the skin-temp term, so the default score for every existing caller
- * is BYTE-IDENTICAL to before either term existed. Recovery Index needs no personal baseline
- * (a fixed, documented bpm/hour scale, same style as sleepPerf/skin-temp); Activity Balance
- * needs BOTH the previous-day Effort value AND its EWMA baseline ([Baselines.strainCfg]) —
- * supplying only one drops the term.
- *
- * Each metric is standardized to a robust z-score against the personal baseline
- * (mean + EWMA-abs-dev spread). Missing terms are dropped and the weights
- * renormalized. The composite z is squashed through a logistic anchored so that
- * Z = 0 → ~58% (WHOOP's published population-average recovery).
- *
- * Cold-start: if the HRV baseline (dominant driver) is not yet usable
- * (< MIN_NIGHTS_SEED valid nights), recovery() returns null. Callers may use
- * [populationMean] (58.0) as a fallback but should flag it.
- *
- * `start` / `end` are wall-clock unix SECONDS (Long), matching the com.noop.data
- * layer and HrSample.ts (the Swift source uses Int seconds).
+ * `start` / `end` are wall-clock unix SECONDS (Long).
  */
 
-/** Resting-HR estimate + transparent recovery score. Mirrors Swift `RecoveryScorer`. */
+/** Resting-HR estimate + transparent recovery score. */
 object RecoveryScorer {
 
     // ─────────────────────────────────────────────────────────────────────────
-    // Constants (recovery.py)
+    // Constants
     // ─────────────────────────────────────────────────────────────────────────
 
     const val wHRV: Double = 0.55
@@ -72,35 +46,30 @@ object RecoveryScorer {
      * so a 1.0 °C absolute deviation from the personal baseline costs ≈ 1 z-unit of
      * Charge. skinTempDevC is the raw ±°C delta (DailyMetric.skinTempDevC), not a z.
      *
-     * Kept at 1.0 to match the Swift reference (RecoveryScorer.skinTempScaleC = 1.0).
-     * A prior 0.5 here applied a 2× penalty Charge never intended — every user's
-     * Charge diverged from macOS/iOS by the skin-temp term. (Cross-platform parity.)
+     * Must stay 1.0: halving it doubles the effective penalty weight of this term.
      */
     const val skinTempDevScale: Double = 1.0
 
     /**
-     * Recovery-Index weight (overnight resting-HR DECLINE slope — Oura's "Recovery Index"
-     * contributor). Small and additive like [wSkinTemp]: folds in only when a slope is
-     * supplied. Mirrors Swift `RecoveryScorer.wRecoveryIndex`.
+     * Recovery-Index weight (overnight resting-HR DECLINE slope, Oura's "Recovery Index"
+     * concept). Small and additive like [wSkinTemp]: folds in only when a slope is supplied.
      */
     const val wRecoveryIndex: Double = 0.05
 
     /**
      * Recovery-Index slope scale (bpm/hour): a slope this many bpm/hour steeper than flat (0)
      * costs/earns ≈ 1 z-unit before weighting. Resting HR falling through the night is the
-     * physiologically expected, good pattern; flat or rising (illness, alcohol, a late
-     * stimulant, restlessness) is not. The SIGN carries the meaning (negative = declining =
-     * good), unlike skin-temp's symmetric |deviation| penalty. Mirrors Swift
-     * `RecoveryScorer.recoveryIndexScaleBpmPerHr`.
+     * expected good pattern; flat or rising (illness, alcohol, a late stimulant, restlessness)
+     * is not — the SIGN carries the meaning (negative = declining = good), unlike skin-temp's
+     * symmetric |deviation| penalty.
      */
     const val recoveryIndexScaleBpmPerHr: Double = 2.0
 
     /**
      * Activity-Balance / previous-day-Effort weight (collapses Oura's "Previous Day Activity"
-     * and "Activity Balance" readiness contributors into one term). Small and additive like
+     * and "Activity Balance" readiness concepts into one term). Small and additive like
      * [wSkinTemp]: folds in only when BOTH a previous-day Effort value and its personal EWMA
-     * baseline ([Baselines.strainCfg]) are supplied. Mirrors Swift
-     * `RecoveryScorer.wActivityBalance`.
+     * baseline ([Baselines.strainCfg]) are supplied.
      */
     const val wActivityBalance: Double = 0.05
 
@@ -131,12 +100,10 @@ object RecoveryScorer {
     // ─────────────────────────────────────────────────────────────────────────
 
     /**
-     * The UNCAPPED count of nights carrying a usable nightly HRV — the signal that seeds every
-     * baseline. Uses the SAME validity predicate as [Baselines.update] (value within the metric config
-     * bounds), not just non-null, so an implausible out-of-range night is excluded and this can never
-     * over-state nValid. The recovery cold-start gate uses it capped to the seed window; the
-     * calibration-milestone countdown cards ([CalibrationMilestones]) count it all the way to 30. Pure +
-     * unit-tested. Mirrors Swift `RecoveryScorer.bankedNights`.
+     * The UNCAPPED count of nights carrying a usable nightly HRV, the signal that seeds every
+     * baseline. Uses the SAME validity predicate as [Baselines.update] (within the metric config
+     * bounds, not just non-null). The cold-start gate caps this to the seed window;
+     * [CalibrationMilestones] counts it all the way to 30.
      */
     fun bankedNights(nightlyHrv: List<Double?>, cfg: MetricCfg = Baselines.hrvCfg): Int =
         nightlyHrv.count { it != null && it in cfg.minVal..cfg.maxVal }
@@ -146,26 +113,23 @@ object RecoveryScorer {
     // ─────────────────────────────────────────────────────────────────────────
 
     /**
-     * Minimum 5-minute bins (the SAME [restingHRWindowS] binning) required before a slope is trusted —
-     * below this, too little of the night has elapsed to fit a trend, and a 1-2-point
-     * regression is noise, not a night-long pattern. 6 bins = 30 minutes of binned coverage,
-     * a deliberately low floor so a short/partial night still gets a number rather than a
-     * routine null. Mirrors Swift `RecoveryScorer.recoveryIndexMinBins`.
+     * Minimum 5-minute bins (the SAME [restingHRWindowS] binning) required before a slope is
+     * trusted; below this, too little of the night has elapsed to fit a trend and a 1-2-point
+     * regression is noise, not a pattern. 6 bins = 30 minutes, a deliberately low floor so a
+     * short/partial night still gets a number rather than a routine null.
      */
     const val recoveryIndexMinBins: Int = 6
 
     /**
-     * Overnight resting-HR DECLINE slope (bpm/hour) across the in-bed window — the "Recovery
-     * Index" component of Oura's Readiness that Charge lacked (it previously only read the
-     * overnight resting-HR FLOOR, never the trend that reaches it).
+     * Overnight resting-HR DECLINE slope (bpm/hour) across the in-bed window, the "Recovery
+     * Index" component of Oura's Readiness.
      *
-     * Computed as the least-squares slope of the SAME non-overlapping 5-minute HR bin means the
-     * resting-HR floor uses ([restingHRWindowS]) against each bin's midpoint time (hours from
-     * `start`). NEGATIVE = declining (HR falling through the night — the physiologically
-     * expected, good pattern); POSITIVE = rising (restlessness, illness, alcohol, a late
-     * stimulant). Returns null when fewer than [recoveryIndexMinBins] bins have data (too
-     * little of the window to fit a trend) or there are no samples at all — it never
-     * fabricates a slope from a sliver of the night. Mirrors Swift `recoveryIndexSlope`.
+     * Least-squares slope of the SAME non-overlapping 5-minute HR bin means the resting-HR
+     * floor uses ([restingHRWindowS]), against each bin's midpoint time (hours from `start`).
+     * NEGATIVE = declining (HR falling through the night, the expected good pattern); POSITIVE
+     * = rising (restlessness, illness, alcohol, a late stimulant). Returns null when fewer than
+     * [recoveryIndexMinBins] bins have data, or there are no samples at all — never fabricates
+     * a slope from a sliver of the night.
      *
      * @param start / @param end window bounds, unix SECONDS (Long).
      */
@@ -222,7 +186,6 @@ object RecoveryScorer {
 
     /**
      * A baseline driver: mean + spread (internal abs-dev units, as in [BaselineState]).
-     * Mirrors Swift `RecoveryScorer.DriverBaseline`.
      */
     data class DriverBaseline(val mean: Double, val spread: Double) {
         constructor(state: BaselineState) : this(mean = state.baseline, spread = state.spread)
@@ -234,9 +197,8 @@ object RecoveryScorer {
         return (value - mean) / sigma
     }
 
-    // The recovery/Charge composite (z-score + logistic) now lives in whoop-rs physio-algo,
-    // reached via [RustScores.recovery] (proven bit-for-bit == the deleted Kotlin twin by
-    // RustRecoveryParityTest over the recovery_cases fixtures). The [DriverBaseline] data class,
-    // [zScore], [band], [recoveryIndexSlope] and [bankedNights] stay here — they are read by
-    // frontend consumers (RecoveryDrivers / RecoveryScorerTrace / CalibrationMilestones).
+    // The recovery/Charge composite (z-score + logistic) lives in whoop-rs physio-algo, reached
+    // via [RustScores.recovery]. [DriverBaseline], [zScore], [band], [recoveryIndexSlope] and
+    // [bankedNights] stay here because frontend consumers (RecoveryDrivers / RecoveryScorerTrace
+    // / CalibrationMilestones) read them directly.
 }

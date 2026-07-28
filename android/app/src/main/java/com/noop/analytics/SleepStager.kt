@@ -11,22 +11,17 @@ import kotlin.math.sqrt
 /*
  * SleepStager.kt — the app-side seam over the whoop-rs sleep engine.
  *
- * Sleep DETECTION + STAGING + wake refinement + main-night selection all live in
- * whoop-rs (physio-algo::sleep), reached through the single `analyzeSleep` FFI — see
- * android/SLEEP-BORDER.md and whoop-rs/docs/sleep.md. This object is no longer a stager;
- * what remains is frontend glue, not algorithm:
- *   - the HRV-window / deep-pool layer (sessionHrvWindows / lastDeepRun / HrvWindow):
- *     stage-tagged 5-min RMSSD windows for the deep-stage HRV pool and the HRV trace.
- *     The scored session avgHrv itself is computed in whoop-rs (RustScores.windowedAvgHrv).
- *   - hypnogramMetrics: AASM minute/percent aggregation over the Rust-produced stages.
- *   - small pure predicates/primitives (isGravitySparse, isOvernightOnset, largestGapS,
- *     findPeaks, standardDeviation, respPlausibleRangeBpm) reused by callers and by the
- *     resp-rate parity test that pins the Rust scorer byte-identical.
+ * Sleep DETECTION + STAGING + wake refinement + main-night selection all live in whoop-rs
+ * (physio-algo::sleep), reached through the single `analyzeSleep` FFI. What remains here is
+ * frontend glue: the HRV-window / deep-pool layer (sessionHrvWindows / lastDeepRun / HrvWindow
+ * — stage-tagged 5-min RMSSD windows for the deep-stage HRV pool and HRV trace; the scored
+ * session avgHrv itself is computed in whoop-rs RustScores.windowedAvgHrv), hypnogramMetrics
+ * (AASM minute/percent aggregation over the Rust-produced stages), and small pure predicates
+ * (isGravitySparse, isOvernightOnset, largestGapS, findPeaks, standardDeviation,
+ * respPlausibleRangeBpm) reused by callers and the resp-rate parity test.
  *
- * Types:
- *   - The detected-sleep type is [DetectedSleep] (AnalyticsModels.kt), NOT a Room entity.
- *     Stage segments are [StageSegment] (AnalyticsModels.kt, fields var).
- *   - [HypnogramMetrics] (AnalyticsModels.kt) is returned by [hypnogramMetrics].
+ * Types live in AnalyticsModels.kt: [DetectedSleep] (not a Room entity), [StageSegment]
+ * (fields var), [HypnogramMetrics] (returned by [hypnogramMetrics]).
  *
  * All `ts` / `start` / `end` are wall-clock unix SECONDS (Long).
  */
@@ -55,14 +50,13 @@ object SleepStager {
     /** Assumed sample interval (seconds) when not inferable. */
     const val defaultIntervalS: Double = 60.0
 
-    // ── Daytime false-sleep guard (#90) ──────────────────────────────────────
+    // ── Daytime false-sleep guard ─────────────────────────────────────────────
     //
     // A long, still, sedentary daytime stretch (reading, a desk, a sofa) is gravity-
     // indistinguishable from a real nap, so the gravity spine alone misclassifies it as
-    // sleep. The fix is NOT to drop daytime sleep — real naps are legitimate sessions —
-    // but to hold a window whose CENTER falls in the local daytime band to a stricter bar:
-    // it must be long enough to be a real nap AND show a genuine cardiac dip (a sedentary
-    // stretch keeps a near-baseline HR). Overnight windows are UNCHANGED. Mirrors Swift.
+    // sleep. The fix holds a window whose CENTER falls in the daytime band to a stricter
+    // bar: long enough for a real nap AND showing a genuine cardiac dip (a sedentary
+    // stretch keeps near-baseline HR); overnight windows are unchanged.
 
     /** Local hour (inclusive) at which the stricter daytime bar begins. */
     const val daytimeBandStartHour: Int = 11
@@ -76,10 +70,8 @@ object SleepStager {
     /**
      * A still sleep run that resumes within this gap of an overnight sleep chain is the
      * night's TAIL — a late wake past the daytime-band start, or a brief morning stir then
-     * back to sleep — not an isolated daytime nap, so it skips the daytime guard. Without
-     * this, a real sleep that ran past ~11:00 local had its tail rejected as a "nap" and the
-     * displayed wake time was truncated to late morning (late sleepers / shift workers).
-     * Reimplemented from @vulnix0x4's PR #353.
+     * back to sleep — not an isolated daytime nap, so it skips the daytime guard. Without it,
+     * a real sleep running past ~11:00 local had its wake time truncated to late morning.
      */
     const val nightContinuationGapMin: Int = 90
 
@@ -96,49 +88,48 @@ object SleepStager {
      */
     const val daytimeRestingHRMult: Double = 0.95
 
-    // ── H4 physiological in-bed span cap (#547 / #531 / #509 / tail) ───────────
+    // ── H4 physiological in-bed span cap ──────────────────────────────────────
     //
-    // Maximum plausible in-bed span (seconds) for a SINGLE assembled main-sleep run. No real single night
-    // runs longer than this: a 12 h+ "sleep" is a bad-clock artefact (a stale/duplicated timestamp range,
-    // or a strap that banked one frozen still stretch under a wrong clock) reading as one enormous still
-    // block — which then reports a 12 h sleep and poisons Rest / the debt ledger / the headline. 16 h is
-    // well above any genuine night yet below the clock-artefact range. A run whose span exceeds this is
-    // DROPPED (not silently truncated to 16 h, which would fabricate a wake time): an over-long block is
-    // not trustworthy enough to assert a span for at all. Mirrors Swift `maxMainSleepSpanS`.
+    // Maximum plausible in-bed span (seconds) for a single assembled main-sleep run. A 12h+
+    // "sleep" is a bad-clock artefact (a stale/duplicated timestamp range, or a frozen still
+    // stretch banked under a wrong clock) reading as one enormous still block, which then
+    // poisons Rest / the debt ledger / the headline. 16h sits above any genuine night yet
+    // below the clock-artefact range. A run whose span exceeds this is DROPPED, not truncated
+    // (truncating would fabricate a wake time) — an over-long block can't be trusted to
+    // assert a span at all.
     const val maxMainSleepSpanS: Long = 16L * 60L * 60L
 
-    // ── H7 morning-stillness nap suppression (#531) ───────────────────────────
+    // ── H7 morning-stillness nap suppression ──────────────────────────────────
     //
-    // After a real overnight wake the wrist is often still (sitting with coffee, back in bed scrolling, a
-    // sofa) for a stretch that the gravity spine reads as a fresh "nap" — #531's 9 am phantom nap right after
-    // the night ended. It is NOT a night-tail continuation (handled by nightContinuationGapMin and exempted),
-    // and it can clear the ordinary daytime guard (long + the post-wake HR is still low), so it slipped
-    // through. H7 holds a daytime block that BEGINS within morningStillnessWindowMin of the just-detected
-    // overnight wake to a STRONGER bar: it must show a genuine SUSTAINED re-onset — a real second sleep dips
-    // clearly below the day median, not merely near it. Mirrors Swift.
+    // After a real overnight wake the wrist is often still (coffee, back in bed, a sofa) for a
+    // stretch the gravity spine reads as a fresh "nap". It is not a night-tail continuation
+    // (handled by nightContinuationGapMin) and can clear the ordinary daytime guard (long +
+    // post-wake HR still low), so it slips through. H7 holds a daytime block that BEGINS within
+    // morningStillnessWindowMin of the just-detected overnight wake to a stronger bar: it must
+    // show a genuine sustained re-onset — dipping clearly below the day median, not merely near it.
 
-    /** A daytime block whose onset falls within this many minutes AFTER an overnight chain's wake is treated
-     *  as suspected morning residual stillness and held to the stronger re-onset bar below. ~3 h covers the
-     *  post-wake window where residual stillness masquerades as a nap; a genuine afternoon nap (hours later)
-     *  is past it and faces only the ordinary daytime guard. Mirrors Swift `morningStillnessWindowMin`. (#531) */
+    /** A daytime block whose onset falls within this many minutes AFTER an overnight chain's wake is
+     *  treated as suspected morning residual stillness and held to the stronger re-onset bar below. ~3h
+     *  covers the post-wake window where residual stillness masquerades as a nap; a genuine afternoon nap
+     *  (hours later) is past it and faces only the ordinary daytime guard. */
     const val morningStillnessWindowMin: Int = 180
 
-    /** The stronger resting-HR bar (× day baseline) a suspected-morning-stillness block must clear to be kept
-     *  as a real re-onset. Stricter than the ordinary daytime [daytimeRestingHRMult] (0.95): residual waking
-     *  stillness keeps a near-waking HR, so only a block that dips clearly (a true second sleep) survives.
-     *  Mirrors Swift `morningReonsetRestingHRMult`. (#531) */
+    /** The stronger resting-HR bar (× day baseline) a suspected-morning-stillness block must clear to be
+     *  kept as a real re-onset. Stricter than the ordinary daytime [daytimeRestingHRMult] (0.95): residual
+     *  waking stillness keeps a near-waking HR, so only a block that dips clearly (a true second sleep)
+     *  survives. */
     const val morningReonsetRestingHRMult: Double = 0.90
 
-    /** The persisted v18 BAND sleep_state value that means "asleep" (Interpreter's `(sb>>4)&3`: 0 wake /
-     *  1 still / 2 asleep / 3 up). The strap's OWN scored band state — an independent anchor we CONSUME to
-     *  confirm a borderline morning re-onset (H7). Mirrors Swift `bandStateAsleep`. (#531 / H8 consume) */
+    /** The persisted v18 BAND sleep_state value that means "asleep" (`(sb>>4)&3`: 0 wake / 1 still /
+     *  2 asleep / 3 up). The strap's own scored band state — an independent anchor consumed to confirm
+     *  a borderline morning re-onset (H7). */
     const val bandStateAsleep: Int = 2
 
     /** Fraction of a suspected-morning-stillness block's epochs whose persisted band sleep_state must read
-     *  "asleep" ([bandStateAsleep]) for the strap's OWN signal to CONFIRM a genuine re-onset and KEEP the
+     *  "asleep" ([bandStateAsleep]) for the strap's own signal to confirm a genuine re-onset and keep the
      *  block even when its HR dip is borderline. A real second sleep the strap itself scored asleep is a
-     *  strong, honest anchor; a residual-stillness false nap reads "still"/"up", not "asleep". ≥0.6 keeps
-     *  this conservative. Mirrors Swift `morningReonsetBandAsleepFrac`. (H8 consume) */
+     *  strong anchor; a residual-stillness false nap reads "still"/"up", not "asleep". ≥0.6 keeps this
+     *  conservative. */
     const val morningReonsetBandAsleepFrac: Double = 0.6
 
     /** Seconds in a calendar day (for local-hour-of-day arithmetic). */
@@ -150,14 +141,15 @@ object SleepStager {
     /** A run is HR-confirmed only if mean HR ≤ baseline × this. */
     const val hrSleepBaselineMult: Double = 1.05
 
-    // ── Motion-corroborated wake (elevated-but-flat-HR nights, #462) ───────────
+    // ── Motion-corroborated wake (elevated-but-flat-HR nights) ────────────────
     //
-    // Both stagers call "wake" primarily off HR / HR-variability, and the HR-led session confirmation
-    // ([confirmSleepWithHR]) rejects a still run whose median HR sits above the sleep band. On a night with
-    // pharmacologically- or metabolically-elevated resting HR that keeps HR up WITHOUT the wearer getting up
-    // (a supplement protocol, a fever, a hot room, alcohol), that HR-led logic misreads hot-but-motionless
-    // sleep as wake. The corroboration rule is: elevated-HR ALONE is insufficient — a run/epoch at the night's
-    // quiescent MOTION floor with UNCHANGED posture cannot be called wake on cardiac evidence alone. The
+    // Both stagers call "wake" primarily off HR / HR-variability, and the HR-led session
+    // confirmation ([confirmSleepWithHR]) rejects a still run whose median HR sits above the
+    // sleep band. On a night with pharmacologically- or metabolically-elevated resting HR that
+    // keeps HR up without the wearer getting up (a supplement protocol, a fever, a hot room,
+    // alcohol), that HR-led logic misreads hot-but-motionless sleep as wake. The corroboration
+    // rule: elevated HR alone is insufficient — a run/epoch at the night's quiescent motion
+    // floor with unchanged posture cannot be called wake on cardiac evidence alone. The
     // per-epoch half lives in the whoop-rs V2 stager; this is the session-detection half.
 
     /** The relaxed sleep-band multiplier applied to [confirmSleepWithHR] when the run is DEEPLY motion-quiescent.

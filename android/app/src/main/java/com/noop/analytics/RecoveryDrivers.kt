@@ -6,25 +6,21 @@ import kotlin.math.roundToInt
 
 // RecoveryDrivers.kt - the USER-FACING "What shaped it" breakdown for the Charge (recovery) score.
 //
-// Kotlin twin of the Swift RecoveryScorer chargeDrivers reference. Where RecoveryScorerTrace emits a
-// terse engineer-facing strap-log trace, this produces the ordered, plain-English driver rows the
-// dashboard renders UNDER the Charge ring: one row per real term, each carrying the signed point
-// contribution to the score (deltaPoints), the night's value, the personal baseline it was scored
-// against, and a short verdict.
+// Where RecoveryScorerTrace emits an engineer-facing strap-log trace, this produces the ordered,
+// plain-English driver rows the dashboard renders under the Charge ring: one row per real term,
+// each carrying deltaPoints (signed point contribution), the night's value, the personal baseline
+// it was scored against, and a short verdict.
 //
-// HONEST BY CONSTRUCTION. Every row is recomputed from the SAME inputs RecoveryScorer.recovery reads,
-// with the SAME zScore call, weights and logistic, so a driver can never describe a term the score
-// did not actually use. A MISSING input yields NO row (never a fabricated zero-contribution row): the
-// term simply drops, exactly as it drops + renormalizes inside recovery(...). deltaPoints is the
-// term's MARGINAL effect on the final 0-100 score: score(actual) minus score(this term neutralized to
-// its personal baseline, i.e. z = 0), holding the other terms. That is a real local sensitivity, not a
-// linear apportionment, so the signed points are exactly "how many points this signal moved Charge
-// versus sitting at your baseline". Pure + side-effect-free (no clock, no I/O), so a fixture night pins
-// the exact rows. No em-dashes, no PII (values + baselines are the user's own, never logged here).
+// HONEST BY CONSTRUCTION: every row is recomputed from the SAME inputs, zScore call, weights and
+// logistic as RecoveryScorer.recovery, so a driver never describes a term the score didn't use. A
+// missing input yields NO row, never a fabricated zero-contribution one - the term drops exactly as
+// it drops + renormalizes inside recovery(...). deltaPoints is the term's MARGINAL effect on the
+// 0-100 score: score(actual) minus score(this term neutralized to z = 0, its personal baseline),
+// holding the other terms - a real local sensitivity, not a linear apportionment. Pure and
+// side-effect-free (no clock, no I/O); values/baselines are the user's own and are never logged.
 
 /**
- * One driver row behind the Charge (recovery) score, in the SHARED CONTRACT shape the iOS/macOS and
- * Android dashboards both render. Field names are byte-identical across platforms.
+ * One driver row behind the Charge (recovery) score.
  *
  * @property label short signal name, e.g. "Resting HR".
  * @property deltaPoints signed contribution to the 0-100 Charge score versus this signal sitting at
@@ -160,9 +156,8 @@ object RecoveryDrivers {
             return (actual - scoreOf(neutralZ)).roundToInt()
         }
 
-        // One row per present term, appended in the SAME order the iOS twin uses (HRV, resting HR,
-        // Sleep, respiration, skin temp), then sorted biggest-mover-first so the row that explains the
-        // most sits on top. Labels / value text / verdicts are byte-identical to the Swift canonical.
+        // One row per present term, appended in a fixed order (HRV, resting HR, Sleep, respiration,
+        // skin temp), then sorted biggest-mover-first so the row that explains the most sits on top.
         val drivers = ArrayList<ChargeDriver>()
 
         drivers.add(
@@ -258,7 +253,7 @@ object RecoveryDrivers {
             )
         }
 
-        // Biggest mover first; a stable sort preserves the iOS append order on ties.
+        // Biggest mover first; a stable sort preserves append order on ties.
         return drivers.sortedByDescending { abs(it.deltaPoints) }
     }
 
@@ -269,10 +264,9 @@ object RecoveryDrivers {
     }
 
     /**
-     * Direction verdict matching the Swift canonical: an "already oriented so higher z is better"
-     * z reads as supporting recovery when positive (the signal is on the good side of baseline),
-     * limiting recovery when negative, and right at baseline when exactly zero. Byte-for-byte the
-     * same strings RecoveryScorer's Swift verdicts produce, so the iOS and Android rows match.
+     * A z already oriented so higher is better reads as supporting recovery when positive (the
+     * signal is on the good side of baseline), limiting recovery when negative, and at baseline
+     * when exactly zero.
      */
     private fun directionVerdict(z: Double, good: String, flat: String, bad: String): String = when {
         z > 0.0 -> good
@@ -280,12 +274,12 @@ object RecoveryDrivers {
         else -> flat
     }
 
-    /** Half-width (C) of the "typical" skin-temp band; matches Swift skinTempTypicalBandC. */
+    /** Half-width (C) of the "typical" skin-temp band. */
     private const val SKIN_TEMP_TYPICAL_BAND_C: Double = 0.3
 
     /**
-     * Skin-temp verdict (symmetric): a drift within the typical band reads neutral, beyond it limits
-     * recovery, warmer or cooler. Mirrors the Swift skinTempVerdict exactly.
+     * Skin-temp verdict (symmetric): a drift within the typical band reads neutral, beyond it
+     * limits recovery, warmer or cooler.
      */
     private fun skinTempVerdict(dev: Double): String = when {
         abs(dev) <= SKIN_TEMP_TYPICAL_BAND_C -> "near baseline"

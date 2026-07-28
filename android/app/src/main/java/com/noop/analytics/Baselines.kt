@@ -9,27 +9,23 @@ import kotlin.math.sqrt
 /*
  * Baselines.kt — personal rolling baselines per nightly metric.
  *
- * Faithful Kotlin port of StrandAnalytics/Baselines.swift (verified on macOS),
- * itself ported from server/ingest/app/analysis/baselines.py.
- *
  * The production model is a Winsorized EWMA: robust, recency-weighted center with an
  * EWMA-of-absolute-deviation spread tracker, cold-start gating, hard outlier rejection,
- * and Winsor clamping ([update] / [foldHistory]). It produces a [BaselineState] that
+ * and Winsor clamping ([update] / [foldHistory]). Produces a [BaselineState] that
  * RecoveryScorer consumes.
  *
- * The value types ([MetricCfg], [BaselineStatus], [BaselineState], [Deviation])
- * are defined in AnalyticsModels.kt and intentionally NOT redefined here. All
- * `ts` are wall-clock unix SECONDS (Long) elsewhere; baselines work on per-night
- * scalar values and carry no timestamps.
+ * Value types ([MetricCfg], [BaselineStatus], [BaselineState], [Deviation]) live in
+ * AnalyticsModels.kt. All `ts` elsewhere are wall-clock unix SECONDS (Long); baselines
+ * work on per-night scalar values and carry no timestamps.
  *
- * Outputs are APPROXIMATE and not medical advice.
+ * Outputs are APPROXIMATE, not medical advice.
  */
 
-/** Personal rolling baselines. Mirrors Swift `Baselines` (an enum used as a namespace). */
+/** Personal rolling baselines, one state per metric. */
 object Baselines {
 
     // ─────────────────────────────────────────────────────────────────────────
-    // Constants (baselines.py)
+    // Constants
     // ─────────────────────────────────────────────────────────────────────────
 
     /** Winsorization clamp: fold only within ±WINSOR_K × spread. */
@@ -48,20 +44,15 @@ object Baselines {
     const val staleDays: Int = 14
 
     // ─────────────────────────────────────────────────────────────────────────
-    // Early-life anti-anchoring (Reddit HRV report) — mirrors Baselines.swift
+    // Early-life anti-anchoring
     // ─────────────────────────────────────────────────────────────────────────
     //
-    // The original model seeds the center on the first valid night with spread pinned at the
-    // floor, then becomes "usable" at minNightsSeed. If those first few nights read artificially
-    // HIGH (a common cold-start artefact), three things compounded to lock the baseline high for
-    // ~2-3 weeks: (a) the seed fixed the mean high while spread sat at the floor; (b) the hard
-    // outlier gate then REJECTED the user's genuine LOWER nights (a true 54ms vs an anchored ~85ms
-    // baseline is >5× the floor spread → "seen but not folded"); (c) the still-tight spread made
-    // the z-score hypersensitive, crushing Charge to 1-2.
+    // A cold-start seed with an artificially HIGH first night can lock the baseline high for
+    // weeks: the still-tight floor spread makes the hard-outlier gate REJECT the user's genuine
+    // LOWER nights as "seen but not folded", and makes the z-score hypersensitive, crushing Charge.
     //
-    // The fix is conservative: during the baseline's EARLY life let reality pull the center down
-    // quickly, THEN settle to the normal long-term smoothing. Long-term behaviour (after
-    // earlyAdaptNights, once spread has lifted) is byte-identical to before.
+    // Fix: during the baseline's EARLY life let reality pull the center down quickly, then settle
+    // to the normal long-term smoothing (unchanged after earlyAdaptNights, once spread has lifted).
 
     /** Valid-night count below which the baseline is "young": fast center adaptation + suspended
      *  hard-outlier gate. Chosen so convergence happens in days, not weeks. */
@@ -75,29 +66,23 @@ object Baselines {
     const val earlySpreadInflate: Double = 2.5
 
     /** SharedPreferences key for the manual HRV-baseline recalibration epoch (epoch SECONDS).
-     *  0 / absent = no recalibration. Written by the Settings "Recalibrate HRV baseline" button.
-     *  EXACT same key string as the iOS UserDefaults key. */
+     *  0 / absent = no recalibration. Written by the Settings "Recalibrate HRV baseline" button. */
     const val hrvBaselineEpochKey: String = "noop.hrvBaselineEpoch"
 
     /** SharedPreferences key for the manual RECOVERY-baseline recalibration epoch (epoch SECONDS).
-     *  0 / absent = no recalibration. The Charge-wide sibling of [hrvBaselineEpochKey]: HRV (the
-     *  dominant Charge driver) re-anchors on its own epoch today, while the resting-HR / respiration /
-     *  skin-temp baselines that also feed Charge re-anchor on THIS epoch. The Settings "Recalibrate
-     *  Charge baseline" button writes BOTH keys to now (see [recalibrateRecoveryBaselines]) so the whole
-     *  Charge build-up restarts cleanly. EXACT same key string as the iOS UserDefaults key. */
+     *  0 / absent = no recalibration. Charge-wide sibling of [hrvBaselineEpochKey]: HRV re-anchors
+     *  on its own epoch, while resting-HR / respiration / skin-temp re-anchor on this one. The
+     *  Settings "Recalibrate Charge baseline" button writes both keys (see [recalibrateRecoveryBaselines]). */
     const val recoveryBaselineEpochKey: String = "noop.recoveryBaselineEpoch"
 
     /**
      * Default per-metric configurations (HRV, resting HR, respiration, skin temp, daily
      * Effort/strain).
      *
-     * "strain" backs the RecoveryScorer Activity-Balance / previous-day-Effort term: bounds
-     * match `StrainScorer.maxStrain`'s 0-100 output scale (the Charge/Effort/Rest redesign's
-     * rescale of the historical 0-21 axis). floorSpread is wider than the physiological
-     * metrics above (5.0 vs ~1-2% of range elsewhere) because day-to-day training load is
-     * EXPECTED to swing hard (a rest day vs a hard day is a normal, large delta) — a tight
-     * floor would make the z-score hypersensitive to routine training variation. Same
-     * half-lives as the other metrics for consistency.
+     * "strain" bounds match `StrainScorer.maxStrain`'s 0-100 scale. Its floorSpread is wider
+     * than the physiological metrics (5.0 vs ~1-2% of range) because day-to-day training load
+     * swings hard by nature; a tight floor would make the z-score hypersensitive to routine
+     * variation. Same half-lives as the other metrics.
      */
     // The validity bands, spread floors and EWMA half-lives are read from whoop-rs, so the app cannot
     // carry a second copy that drifts from the one the baseline maths actually uses.
@@ -165,14 +150,12 @@ object Baselines {
      * recalibration [baselineEpoch] (epoch SECONDS; 0 = no recalibration).
      *
      * [dayKeys] runs parallel to [values] ("yyyy-MM-dd", same order/length). Any night whose day
-     * STARTS (UTC) before [baselineEpoch] is ignored entirely (NOT a skip-and-hold — it is dropped,
-     * so the baseline re-seeds from the first on-or-after-epoch night). This lets the user reset a
-     * baseline that anchored too high: tap "Recalibrate HRV baseline" in Settings (which writes
-     * `now-seconds` to the [hrvBaselineEpochKey] pref) and the Charge baseline re-learns from tonight.
+     * STARTS (UTC) before [baselineEpoch] is dropped entirely (not skip-and-hold), so the baseline
+     * re-seeds from the first on-or-after-epoch night — this is what lets "Recalibrate HRV baseline"
+     * in Settings reset a baseline that anchored too high.
      *
-     * When [baselineEpoch] <= 0 (the default / no recalibration) this is byte-identical to the plain
-     * [foldHistory]. The caller reads the persisted epoch from SharedPreferences (the analytics layer
-     * is Context-free) — exact same key string as the iOS UserDefaults key. Mirrors the Swift overload.
+     * When [baselineEpoch] <= 0 this is byte-identical to plain [foldHistory]. The caller reads the
+     * persisted epoch from SharedPreferences (the analytics layer is Context-free).
      */
     fun foldHistory(
         values: List<Double?>,
@@ -203,37 +186,24 @@ object Baselines {
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // Device-era boundary (#459)
+    // Device-era boundary
     // ─────────────────────────────────────────────────────────────────────────
 
     /**
-     * The recalibration epoch (seconds, UTC start-of-day) at the LATEST device-era boundary in a
-     * source-tagged nightly history, for feeding [foldHistory]'s `baselineEpoch` so a baseline can't
-     * mix two brands' incompatible HRV scales (#459: an Oura→WHOOP switch has Oura RMSSD ~120–155 ms
-     * vs WHOOP ~72–112 ms with no overlap nights, so a straddling 30-night window reads the first
-     * WHOOP nights as "suppressed" against an Oura-inflated mean — a device artifact, not physiology).
+     * Recalibration epoch (seconds, UTC start-of-day) at the LATEST device-era boundary in a
+     * source-tagged nightly history — feeds [foldHistory]'s `baselineEpoch` so a baseline can't mix
+     * two brands' incompatible HRV scales (Oura RMSSD ~120-155 ms vs WHOOP ~72-112 ms, no overlap: a
+     * straddling window would read the newer brand's early nights as suppressed against the old mean).
      *
-     * CONTRACT: [sourceDays] is exactly ONE `(dayKey "yyyy-MM-dd", sourceId)` per night — the day's
-     * WINNING source (the same per-day merge winner whose value the fold uses), NOT one row per source.
-     * The "current era" is read off the NEWEST day's brand, so an overlap day carrying two brands would,
-     * under the deterministic (day, sourceId) sort, let the lexically-later source (e.g. "oura-import" >
-     * "my-whoop") masquerade as the current brand. Passing one-per-day-winner makes that impossible; the
-     * same-day-tie handling below is only a determinism backstop, not a licence to pass raw multi-source
-     * rows. Any order is fine (it is sorted here).
+     * [sourceDays] must be exactly ONE `(dayKey, sourceId)` per night — the day's WINNING source, not
+     * one row per source — or a same-day multi-brand tie could misread which brand is current.
      *
-     * The epoch is the start of the first day of the LATEST contiguous single-brand era: walk
-     * newest→oldest while the brand matches the newest night's brand, and return that run's first day's
-     * start (a lone off-brand day inside the current era truncates it — fail-safe: it drops MORE history,
-     * never mixes scales). Returns 0.0 (no recalibration → [foldHistory] is byte-identical) when the
-     * whole history is ONE brand — so a single-device user, and a WHOOP user whose imported + computed +
-     * strap ids all bucket to "whoop", is completely unaffected.
+     * Walks newest-to-oldest over the contiguous run matching the newest night's brand and returns
+     * that run's first day's start; a lone off-brand day inside the run truncates it (drops more
+     * history, never mixes scales). Returns 0.0 (no recalibration) when the whole history is one brand.
      *
-     * The brand bucket is intentionally coarse and NOT [DeviceFamily] (that only splits WHOOP 4 vs 5,
-     * both the same HRV scale): every WHOOP-origin id (the canonical import, the active strap, the
-     * "-noop" computed sibling, Health-Connect/Apple rows that ride the strap source) is ONE brand;
-     * each wearable-export brand (oura/fitbit/garmin) is its own. Pure + unit-pinned; the caller
-     * assembles [sourceDays] from the ORIGINAL per-source reads (brand is lost once a wearable day is
-     * re-homed under the computed WHOOP id, so detection must precede the merge). Mirrors the Swift twin.
+     * Brand bucketing is coarse (every WHOOP-origin id is one brand; each wearable-export brand is
+     * its own) and must be read from the ORIGINAL per-source rows before any merge re-homes them.
      */
     fun deviceEraEpoch(sourceDays: List<Pair<String, String>>): Double {
         if (sourceDays.isEmpty()) return 0.0
