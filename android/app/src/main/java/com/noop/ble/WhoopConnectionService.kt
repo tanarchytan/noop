@@ -47,17 +47,6 @@ import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
 /**
- * Foreground service that keeps the WHOOP BLE connection alive while the app is backgrounded or
- * closed. Android tears the process down shortly after the last Activity goes away; a started
- * foreground service with an ongoing notification keeps the process — and the
- * [com.noop.NoopApplication]-owned [WhoopBleClient]'s GATT link — resident, so heart rate keeps
- * streaming and offloads keep landing in the background.
- *
- * Does not own or drive the connection, only holds the process up and mirrors the client's
- * [LiveState] into the notification. Start/stop is gated by `NoopPrefs.backgroundConnection` and
- * only ever runs from the foreground, so it never trips Android 12+'s background-start restriction.
- */
-/**
  * One tick of the ongoing-notification/widget stream. [todayRow] is the unscored today row the
  * notification reads (honest-null until scored); [anchorRow] is the widget-only carried anchor
  * (today if scored, else the latest prior scored day), so the widget matches Today's day.
@@ -69,6 +58,17 @@ private data class NotifyTick(
     val illness: String?,
 )
 
+/**
+ * Foreground service that keeps the WHOOP BLE connection alive while the app is backgrounded or
+ * closed. Android tears the process down shortly after the last Activity goes away; a started
+ * foreground service with an ongoing notification keeps the process — and the
+ * [com.noop.NoopApplication]-owned [WhoopBleClient]'s GATT link — resident, so heart rate keeps
+ * streaming and offloads keep landing in the background.
+ *
+ * Does not own or drive the connection, only holds the process up and mirrors the client's
+ * [LiveState] into the notification. Start/stop is gated by `NoopPrefs.backgroundConnection` and
+ * only ever runs from the foreground, so it never trips Android 12+'s background-start restriction.
+ */
 class WhoopConnectionService : Service() {
 
     /** Main-thread scope used only to mirror [LiveState] into the notification. */

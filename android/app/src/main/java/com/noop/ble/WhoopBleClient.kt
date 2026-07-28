@@ -195,23 +195,6 @@ data class LiveState(
 }
 
 /**
- * BLE engine for the WHOOP 4.0 and WHOOP 5.0/MG straps.
- *
- * Lifecycle: [connect] scans the WHOOP4 custom-service UUID → onScanResult stops the scan and calls
- * connectGatt → CONNECTED triggers discoverServices → onServicesDiscovered captures the cmd-write
- * char, fires THE BOND (one confirmed GET_BATTERY_LEVEL write), then subscribes the three custom
- * notify chars plus the standard HR/battery chars → onCharacteristicWrite's ACK means bonding
- * succeeded and runs the connect handshake EXACTLY ONCE (connectHandshakeDone guard) →
- * onCharacteristicChanged routes inbound bytes: HR char 0x2A37 → standard HR + R-R, battery char
- * 0x2A19 first byte = percent, custom notify chars → Reassembler.feed → RustAdapter.parseFrame → LiveState.
- *
- * API 31+: caller must hold BLUETOOTH_SCAN + BLUETOOTH_CONNECT before [connect]. On API <= 30,
- * BLUETOOTH/BLUETOOTH_ADMIN are install-time but scanning also needs a LOCATION grant unless
- * BLUETOOTH_SCAN declares `neverForLocation` (scan filters by service UUID only, never derives
- * location). Every android.bluetooth call here is @SuppressLint("MissingPermission"); the caller
- * owns the permission request and must not call in before it's granted.
- */
-/**
  * Thin injectable indirection over the raw [BluetoothGatt] operations the client calls.
  *
  * Production wires [RealGattOps] (a straight delegate to a live `BluetoothGatt`). Unit tests inject a
@@ -296,6 +279,23 @@ class RealGattOps(private val gatt: BluetoothGatt) : GattOps {
     override fun requestConnectionPriorityCompat(priority: Int): Boolean = gatt.requestConnectionPriority(priority)
 }
 
+/**
+ * BLE engine for the WHOOP 4.0 and WHOOP 5.0/MG straps.
+ *
+ * Lifecycle: [connect] scans the WHOOP4 custom-service UUID → onScanResult stops the scan and calls
+ * connectGatt → CONNECTED triggers discoverServices → onServicesDiscovered captures the cmd-write
+ * char, fires THE BOND (one confirmed GET_BATTERY_LEVEL write), then subscribes the three custom
+ * notify chars plus the standard HR/battery chars → onCharacteristicWrite's ACK means bonding
+ * succeeded and runs the connect handshake EXACTLY ONCE (connectHandshakeDone guard) →
+ * onCharacteristicChanged routes inbound bytes: HR char 0x2A37 → standard HR + R-R, battery char
+ * 0x2A19 first byte = percent, custom notify chars → Reassembler.feed → RustAdapter.parseFrame → LiveState.
+ *
+ * API 31+: caller must hold BLUETOOTH_SCAN + BLUETOOTH_CONNECT before [connect]. On API <= 30,
+ * BLUETOOTH/BLUETOOTH_ADMIN are install-time but scanning also needs a LOCATION grant unless
+ * BLUETOOTH_SCAN declares `neverForLocation` (scan filters by service UUID only, never derives
+ * location). Every android.bluetooth call here is @SuppressLint("MissingPermission"); the caller
+ * owns the permission request and must not call in before it's granted.
+ */
 class WhoopBleClient(
     private val context: Context,
     /**

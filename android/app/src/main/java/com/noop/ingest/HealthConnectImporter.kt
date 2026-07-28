@@ -899,7 +899,9 @@ object HealthConnectImporter {
     }
 
     /**
-     * A session's energy, or null when neither stream covers it — never a fabricated number.
+     * A session's energy, or null when neither stream covers it — never a fabricated number. Every
+     * active record overlapping `[startS, endS]` is credited in proportion to its overlap, so neither
+     * a per-minute nor a day-spanning record mis-credits.
      *
      * Prefers whichever estimate is LARGER. The active-record figure is right when a source writes one
      * record per session, and far too small when the only cover is a coarse daily record: prorating
@@ -907,11 +909,6 @@ object HealthConnectImporter {
      * The total-derived figure is the window's share of total burn minus its share of the day's basal,
      * and prorating BASAL is sound in a way prorating a workout's active burn is not — basal really is
      * near-uniform. Taking the larger lets real session cover win without a threshold.
-     */
-    /**
-     * Active-calorie kcal attributable to an exercise session: for every active-calorie record
-     * overlapping [startS, endS], credit kcal in proportion to the overlap fraction (time-weighted,
-     * not a flat overlap test), so neither a per-minute nor a day-spanning record mis-credits.
      */
     internal fun sessionKcal(
         active: List<KcalRecord>,
