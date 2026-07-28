@@ -1,6 +1,6 @@
 package com.noop.analytics.agreement
 
-import com.noop.analytics.HrvAnalyzer
+import com.noop.analytics.RustScores
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -13,7 +13,7 @@ import kotlin.math.abs
  * M2 (R-R optimization): HRV math vs GOLD beat-to-beat R-R.
  *
  * Feeds clean NN series derived from public GOLD datasets (GalaxyPPG Polar H10 chest belt, AAUWSS
- * Empatica E4 wrist IBI, AAUWSS PSG 200 Hz ECG) into noop's [HrvAnalyzer] and asserts RMSSD / SDNN /
+ * Empatica E4 wrist IBI, AAUWSS PSG 200 Hz ECG) into noop's [RustScores] and asserts RMSSD / SDNN /
  * pNN50 match an INDEPENDENT numpy textbook reference computed on the identical NN series to 1e-6. This
  * proves noop's HRV math is a correct Task Force (1996) implementation, independent of any WHOOP label.
  *
@@ -60,9 +60,9 @@ class HrvGoldAgreementTest {
                 for (j in 0 until nnArr.length()) nn.add(nnArr.getDouble(j))
                 val contiguous = List(nn.size) { it > 0 } // fully clean series -> every successive pair valid
 
-                val rmssd = HrvAnalyzer.rmssdRaw(nn)!!
-                val sdnn = HrvAnalyzer.sdnnRaw(nn)!!
-                val pnn50 = HrvAnalyzer.pnn50GapAware(nn, contiguous)!!
+                val rmssd = RustScores.rmssdRaw(nn)!!
+                val sdnn = RustScores.sdnnRaw(nn)!!
+                val pnn50 = RustScores.pnn50Raw(nn)!!
 
                 val refR = w.getDouble("refRmssd")
                 val refS = w.getDouble("refSdnn")

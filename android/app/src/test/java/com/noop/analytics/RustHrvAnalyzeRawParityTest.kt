@@ -10,7 +10,7 @@ import kotlin.math.roundToInt
 import kotlin.math.sin
 
 /**
- * FFI smoke test for the full clean-and-analyze pipeline ([HrvAnalyzer.analyzeRaw] ->
+ * FFI smoke test for the full clean-and-analyze pipeline ([RustScores.analyzeRaw] ->
  * [RustScores.analyzeRaw] -> uniffi -> whoop-rs `hrv_analyze_raw`). The range filter, Malik ectopic,
  * gap-aware RMSSD/pNN50, SDNN/meanNN, the 20-beat floor and the spot rejected-fraction gate all live in
  * physio-algo; this pins the observable behaviour end-to-end (the widest-blast-radius swap: DaytimeStress,
@@ -49,7 +49,7 @@ class RustHrvAnalyzeRawParityTest {
         val r = RustScores.analyzeRaw(base, null)
         assertEquals("raw count is the input length", 60, r.nInput)
         assertTrue("clean count dropped below input", r.nClean < 60)
-        assertTrue("still enough clean beats to score", r.nClean >= HrvAnalyzer.MIN_BEATS)
+        assertTrue("still enough clean beats to score", r.nClean >= RustScores.hrvCleanCfg.minBeats.toInt())
         assertNotNull(r.rmssd)
     }
 

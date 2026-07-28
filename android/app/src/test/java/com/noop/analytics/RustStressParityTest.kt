@@ -23,7 +23,7 @@ import kotlin.math.floor
  *
  * The Kotlin twin is gone, so the reference is restated locally: [refComponents] is a byte-identical copy of
  * the deleted `StressIndex.componentsRaw` (50 ms Baevsky grid, lowest-index modal tie-break, degenerate-range
- * null), reusing the SURVIVING [HrvAnalyzer.cleanRR] range+Malik pipeline and [StressIndex.MIN_BEATS] gate so
+ * null), reusing the SURVIVING [RustScores.cleanRR] range+Malik pipeline and [StressIndex.MIN_BEATS] gate so
  * the reference stays identical to the deleted scorer. SI is pure f64 histogram arithmetic, so both sides
  * must land on the identical Double — a nonzero delta is a FAIL to report as a whoop-rs fix request, NOT a
  * tolerance to widen. Two legs:
@@ -54,11 +54,11 @@ class RustStressParityTest {
 
     /**
      * Frozen local copy of the deleted `StressIndex.componentsRaw`: clean the R-R (range + Malik) via the
-     * surviving [HrvAnalyzer.cleanRR], histogram on the 50 ms grid, modal bin (lowest-index tie-break), then
+     * surviving [RustScores.cleanRR], histogram on the 50 ms grid, modal bin (lowest-index tie-break), then
      * SI = AMo / (2·Mo·MxDMn). Null on too-few clean beats or a degenerate (all-equal) range.
      */
     private fun refComponents(series: List<RrInterval>): RefComp? {
-        val clean = HrvAnalyzer.cleanRR(series.map { it.rrMs.toDouble() })
+        val clean = RustScores.cleanRR(series.map { it.rrMs.toDouble() })
         if (clean.size < StressIndex.MIN_BEATS) return null
 
         val sec = clean.map { it / 1000.0 }
@@ -153,10 +153,10 @@ class RustStressParityTest {
     @Test
     fun `rust cleans R-R identically (range + Malik ectopic) before the SI histogram`() {
         // [RustScores.stressIndex] feeds the RAW rrMs (RustScores.kt:165); the deleted Kotlin
-        // StressIndex.componentsRaw cleaned via HrvAnalyzer.cleanRR (range band + Malik ectopic) FIRST. The
+        // StressIndex.componentsRaw cleaned via RustScores.cleanRR (range band + Malik ectopic) FIRST. The
         // crafted-golden case above is already-clean, so it can't tell "Rust cleans internally" from "Rust
         // skips cleaning". These series make cleaning MATTER: they carry out-of-range dropouts and ectopic
-        // spikes that cleanRR must strip. [refComponents] cleans through the surviving HrvAnalyzer.cleanRR;
+        // spikes that cleanRR must strip. [refComponents] cleans through the surviving RustScores.cleanRR;
         // if the Rust `stress_index` door reproduces the SAME range+Malik pipeline on the raw feed, the SI +
         // every component land bit-identical. A drift here means the bridge must pre-clean (or the Rust
         // clean_rr diverged) — either way it is caught, never tolerated.
@@ -178,7 +178,7 @@ class RustStressParityTest {
             }
         }
         // Sanity: the reference cleaning is genuinely NOT a no-op here (drops the 5 artifacts).
-        val cleaned = HrvAnalyzer.cleanRR(withArtifacts.map { it.toDouble() })
+        val cleaned = RustScores.cleanRR(withArtifacts.map { it.toDouble() })
         assertEquals("crafted series must drop exactly the 5 artifacts", core.size, cleaned.size)
         assertParity("range+ectopic-artifacts", rr(withArtifacts))
 

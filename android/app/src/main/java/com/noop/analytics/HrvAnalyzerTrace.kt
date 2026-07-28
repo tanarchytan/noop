@@ -2,20 +2,18 @@ package com.noop.analytics
 
 // HrvAnalyzerTrace.kt - the HRV & Autonomic test-mode cleaning trace.
 //
-// Recomputes the cleaning-pipeline counts (range filter, Malik ectopic rejection, the minBeats gate,
-// the spot rejected-fraction gate) from the same raw RR the analyzer reads, then reuses analyzeRaw(...)
-// verbatim so the trace can never disagree with the RMSSD/SDNN the screen shows. Pure and side-effect
-// free, so a fixture beat series pins the exact lines. Gated behind TestCentre.active(HRV) at the call
-// site; when the mode is off it is never called.
+// Narrates one whoop-rs cleaning pass: the stage counts and thresholds come from RustScores, the
+// RMSSD/SDNN from the same analyzeRaw the screen reads, so the trace cannot disagree with the value
+// shown. No maths here, only formatting. Gated behind TestCentre.active(HRV) at the call site.
 
 object HrvAnalyzerTrace {
 
     private fun r2(x: Double): Double = Math.round(x * 100.0) / 100.0
 
     /**
-     * Side-effect-free diagnostic twin of [HrvAnalyzer.analyzeRaw]: returns the same result plus a
-     * cleaning trace (counts, RMSSD/SDNN/meanNN, the [HrvAnalyzer.MIN_BEATS] gate, the spot
-     * rejected-fraction gate), recomputed with the exact same filters so trace and result can never diverge.
+     * Side-effect-free diagnostic twin of [RustScores.analyzeRaw]: the same result plus a cleaning trace
+     * (stage counts, RMSSD/SDNN/meanNN, the clean-beat gate, the spot rejected-fraction gate). Counts and
+     * thresholds come from whoop-rs, so the trace and the result cannot diverge.
      *
      * @param maxRejectedFraction spot-only ceiling; null (nightly/continuous default) skips the gate.
      * @param path "spot" for a live snapshot, "continuous" for the nightly windowed path.
@@ -24,34 +22,36 @@ object HrvAnalyzerTrace {
         rawRR: List<Double>,
         maxRejectedFraction: Double? = null,
         path: String = "spot",
-    ): Pair<HrvAnalyzer.HrvResult, List<String>> {
+    ): Pair<HrvResult, List<String>> {
         // The result the screen reads, verbatim, so the trace cannot diverge from it.
-        val result = HrvAnalyzer.analyzeRaw(rawRR, maxRejectedFraction)
+        val result = RustScores.analyzeRaw(rawRR, maxRejectedFraction)
 
         val lines = ArrayList<String>()
-        val nInput = rawRR.size
-
-        // Stage counts: range filter then Malik ectopic rejection (the SAME order cleanRR runs).
-        val ranged = HrvAnalyzer.rangeFilter(rawRR)
-        val clean = HrvAnalyzer.rejectEctopic(ranged)
-        val outOfRange = nInput - ranged.size
-        val ectopic = ranged.size - clean.size
-        val rejectedFraction = if (nInput > 0) 1.0 - clean.size.toDouble() / nInput.toDouble() else 0.0
+        val cfg = RustScores.hrvCleanCfg
+        // Ungated stage counts: analyzeRaw reports nClean = 0 once a gate refuses, which is the case
+        // this trace exists to explain.
+        val counts = RustScores.cleanCounts(rawRR)
+        val nInput = counts.nInput.toInt()
+        val nClean = counts.nClean.toInt()
+        val outOfRange = nInput - counts.nRanged.toInt()
+        val ectopic = counts.nRanged.toInt() - nClean
+        val rejectedFraction = if (nInput > 0) 1.0 - nClean.toDouble() / nInput.toDouble() else 0.0
 
         lines.add(
-            "hrv path=$path nInput=$nInput nClean=${clean.size} " +
+            "hrv path=$path nInput=$nInput nClean=$nClean " +
                 "rejectedFraction=${r2(rejectedFraction)}",
         )
         lines.add(
             "hrv reject range=$outOfRange " +
-                "(bounds ${HrvAnalyzer.RR_MIN_MS.toInt()}..${HrvAnalyzer.RR_MAX_MS.toInt()}ms) " +
-                "ectopic=$ectopic (Malik >${(HrvAnalyzer.ECTOPIC_THRESHOLD * 100).toInt()}% of local median)",
+                "(bounds ${cfg.rrMinMs}..${cfg.rrMaxMs}ms) " +
+                "ectopic=$ectopic (Malik >${(cfg.ectopicThreshold * 100).toInt()}% of local median)",
         )
 
-        // minBeats gate: the first reason analyzeRaw(...) returns an empty result.
-        val minBeatsCleared = clean.size >= HrvAnalyzer.MIN_BEATS
+        // Clean-beat gate: the first reason analyzeRaw(...) returns an empty result.
+        val minBeats = cfg.minBeats.toInt()
+        val minBeatsCleared = nClean >= minBeats
         lines.add(
-            "hrv minBeats need=${HrvAnalyzer.MIN_BEATS} clean=${clean.size} " +
+            "hrv minBeats need=$minBeats clean=$nClean " +
                 if (minBeatsCleared) "CLEARED" else "FAILED",
         )
 

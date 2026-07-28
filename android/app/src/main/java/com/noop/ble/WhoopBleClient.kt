@@ -59,7 +59,6 @@ import com.noop.data.NapStore
 import com.noop.ingest.HealthConnectWriter
 import com.noop.notif.InactivityNotifier
 import com.noop.ui.BiofeedbackPrefs
-import com.noop.ui.HrvWindow
 import com.noop.ui.InactivityPrefs
 import com.noop.ui.NoopPrefs
 import com.noop.ui.NotifPrefs
@@ -1152,6 +1151,13 @@ class WhoopBleClient(
         ackTrim = { trim, endData -> ackHistoricalChunk(trim, endData) },
         onChunkCommitted = { onBackfillChunkCommitted() },
         onConsoleChunk = { consoleChunksThisSession += 1 },
+        // Same switch as the raw-frame capture, one level further in: this writes the DECODED record,
+        // every field the codec produced rather than the columns the schema stores. Off by default.
+        recordSink = { fields, frame ->
+            if (puffinExperiment.isCaptureEnabled) {
+                com.noop.ingest.HistoryRecordSink.append(context.filesDir, deviceId, fields, frame)
+            }
+        },
         // Archive undecodable frames before the ack. append() returns ok=true (written, or archive-full
         // -> still safe to ack) and THROWS only on a genuine write failure -> return false so finishChunk
         // holds the cursor/ack and the strap re-sends.
@@ -1224,7 +1230,6 @@ class WhoopBleClient(
                         // here (the analytics layer is Context-free) and thread it down, like baselineEpoch
                         // above — otherwise this pass would recompute over the WHOLE night, overwriting the
                         // deep-window value the UI loop wrote.
-                        deepHrvWindow = UnitPrefs.hrvWindow(context) == HrvWindow.DEEP_SLEEP,
                         // Route the engine's per-day diagnostics (incl. the RHR floor-vs-mean line) into
                         // THIS sync's strap log, so a report comparing NOOP's resting-HR floor against
                         // another app's night mean carries proof from the post-backfill pass too, not only
@@ -1978,15 +1983,16 @@ class WhoopBleClient(
     /**
      * The WHOOP 5/MG send allow-list. 5/MG uses puffin (CRC16) framing; the realtime-HR toggle is
      * hardware-confirmed, the offload pair rides the same proven COMMAND frame, SET_CONFIG /
-     * SET_DEVICE_CONFIG are reversible deep-data / broadcast-HR opt-ins, and REBOOT_STRAP is
-     * user-initiated + confirmation-gated. Everything else stays dropped on 5/MG. WHOOP 4.0 sends all.
+     * SET_DEVICE_CONFIG are reversible deep-data / broadcast-HR opt-ins, and REBOOT_STRAP and
+     * SELECT_WRIST are user-initiated from the device menu. Everything else stays dropped on 5/MG.
+     * WHOOP 4.0 sends all.
      */
     private fun whoop5SendAllowed(cmd: CommandNumber): Boolean = when (cmd) {
         CommandNumber.TOGGLE_REALTIME_HR, CommandNumber.RUN_HAPTICS_PATTERN,
         CommandNumber.SEND_HISTORICAL_DATA, CommandNumber.HISTORICAL_DATA_RESULT,
         CommandNumber.SET_CLOCK, CommandNumber.GET_CLOCK, CommandNumber.GET_DATA_RANGE,
         CommandNumber.SET_ALARM_TIME, CommandNumber.DISABLE_ALARM, CommandNumber.GET_ALARM_TIME,
-        CommandNumber.REBOOT_STRAP -> true
+        CommandNumber.REBOOT_STRAP, CommandNumber.SELECT_WRIST -> true
         CommandNumber.SET_CONFIG -> puffinExperiment.isDeepDataEnabled
         CommandNumber.SET_DEVICE_CONFIG -> false
         else -> false
@@ -2279,6 +2285,17 @@ class WhoopBleClient(
         rebootWatchdog?.let { handler.removeCallbacks(it) }; rebootWatchdog = null
         rebootSettle?.let { handler.removeCallbacks(it) }; rebootSettle = null
         if (_state.value.rebootInProgress) _state.update { it.copy(rebootInProgress = false) }
+    }
+
+    /**
+     * Tell the strap which wrist it is worn on (SELECT_WRIST / opcode 123, payload
+     * `[revision, 0 left / 1 right]`). A persistent device-config write, so it is user-initiated from the
+     * device menu and never automatic. The payload shape is inferred from the firmware's revision and
+     * wrist-value checks: a strap that refuses it answers with a non-SUCCESS result, which the
+     * COMMAND_RESPONSE handler logs, so a rejection is visible instead of silent.
+     */
+    fun selectWrist(right: Boolean) {
+        send(CommandNumber.SELECT_WRIST, byteArrayOf(0x01, if (right) 1 else 0), withResponse = true)
     }
 
     /**
@@ -3530,6 +3547,11 @@ class WhoopBleClient(
                         else -> "REJECTED"
                     }
                     log("reboot: strap acked result=${result ?: "none"} ($verdict)")
+                }
+                // Wrist ack: the payload shape for SELECT_WRIST is inferred, so log the SUCCESS case too —
+                // the non-success path below would otherwise be the only evidence either way. Log-only.
+                if (respCmd?.startsWith("SELECT_WRIST") == true) {
+                    log("wrist: strap acked result=${result ?: "none"}")
                 }
                 // 5/MG range-query gate: a GET_DATA_RANGE SUCCESS releases the history request
                 // (PENDING precedes it; a 2s fail-open fallback covers a swallowed reply).

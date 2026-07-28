@@ -705,7 +705,19 @@ internal object IntegrityCheckingUniffiLib {
     ): Int
     external fun uniffi_whoop_ffi_checksum_func_hrv_analyze_raw(
     ): Int
+    external fun uniffi_whoop_ffi_checksum_func_hrv_clean_cfg(
+    ): Int
+    external fun uniffi_whoop_ffi_checksum_func_hrv_clean_counts(
+    ): Int
+    external fun uniffi_whoop_ffi_checksum_func_hrv_clean_rr(
+    ): Int
+    external fun uniffi_whoop_ffi_checksum_func_hrv_duplicate_beat_count(
+    ): Int
     external fun uniffi_whoop_ffi_checksum_func_hrv_freq_domain(
+    ): Int
+    external fun uniffi_whoop_ffi_checksum_func_hrv_overlapping_reports(
+    ): Int
+    external fun uniffi_whoop_ffi_checksum_func_hrv_pnn50_plain(
     ): Int
     external fun uniffi_whoop_ffi_checksum_func_hrv_range_filter(
     ): Int
@@ -717,11 +729,17 @@ internal object IntegrityCheckingUniffiLib {
     ): Int
     external fun uniffi_whoop_ffi_checksum_func_hrv_rmssd_plain(
     ): Int
+    external fun uniffi_whoop_ffi_checksum_func_hrv_rolling_rmssd(
+    ): Int
+    external fun uniffi_whoop_ffi_checksum_func_hrv_rr_coverage(
+    ): Int
     external fun uniffi_whoop_ffi_checksum_func_hrv_sdnn(
     ): Int
     external fun uniffi_whoop_ffi_checksum_func_hrv_windowed_avg(
     ): Int
     external fun uniffi_whoop_ffi_checksum_func_hrv_windowed_avg_deep(
+    ): Int
+    external fun uniffi_whoop_ffi_checksum_func_hrv_windowed_buckets(
     ): Int
     external fun uniffi_whoop_ffi_checksum_func_ppg_hr(
     ): Int
@@ -985,7 +1003,19 @@ internal object UniffiLib {
     ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_func_hrv_analyze_raw(`rrMs`: RustBuffer.ByValue,`maxRejectedFraction`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
+    external fun uniffi_whoop_ffi_fn_func_hrv_clean_cfg(uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    external fun uniffi_whoop_ffi_fn_func_hrv_clean_counts(`rrMs`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    external fun uniffi_whoop_ffi_fn_func_hrv_clean_rr(`rrMs`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    external fun uniffi_whoop_ffi_fn_func_hrv_duplicate_beat_count(`tsSec`: RustBuffer.ByValue,`rrMs`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): Int
     external fun uniffi_whoop_ffi_fn_func_hrv_freq_domain(`rrMs`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    external fun uniffi_whoop_ffi_fn_func_hrv_overlapping_reports(`runs`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    external fun uniffi_whoop_ffi_fn_func_hrv_pnn50_plain(`rrMs`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_func_hrv_range_filter(`rrMs`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
@@ -997,11 +1027,17 @@ internal object UniffiLib {
     ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_func_hrv_rmssd_plain(`rrMs`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
+    external fun uniffi_whoop_ffi_fn_func_hrv_rolling_rmssd(`beats`: RustBuffer.ByValue,`windowS`: Long,`stepS`: Long,`minBeats`: Int,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    external fun uniffi_whoop_ffi_fn_func_hrv_rr_coverage(`tsSec`: RustBuffer.ByValue,`rrMs`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): Double
     external fun uniffi_whoop_ffi_fn_func_hrv_sdnn(`rrMs`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_func_hrv_windowed_avg(`start`: Int,`end`: Int,`runs`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_func_hrv_windowed_avg_deep(`start`: Int,`end`: Int,`runs`: RustBuffer.ByValue,`segments`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    external fun uniffi_whoop_ffi_fn_func_hrv_windowed_buckets(`start`: Int,`end`: Int,`runs`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_func_ppg_hr(`samples`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
@@ -1254,7 +1290,25 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_whoop_ffi_checksum_func_hrv_analyze_raw() != 10710) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_whoop_ffi_checksum_func_hrv_clean_cfg() != 57719) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_whoop_ffi_checksum_func_hrv_clean_counts() != 16281) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_whoop_ffi_checksum_func_hrv_clean_rr() != 63317) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_whoop_ffi_checksum_func_hrv_duplicate_beat_count() != 4371) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_whoop_ffi_checksum_func_hrv_freq_domain() != 33413) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_whoop_ffi_checksum_func_hrv_overlapping_reports() != 46557) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_whoop_ffi_checksum_func_hrv_pnn50_plain() != 56025) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_whoop_ffi_checksum_func_hrv_range_filter() != 41757) {
@@ -1272,6 +1326,12 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_whoop_ffi_checksum_func_hrv_rmssd_plain() != 26959) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_whoop_ffi_checksum_func_hrv_rolling_rmssd() != 63352) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_whoop_ffi_checksum_func_hrv_rr_coverage() != 31189) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_whoop_ffi_checksum_func_hrv_sdnn() != 25992) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
@@ -1279,6 +1339,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_whoop_ffi_checksum_func_hrv_windowed_avg_deep() != 1836) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_whoop_ffi_checksum_func_hrv_windowed_buckets() != 3225) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_whoop_ffi_checksum_func_ppg_hr() != 2321) {
@@ -3949,6 +4012,165 @@ public object FfiConverterTypeHrvBandsInfo: FfiConverterRustBuffer<HrvBandsInfo>
 
 
 /**
+ * One 5-min bucket of a session: its start (unix s), the clean beats in it, and its gap-aware RMSSD.
+ */
+data class HrvBucketInfo (
+    var `start`: kotlin.UInt
+    , 
+    var `cleanBeats`: kotlin.UInt
+    , 
+    var `rmssd`: kotlin.Double?
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeHrvBucketInfo: FfiConverterRustBuffer<HrvBucketInfo> {
+    override fun read(buf: ByteBuffer): HrvBucketInfo {
+        return HrvBucketInfo(
+            FfiConverterUInt.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterOptionalDouble.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: HrvBucketInfo) = (
+            FfiConverterUInt.allocationSize(value.`start`) +
+            FfiConverterUInt.allocationSize(value.`cleanBeats`) +
+            FfiConverterOptionalDouble.allocationSize(value.`rmssd`)
+    )
+
+    override fun write(value: HrvBucketInfo, buf: ByteBuffer) {
+            FfiConverterUInt.write(value.`start`, buf)
+            FfiConverterUInt.write(value.`cleanBeats`, buf)
+            FfiConverterOptionalDouble.write(value.`rmssd`, buf)
+    }
+}
+
+
+
+/**
+ * The cleaning-pipeline tuning the app displays: R-R bounds, the clean-beat floor, the Malik threshold
+ * and window, the spot rejected-fraction ceiling, and the rolling-trace window.
+ */
+data class HrvCleanCfgInfo (
+    var `rrMinMs`: kotlin.UShort
+    , 
+    var `rrMaxMs`: kotlin.UShort
+    , 
+    var `minBeats`: kotlin.UInt
+    , 
+    var `ectopicThreshold`: kotlin.Double
+    , 
+    var `ectopicWindowRadius`: kotlin.UInt
+    , 
+    var `spotMaxRejectedFraction`: kotlin.Double
+    , 
+    var `rollingWindowSecs`: kotlin.Long
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeHrvCleanCfgInfo: FfiConverterRustBuffer<HrvCleanCfgInfo> {
+    override fun read(buf: ByteBuffer): HrvCleanCfgInfo {
+        return HrvCleanCfgInfo(
+            FfiConverterUShort.read(buf),
+            FfiConverterUShort.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterDouble.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterDouble.read(buf),
+            FfiConverterLong.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: HrvCleanCfgInfo) = (
+            FfiConverterUShort.allocationSize(value.`rrMinMs`) +
+            FfiConverterUShort.allocationSize(value.`rrMaxMs`) +
+            FfiConverterUInt.allocationSize(value.`minBeats`) +
+            FfiConverterDouble.allocationSize(value.`ectopicThreshold`) +
+            FfiConverterUInt.allocationSize(value.`ectopicWindowRadius`) +
+            FfiConverterDouble.allocationSize(value.`spotMaxRejectedFraction`) +
+            FfiConverterLong.allocationSize(value.`rollingWindowSecs`)
+    )
+
+    override fun write(value: HrvCleanCfgInfo, buf: ByteBuffer) {
+            FfiConverterUShort.write(value.`rrMinMs`, buf)
+            FfiConverterUShort.write(value.`rrMaxMs`, buf)
+            FfiConverterUInt.write(value.`minBeats`, buf)
+            FfiConverterDouble.write(value.`ectopicThreshold`, buf)
+            FfiConverterUInt.write(value.`ectopicWindowRadius`, buf)
+            FfiConverterDouble.write(value.`spotMaxRejectedFraction`, buf)
+            FfiConverterLong.write(value.`rollingWindowSecs`, buf)
+    }
+}
+
+
+
+/**
+ * Survivor counts from one cleaning pass: input, after the range filter, after Malik ectopic.
+ */
+data class HrvCleanCountsInfo (
+    var `nInput`: kotlin.UInt
+    , 
+    var `nRanged`: kotlin.UInt
+    , 
+    var `nClean`: kotlin.UInt
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeHrvCleanCountsInfo: FfiConverterRustBuffer<HrvCleanCountsInfo> {
+    override fun read(buf: ByteBuffer): HrvCleanCountsInfo {
+        return HrvCleanCountsInfo(
+            FfiConverterUInt.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterUInt.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: HrvCleanCountsInfo) = (
+            FfiConverterUInt.allocationSize(value.`nInput`) +
+            FfiConverterUInt.allocationSize(value.`nRanged`) +
+            FfiConverterUInt.allocationSize(value.`nClean`)
+    )
+
+    override fun write(value: HrvCleanCountsInfo, buf: ByteBuffer) {
+            FfiConverterUInt.write(value.`nInput`, buf)
+            FfiConverterUInt.write(value.`nRanged`, buf)
+            FfiConverterUInt.write(value.`nClean`, buf)
+    }
+}
+
+
+
+/**
  * An HRV-readiness reading (log-domain baseline vs the personal normal band).
  */
 data class HrvReadinessInfo (
@@ -4973,6 +5195,47 @@ public object FfiConverterTypeRhythmAgeInfo: FfiConverterRustBuffer<RhythmAgeInf
 
 
 /**
+ * One point of the rolling RMSSD trace: the trailing window's end (unix s) and its RMSSD (ms).
+ */
+data class RollingRmssdPoint (
+    var `ts`: kotlin.Long
+    , 
+    var `rmssd`: kotlin.Double
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeRollingRmssdPoint: FfiConverterRustBuffer<RollingRmssdPoint> {
+    override fun read(buf: ByteBuffer): RollingRmssdPoint {
+        return RollingRmssdPoint(
+            FfiConverterLong.read(buf),
+            FfiConverterDouble.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: RollingRmssdPoint) = (
+            FfiConverterLong.allocationSize(value.`ts`) +
+            FfiConverterDouble.allocationSize(value.`rmssd`)
+    )
+
+    override fun write(value: RollingRmssdPoint, buf: ByteBuffer) {
+            FfiConverterLong.write(value.`ts`, buf)
+            FfiConverterDouble.write(value.`rmssd`, buf)
+    }
+}
+
+
+
+/**
  * One R-R beat for respiratory-rate estimation (unix seconds + interval ms).
  */
 data class RrBeat (
@@ -5008,6 +5271,47 @@ public object FfiConverterTypeRrBeat: FfiConverterRustBuffer<RrBeat> {
     override fun write(value: RrBeat, buf: ByteBuffer) {
             FfiConverterLong.write(value.`ts`, buf)
             FfiConverterUShort.write(value.`rrMs`, buf)
+    }
+}
+
+
+
+/**
+ * Per-second reports whose first beat re-reports time earlier reports already covered, and the total.
+ */
+data class RrOverlapInfo (
+    var `overlapping`: kotlin.UInt
+    , 
+    var `total`: kotlin.UInt
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeRrOverlapInfo: FfiConverterRustBuffer<RrOverlapInfo> {
+    override fun read(buf: ByteBuffer): RrOverlapInfo {
+        return RrOverlapInfo(
+            FfiConverterUInt.read(buf),
+            FfiConverterUInt.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: RrOverlapInfo) = (
+            FfiConverterUInt.allocationSize(value.`overlapping`) +
+            FfiConverterUInt.allocationSize(value.`total`)
+    )
+
+    override fun write(value: RrOverlapInfo, buf: ByteBuffer) {
+            FfiConverterUInt.write(value.`overlapping`, buf)
+            FfiConverterUInt.write(value.`total`, buf)
     }
 }
 
@@ -8867,6 +9171,34 @@ public object FfiConverterSequenceTypeHrZoneInfo: FfiConverterRustBuffer<List<Hr
 /**
  * @suppress
  */
+public object FfiConverterSequenceTypeHrvBucketInfo: FfiConverterRustBuffer<List<HrvBucketInfo>> {
+    override fun read(buf: ByteBuffer): List<HrvBucketInfo> {
+        val len = buf.getInt()
+        return List<HrvBucketInfo>(len) {
+            FfiConverterTypeHrvBucketInfo.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<HrvBucketInfo>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeHrvBucketInfo.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<HrvBucketInfo>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeHrvBucketInfo.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterSequenceTypeImuSampleInfo: FfiConverterRustBuffer<List<ImuSampleInfo>> {
     override fun read(buf: ByteBuffer): List<ImuSampleInfo> {
         val len = buf.getInt()
@@ -8969,6 +9301,34 @@ public object FfiConverterSequenceTypePpgSample: FfiConverterRustBuffer<List<Ppg
         buf.putInt(value.size)
         value.iterator().forEach {
             FfiConverterTypePpgSample.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeRollingRmssdPoint: FfiConverterRustBuffer<List<RollingRmssdPoint>> {
+    override fun read(buf: ByteBuffer): List<RollingRmssdPoint> {
+        val len = buf.getInt()
+        return List<RollingRmssdPoint>(len) {
+            FfiConverterTypeRollingRmssdPoint.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<RollingRmssdPoint>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeRollingRmssdPoint.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<RollingRmssdPoint>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeRollingRmssdPoint.write(it, buf)
         }
     }
 }
@@ -9913,11 +10273,99 @@ public object FfiConverterSequenceOptionalDouble: FfiConverterRustBuffer<List<ko
     
 
         /**
+         * One source of truth for the cleaning constants, so a caller cannot hold a stale copy.
+         */ fun `hrvCleanCfg`(): HrvCleanCfgInfo {
+            return FfiConverterTypeHrvCleanCfgInfo.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_func_hrv_clean_cfg(
+    
+        _status)
+}
+    )
+    }
+    
+
+        /**
+         * Stage-by-stage cleaning counts, so a trace can name WHY beats were dropped. Ungated.
+         */ fun `hrvCleanCounts`(`rrMs`: List<kotlin.UShort>): HrvCleanCountsInfo {
+            return FfiConverterTypeHrvCleanCountsInfo.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_func_hrv_clean_counts(
+    
+        
+        FfiConverterSequenceUShort.lower(`rrMs`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Range + Malik-ectopic cleaned NN series (ms), in input order. Ungated, so a cleaning trace can count
+         * survivors where `hrv_analyze_raw` reports zero once its beat-count or rejected-fraction gate refuses.
+         */ fun `hrvCleanRr`(`rrMs`: List<kotlin.UShort>): List<kotlin.UShort> {
+            return FfiConverterSequenceUShort.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_func_hrv_clean_rr(
+    
+        
+        FfiConverterSequenceUShort.lower(`rrMs`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Rows repeating an earlier `(ts, rr_ms)` exactly. Byte-identical re-inserts only; it cannot see the
+         * value-differing report overlap that `hrv_overlapping_reports` counts.
+         */ fun `hrvDuplicateBeatCount`(`tsSec`: List<kotlin.Long>, `rrMs`: List<kotlin.Double>): kotlin.UInt {
+            return FfiConverterUInt.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_func_hrv_duplicate_beat_count(
+    
+        
+        FfiConverterSequenceLong.lower(`tsSec`),
+        FfiConverterSequenceDouble.lower(`rrMs`),_status)
+}
+    )
+    }
+    
+
+        /**
          * Frequency-domain HRV over a time-ordered R-R series (ms) via the Lomb-Scargle periodogram.
          */ fun `hrvFreqDomain`(`rrMs`: List<kotlin.UShort>): HrvBandsInfo? {
             return FfiConverterOptionalTypeHrvBandsInfo.lift(
     uniffiRustCall() { _status ->
     UniffiLib.uniffi_whoop_ffi_fn_func_hrv_freq_domain(
+    
+        
+        FfiConverterSequenceUShort.lower(`rrMs`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * The overlap behind an `hrv_rr_coverage` above 1.0: the same test that breaks contiguity in the
+         * gap-aware RMSSD, reported as a count.
+         */ fun `hrvOverlappingReports`(`runs`: List<RrRun>): RrOverlapInfo {
+            return FfiConverterTypeRrOverlapInfo.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_func_hrv_overlapping_reports(
+    
+        
+        FfiConverterSequenceTypeRrRun.lower(`runs`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Plain pNN50 (% of successive |dNN| > 50 ms) over an already-clean NN series: the formula alone, no
+         * cleaning and no contiguity mask. `None` for under two values.
+         */ fun `hrvPnn50Plain`(`rrMs`: List<kotlin.UShort>): kotlin.Double? {
+            return FfiConverterOptionalDouble.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_func_hrv_pnn50_plain(
     
         
         FfiConverterSequenceUShort.lower(`rrMs`),_status)
@@ -9997,6 +10445,40 @@ public object FfiConverterSequenceOptionalDouble: FfiConverterRustBuffer<List<ko
     
 
         /**
+         * Rolling trailing-window RMSSD over a timestamped R-R series, for a within-day chart. `step_s > 0`
+         * thins emission to one point per that many seconds of advance.
+         */ fun `hrvRollingRmssd`(`beats`: List<RrBeat>, `windowS`: kotlin.Long, `stepS`: kotlin.Long, `minBeats`: kotlin.UInt): List<RollingRmssdPoint> {
+            return FfiConverterSequenceTypeRollingRmssdPoint.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_func_hrv_rolling_rmssd(
+    
+        
+        FfiConverterSequenceTypeRrBeat.lower(`beats`),
+        FfiConverterLong.lower(`windowS`),
+        FfiConverterLong.lower(`stepS`),
+        FfiConverterUInt.lower(`minBeats`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Total beat-time over elapsed wall-clock time for the same beats. Over ~1.0 means beats are
+         * double-counted or reports overlap; `0.0` for under two timestamps or a non-positive span.
+         */ fun `hrvRrCoverage`(`tsSec`: List<kotlin.Long>, `rrMs`: List<kotlin.Double>): kotlin.Double {
+            return FfiConverterDouble.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_func_hrv_rr_coverage(
+    
+        
+        FfiConverterSequenceLong.lower(`tsSec`),
+        FfiConverterSequenceDouble.lower(`rrMs`),_status)
+}
+    )
+    }
+    
+
+        /**
          * Standard deviation of NN intervals (ms), sample std (ddof=1). `None` for <2 values.
          */ fun `hrvSdnn`(`rrMs`: List<kotlin.UShort>): kotlin.Double? {
             return FfiConverterOptionalDouble.lift(
@@ -10042,6 +10524,22 @@ public object FfiConverterSequenceOptionalDouble: FfiConverterRustBuffer<List<ko
         FfiConverterUInt.lower(`end`),
         FfiConverterSequenceTypeRrRun.lower(`runs`),
         FfiConverterSequenceTypeSleepSegment.lower(`segments`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * The per-bucket breakdown behind `hrv_windowed_avg`, for a caller that tags each bucket by sleep stage.
+         */ fun `hrvWindowedBuckets`(`start`: kotlin.UInt, `end`: kotlin.UInt, `runs`: List<RrRun>): List<HrvBucketInfo> {
+            return FfiConverterSequenceTypeHrvBucketInfo.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_func_hrv_windowed_buckets(
+    
+        
+        FfiConverterUInt.lower(`start`),
+        FfiConverterUInt.lower(`end`),
+        FfiConverterSequenceTypeRrRun.lower(`runs`),_status)
 }
     )
     }

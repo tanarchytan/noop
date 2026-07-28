@@ -813,7 +813,6 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                                 { line -> ble.externalLog(line, com.noop.testcentre.TestDomain.HRV) }
                             else null,
                         // #141: nightly HRV over deep-sleep windows only when the user picked WHOOP-style.
-                        deepHrvWindow = UnitPrefs.hrvWindow(appContext) == HrvWindow.DEEP_SLEEP,
                     )
                     // analyzeRecent now hops to Dispatchers.Default; a scope cancellation surfaces as a
                     // CancellationException that runCatching would otherwise swallow, breaking the loop's
@@ -1278,7 +1277,6 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 // #195/#141: keep the HRV window consistent with the 15-min loop — without this a sleep edit
                 // would re-score + persist every night's HRV over the WHOLE night, silently overwriting the
                 // deep-window value (the "deep sleep window changes nothing" bug).
-                deepHrvWindow = UnitPrefs.hrvWindow(appContext) == HrvWindow.DEEP_SLEEP,
             )
         }.onFailure { if (it is kotlin.coroutines.cancellation.CancellationException) throw it }
     }
@@ -1546,6 +1544,13 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /** Restart the connected strap (user-initiated, confirmation-gated in DevicesScreen). Non-destructive —
      *  the strap keeps its data and re-advertises after boot; NOOP auto-reconnects. See WhoopBleClient.rebootStrap. */
     fun rebootStrap() = ble.rebootStrap()
+
+    /** Tell the strap which wrist it is worn on (user-initiated from the device menu) and remember the
+     *  side locally, so the menu can show what was last written. See WhoopBleClient.selectWrist. */
+    fun selectWrist(right: Boolean) {
+        ble.selectWrist(right)
+        runCatching { NoopPrefs.setStrapWristRight(appContext, right) }
+    }
 
     /** Send one WHOOP 4.0 reboot-probe candidate (Test Centre → Connection, 4.0 only). Confirmation-gated
      *  in DevicesScreen; finds the real 4.0 reboot frame when the production one is ignored (#235). */

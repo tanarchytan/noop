@@ -161,12 +161,59 @@ internal object RustScores {
 
     fun rmssdRaw(nn: List<Double>): Double? = uniffi.whoop_ffi.hrvRmssdPlain(nn.map { it.toInt().toUShort() })
 
-    /** Full clean-and-analyze (RMSSD/SDNN/pNN50/meanNN + input/clean counts) — twin of
-     *  [HrvAnalyzer.analyzeRaw]. R-R are integer ms (u16 on the wire); range filter, Malik ectopic, the
-     *  20-beat floor and the spot rejected-fraction gate all live in whoop-rs. `nInput` = the raw count. */
-    fun analyzeRaw(rawRR: List<Double>, maxRejectedFraction: Double?): HrvAnalyzer.HrvResult {
+    /** Range + Malik-ectopic cleaned NN series (ms), in input order. Ungated: no clean-beat floor, so a
+     *  caller that needs the survivors themselves gets them even where [analyzeRaw] would refuse. */
+    fun cleanRR(rrMs: List<Double>): List<Double> =
+        uniffi.whoop_ffi.hrvCleanRr(rrMs.map { it.toInt().toUShort() }).map { it.toDouble() }
+
+    /** Survivor counts for one cleaning pass (input / after range / after ectopic) — the numbers a
+     *  cleaning trace narrates, available where [analyzeRaw] reports zero because a gate refused. */
+    fun cleanCounts(rrMs: List<Double>): uniffi.whoop_ffi.HrvCleanCountsInfo =
+        uniffi.whoop_ffi.hrvCleanCounts(rrMs.map { it.toInt().toUShort() })
+
+    /** The whoop-rs cleaning tuning: R-R bounds, clean-beat floor, Malik threshold and window, spot
+     *  rejected-fraction ceiling, rolling-trace window. Read once; whoop-rs owns the values. */
+    val hrvCleanCfg: uniffi.whoop_ffi.HrvCleanCfgInfo by lazy { uniffi.whoop_ffi.hrvCleanCfg() }
+
+    /** Per-5-min-bucket clean-beat count + gap-aware RMSSD over [start, end] — the breakdown behind
+     *  [windowedAvgHrv], for a caller that tags each bucket with the sleep stage at its centre. */
+    fun windowedBuckets(start: Long, end: Long, rr: List<RrInterval>): List<uniffi.whoop_ffi.HrvBucketInfo> =
+        uniffi.whoop_ffi.hrvWindowedBuckets(start.toUInt(), end.toUInt(), groupRuns(rr))
+
+    /** Rolling trailing-window RMSSD over a timestamped R-R series, as `(windowEndTs, rmssd)`. A
+     *  [stepSec] above 0 thins emission to one point per that many seconds of advance. */
+    fun rollingRmssd(
+        rr: List<RrInterval>,
+        windowSec: Int = hrvCleanCfg.rollingWindowSecs.toInt(),
+        stepSec: Int = 0,
+        minBeatsPerWindow: Int = 8,
+    ): List<Pair<Long, Double>> =
+        uniffi.whoop_ffi.hrvRollingRmssd(
+            rr.map { RrBeat(it.ts, it.rrMs.coerceIn(0, UShort.MAX_VALUE.toInt()).toUShort()) },
+            windowSec.toLong(), stepSec.toLong(), minBeatsPerWindow.toUInt(),
+        ).map { it.ts to it.rmssd }
+
+    /** Total beat-time over the wall-clock span of the same beats. Over ~1.0 is physically impossible, so
+     *  it flags double-counted or overlapping R-R. 0.0 for under two timestamps or a non-positive span. */
+    fun rrCoverage(tsSec: List<Long>, rrMs: List<Double>): Double =
+        uniffi.whoop_ffi.hrvRrCoverage(tsSec, rrMs)
+
+    /** Rows repeating an earlier (ts, rrMs) exactly. Byte-identical re-inserts only; the value-differing
+     *  report overlap is counted by [overlappingReports] instead. */
+    fun duplicateBeatCount(tsSec: List<Long>, rrMs: List<Double>): Int =
+        uniffi.whoop_ffi.hrvDuplicateBeatCount(tsSec, rrMs).toInt()
+
+    /** `(overlapping, total)` per-second reports, an overlapping one re-reporting time already covered.
+     *  The mechanism behind an [rrCoverage] above 1.0, which [duplicateBeatCount] cannot see. */
+    fun overlappingReports(rr: List<RrInterval>): Pair<Int, Int> =
+        uniffi.whoop_ffi.hrvOverlappingReports(groupRuns(rr)).let { it.overlapping.toInt() to it.total.toInt() }
+
+    /** Full clean-and-analyze (RMSSD/SDNN/pNN50/meanNN + input/clean counts) into [HrvResult]. R-R are
+     *  integer ms (u16 on the wire); range filter, Malik ectopic, the clean-beat floor and the spot
+     *  rejected-fraction gate all live in whoop-rs. `nInput` = the raw count. */
+    fun analyzeRaw(rawRR: List<Double>, maxRejectedFraction: Double? = null): HrvResult {
         val info = uniffi.whoop_ffi.hrvAnalyzeRaw(rawRR.map { it.toInt().toUShort() }, maxRejectedFraction)
-        return HrvAnalyzer.HrvResult(
+        return HrvResult(
             rmssd = info.rmssd,
             sdnn = info.sdnn,
             meanNN = info.meanNn,
@@ -199,11 +246,10 @@ internal object RustScores {
 
     fun respRateFromRr(rr: List<RrInterval>, start: Long, end: Long): Double? =
         uniffi.whoop_ffi.respRateFromRr(
-            // Drop physiologically out-of-range beats up front (same bounds as HrvAnalyzer.rangeFilter, which
-            // the Kotlin reference applies) so an rrMs that would wrap on the UShort cast is dropped, not
-            // aliased into range — keeping the Rust leg bit-for-bit with the full-width Int reference.
+            // Drop physiologically out-of-range beats up front (the same bounds the range filter applies)
+            // so an rrMs that would wrap on the UShort cast is dropped, not aliased into range.
             rr.asSequence()
-                .filter { it.rrMs.toDouble() in HrvAnalyzer.RR_MIN_MS..HrvAnalyzer.RR_MAX_MS }
+                .filter { it.rrMs in hrvCleanCfg.rrMinMs.toInt()..hrvCleanCfg.rrMaxMs.toInt() }
                 .map { RrBeat(it.ts, it.rrMs.toUShort()) }
                 .toList(),
             start,
@@ -450,6 +496,11 @@ internal object RustScores {
     /** Sample SD (ddof=1) of an NN series (ms); null under 2 beats. No filtering — the raw spread. */
     fun sdnnRaw(nn: List<Double>): Double? =
         uniffi.whoop_ffi.hrvSdnn(nn.map { it.toInt().toUShort() })
+
+    /** pNN50 (%) over an already-clean NN series, every successive pair counted. The formula alone — no
+     *  cleaning, no contiguity mask. Null under 2 beats. */
+    fun pnn50Raw(nn: List<Double>): Double? =
+        uniffi.whoop_ffi.hrvPnn50Plain(nn.map { it.toInt().toUShort() })
 
     // ── Raw 6-axis IMU activity features ─────────────────────────────────────
 

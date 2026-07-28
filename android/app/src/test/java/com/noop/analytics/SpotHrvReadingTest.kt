@@ -11,9 +11,9 @@ import kotlin.math.sqrt
  * [SpotHrvReading] — the on-demand "take an HRV reading now" spot RMSSD path (#537).
  *
  * The headline guarantee these tests pin is CONSISTENCY: the spot value uses the SAME RMSSD math as
- * NOOP's nightly HRV ([HrvAnalyzer.rmssdRaw], Task Force 1996, sample (n-1) denominator), so a spot
+ * NOOP's nightly HRV ([RustScores.rmssdRaw], Task Force 1996, sample (n-1) denominator), so a spot
  * reading is comparable to the overnight number, not a few percent off it. We assert the value against
- * a hand-computed (n-1) RMSSD on a known RR series, and against [HrvAnalyzer] directly.
+ * a hand-computed (n-1) RMSSD on a known RR series, and against [RustScores] directly.
  */
 class SpotHrvReadingTest {
 
@@ -58,7 +58,7 @@ class SpotHrvReadingTest {
         // The spot path MUST agree with the canonical analyzer the nightly avgHrv is built on, beat for
         // beat — that is the whole consistency requirement of this lane.
         val rr = knownCleanSeries()
-        val viaAnalyzer = HrvAnalyzer.analyzeRaw(rr.map { it.toDouble() }).rmssd
+        val viaAnalyzer = RustScores.analyzeRaw(rr.map { it.toDouble() }).rmssd
         assertNotNull(viaAnalyzer)
         val viaSpot = (SpotHrvReading.compute(rr) as SpotHrvReading.Outcome.Reading).rmssdMs
         assertEquals(viaAnalyzer!!, viaSpot, 1e-12)
@@ -86,7 +86,7 @@ class SpotHrvReadingTest {
         val outcome = SpotHrvReading.compute(listOf(850, 870, 840, 860, 855))
         assertTrue(outcome is SpotHrvReading.Outcome.Insufficient)
         val insuff = outcome as SpotHrvReading.Outcome.Insufficient
-        assertEquals(HrvAnalyzer.MIN_BEATS, insuff.needed)
+        assertEquals(RustScores.hrvCleanCfg.minBeats.toInt(), insuff.needed)
         assertTrue("fewer clean beats than needed", insuff.clean < insuff.needed)
     }
 
@@ -116,7 +116,7 @@ class SpotHrvReadingTest {
         assertTrue("0.40 rejected must be refused by the default spot gate",
             outcome is SpotHrvReading.Outcome.Insufficient)
         val insuff = outcome as SpotHrvReading.Outcome.Insufficient
-        assertEquals(HrvAnalyzer.MIN_BEATS, insuff.needed)
+        assertEquals(RustScores.hrvCleanCfg.minBeats.toInt(), insuff.needed)
         assertEquals(40, insuff.input)
         assertEquals(0, insuff.clean)   // refusal reports the empty result's nClean
     }

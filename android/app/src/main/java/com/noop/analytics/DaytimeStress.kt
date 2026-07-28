@@ -126,7 +126,7 @@ object DaytimeStress {
         for (b in orderedBuckets) {
             val hrs = hrByBucket[b] ?: emptyList<Double>()
             val mHr = if (hrs.size >= minHourHrSamples) mean(hrs) else null
-            val rrRes = HrvAnalyzer.analyzeRaw(rrByBucket[b] ?: emptyList())
+            val rrRes = RustScores.analyzeRaw(rrByBucket[b] ?: emptyList())
             aggs.add(HourAgg(b, mHr, rrRes.rmssd))
         }
         return aggs

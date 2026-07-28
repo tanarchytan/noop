@@ -3,14 +3,14 @@ package com.noop.analytics
 /**
  * On-demand "take an HRV reading now" — the single-value spot RMSSD path.
  *
- * Wraps [HrvAnalyzer] for the live, user-triggered snapshot over ~60 s of R-R intervals, so the spot
+ * Wraps [RustScores.analyzeRaw] for the live, user-triggered snapshot over ~60 s of R-R intervals, so the spot
  * value, its honesty gate, and its data-quality caveat live in one tested place.
  *
  *     RMSSD = sqrt( mean( (RR[i+1] - RR[i])^2 ) )   in ms
  *
  * Uses the SAME (n-1) denominator as the nightly HRV path, not a population (n) one — otherwise the
  * same beats would read a few percent lower than the overnight figure. Returns a value only when
- * enough clean beats survive ([HrvAnalyzer.MIN_BEATS]); otherwise [Insufficient] with the
+ * enough clean beats survive (the whoop-rs clean-beat floor); otherwise [Insufficient] with the
  * survived/needed counts, never a fabricated value. The caveat ([caveatFor]) is source-aware: optical
  * PPG (WHOOP 5/MG) is noisier than a chest strap's electrical R-R.
  */
@@ -31,12 +31,12 @@ object SpotHrvReading {
     /** Outcome of an on-demand spot reading. */
     sealed interface Outcome {
         /** A trustworthy spot value: [rmssdMs] (ms), mean [hrBpm] (or null), and the clean-beat [beats]
-         *  used. Backed by the full [HrvAnalyzer] result for callers that want SDNN / pNN50 too. */
+         *  used. Backed by the full [HrvResult] for callers that want SDNN / pNN50 too. */
         data class Reading(
             val rmssdMs: Double,
             val hrBpm: Double?,
             val beats: Int,
-            val full: HrvAnalyzer.HrvResult,
+            val full: HrvResult,
         ) : Outcome
 
         /** Not enough clean beats to report honestly — carries how many survived vs how many are needed
@@ -50,20 +50,24 @@ object SpotHrvReading {
      * [Outcome.Insufficient] instead of a number when too few clean beats survive.
      *
      * @param rrMs the raw R-R intervals in milliseconds, in capture order (untrusted BLE input — the
-     *   analyzer's range filter bounds-checks each to [HrvAnalyzer.RR_MIN_MS]..[HrvAnalyzer.RR_MAX_MS]).
+     *   range filter bounds-checks each against the whoop-rs R-R bounds).
      * @param maxRejectedFraction the spot honesty gate — refuse the reading when more than this
-     *   fraction of beats was dropped as noise, even if [HrvAnalyzer.MIN_BEATS] clean beats survive.
-     *   Defaults to [HrvAnalyzer.DEFAULT_SPOT_MAX_REJECTED_FRACTION] (0.35); the nightly windowed
+     *   fraction of beats was dropped as noise, even if the clean-beat floor is cleared.
+     *   Defaults to the whoop-rs spot ceiling; the nightly windowed
      *   path does not use this.
      */
     fun compute(
         rrMs: List<Int>,
-        maxRejectedFraction: Double = HrvAnalyzer.DEFAULT_SPOT_MAX_REJECTED_FRACTION,
+        maxRejectedFraction: Double = RustScores.hrvCleanCfg.spotMaxRejectedFraction,
     ): Outcome {
-        val result = HrvAnalyzer.analyzeRaw(rrMs.map { it.toDouble() }, maxRejectedFraction)
+        val result = RustScores.analyzeRaw(rrMs.map { it.toDouble() }, maxRejectedFraction)
         val rmssd = result.rmssd
         return if (rmssd == null) {
-            Outcome.Insufficient(clean = result.nClean, needed = HrvAnalyzer.MIN_BEATS, input = result.nInput)
+            Outcome.Insufficient(
+                clean = result.nClean,
+                needed = RustScores.hrvCleanCfg.minBeats.toInt(),
+                input = result.nInput,
+            )
         } else {
             Outcome.Reading(
                 rmssdMs = rmssd,

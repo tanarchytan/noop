@@ -181,9 +181,6 @@ object AnalyticsEngine {
         // for the most-recent night so the 5000-line ring buffer isn't flooded; the 1-line
         // `hrv nightSummary` is kept for every night.
         hrvWindowDetail: Boolean = false,
-        // When true, nightly HRV is RMSSD over DEEP-sleep windows only (WHOOP-style), instead of the
-        // whole-night mean. Display-only preference threaded from the caller (UnitPrefs.hrvWindow).
-        deepHrvWindow: Boolean = false,
     ): DayResult {
 
         // ── Sleep detection + staging ─────────────────────────────────────────
@@ -241,11 +238,10 @@ object AnalyticsEngine {
         // the day's best resting physiology, and the main overnight dominates these anyway (in-bed-weighted).
         // Daily resting HR = lowest per-session resting HR across matched sessions (whoop-rs physio-algo).
         val restingHRDaily: Int? = RustScores.dailyRestingHr(matched.map { it.restingHR })
-        // Daily avg HRV = in-bed-weighted mean of per-session avg HRV.
-        val avgHRVDaily: Double? = if (deepHrvWindow) {
-            // WHOOP-style HRV: pool RMSSD over DEEP-stage 5-min windows only (slow-wave sleep), computed
-            // in whoop-rs (physio-algo::hrv), per-session then meaned across sessions. null when no
-            // session has a deep bucket — caller shows calibrating, never a fabricated number.
+        // Daily avg HRV: pool RMSSD over DEEP-stage 5-min windows only (slow-wave sleep), computed in
+        // whoop-rs, per session then meaned across sessions. null when no session has a deep bucket —
+        // the caller shows calibrating, never a fabricated number.
+        val avgHRVDaily: Double? = run {
             val deepVals = matched.mapNotNull { s ->
                 val ffiSegments = s.stages.map { seg ->
                     val stage = when (seg.stage) {
@@ -259,17 +255,6 @@ object AnalyticsEngine {
                 RustScores.windowedAvgHrvDeep(s.start, s.end, rr, ffiSegments)
             }
             if (deepVals.isEmpty()) null else deepVals.sum() / deepVals.size
-        } else run {
-            val pairs = matched.mapNotNull { s ->
-                s.avgHRV?.let { it to (s.end - s.start).toDouble() }
-            }
-            if (pairs.isEmpty()) {
-                null
-            } else {
-                val total = pairs.sumOf { it.first * it.second }
-                val weight = pairs.sumOf { it.second }
-                if (weight > 0) total / weight else null
-            }
         }
 
         // ── HRV & Autonomic nightly trace ─────────────────────────────────────
@@ -317,7 +302,7 @@ object AnalyticsEngine {
             val perSession = matched
                 .mapNotNull { RustScores.respRateFromRr(rr, it.start, it.end) }
                 .filter { it.isFinite() }
-            if (perSession.isEmpty()) null else HrvAnalyzer.median(perSession)
+            if (perSession.isEmpty()) null else RustScores.median(perSession)
         }
 
 

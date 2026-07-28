@@ -121,22 +121,20 @@ object IntelligenceEngine {
         universalSink: ((String) -> Unit)? = null,
         workoutsTraceSink: ((String) -> Unit)? = null,
         hrvTraceSink: ((String) -> Unit)? = null,
-        // Nightly HRV over deep-sleep windows only when true, whole-night mean when false.
-        deepHrvWindow: Boolean = false,
     ): List<Computed> = withContext(Dispatchers.Default) {
         // Serialise the pass; see [analyzeGate]. Held only across this engine's own work.
         analyzeGate.withLock {
             val (out, healed) = analyzeRecentOnCpu(repo, profile, maxDays, importedDeviceId, maxHROverride,
                 nowSeconds, ownerSource, manualStepCoefficient, persistStepsCalibration, baselineEpoch,
                 recoveryEpoch, diag, sleepTraceSink, recoveryTraceSink,
-                stepsTraceSink, universalSink, workoutsTraceSink, hrvTraceSink, deepHrvWindow)
+                stepsTraceSink, universalSink, workoutsTraceSink, hrvTraceSink)
             if (healed == 0) out
             // The pass deleted duplicate sessions after scoring against them, so re-score once against the
             // cleaned store. The re-pass finds nothing left to heal, so it cannot loop.
             else analyzeRecentOnCpu(repo, profile, maxDays, importedDeviceId, maxHROverride,
                 nowSeconds, ownerSource, manualStepCoefficient, persistStepsCalibration, baselineEpoch,
                 recoveryEpoch, diag, sleepTraceSink, recoveryTraceSink,
-                stepsTraceSink, universalSink, workoutsTraceSink, hrvTraceSink, deepHrvWindow).first
+                stepsTraceSink, universalSink, workoutsTraceSink, hrvTraceSink).first
         }
     }
 
@@ -359,9 +357,6 @@ object IntelligenceEngine {
         // analyzeDay forwards the nightly per-window RMSSD (by stage) + the whole-night/deep-only/
         // last-SWS summary to the .hrv-tagged strap log.
         hrvTraceSink: ((String) -> Unit)? = null,
-        // Nightly HRV over DEEP-sleep windows only (WHOOP-style) when true; whole-night default when
-        // false. Threaded into analyzeDay per scored night.
-        deepHrvWindow: Boolean = false,
         // The second component is how many duplicate sleep sessions the heal deleted, so the wrapper
         // knows whether to re-score once against the cleaned store.
     ): Pair<List<Computed>, Int> {
@@ -568,7 +563,6 @@ object IntelligenceEngine {
                 // Per-window HRV detail ONLY for the most-recent night (dayStart == today's local midnight),
                 // so the 5000-line ring buffer isn't flooded; every night still emits the 1-line summary.
                 hrvWindowDetail = dayStart == nowLocalMidnight,
-                deepHrvWindow = deepHrvWindow,
             )
 
             // Whole-night HRV cleaning-pipeline summary to the strap log: RMSSD vs SDNN (rmssd >> sdnn
@@ -577,17 +571,18 @@ object IntelligenceEngine {
             val sleepRrRows = rr.filter { r -> res.sleepSessions.any { r.ts >= it.start && r.ts < it.end } }
             val sleepRr = sleepRrRows.map { it.rrMs.toDouble() }
             if (sleepRr.isNotEmpty()) {
-                val h = HrvAnalyzer.analyzeRaw(sleepRr)
+                val h = RustScores.analyzeRaw(sleepRr)
                 val ms = { v: Double? -> v?.let { String.format(java.util.Locale.US, "%.0f", it) } ?: "nil" }
                 val rej = if (h.nInput > 0) String.format(java.util.Locale.US, "%.0f", 100.0 * (1.0 - h.nClean.toDouble() / h.nInput)) else "0"
-                // Coverage (sum of NN ÷ wall-clock span; > 1.0 is impossible without double-counted R-R)
-                // plus exact-duplicate beat count, so a "reads ~2x too high" report is self-diagnosing
-                // from the log instead of hand-computing beat density.
+                // Coverage is beat-time over elapsed time; above 1.0 is physically impossible. Two causes
+                // are reported beside it because they are distinguishable: dupBeats counts byte-identical
+                // (ts, rrMs) re-inserts, overlap counts reports re-covering seconds with different values.
                 val ts = sleepRrRows.map { it.ts }
-                val cov = String.format(java.util.Locale.US, "%.2f", HrvAnalyzer.rrCoverage(ts, sleepRr))
-                val dup = HrvAnalyzer.duplicateBeatCount(ts, sleepRr)
+                val cov = String.format(java.util.Locale.US, "%.2f", RustScores.rrCoverage(ts, sleepRr))
+                val dup = RustScores.duplicateBeatCount(ts, sleepRr)
+                val (over, reports) = RustScores.overlappingReports(sleepRrRows)
                 diag("hrv diag day=${res.daily.day} rmssd=${ms(h.rmssd)}ms sdnn=${ms(h.sdnn)}ms meanNN=${ms(h.meanNN)}ms " +
-                    "rr=${h.nInput}/${h.nClean} rejected=$rej% coverage=$cov dupBeats=$dup")
+                    "rr=${h.nInput}/${h.nClean} rejected=$rej% coverage=$cov dupBeats=$dup overlap=$over/$reports")
             }
 
             // Steps test mode: emits the 5/MG raw-counter trace (cumulative @57 series + wrap-aware
@@ -758,11 +753,10 @@ object IntelligenceEngine {
                     "matched=${res.sleepSessions.size} " +
                     "source=${daySourceToken(daily.day, importedWhoopDays, appleHealthDays)}",
             )
-            // One line per scored night with the computed HRV value and which window it used (whole-night
-            // vs deep-sleep); `avgHrv=nil window=deep` when a deep-window night has no detected deep sleep.
-            // Rounded ms + window only, PII-free.
+            // One line per scored night with the computed HRV value. `avgHrv=nil` when the night has no
+            // detected deep sleep, so the deep window forms no bucket. Rounded ms only, PII-free.
             val hrvLog = daily.avgHrv?.let { String.format(java.util.Locale.US, "%.1f", it) } ?: "nil"
-            diag("hrv day=${daily.day} window=${if (deepHrvWindow) "deep" else "whole"} avgHrv=$hrvLog")
+            diag("hrv day=${daily.day} window=deep avgHrv=$hrvLog")
             // ── CAPTURE-B: universal dayOwner self-diagnostic ──
             // One line per scored day, tagged .universal, regardless of which test mode is on: readId is
             // the owner the day was read+scored from, writeActiveId is the registry's active id — a

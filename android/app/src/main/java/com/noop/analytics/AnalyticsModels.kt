@@ -4,8 +4,7 @@ package com.noop.analytics
  * AnalyticsModels.kt — shared on-device analytics value types.
  *
  * Naming: the detected-sleep type is [DetectedSleep] so it does not clash with the Room
- * entity com.noop.data.SleepSession. HR-zone display types live in HrZones.kt; the HRV
- * result type lives in HrvAnalyzer.kt.
+ * entity com.noop.data.SleepSession. HR-zone display types live in HrZones.kt.
  *
  * All `ts` / `start` / `end` are wall-clock unix SECONDS (Long). All derived intensity /
  * energy / sleep-stage outputs are APPROXIMATE, a wellness estimate, never medical advice.
@@ -14,6 +13,33 @@ package com.noop.analytics
 /** On-device analytics namespace marker. */
 object StrandAnalytics {
     const val VERSION: String = "0.1.0"
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// HRV
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** One HRV analysis over a window, filled from whoop-rs by [RustScores.analyzeRaw]. Every field is null
+ *  and [nClean] is 0 when a cleaning gate refused the reading. */
+data class HrvResult(
+    /** RMSSD in milliseconds, or null when too few valid beats. */
+    val rmssd: Double?,
+    /** SDNN (sample SD, ddof=1) in milliseconds, or null when too few valid beats. */
+    val sdnn: Double?,
+    /** Mean NN interval (ms) over the cleaned beats, or null. */
+    val meanNN: Double?,
+    /** pNN50: % of successive |dNN| > 50 ms, or null. */
+    val pnn50: Double?,
+    /** Count of RR intervals supplied to the analysis (before cleaning). */
+    val nInput: Int,
+    /** Count of clean NN intervals after range + ectopic filtering. */
+    val nClean: Int,
+) {
+    companion object {
+        /** An empty/insufficient-data result that preserves the input count. */
+        fun empty(nInput: Int): HrvResult =
+            HrvResult(rmssd = null, sdnn = null, meanNN = null, pnn50 = null, nInput = nInput, nClean = 0)
+    }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

@@ -8,7 +8,7 @@ import org.junit.Test
 
 /**
  * Twin of the Swift HRVAnalyzerTraceTests: the HRV & Autonomic test mode's pure cleaning trace. Proves
- * the trace's returned HrvResult equals HrvAnalyzer.analyzeRaw exactly (byte-identical), and the count /
+ * the trace's returned HrvResult equals RustScores.analyzeRaw exactly (byte-identical), and the count /
  * gate lines. No em-dashes. Pure-JVM, no Robolectric.
  */
 class HrvAnalyzerTraceTest {
@@ -18,7 +18,7 @@ class HrvAnalyzerTraceTest {
             800.0, 810.0, 805.0, 815.0, 800.0, 820.0, 810.0, 800.0, 815.0, 805.0, 810.0,
             800.0, 820.0, 815.0, 805.0, 810.0, 800.0, 815.0, 810.0, 805.0, 800.0, 820.0,
         )
-        val plain = HrvAnalyzer.analyzeRaw(nn)
+        val plain = RustScores.analyzeRaw(nn)
         val (traced, lines) = HrvAnalyzerTrace.analyzeTrace(nn)
         assertEquals(plain, traced)
         assertTrue(lines.any { it.contains("nInput=22") && it.contains("nClean=22") })
@@ -29,7 +29,7 @@ class HrvAnalyzerTraceTest {
 
     @Test fun traceReportsMinBeatsFailureAndNilResult() {
         val rr = List(19) { 800.0 }
-        val plain = HrvAnalyzer.analyzeRaw(rr)
+        val plain = RustScores.analyzeRaw(rr)
         val (traced, lines) = HrvAnalyzerTrace.analyzeTrace(rr)
         assertEquals(plain, traced)
         assertNull(traced.rmssd)
@@ -45,7 +45,7 @@ class HrvAnalyzerTraceTest {
         rr.add(1600.0)                // in range but >20% off the local median → ectopic
         rr.addAll(List(16) { 800.0 })
         val (traced, lines) = HrvAnalyzerTrace.analyzeTrace(rr)
-        assertEquals(HrvAnalyzer.analyzeRaw(rr), traced)
+        assertEquals(RustScores.analyzeRaw(rr), traced)
         val rejectLine = lines.first { it.startsWith("hrv reject ") }
         assertTrue(rejectLine.contains("range=1"))
         assertTrue(rejectLine.contains("ectopic=1"))
@@ -57,7 +57,7 @@ class HrvAnalyzerTraceTest {
         assertFalse(contLines.any { it.contains("spotGate") })
         assertTrue(contLines.any { it.contains("path=continuous") })
         val (_, spotLines) = HrvAnalyzerTrace.analyzeTrace(
-            nn, HrvAnalyzer.DEFAULT_SPOT_MAX_REJECTED_FRACTION, path = "spot",
+            nn, RustScores.hrvCleanCfg.spotMaxRejectedFraction, path = "spot",
         )
         assertTrue(spotLines.any { it.contains("spotGate") && it.contains("PASS") })
     }

@@ -1,6 +1,6 @@
 package com.noop.analytics.agreement
 
-import com.noop.analytics.HrvAnalyzer
+import com.noop.analytics.RustScores
 import org.json.JSONObject
 import org.junit.Assert.assertTrue
 import org.junit.Assume.assumeTrue
@@ -63,8 +63,8 @@ class HrvOpticalRobustnessTest {
         }
     }
 
-    private fun plain(raw: List<Double>): Double? = HrvAnalyzer.cleanRR(raw).let { if (it.size >= 2) HrvAnalyzer.rmssdRaw(it) else null }
-    private fun gap(raw: List<Double>): Double? = HrvAnalyzer.analyzeRaw(raw).rmssd
+    private fun plain(raw: List<Double>): Double? = RustScores.cleanRR(raw).let { if (it.size >= 2) RustScores.rmssdRaw(it) else null }
+    private fun gap(raw: List<Double>): Double? = RustScores.analyzeRaw(raw).rmssd
 
     /** Regular, low-RMSSD rhythms -- the regime where an optical splice creates a spuriously large diff so
      *  gap-aware pays off, and the regime nightly sleep HRV lives in (the user's -35% was on sleep R-R).

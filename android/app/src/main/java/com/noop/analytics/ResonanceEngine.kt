@@ -14,7 +14,7 @@ package com.noop.analytics
  * that produces a peak-to-trough swing in the instantaneous HR (60000/RR). We know each breath cycle's
  * boundaries because WE paced them (from the pace's cycle length), so we measure the mean peak-to-trough
  * swing of instantaneous HR WITHIN each paced breath cycle. That mean swing is the RSA amplitude; it
- * peaks at the resonance pace. RMSSD (via the shared [HrvAnalyzer]) corroborates / breaks ties.
+ * peaks at the resonance pace. RMSSD (via [RustScores]) corroborates / breaks ties.
  *
  * HONEST LIMITS: WHOOP R-R is PPG-derived, not ECG — RSA amplitude / HF-HRV are ESTIMATES, never clinical
  * readings. A pace with too few clean beats is left UNSCORED rather than guessed; if fewer than
@@ -38,8 +38,8 @@ object ResonanceEngine {
     const val TRANSIENT_DROP_SECONDS: Int = 30
 
     /** Minimum clean beats over a pace's steady window before its RSA/RMSSD are trusted (mirrors
-     *  [HrvAnalyzer.MIN_BEATS]). */
-    val MIN_BEATS_PER_PACE: Int = HrvAnalyzer.MIN_BEATS
+     *  whoop-rs clean-beat floor). */
+    val MIN_BEATS_PER_PACE: Int = RustScores.hrvCleanCfg.minBeats.toInt()
 
     /** Minimum breath cycles with a measurable swing before a pace is scorable. */
     const val MIN_CYCLES_PER_PACE: Int = 3
@@ -104,7 +104,7 @@ object ResonanceEngine {
     /**
      * Score ONE paced candidate: clean its R-R, drop the leading transient, slice the steady window into
      * the paced breath cycles, and measure the mean per-cycle peak-to-trough instantaneous-HR swing
-     * (RSA amplitude). RMSSD (shared [HrvAnalyzer]) corroborates. Unscorable (too few beats/cycles) →
+     * (RSA amplitude). RMSSD (via [RustScores]) corroborates. Unscorable (too few beats/cycles) →
      * [PaceScore.rsaAmplitude] == null.
      */
     fun scorePace(sample: PaceSample): PaceScore {
@@ -119,7 +119,7 @@ object ResonanceEngine {
 
         // Clean R-R (range + Malik) for both the RMSSD and the swing, so ectopic beats can't fabricate an
         // RSA swing. Cleaning operates on the rrMs values; we keep ts alongside for cycle bucketing.
-        val cleanMs = HrvAnalyzer.cleanRR(steady.map { it.rrMs.toDouble() })
+        val cleanMs = RustScores.cleanRR(steady.map { it.rrMs.toDouble() })
         if (cleanMs.size < MIN_BEATS_PER_PACE) {
             return PaceScore(sample.bpm, rsaAmplitude = null, rmssd = null,
                 cleanBeats = cleanMs.size, scoredCycles = 0)
@@ -128,7 +128,7 @@ object ResonanceEngine {
         // Re-pair the cleaned values back to timestamps by matching them in order against `steady`
         // (cleaning preserves order and only drops beats), so each surviving beat keeps its ts.
         val cleanBeats = repairTimestamps(steady, cleanMs)
-        val rmssd = HrvAnalyzer.rmssdRaw(cleanMs)
+        val rmssd = RustScores.rmssdRaw(cleanMs)
 
         // Bucket clean beats into paced breath cycles relative to windowStart; per cycle, take the
         // peak-to-trough swing of instantaneous HR (60000/RR).
@@ -196,7 +196,7 @@ object ResonanceEngine {
     // ── Helpers ───────────────────────────────────────────────────────────────
 
     /**
-     * Re-attach timestamps to the cleaned rrMs series. Cleaning ([HrvAnalyzer.cleanRR]) preserves order
+     * Re-attach timestamps to the cleaned rrMs series. Cleaning ([RustScores.cleanRR]) preserves order
      * and only DROPS beats, so we walk `steady` in order consuming the next match for each cleaned value.
      */
     private fun repairTimestamps(steady: List<RrBeat>, cleanMs: List<Double>): List<CleanBeat> {

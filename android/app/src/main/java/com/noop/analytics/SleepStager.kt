@@ -313,35 +313,24 @@ object SleepStager {
     data class HrvWindow(val startTs: Long, val stage: String, val cleanBeats: Int, val rmssd: Double?)
 
     /**
-     * Per-5-min-window RMSSD across a session, each window tagged with the sleep stage at its CENTER (from
-     * [stages]) — feeds the deep-stage HRV pool ([AnalyticsEngine]) and the HRV test-mode trace. The stored
-     * session avgHrv is scored separately in whoop-rs ([RustScores.windowedAvgHrv]); passing `emptyList()`
-     * for [stages] tags every window "?".
+     * The whoop-rs per-5-min HRV buckets for a session ([RustScores.windowedBuckets]), each tagged with the
+     * sleep stage at its CENTRE from [stages]. Feeds the deep-stage HRV pool ([AnalyticsEngine]) and the
+     * HRV test-mode trace; same buckets and same RMSSD as the stored session avgHrv, so the trace and the
+     * displayed value agree. Passing `emptyList()` for [stages] tags every window "?".
      */
     internal fun sessionHrvWindows(
         start: Long, end: Long, rr: List<RrInterval>, stages: List<StageSegment>,
     ): List<HrvWindow> {
-        // CONTRACT: `rr` MUST already be ts-sorted (RMSSD is built from SUCCESSIVE differences). The
-        // value path passes pre-sorted `rrS`; the trace caller sorts its own copy. Not sorted here on
-        // purpose — re-sorting could reorder same-second RR under an unstable sort and shift avgHrv.
-        val seg = rr.filter { it.ts in start..end }
-        if (seg.isEmpty()) return emptyList()
         val windowS = 5 * 60L
-        val out = ArrayList<HrvWindow>()
-        var t = start
-        while (t < end) {
-            val bucket = seg.filter { it.ts >= t && it.ts < t + windowS }.map { it.rrMs.toDouble() }
-            // Full clean (range + Malik ectopic rejection) matches the analyze() pipeline: WHOOP 5/MG RR
-            // is PPG-derived and noisier, so an un-rejected jitter spike inflates HRV. Gap-aware: a dropped
-            // beat must not splice its neighbours into a spurious successive difference (HrvAnalyzer.rmssdGapAware).
-            val cleaned = HrvAnalyzer.cleanRRGapAware(bucket)
-            val rmssd = if (cleaned.nn.size >= 2) HrvAnalyzer.rmssdGapAware(cleaned.nn, cleaned.contiguous) else null
-            val center = t + windowS / 2
-            val stage = stages.firstOrNull { center >= it.start && center < it.end }?.stage ?: "?"
-            out.add(HrvWindow(startTs = t, stage = stage, cleanBeats = cleaned.nn.size, rmssd = rmssd))
-            t += windowS
+        return RustScores.windowedBuckets(start, end, rr).map { b ->
+            val centre = b.start.toLong() + windowS / 2
+            HrvWindow(
+                startTs = b.start.toLong(),
+                stage = stages.firstOrNull { centre >= it.start && centre < it.end }?.stage ?: "?",
+                cleanBeats = b.cleanBeats.toInt(),
+                rmssd = b.rmssd,
+            )
         }
-        return out
     }
 
     /** The LAST contiguous run of deep-stage windows in [windows] — the WHOOP-style "last slow-wave-sleep"

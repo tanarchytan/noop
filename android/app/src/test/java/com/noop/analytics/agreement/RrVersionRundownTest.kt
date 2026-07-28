@@ -1,6 +1,6 @@
 package com.noop.analytics.agreement
 
-import com.noop.analytics.HrvAnalyzer
+import com.noop.analytics.RustScores
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.File
@@ -18,7 +18,11 @@ import kotlin.math.sqrt
  * noop code path, not a re-implementation:
  *   ryanbr base : rmssdRaw(cleanRR( dedup-by-(ts,rrMs) ))       old PK+IGNORE drops equal same-second beats, no gap handling
  *   + 2 PRs     : rmssdRaw(cleanRR( all beats ))                seq PK keeps duplicates (#163), still splices across a dropped beat
- *   rr-opt      : rmssdGapAware(cleanRRGapAware( all beats ))   keeps duplicates AND skips the successive diff across a dropped beat
+ *   rr-opt      : RustScores.analyzeRaw( all beats ).rmssd      keeps duplicates AND skips the successive diff across a dropped beat
+ *
+ * The generator injects equal same-second pairs, which is also the shape the report-seam rule reads as a
+ * strap re-reporting, so rr-opt is scored through the seam-blind entry point. The seam is scored on real
+ * captured reports in RealDataRundownTest instead.
  *
  * Reference = RMSSD of the artifact-free rounded RR (the true rhythm). This is a synthetic yardstick,
  * NOT a WHOOP label: real WHOOP agreement needs a captured R-R night paired to the WHOOP CSV export,
@@ -31,7 +35,7 @@ class RrVersionRundownTest {
 
     private data class Beat(val ts: Long, val rrMs: Int)
 
-    private fun rmssd(x: List<Double>): Double = HrvAnalyzer.rmssdRaw(x) ?: Double.NaN
+    private fun rmssd(x: List<Double>): Double = RustScores.rmssdRaw(x) ?: Double.NaN
 
     /** Old storage: PK (deviceId,ts,rrMs) + INSERT IGNORE keeps the first (ts,rrMs) and drops the rest. */
     private fun dedupTsRr(beats: List<Beat>): List<Beat> {
@@ -42,15 +46,13 @@ class RrVersionRundownTest {
     }
 
     private fun vRyanbr(beats: List<Beat>): Double =
-        rmssd(HrvAnalyzer.cleanRR(dedupTsRr(beats).map { it.rrMs.toDouble() }))
+        rmssd(RustScores.cleanRR(dedupTsRr(beats).map { it.rrMs.toDouble() }))
 
     private fun vTwoPr(beats: List<Beat>): Double =
-        rmssd(HrvAnalyzer.cleanRR(beats.map { it.rrMs.toDouble() }))
+        rmssd(RustScores.cleanRR(beats.map { it.rrMs.toDouble() }))
 
-    private fun vRrOpt(beats: List<Beat>): Double {
-        val c = HrvAnalyzer.cleanRRGapAware(beats.map { it.rrMs.toDouble() })
-        return HrvAnalyzer.rmssdGapAware(c.nn, c.contiguous) ?: Double.NaN
-    }
+    private fun vRrOpt(beats: List<Beat>): Double =
+        RustScores.analyzeRaw(beats.map { it.rrMs.toDouble() }).rmssd ?: Double.NaN
 
     /**
      * One ~5-minute sleep window. Builds a clean rhythm (respiratory sinus arrhythmia + slow drift +

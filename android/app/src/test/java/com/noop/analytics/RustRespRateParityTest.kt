@@ -19,7 +19,7 @@ import kotlin.math.roundToInt
  * keeps the Rust leg pinned to that frozen spec so a later whoop-rs change can't silently drift it.
  *
  * The stored column is [com.noop.data.DailyMetric.respRateBpm], produced at AnalyticsEngine.kt as
- * `median(per-session respRateFromRr that .isFinite())`. The cross-session median (HrvAnalyzer.median) is
+ * `median(per-session respRateFromRr that .isFinite())`. The cross-session median (RustScores.median) is
  * app-side and STAYS Kotlin, so the FFI only reproduces the per-session estimate; on a one-session night
  * `median(listOf(x)) == x`, so the per-session value IS the stored value. This test pins that per-session
  * value bit-for-bit.
@@ -27,8 +27,8 @@ import kotlin.math.roundToInt
  * The Kotlin twin is gone, so the reference here is [respRateReference]: a self-contained restatement of the
  * stored RSA spec — range-filter → cumulative beat times → 4 Hz linear resample → centered-mean detrend →
  * per-5-min findPeaks → `60.0 / median(intervals)` → median across windows → plausible-band clamp. It reuses
- * the surviving primitives ([SleepStager.findPeaks], [SleepStager.standardDeviation], [HrvAnalyzer.rangeFilter],
- * [HrvAnalyzer.median], [SleepStager.respPlausibleRangeBpm]) so it stays byte-identical to the deleted scorer.
+ * the surviving primitives ([SleepStager.findPeaks], [SleepStager.standardDeviation], [RustScores.rangeFilterRR],
+ * [RustScores.median], [SleepStager.respPlausibleRangeBpm]) so it stays byte-identical to the deleted scorer.
  *
  * The gate is EXACT (delta 0.0). The pipeline is float-accumulation-order sensitive, and trap #1 (the
  * averaging-of-middles median tie-break in both the per-window `60.0/median` and the across-window median) is
@@ -75,7 +75,7 @@ class RustRespRateParityTest {
             .sortedBy { it.ts }
             .map { it.rrMs.toDouble() }
             .toList()
-        val filtered = HrvAnalyzer.rangeFilter(inBed)
+        val filtered = RustScores.rangeFilterRR(inBed.map { it.toInt() }).map { it.toDouble() }
         if (filtered.size < 30) return nan
 
         // 2. Reconstruct beat times (seconds from session start) by cumulative sum.
@@ -138,7 +138,7 @@ class RustRespRateParityTest {
                         if (ivS in rsaMinBreathIntervalS..rsaMaxBreathIntervalS) intervals.add(ivS)
                     }
                     if (intervals.size >= 2) {
-                        val med = HrvAnalyzer.median(intervals)
+                        val med = RustScores.median(intervals)
                         if (med > 0.0) perWindowRates.add(60.0 / med)
                     }
                 }
@@ -146,7 +146,7 @@ class RustRespRateParityTest {
             w += windowSamples
         }
         if (perWindowRates.isEmpty()) return nan
-        val median = HrvAnalyzer.median(perWindowRates)
+        val median = RustScores.median(perWindowRates)
         return if (median in SleepStager.respPlausibleRangeBpm) median else nan
     }
 

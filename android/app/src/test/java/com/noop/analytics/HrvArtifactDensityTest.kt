@@ -42,8 +42,8 @@ class HrvArtifactDensityTest {
         }
     }
 
-    private fun plainRmssd(raw: List<Double>): Double = HrvAnalyzer.rmssdRaw(HrvAnalyzer.cleanRR(raw)) ?: Double.NaN
-    private fun gapRmssd(raw: List<Double>): Double = HrvAnalyzer.analyzeRaw(raw).rmssd ?: Double.NaN
+    private fun plainRmssd(raw: List<Double>): Double = RustScores.rmssdRaw(RustScores.cleanRR(raw)) ?: Double.NaN
+    private fun gapRmssd(raw: List<Double>): Double = RustScores.analyzeRaw(raw).rmssd ?: Double.NaN
 
     private val densities = listOf(0.0, 0.05, 0.10, 0.20, 0.30)
     private val seeds = 1L..40L
@@ -56,7 +56,7 @@ class HrvArtifactDensityTest {
             var pe = 0.0; var ge = 0.0; var n = 0
             for (s in seeds) {
                 val rhythm = trueRhythm(240, s)
-                val truth = HrvAnalyzer.rmssdRaw(rhythm)!!
+                val truth = RustScores.rmssdRaw(rhythm)!!
                 val raw = injectDrops(rhythm, d, s * 7 + 1)
                 pe += abs(plainRmssd(raw) - truth); ge += abs(gapRmssd(raw) - truth); n++
             }
@@ -85,7 +85,7 @@ class HrvArtifactDensityTest {
         for ((di, d) in densities.withIndex()) {
             var pm = 0.0; var gm = 0.0; var tm = 0.0; var n = 0
             for (s in seeds) {
-                val rhythm = trueRhythm(240, s); val truth = HrvAnalyzer.rmssdRaw(rhythm)!!
+                val rhythm = trueRhythm(240, s); val truth = RustScores.rmssdRaw(rhythm)!!
                 val raw = injectDrops(rhythm, d, s * 13 + 3)
                 pm += plainRmssd(raw); gm += gapRmssd(raw); tm += truth; n++
             }
@@ -106,8 +106,8 @@ class HrvArtifactDensityTest {
         var truePnn = 0.0; var gapPnnHigh = 0.0; var n = 0
         for (s in seeds) {
             val rhythm = trueRhythm(240, s)
-            truePnn += HrvAnalyzer.analyzeRaw(rhythm).pnn50 ?: 0.0
-            gapPnnHigh += HrvAnalyzer.analyzeRaw(injectDrops(rhythm, 0.30, s * 11 + 4)).pnn50 ?: 0.0
+            truePnn += RustScores.analyzeRaw(rhythm).pnn50 ?: 0.0
+            gapPnnHigh += RustScores.analyzeRaw(injectDrops(rhythm, 0.30, s * 11 + 4)).pnn50 ?: 0.0
             n++
         }
         truePnn /= n; gapPnnHigh /= n

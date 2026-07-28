@@ -1,6 +1,7 @@
 package com.noop.analytics.agreement
 
-import com.noop.analytics.HrvAnalyzer
+import com.noop.analytics.RustScores
+import com.noop.data.RrInterval
 import org.json.JSONObject
 import org.junit.Assert.assertTrue
 import org.junit.Assume.assumeTrue
@@ -19,7 +20,7 @@ import kotlin.math.abs
  *
  * Versions (reproduced from the tree's own public functions):
  *   ryanbr / +2PR : mean over 5-min buckets of rmssdRaw(cleanRR(bucket))
- *   rr-opt        : mean over 5-min buckets of rmssdGapAware(cleanRRGapAware(bucket))
+ *   rr-opt        : RustScores.windowedAvgHrv, the shipped gap-aware + seam-aware nightly path
  * ryanbr and +2PR are identical on a pre-seq backup: the equal same-second duplicates the seq PK (#163)
  * preserves were already dropped at storage, so that delta is only visible in the synthetic rundown.
  */
@@ -28,21 +29,21 @@ class RealDataRundownTest {
     private val fixturePath: String =
         System.getProperty("noop.rrFixture") ?: "C:/Users/DavidGillot/Projects/whoop/whoop-data/harnesses/rr-real-fixture.json"
 
+    /** Mean of per-5-min-bucket RMSSD across a night. [gapAware] false reproduces the un-gapped ancestor
+     *  (plain RMSSD over the cleaned bucket); true is the SHIPPED path, the whoop-rs windowed avgHrv. */
     private fun nightlyHrv(rr: List<Pair<Long, Int>>, gapAware: Boolean): Double? {
         if (rr.isEmpty()) return null
+        if (gapAware) {
+            val rows = rr.map { (ts, ms) -> RrInterval("d", ts, ms) }
+            return RustScores.windowedAvgHrv(rr.first().first, rr.last().first, rows)
+        }
         val t0 = rr.first().first
         val buckets = LinkedHashMap<Long, ArrayList<Double>>()
         for ((ts, ms) in rr) buckets.getOrPut((ts - t0) / 300L) { ArrayList() }.add(ms.toDouble())
         val vals = ArrayList<Double>()
         for (b in buckets.values) {
-            val r = if (gapAware) {
-                val c = HrvAnalyzer.cleanRRGapAware(b)
-                if (c.nn.size >= 2) HrvAnalyzer.rmssdGapAware(c.nn, c.contiguous) else null
-            } else {
-                val c = HrvAnalyzer.cleanRR(b)
-                if (c.size >= 2) HrvAnalyzer.rmssdRaw(c) else null
-            }
-            if (r != null) vals.add(r)
+            val c = RustScores.cleanRR(b)
+            if (c.size >= 2) RustScores.rmssdRaw(c)?.let { vals.add(it) }
         }
         return if (vals.isEmpty()) null else vals.sum() / vals.size
     }
