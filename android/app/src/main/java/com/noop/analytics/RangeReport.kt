@@ -311,41 +311,12 @@ object RangeReportEngine {
      * day is unparseable or end sorts before start.
      */
     internal fun dayCount(start: String, end: String): Int {
-        val s = parseYMD(start) ?: return 0
-        val e = parseYMD(end) ?: return 0
-        val diff = julianDayNumber(e.first, e.second, e.third) -
-            julianDayNumber(s.first, s.second, s.third)
+        val diff = CalendarDay.daysBetween(start, end) ?: return 0
         return if (diff < 0) 0 else diff + 1
     }
 
     /** Parse "yyyy-MM-dd" into validated integer components (real calendar date only). */
-    internal fun parseYMD(str: String): Triple<Int, Int, Int>? {
-        val parts = str.split("-")
-        if (parts.size != 3) return null
-        val y = parts[0].toIntOrNull() ?: return null
-        val m = parts[1].toIntOrNull() ?: return null
-        val d = parts[2].toIntOrNull() ?: return null
-        if (m !in 1..12) return null
-        if (d < 1 || d > daysInMonth(y, m)) return null
-        return Triple(y, m, d)
-    }
-
-    internal fun daysInMonth(y: Int, m: Int): Int = when (m) {
-        1, 3, 5, 7, 8, 10, 12 -> 31
-        4, 6, 9, 11 -> 30
-        2 -> if (isLeap(y)) 29 else 28
-        else -> 0
-    }
-
-    internal fun isLeap(y: Int): Boolean = (y % 4 == 0 && y % 100 != 0) || (y % 400 == 0)
-
-    /** Proleptic-Gregorian date → Julian Day Number (integer-only, timezone-free). */
-    internal fun julianDayNumber(y: Int, m: Int, d: Int): Int {
-        val a = (14 - m) / 12
-        val yy = y + 4800 - a
-        val mm = m + 12 * a - 3
-        return d + (153 * mm + 2) / 5 + 365 * yy + yy / 4 - yy / 100 + yy / 400 - 32045
-    }
+    internal fun parseYMD(str: String): Triple<Int, Int, Int>? = CalendarDay.parse(str)
 
     // Stats (self-contained, deterministic)
 
@@ -355,20 +326,7 @@ object RangeReportEngine {
     }
 
     /** OLS slope of value vs the 0-based index (per-day trend); 0 for < 2 points. */
-    internal fun leastSquaresSlope(values: List<Double>): Double {
-        val n = values.size
-        if (n < 2) return 0.0
-        val meanX = (n - 1) / 2.0
-        val meanY = mean(values)
-        var num = 0.0
-        var den = 0.0
-        values.forEachIndexed { i, v ->
-            val dx = i - meanX
-            num += dx * (v - meanY)
-            den += dx * dx
-        }
-        return if (den == 0.0) 0.0 else num / den
-    }
+    internal fun leastSquaresSlope(values: List<Double>): Double = RustScores.slope(values)
 
     /**
      * Round to one decimal place, half-away-from-zero (not banker's rounding), so

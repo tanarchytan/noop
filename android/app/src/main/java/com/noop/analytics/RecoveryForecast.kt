@@ -218,20 +218,7 @@ object RecoveryForecaster {
     }
 
     /** OLS slope of value vs the 0-based index (per-day trend); 0 for < 2 points. */
-    internal fun leastSquaresSlope(values: List<Double>): Double {
-        val n = values.size
-        if (n < 2) return 0.0
-        val meanX = (n - 1) / 2.0
-        val meanY = mean(values)
-        var num = 0.0
-        var den = 0.0
-        values.forEachIndexed { i, v ->
-            val dx = i - meanX
-            num += dx * (v - meanY)
-            den += dx * dx
-        }
-        return if (den == 0.0) 0.0 else num / den
-    }
+    internal fun leastSquaresSlope(values: List<Double>): Double = RustScores.slope(values)
 
     internal fun clamp(x: Double, lo: Double, hi: Double): Double = min(max(x, lo), hi)
 }

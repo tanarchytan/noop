@@ -4,6 +4,7 @@ import android.content.Context
 import android.net.Uri
 import com.noop.analytics.LabMarkerCategory
 import com.noop.analytics.MarkerCatalog
+import com.noop.analytics.CalendarDay
 import com.noop.data.ImportSummary
 import com.noop.data.LabMarkerRow
 import com.noop.data.WhoopRepository
@@ -514,15 +515,8 @@ object LabMarkerCsvImport {
     /** "yyyy-MM-dd" when the components form a real calendar date, else null.
      *  Pure math, leap-aware. */
     private fun validDay(year: Int, month: Int, day: Int): String? {
-        if (month !in 1..12 || day < 1 || day > daysInMonth(year, month)) return null
+        if (month !in 1..12 || day < 1 || day > CalendarDay.daysInMonth(year, month)) return null
         return "%04d-%02d-%02d".format(Locale.US, year, month, day)
-    }
-
-    private fun daysInMonth(y: Int, m: Int): Int = when (m) {
-        1, 3, 5, 7, 8, 10, 12 -> 31
-        4, 6, 9, 11 -> 30
-        2 -> if ((y % 4 == 0 && y % 100 != 0) || y % 400 == 0) 29 else 28
-        else -> 0
     }
 
     // MARK: - takenAt derivation (wrapper only, not part of the pure parse)

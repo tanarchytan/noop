@@ -204,61 +204,11 @@ object ActivityCostEngine {
      *  [ActivityCost.sentence]. */
     internal fun roundToIntHalfUp(x: Double): Int = x.roundToInt()
 
-    // Day arithmetic: fixed UTC calendar, null on unparseable input. Integer-only
-    // proleptic-Gregorian, so it stays timezone- and locale-free.
-
-    /** Shift a "yyyy-MM-dd" day by [delta] days (may be negative). null if unparseable. */
+    /** Shift a "yyyy-MM-dd" day by [delta] days; null when the key is unparseable, which the
+     *  caller treats as no such day rather than as the day itself. */
     internal fun shiftDay(day: String, delta: Int): String? {
         if (delta == 0) return day
-        val ymd = parseYMD(day) ?: return null
-        val jdn = julianDayNumber(ymd[0], ymd[1], ymd[2]) + delta
-        val out = fromJulianDayNumber(jdn)
-        return formatYMD(out[0], out[1], out[2])
-    }
-
-    private fun parseYMD(s: String): IntArray? {
-        val parts = s.split("-")
-        if (parts.size != 3) return null
-        val y = parts[0].toIntOrNull() ?: return null
-        val m = parts[1].toIntOrNull() ?: return null
-        val d = parts[2].toIntOrNull() ?: return null
-        if (m !in 1..12 || d < 1 || d > daysInMonth(y, m)) return null
-        return intArrayOf(y, m, d)
-    }
-
-    private fun daysInMonth(y: Int, m: Int): Int = when (m) {
-        1, 3, 5, 7, 8, 10, 12 -> 31
-        4, 6, 9, 11 -> 30
-        2 -> if (isLeap(y)) 29 else 28
-        else -> 0
-    }
-
-    private fun isLeap(y: Int): Boolean = (y % 4 == 0 && y % 100 != 0) || (y % 400 == 0)
-
-    private fun formatYMD(y: Int, m: Int, d: Int): String {
-        val yy = if (y < 1000) y.toString().padStart(4, '0') else y.toString()
-        val mm = if (m < 10) "0$m" else "$m"
-        val dd = if (d < 10) "0$d" else "$d"
-        return "$yy-$mm-$dd"
-    }
-
-    private fun julianDayNumber(y: Int, m: Int, d: Int): Int {
-        val a = (14 - m) / 12
-        val yy = y + 4800 - a
-        val mm = m + 12 * a - 3
-        return d + (153 * mm + 2) / 5 + 365 * yy + yy / 4 - yy / 100 + yy / 400 - 32045
-    }
-
-    private fun fromJulianDayNumber(jdn: Int): IntArray {
-        val a = jdn + 32044
-        val b = (4 * a + 3) / 146097
-        val c = a - (146097 * b) / 4
-        val dd = (4 * c + 3) / 1461
-        val e = c - (1461 * dd) / 4
-        val mm = (5 * e + 2) / 153
-        val day = e - (153 * mm + 2) / 5 + 1
-        val month = mm + 3 - 12 * (mm / 10)
-        val year = 100 * b + dd - 4800 + mm / 10
-        return intArrayOf(year, month, day)
+        CalendarDay.parse(day) ?: return null
+        return CalendarDay.addDays(day, delta)
     }
 }
