@@ -56,5 +56,8 @@ __pycache__/
 dist/
 err.txt
 
-# Working notes (git-ignored, per project convention)
+# Working notes live OUTSIDE the repo, in ../dev-notes/noop-tan/ — plans, reviews and cleanup
+# queues rot, and keeping them out of the tree means they can never be mistaken for docs.
+# These two stay ignored so an older checkout does not resurrect them.
 dev-docs/
+dev-notes/

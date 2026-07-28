@@ -23,7 +23,7 @@
 >   (noop-tan tracks no remote, so a stray `git pull` on it is already a no-op.)
 > - **Send fixes back:** clean, independent fixes/features → `ryanbr/noop` PRs when they help everyone;
 >   keep those PR branches cross-platform-correct (do the Swift twin) so the maintainer can take them.
-> - **Branching model is HARD LAW** — see `dev-docs/BRANCHING.md` (git-ignored). `noop-tan` = dev,
+> - **Branching model is HARD LAW** — see `../dev-notes/noop-tan/BRANCHING.md` (outside the repo). `noop-tan` = dev,
 >   `rc/X.Y.Z-tan` = release candidate (bug fixes only), `stable` = latest release (protected). Never
 >   push directly to `stable`. Never cut a release without an rc branch. Never merge features into an rc.
 >
