@@ -2,13 +2,13 @@ package com.noop.oura
 
 // RingGen: per-generation capability + command-set selection. Kotlin twin of OuraRingGen.swift. One
 // transport handles all gens by swapping command sets, not code paths. The framing/auth/event-tag
-// dictionary are generation-invariant (per OURA_PROTOCOL.md s7.2), so RingGen only drives:
+// dictionary are generation-invariant, so RingGen only drives:
 //   - MTU clamp (203 vs 247)
 //   - which characteristics to discover (gen5 extra notify chars, currently unused)
 //   - the live-HR enable command set (verified on gen3, expected-same on gen4/5)
 //   - the registered capability set surfaced to the app
 //
-// Platform-pure value type. Facts cited per OURA_PROTOCOL.md s7.
+// Platform-pure value type. Facts cited
 
 enum class OuraRingGen(val raw: String) {
     GEN3("gen3"),
@@ -26,19 +26,19 @@ enum class OuraRingGen(val raw: String) {
             GEN5 -> "Oura Ring 5"
         }
 
-    /** Negotiated ATT MTU for this generation. Per OURA_PROTOCOL.md s1.2. */
+    /** Negotiated ATT MTU for this generation. */
     val mtu: Int
         get() = when (this) {
             GEN3 -> OuraGatt.mtuGen3
             GEN4, GEN5 -> OuraGatt.mtuGen45
         }
 
-    /** Max writable payload after the 3-byte ATT overhead. Per OURA_PROTOCOL.md s1.3. */
+    /** Max writable payload after the 3-byte ATT overhead. */
     val maxWritePayload: Int get() = mtu - OuraGatt.attOverhead
 
     /**
      * Whether this generation advertises the extra ...0004/5/6 characteristics. Only gen5 does, and
-     * v1 never writes to them (roles unconfirmed). Per OURA_PROTOCOL.md s1.2 / s7.2.
+     * v1 never writes to them (roles unconfirmed).
      */
     val hasExtraNotifyChars: Boolean
         get() = when (this) {
@@ -49,7 +49,7 @@ enum class OuraRingGen(val raw: String) {
     /**
      * The numeric generation marker. The feature-mode master gate requires generation > 2 (gen3+);
      * gen <= 2 reject all feature-mode changes. All three supported gens satisfy this.
-     * Per OURA_PROTOCOL.md s7.1.
+     *
      */
     val generationNumber: Int
         get() = when (this) {
@@ -67,7 +67,7 @@ enum class OuraRingGen(val raw: String) {
     /**
      * Metrics this generation can register. Gen3+ all expose the same event-tag dictionary, so the
      * capability set is currently uniform; kept per-gen so a future gen-specific gate is a one-line
-     * change. Per OURA_PROTOCOL.md s7.2.
+     * change.
      */
     val capabilities: Set<OuraMetric>
         get() = when (this) {

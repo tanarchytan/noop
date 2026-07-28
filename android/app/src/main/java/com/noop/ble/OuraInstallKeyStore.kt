@@ -102,7 +102,7 @@ object OuraInstallKeyStore {
      * factory-reset-and-adopt path, after its irreversible-consent gate). This is the ONLY signal that
      * permits [OuraLiveSource] to send the dangerous `0x24` install opcode: the live source reads it via
      * [consumePendingAdopt] when it builds its [com.noop.oura.OuraDriver] and passes it straight to the
-     * driver's `allowKeyInstall` gate (OURA_PROTOCOL.md s3.2). Default-absent means the Advanced-key and
+     * driver's `allowKeyInstall` gate. Default-absent means the Advanced-key and
      * every read-only connect NEVER provision a key.
      *
      * Stored alongside the per-ring install key (encrypted at rest); [pass true] to arm, false is the

@@ -122,7 +122,7 @@ object OuraStreamMapping {
 
                 // Motion / state / time-sync / rtc / debug / TierB / ActivityInfo never map onto a
                 // scored stream. In particular the 0x50 activity/MET decode (PR #960) NEVER mints a
-                // `steps` row: the formula is third-party and unvalidated (Tier B, OURA_PROTOCOL.md
+                // `steps` row: the formula is third-party and unvalidated (Tier B
                 // s6.13), and MET is not a step count - fabricating one would break the honest-data
                 // invariant and the per-source day-owner rules.
                 else -> Unit

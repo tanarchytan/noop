@@ -285,7 +285,7 @@ fun AddDeviceWizard(
         // so the live source never sends the dangerous install opcode.
         // Standard adopt: arm the one-shot adopt-intent BEFORE registering active, so the SourceCoordinator
         // consumes it when it builds the live source and the dangerous post-factory-reset key install is
-        // reachable for exactly this one session (OURA_PROTOCOL.md s3.2). The user already passed the
+        // reachable for exactly this one session. The user already passed the
         // irreversible-consent gate AND the second destructive "Take over" confirm to get here.
         if (ouraAdvanced) {
             val key = parseHexKey(ouraKeyDraft)

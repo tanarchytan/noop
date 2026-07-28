@@ -1,11 +1,11 @@
 package com.noop.oura
 
-// Framing: the two framing layers that ride on the same characteristics (OURA_PROTOCOL.md s2). Kotlin
+// Framing: the two framing layers that ride on the same characteristics. Kotlin
 // twin of Framing.swift.
 //   - Outer command / command-response frame:  op(1) len(1) body(len)        (s2.1)
 //   - Extended / secure-session frame (0x2F):   2F len subop subop-body       (s2.2)
 //   - Inner event record (TLV):                 type(1) len(1) rt:u32LE payload (s2.3)
-// All multi-byte integers are little-endian unless a decoder states otherwise (OURA_PROTOCOL.md s2.1).
+// All multi-byte integers are little-endian unless a decoder states otherwise.
 //
 // The first byte disambiguates layers: a value present in the opcode table (s4) is an outer frame;
 // otherwise it is an inner event record. The OuraDriver routes on this; Framing exposes pure parsers
@@ -17,10 +17,10 @@ package com.noop.oura
 // differs. The OuraReassembler.feed entry point accepts a ByteArray (the BLE callback type) and
 // widens to unsigned internally.
 //
-// Platform-pure, value types only. Facts cited per OURA_PROTOCOL.md s2.
+// Platform-pure, value types only. Facts cited
 
 /**
- * A parsed outer frame: `op len body` (OURA_PROTOCOL.md s2.1). `body` is the `len` bytes after the
+ * A parsed outer frame: `op len body`. `body` is the `len` bytes after the
  * header. Multiple outer frames may be packed into one notification; the consumer loops 2+len.
  */
 data class OuraOuterFrame(val op: Int, val body: IntArray) {
@@ -38,7 +38,7 @@ data class OuraOuterFrame(val op: Int, val body: IntArray) {
 
 /**
  * A parsed secure-session sub-frame: the first body byte of a 0x2F frame is the sub-op
- * (OURA_PROTOCOL.md s2.2 / s4.2). `subBody` is the remaining body bytes after the sub-op.
+ *. `subBody` is the remaining body bytes after the sub-op.
  */
 data class OuraSecureFrame(val subop: Int, val subBody: IntArray) {
     override fun equals(other: Any?): Boolean {
@@ -51,7 +51,7 @@ data class OuraSecureFrame(val subop: Int, val subBody: IntArray) {
 }
 
 /**
- * A parsed TLV inner event record (OURA_PROTOCOL.md s2.3):
+ * A parsed TLV inner event record:
  *   type(1) len(1) ctr:u16LE ses:u16LE payload(len-4)
  * `ringTimestamp` is stored as a single u32 LE = (session << 16) | counter (the two views are
  * equivalent per the s2.3 note). `payload` is the `len-4` bytes after the 4 timestamp bytes.
@@ -60,13 +60,13 @@ data class OuraSecureFrame(val subop: Int, val subBody: IntArray) {
  * stand-in for Swift's UInt32.
  */
 data class OuraRecord(val type: Int, val ringTimestamp: Long, val payload: IntArray) {
-    /** Low 16 bits = the per-record counter. Per OURA_PROTOCOL.md s2.3. */
+    /** Low 16 bits = the per-record counter. */
     val counter: Int get() = (ringTimestamp and 0xFFFFL).toInt()
 
-    /** High 16 bits = the session id. Per OURA_PROTOCOL.md s2.3. */
+    /** High 16 bits = the session id. */
     val session: Int get() = ((ringTimestamp shr 16) and 0xFFFFL).toInt()
 
-    /** Total wire length of this record = len + 2 (header byte + len byte). Per OURA_PROTOCOL.md s2.3. */
+    /** Total wire length of this record = len + 2 (header byte + len byte). */
     val totalLength: Int get() = payload.size + 4 + 2
 
     override fun equals(other: Any?): Boolean {
@@ -85,7 +85,7 @@ data class OuraRecord(val type: Int, val ringTimestamp: Long, val payload: IntAr
 }
 
 /**
- * The parsed result of a 0x11 GetEvents response (OURA_PROTOCOL.md s5.2). Kotlin twin of the Swift
+ * The parsed result of a 0x11 GetEvents response. Kotlin twin of the Swift
  * `(cursor: UInt32, moreData: Bool)` tuple. `cursor` is the new resume cursor (an unsigned 32-bit ring
  * timestamp carried as a Long, 0..0xFFFFFFFF); `moreData` is true while the ring still has banked events
  * to hand over.
@@ -93,11 +93,11 @@ data class OuraRecord(val type: Int, val ringTimestamp: Long, val payload: IntAr
 data class GetEventsSummary(val cursor: Long, val moreData: Boolean)
 
 object OuraFraming {
-    /** The secure-session / extended opcode. Per OURA_PROTOCOL.md s2.2 / s4.1. */
+    /** The secure-session / extended opcode. */
     const val secureSessionOp = 0x2F
 
     /**
-     * The GetEvents response / summary outer opcode (OURA_PROTOCOL.md s5.2). Below the event-tag range
+     * The GetEvents response / summary outer opcode. Below the event-tag range
      * (tags are >= 0x41), so a caller that fails to special-case it and lets it fall through to the TLV
      * decoder gets a safe no-op ("unknown tag") with correct byte accounting, never a misdecode. Kotlin
      * twin of Swift's getEventsResponseOp.
@@ -105,18 +105,18 @@ object OuraFraming {
     const val getEventsResponseOp = 0x11
 
     /**
-     * The GetBattery response outer opcode (OURA_PROTOCOL.md s4.1/s6.10). Below the event-tag range
+     * The GetBattery response outer opcode. Below the event-tag range
      * (tags are >= 0x41), so it round-trips safely through the TLV decoder as an "unknown tag" no-op if a
      * caller fails to special-case it. Kotlin twin of Swift's batteryResponseOp.
      */
     const val batteryResponseOp = 0x0D
 
-    /** The minimum legal TLV `len` field: it must cover the 4 timestamp bytes. Per OURA_PROTOCOL.md s2.3. */
+    /** The minimum legal TLV `len` field: it must cover the 4 timestamp bytes. */
     const val minRecordLen = 4
 
     /**
      * Parse a 0x11 GetEvents response body: `status:1 sub_status:1 last_ring_timestamp:4LE pad:2`
-     * (OURA_PROTOCOL.md s5.2). `status` 0x00 = empty/no more; any other value = data follows. The
+     *. `status` 0x00 = empty/no more; any other value = data follows. The
      * `last_ring_timestamp` is the new cursor to resume the fetch from. Returns null on a short body
      * (never guesses a cursor). Kotlin twin of Swift's parseGetEventsResponse; `cursor` is the unsigned
      * 32-bit ring timestamp carried as a Long (0..0xFFFFFFFF).
@@ -133,7 +133,7 @@ object OuraFraming {
 
     /**
      * Parse one outer frame from the front of `bytes`. Returns null on a short buffer (header or body
-     * not fully present), so a caller can wait for more bytes. Per OURA_PROTOCOL.md s2.1.
+     * not fully present), so a caller can wait for more bytes.
      */
     fun parseOuterFrame(bytes: IntArray): OuraOuterFrame? {
         if (bytes.size < 2) return null
@@ -146,7 +146,7 @@ object OuraFraming {
     /**
      * Split a notification value that may pack several outer frames back to back. Stops and returns
      * what it parsed when a trailing partial frame is found (the Reassembler handles re-buffering for
-     * the stream case). Per OURA_PROTOCOL.md s2.1 (loop consume(2+len)).
+     * the stream case).1 (loop consume(2+len)).
      */
     fun parseOuterFrames(bytes: IntArray): List<OuraOuterFrame> {
         val out = ArrayList<OuraOuterFrame>()
@@ -162,7 +162,7 @@ object OuraFraming {
     }
 
     /**
-     * Interpret an outer frame whose op is 0x2F as a secure-session sub-frame (OURA_PROTOCOL.md s2.2).
+     * Interpret an outer frame whose op is 0x2F as a secure-session sub-frame.
      * Returns null when the op is not 0x2F or the body is empty.
      */
     fun parseSecureFrame(frame: OuraOuterFrame): OuraSecureFrame? {
@@ -174,7 +174,7 @@ object OuraFraming {
      * Parse one TLV inner record from the front of `bytes`. Returns null when the header or the full
      * `len`-described body is not present (so the Reassembler can wait), or when `len < 4` (a record
      * must cover its 4 timestamp bytes). A malformed/short record decodes to null, never a guess
-     * (honest-data invariant). Per OURA_PROTOCOL.md s2.3.
+     * (honest-data invariant).
      */
     fun parseRecord(bytes: IntArray): OuraRecord? {
         if (bytes.size < 2) return null
@@ -196,7 +196,7 @@ object OuraFraming {
 /**
  * Accumulate BLE notification fragments into complete TLV inner records. A record never spans two
  * notifications in the verified corpus, but the parser is still defensive: it buffers partial
- * trailing bytes across feeds and only emits complete `2 + len` records (OURA_PROTOCOL.md s2.4).
+ * trailing bytes across feeds and only emits complete `2 + len` records.
  *
  * This handles BOTH the multi-record-per-notification case (several records packed into one value)
  * and the partial-trailing-bytes case (a record split across two notifications). Mirrors the Swift
@@ -211,7 +211,7 @@ class OuraReassembler {
 
     /**
      * Feed one notification value. Returns every complete TLV record now available, in order. Partial
-     * trailing bytes are retained for the next feed. Per OURA_PROTOCOL.md s2.3 / s2.4.
+     * trailing bytes are retained for the next feed.
      */
     fun feed(fragment: IntArray): List<OuraRecord> {
         for (b in fragment) buf.add(b and 0xFF)

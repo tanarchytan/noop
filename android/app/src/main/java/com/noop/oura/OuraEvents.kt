@@ -1,6 +1,6 @@
 package com.noop.oura
 
-// OuraEvents: the decoded value structs the driver emits (OURA_PROTOCOL.md s6). Kotlin twin of
+// OuraEvents: the decoded value structs the driver emits. Kotlin twin of
 // OuraEvents.swift. Each carries the record's ringTimestamp (the ring-clock value; the app anchors it
 // to UTC via the 0x42 time-sync / 0x85 RTC events) plus the decoded signal. Pure value types, no
 // android.bluetooth.
@@ -9,7 +9,7 @@ package com.noop.oura
 // value (0..0xFFFFFFFF), and Swift's Int64 epoch becomes Long. Values and layouts are identical.
 //
 // Per-sample timestamps inside a record (IBI/temp/HRV/SpO2) walk backward from the event time by each
-// sample's own duration (OURA_PROTOCOL.md s6); to stay platform-pure and avoid baking a clock model
+// sample's own duration; to stay platform-pure and avoid baking a clock model
 // into the decoders, the structs carry the raw ring/sample offsets and let the app's mapping layer
 // apply the anchor. Honest-data invariant: a short/malformed record decodes to null upstream, so
 // these structs only ever hold real decoded values.
@@ -17,11 +17,11 @@ package com.noop.oura
 /** One decoded inter-beat interval (and optional amplitude), in milliseconds. */
 data class OuraIBI(val ringTimestamp: Long, val ibiMs: Int, val amplitude: Int? = null)
 
-/** One decoded heart-rate value in BPM (derived from a live-HR push IBI, OURA_PROTOCOL.md s5.6). */
+/** One decoded heart-rate value in BPM (derived from a live-HR push IBI). */
 data class OuraHR(val ringTimestamp: Long, val bpm: Int, val ibiMs: Int)
 
 /**
- * One decoded HRV (RMSSD-derived) sample from the ring's own 0x5D tag (OURA_PROTOCOL.md s6.9).
+ * One decoded HRV (RMSSD-derived) sample from the ring's own 0x5D tag.
  * NOOP also reconstructs RMSSD itself from the IBI streams for its own scoring; this is the ring's
  * open HRV tag, NOT Oura's encrypted readiness score.
  */
@@ -34,12 +34,12 @@ data class OuraSpO2(val ringTimestamp: Long, val value: Int, val unit: String = 
 data class OuraTemp(val ringTimestamp: Long, val celsius: Double)
 
 /**
- * One decoded battery reading (OURA_PROTOCOL.md s6.10). `percent` is read at body[0]; `voltageMv`
+ * One decoded battery reading. `percent` is read at body[0]; `voltageMv`
  * is the [4..6] fallback estimate (fixture-validated per generation, may be null).
  */
 data class OuraBattery(val percent: Int, val voltageMv: Int? = null, val charging: Boolean? = null)
 
-/** Sleep phase code (OURA_PROTOCOL.md s6.12): 2-bit codes 0=awake, 1=light, 2=deep, 3=REM. */
+/** Sleep phase code: 2-bit codes 0=awake, 1=light, 2=deep, 3=REM. */
 enum class OuraSleepStage(val raw: Int) {
     AWAKE(0),
     LIGHT(1),
@@ -52,10 +52,10 @@ enum class OuraSleepStage(val raw: Int) {
     }
 }
 
-/** One decoded sleep-phase code in order within a 0x4E/0x5A record (OURA_PROTOCOL.md s6.12). */
+/** One decoded sleep-phase code in order within a 0x4E/0x5A record. */
 data class OuraSleepPhase(val ringTimestamp: Long, val index: Int, val stage: OuraSleepStage)
 
-/** Motion state (OURA_PROTOCOL.md s6.13): 0 NO_MOTION, 1 RESTLESS, 2 TOSSING, 3 ACTIVE. */
+/** Motion state: 0 NO_MOTION, 1 RESTLESS, 2 TOSSING, 3 ACTIVE. */
 enum class OuraMotionState(val raw: Int) {
     NO_MOTION(0),
     RESTLESS(1),
@@ -68,13 +68,13 @@ enum class OuraMotionState(val raw: Int) {
     }
 }
 
-/** One decoded motion-state code from a 0x6B motion_period record (OURA_PROTOCOL.md s6.13). */
+/** One decoded motion-state code from a 0x6B motion_period record. */
 data class OuraMotion(val ringTimestamp: Long, val index: Int, val state: OuraMotionState)
 
-/** Device lifecycle state (OURA_PROTOCOL.md s6.15) decoded from a 0x45/0x53 record. */
+/** Device lifecycle state decoded from a 0x45/0x53 record. */
 data class OuraState(val ringTimestamp: Long, val stateCode: Int, val text: String? = null)
 
-/** A UTC anchor / time-sync event (OURA_PROTOCOL.md s6.11): epoch ms + timezone offset seconds. */
+/** A UTC anchor / time-sync event: epoch ms + timezone offset seconds. */
 data class OuraTimeSync(val ringTimestamp: Long, val epochMs: Long, val tzOffsetSeconds: Int)
 
 /** A secondary 1-second-granularity RTC beacon (OURA_PROTOCOL.md s6.15, tag 0x85). */
@@ -83,7 +83,7 @@ data class OuraRtcBeacon(val ringTimestamp: Long, val unixSeconds: Long)
 // MARK: - Tier-B (UNVERIFIED) decoded events
 
 /**
- * A Tier-B sleep summary value (OURA_PROTOCOL.md s6.12). UNVERIFIED layout; carries the raw payload
+ * A Tier-B sleep summary value. UNVERIFIED layout; carries the raw payload
  * bytes plus the tag so a fixture test can validate before scoring trusts it. The driver only emits
  * this when allowTierB is set, and it is never folded into scoring silently.
  */

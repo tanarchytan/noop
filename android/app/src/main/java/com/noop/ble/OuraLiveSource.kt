@@ -160,7 +160,7 @@ class OuraLiveSource(
      *  to [AdoptPhase.Idle] on every connect/stop/disconnect so a stale outcome never drives a transition. */
     val adoptPhase: StateFlow<AdoptPhase> = _adoptPhase.asStateFlow()
 
-    // MARK: - Adopt consent (gates the DANGEROUS post-factory-reset key install, OURA_PROTOCOL.md s3.2)
+    // MARK: - Adopt consent (gates the DANGEROUS post-factory-reset key install)
 
     /**
      * EXPLICIT user-granted adopt consent for the NEXT connection. Default FALSE. The dangerous `0x24`
@@ -325,7 +325,7 @@ class OuraLiveSource(
     private var notifyChar: BluetoothGattCharacteristic? = null
 
     /** Periodic live-HR re-engage: daytime HR auto-reverts after ~20 s, so while streaming we re-send the
-     *  enable+subscribe every ~15 s (OURA_PROTOCOL.md s5.7). The token lets stop() cancel it. */
+     *  enable+subscribe every ~15 s. The token lets stop() cancel it. */
     private var reengageScheduled = false
     private val reengageIntervalMs = 15_000L
     private val reengageRunnable = object : Runnable {
@@ -402,7 +402,7 @@ class OuraLiveSource(
     }
 
     /**
-     * Handle a `0x11` GetEvents response (OURA_PROTOCOL.md s5.2): persist the advanced cursor (so a LATER
+     * Handle a `0x11` GetEvents response: persist the advanced cursor (so a LATER
      * connection resumes rather than re-fetching everything) and drive the driver's cursor-loop state
      * machine, which asks for another ack-fetch while `moreData` or returns to Streaming once caught up.
      *
@@ -512,7 +512,7 @@ class OuraLiveSource(
         // A fresh driver per connection: the app key is session-scoped (the proof handshake re-runs on
         // every connection), and a key provisioned since the last attempt is picked up here. allowKeyInstall
         // is wired straight from the connection's adoptIntent so the dangerous 0x24 write is reachable ONLY
-        // under an explicit adopt consent (OURA_PROTOCOL.md s3.2).
+        // under an explicit adopt consent.
         // allowTierB = true - INVESTIGATION ONLY (activity/real_steps/sleep-summary/smoothed-SpO2 tags,
         // OURA_PROTOCOL.md s7.3 Tier B, UNVERIFIED layouts; PR #960). This lets `emit` LOG what the ring
         // actually sends (raw bytes per kind, decoded MET for 0x50) so the layouts can be validated
@@ -877,7 +877,7 @@ class OuraLiveSource(
     // MARK: - Adopt key-install handshake (s3.2) - ONLY ever reached with explicit adopt consent
 
     /**
-     * PROVISION a fresh key into a factory-reset ring (OURA_PROTOCOL.md s3.2). Reached ONLY from [advance]
+     * PROVISION a fresh key into a factory-reset ring. Reached ONLY from [advance]
      * when the driver phase is NeedsKeyInstall AND [adoptIntent] is true. Steps:
      *   1. generate a fresh cryptographically-random 16-byte key;
      *   2. ask the driver for the dangerous `24 10 <key>` install command (the driver's own
@@ -977,7 +977,7 @@ class OuraLiveSource(
                 val secure = OuraFraming.parseSecureFrame(frame) ?: continue
                 routeSecure(d, secure)
             } else if (frame.op == SET_AUTH_KEY_RESP_OP) {
-                // The post-factory-reset key-install acknowledgement (`25 01 00`, OURA_PROTOCOL.md s3.2):
+                // The post-factory-reset key-install acknowledgement (`25 01 00`):
                 // an OUTER frame, not a 0x2F secure sub-frame and not a TLV record. Route it to the adopt
                 // handler ONLY (it self-guards: it acts solely when an install we initiated is in flight).
                 handleKeyInstallAck(d, frame)
@@ -1207,7 +1207,7 @@ class OuraLiveSource(
     }
 
     companion object {
-        /** The ring's base service + write/notify characteristics (OURA_PROTOCOL.md s1.1). Built from the
+        /** The ring's base service + write/notify characteristics. Built from the
          *  protocol package's UUID strings so the facts live in exactly one place. */
         val SERVICE_UUID: UUID = UUID.fromString(OuraGatt.serviceUUID)
         val WRITE_UUID: UUID = UUID.fromString(OuraGatt.writeCharacteristicUUID)
@@ -1221,7 +1221,7 @@ class OuraLiveSource(
         private const val GATT_ERROR_133 = 133
 
         /** The SetAuthKey-response OUTER opcode (`0x25`) and its OK status byte (`0x00`). The ring replies
-         *  `25 01 00` to a successful `0x24` key install (OURA_PROTOCOL.md s3.2). */
+         *  `25 01 00` to a successful `0x24` key install. */
         private const val SET_AUTH_KEY_RESP_OP = 0x25
         private const val SET_AUTH_KEY_OK = 0x00
 

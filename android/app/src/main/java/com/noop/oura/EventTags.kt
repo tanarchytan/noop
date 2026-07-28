@@ -1,8 +1,8 @@
 package com.noop.oura
 
-// EventTags: the inner-event-record tag dictionary (the `type` byte of a TLV record, OURA_PROTOCOL.md
+// EventTags: the inner-event-record tag dictionary (the `type` byte of a TLV record
 // s2.3 / s6). Kotlin twin of EventTags.swift. Every tag carries an explicit trust tier so Tier-B
-// (UNVERIFIED) layouts can never feed values into scoring silently. Facts cited per OURA_PROTOCOL.md
+// (UNVERIFIED) layouts can never feed values into scoring silently. Facts cited
 // s6 / s7.3.
 
 /**
@@ -17,73 +17,73 @@ enum class TrustTier {
 }
 
 /**
- * The Oura inner-event-record tag. `raw` == the `type` byte (>= 0x41 per OURA_PROTOCOL.md s2.3).
+ * The Oura inner-event-record tag. `raw` == the `type` byte (>= 0x41).
  * Only the tags NOOP actually decodes are enumerated; an unknown byte decodes to null (honest).
  */
 enum class OuraEventTag(val raw: Int) {
     // --- Lifecycle / state (Tier A) ---
-    RING_START(0x41),         // ring_start_ind, OURA_PROTOCOL.md s6.15
-    TIME_SYNC(0x42),          // time-sync ind (primary UTC anchor), OURA_PROTOCOL.md s6.11
-    DEBUG_TEXT(0x43),         // debug_event ASCII, OURA_PROTOCOL.md s6.15
-    STATE_CHANGE(0x45),       // state_change_ind, OURA_PROTOCOL.md s6.15
-    WEAR_EVENT(0x53),         // wear_event (same STATE enum), OURA_PROTOCOL.md s6.15
-    RTC_BEACON(0x85),         // rtc_beacon_ind, OURA_PROTOCOL.md s6.15
+    RING_START(0x41),         // ring_start_ind
+    TIME_SYNC(0x42),          // time-sync ind (primary UTC anchor)
+    DEBUG_TEXT(0x43),         // debug_event ASCII
+    STATE_CHANGE(0x45),       // state_change_ind
+    WEAR_EVENT(0x53),         // wear_event (same STATE enum)
+    RTC_BEACON(0x85),         // rtc_beacon_ind
 
     // --- HR / IBI (Tier A) ---
-    IBI_AMPLITUDE(0x60),      // ibi_and_amplitude_event (bit-packed), OURA_PROTOCOL.md s6.1
-    // green_ibi_and_amp_event, OURA_PROTOCOL.md s6.2 — Tier B (#287): §6.2 layout (5 deltas+6 amps)
+    IBI_AMPLITUDE(0x60),      // ibi_and_amplitude_event (bit-packed)
+    // green_ibi_and_amp_event — Tier B (#287): §6.2 layout (5 deltas+6 amps)
     // != 0x60; unverified, gated out of live emission. See `tier` below.
     GREEN_IBI_AMP(0x71),
-    SPO2_IBI_AMPLITUDE(0x6E), // spo2_ibi_and_amplitude_event (REVERSE byte order), OURA_PROTOCOL.md s6.3
-    GREEN_IBI_QUALITY(0x80),  // green_ibi_quality_event (bit-packed across bytes), OURA_PROTOCOL.md s6.4
-    IBI(0x44),                // ibi event (Tier-A IBI tag per the brief), OURA_PROTOCOL.md s6 / s0
+    SPO2_IBI_AMPLITUDE(0x6E), // spo2_ibi_and_amplitude_event (REVERSE byte order)
+    GREEN_IBI_QUALITY(0x80),  // green_ibi_quality_event (bit-packed across bytes)
+    IBI(0x44),                // ibi event (Tier-A IBI tag per the brief)
 
     // --- HRV / RMSSD (Tier A) ---
-    HRV_RMSSD(0x5D),          // hrv_event (ring's own RMSSD-derived HRV), OURA_PROTOCOL.md s6.9
+    HRV_RMSSD(0x5D),          // hrv_event (ring's own RMSSD-derived HRV)
 
     // --- SpO2 (Tier A) ---
-    SPO2_PER_SAMPLE(0x6F),    // spo2_event per-second, OURA_PROTOCOL.md s6.5
-    SPO2_STABLE(0x7B),        // spo2_stable_event (uint16 BIG-endian), OURA_PROTOCOL.md s6.6
-    SPO2_DC(0x77),            // spo2_dc_event (sign-magnitude deltas), OURA_PROTOCOL.md s6.7
+    SPO2_PER_SAMPLE(0x6F),    // spo2_event per-second
+    SPO2_STABLE(0x7B),        // spo2_stable_event (uint16 BIG-endian)
+    SPO2_DC(0x77),            // spo2_dc_event (sign-magnitude deltas)
 
     // --- Temperature (Tier A) ---
-    TEMP(0x46),               // temp_event (int16 LE / 100), OURA_PROTOCOL.md s6.8
-    TEMP_PERIOD(0x69),        // temp_period (single int16 LE / 100), OURA_PROTOCOL.md s6.8
-    SLEEP_TEMP(0x75),         // sleep_temp_event (uint16 LE / 100), OURA_PROTOCOL.md s6.8
+    TEMP(0x46),               // temp_event (int16 LE / 100)
+    TEMP_PERIOD(0x69),        // temp_period (single int16 LE / 100)
+    SLEEP_TEMP(0x75),         // sleep_temp_event (uint16 LE / 100)
 
     // --- Motion (Tier A) ---
-    MOTION(0x47),             // motion_events, OURA_PROTOCOL.md s6.13
-    MOTION_PERIOD(0x6B),      // motion_period (2-bit MOTION_STATE codes), OURA_PROTOCOL.md s6.13
+    MOTION(0x47),             // motion_events
+    MOTION_PERIOD(0x6B),      // motion_period (2-bit MOTION_STATE codes)
 
     // Battery (0x0D) is an OUTER command response, not a TLV inner record; see Decoders.decodeBattery.
 
     // --- Sleep summaries (Tier B, UNVERIFIED) ---
-    SLEEP_SUMMARY_1(0x49),    // sleep_summary_1, OURA_PROTOCOL.md s6.12 (UNVERIFIED)
-    SLEEP_SUMMARY_B(0x4B),    // sleep summary variant, OURA_PROTOCOL.md s6.12 (UNVERIFIED)
-    SLEEP_SUMMARY_C(0x4C),    // sleep summary variant, OURA_PROTOCOL.md s6.12 (UNVERIFIED)
-    SLEEP_SUMMARY_D(0x4F),    // sleep summary variant, OURA_PROTOCOL.md s6.12 (UNVERIFIED)
-    SLEEP_SUMMARY_E(0x57),    // sleep summary variant, OURA_PROTOCOL.md s6.12 (UNVERIFIED)
-    SLEEP_SUMMARY_F(0x58),    // sleep summary variant, OURA_PROTOCOL.md s6.12 (UNVERIFIED)
+    SLEEP_SUMMARY_1(0x49),    // sleep_summary_1 (UNVERIFIED)
+    SLEEP_SUMMARY_B(0x4B),    // sleep summary variant (UNVERIFIED)
+    SLEEP_SUMMARY_C(0x4C),    // sleep summary variant (UNVERIFIED)
+    SLEEP_SUMMARY_D(0x4F),    // sleep summary variant (UNVERIFIED)
+    SLEEP_SUMMARY_E(0x57),    // sleep summary variant (UNVERIFIED)
+    SLEEP_SUMMARY_F(0x58),    // sleep summary variant (UNVERIFIED)
 
     // --- Sleep phase codes (Tier A: 2-bit phase codes are byte-for-byte verified) ---
-    SLEEP_PHASE(0x4E),        // sleep_phase_details (2-bit codes), OURA_PROTOCOL.md s6.12
-    SLEEP_PHASE_ALT(0x5A),    // sleep_phase_details alias, OURA_PROTOCOL.md s6.12
+    SLEEP_PHASE(0x4E),        // sleep_phase_details (2-bit codes)
+    SLEEP_PHASE_ALT(0x5A),    // sleep_phase_details alias
 
     // --- Activity / MET (Tier B, UNVERIFIED) ---
-    ACTIVITY_INFO(0x50),      // activity_info (MET-class), OURA_PROTOCOL.md s6.13 (UNVERIFIED)
-    ACTIVITY_SUMMARY_1(0x51), // activity_summary, OURA_PROTOCOL.md s6.13 (UNVERIFIED)
-    ACTIVITY_SUMMARY_2(0x52), // activity_summary, OURA_PROTOCOL.md s6.13 (UNVERIFIED)
+    ACTIVITY_INFO(0x50),      // activity_info (MET-class) (UNVERIFIED)
+    ACTIVITY_SUMMARY_1(0x51), // activity_summary (UNVERIFIED)
+    ACTIVITY_SUMMARY_2(0x52), // activity_summary (UNVERIFIED)
 
     // --- Real steps (Tier B, UNVERIFIED) ---
-    REAL_STEPS_1(0x7E),       // real_steps_features_1, OURA_PROTOCOL.md s6.13 (UNVERIFIED)
-    REAL_STEPS_2(0x7F),       // real_steps_features_2, OURA_PROTOCOL.md s6.13 (UNVERIFIED)
+    REAL_STEPS_1(0x7E),       // real_steps_features_1 (UNVERIFIED)
+    REAL_STEPS_2(0x7F),       // real_steps_features_2 (UNVERIFIED)
 
     // --- Smoothed SpO2 (Tier B, UNVERIFIED) ---
-    SPO2_SMOOTHED(0x70);      // spo2_smoothed, OURA_PROTOCOL.md s6.6 (UNVERIFIED)
+    SPO2_SMOOTHED(0x70);      // spo2_smoothed (UNVERIFIED)
 
     /**
      * The trust tier for this tag. Tier B tags are decoded but the OuraDriver gates their emission
-     * behind an explicit allowTierB flag. Per OURA_PROTOCOL.md s7.3 and the brief's TIER DISCIPLINE.
+     * behind an explicit allowTierB flag.3 and the brief's TIER DISCIPLINE.
      */
     val tier: TrustTier
         get() = when (this) {

@@ -1,6 +1,6 @@
 package com.noop.oura
 
-// Decoders: pure per-tag byte->value decoders (OURA_PROTOCOL.md s6). Kotlin twin of Decoders.swift.
+// Decoders: pure per-tag byte->value decoders. Kotlin twin of Decoders.swift.
 // Each returns null on a malformed/short record (honest-data invariant): NEVER a guessed value. Body
 // offsets in the spec are relative to the start of the RECORD (offset 6 = first body byte); the parsed
 // OuraRecord already stripped the 6-byte header, so here `body[0]` == spec offset 6.
@@ -15,7 +15,7 @@ package com.noop.oura
 // note), so a signed int16/int8 read goes through an explicit sign-extension helper rather than
 // Swift's Int16(bitPattern:)/Int8(bitPattern:). The numeric results are identical.
 //
-// Platform-pure value types. All facts cited tersely per OURA_PROTOCOL.md s6.
+// Platform-pure value types. All facts cited tersely
 
 object OuraDecoders {
 
@@ -40,7 +40,7 @@ object OuraDecoders {
     // MARK: - Live-HR realtime push (0x2F sub-op 0x28; s5.6)
 
     /**
-     * Decode a live-HR push body (the bytes AFTER `2f 0f 28`). Per OURA_PROTOCOL.md s5.6 the wire
+     * Decode a live-HR push body (the bytes AFTER `2f 0f 28`).6 the wire
      * frame is `2f 0f 28 02 XX 02 00 00 IBI_L IBI_H 00 00 00 00 YY ZZ 7f`. The spec lists the IBI at
      * frame bytes 8-9; once the transport strips the 3-byte `2f 0f 28` prefix those indices shift down
      * by 3, so within this subBody the IBI sits at subBody[5..6] as a 12-bit value:
@@ -91,7 +91,7 @@ object OuraDecoders {
     /**
      * Decode the 0x80 green_ibi_quality_event: per 16-bit LE sample, bits 0-10 = IBI ms,
      * bits 11-13 = qual_a, bits 14-15 = qual_b. Accept a sample only if qual_a <= 1 && qual_b == 0.
-     * 7 samples per 14-byte record. Per OURA_PROTOCOL.md s6.4. Returns null on a short/odd body.
+     * 7 samples per 14-byte record. Returns null on a short/odd body.
      *
      * ROBUSTNESS (s6.4): the record holds at most 7 samples (14 bytes at 2 B/sample). We cap the read
      * at 7 samples; any sample bytes beyond the 7th are a misframe and are ignored rather than decoded.
@@ -121,7 +121,7 @@ object OuraDecoders {
 
     /**
      * Decode the 0x6E spo2_ibi_and_amplitude_event: byte6 bits [7:6]=flag+shift, [3:0]=mode;
-     * 5 IBIs as 8-bit counts x8 read bytes 11->7 (REVERSE). Per OURA_PROTOCOL.md s6.3. Returns null on
+     * 5 IBIs as 8-bit counts x8 read bytes 11->7 (REVERSE). Returns null on
      * a short body. (The reverse read is the footgun: we walk index 11 down to 7.)
      *
      * SCOPE NOTE (honest, not accidental): the 0x6E record also carries a 7-amplitude PPG channel
@@ -149,7 +149,7 @@ object OuraDecoders {
 
     /**
      * Decode the 0x5D hrv_event: samples each carrying a time_ms field + two int8 fields (b1, b2).
-     * Per OURA_PROTOCOL.md s6.9 the per-sample stride is time(2 LE) + b1(1) + b2(1) = 4 bytes.
+     *the per-sample stride is time(2 LE) + b1(1) + b2(1) = 4 bytes.
      * Returns null on a short body. NOOP consumes this as the ring's OWN RMSSD-derived HRV tag.
      */
     fun decodeHRV(rec: OuraRecord): List<OuraHRV>? {
@@ -171,7 +171,7 @@ object OuraDecoders {
 
     /**
      * Decode the 0x6F spo2_event: byte6 bits [7:4]=SpO2 base (<<7), [3:0]=status flag; then one
-     * uint8 SpO2 value per second from byte7 onward (optional 0xFF terminator). Per OURA_PROTOCOL.md
+     * uint8 SpO2 value per second from byte7 onward (optional 0xFF terminator).
      * s6.5. Returns null on a short body.
      */
     fun decodeSpO2PerSample(rec: OuraRecord): List<OuraSpO2>? {
@@ -195,7 +195,7 @@ object OuraDecoders {
 
     /**
      * Decode the 0x7B spo2_stable_event: a SINGLE uint16 BIG-endian at bytes 6-7. This is the lone
-     * exception to the LE default. Per OURA_PROTOCOL.md s6.6. Returns null on a short body.
+     * exception to the LE default. Returns null on a short body.
      */
     fun decodeSpO2Stable(rec: OuraRecord): OuraSpO2? {
         val b = rec.payload
@@ -209,7 +209,7 @@ object OuraDecoders {
     /**
      * Decode the 0x77 spo2_dc_event: byte6 bit[7]=HDR low bit, bit[6]=hasBase, bits[5:4]=scale shift.
      * If hasBase: bytes 7-9 = 24-bit LE base. Remaining bytes are sign-magnitude int8 deltas:
-     * v=(int8)raw; mag=|v|<<scale; out = v<0 ? -mag : mag, accumulated. Per OURA_PROTOCOL.md s6.7.
+     * v=(int8)raw; mag=|v|<<scale; out = v<0 ? -mag : mag, accumulated.
      */
     fun decodeSpO2DC(rec: OuraRecord): List<OuraSpO2>? {
         val b = rec.payload
@@ -242,7 +242,7 @@ object OuraDecoders {
 
     /**
      * Decode the 0x46 temp_event: up to 7 samples, each int16 LE / 100 = C. Even body length.
-     * Per OURA_PROTOCOL.md s6.8. Returns null on a short/odd body.
+     *Returns null on a short/odd body.
      *
      * ROBUSTNESS (s6.8): the record holds at most 7 samples. We cap the read at 7; sample bytes beyond
      * the 7th are a misframe (a longer record is not a real temp_event) and are ignored.
@@ -261,7 +261,7 @@ object OuraDecoders {
         return if (out.isEmpty()) null else out
     }
 
-    /** Decode the 0x69 temp_period: a single int16 LE / 100 = C. Per OURA_PROTOCOL.md s6.8. */
+    /** Decode the 0x69 temp_period: a single int16 LE / 100 = C. */
     fun decodeTempPeriod(rec: OuraRecord): OuraTemp? {
         val b = rec.payload
         if (b.size < 2) return null
@@ -269,7 +269,7 @@ object OuraDecoders {
     }
 
     /**
-     * Decode the 0x75 sleep_temp_event: uint16 LE / 100 = C, 30-second spacing. Per OURA_PROTOCOL.md
+     * Decode the 0x75 sleep_temp_event: uint16 LE / 100 = C, 30-second spacing.
      * s6.8. Returns null on a short/odd body.
      */
     fun decodeSleepTemp(rec: OuraRecord): List<OuraTemp>? {
@@ -290,7 +290,7 @@ object OuraDecoders {
     /**
      * Decode the 0x0D battery response BODY (the 8 bytes after `0d <len>`). percent at body[0];
      * voltage estimate as uint16 LE at body[4..6] (fallback only). charging_progress at body[1],
-     * recommended_flag at body[2]. Per OURA_PROTOCOL.md s6.10. Returns null on a short body.
+     * recommended_flag at body[2]. Returns null on a short body.
      *
      * CONFLICT (s6.10): open_oura-r3 reads percent at body[0], open_ring reads voltage at [4]. NOOP
      * rule: percent from body[0]; voltage from [4..6] is a fixture-validated fallback estimate only.
@@ -309,7 +309,7 @@ object OuraDecoders {
 
     /**
      * Decode the 0x42 time-sync ind: bytes 6-13 = int64 LE epoch ms; byte14 = int8 tz offset in
-     * 30-min units (x1800 = seconds). Per OURA_PROTOCOL.md s6.11. Returns null on a short body.
+     * 30-min units (x1800 = seconds). Returns null on a short body.
      */
     fun decodeTimeSync(rec: OuraRecord): OuraTimeSync? {
         val b = rec.payload
@@ -325,7 +325,7 @@ object OuraDecoders {
 
     /**
      * Decode the 0x85 rtc_beacon_ind: unix_s u32 LE, reserved 4 B, trailer u16 LE in {0x01F6,0x01F8}.
-     * Per OURA_PROTOCOL.md s6.15. Returns null on a short body.
+     *Returns null on a short body.
      */
     fun decodeRtcBeacon(rec: OuraRecord): OuraRtcBeacon? {
         val b = rec.payload
@@ -337,7 +337,7 @@ object OuraDecoders {
 
     /**
      * Decode the 0x45 state_change_ind / 0x53 wear_event: byte6 = STATE_* enum; optional trailing
-     * UTF-8 string when payload > 5. Per OURA_PROTOCOL.md s6.15. Returns null on an empty body.
+     * UTF-8 string when payload > 5. Returns null on an empty body.
      */
     fun decodeState(rec: OuraRecord): OuraState? {
         val b = rec.payload
@@ -355,7 +355,7 @@ object OuraDecoders {
     // MARK: - Debug text (0x43; s6.15)
 
     /**
-     * Decode the 0x43 debug_event: ASCII state strings. Per OURA_PROTOCOL.md s6.15. Returns null when
+     * Decode the 0x43 debug_event: ASCII state strings. Returns null when
      * the body is empty.
      */
     fun decodeDebugText(rec: OuraRecord): String? {
@@ -368,7 +368,7 @@ object OuraDecoders {
 
     /**
      * Decode the 0x4E/0x5A sleep_phase_details: byte6 = header; phase codes are 2-bit, 4 per byte
-     * (bits [7:6][5:4][3:2][1:0]); codes 0=awake,1=light,2=deep,3=REM. Per OURA_PROTOCOL.md s6.12.
+     * (bits [7:6][5:4][3:2][1:0]); codes 0=awake,1=light,2=deep,3=REM.
      * Returns null on a short body. The header byte is skipped; phase bytes follow.
      */
     fun decodeSleepPhase(rec: OuraRecord): List<OuraSleepPhase>? {
@@ -399,7 +399,7 @@ object OuraDecoders {
     /**
      * Decode the 0x6B motion_period: 12-bit period header, byte6 bits[5:4]=leading-symbol count, then
      * 2-bit MOTION_STATE codes, 4 per byte (MSB-first). 0=NO_MOTION,1=RESTLESS,2=TOSSING,3=ACTIVE.
-     * Per OURA_PROTOCOL.md s6.13. Returns null on a short body. The first two bytes carry the period
+     *Returns null on a short body. The first two bytes carry the period
      * header; codes follow from byte index 2.
      */
     fun decodeMotionPeriod(rec: OuraRecord): List<OuraMotion>? {
@@ -453,7 +453,7 @@ object OuraDecoders {
 
 /**
  * A minimal MSB-first bit reader over an unsigned-byte IntArray. Used for the bit-packed IBI+amplitude
- * layout (OURA_PROTOCOL.md s6.1) where 11-bit IBI and 7-bit amplitude fields straddle byte boundaries.
+ * layout where 11-bit IBI and 7-bit amplitude fields straddle byte boundaries.
  * Returns null when fewer than the requested bits remain (so the decoder stops cleanly, never guesses).
  * Kotlin twin of the Swift BitReader.
  */

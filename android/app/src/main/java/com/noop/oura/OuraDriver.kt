@@ -83,7 +83,7 @@ class OuraDriver(
     /**
      * When false (default), the driver MUST NOT sequence a post-factory-reset key install: it stays at
      * NeedsKeyInstall and writes nothing dangerous. Only an explicit opt-in adopt flow sets this true.
-     * Per OURA_PROTOCOL.md s3.2 (the 0x24 SetAuthKey is a DANGEROUS, one-time provisioning write).
+     *(the 0x24 SetAuthKey is a DANGEROUS, one-time provisioning write).
      */
     val allowKeyInstall: Boolean = false,
 ) {
@@ -100,7 +100,7 @@ class OuraDriver(
     private var lastRingTimestamp: Long = 0
 
     /**
-     * Ring-time -> UTC anchor (OURA_PROTOCOL.md s5.5): the ring's clock ticks at 100 ms/tick by default
+     * Ring-time -> UTC anchor: the ring's clock ticks at 100 ms/tick by default
      * (burst-mode 1 ms/tick, s5.5, is NOT modeled in v1). Set from the ring's own 0x42 time-sync event
      * (primary) or, only while no 0x42 has arrived yet THIS session, the coarser 1s-granularity 0x85 RTC
      * beacon (secondary). null until the first anchor event of this session: a record decoded before then
@@ -119,7 +119,7 @@ class OuraDriver(
 
     /**
      * The key the auth handshake should use: the freshly-installed key takes precedence over the
-     * injected one (so re-auth after a key install uses the new key). Per OURA_PROTOCOL.md s3.2.
+     * injected one (so re-auth after a key install uses the new key).
      */
     private val effectiveKey: IntArray?
         get() = installedKey ?: authKey
@@ -128,7 +128,7 @@ class OuraDriver(
 
     /**
      * Given the last transport transition, return the commands the app should write next. Pure: it
-     * only mutates the driver's own phase, never touches BLE. Per OURA_PROTOCOL.md s3 / s5.
+     * only mutates the driver's own phase, never touches BLE.
      */
     fun nextStep(after: OuraTransition): List<OuraCommand> = when (after) {
         is OuraTransition.Ready -> {
@@ -224,7 +224,7 @@ class OuraDriver(
 
     /**
      * Re-engage live HR (daytime-HR auto-reverts after ~20 s; the app calls this every ~15 s while a
-     * live session is open). Per OURA_PROTOCOL.md s5.7. Returns the enable+subscribe commands.
+     * live session is open). Returns the enable+subscribe commands.
      */
     fun reengageLiveHRCommands(): List<OuraCommand> =
         listOf(OuraCommands.liveHREnable(), OuraCommands.liveHRSubscribe())
@@ -232,7 +232,7 @@ class OuraDriver(
     // MARK: - Post-factory-reset key install (adopt flow, s3.2)
 
     /**
-     * Begin the one-time post-factory-reset key install (OURA_PROTOCOL.md s3.2). The transport in the
+     * Begin the one-time post-factory-reset key install. The transport in the
      * adopt flow generates a fresh 16-byte key, persists it, and calls this to obtain the dangerous
      * `24 10 <key>` write; once the ring replies `25 01 00` the transport calls keyInstallAcknowledged
      * to drive re-auth.
@@ -286,7 +286,7 @@ class OuraDriver(
 
     /**
      * Convert a record's ring-clock timestamp to unix seconds using the current session's anchor
-     * (OURA_PROTOCOL.md s5.5). Returns null when no anchor has arrived yet this session, so the caller
+     *. Returns null when no anchor has arrived yet this session, so the caller
      * can honestly fall back (e.g. to wall-clock arrival time) instead of guessing. Kotlin twin of
      * Swift's `unixSeconds(forRingTimestamp:)`. `rt` is the unsigned 32-bit ring timestamp as a Long.
      */
@@ -342,7 +342,7 @@ class OuraDriver(
 
     /**
      * Decode one parsed TLV inner record into zero or more events. A malformed/short record (or an
-     * unknown tag) yields []. Tier-B tags yield [] unless allowTierB is set. Per OURA_PROTOCOL.md s6.
+     * unknown tag) yields []. Tier-B tags yield [] unless allowTierB is set.
      */
     fun ingest(record: OuraRecord): List<OuraEvent> {
         lastRingTimestamp = record.ringTimestamp
@@ -390,7 +390,7 @@ class OuraDriver(
                 (OuraDecoders.decodeMotionPeriod(record) ?: emptyList()).map { OuraEvent.MotionEvent(it) }
             OuraEventTag.MOTION ->
                 // 0x47 motion_events: surfaced as state-free motion is out of v1 scope; decode to nothing
-                // rather than guess the partial layout. Per OURA_PROTOCOL.md s6.13.
+                // rather than guess the partial layout.
                 emptyList()
 
             // --- Tier A: Sleep phase (2-bit codes are verified) ---
@@ -425,7 +425,7 @@ class OuraDriver(
                 } ?: emptyList()
             OuraEventTag.RING_START ->
                 // 0x41 ring_start_ind: a lifecycle marker (the app uses it to invalidate the UTC anchor on
-                // rt regression). It carries no biometric value, so emit nothing here. Per OURA_PROTOCOL.md
+                // rt regression). It carries no biometric value, so emit nothing here.
                 // s5.5 / s6.15. The app observes ring-start via the record stream directly.
                 emptyList()
 
@@ -494,7 +494,7 @@ class OuraDriver(
     /**
      * Convenience: ingest a whole notification value by reassembling records and decoding each. The
      * caller passes a fresh notification value; the supplied reassembler buffers partial trailing
-     * bytes across calls. Per OURA_PROTOCOL.md s2.4.
+     * bytes across calls.
      */
     fun ingest(notification: IntArray, reassembler: OuraReassembler): List<OuraEvent> {
         val out = ArrayList<OuraEvent>()
@@ -506,7 +506,7 @@ class OuraDriver(
 
     /**
      * Decode a live-HR push (0x2F sub-op 0x28). The body is the bytes AFTER `2f 0f 28`; the push is
-     * not a TLV record, so it is stamped with the last seen ring time. Per OURA_PROTOCOL.md s5.6.
+     * not a TLV record, so it is stamped with the last seen ring time.
      */
     fun ingestLiveHRPush(body: IntArray): List<OuraEvent> {
         val hr = OuraDecoders.decodeLiveHRPush(body, lastRingTimestamp) ?: return emptyList()
@@ -520,7 +520,7 @@ class OuraDriver(
     /**
      * Route a parsed secure sub-frame: extract the auth nonce / status, or a live-HR push body, so
      * the app does not need to know the 0x2F sub-op map. Returns the matching transition or push
-     * events. Per OURA_PROTOCOL.md s4.2 / s5.6.
+     * events.
      */
     fun handleSecureFrame(frame: OuraSecureFrame): SecureRouting {
         OuraAuth.nonce(frame)?.let { return SecureRouting.Nonce(it) }

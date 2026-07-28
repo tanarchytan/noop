@@ -381,7 +381,7 @@ class SourceCoordinator(
         // CONSUME the one-shot adopt-intent the wizard armed after its irreversible-consent gate AND its
         // second "Take over" confirm (and ONLY then). True permits the DANGEROUS post-factory-reset key
         // install for THIS session; the Advanced-key path and every later read-only reconnect read false, so
-        // they NEVER provision a key (OURA_PROTOCOL.md s3.2). One-shot by design: a single consent provisions
+        // they NEVER provision a key. One-shot by design: a single consent provisions
         // ONE install. setAdoptIntent must run BEFORE connect (the driver is built per connect with
         // allowKeyInstall wired from it) — the caller connects only after this returns, so the order holds.
         if (OuraInstallKeyStore.consumePendingAdopt(ctx, id)) {

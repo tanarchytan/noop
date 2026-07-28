@@ -257,7 +257,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      * Add-Oura wizard's DESTRUCTIVE factory-reset-and-adopt path calls this with true AFTER its
      * irreversible-consent gate and second destructive confirm, BEFORE registering the ring active, so the
      * [com.noop.ble.SourceCoordinator] consumes it when it builds the live source and permits the dangerous
-     * post-factory-reset key install for that one session (OURA_PROTOCOL.md s3.2). The Advanced-key path
+     * post-factory-reset key install for that one session. The Advanced-key path
      * NEVER calls this (it authenticates with the user's own key and must not reset the ring). One-shot:
      * the source consumes it on the next connect.
      */
