@@ -174,8 +174,18 @@ object Baselines {
     /**
      * Recalibration epoch (UTC start-of-day, seconds) at the latest device-era boundary in a
      * source-tagged history, so [foldHistory]'s `baselineEpoch` never mixes brands' incompatible HRV
-     * scales (Oura RMSSD ~120-155 ms vs WHOOP ~72-112 ms). [sourceDays] must carry exactly one
-     * winning `(dayKey, sourceId)` per night; returns 0.0 when the whole history is one brand.
+     * scales (Oura RMSSD ~120-155 ms vs WHOOP ~72-112 ms, with no overlap).
+     *
+     * Walks newest to oldest while the brand matches the newest night's, and returns that run's first
+     * day's start. A lone off-brand day inside the current era truncates it, which is the fail-safe
+     * direction: it drops more history rather than mixing two scales. Returns 0.0 when the whole
+     * history is one brand, leaving [foldHistory] byte-identical.
+     *
+     * [sourceDays] must carry exactly ONE winning `(dayKey, sourceId)` per night, since the current
+     * era is read off the newest day's brand and a day carrying two brands would let the lexically
+     * later source pass for the current one. Brands are coarse, not [DeviceFamily]: every WHOOP-origin
+     * id is one brand, each wearable export its own. Detection must run before the per-day merge,
+     * which loses the brand.
      */
     fun deviceEraEpoch(sourceDays: List<Pair<String, String>>): Double {
         if (sourceDays.isEmpty()) return 0.0

@@ -24,8 +24,10 @@ object SleepEditGuard {
 
     /**
      * Rule 1: cross-midnight bed auto-correct. A same-day (time-only) candidate that lands in the
-     * FUTURE, or at/after [originalWakeTs] within [MAX_AUTO_CORRECT_NIGHT_SEC] of forming a plausible
-     * night, is rolled back one day; a deliberate cross-day change is always respected verbatim.
+     * FUTURE, or at/after [originalWakeTs] where decrementing forms a plausible night (bed before
+     * wake, within [MAX_AUTO_CORRECT_NIGHT_SEC]), is rolled back one day — but ONLY if that lands in
+     * the past. A deliberate cross-day change is always respected verbatim. A null [originalWakeTs]
+     * is the add-a-nap case, whose anchor sits after the night's wake.
      */
     fun autoCorrectedBed(
         previousBedTs: Long,
