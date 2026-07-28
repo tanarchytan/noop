@@ -3,16 +3,14 @@ package com.noop.data
 import androidx.room.withTransaction
 
 /**
- * Device-registry façade over [WhoopDao] + [WhoopDatabase] — the Android port of the Swift
- * `DeviceRegistryStore` (Packages/WhoopStore). Owns the device list, the single-active invariant, and
- * the day-ownership override table.
+ * Device-registry façade over [WhoopDao] + [WhoopDatabase]. Owns the device list, the
+ * single-active invariant, and the day-ownership override table.
  *
- * Invariant I1 (at most one `active` device) is enforced in [setActive]: the demote+promote pair runs
- * inside one transaction, so a crash mid-swap can never leave two active rows (or none).
+ * Invariant I1 (at most one `active` device) is enforced in [setActive]: the demote+promote pair
+ * runs inside one transaction, so a crash mid-swap can never leave two active rows (or none).
  *
- * The transaction boundary is injected as [transactor] (defaulting to Room's `db.withTransaction`) so
- * the registry's logic is exercisable on the plain JVM without a real Room database — mirroring how the
- * rest of the test suite stays Robolectric-free (see DeviceRegistryTest / MoodStoreTest).
+ * The transaction boundary is injected as [transactor] (defaulting to Room's `db.withTransaction`)
+ * so the registry's logic is exercisable on the plain JVM without a real Room database.
  */
 class DeviceRegistry(
     private val dao: DeviceRegistryDao,
@@ -42,9 +40,8 @@ class DeviceRegistry(
     suspend fun add(row: PairedDeviceRow) = dao.upsertPairedDevice(row)
 
     /**
-     * Make [id] the single active device. The demote-old + promote-new pair is ONE transaction so the
-     * "exactly one active" invariant (I1) holds even across a crash mid-swap — mirrors the Swift
-     * store's single write transaction.
+     * Make [id] the single active device. The demote-old + promote-new pair is ONE transaction, so
+     * the "exactly one active" invariant (I1) holds even across a crash mid-swap.
      */
     suspend fun setActive(id: String, now: Long = System.currentTimeMillis() / 1000) {
         transactor.run {
@@ -56,34 +53,27 @@ class DeviceRegistry(
     /** Archive a device — keeps its row and samples (invariant I4). */
     suspend fun archive(id: String) = dao.archiveDevice(id)
 
-    /** Persist (or clear) a device's stable BLE peripheral identifier (the MAC address on Android). Lets
-     *  the seeded "my-whoop" adopt its strap's address on first connect and a specific WHOOP confirm its
-     *  identity. Façade over [DeviceRegistryDao.setPeripheralId]; mirrors the Swift store. */
+    /** Persist (or clear) a device's stable BLE peripheral identifier (the MAC address on Android).
+     *  Lets the seeded "my-whoop" adopt its strap's address on first connect, and a specific WHOOP
+     *  confirm its identity. Façade over [DeviceRegistryDao.setPeripheralId]. */
     suspend fun setPeripheralId(id: String, peripheralId: String?) = dao.setPeripheralId(id, peripheralId)
 
-    /** The paired device whose `peripheralId` matches [peripheralId], or null if none — resolves a strap
-     *  discovered by its MAC address back to its registry row. Mirrors the Swift store. */
+    /** The paired device whose `peripheralId` matches [peripheralId], or null if none — resolves a
+     *  strap discovered by its MAC address back to its registry row. */
     suspend fun deviceForPeripheralId(peripheralId: String): PairedDeviceRow? =
         dao.deviceForPeripheralId(peripheralId)
 
     /** Rename a device. A blank [nickname] clears it so the UI falls back to brand+model. Trims
-     *  whitespace, mirroring the Swift `DeviceRegistry.rename`. */
+     *  whitespace before checking. */
     suspend fun rename(id: String, nickname: String?) {
         val trimmed = nickname?.trim()
         dao.renameDevice(id, if (!trimmed.isNullOrEmpty()) trimmed else null)
     }
 
     /**
-     * Permanently delete every recorded sample/derived row for [id] across all deviceId-keyed tables, in
-     * ONE transaction (all-or-nothing) — the Android twin of the Swift
-     * `DeviceRegistryStore.deleteAllData(deviceId:)`. The `pairedDevice` registry row is left intact: a
-     * delete-data op empties recordings; archiving/removing the registry entry is a separate op (I4).
-     *
-     * The table set is EVERY device-keyed table of [WhoopDatabase]: hrSample, rrInterval, spo2Sample,
-     * skinTempSample, respSample, gravitySample, stepSample, ppgHrSample, ppgWaveformSample, event, battery, dailyMetric,
-     * sleepSession, journal, workout, appleDaily, metricSeries, dayOwnership, sleepStateSample, labMarker,
-     * liveSession, dismissedWorkout, dismissedSleep. DeviceRegistryTest.deleteDeviceDataCallsEveryDaoDeleteMethod
-     * guards completeness (fails if a delete*For DAO method isn't wired in here).
+     * Permanently deletes every recorded sample/derived row for [id], across all deviceId-keyed
+     * tables in [WhoopDatabase], in ONE transaction. The `pairedDevice` registry row is left intact
+     * (I4); DeviceRegistryTest guards that every such table has a wired delete.
      */
     suspend fun deleteDeviceData(id: String) {
         transactor.run { deleteAllDataRows(id) }
@@ -102,7 +92,7 @@ class DeviceRegistry(
     }
 
     /** Every device-keyed table delete, shared by [deleteDeviceData] + [delete]. Kept complete against
-     *  the whole [WhoopDatabase] schema (DeviceRegistryTest guards that no delete*For DAO method is missed). */
+     *  the [WhoopDatabase] schema; DeviceRegistryTest guards that no delete*For method is missed. */
     private suspend fun deleteAllDataRows(id: String) {
         dao.deleteHrFor(id)
         dao.deleteRrFor(id)

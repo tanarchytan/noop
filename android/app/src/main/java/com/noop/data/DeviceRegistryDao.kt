@@ -5,15 +5,15 @@ import androidx.room.OnConflictStrategy
 import androidx.room.Query
 
 /**
- * The device-registry slice of the DAO (pairedDevice / dayOwnership, schema v8) — the Android port of
- * the Swift `DeviceRegistryStore` reads/writes. Split into its own interface (which [WhoopDao] extends)
- * so [DeviceRegistry] depends on a narrow, easily-faked surface and can be unit-tested on the plain JVM
- * without Room/Robolectric (see DeviceRegistryTest). Room flattens these inherited annotated methods
- * into the concrete @Dao at compile time, so they generate identically to being declared on WhoopDao.
+ * The device-registry slice of the DAO (pairedDevice / dayOwnership, schema v8). Split into its own
+ * interface (which [WhoopDao] extends) so [DeviceRegistry] depends on a narrow, easily-faked surface
+ * and can be unit-tested on the plain JVM without Room/Robolectric (see DeviceRegistryTest). Room
+ * flattens these inherited annotated methods into the concrete @Dao at compile time, so they
+ * generate identically to being declared on WhoopDao.
  */
 interface DeviceRegistryDao {
 
-    /** All paired devices, oldest first (Swift `all()` ORDER BY addedAt ASC). */
+    /** All paired devices, oldest first (ORDER BY addedAt ASC). */
     @Query("SELECT * FROM pairedDevice ORDER BY addedAt ASC")
     suspend fun pairedDevices(): List<PairedDeviceRow>
 
@@ -21,7 +21,7 @@ interface DeviceRegistryDao {
     @Query("SELECT id FROM pairedDevice WHERE status = 'active' LIMIT 1")
     suspend fun activeDeviceId(): String?
 
-    /** Insert-or-replace a device by its id PK (Swift `add`'s ON CONFLICT(id) DO UPDATE upsert). */
+    /** Insert-or-replace a device by its id PK (ON CONFLICT(id) DO UPDATE upsert). */
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertPairedDevice(row: PairedDeviceRow)
 
@@ -42,29 +42,26 @@ interface DeviceRegistryDao {
     @Query("DELETE FROM pairedDevice WHERE id = :id")
     suspend fun deletePairedDevice(id: String)
 
-    /** Rename a device. A null/empty nickname clears it so the UI falls back to brand+model. Mirrors the
-     *  Swift store's `UPDATE pairedDevice SET nickname = ? WHERE id = ?`. */
+    /** Rename a device. A null/empty nickname clears it so the UI falls back to brand+model. */
     @Query("UPDATE pairedDevice SET nickname = :nickname WHERE id = :id")
     suspend fun renameDevice(id: String, nickname: String?)
 
-    /** Persist (or clear) a device's stable BLE peripheral identifier (the MAC address on Android). Lets
-     *  the seeded "my-whoop" adopt its strap's address on first connect and a specific WHOOP confirm its
-     *  identity. Twin of the Swift store's `setPeripheralId`. */
+    /** Persist (or clear) a device's stable BLE peripheral identifier (the MAC address on Android).
+     *  Lets the seeded "my-whoop" adopt its strap's address on first connect, and a specific WHOOP
+     *  confirm its identity. */
     @Query("UPDATE pairedDevice SET peripheralId = :peripheralId WHERE id = :id")
     suspend fun setPeripheralId(id: String, peripheralId: String?)
 
-    /** The paired device whose [peripheralId] matches, or null if none — so a strap discovered by its MAC
-     *  address can be resolved back to its registry row. Twin of the Swift store's `deviceForPeripheralId`. */
+    /** The paired device whose [peripheralId] matches, or null if none — so a strap discovered by its
+     *  MAC address can be resolved back to its registry row. */
     @Query("SELECT * FROM pairedDevice WHERE peripheralId = :peripheralId LIMIT 1")
     suspend fun deviceForPeripheralId(peripheralId: String): PairedDeviceRow?
 
     // MARK: deleteAllData — clear one device's recordings across every deviceId-keyed table.
     //
     // Room has no dynamic table names, so each device-scoped table gets its own DELETE here; the
-    // orchestrator [DeviceRegistry.deleteDeviceData] runs them inside one transaction (all-or-nothing).
-    // This is the Android twin of the Swift DeviceRegistryStore.deviceScopedTables list. The
-    // `pairedDevice` registry row itself is NOT here — a delete-data op empties recordings; archiving /
-    // removing the registry entry is a separate op (invariant I4).
+    // orchestrator [DeviceRegistry.deleteDeviceData] runs them in one transaction (all-or-nothing).
+    // The `pairedDevice` row itself is NOT deleted here — that is a separate op (invariant I4).
 
     @Query("DELETE FROM hrSample WHERE deviceId = :deviceId") suspend fun deleteHrFor(deviceId: String)
     @Query("DELETE FROM rrInterval WHERE deviceId = :deviceId") suspend fun deleteRrFor(deviceId: String)
@@ -85,11 +82,9 @@ interface DeviceRegistryDao {
     @Query("DELETE FROM appleDaily WHERE deviceId = :deviceId") suspend fun deleteAppleDailyFor(deviceId: String)
     @Query("DELETE FROM metricSeries WHERE deviceId = :deviceId") suspend fun deleteMetricSeriesFor(deviceId: String)
     @Query("DELETE FROM dayOwnership WHERE deviceId = :deviceId") suspend fun deleteDayOwnershipFor(deviceId: String)
-    // Added (audit finding): device-keyed tables the delete set previously missed, so "delete all data"
-    // left raw band sleep-state (sleepStateSample), user-entered lab/blood markers (labMarker), live
-    // coaching sessions (liveSession) and dismissed workout/sleep markers behind — a privacy defect for a
-    // delete-means-gone app. DeviceRegistryTest.deleteDeviceDataCallsEveryDaoDeleteMethod asserts every
-    // delete*For DAO method is wired into deleteDeviceData so a future migration can't reintroduce the gap.
+    // Device-keyed too: omitting these from delete-all would leave sleep-state, lab markers, live
+    // coaching sessions, and dismissed workout/sleep markers behind — a privacy defect for a
+    // delete-means-gone app. DeviceRegistryTest asserts every delete*For method is wired in.
     @Query("DELETE FROM sleepStateSample WHERE deviceId = :deviceId") suspend fun deleteSleepStatesFor(deviceId: String)
     @Query("DELETE FROM labMarker WHERE deviceId = :deviceId") suspend fun deleteLabMarkersFor(deviceId: String)
     @Query("DELETE FROM liveSession WHERE deviceId = :deviceId") suspend fun deleteLiveSessionsFor(deviceId: String)

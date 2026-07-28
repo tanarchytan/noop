@@ -7,42 +7,32 @@ import com.noop.protocol.Streams
 import com.noop.protocol.WhoopEvent
 
 /**
- * Pure, JVM-testable mapping from the Oura ring's decoded [OuraEvent]s onto the datastore's
- * protocol [Streams] shape, so the WHOOP-isolated `OuraLiveSource` can persist its samples through
- * the SAME [WhoopRepository.insert] path (via [StreamPersistence.toBatch]) the WHOOP pipeline uses,
- * without duplicating row construction in the (untestable) app/BLE target. Kotlin twin of the Swift
- * `OuraStreamMapping` (WhoopStore), built from the architecture plan's section-4 table.
+ * Pure, JVM-testable mapping from the Oura ring's decoded [OuraEvent]s onto the protocol
+ * [Streams] shape, so live samples flow through the same [WhoopRepository.insert] path (via
+ * [StreamPersistence.toBatch]) the WHOOP pipeline uses.
  *
- * HONEST-DATA INVARIANT (hard): we surface ONLY the ring's decoded raw signals and its OWN open
- * event tags. We never read or display Oura's encrypted readiness/sleep scores. NOOP computes its
- * own Charge/Rest downstream:
- *   - the IBI stream becomes [Streams.rr], from which RecoveryScorer reconstructs NOOP's OWN RMSSD;
- *   - the HR stream feeds resting-HR + strain;
- *   - the ring's open 0x5D HRV tag is recorded as an `OURA_HRV` diagnostic event carrying ITS RAW
- *     decoded fields (time_ms/b1/b2) ONLY, never a fabricated rmssd_ms (the int8 b1/b2 byte->ms
- *     scale is not Tier-A; NOOP's scoring RMSSD comes from `rr`, not this tag);
- *   - the open sleep-phase tags become `OURA_SLEEP_PHASE` events folded into a sleep session.
+ * HONEST-DATA INVARIANT: surfaces only the ring's raw signals and its own open event tags, never
+ * Oura's encrypted readiness/sleep scores. IBI becomes [Streams.rr] (NOOP's own RMSSD source); HR
+ * feeds resting-HR + strain; the open 0x5D HRV tag is stored as `OURA_HRV` with its raw
+ * time_ms/b1/b2 fields only (not Tier-A, never a fabricated rmssd_ms); sleep-phase tags become
+ * `OURA_SLEEP_PHASE` events.
  *
- * Each event carries a ring-clock `ringTimestamp` (not wall-clock). To stay pure and avoid baking a
- * clock model in here, the caller supplies an [anchor] resolving a ring timestamp to wall-clock unix
- * seconds (driven by the ring's 0x42/0x85 time-sync events upstream). When the anchor cannot place a
- * record (anchor returns null), the sample is DROPPED rather than stamped with a guessed time
- * (honest-data invariant), a ts-less biometric row is unstorable anyway.
+ * Each event's ring-clock `ringTimestamp` is resolved by the caller's [anchor] (driven by the
+ * ring's 0x42/0x85 time-sync events) to a wall-clock unix second; a null anchor drops the sample
+ * rather than stamp a guessed time, since a ts-less row is unstorable anyway.
  */
 object OuraStreamMapping {
 
-    /** The event `kind` recorded for the ring's own open HRV (0x5D) tag. Must match Swift exactly. */
+    /** The event `kind` recorded for the ring's own open HRV (0x5D) tag. */
     const val EVENT_HRV = "OURA_HRV"
 
     /** The event `kind` recorded for the ring's own open sleep-phase (0x49.../0x58) tags. */
     const val EVENT_SLEEP_PHASE = "OURA_SLEEP_PHASE"
 
     /**
-     * Fold a batch of decoded [events] into a protocol [Streams] for one flush. [anchor] maps a
-     * ring-clock timestamp to wall-clock unix seconds (null => drop the sample). Pure: no BLE, no DB,
-     * no clock, fully JVM-unit-testable. Tier-B events never reach scoring; if any leak in (they only
-     * appear when the driver's allowTierB is set), they are ignored here so they cannot fabricate a
-     * stream value.
+     * Folds a batch of decoded [events] into a protocol [Streams] for one flush. [anchor] maps a
+     * ring-clock timestamp to wall-clock unix seconds (null drops the sample). Tier-B events (only
+     * emitted when the driver's allowTierB is set) are ignored here so they can't fabricate a stream value.
      */
     fun streams(events: List<OuraEvent>, anchor: (Long) -> Int?): Streams {
         val out = Streams()
@@ -59,8 +49,8 @@ object OuraStreamMapping {
                 }
 
                 is OuraEvent.Hrv -> {
-                    // The ring's OWN open HRV tag, recorded raw for diagnostics/parity. NOT Oura's
-                    // readiness score, and NOT used as NOOP's RMSSD (that comes from `rr`).
+                    // The ring's own open HRV tag, recorded raw for diagnostics. Not Oura's readiness
+                    // score, and not used as NOOP's RMSSD (that comes from `rr`).
                     val ts = anchor(ev.value.ringTimestamp) ?: continue
                     out.events.add(
                         WhoopEvent(
@@ -76,10 +66,9 @@ object OuraStreamMapping {
                 }
 
                 is OuraEvent.Spo2 -> {
-                    // The ring exposes ONE combined SpO2 reading (not separate red/ir channels): its
-                    // raw value goes in `red`; `ir` stays 0 (an unread channel, never a fabricated
-                    // second reading). `unit` carries the decoder's own scale tag so downstream never
-                    // assumes a percentage, mirroring the Swift twin's SpO2Sample(unit:).
+                    // The ring exposes one combined SpO2 reading (not separate red/ir channels): its raw
+                    // value goes in `red`; `ir` stays 0 (unread channel, never a fabricated second
+                    // reading). `unit` carries the decoder's own scale tag so downstream never assumes a percentage.
                     val ts = anchor(ev.value.ringTimestamp) ?: continue
                     out.spo2.add(Spo2Sample(ts = ts, red = ev.value.value, ir = 0, unit = ev.value.unit))
                 }
@@ -87,9 +76,7 @@ object OuraStreamMapping {
                 is OuraEvent.Temp -> {
                     // The ring exposes skin temperature in degrees C; the store's raw integer uses the
                     // codebase-wide CENTI-degree-C convention (°C = raw / 100, the scale the analytics
-                    // reader divides by), so persist celsius * 100 and tag the unit. PARITY: the Swift
-                    // twin stores the IDENTICAL celsius * 100, so the same decoded celsius yields the same
-                    // raw integer on both platforms.
+                    // reader divides by), so persist celsius * 100 and tag the unit.
                     val ts = anchor(ev.value.ringTimestamp) ?: continue
                     out.skinTemp.add(
                         SkinTempSample(
@@ -121,10 +108,9 @@ object OuraStreamMapping {
                 }
 
                 // Motion / state / time-sync / rtc / debug / TierB / ActivityInfo never map onto a
-                // scored stream. In particular the 0x50 activity/MET decode (PR #960) NEVER mints a
-                // `steps` row: the formula is third-party and unvalidated (Tier B
-                // s6.13), and MET is not a step count - fabricating one would break the honest-data
-                // invariant and the per-source day-owner rules.
+                // scored stream. The 0x50 activity/MET decode never mints a `steps` row: the formula
+                // is third-party and unvalidated, and MET is not a step count — fabricating one would
+                // break the honest-data invariant and the per-source day-owner rules.
                 else -> Unit
             }
         }

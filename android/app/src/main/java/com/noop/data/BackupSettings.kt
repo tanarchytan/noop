@@ -7,42 +7,29 @@ import com.noop.ui.UnitPrefs
 import org.json.JSONObject
 
 /**
- * The `settings.json` payload inside a `.noopbak` backup (#1000) — the Android twin of the Apple
- * `BackupSettings` in Packages/WhoopStore.
+ * The `settings.json` payload inside a `.noopbak` backup — a ZIP whose first entry is the SQLite
+ * database (round-trips every row). The user's profile (age/sex/weight/height/HR-max override) and
+ * display preferences live in SharedPreferences instead, so a restore onto a fresh device would
+ * silently reset them; this adds a SECOND, optional ZIP entry carrying one WHITELISTED set of keys.
  *
- * A `.noopbak` is a ZIP whose first entry is the SQLite database. That round-trips every row, but the
- * user's profile (age / sex / weight / height / HR-max override) and display preferences live in
- * SharedPreferences (UserDefaults on Apple), so a restore onto a fresh device silently reset them —
- * the "restore doesn't bring back settings/weight/height" half of #1000. This adds a SECOND, optional
- * ZIP entry — `settings.json`, a flat JSON object — carrying exactly one WHITELISTED set of keys.
- *
- * The whitelist is the contract, defined once per platform and mirrored byte-for-byte by the Apple
- * `BackupSettings.whitelist` (same canonical key strings, same JSON kinds). Only stable, user-set,
- * non-device-specific values are allowed. NEVER add device ids, peripheral ids, tokens, sync cursors,
- * or anything anonymity-sensitive: backups get copied into cloud folders and attached to GitHub
- * issues, so this file must stay safe to share. Unknown keys in an incoming `settings.json` are
- * dropped; a backup with no `settings.json` (every pre-#1000 backup) is a DB-only restore, as before.
- *
- * [BackupSettingsCodec] is pure JSON + whitelist (plain-JVM unit-testable, no Context); the
- * SharedPreferences boundary lives in [BackupSettingsBridge] below.
+ * The whitelist allows only stable, user-set, non-device-specific values — never device ids,
+ * peripheral ids, tokens, sync cursors, or anything anonymity-sensitive, since backups get shared
+ * in cloud folders and issue trackers. Unknown keys are dropped on decode; a backup with no
+ * `settings.json` is a DB-only restore. [BackupSettingsCodec] is pure JSON + whitelist (plain-JVM
+ * testable, no Context); the SharedPreferences boundary lives in [BackupSettingsBridge] below.
  */
 object BackupSettingsCodec {
 
-    /** Canonical entry name inside the `.noopbak` ZIP. Matches the Apple exporter byte-for-byte. */
+    /** Canonical entry name inside the `.noopbak` ZIP. */
     const val ENTRY_NAME = "settings.json"
 
     /** The JSON kind a whitelisted key must decode to. Anything else is dropped, never guessed at. */
     enum class Kind { INT, DOUBLE, STRING }
 
     /**
-     * THE whitelist — the only keys `settings.json` may carry, keyed by their CANONICAL
-     * (platform-neutral) names. Mirrors the Apple `BackupSettings.whitelist` exactly.
-     *
-     * Profile: the body metrics that power HR zones / calories / recovery baselines, plus the manual
-     * HR-max override (`profile.hrMax`, 0 = auto/Tanaka). Display: the metric/imperial system, the
-     * separate temperature override ("" = match the system), and the Effort axis (#268). Deliberately
-     * EXCLUDED: step calibration (per-strap, not per-person), the steps-engine fitted outputs
-     * (derived), and every noop.* toggle that is device- or install-specific.
+     * The only keys `settings.json` may carry: profile body metrics (HR zones/calories/recovery),
+     * the HR-max override (`profile.hrMax`, 0 = auto/Tanaka), unit system, a temperature override
+     * ("" = match the system), and the Effort axis. Per-strap/device-specific values are excluded.
      */
     val WHITELIST: Map<String, Kind> = linkedMapOf(
         "profile.age" to Kind.INT,
@@ -87,8 +74,7 @@ object BackupSettingsCodec {
 
     /**
      * Coerce a JSON-decoded (or caller-supplied) value to the whitelist's declared kind, or null.
-     * JSON booleans are not [Number]s on the JVM, so `true` can never become age 1 (the Apple side
-     * refuses NSNumber-booleans explicitly for the same reason).
+     * JSON booleans are not [Number]s on the JVM, so `true` can never become age 1.
      */
     private fun coerce(value: Any?, kind: Kind): Any? = when (kind) {
         Kind.STRING -> value as? String
@@ -105,8 +91,7 @@ object BackupSettingsCodec {
  * Storage mapping (canonical key → where it actually lives here):
  *  - `profile.*`  → the `noop_profile` prefs via [ProfileStore.backupSnapshot]/[ProfileStore.applyBackup]
  *                   (canonical `profile.hrMax` ↔ ProfileStore's `hr_max_override`).
- *  - `units.*` / `effort.scale` → [NoopPrefs] under the SAME literal key strings as the canonical names
- *                   (they were already kept identical to the Apple @AppStorage keys).
+ *  - `units.*` / `effort.scale` → [NoopPrefs] under the same literal key strings as the canonical names.
  */
 object BackupSettingsBridge {
 
@@ -129,9 +114,8 @@ object BackupSettingsBridge {
 
     /**
      * Re-apply a restored `settings.json` to this device. The caller ([DataBackup.importFrom]) invokes
-     * this only AFTER the DB swap succeeded — never on a failed or rolled-back restore. Keys absent
-     * from the payload leave the device's current values alone; the profile setters clamp to their
-     * normal ranges, so a hand-edited payload can't write absurd values.
+     * this only AFTER the DB swap succeeded, never on a failed or rolled-back restore. Keys absent
+     * from the payload leave current values alone; profile setters clamp to normal ranges.
      */
     fun apply(context: Context, json: String) {
         val values = BackupSettingsCodec.decode(json)
@@ -142,7 +126,7 @@ object BackupSettingsBridge {
         val editor = NoopPrefs.of(context).edit()
         (values["units.system"] as? String)?.let { editor.putString(NoopPrefs.KEY_UNIT_SYSTEM, it) }
         (values["units.temperature"] as? String)?.let { raw ->
-            // "" is the Apple side's "match the length/mass system"; here that state is key-absent.
+            // "" means "match the system's length/mass units"; here that state is key-absent.
             if (raw.isEmpty()) editor.remove(NoopPrefs.KEY_TEMPERATURE_UNIT)
             else editor.putString(NoopPrefs.KEY_TEMPERATURE_UNIT, raw)
         }

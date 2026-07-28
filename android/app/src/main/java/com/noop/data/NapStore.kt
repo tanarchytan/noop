@@ -6,18 +6,16 @@ import org.json.JSONArray
 import org.json.JSONObject
 
 /**
- * NapStore — on-device, JSON-in-SharedPreferences persistence for the short-nap REVIEW QUEUE
- * (reimplemented from @cbarrado's PR #569 under NoopApp identity). Deliberately NO Room: a nap candidate
- * is a tiny, transient review item, not a first-class data row — it lives only until the user accepts it
- * (→ `WhoopRepository.addManualNap`, the #508 hand-corrected-nap path) or dismisses it. Mirrors the
- * CaffeineLog JSON-list pattern (org.json + the shared "noop_prefs" store); nothing leaves the device.
+ * NapStore — on-device, JSON-in-SharedPreferences persistence for the short-nap review queue.
+ * Deliberately no Room: a nap candidate is a transient review item, living only until the user
+ * accepts it (`WhoopRepository.addManualNap`) or dismisses it. Mirrors the CaffeineLog JSON-list
+ * pattern (org.json + the shared "noop_prefs" store); nothing leaves the device.
  *
- * A candidate carries a stable [NapCandidate]-derived id (start|end) so re-detecting the SAME window on a
- * later offload is idempotent — it won't double-queue, and a window the user already dismissed stays
- * dismissed (tracked in a small dismissed-id set, retention-pruned with the queue).
+ * A candidate carries a stable [NapCandidate]-derived id (start|end), so re-detecting the same
+ * window on a later offload is idempotent: it won't double-queue, and a dismissed window stays
+ * dismissed (tracked in a dismissed-id set, retention-pruned with the queue).
  *
- * All times are wall-clock unix SECONDS. Pure aside from the single SharedPreferences read/write; the
- * detection itself is the pure [com.noop.analytics.NapDetector].
+ * All times are wall-clock unix seconds; detection itself is the pure [com.noop.analytics.NapDetector].
  */
 object NapStore {
 

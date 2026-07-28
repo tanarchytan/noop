@@ -19,34 +19,27 @@ import java.util.zip.ZipOutputStream
 /**
  * Whole-store EXPORT / IMPORT for device migration.
  *
- * NOOP keeps everything on-device in a single Room/SQLite file ([WhoopDatabase.DB_NAME]).
- * Moving to a new phone therefore means moving exactly that one file. There is no cloud,
- * no account, nothing leaves the device except through these two explicit, user-driven
- * file operations (a SAF document the user picks).
+ * NOOP keeps everything on-device in a single Room/SQLite file ([WhoopDatabase.DB_NAME]); moving
+ * to a new phone means moving exactly that file, through these two explicit, user-driven SAF
+ * file operations — no cloud, no account.
  *
- * Export: checkpoint the WAL into the main db file, then write a ZIP (the `.noopbak`
- * format) containing the SQLite file plus a small `settings.json` entry (#1000) with the
- * whitelisted profile/display settings (see [BackupSettingsCodec]), so a restore also
- * brings back weight/height/units and not just the rows. ZIP deflate typically reduces a
- * 100 MB+ SQLite backup to 10–20 MB — SQLite's page-aligned text data compresses very
- * well. The ZIP is a standard container: users can rename `.noopbak` → `.zip` and
- * extract the SQLite manually with any archive tool on any OS.
+ * Export: checkpoints the WAL into the main db file, then writes a ZIP (`.noopbak`) containing
+ * the SQLite file plus an optional `settings.json` entry with the whitelisted profile/display
+ * settings (see [BackupSettingsCodec]). It's a standard container — rename `.noopbak` to `.zip`
+ * and extract with any archive tool.
  *
- * Import: detect whether the picked file is a `.noopbak` ZIP (PK magic) or a legacy
- * plain `.sqlite` / `.noopdb` (SQLite magic) and handle both, so old backups keep
- * working. Validates the extracted/direct SQLite header, the backup's origin, AND its
- * structural integrity (`PRAGMA quick_check`, #1014) before touching the live DB.
- * Closes the live Room singleton, snapshots the current db, overwrites it with the
- * chosen one, drops the stale `-wal` / `-shm` sidecars, then re-verifies the landed
- * file and rolls back to the snapshot automatically if the copy tore (#1014). The
- * caller then instructs the user to restart the app so Room re-opens the new file fresh.
+ * Import: detects a `.noopbak` ZIP (PK magic) vs a legacy plain `.sqlite`/`.noopdb` (SQLite
+ * magic) and handles both. Validates the SQLite header, the backup's origin, and its structural
+ * integrity (`PRAGMA quick_check`) before touching the live DB, then snapshots, swaps in the
+ * chosen file, drops stale `-wal`/`-shm` sidecars, and rolls back automatically if the copy
+ * tore. The caller must then restart the app so Room re-opens the fresh file.
  */
 object DataBackup {
 
     /** Entry name of the SQLite inside the `.noopbak` ZIP. */
     private const val ZIP_ENTRY_NAME = "noop-backup.sqlite"
 
-    /** Entry name of the optional whitelisted-settings JSON (#1000). Matches the Apple exporter. */
+    /** Entry name of the optional whitelisted-settings JSON. */
     private const val SETTINGS_ENTRY_NAME = BackupSettingsCodec.ENTRY_NAME
 
     /** First 16 bytes of every SQLite 3 file: "SQLite format 3\0". */
@@ -91,11 +84,10 @@ object DataBackup {
             throw IOException("No database to export yet.")
         }
 
-        // #1014 defence-in-depth (export side): after the checkpoint the single file IS the whole
-        // store — verify it BEFORE archiving. A backup of an already-corrupt database only fails
-        // the import-side integrity gate months later, when the original data may be long gone;
-        // failing loudly NOW is the honest move. Read-only probe, sits safely beside the open Room
-        // connection (WAL allows concurrent readers). Twin of the Apple writeVerifiedBackupZip.
+        // Verify the file BEFORE archiving: after the checkpoint the single file IS the whole
+        // store, and a backup of an already-corrupt database only fails the import-side
+        // integrity gate months later, when the original data may be long gone. Read-only probe,
+        // sits safely beside the open Room connection (WAL allows concurrent readers).
         sqliteQuickCheckFailure(dbFile)?.let { complaint ->
             throw IOException(
                 "Couldn't export: the NOOP database failed its integrity check (SQLite reports: " +
@@ -104,23 +96,21 @@ object DataBackup {
             )
         }
 
-        // #1000: the whitelisted profile/display settings ride along as a second entry so a restore
-        // brings back weight/height/units, not just the rows. Null (nothing user-set) degrades to the
-        // legacy single-entry ZIP. The DB entry stays FIRST — older importers stop at the first
-        // `.sqlite` entry, so entry order is part of the cross-platform container contract.
+        // The whitelisted profile/display settings ride along as a second entry so a restore
+        // brings back weight/height/units, not just the rows. Null (nothing user-set) degrades to
+        // the legacy single-entry ZIP. The DB entry stays FIRST — older importers stop at the
+        // first `.sqlite` entry.
         val settingsJson = BackupSettingsBridge.snapshotJson(appContext)
 
         val resolver = appContext.contentResolver
         val output = resolver.openOutputStream(uri)
             ?: throw IOException("Could not open the chosen file for writing.")
         output.use { out ->
-            // #1014: copy the file while HOLDING Room's write transaction. In WAL mode the main
-            // file is only rewritten by a checkpoint, and a checkpoint only runs on a commit — so
-            // with the (single) write connection parked in an empty transaction for the duration
-            // of the copy, no commit can land and the bytes we stream can't be torn mid-page by a
-            // concurrent auto-checkpoint. Writers queue behind us and proceed after; readers are
-            // unaffected. Anything committed after the checkpoint above lives in the new WAL and
-            // is simply (consistently) absent from this snapshot, same as before.
+            // Copy the file while HOLDING Room's write transaction: in WAL mode the main file is
+            // only rewritten by a checkpoint, and a checkpoint only runs on a commit, so parking
+            // the single write connection in an empty transaction for the duration of the copy
+            // means no commit can land and the streamed bytes can't be torn mid-page. Writers
+            // queue behind us and proceed after; readers are unaffected either way.
             db.runInTransaction {
                 ZipOutputStream(out).use { zip ->
                     zip.putNextEntry(ZipEntry(ZIP_ENTRY_NAME))
@@ -159,12 +149,10 @@ object DataBackup {
             return ImportResult.Failed("Could not read the chosen file: ${e.message}")
         }
 
-        // 2. If it's a ZIP (.noopbak), extract the SQLite entry to a temp file.
-        //    If it's a plain SQLite (legacy), copy it to the same temp file.
-        //    The container-staging step is factored into [stageBackupSqlite] (a pure file/stream
-        //    function) so it can be exercised under real file I/O in unit tests without Room/Context.
-        //    A `settings.json` entry (#1000) is staged alongside when present; the stale-delete first
-        //    matters, or a leftover from an earlier import could masquerade as THIS backup's settings.
+        // 2. Extract the SQLite entry if it's a ZIP (.noopbak), or copy a plain SQLite (legacy)
+        //    to the same temp file, via [stageBackupSqlite] (pure file/stream, unit-testable
+        //    without Room/Context). A stale settings.json is deleted first so a leftover from an
+        //    earlier import can't masquerade as this backup's settings.
         val tempSqlite = File(appContext.cacheDir, "import-extract.sqlite")
         val tempSettings = File(appContext.cacheDir, "import-settings.json")
         tempSettings.delete()
@@ -193,9 +181,9 @@ object DataBackup {
             return ImportResult.Failed("The backup archive doesn't contain a valid NOOP database.")
         }
 
-        // 3b. Route by schema content: a foreign store (iOS, or a fork without our marker) is row-copied
-        //     into a clone of the live store; our own/older backup takes the migrate path below; an
-        //     unrecognized file that holds data is refused.
+        // 3b. Route by schema content: a foreign backup (another platform, or a fork without our
+        //     marker) is row-copied into a clone of the live store; our own/older backup takes
+        //     the migrate path below; an unrecognized file that holds data is refused.
         val backupTables = sqliteTableNames(tempSqlite)
         var importWarnings: List<String> = emptyList()
  // True only when the own/older backup migrated cleanly (not a foreign row-copy, nor the migrate→reconcile
@@ -271,15 +259,13 @@ object DataBackup {
             }
         }
 
-        // 3c. #1014 defence-in-depth: gates 3 and 3b read only the FIRST pages of the file — the
-        //     16-byte magic and sqlite_master both survive a backup that was truncated mid-upload or
-        //     torn by a flaky drive/cloud client, and such a file then "restores" into a store that
-        //     silently shows no data (the #1014 report; the #1000 settings code was exonerated, but
-        //     the family needed armour). Run SQLite's own `PRAGMA quick_check` over the STAGED file,
-        //     read-only, BEFORE the live DB is touched, and refuse the swap honestly. quick_check
-        //     (not integrity_check) skips index-content verification so it stays fast on a 100 MB+
-        //     library while still catching truncation and malformed pages. Twin of the Apple side's
-        //     DatabaseIntegrity gate.
+        // 3c. Gates 3 and 3b read only the FIRST pages of the file — the 16-byte magic and
+        //     sqlite_master both survive a backup truncated mid-upload or torn by a flaky
+        //     drive/cloud client, and such a file then "restores" into a store that silently
+        //     shows no data. Run `PRAGMA quick_check` over the STAGED file, read-only, BEFORE the
+        //     live DB is touched, and refuse the swap honestly. quick_check (not integrity_check)
+        //     skips index-content verification so it stays fast on a 100 MB+ library while still
+        //     catching truncation and malformed pages.
         sqliteQuickCheckFailure(tempSqlite)?.let { complaint ->
             tempSqlite.delete()
             tempSettings.delete()
@@ -292,10 +278,10 @@ object DataBackup {
         val dbFile = appContext.getDatabasePath(WhoopDatabase.DB_NAME)
         val pending = File(dbFile.path + WhoopDatabase.PENDING_RESTORE_SUFFIX)
 
-        // 4. Stage the reconciled store beside the live DB. The swap into place is DEFERRED to the next
-        //    launch ([WhoopDatabase.applyPendingRestore] from Application.onCreate, before Room opens), so
-        //    no live connection or background coroutine can re-open the file mid-swap — the race that let
-        //    the corruption handler quarantine a good restore. The live DB is left untouched here.
+        // 4. Stage the reconciled store beside the live DB. The swap into place is DEFERRED to
+        //    the next launch ([WhoopDatabase.applyPendingRestore] from Application.onCreate,
+        //    before Room opens), so no live connection or background coroutine can re-open the
+        //    file mid-swap. The live DB is left untouched here.
         try {
             pending.parentFile?.mkdirs()
             pending.delete()
@@ -330,10 +316,10 @@ object DataBackup {
             tempSettings.delete()
         }
 
- // An own-data (migrate) restore carries the user's real strap identity in the migrated my-whoop row, but
- // SharedPreferences don't survive a fresh install — so rehydrate the reconnect target from the DB. The
- // strap then reconnects on next launch and shows in Devices (not just Data Sources). Foreign row-copies
- // are excluded, so a foreign backup's my-whoop can't masquerade as a local band.
+ // An own-data (migrate) restore carries the user's real strap identity in the migrated
+ // my-whoop row, but SharedPreferences don't survive a fresh install, so rehydrate the
+ // reconnect target from the DB instead — the strap then reconnects and shows in Devices.
+ // Foreign row-copies are excluded, so a foreign backup's my-whoop can't masquerade as a local band.
         if (migratedOwnData) {
             rehydrateLastDeviceFromOwnBackup(appContext, pending)
         }
@@ -356,19 +342,17 @@ object DataBackup {
     enum class StageResult { OK, CANNOT_OPEN, NO_DB_IN_ZIP, NOT_A_BACKUP }
 
     /**
-     * Stage the SQLite payload of a backup into [dest], from an already-opened [input] stream whose
-     * first bytes are [header]. Handles both the `.noopbak` ZIP (extract the `.sqlite` entry) and a
-     * legacy plain SQLite (copy through). Closes [input]. Context-free + stream-driven so the unit
-     * tests drive it with real `java.util.zip` archives and real files, exercising the exact extraction
-     * the live import uses (no behaviour fork between test and production).
+     * Stages the SQLite payload of a backup into [dest], from an already-opened [input] stream
+     * whose first bytes are [header]: extracts the `.sqlite` entry from a `.noopbak` ZIP, or
+     * copies a legacy plain SQLite through; closes [input]. Context-free + stream-driven so unit
+     * tests exercise the exact extraction the live import uses.
      *
-     * When [settingsDest] is given, a `settings.json` entry (#1000) is ALSO staged there if the ZIP
-     * carries one (either platform's exporter may have written it, in either entry order). Its absence
-     * is not an error — every pre-#1000 backup is a single-entry ZIP — and it never affects the
+     * When [settingsDest] is given, a `settings.json` entry is also staged there if the ZIP
+     * carries one, in either entry order. Its absence is not an error, and it never affects the
      * returned [StageResult]: the DB is the payload that decides success.
      *
-     * NOTE this does NOT validate the staged file's SQLite header or origin; [importFrom] does that
-     * next, on the staged file. Keeping staging and validation separate keeps each pure-testable.
+     * Does NOT validate the staged file's SQLite header or origin; [importFrom] does that next,
+     * on the staged file — keeping staging and validation separate keeps each pure-testable.
      */
     fun stageBackupSqlite(
         input: java.io.InputStream?,
@@ -412,10 +396,10 @@ object DataBackup {
         }
     }
 
-    /** Write [dbFile]'s bytes into a deflate ZIP at [dest] (the `.noopbak` container), DB entry first,
-     *  plus the optional `settings.json` entry (#1000) when [settingsJson] is non-null. Context-free
-     *  twin of the stream the live [exportTo] writes, so tests round-trip a real archive of either
-     *  shape (legacy single-entry when [settingsJson] is null). */
+    /** Writes [dbFile]'s bytes into a deflate ZIP at [dest] (the `.noopbak` container), DB entry
+     *  first, plus the optional `settings.json` entry when [settingsJson] is non-null.
+     *  Context-free twin of the stream [exportTo] writes, so tests round-trip either shape
+     *  (legacy single-entry when [settingsJson] is null). */
     @Throws(IOException::class)
     fun writeBackupZip(dbFile: File, dest: File, settingsJson: String? = null) {
         FileOutputStream(dest).use { out ->
@@ -465,27 +449,22 @@ object DataBackup {
         return prefix.indices.all { this[it] == prefix[it] }
     }
 
-    // ── Origin validation (parity with the Apple GRDB-origin rejection) ─────────
+    // ── Origin validation ────────────────────────────────────────────────────
 
     /** Which platform produced a NOOP backup, judged by its migrator's bookkeeping table. */
     enum class BackupOrigin { MAC, ANDROID, UNKNOWN }
 
     /**
-     * Pure classification over a backup's `sqlite_master` table names: Room (this app) writes
-     * `room_master_table`; GRDB (the Mac/iOS app) writes `grdb_migrations`. `.UNKNOWN` (neither, an
-     * empty or pre-migration file) falls through to the normal import path, where Room's open-time
-     * migrator decides. Mirrors the Apple `DataBackup.backupOrigin(of:)` so both platforms agree
-     * byte-for-byte on what a foreign backup is.
-     *
-     * This platform's marker wins on the (degenerate) both-present case: restoring our own store here
-     * is the less destructive read.
+     * Classifies a backup by its `sqlite_master` tables: Room (this app) writes
+     * `room_master_table`, a foreign backup writes `grdb_migrations`. `.UNKNOWN` (neither) falls
+     * through to the normal import path, where Room's migrator decides; on both present, this
+     * platform's marker wins — restoring our own store is the less destructive read.
      */
     fun backupOriginOf(tableNames: Set<String>): BackupOrigin {
         if (tableNames.contains("room_master_table")) return BackupOrigin.ANDROID
         if (tableNames.contains("grdb_migrations")) return BackupOrigin.MAC
         // Older Room layouts didn't carry `room_master_table`; treat the Room/AndroidX pairing of
-        // `android_metadata` + `sqlite_sequence` as one of ours too (mirrors the Apple side, which
-        // reads that same duo as Android).
+        // `android_metadata` + `sqlite_sequence` as one of ours too.
         if (tableNames.contains("android_metadata") && tableNames.contains("sqlite_sequence")) {
             return BackupOrigin.ANDROID
         }
@@ -493,10 +472,9 @@ object DataBackup {
     }
 
     /**
-     * Does this backup actually hold app data (vs an empty/fresh file)? True when it carries any
-     * user-content table beyond the SQLite/Android housekeeping ones. An `.UNKNOWN` file with no
-     * content is harmless to restore; one WITH content but no recognised bookkeeping is some other
-     * app's database and is rejected.
+     * True when this backup carries any user-content table beyond the SQLite/Android
+     * housekeeping ones (vs an empty/fresh file). An `.UNKNOWN` file with no content is harmless
+     * to restore; one WITH content but no recognised bookkeeping is some other app's database.
      */
     fun holdsData(tableNames: Set<String>): Boolean {
         val housekeeping = setOf("android_metadata", "sqlite_sequence", "room_master_table", "grdb_migrations")
@@ -504,7 +482,7 @@ object DataBackup {
     }
 
     /** Every table name in [file], opened READ-ONLY so the probed file is never mutated. Empty on
-     *  failure. Carries [PRESERVE_ON_CORRUPTION] (#1014): without an explicit handler the framework
+     *  failure. Carries [PRESERVE_ON_CORRUPTION]: without an explicit handler the framework
      *  default would DELETE the staged file when the open reports SQLITE_NOTADB/CORRUPT. */
     private fun sqliteTableNames(file: File): Set<String> {
         val db = runCatching {
@@ -558,16 +536,13 @@ object DataBackup {
         return ImportResult.Failed(message)
     }
 
-    // ── Integrity gate (#1014 defence-in-depth; twin of the Apple DatabaseIntegrity) ─────
+    // ── Integrity gate ───────────────────────────────────────────────────
 
     /**
-     * Pure classification of the rows `PRAGMA quick_check` returned: null = healthy (the single
-     * canonical "ok" row), otherwise the first complaint row VERBATIM — never a fabricated summary.
-     * An EMPTY result set is a failure too: quick_check always answers, so silence means the query
-     * was swallowed and the file must not be trusted. Mirrors the Apple side's
-     * `DatabaseIntegrity.verdict(fromRows:)` byte-for-byte — the same golden vectors are pinned in
-     * [DataBackupIntegrityTest] here and `DatabaseIntegrityTests` there, so both platforms agree on
-     * what "healthy" means. Pure + public so the plain-JVM test can drive it without Robolectric.
+     * Classifies the rows `PRAGMA quick_check` returned: null = healthy (the single canonical
+     * "ok" row), otherwise the first complaint row VERBATIM, never a fabricated summary. An
+     * EMPTY result set is also a failure — quick_check always answers, so silence means the
+     * query was swallowed. Public so [DataBackupIntegrityTest] can drive it on the plain JVM.
      */
     fun quickCheckVerdict(rows: List<String>): String? {
         if (rows.size == 1 && rows[0].equals("ok", ignoreCase = true)) return null
@@ -576,31 +551,22 @@ object DataBackup {
     }
 
     /**
-     * A [android.database.DatabaseErrorHandler] that closes the handle and PRESERVES the file. The
-     * framework default ([android.database.DefaultDatabaseErrorHandler]) DELETES the file it was
-     * probing on SQLITE_CORRUPT/SQLITE_NOTADB — every `openDatabase` overload without an explicit
-     * handler inherits that. For the integrity probes below that would be catastrophic: the export
-     * probe opens the LIVE database, so a corrupt store would be silently destroyed by the very
-     * check meant to protect it (#1014). Also used by the origin probe for the same reason.
+     * A [android.database.DatabaseErrorHandler] that closes the handle and PRESERVES the file,
+     * unlike the framework default ([android.database.DefaultDatabaseErrorHandler]), which
+     * DELETES the file on SQLITE_CORRUPT/SQLITE_NOTADB — catastrophic here since the export probe
+     * opens the LIVE database. Also used by the origin probe for the same reason.
      */
     private val PRESERVE_ON_CORRUPTION = android.database.DatabaseErrorHandler { dbObj ->
         runCatching { dbObj.close() }
     }
 
     /**
-     * Run `PRAGMA quick_check(1)` on [file]. Returns null when the file is healthy, otherwise a
-     * short human-readable complaint for the caller's honest failure message. `quick_check(1)`
-     * stops at the first error, so a damaged 100 MB library still answers quickly.
-     *
-     * Opens READ-ONLY first (never mutates the probed file; sits safely beside an open Room
-     * connection — WAL allows concurrent readers). If the read-only open itself fails, falls back
-     * to a read-write open: pre-3.22 SQLite (API 26/27, minSdk 26) cannot read-only-open a
-     * WAL-header file without an initialized `-shm`, which is exactly what a checkpointed staged
-     * backup looks like — refusing those would break valid restores on Android 8.x. Every probed
-     * file is ours to touch (the staged temp copy, the just-swapped live file, or the live store
-     * the export is about to archive), and a read-write open only performs standard SQLite
-     * recovery, never a content change. Both opens carry [PRESERVE_ON_CORRUPTION] so no probe can
-     * ever delete what it probes.
+     * `PRAGMA quick_check(1)` on [file]: null = healthy, else a short complaint for the caller's
+     * failure message; stops at the first error so even a large file answers fast. Opens
+     * READ-ONLY first, falling back to READ-WRITE only because pre-3.22 SQLite (minSdk 26)
+     * cannot read-only-open a WAL-header file without an initialized `-shm`, which is exactly
+     * what a checkpointed staged backup looks like. Both opens carry [PRESERVE_ON_CORRUPTION] so
+     * no probe can ever delete what it probes.
      */
     private fun sqliteQuickCheckFailure(file: File): String? {
         val db = runCatching {
@@ -653,20 +619,12 @@ object DataBackup {
     }
 
     /**
-     * Migrate a staged backup SQLite file to the current Room schema version. Called from
-     * [importFrom] after staging and origin validation, but BEFORE the integrity gate
-     * ([sqliteQuickCheckFailure]), so the migrated file is verified before it touches the live DB.
-     *
-     * Opens [stagedFile] through [FrameworkSQLiteOpenHelperFactory], which accepts an absolute path
-     * as the database name (SQLiteOpenHelper passes it through to [Context.getDatabasePath], which
-     * handles absolute paths as-is). The callback version matches the file's current [user_version]
-     * so the helper opens without triggering its own [onUpgrade]; we then run the applicable Room
-     * [Migration] objects in sequence and set [targetVersion] directly. The helper is closed before
-     * returning, so the migrated file is consistent on disk.
-     *
-     * Returns null on success, or an error message string on failure. On failure the caller must
-     * delete [stagedFile] and return an [ImportResult.Failed] — the file's schema is not safe to
-     * restore.
+     * Migrates a staged backup SQLite file to the current Room schema version. MUST run after
+     * staging/origin validation but BEFORE [sqliteQuickCheckFailure], so the migration is
+     * verified before it touches the live DB. Pins the open callback to the file's current
+     * version (skips [onUpgrade]), then runs the applicable [Migration]s and sets [targetVersion]
+     * directly. Returns null on success, else an error string — the caller must then delete
+     * [stagedFile], since its schema is not safe to restore.
      */
     fun migrateBackupIfNeeded(
         appContext: Context,
@@ -677,8 +635,8 @@ object DataBackup {
         val currentVersion = readUserVersion(stagedFile)
             ?: return "Could not read the backup's schema version."
 
-        // v0 = a fresh/empty Room database with no schema to migrate. (A cross-platform GRDB backup is
-        // also user_version 0, but it is rejected earlier by the origin check, so it never reaches here.)
+        // v0 = a fresh/empty Room database with no schema to migrate (a foreign backup is also
+        // user_version 0, but it is rejected earlier by the origin check, so it never reaches here).
         if (currentVersion <= 0) return null
         if (currentVersion >= targetVersion) return null
 
@@ -705,11 +663,11 @@ object DataBackup {
                     migration.migrate(db)
                 }
                 db.execSQL("PRAGMA user_version = $targetVersion")
-                // The manual migration updates the SCHEMA + user_version but not Room's identity
-                // bookkeeping (room_master_table), which Room only rewrites when IT runs a migration. Left
-                // stale, the store keeps the backup's OLD identity and the app rejects it ("Room cannot
-                // verify the data integrity"). Copy the identity from a live store at the SAME target
-                // schema so the restored DB opens. Best-effort: an unreadable hash leaves prior behaviour.
+                // Manual migration updates SCHEMA + user_version but not Room's identity
+                // bookkeeping (room_master_table), which Room only rewrites on its own migration —
+                // left stale, the app rejects the store ("Room cannot verify the data
+                // integrity"). Copy the identity from a live store at the same schema instead
+                // (best-effort: an unreadable hash leaves prior behaviour).
                 runCatching {
                     val liveHash = WhoopDatabase.get(appContext).openHelper.writableDatabase
                         .query("SELECT identity_hash FROM room_master_table LIMIT 1").use { c ->
@@ -733,13 +691,11 @@ object DataBackup {
     internal data class MigrationPlan(val path: List<Migration>?, val error: String?)
 
     /**
-     * Plan the migration path from [currentVersion] to [targetVersion]. At each step it takes the migration
-     * that starts at the current version and jumps FURTHEST (endVersion <= target) — Room's own resolution
-     * rule, so an upstream catch-all (each of v22..99 -> v100) leaps straight to the target instead of
-     * needing a strictly contiguous per-version chain. Pure and unit-testable (no DB open).
-     *
-     * Returns an empty path when already at/after the target, the ordered path on success, or a null path
-     * with [MigrationPlan.error] set when some intermediate version has no outgoing migration.
+     * Plans the path from [currentVersion] to [targetVersion]: each step takes the migration that
+     * starts at the current version and jumps FURTHEST (endVersion <= target) — Room's own
+     * resolution rule, so a catch-all range reaches target without a strictly contiguous
+     * per-version chain. Returns an empty path when already at/after target, the ordered path on
+     * success, or a null path with [MigrationPlan.error] set when some version has no outgoing migration.
      */
     internal fun planMigrationPath(currentVersion: Int, targetVersion: Int, migrations: List<Migration>): MigrationPlan {
         if (currentVersion >= targetVersion) return MigrationPlan(emptyList(), null)
@@ -763,9 +719,10 @@ object DataBackup {
     /** A foreign store to reconcile in by row-copy. */
     private enum class ForeignBackupKind { IOS, CROSS_FORK }
 
-    /** GRDB = iOS; a Room store without our `spo2PctSample` marker = another fork — both row-copied. Our own
-     *  backup (has the marker) and an unrecognized file return null for the migrate/reject path. Only a
-     *  fast-path hint: a misread marker is caught by the migrate-then-reconcile fallback in [importFrom]. */
+    /** A `grdb_migrations` table, or a Room store missing our `spo2PctSample` marker, means a
+     *  foreign backup — both row-copied. Our own backup (has the marker) and an unrecognized file
+     *  return null for the migrate/reject path. Fast-path hint only: a misread marker is caught
+     *  by the migrate-then-reconcile fallback in [importFrom]. */
     private fun foreignBackupKind(tableNames: Set<String>): ForeignBackupKind? {
         if (tableNames.contains("grdb_migrations")) return ForeignBackupKind.IOS
         if (tableNames.contains("room_master_table") && !tableNames.contains("spo2PctSample")) {
@@ -952,12 +909,12 @@ object DataBackup {
     }
 
     /**
-     * Reconcile a foreign / cross-platform [stagedBackup] into a file carrying THIS app's exact v100 schema
-     * + identity, by COPYING [liveDbFile] (a valid Room store) and row-copying the backup's data into it —
-     * REPLACE clears each shared table, then inserts the intersection of columns. Version-agnostic: reads by
-     * table/column via [readSchema], never by schema version, so any fork's or the iOS/GRDB backup lands by
-     * logical data alone. Returns the reconciled file + [RowCopyPlan] warnings, or null on failure; the caller
-     * swaps the returned file in through the normal snapshot/rollback path. The live store must already exist.
+     * Reconciles a foreign [stagedBackup] into a file carrying this app's current schema +
+     * identity, by copying [liveDbFile] (a valid Room store) and row-copying the backup's data
+     * into it — REPLACE clears each shared table, then inserts the column intersection.
+     * Version-agnostic: reads by table/column via [readSchema], never by schema version, so any
+     * foreign backup lands by logical data alone. The live store must already exist; returns the
+     * reconciled file + [RowCopyPlan] warnings, or throws on failure.
      */
     fun reconcileForeignBackup(
         appContext: Context,
@@ -968,7 +925,7 @@ object DataBackup {
         require(liveDbFile.exists()) { "no live store to reconcile the backup against" }
         val work = File(appContext.cacheDir, "import-reconciled.db")
         listOf(work, File(work.path + "-wal"), File(work.path + "-shm")).forEach { it.delete() }
-        liveDbFile.copyTo(work, overwrite = true) // exact v100 schema + identity (local rows cleared below)
+        liveDbFile.copyTo(work, overwrite = true) // exact schema + identity (local rows cleared below)
         val warnings: List<String>
         val db = SQLiteDatabase.openDatabase(work.path, null, SQLiteDatabase.OPEN_READWRITE, PRESERVE_ON_CORRUPTION)
         try {
@@ -1018,25 +975,18 @@ object DataBackup {
 }
 
 /**
- * #1014 defence-in-depth: a Room open-helper factory whose ONLY behavioural change is corruption
- * handling. The platform DEFAULT — androidx.sqlite routes SQLITE_CORRUPT to
- * [SupportSQLiteOpenHelper.Callback.onCorruption], whose base implementation mirrors Android's
- * `DefaultDatabaseErrorHandler` — silently DELETES the corrupt database file. For NOOP that means
- * permanently destroying already-acked strap history the strap will never re-send, without the user
- * ever seeing a byte of it. Confirmed absent in this app before #1014: nothing overrode
- * onCorruption, so the delete-on-corruption default applied.
+ * A Room open-helper factory whose ONLY behavioural change is corruption handling. The platform
+ * default routes SQLITE_CORRUPT to [SupportSQLiteOpenHelper.Callback.onCorruption], whose base
+ * implementation silently DELETES the corrupt database file — for NOOP that means permanently
+ * destroying already-acked strap history the strap will never re-send.
  *
- * The factory wraps the stock [FrameworkSQLiteOpenHelperFactory] and delegates every lifecycle
- * callback (configure/create/migrate/open) to Room's real callback UNCHANGED, so migrations behave
- * exactly as before. Only `onCorruption` is replaced: it logs loudly, closes the handle, sets ONE
- * `.corrupt` sibling copy aside (best-effort, skipped when one already exists so repeated failed
- * opens can't multiply 100 MB files), and — crucially — deletes NOTHING. The trade-off is
- * deliberate and matches [WhoopDatabase]'s no-destructive-fallback doctrine: the app may then fail
- * to open the store (the user sees an error instead of a silently empty app), but the file survives
- * for backup/recovery instead of vanishing.
- *
- * `allowDataLossOnRecovery` is pinned FALSE for the same reason: androidx's recovery path deletes
- * the file when an open fails, which is exactly the destruction this factory exists to prevent.
+ * Wraps the stock [FrameworkSQLiteOpenHelperFactory] and delegates every lifecycle callback
+ * (configure/create/migrate/open) to Room's real callback UNCHANGED. Only `onCorruption` is
+ * replaced: it logs loudly, closes the handle, sets ONE `.corrupt` sibling copy aside
+ * (best-effort, skipped when one already exists so repeated failed opens can't multiply 100 MB
+ * files), and deletes NOTHING — matching [WhoopDatabase]'s no-destructive-fallback doctrine: the
+ * app may fail to open the store, but the file survives for recovery instead of vanishing.
+ * `allowDataLossOnRecovery` is pinned FALSE for the same reason.
  */
 class CorruptionPreservingOpenHelperFactory(
     private val delegate: SupportSQLiteOpenHelper.Factory = FrameworkSQLiteOpenHelperFactory(),
@@ -1065,12 +1015,11 @@ class CorruptionPreservingOpenHelperFactory(
         override fun onOpen(db: SupportSQLiteDatabase) = roomCallback.onOpen(db)
 
         override fun onCorruption(db: SupportSQLiteDatabase) {
-            // Do NOT call super — the base implementation DELETES the file outright (non-resendable strap
-            // history gone without a trace). Instead QUARANTINE the corrupt file aside and let the store
-            // recreate a fresh one, so the app OPENS instead of crash-looping on every launch. #1014
-            // (wanxorg): 8.2.0 preserved the file but left it in place, so the very next open re-hit the
-            // same corruption and the app crashed on startup until a reinstall. Moving the original out of
-            // the way keeps the crash-recovery the platform default gives (next open finds no file → clean
+            // Do NOT call super — the base implementation DELETES the file outright (non-resendable
+            // strap history gone without a trace). QUARANTINE the corrupt file aside instead and
+            // let the store recreate a fresh one: leaving it in place would re-hit the same
+            // corruption on the very next open and crash-loop the app. Moving (not leaving) the
+            // original keeps the platform's normal crash-recovery (next open finds no file → clean
             // rebuild) WITHOUT the silent data loss — the corrupt copy stays as `*.corrupt` for recovery.
             val path = runCatching { db.path }.getOrNull()
             Log.e(

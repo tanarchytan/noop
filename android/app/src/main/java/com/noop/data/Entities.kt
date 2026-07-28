@@ -5,29 +5,14 @@ import androidx.room.Entity
 import androidx.room.Index
 
 /*
- * Room entities mirroring the verified GRDB schema in
- * Packages/WhoopStore/Sources/WhoopStore/Database.swift (+ MetricsCache.swift).
+ * Room entities for the on-device schema. Each table's PRIMARY KEY is the natural key that drives
+ * insert dedupe (see the PK noted on each entity below; rrInterval also carries `seq` to tiebreak
+ * two EQUAL same-second beats).
  *
- * Natural keys drive the insert dedupe (each table's PRIMARY KEY):
- *   - hrSample        PK (deviceId, ts)
- *   - rrInterval      PK (deviceId, ts, rrMs, seq)  // `seq` tiebreaks EQUAL same-second beats.
- *   - event           PK (deviceId, ts, kind)
- *   - battery         PK (deviceId, ts)
- *   - spo2Sample      PK (deviceId, ts)
- *   - skinTempSample  PK (deviceId, ts)
- *   - respSample      PK (deviceId, ts)
- *   - gravitySample   PK (deviceId, ts)
- *   - dailyMetric     PK (deviceId, day)
- *   - sleepSession    PK (deviceId, startTs)
- *   - device          PK (id)
- *   - journal         PK (deviceId, day, question)
- *   - workout         PK (deviceId, startTs, sport)
- *   - appleDaily      PK (deviceId, day)
- *
- * `ts` columns are wall-clock unix SECONDS (Swift uses Int -> Kotlin Long for safety).
+ * `ts` columns are wall-clock unix SECONDS.
  */
 
-/** Device row. Swift `device` table (Database.swift v1). Natural key = id. */
+/** Device row. Natural key = id. */
 @Entity(tableName = "device")
 data class DeviceRow(
     @androidx.room.PrimaryKey
@@ -38,23 +23,23 @@ data class DeviceRow(
     val lastSeen: Long? = null,
 )
 
-/** Heart-rate sample. Swift `hrSample` (v1). PK (deviceId, ts). */
+/** Heart-rate sample. PK (deviceId, ts). */
 @Entity(tableName = "hrSample", primaryKeys = ["deviceId", "ts"])
 data class HrSample(
     val deviceId: String,
     val ts: Long,
     val bpm: Int,
-    // v5: per-row upload flag; unused locally, kept for schema parity. Defaults to 0.
+    // Per-row upload flag; unused locally, kept for schema parity. Defaults to 0.
     val synced: Int = 0,
 )
 
 /**
- * HR derived from the WHOOP 5/MG **v26** optical PPG waveform (#156). The v26 record stores no
- * per-second bpm (HR is PPG-derived on-device), so whoop-rs reconstructs it by
- * autocorrelation. Kept in its own table (NOT merged into `hrSample`) so a real sensor HR is never
- * confused with a derived estimate; [conf] (0…1) records the autocorrelation strength. PK
- * (deviceId, ts) = one estimate per window-centre second; [hrBuckets][WhoopDao.hrBuckets] COALESCE-
- * unions it with `hrSample` so PPG HR only fills seconds the strap never reported. v5_6 migration.
+ * HR derived from the WHOOP 5/MG v26 optical PPG waveform: the v26 record stores no per-second
+ * bpm, so it is reconstructed on-device by autocorrelation. Kept in its own table (NOT merged into
+ * `hrSample`) so a real sensor HR is never confused with a derived estimate; [conf] (0…1) records
+ * the autocorrelation strength. PK (deviceId, ts) = one estimate per window-centre second;
+ * [hrBuckets][WhoopDao.hrBuckets] COALESCE-unions it with `hrSample` so PPG HR only fills seconds
+ * the strap never reported.
  */
 @Entity(tableName = "ppgHrSample", primaryKeys = ["deviceId", "ts"])
 data class PpgHrSample(
@@ -65,16 +50,16 @@ data class PpgHrSample(
     val synced: Int = 0,
 )
 
-/** One downsampled HR point, the bucket's start (unix seconds) + the mean bpm over it. Query
- *  result of [WhoopDao.hrBuckets], not a table. Mirrors the macOS `HRBucket`. */
+/** One downsampled HR point: bucket start (unix seconds) + mean bpm over it. Query result of
+ *  [WhoopDao.hrBuckets], not a table. */
 data class HrBucket(
     val bucket: Long,
     val avgBpm: Double,
 )
 
-/** Aggregate HR over a time window, sample count + avg/max bpm. Query result of
+/** Aggregate HR over a time window: sample count + avg/max bpm. Query result of
  *  [WhoopDao.hrWindowStats], not a table. Used to derive a workout's HR from strap samples when
- *  the imported session carries none (#77). avg/max are null when n == 0. */
+ *  the imported session carries none. avg/max are null when n == 0. */
 data class HrWindowStats(
     val n: Long,
     val avg: Double?,
@@ -100,9 +85,8 @@ data class RrInterval(
 )
 
 /**
- * Strap event. Swift `event` (v1). PK (deviceId, ts, kind).
- * `payloadJSON` is the deterministic (sorted-keys) JSON of the remaining parsed fields,
- * with `event`/`event_timestamp` removed (see Streams.swift extractStreams + StreamStore.encodePayload).
+ * Strap event. PK (deviceId, ts, kind). `payloadJSON` is the deterministic (sorted-keys) JSON of
+ * the remaining parsed fields, with `event`/`event_timestamp` removed.
  */
 @Entity(tableName = "event", primaryKeys = ["deviceId", "ts", "kind"])
 data class EventRow(
@@ -114,9 +98,8 @@ data class EventRow(
 )
 
 /**
- * Battery sample. Swift `battery` (v1 + v6 `charging`). PK (deviceId, ts).
- * `soc` is state-of-charge percent (nullable), `mv` millivolts (nullable),
- * `charging` only set by BATTERY_LEVEL events (nullable otherwise).
+ * Battery sample. PK (deviceId, ts). `soc` is state-of-charge percent (nullable), `mv` is
+ * millivolts (nullable), `charging` is only set by BATTERY_LEVEL events (nullable otherwise).
  */
 @Entity(tableName = "battery", primaryKeys = ["deviceId", "ts"])
 data class BatterySample(
@@ -128,7 +111,7 @@ data class BatterySample(
     val synced: Int = 0,
 )
 
-/** SpO2 raw-ADC sample (type-47). Swift `spo2Sample` (v3). PK (deviceId, ts). */
+/** SpO2 raw-ADC sample (type-47). PK (deviceId, ts). */
 @Entity(tableName = "spo2Sample", primaryKeys = ["deviceId", "ts"])
 data class Spo2Sample(
     val deviceId: String,
@@ -151,14 +134,14 @@ data class Spo2PctSample(
     val pct: Int,
 )
 
-/** Skin-temperature raw-ADC sample (type-47). Swift `skinTempSample` (v3). PK (deviceId, ts). */
+/** Skin-temperature raw-ADC sample (type-47). PK (deviceId, ts). */
 @Entity(tableName = "skinTempSample", primaryKeys = ["deviceId", "ts"])
 data class SkinTempSample(
     val deviceId: String,
     val ts: Long,
     val raw: Int,
     // The record's two auxiliary thermal registers, in DECI-degrees C where [raw] is centi-degrees.
-    // Nullable with no SQL DEFAULT: rows written before the columns existed read back null, and a
+    // Nullable with no SQL DEFAULT: rows written before the columns existed read back null, and
     // WHOOP 4.0 never carries them.
     val auxRaw1: Int? = null,
     val auxRaw2: Int? = null,
@@ -198,34 +181,31 @@ data class V18Sample(
 
 /**
  * Step / motion counter sample (WHOOP5 type-47 step_motion_counter@57). PK (deviceId, ts).
- * `counter` is the device's CUMULATIVE u16 running step counter (0..65535, wraps). It is NOT a
- * per-sample delta, the daily step total is derived in AnalyticsEngine by summing positive
- * consecutive deltas (with u16 wraparound handling). Mirrors SkinTempSample exactly (IGNORE-dedupe
- * by natural key). APPROXIMATE: @57's step semantics are an on-device estimate, unverified against
- * the official WHOOP app (the v18 record decode lives in whoop-rs). (#78)
+ * `counter` is the device's CUMULATIVE u16 step counter (0..65535, wraps), NOT a per-sample delta:
+ * the daily step total is derived in AnalyticsEngine by summing positive consecutive deltas with
+ * u16 wraparound handling. Same IGNORE-dedupe by natural key as SkinTempSample. APPROXIMATE: an
+ * on-device estimate, unverified against the official WHOOP app.
  */
 @Entity(tableName = "stepSample", primaryKeys = ["deviceId", "ts"])
 data class StepSample(
     val deviceId: String,
     val ts: Long,
     val counter: Int,
-    // The per-record activity-class enum decoded from @63 (community finding #316): 0=still, 1=walk, 2=run;
-    // null when the byte was 0xFF/invalid or absent. The decoder ALREADY carries this on [StepRow], but it
-    // was DROPPED at the insert boundary (the v2_3 stepSample held only ts/counter), so it could never be
-    // persisted or read. Added by MIGRATION_12_13 (Swift WhoopStore v19 parity). Nullable INTEGER (no SQL
-    // DEFAULT, a Kotlin construction default never reaches the schema), so old rows read back null: an
-    // absent class stays absent, never a fabricated 0/"still".
+    // Activity-class enum decoded from @63: 0=still, 1=walk, 2=run; null when the byte was
+    // 0xFF/invalid or absent. Nullable INTEGER with no SQL DEFAULT (a Kotlin construction default
+    // never reaches the schema), so old rows read back null: an absent class stays absent, never
+    // a fabricated 0/"still".
     val activityClass: Int? = null,
     val synced: Int = 0,
 )
 
 /**
- * The strap's OWN per-record band sleep_state (#175). The decoder reads the v18 @81 high nibble
- * (`(sb ushr 4) and 3`) as 0 wake / 1 still / 2 asleep / 3 up. The BYTE + offset are read off real captured
- * frames exactly like every other v18 field; ONLY the non-zero code meanings are community/structure
- * inference (every real capture we hold reads 0, a worn daytime wake), so this is carried VERBATIM (the
- * strap's own byte) and surfaced/persisted as the strap's reported state, NOT trusted to override the derived
- * hypnogram. Added by MIGRATION_14_15 (Swift WhoopStore v21 parity). PK (deviceId, ts). Swift `SleepStateSample`.
+ * The strap's OWN per-record band sleep_state. The decoder reads the v18 @81 high nibble
+ * (`(sb ushr 4) and 3`) as 0 wake / 1 still / 2 asleep / 3 up. The byte + offset are read directly
+ * off captured frames like every other v18 field; ONLY the non-zero code meanings are inferred
+ * (every real capture we hold reads 0, a worn daytime wake), so this is carried VERBATIM and
+ * surfaced/persisted as the strap's reported state, NOT trusted to override the derived hypnogram.
+ * PK (deviceId, ts).
  */
 @Entity(tableName = "sleepStateSample", primaryKeys = ["deviceId", "ts"])
 data class SleepStateSampleEntity(
@@ -234,7 +214,7 @@ data class SleepStateSampleEntity(
     val state: Int,   // 0 wake / 1 still / 2 asleep / 3 up (band's own high-nibble code)
 )
 
-/** Respiration raw-ADC sample (type-47). Swift `respSample` (v3). PK (deviceId, ts). */
+/** Respiration raw-ADC sample (type-47). PK (deviceId, ts). */
 @Entity(tableName = "respSample", primaryKeys = ["deviceId", "ts"])
 data class RespSample(
     val deviceId: String,
@@ -243,7 +223,7 @@ data class RespSample(
     val synced: Int = 0,
 )
 
-/** Gravity vector sample (type-47, unit "g"). Swift `gravitySample` (v3). PK (deviceId, ts). */
+/** Gravity vector sample (type-47, unit "g"). PK (deviceId, ts). */
 @Entity(tableName = "gravitySample", primaryKeys = ["deviceId", "ts"])
 data class GravitySample(
     val deviceId: String,
@@ -258,11 +238,9 @@ data class GravitySample(
 )
 
 /**
- * Cached server-computed daily metrics. Swift `dailyMetric` (v4 + v7).
- * Natural key (deviceId, day) where day is "YYYY-MM-DD". All metric columns nullable.
- *
- * Field set/order matches MetricsCache.swift DailyMetric so com.noop.analytics.IllnessWatch
- * can read restingHr / avgHrv / recovery / strain / skinTempDevC / respRateBpm / totalSleepMin.
+ * Cached server-computed daily metrics. Natural key (deviceId, day), day = "YYYY-MM-DD". All
+ * metric columns nullable; com.noop.analytics.IllnessWatch reads restingHr / avgHrv / recovery /
+ * strain / skinTempDevC / respRateBpm / totalSleepMin from this row.
  */
 @Entity(tableName = "dailyMetric", primaryKeys = ["deviceId", "day"])
 data class DailyMetric(
@@ -279,22 +257,22 @@ data class DailyMetric(
     val recovery: Double? = null,
     val strain: Double? = null,
     val exerciseCount: Int? = null,
-    // v7 in-sleep signal aggregates (nullable; computed server-side).
+    // In-sleep signal aggregates (nullable; computed server-side).
     val spo2Pct: Double? = null,        // mean SpO2 (%) during sleep
     val skinTempDevC: Double? = null,   // skin-temperature deviation (°C) from baseline
     val skinTempAbsC: Double? = null,   // absolute skin temperature (°C) during sleep
     val respRateBpm: Double? = null,    // mean respiration rate (breaths/min) during sleep
-    // On-device derived daily step total from the WHOOP5 step_motion_counter@57 (sum of positive
-    // consecutive u16-counter deltas over the day). APPROXIMATE, not cloud/clinical parity. (#78)
+    // On-device derived daily step total from the WHOOP5 step_motion_counter@57: sum of positive
+    // consecutive u16-counter deltas over the day. APPROXIMATE, not cloud/clinical parity.
     val steps: Int? = null,
-    // On-device APPROXIMATE whole-day active+resting energy estimate (kcal), computed from HR alone
-    // by AnalyticsEngine (Keytel active + Harris–Benedict BMR). Null when the day has no scored HR
-    // window. NOT cloud/clinical parity, a heart-rate estimate. (#78)
+    // On-device APPROXIMATE whole-day active+resting energy estimate (kcal), computed from HR
+    // alone by AnalyticsEngine (Keytel active + Harris–Benedict BMR). Null when the day has no
+    // scored HR window. NOT cloud/clinical parity, a heart-rate estimate.
     val activeKcalEst: Double? = null,
-    // WHOOP 4.0 raw SpO2 PPG ADC means over detected sleep (v17 columns, #93). The RAW red/IR optical
-    // channels banked on the v24 historical layout (spo2_red@68 / spo2_ir@70), NOT a calibrated
-    // blood-oxygen % — that needs WHOOP's proprietary curve. Both nullable and on-device only
-    // (imports/cloud never carry them), so old rows + non-4.0 nights stay null.
+    // WHOOP 4.0 raw SpO2 PPG ADC means over detected sleep. The raw red/IR channels banked on the
+    // v24 historical layout (spo2_red@68 / spo2_ir@70), NOT a calibrated blood-oxygen %: that
+    // needs WHOOP's proprietary curve. Nullable and on-device only, so old rows + non-4.0 nights
+    // stay null.
     val spo2Red: Int? = null,           // mean raw red PPG ADC during detected sleep
     val spo2Ir: Int? = null,            // mean raw IR PPG ADC during detected sleep
     // Persisted Rest inputs so the store-site sleep_performance and every restFromDaily recompute agree:
@@ -309,20 +287,14 @@ data class DailyMetric(
 )
 
 /**
- * Cached server-computed sleep session. Swift `sleepSession` (v4 + v13 userEdited + v14 startTsAdjusted).
- * Natural key (deviceId, startTs). `stagesJSON` is the verbatim stage-segments JSON array.
- *
- * Durable bed/wake editing (port of iOS PR #395):
- *   - [userEdited] (v13, MIGRATION_6_7): set true when the user hand-corrects this night's bed/wake
- *     time. The post-sync recompute pass preserves those bounds instead of re-upserting the
- *     strap-detected session over them (the overlap guard in IntelligenceEngine), so a later strap
- *     re-sync can't revert the correction. Stored as INTEGER NOT NULL DEFAULT 0 (Room maps Boolean →
- *     INTEGER), so every existing row reads as un-edited.
- *   - [startTsAdjusted] (v14, MIGRATION_6_7): the hand-set bed (onset) time. [startTs] stays the
- *     IMMUTABLE detected primary key (so the recompute guard + daily override keep matching on it,
- *     and the upsert REPLACEs the row in place rather than spawning a duplicate at a moved key, the
- *     latent Android bug this fix removes). Nullable INTEGER; null means "onset not edited, use
- *     startTs". Display / sort / re-staging use [effectiveStartTs]. Mirrors the GRDB v14 migration.
+ * Cached server-computed sleep session. Natural key (deviceId, startTs). `stagesJSON` is the
+ * verbatim stage-segments JSON array. Durable bed/wake editing:
+ *   - [userEdited]: true when the user hand-corrects bed/wake time; the post-sync recompute then
+ *     preserves those bounds instead of re-upserting the strap-detected session over them (the
+ *     overlap guard in IntelligenceEngine). INTEGER NOT NULL DEFAULT 0, so old rows read un-edited.
+ *   - [startTsAdjusted]: the hand-set onset time. [startTs] stays the IMMUTABLE detected primary
+ *     key, so upsert REPLACEs the row in place instead of duplicating at a moved key. Nullable;
+ *     null means unedited (use startTs). Display/sort/re-staging use [effectiveStartTs].
  */
 @Entity(tableName = "sleepSession", primaryKeys = ["deviceId", "startTs"])
 data class SleepSession(
@@ -333,35 +305,34 @@ data class SleepSession(
     val restingHr: Int? = null,
     val avgHrv: Double? = null,
     val stagesJSON: String? = null,
-    // v13/v14 (iOS PR #395 parity). Defaulted so every existing constructor call-site compiles
-    // unchanged and old rows read userEdited=false / startTsAdjusted=null.
+    // Defaulted so every existing constructor call-site compiles unchanged, and old rows read
+    // userEdited=false / startTsAdjusted=null.
     val userEdited: Boolean = false,
     val startTsAdjusted: Long? = null,
-    // v18 (Swift WhoopStore v18 parity, MIGRATION_11_12). Per-epoch analytics the stager/interpreter
-    // compute then discard, banked beside [stagesJSON] on the same row:
-    //   - [motionJSON]: a compact JSON array of per-epoch motion magnitudes (the SleepStager's per-epoch
-    //     restlessness signal), one entry per stage epoch on the SAME 30 s grid as stagesJSON (H8).
-    //   - [sleepStateJSON]: a compact JSON array of the decoded v18 band sleep_state per epoch, the
-    //     Interpreter's `(sb shr 4) and 3` (H2 persist half).
-    // Both nullable TEXT (no SQL DEFAULT, a Kotlin construction default never reaches the schema), so old
-    // rows read back null. HONESTY: an absent signal stays null, never a fabricated zero series. Written/read
-    // through the targeted DAO methods (not the @Upsert path, which never names them and so preserves them).
+    // Per-epoch analytics the stager/interpreter compute then discard, banked beside [stagesJSON]:
+    //   - [motionJSON]: compact JSON array of per-epoch motion magnitudes (restlessness signal),
+    //     one entry per stage epoch on the same 30 s grid as stagesJSON.
+    //   - [sleepStateJSON]: compact JSON array of the decoded v18 band sleep_state per epoch,
+    //     `(sb shr 4) and 3`.
+    // Both nullable TEXT with no SQL DEFAULT (a Kotlin construction default never reaches the
+    // schema), so old rows read back null: an absent signal stays null, never a fabricated zero
+    // series. Written/read through the targeted DAO methods, not @Upsert, which never names them
+    // and so preserves them.
     val motionJSON: String? = null,
     val sleepStateJSON: String? = null,
 ) {
     /** The bed (onset) time to DISPLAY / sort / re-stage by: the user's hand-set onset when edited,
-     *  else the immutable detected [startTs]. Mirrors Swift `CachedSleepSession.effectiveStartTs`. */
+     *  else the immutable detected [startTs]. */
     val effectiveStartTs: Long get() = startTsAdjusted ?: startTs
 
     /** Whole-block duration in hours (effective onset → wake). */
     val durationHours: Double get() = (endTs - effectiveStartTs) / 3600.0
 
     /**
-     * DERIVED nap classification (#518), computed at READ time, NO schema column / migration. A block
-     * is a nap when it is SHORT (< [NAP_MAX_HOURS]) or DAYTIME-onset (onset not in the overnight window).
-     * The day's MAIN sleep is resolved separately (the longest, overnight-preferring block, see
-     * SleepScreen.mainSleepBlock); this flag only describes the block's own shape, so the UI can label /
-     * count naps consistently with iOS SleepView.isNap. A long overnight split-sleep block is NOT a nap.
+     * DERIVED nap classification, computed at READ time, no schema column. A block is a nap when
+     * SHORT (< [NAP_MAX_HOURS]) or DAYTIME-onset (onset outside the overnight window); the day's
+     * MAIN sleep is resolved separately (see SleepScreen.mainSleepBlock). A long overnight
+     * split-sleep block is NOT a nap.
      */
     val isNapShaped: Boolean
         get() {
@@ -372,15 +343,15 @@ data class SleepSession(
         }
 
     companion object {
-        /** A block shorter than this is nap-shaped regardless of onset. Mirrors iOS SleepView.napMaxHours. */
+        /** A block shorter than this is nap-shaped regardless of onset. */
         const val NAP_MAX_HOURS: Double = 3.0
     }
 }
 
 /**
- * Generic long-format metric store. Swift `metricSeries` (v9).
- * Natural key (deviceId, day, key); `value` is always a REAL. The secondary index
- * (deviceId, key, day) mirrors `idx_metricSeries_device_key_day` for index-only range reads.
+ * Generic long-format metric store. Natural key (deviceId, day, key); `value` is always a REAL.
+ * The secondary index (deviceId, key, day) is `idx_metricSeries_device_key_day`, for index-only
+ * range reads.
  */
 @Entity(
     tableName = "metricSeries",
@@ -395,21 +366,18 @@ data class MetricSeriesRow(
 )
 
 /**
- * Lab Book marker reading (Health Records pillar). Swift `labMarker` (Database.swift v17 /
- * LabMarkerStore.swift). The richer source-of-truth behind the daily `metricSeries` projection:
- * one row per dated reading the USER entered themselves, a day can hold several readings, each
- * carries a precise `takenAt` instant and `unit`, and notes / qualitative (`valueText`) results
- * don't fit a REAL-only `metricSeries` cell.
+ * Lab Book marker reading (Health Records pillar). The richer source-of-truth behind the daily
+ * `metricSeries` projection: one row per dated reading the user entered themselves, a day can
+ * hold several readings, each carries a precise `takenAt` instant and `unit`, and notes /
+ * qualitative (`valueText`) results don't fit a REAL-only `metricSeries` cell.
  *
  * `id` is the client-generated stable primary key (edit/delete by id, backup round-trips); the
  * natural key (deviceId, markerKey, takenAt, source) is a UNIQUE index so a re-import of the same
- * reading is idempotent (`OnConflictStrategy.REPLACE` on that index, matching the Swift
- * `ON CONFLICT(deviceId, markerKey, takenAt, source) DO UPDATE`). `value` is nullable (a
+ * reading is idempotent (`OnConflictStrategy.REPLACE` on that index). `value` is nullable (a
  * qualitative entry stores only `valueText`); `day` is the pre-derived yyyy-MM-dd projection key.
  *
- * NON-CLINICAL: holds ONLY user-entered values + an OPTIONAL user-entered `referenceText` (their
- * own report's range, verbatim). No reference-range tables, no normality judgement. Added by
- * MIGRATION_10_11.
+ * NON-CLINICAL: holds only user-entered values plus an optional `referenceText` (their own
+ * report's range, verbatim). No reference-range tables, no normality judgement.
  */
 @Entity(
     tableName = "labMarker",
@@ -436,10 +404,9 @@ data class LabMarkerRow(
 )
 
 /**
- * Cached journal answer (logged behaviour). Swift `journal` (v8, JournalWorkoutAppleCache.swift).
- * Natural key (deviceId, day, question) where day is "YYYY-MM-DD". `answeredYes` is stored as an
- * INTEGER 0/1 in SQLite; exposed as Boolean here (Room maps Boolean -> INTEGER), matching the
- * Swift `answeredYes ? 1 : 0` write and `(... as Int) != 0` read.
+ * Cached journal answer (logged behaviour). Natural key (deviceId, day, question), day =
+ * "YYYY-MM-DD". `answeredYes` is stored as an INTEGER 0/1 in SQLite, exposed as Boolean here
+ * (Room maps Boolean -> INTEGER).
  */
 @Entity(tableName = "journal", primaryKeys = ["deviceId", "day", "question"])
 data class JournalEntry(
@@ -449,19 +416,18 @@ data class JournalEntry(
     val answeredYes: Boolean,
     val notes: String? = null,
     /**
-     * Optional numeric reading for a numeric journal item (e.g. caffeine mg, alcohol units), #322.
-     * null for a plain yes/no answer and for every imported WHOOP row. A numeric log writes
+     * Optional numeric reading for a numeric journal item (e.g. caffeine mg, alcohol units). Null
+     * for a plain yes/no answer and for every imported WHOOP row. A numeric log writes
      * answeredYes=true AND numericValue=v, so the EffectRanker with/without split is unchanged.
-     * Swift twin: JournalEntry.numericValue (v20). Room maps `Double?` -> nullable REAL.
+     * Room maps `Double?` -> nullable REAL.
      */
     val numericValue: Double? = null,
 )
 
 /**
- * Cached workout (Whoop + Apple Health). Swift `workout` (v8, JournalWorkoutAppleCache.swift).
- * Natural key (deviceId, startTs, sport). All metric columns nullable. `source` distinguishes
- * origin ("my-whoop" / "apple-health"); `zonesJSON` is verbatim HR-zone-percentages JSON.
- * `startTs`/`endTs` are wall-clock unix SECONDS (Swift Int -> Kotlin Long).
+ * Cached workout (Whoop + Apple Health). Natural key (deviceId, startTs, sport). All metric
+ * columns nullable. `source` distinguishes origin ("my-whoop" / "apple-health"); `zonesJSON` is
+ * verbatim HR-zone-percentages JSON. `startTs`/`endTs` are wall-clock unix SECONDS.
  */
 @Entity(tableName = "workout", primaryKeys = ["deviceId", "startTs", "sport"])
 data class WorkoutRow(
@@ -482,16 +448,14 @@ data class WorkoutRow(
 )
 
 /**
- * Durable "this detected bout is not a workout" marker (#107). The IntelligenceEngine wipes +
- * re-derives sport="detected" rows under "<deviceId>-noop" every run, so a plain delete only hides a
- * bout until the next re-detect recreates it. This table is INDEPENDENT of that churn: a detected row
- * is filtered out at read time whenever it OVERLAPS a marker's [startTs, endTs] span, so dismissal is
- * permanent, and span-overlap (not an exact-key match) survives the small startTs DRIFT a bout's
- * boundary can take as more HR arrives, matching the macOS dismissed-span semantics exactly.
+ * Durable "this detected bout is not a workout" marker. The IntelligenceEngine wipes and
+ * re-derives sport="detected" rows under "<deviceId>-noop" every run, so a plain delete only
+ * hides a bout until the next re-detect recreates it. This table is independent of that churn: a
+ * detected row is filtered out at read time whenever it OVERLAPS a marker's [startTs, endTs]
+ * span, so dismissal is permanent, and span-overlap (not an exact-key match) survives the small
+ * startTs drift a bout's boundary can take as more HR arrives.
  *
- * PK (deviceId, startTs), one marker per detected start; `endTs` is the span end. Android-only table
- * (no GRDB twin): the macOS read model can't add a column to its shared workout struct, so macOS
- * persists the equivalent as a UserDefaults "startTs:endTs" span list. Added by MIGRATION_4_5.
+ * PK (deviceId, startTs), one marker per detected start; `endTs` is the span end.
  */
 @Entity(tableName = "dismissedWorkout", primaryKeys = ["deviceId", "startTs"])
 data class DismissedWorkout(
@@ -501,11 +465,10 @@ data class DismissedWorkout(
 )
 
 /**
- * Durable tombstone for a user-DELETED sleep session (#33): keeps a deleted computed night from being
- * re-derived by the recompute, mirroring [DismissedWorkout] (#107). PK (deviceId, startTs), keyed on
- * the deleted session's start; `endTs` is the span the recompute's overlap test uses (a re-detected
- * onset can drift second-to-second). iOS has the twin sleep-delete path since #68 (its tombstones live in
- * UserDefaults, not a table); the undo lifts a tombstone by (deviceId, startTs) (#65). Added by MIGRATION_9_10.
+ * Durable tombstone for a user-DELETED sleep session: keeps a deleted computed night from being
+ * re-derived by the recompute, mirroring [DismissedWorkout]. PK (deviceId, startTs), keyed on the
+ * deleted session's start; `endTs` is the span the recompute's overlap test uses (a re-detected
+ * onset can drift second-to-second). Undo lifts a tombstone by (deviceId, startTs).
  */
 @Entity(tableName = "dismissedSleep", primaryKeys = ["deviceId", "startTs"])
 data class DismissedSleep(
@@ -515,8 +478,8 @@ data class DismissedSleep(
 )
 
 /**
- * Cached Apple-Health daily aggregate. Swift `appleDaily` (v8, JournalWorkoutAppleCache.swift).
- * Natural key (deviceId, day) where day is "YYYY-MM-DD". All metric columns nullable.
+ * Cached Apple-Health daily aggregate. Natural key (deviceId, day), day = "YYYY-MM-DD". All
+ * metric columns nullable.
  */
 @Entity(tableName = "appleDaily", primaryKeys = ["deviceId", "day"])
 data class AppleDaily(
@@ -533,19 +496,18 @@ data class AppleDaily(
 )
 
 /**
- * The RAW WHOOP 5.0 v26 optical PPG waveform, one record per second (v27 / MIGRATION_18_19, issue #156
- * follow-up). Swift `ppgWaveformSample` (WhoopStore Database.swift `v27-ppg-waveform` migration). The
- * strap's 24 Hz buffer was fully decoded but only ever used to derive [PpgHrSample]; the samples
- * themselves were discarded right after. Persisted here so a future re-analysis (a better HR estimator,
- * HRV-from-PPG, a waveform viewer) can run over the ORIGINAL samples, not just the derived bpm.
+ * The RAW WHOOP 5.0 v26 optical PPG waveform, one record per second. The strap's 24 Hz buffer
+ * was fully decoded but only ever used to derive [PpgHrSample]; the samples themselves were
+ * discarded right after. Persisted here so a future re-analysis (a better HR estimator,
+ * HRV-from-PPG, a waveform viewer) can run over the original samples, not just the derived bpm.
  *
- * The 24 raw i16 ADC samples are packed into a compact BLOB (2 bytes/sample, little-endian i16, see
- * [StreamPersistence.packPpgSamples]/[StreamPersistence.unpackPpgSamples]) instead of 24 scalar rows,
- * keeping a v26-heavy night to roughly the same order of magnitude as ONE extra per-second stream. The
- * BLOB format is byte-identical to the Swift GRDB `WhoopStore.packPpgSamples` so a `.noopbak` round-trips.
- * PK (deviceId, ts) mirrors every other per-second stream; a truncated frame can decode fewer than 24
- * samples. Fields are declared in the SAME order as the GRDB schema (deviceId, ts, samples) so the
- * migration's CREATE TABLE column order matches Room's generated shape.
+ * The 24 raw i16 ADC samples are packed into a compact BLOB (2 bytes/sample, little-endian, see
+ * [StreamPersistence.packPpgSamples]/[StreamPersistence.unpackPpgSamples]) instead of 24 scalar
+ * rows, keeping a v26-heavy night to roughly the same order of magnitude as one extra per-second
+ * stream, and so a `.noopbak` round-trips byte-identically. PK (deviceId, ts) mirrors every other
+ * per-second stream; a truncated frame can decode fewer than 24 samples. Fields are declared in
+ * this order (deviceId, ts, samples) so the migration's CREATE TABLE column order matches Room's
+ * generated shape.
  */
 @Entity(tableName = "ppgWaveformSample", primaryKeys = ["deviceId", "ts"])
 data class PpgWaveformSampleEntity(
@@ -569,10 +531,9 @@ data class PpgWaveformSampleEntity(
 }
 
 /**
- * One Live Session (silent guardian) record (v22 / MIGRATION_15_16). Natural key (deviceId, startTs).
- * `endTs` is null while the session is still in progress. Fields are declared in the SAME order as the
- * Swift WhoopStore `liveSession` schema so the migration SQL matches Room's generated shape. Twin of the
- * Swift `LiveSessionRow`. See docs/superpowers/specs/2026-07-04-live-sessions-design.md.
+ * One Live Session (silent guardian) record. Natural key (deviceId, startTs). `endTs` is null
+ * while the session is still in progress. Fields are declared in this order so the migration SQL
+ * matches Room's generated shape.
  */
 @Entity(tableName = "liveSession", primaryKeys = ["deviceId", "startTs"])
 data class LiveSessionRow(

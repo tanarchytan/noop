@@ -3,14 +3,12 @@ package com.noop.data
 import java.text.Normalizer
 
 /**
- * Single source of truth for recognising a wearable BRAND from its advertised BLE name, and the stored
- * facts that follow from the brand. Pure (no android.bluetooth) so it's JVM-unit-tested — the recognition
- * + capability facts are byte-parity-critical and must be asserted headlessly on both platforms. Faithful
- * twin of Packages/WhoopStore/Sources/WhoopStore/DeviceBrandCatalog.swift.
+ * Single source of truth for recognising a wearable BRAND from its advertised BLE name, and the
+ * stored facts that follow from the brand. Pure (no android.bluetooth) so it's JVM-unit-tested.
  *
  * A recognised brand is ONE row in [all]: the experimental-tier gate ([com.noop.ble.ExperimentalBrand])
- * and the source routing both derive from here instead of re-listing the advertised-name tokens per call
- * site. On noop-tan only the experimental Oura ring is catalogued; WHOOP is detected by its own path.
+ * and the source routing both derive from here instead of re-listing the advertised-name tokens per
+ * call site. Only the experimental Oura ring is catalogued; WHOOP is detected by its own path.
  */
 data class DeviceBrandSpec(
     /** Display + stored `PairedDeviceRow.brand` string (e.g. "Oura"). */
@@ -39,8 +37,7 @@ object DeviceBrandCatalog {
     )
 
     /** The brand whose advertised name matches, or null if unrecognised. Diacritic-folded (NFD + strip
-     *  combining marks, mirroring Swift's `.diacriticInsensitive`) + lowercased; substring match in [all]
-     *  order. Twin of Swift `DeviceBrandCatalog.spec(forAdvertisedName:)`. */
+     *  combining marks) and lowercased; substring match in [all] order. */
     fun specForAdvertisedName(name: String): DeviceBrandSpec? {
         val n = Normalizer.normalize(name, Normalizer.Form.NFD)
             .replace(Regex("\\p{M}+"), "")

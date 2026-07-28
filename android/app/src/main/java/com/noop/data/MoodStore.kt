@@ -3,25 +3,14 @@ package com.noop.data
 import java.time.LocalDate
 
 /**
- * MoodStore — the Mind lane's storage layer. Kotlin mirror of the Swift Mind lane;
- * the storage contract is IDENTICAL on both platforms so an export/import or a future
- * sync round-trips losslessly:
- *
- *  - rows live in the generic `metricSeries` store (PK (deviceId, day, key), @Upsert)
- *  - source id (the deviceId column) is ALWAYS [MOOD_DEVICE_ID] ("noop-mood")
- *  - key is ALWAYS [MOOD_KEY] ("mood")
- *  - value is the 5-face scale, 1.0–5.0 (clamped on write)
- *  - ONE row per local day ("YYYY-MM-DD"); editing the same day overwrites in place
- *    (the natural key makes the upsert an overwrite — no duplicate days possible)
- *
- * Source isolation mirrors the journal's JOURNAL_DEVICE_ID convention: `metricSeries`
- * has no source column beyond deviceId, so native check-ins are written under a
- * dedicated "noop-mood" id, NEVER under "my-whoop"/"apple-health" — a CSV or Apple
- * Health re-import can therefore never silently overwrite (or delete) in-app moods.
- *
- * The constructor takes the two storage functions rather than the repository class so
- * the contract is unit-testable with a plain in-memory map (no Room/Robolectric);
- * the secondary constructor binds the real [WhoopRepository].
+ * MoodStore — the Mind lane's storage layer. Rows live in the generic `metricSeries` store
+ * (PK (deviceId, day, key), @Upsert); source id (deviceId) is ALWAYS [MOOD_DEVICE_ID]
+ * ("noop-mood"), key ALWAYS [MOOD_KEY], value the 5-face scale 1.0-5.0 (clamped on write).
+ * ONE row per local day ("YYYY-MM-DD"); the natural key makes the upsert an overwrite in
+ * place, so a day can never duplicate. `metricSeries` has no source column beyond deviceId,
+ * so native check-ins are isolated under "noop-mood" — a CSV or Apple Health re-import can
+ * never overwrite or delete them. Constructor takes the two storage functions (not the
+ * repository class) so the contract is unit-testable with a plain in-memory map.
  */
 class MoodStore(
     private val upsertRows: suspend (List<MetricSeriesRow>) -> Unit,
@@ -63,8 +52,7 @@ class MoodStore(
             .map { it.day to it.value }
 
     companion object {
-        /** Dedicated source id (deviceId column) for native mood rows — shared contract
-         *  with the Swift Mind lane, value-for-value. */
+        /** Dedicated source id (deviceId column) for native mood rows. */
         const val MOOD_DEVICE_ID = "noop-mood"
 
         /** The metricSeries key under which moods are stored. */

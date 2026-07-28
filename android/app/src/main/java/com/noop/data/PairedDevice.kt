@@ -4,20 +4,17 @@ import androidx.room.Entity
 import androidx.room.PrimaryKey
 
 /*
- * Device-registry schema — the Android port of the Swift foundation in
- * Packages/WhoopStore (PairedDevice.swift + DeviceRegistryStore.swift) and the Database.swift v15
- * `pairedDevice` / `dayOwnership` migration. Added to Room as the v7 → v8 additive migration.
+ * Device-registry schema. Added to Room as the v7 -> v8 additive migration.
  *
  * `id` is the SAME string used as `deviceId` in every sample table's (deviceId, ts) key, so a
- * device's raw samples are already isolated by id — no per-row source column is needed. The existing
- * WHOOP keeps id "my-whoop" (zero sample-row migration); it is seeded `active` by MIGRATION_7_8.
+ * device's raw samples are already isolated by id — no per-row source column is needed. The
+ * existing WHOOP keeps id "my-whoop" (zero sample-row migration); seeded `active` by MIGRATION_7_8.
  */
 
 /**
- * A device the user has paired. PK = [id] (== `deviceId` in the sample tables). [capabilities] is the
- * comma-joined set of [Metric] rawValues, byte-for-byte matching the Swift store's encoding so a
- * cross-platform backup round-trips. Exactly one row is `active` at a time (invariant I1, enforced in
- * [DeviceRegistry.setActive]).
+ * A device the user has paired. PK = [id] (== `deviceId` in the sample tables). [capabilities] is
+ * the comma-joined set of [Metric] rawValues. Exactly one row is `active` at a time (invariant I1,
+ * enforced in [DeviceRegistry.setActive]).
  */
 @Entity(tableName = "pairedDevice")
 data class PairedDeviceRow(
@@ -27,12 +24,9 @@ data class PairedDeviceRow(
     val model: String,
     val nickname: String?,
     /**
-     * The strap's stable BLE peripheral identifier — on Android the [android.bluetooth.BluetoothDevice]
-     * MAC address (also exposed as [com.noop.ble.WhoopBleClient.lastDeviceAddress]). Added by the v8 → v9
-     * additive migration (the Android twin of the Swift `peripheralId` column). Lets the BLE client pin a
-     * connect to ONE specific strap (multi-WHOOP) and lets a freshly-paired device be looked up by its
-     * address. Nullable, no SQL DEFAULT (matches Room's generated column for a `String?` field); the
-     * seeded "my-whoop" row keeps it NULL until the strap is (re)paired.
+     * The strap's stable BLE peripheral identifier ([android.bluetooth.BluetoothDevice] MAC address).
+     * Lets the BLE client pin a connect to ONE specific strap and look up a freshly-paired device.
+     * Nullable; the seeded "my-whoop" row stays NULL until the strap is (re)paired.
      */
     val peripheralId: String? = null,
     val sourceKind: String,
@@ -43,10 +37,10 @@ data class PairedDeviceRow(
 )
 
 /**
- * Override of which device owns a given local day's displayed/scored metrics (invariant I2: a day's
- * scores are never blended across sources). PK = [day] ("YYYY-MM-DD"). [locked] = true means an
- * explicit decision (import-overlap resolution / user choice) that the resolver must honour over its
- * priority default. Port of the Swift `dayOwnership` table.
+ * Override of which device owns a given local day's displayed/scored metrics (invariant I2: a
+ * day's scores are never blended across sources). PK = [day] ("YYYY-MM-DD"). [locked] = true means
+ * an explicit decision (import-overlap resolution / user choice) that the resolver must honour over
+ * its priority default.
  */
 @Entity(tableName = "dayOwnership")
 data class DayOwnershipRow(
@@ -56,22 +50,19 @@ data class DayOwnershipRow(
     val locked: Boolean = false,
 )
 
-/** Lifecycle of a paired device. Stored as the lowercase enum name (Swift `DeviceStatus` rawValue). */
+/** Lifecycle of a paired device. Stored as the lowercase enum name. */
 enum class DeviceStatus { active, paired, archived }
 
-/** How a device's data reaches the store. Stored as the enum name (Swift `SourceKind` rawValue).
- *  [oura] = an EXPERIMENTAL Oura ring live BLE source. Owns its OWN scanner/GATT (never touches the
- *  WHOOP client); decodes the ring's own raw signals + open HRV/sleep-phase tags and runs NOOP's own
- *  scoring, and surfaces an honest "needs pairing" state when the install key is absent (never Oura's
- *  encrypted readiness/sleep scores). Carried on string rawValue "oura"; no DB migration (the column is
- *  free-text and existing rows never carry it).
- *  Additive: existing rows never carry [oura]; only the Oura wizard path writes it. */
-// `activityFile` (#137): a GPX/TCX/FIT activity file under the `activity-file` device. Distinct from
-// `fileImport` (a whole-day WHOOP CSV export) so the day-owner resolver ranks it BELOW day-spanning
-// imports — a 90-minute ride must never displace a full-day source with HR for the same day. It owns a
-// day only when nothing else has data (a strap-less day). Additive: only the activity-file importer writes it.
+/** How a device's data reaches the store. Stored as the enum name.
+ *  [oura] = an EXPERIMENTAL Oura ring live BLE source with its OWN scanner/GATT (never touches the
+ *  WHOOP client); decodes the ring's own signals, runs NOOP's own scoring, and surfaces an honest
+ *  "needs pairing" state instead of Oura's encrypted scores when the install key is absent. Free-text
+ *  column: existing rows never carry it, so no migration was needed. */
+// `activityFile`: a GPX/TCX/FIT activity file under the `activity-file` device. Ranked BELOW
+// `fileImport` (a whole-day WHOOP CSV export) by the day-owner resolver, so a 90-minute ride never
+// displaces a full-day HR source; it owns a day only when nothing else has data.
 enum class SourceKind { liveBLE, historyBLE, cloudImport, fileImport, oura, activityFile }
 
 /** A canonical metric a source can provide — drives capability-aware UI + the day-owner resolver.
- *  Stored as the enum name (Swift `Metric` rawValue) inside the comma-joined `capabilities` string. */
+ *  Stored as the enum name inside the comma-joined `capabilities` string. */
 enum class Metric { hr, hrv, spo2, skinTemp, steps, sleep, strainLoad }

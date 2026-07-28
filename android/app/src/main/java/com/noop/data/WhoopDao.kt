@@ -9,18 +9,16 @@ import androidx.room.Upsert
 import kotlinx.coroutines.flow.Flow
 
 /**
- * Data-access for the local store. Mirrors the GRDB reads/writes in WhoopStore
- * (StreamStore.swift, Reads.swift, MetricsCache.swift).
+ * Data-access for the local store.
  *
- * Stream inserts use OnConflictStrategy.IGNORE == Swift `ON CONFLICT(...) DO NOTHING`
- * (idempotent by natural key — re-inserting an existing row is a no-op).
+ * Stream inserts use OnConflictStrategy.IGNORE (idempotent by natural key — re-inserting an
+ * existing row is a no-op).
  *
- * Server-derived caches (dailyMetric, sleepSession, metricSeries) use @Upsert so the
- * latest server value wins on conflict, matching the `ON CONFLICT ... DO UPDATE SET ...`
- * upserts in MetricsCache.swift.
+ * Server-derived caches (dailyMetric, sleepSession, metricSeries) use @Upsert so the latest
+ * server value wins on conflict.
  *
- * Range reads are ORDER BY ts ASC (R-R and events add a secondary key matching Reads.swift),
- * and bound by [from, to] inclusive with a row limit.
+ * Range reads are ORDER BY ts ASC (R-R and events add a secondary key), bound by [from, to]
+ * inclusive with a row limit.
  */
 @Dao
 interface WhoopDao : DeviceRegistryDao {
@@ -33,10 +31,9 @@ interface WhoopDao : DeviceRegistryDao {
     @Query("SELECT * FROM device WHERE id = :id")
     suspend fun device(id: String): DeviceRow?
 
-    // NOTE: the device-registry reads/writes (pairedDevice/dayOwnership, v8) live on the narrow
-    // [DeviceRegistryDao] super-interface so [DeviceRegistry] can be unit-tested with a small fake DAO
-    // (no Robolectric — see DeviceRegistryTest). Room flattens the inherited @Query/@Insert methods
-    // into this @Dao at compile time, so they generate exactly as if declared here.
+    // The device-registry reads/writes (pairedDevice/dayOwnership, v8) live on the narrow
+    // [DeviceRegistryDao] super-interface so [DeviceRegistry] is unit-testable with a fake DAO
+    // (no Robolectric). Room flattens the inherited methods into this @Dao at compile time.
 
     // MARK: - Stream inserts (idempotent by natural key)
 
@@ -68,7 +65,7 @@ interface WhoopDao : DeviceRegistryDao {
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertSteps(rows: List<StepSample>): List<Long>
 
-    /** The strap's OWN band sleep_state per record (#175). Idempotent by (deviceId, ts). */
+    /** The strap's OWN band sleep_state per record. Idempotent by (deviceId, ts). */
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertSleepState(rows: List<SleepStateSampleEntity>): List<Long>
 
@@ -86,11 +83,11 @@ interface WhoopDao : DeviceRegistryDao {
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertGravity(rows: List<GravitySample>): List<Long>
 
-    /** PPG-derived HR from the v26 optical waveform. Idempotent by (deviceId, ts). (#156) */
+    /** PPG-derived HR from the v26 optical waveform. Idempotent by (deviceId, ts). */
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertPpgHr(rows: List<PpgHrSample>): List<Long>
 
-    /** RAW v26 optical PPG waveform (packed i16 BLOB). Idempotent by (deviceId, ts). (#156 follow-up) */
+    /** RAW v26 optical PPG waveform (packed i16 BLOB). Idempotent by (deviceId, ts). */
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertPpgWaveform(rows: List<PpgWaveformSampleEntity>): List<Long>
 
@@ -119,29 +116,19 @@ interface WhoopDao : DeviceRegistryDao {
     @Query("DELETE FROM sleepSession WHERE deviceId = :deviceId AND startTs = :startTs")
     suspend fun deleteSleepSession(deviceId: String, startTs: Long)
 
-    /** Manually ADD a sleep session the detector missed — typically a daytime NAP (#508). Port of iOS
-     *  MetricsCache.insertManualSleepSession. `onConflict = IGNORE` makes it purely ADDITIVE: it can
-     *  never clobber an existing detected/edited session that shares the exact onset second (it returns
-     *  -1 then). The caller builds the row with userEdited = true (so the recompute overlap guard in
-     *  [com.noop.analytics.IntelligenceEngine] preserves it) and startTsAdjusted = null (a manual nap's
-     *  onset IS the chosen onset). Returns the inserted rowid, or -1 on a conflicting onset. */
+    /** Manually ADD a sleep session the detector missed (e.g. a daytime nap). `onConflict = IGNORE`
+     *  makes it purely ADDITIVE: never clobbers an existing session sharing the onset second (returns
+     *  -1). userEdited = true (recompute guard) + startTsAdjusted = null protect/pin it. */
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertSleepSession(row: SleepSession): Long
 
     /**
-     * Replace ONLY the stage breakdown of an already user-edited night, leaving the corrected
-     * bed/wake bounds (startTsAdjusted/endTs) and the userEdited flag untouched. Port of iOS
-     * MetricsCache.updateSleepStages (PR #449). The post-sync self-heal
-     * ([com.noop.analytics.SleepStageHealer]) calls this when a strap sync finally delivers the raw
-     * streams for a night that was edited BEFORE they arrived: at edit time the stages were
-     * fabricated by SleepWindowReclip (a trailing "wake" block) because the raw wasn't present yet,
-     * and userEdited then froze that breakdown against every later sync. This swaps in the real
-     * re-derived stages without disturbing the user's bound correction.
-     *
-     * Scoped to `userEdited = 1` rows (Room stores Boolean true as INTEGER 1) so it can NEVER rewrite
-     * an un-edited (freely re-derivable) night — the regular recompute upsert owns those. Keyed by the
-     * IMMUTABLE detected primary key (deviceId, startTs); the caller passes the detected startTs, never
-     * effectiveStartTs. Returns rows changed (0 when no such edited session exists).
+     * Replace ONLY the stage breakdown of a user-edited night, leaving its bed/wake bounds
+     * (startTsAdjusted/endTs) and userEdited flag untouched — used by the post-sync heal that swaps
+     * in real stages once raw arrives for a night edited before it landed (edit-time stages were a
+     * fabricated placeholder). Scoped to `userEdited = 1` (Room stores Boolean true as INTEGER 1), so
+     * it never rewrites an un-edited night. Keyed by the IMMUTABLE detected (deviceId, startTs), never
+     * effectiveStartTs. Returns rows changed (0 when none match).
      */
     @Query(
         "UPDATE sleepSession SET stagesJSON = :stagesJSON " +
@@ -149,33 +136,29 @@ interface WhoopDao : DeviceRegistryDao {
     )
     suspend fun updateSleepStages(deviceId: String, detectedStartTs: Long, stagesJSON: String): Int
 
-    /**
-     * v18 (H8): write the per-epoch motion magnitudes (compact JSON array) for one session, banked beside
-     * `stagesJSON` on the same row. Keyed by the IMMUTABLE detected key (deviceId, startTs). `null` clears
-     * the column (no series). Port of iOS WhoopStore.persistSessionMotion (the repository encodes the array).
-     * Returns rows changed (0 when no such session). Targeted UPDATE so the @Upsert recompute/import path —
-     * which never names this column — preserves it. */
+    /** v18: write per-epoch motion magnitudes (compact JSON array) for one session, banked beside
+     *  `stagesJSON` on the same row. Keyed by the IMMUTABLE (deviceId, startTs); `null` clears the
+     *  column. Targeted UPDATE the @Upsert path never touches. Returns rows changed (0 if no session). */
     @Query(
         "UPDATE sleepSession SET motionJSON = :json WHERE deviceId = :deviceId AND startTs = :sessionStart"
     )
     suspend fun updateSessionMotion(deviceId: String, sessionStart: Long, json: String?): Int
 
-    /** v18 (H8): read the per-epoch motion JSON for one session, or null when unset / no such session.
+    /** v18: read the per-epoch motion JSON for one session, or null when unset / no such session.
      *  The repository decodes it to `List<Double>?` (absent stays absent). */
     @Query("SELECT motionJSON FROM sleepSession WHERE deviceId = :deviceId AND startTs = :sessionStart")
     suspend fun sessionMotionJson(deviceId: String, sessionStart: Long): String?
 
     /**
-     * v18 (H2 persist half): write the decoded v18 band sleep_state per epoch (compact JSON int array) for
-     * one session. Keyed by (deviceId, startTs). `null` clears the column. Port of iOS
-     * WhoopStore.persistSessionSleepState. Returns rows changed. Targeted UPDATE so the @Upsert path
-     * preserves it. */
+     * v18: write the decoded band sleep_state per epoch (compact JSON int array) for one session.
+     * Keyed by (deviceId, startTs); `null` clears the column. Targeted UPDATE, so the @Upsert path
+     * leaves it untouched. Returns rows changed. */
     @Query(
         "UPDATE sleepSession SET sleepStateJSON = :json WHERE deviceId = :deviceId AND startTs = :sessionStart"
     )
     suspend fun updateSessionSleepState(deviceId: String, sessionStart: Long, json: String?): Int
 
-    /** v18 (H2): read the decoded v18 band sleep_state JSON for one session, or null when unset.
+    /** v18: read the decoded band sleep_state JSON for one session, or null when unset.
      *  The repository decodes it to `List<Int>?`. */
     @Query("SELECT sleepStateJSON FROM sleepSession WHERE deviceId = :deviceId AND startTs = :sessionStart")
     suspend fun sessionSleepStateJson(deviceId: String, sessionStart: Long): String?
@@ -194,10 +177,9 @@ interface WhoopDao : DeviceRegistryDao {
 
     // MARK: - Range reads (ORDER BY ts ASC, inclusive [from, to], limited)
 
-    /** COALESCE union (#172/#219 parity with Swift's hrSamples): the measured `hrSample` is
-     *  authoritative; the v26 PPG-derived `ppgHrSample` fills ONLY seconds the strap never reported a
-     *  bpm for (anti-join), so a PPG-only WHOOP 5 night still clears the scoring gate and is scorable —
-     *  exactly as `hrBuckets` already coalesces for charts. PPG rows carry synced = 0. */
+    /** COALESCE union: the measured `hrSample` is authoritative; the v26 PPG-derived `ppgHrSample`
+     *  fills ONLY seconds the strap never reported a bpm for (anti-join), so a PPG-only WHOOP 5
+     *  night still clears the scoring gate. PPG rows carry synced = 0. */
     @Query(
         "SELECT deviceId, ts, bpm, synced FROM (" +
             "SELECT deviceId, ts, bpm, synced FROM hrSample " +
@@ -219,15 +201,10 @@ interface WhoopDao : DeviceRegistryDao {
     )
     suspend fun rawHrSamples(deviceId: String, from: Long, to: Long, limit: Int): List<HrSample>
 
-    /** Downsampled HR for charting: mean bpm per [bucketSeconds]-wide bucket over [from, to],
-     *  keyed by the bucket start (floor(ts/bucket)*bucket). Aggregated in SQL so a 24h window
-     *  returns ~(to-from)/bucketSeconds rows, not every ~1 Hz sample. Mirrors macOS hrBuckets.
-     *
-     *  COALESCE union (#156): the real sensor `hrSample` is authoritative; the v26 PPG-derived
-     *  `ppgHrSample` only contributes seconds the strap NEVER reported a bpm for (WHERE NOT EXISTS),
-     *  so derived HR fills gaps without ever overriding or double-counting a true HR sample. The two
-     *  selects are UNION ALL'd into one bpm stream, then bucket-averaged exactly as before. Matches
-     *  the Swift hrBuckets COALESCE union. */
+    /** Downsampled HR for charting: mean bpm per [bucketSeconds]-wide bucket over [from, to], keyed
+     *  by the bucket start (floor(ts/bucket)*bucket), aggregated in SQL. COALESCE union: the real
+     *  sensor `hrSample` is authoritative; the v26 PPG-derived `ppgHrSample` only contributes seconds
+     *  the strap NEVER reported a bpm for, so derived HR fills gaps without ever double-counting. */
     @Query(
         "SELECT (ts / :bucketSeconds) * :bucketSeconds AS bucket, AVG(bpm) AS avgBpm FROM (" +
             "SELECT ts, bpm FROM hrSample " +
@@ -240,14 +217,14 @@ interface WhoopDao : DeviceRegistryDao {
     )
     suspend fun hrBuckets(deviceId: String, from: Long, to: Long, bucketSeconds: Long): List<HrBucket>
 
-    /** Raw v26 PPG-derived HR samples in [from, to] (ascending). (#156) */
+    /** Raw v26 PPG-derived HR samples in [from, to] (ascending). */
     @Query(
         "SELECT * FROM ppgHrSample WHERE deviceId = :deviceId AND ts >= :from AND ts <= :to " +
             "ORDER BY ts ASC LIMIT :limit"
     )
     suspend fun ppgHrSamples(deviceId: String, from: Long, to: Long, limit: Int): List<PpgHrSample>
 
-    /** RAW v26 optical PPG waveform rows in [from, to] (ascending), packed i16 BLOB. (#156 follow-up) */
+    /** RAW v26 optical PPG waveform rows in [from, to] (ascending), packed i16 BLOB. */
     @Query(
         "SELECT * FROM ppgWaveformSample WHERE deviceId = :deviceId AND ts >= :from AND ts <= :to " +
             "ORDER BY ts ASC LIMIT :limit"
@@ -256,7 +233,7 @@ interface WhoopDao : DeviceRegistryDao {
         List<PpgWaveformSampleEntity>
 
     /** Aggregate HR over a window (one indexed (deviceId,ts) range scan — no row materialisation,
-     *  no [hrSamples] LIMIT truncation). Backs the imported-workout HR fallback (#77). */
+     *  no [hrSamples] LIMIT truncation). Backs the imported-workout HR fallback. */
     @Query(
         "SELECT COUNT(*) AS n, AVG(bpm) AS avg, MAX(bpm) AS max FROM hrSample " +
             "WHERE deviceId = :deviceId AND ts >= :from AND ts <= :to"
@@ -264,14 +241,10 @@ interface WhoopDao : DeviceRegistryDao {
     suspend fun hrWindowStats(deviceId: String, from: Long, to: Long): HrWindowStats
 
     @Query(
-        // ORDER BY ts, seq preserves the decoder's emission order (seq = insertion counter).
-        // RMSSD is built from successive-beat differences and groups R-R per second, so the order
-        // WITHIN a second is its whole input. `ord` carries the emission order; `seq` cannot, because
-        // assignRrSeq keys on (ts, rrMs) and every distinct beat in a second holds 0, leaving the sort
-        // to fall through to the primary-key index and return them by magnitude. Legacy rows hold a
-        // NULL ord, which SQLite sorts first, so they fall through to (rrMs, seq) — the order the old
-        // read already produced for 99.7% of multi-beat seconds. The remainder is where the old sort
-        // was non-deterministic and is now stable, moving nightly RMSSD on stored history by <1%.
+        // ORDER BY ts, ord, rrMs, seq preserves emission order: RMSSD is built from successive-beat
+        // differences, so order WITHIN a second is the whole input. `ord` carries true emission
+        // order; `seq` can't (assignRrSeq keys on (ts, rrMs), so every beat in a second holds 0).
+        // Legacy rows hold a NULL ord (SQLite sorts it first), falling through to (rrMs, seq).
         "SELECT * FROM rrInterval WHERE deviceId = :deviceId AND ts >= :from AND ts <= :to " +
             "ORDER BY ts ASC, ord ASC, rrMs ASC, seq ASC LIMIT :limit"
     )
@@ -313,8 +286,8 @@ interface WhoopDao : DeviceRegistryDao {
     )
     suspend fun stepSamples(deviceId: String, from: Long, to: Long, limit: Int): List<StepSample>
 
-    /** The strap's OWN banked band sleep_state (#175) in [from, to], ascending. Feeds the Deep Timeline
-     *  band-state track and the per-session grid the H7 re-onset confirm guard reads. */
+    /** The strap's OWN banked band sleep_state in [from, to], ascending. Feeds the Deep Timeline
+     *  band-state track and the per-session grid the re-onset confirm guard reads. */
     @Query(
         "SELECT * FROM sleepStateSample WHERE deviceId = :deviceId AND ts >= :from AND ts <= :to " +
             "ORDER BY ts ASC LIMIT :limit"
@@ -333,12 +306,9 @@ interface WhoopDao : DeviceRegistryDao {
     )
     suspend fun gravitySamples(deviceId: String, from: Long, to: Long, limit: Int): List<GravitySample>
 
-    // MARK: - Daily metrics / sleep reads (mirror MetricsCache.swift)
+    // MARK: - Daily metrics / sleep reads
 
-    /**
-     * Cached daily metrics for days in [from, to] (lexicographic YYYY-MM-DD compare), oldest first.
-     * Port of MetricsCache.swift dailyMetrics(deviceId:from:to:).
-     */
+    /** Cached daily metrics for days in [from, to] (lexicographic YYYY-MM-DD compare), oldest first. */
     @Query(
         "SELECT * FROM dailyMetric WHERE deviceId = :deviceId AND day >= :from AND day <= :to " +
             "ORDER BY day ASC"
@@ -347,10 +317,9 @@ interface WhoopDao : DeviceRegistryDao {
 
     /**
      * Delete a source's cached daily rows whose day-key is in [from, to] (inclusive, yyyy-MM-dd
-     * lexicographic = chronological). The #277 local-day re-bucketing migration uses this to drop the
-     * computed ("-noop") UTC-keyed rows across the recompute window before re-upserting the LOCAL-keyed
-     * rows, so a UTC/local duplicate day can't linger. Source-scoped, so imported "my-whoop" rows are
-     * never touched. Mirrors WhoopStore MetricsCache.deleteDailyMetrics.
+     * lexicographic = chronological). Used by the local-day re-bucketing migration to drop computed
+     * ("-noop") UTC-keyed rows before re-upserting LOCAL-keyed ones, so a UTC/local duplicate day
+     * can't linger. Source-scoped, so imported "my-whoop" rows are never touched.
      */
     @Query("DELETE FROM dailyMetric WHERE deviceId = :deviceId AND day >= :from AND day <= :to")
     suspend fun deleteDailyMetricsInRange(deviceId: String, from: String, to: String)
@@ -377,22 +346,18 @@ interface WhoopDao : DeviceRegistryDao {
 
     /**
      * Every distinct source id with at least one cached daily row. The Health Connect backfill's
-     * covered-days gate filters these to the strap-native ids
-     * (HealthConnectImporter.isStrapNativeSourceId), so its #112 skip-set also covers an actively
-     * paired strap's "whoop-<mac>" / "whoop-<mac>-noop" rows — not just the canonical
-     * "my-whoop" / "my-whoop-noop" pair.
+     * covered-days gate filters these via (HealthConnectImporter.isStrapNativeSourceId), so the
+     * skip-set also covers an actively paired strap's "whoop-<mac>" / "whoop-<mac>-noop" rows, not
+     * just the canonical "my-whoop" / "my-whoop-noop" pair.
      */
     @Query("SELECT DISTINCT deviceId FROM dailyMetric")
     suspend fun dailyMetricDeviceIds(): List<String>
 
     /**
-     * #112 follow-up heal: delete un-edited "my-whoop" sleep sessions that carry NO signal beyond a
-     * window (no efficiency / restingHr / avgHrv / motionJSON / sleepStateJSON — exactly the shape the
-     * Health Connect backfill writes) when a computed ("-noop") session overlaps the same window.
-     * These are the shadow rows an HC import wrote while the covered-days gate missed active-strap
-     * ids; once purged, the richer computed night wins the merge again. Rows a WHOOP CSV / wearable
-     * export wrote carry efficiency (or HR/HRV), and userEdited rows are never touched, so real data
-     * survives. Idempotent: a re-run matches nothing.
+     * Heal: delete un-edited "my-whoop" sleep sessions with no signal beyond a window (no efficiency /
+     * restingHr / avgHrv / motionJSON / sleepStateJSON — the Health Connect backfill's shape) when a
+     * computed ("-noop") session overlaps the same window, so the richer night wins the merge.
+     * CSV/wearable rows carry efficiency or HR/HRV and are never matched; userEdited rows are untouched.
      */
     @Query(
         "DELETE FROM sleepSession WHERE deviceId = 'my-whoop' AND userEdited = 0 " +
@@ -404,11 +369,10 @@ interface WhoopDao : DeviceRegistryDao {
     suspend fun purgeHcShadowedSleepSessions(): Int
 
     /**
-     * #112 follow-up heal (daily half): delete "my-whoop" daily rows shaped like the Health Connect
-     * backfill (no efficiency / stage minutes / disturbances / recovery / strain / steps — HC only
-     * writes totals + vitals) on a day a computed ("-noop") source also covers. A sparse row like
-     * this shadows the computed day in the imported-wins merge (#112), blanking Today / regressing
-     * Sleep stages. CSV-imported days carry stage minutes + efficiency and are never matched.
+     * Heal: delete "my-whoop" daily rows shaped like a Health Connect backfill (no efficiency / stage
+     * minutes / disturbances / recovery / strain / steps — HC only writes totals + vitals) on a day a
+     * computed ("-noop") source also covers, so the sparse row can't shadow the computed day in the
+     * imported-wins merge. CSV-imported days carry stage minutes + efficiency and are never matched.
      */
     @Query(
         "DELETE FROM dailyMetric WHERE deviceId = 'my-whoop' " +
@@ -420,12 +384,10 @@ interface WhoopDao : DeviceRegistryDao {
     suspend fun purgeHcShadowedDailyMetrics(): Int
 
     /**
-     * #797: the most-recent [limit] daily metrics for a device, returned oldest-first. Backs the bounded
-     * dashboard merge: the SQL takes the newest rows (ORDER BY day DESC LIMIT), and the repository flips
-     * them to ascending so every downstream consumer sees the SAME oldest-first order as [daysFlow]. A
-     * generous bound (the repository's RECENT_DAYS_CAP) keeps every current surface intact (Trends' deepest
-     * view, Fitness Age / Vitality 7-day windows) while a years-deep import no longer re-merges the WHOLE
-     * history on every DB change.
+     * The most-recent [limit] daily metrics for a device, returned oldest-first. Backs the bounded
+     * dashboard merge: SQL takes the newest rows (ORDER BY day DESC LIMIT), and the repository flips
+     * them to ascending so every downstream consumer sees the SAME order as [daysFlow]. A generous
+     * bound (RECENT_DAYS_CAP) avoids re-merging the WHOLE history on every DB change.
      */
     @Query("SELECT * FROM dailyMetric WHERE deviceId = :deviceId ORDER BY day DESC LIMIT :limit")
     fun recentDaysFlow(deviceId: String, limit: Int): Flow<List<DailyMetric>>
@@ -436,9 +398,9 @@ interface WhoopDao : DeviceRegistryDao {
     )
     suspend fun sleepSessions(deviceId: String, from: Long, to: Long, limit: Int): List<SleepSession>
 
-    /** Hand-edited sessions for a device (userEdited = 1), oldest first. Backs the H5 edit-merge (#509):
-     *  the repository maps each to its LOCAL wake-day so [WhoopRepository.mergeDaily] lets the computed
-     *  sleep fields win on those days over a re-imported night. */
+    /** Hand-edited sessions for a device (userEdited = 1), oldest first. The repository maps each to
+     *  its LOCAL wake-day so [WhoopRepository.mergeDaily] lets the computed sleep fields win on those
+     *  days over a re-imported night. */
     @Query("SELECT * FROM sleepSession WHERE deviceId = :deviceId AND userEdited = 1 ORDER BY startTs ASC")
     suspend fun editedSleepSessions(deviceId: String): List<SleepSession>
 
@@ -446,7 +408,7 @@ interface WhoopDao : DeviceRegistryDao {
     @Query("SELECT * FROM sleepSession WHERE deviceId = :deviceId AND userEdited = 1 ORDER BY startTs ASC")
     fun editedSleepSessionsFlow(deviceId: String): Flow<List<SleepSession>>
 
-    // MARK: - Generic metric series (Swift metricSeries, v9)
+    // MARK: - Generic metric series (v9)
 
     @Query(
         "SELECT * FROM metricSeries WHERE deviceId = :deviceId AND key = :key AND day >= :from AND day <= :to " +
@@ -459,7 +421,7 @@ interface WhoopDao : DeviceRegistryDao {
         to: String,
     ): List<MetricSeriesRow>
 
-    /** Distinct metric keys present for a device, sorted ascending (Swift metricKeys, v9). */
+    /** Distinct metric keys present for a device, sorted ascending (v9). */
     @Query("SELECT DISTINCT key FROM metricSeries WHERE deviceId = :deviceId ORDER BY key ASC")
     suspend fun metricKeys(deviceId: String): List<String>
 
@@ -470,27 +432,24 @@ interface WhoopDao : DeviceRegistryDao {
 
     /** The NEWEST row of a (deviceId, key) series, or null — the ORDER BY day DESC LIMIT 1 twin of
      *  [metricSeries] for latest-value tiles (day is yyyy-MM-dd, so lexicographic MAX(day) = newest).
-     *  Rides the same idx_metricSeries_device_key_day index, so the read stops at one row instead of
-     *  materializing the whole series for a `.lastOrNull()`. */
+     *  Rides the same index, so the read stops at one row instead of materializing the whole series. */
     @Query("SELECT * FROM metricSeries WHERE deviceId = :deviceId AND key = :key ORDER BY day DESC LIMIT 1")
     suspend fun latestMetricSeriesRow(deviceId: String, key: String): MetricSeriesRow?
 
     /** Delete one projected day for a key (used when a Lab Book reading's last numeric value
-     *  for a (markerKey, day) cell is removed). Swift LabMarkerStore.reprojectCells delete branch. */
+     *  for a (markerKey, day) cell is removed). */
     @Query("DELETE FROM metricSeries WHERE deviceId = :deviceId AND day = :day AND key = :key")
     suspend fun deleteMetricSeriesPoint(deviceId: String, day: String, key: String)
 
-    // MARK: - Lab Book markers (Swift labMarker, v17 / LabMarkerStore.swift)
+    // MARK: - Lab Book markers (v17)
     //
-    // The book is `labMarker` (one row per dated reading the user entered themselves); the daily
-    // `metricSeries` projection under source [LAB_BOOK_SOURCE_ID] is HOW the book talks to the rest
-    // of the app. [upsertLabMarkers] / [deleteLabMarker] keep the two in lockstep in a single
-    // transaction, byte-identical to the Swift LabMarkerStore.
+    // The book is `labMarker` (one row per dated reading the user entered); the daily `metricSeries`
+    // projection under source [LAB_BOOK_SOURCE_ID] is how the book talks to the rest of the app.
+    // [upsertLabMarkers] / [deleteLabMarker] keep the two in lockstep in a single transaction.
 
     /** Raw upsert of marker rows by the natural key (UNIQUE index idx_labMarker_natural): a
      *  re-import of the same (deviceId, markerKey, takenAt, source) REPLACEs in place rather than
-     *  duplicating, mirroring the Swift `ON CONFLICT(deviceId, markerKey, takenAt, source) DO UPDATE`.
-     *  Prefer [upsertLabMarkers] (which also re-projects); this primitive backs it. */
+     *  duplicating. Prefer [upsertLabMarkers] (which also re-projects); this primitive backs it. */
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertLabMarkersRaw(rows: List<LabMarkerRow>)
 
@@ -524,10 +483,8 @@ interface WhoopDao : DeviceRegistryDao {
 
     /**
      * Upsert marker rows, then re-project each affected (markerKey, day) cell into `metricSeries`
-     * under [LAB_BOOK_SOURCE_ID]. Idempotent by natural key; LATEST-numeric-per-day wins in the
-     * projection (qualitative valueText-only readings never project a REAL cell). Atomic — the
-     * marker write and the projection can't diverge. Byte-identical to Swift
-     * WhoopStore.upsertLabMarkers.
+     * under [LAB_BOOK_SOURCE_ID]. Idempotent by natural key; LATEST-numeric-per-day wins (a
+     * valueText-only reading never projects a cell). Atomic, so the write and projection can't diverge.
      */
     @Transaction
     suspend fun upsertLabMarkers(rows: List<LabMarkerRow>) {
@@ -543,7 +500,7 @@ interface WhoopDao : DeviceRegistryDao {
     /**
      * Delete one reading by id; if it was the last numeric reading for its (markerKey, day) cell the
      * projected day is removed, otherwise the projection is recomputed from the remainder. Returns
-     * true if a row was deleted. Byte-identical to Swift WhoopStore.deleteLabMarker.
+     * true if a row was deleted.
      */
     @Transaction
     suspend fun deleteLabMarker(id: String): Boolean {
@@ -567,15 +524,14 @@ interface WhoopDao : DeviceRegistryDao {
 
     companion object {
         /** The constant device-id the daily marker projection is written under, so Compare/Explore/
-         *  Coach see markers as a single-source series (Swift WhoopStore.labBookSourceId). */
+         *  Coach see markers as a single-source series. */
         const val LAB_BOOK_SOURCE_ID = "lab-book"
     }
 
-    // MARK: - One-time #34 refile: separate legacy Health Connect data from the Apple Health bucket.
-    // Only an Apple Health EXPORT writes metricSeries, so metricSeries-count==0 means the apple-health
-    // daily rows are Health-Connect-origin and safe to move. HC workouts are tagged source so they move
-    // unconditionally. Safe on first run: no `to` rows exist yet (no PK conflict), and post-#34 nothing
-    // ever writes HC data to apple-health again, so it's idempotent (re-runs match 0 rows).
+    // MARK: - One-time refile: separate legacy Health Connect data from the Apple Health bucket.
+    // Only an Apple Health EXPORT writes metricSeries, so metricSeries-count == 0 means the row is
+    // Health-Connect-origin and safe to move (HC workouts are tagged source, so they always move).
+    // Idempotent: nothing writes HC data to apple-health again, so re-runs match 0 rows.
     @Query("SELECT COUNT(*) FROM metricSeries WHERE deviceId = :deviceId")
     suspend fun metricSeriesCount(deviceId: String): Int
 
@@ -585,11 +541,11 @@ interface WhoopDao : DeviceRegistryDao {
     @Query("UPDATE workout SET deviceId = :to WHERE deviceId = :from AND source = :source")
     suspend fun reassignWorkoutsBySource(from: String, to: String, source: String)
 
-    // MARK: - Journal / workouts / Apple-Health reads (mirror JournalWorkoutAppleCache.swift, v8)
+    // MARK: - Journal / workouts / Apple-Health reads (v8)
 
     /**
      * Journal entries for days in [from, to] (lexicographic YYYY-MM-DD compare), oldest day first
-     * then by question. Port of JournalWorkoutAppleCache.swift journalEntries(deviceId:from:to:).
+     * then by question.
      */
     @Query(
         "SELECT * FROM journal WHERE deviceId = :deviceId AND day >= :from AND day <= :to " +
@@ -599,24 +555,23 @@ interface WhoopDao : DeviceRegistryDao {
 
     /**
      * Delete one journal answer by natural key (the native logging card's "clear"). Source-scoped
-     * by deviceId, so clearing a native ("noop-journal") answer never removes an identical imported
-     * row. Port of JournalWorkoutAppleCache.swift deleteJournal(deviceId:day:question:).
+     * by deviceId, so clearing a native ("noop-journal") answer never removes an identical imported row.
      */
     @Query("DELETE FROM journal WHERE deviceId = :deviceId AND day = :day AND question = :question")
     suspend fun deleteJournalEntry(deviceId: String, day: String, question: String)
 
     /**
-     * Delete a device's journal within a day range (#136). The WHOOP importer clears exactly the span
-     * it re-writes before upserting, so the wake-day keying fix doesn't leave pre-fix onset-keyed rows
-     * behind as duplicates. Bounded to [from, to] — journal outside the imported range is never touched.
-     * Source-scoped by deviceId, so the native ("noop-journal") log is never touched.
+     * Delete a device's journal within a day range. The importer clears exactly the span it
+     * re-writes before upserting, so a wake-day re-keying can't leave stale duplicate rows behind.
+     * Bounded to [from, to] and source-scoped by deviceId — the native ("noop-journal") log is
+     * never touched.
      */
     @Query("DELETE FROM journal WHERE deviceId = :deviceId AND day >= :from AND day <= :to")
     suspend fun deleteJournalRange(deviceId: String, from: String, to: String)
 
     /**
-     * Atomically replace a device's journal within a day range (#136): clear [from, to] then upsert
-     * [rows] in ONE transaction, so a crash mid-import can't leave the range deleted-but-not-repopulated.
+     * Atomically replace a device's journal within a day range: clear [from, to] then upsert [rows]
+     * in ONE transaction, so a crash mid-import can't leave the range deleted-but-not-repopulated.
      */
     @Transaction
     suspend fun replaceJournalRange(deviceId: String, from: String, to: String, rows: List<JournalEntry>) {
@@ -626,7 +581,6 @@ interface WhoopDao : DeviceRegistryDao {
 
     /**
      * Workouts whose startTs falls in [from, to] (unix seconds), oldest first, row-limited.
-     * Port of JournalWorkoutAppleCache.swift workouts(deviceId:from:to:limit:).
      */
     @Query(
         "SELECT * FROM workout WHERE deviceId = :deviceId AND startTs >= :from AND startTs <= :to " +
@@ -641,7 +595,6 @@ interface WhoopDao : DeviceRegistryDao {
 
     /**
      * Apple-Health daily aggregates for days in [from, to] (lexicographic compare), oldest first.
-     * Port of JournalWorkoutAppleCache.swift appleDaily(deviceId:from:to:).
      */
     @Query(
         "SELECT * FROM appleDaily WHERE deviceId = :deviceId AND day >= :from AND day <= :to " +
@@ -654,16 +607,16 @@ interface WhoopDao : DeviceRegistryDao {
     suspend fun appleDailyCount(deviceId: String, from: String, to: String): Int
 
     /** Delete a computed source's workouts of a given [sport] whose startTs is in [from, to]
-     *  (makes detected-workout re-derivation idempotent). (#78) */
+     *  (makes detected-workout re-derivation idempotent). */
     @Query("DELETE FROM workout WHERE deviceId = :deviceId AND sport = :sport AND startTs >= :from AND startTs <= :to")
     suspend fun deleteWorkoutsBySport(deviceId: String, sport: String, from: Long, to: Long)
 
     /** Delete ONE workout by its full natural key (deviceId, startTs, sport). Used by the Workouts
-     *  screen to remove a single manual / re-labelled session. (#107) */
+     *  screen to remove a single manual / re-labelled session. */
     @Query("DELETE FROM workout WHERE deviceId = :deviceId AND startTs = :startTs AND sport = :sport")
     suspend fun deleteWorkoutByKey(deviceId: String, startTs: Long, sport: String)
 
-    // MARK: - Dismissed detected bouts (durable #107 marker; survives engine re-detection)
+    // MARK: - Dismissed detected bouts (durable marker; survives engine re-detection)
 
     /** Record a dismissed detected bout. IGNORE so re-dismissing the same bout is a no-op. */
     @Insert(onConflict = OnConflictStrategy.IGNORE)
@@ -673,28 +626,27 @@ interface WhoopDao : DeviceRegistryDao {
     @Query("SELECT * FROM dismissedWorkout WHERE deviceId = :deviceId")
     suspend fun dismissedWorkouts(deviceId: String): List<DismissedWorkout>
 
-    /** Record a deleted sleep night (#33). IGNORE so re-deleting the same night is a no-op. */
+    /** Record a deleted sleep night. IGNORE so re-deleting the same night is a no-op. */
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertDismissedSleep(rows: List<DismissedSleep>)
 
     /** All deleted-sleep markers for a [deviceId]. The engine reads the UNION of the imported id and its
-     *  computed "<id>-noop" id (see WhoopRepository.dismissedSleeps, #65 3A), since a tombstone is written
+     *  computed "<id>-noop" id (see [WhoopRepository.dismissedSleeps]), since a tombstone is written
      *  under whichever namespace owned the deleted row. */
     @Query("SELECT * FROM dismissedSleep WHERE deviceId = :deviceId")
     suspend fun dismissedSleeps(deviceId: String): List<DismissedSleep>
 
-    /** Lift ONE deleted-sleep tombstone (#65 undo / "allow re-detection"): removes the marker so the
-     *  night is re-detected from raw on the next analyze pass. Keyed by (deviceId, startTs): the same
-     *  natural key the insert uses, so it removes exactly the tombstone [deleteSleepSession] wrote. */
+    /** Lift ONE deleted-sleep tombstone ("allow re-detection"): removes the marker so the night is
+     *  re-detected from raw on the next analyze pass. Keyed by (deviceId, startTs), the same natural
+     *  key [insertDismissedSleep] uses, so it removes exactly the tombstone that insert wrote. */
     @Query("DELETE FROM dismissedSleep WHERE deviceId = :deviceId AND startTs = :startTs")
     suspend fun deleteDismissedSleep(deviceId: String, startTs: Long)
 
-    // MARK: - Frontier / stats (Reads.swift)
+    // MARK: - Frontier / stats
 
-    /** Max HR sample ts for a device, or null if none — the biometric data frontier.
-     *  COALESCEs measured `hrSample` with the v26 PPG-derived `ppgHrSample` (#156) so a PPG-only
-     *  offload (a v26 WHOOP 5 night with no measured HR) still advances the frontier, matching the
-     *  Swift reader (Reads.swift latestHrSampleTs). Both persist on the same per-second ts grid. */
+    /** Max HR sample ts for a device, or null if none — the biometric data frontier. COALESCEs
+     *  measured `hrSample` with the v26 PPG-derived `ppgHrSample`, so a PPG-only offload (no
+     *  measured HR) still advances the frontier. Both persist on the same per-second ts grid. */
     @Query(
         "SELECT MAX(ts) FROM (" +
             "SELECT ts FROM hrSample WHERE deviceId = :deviceId " +
@@ -704,8 +656,8 @@ interface WhoopDao : DeviceRegistryDao {
     suspend fun latestHrSampleTs(deviceId: String): Long?
 
     @Query("SELECT COUNT(*) FROM hrSample") suspend fun countHr(): Int
-    // #836: max raw-HR timestamp across all devices. Paired with countHr() as a cheap whole-history change
-    // fingerprint so the 15-min idle rescore can skip when nothing new has landed (COALESCE → 0 when empty).
+    // Max raw-HR timestamp across all devices. Paired with countHr() as a cheap whole-history change
+    // fingerprint, so the 15-min idle rescore can skip when nothing new has landed (COALESCE → 0 when empty).
     @Query("SELECT COALESCE(MAX(ts), 0) FROM hrSample") suspend fun maxHrTs(): Long
     @Query("SELECT COUNT(*) FROM rrInterval") suspend fun countRr(): Int
     @Query("SELECT COUNT(*) FROM event") suspend fun countEvents(): Int
@@ -726,15 +678,12 @@ interface WhoopDao : DeviceRegistryDao {
     @Query("SELECT * FROM battery WHERE deviceId = :deviceId ORDER BY ts DESC LIMIT 1")
     suspend fun latestBattery(deviceId: String): BatterySample?
 
-    // MARK: - #547 one-time heal: purge rows polluted by a bad-strap-clock timestamp
+    // MARK: - One-time heal: purge rows polluted by a bad-strap-clock timestamp
     //
-    // pikapik's WHOOP 4.0 (#547) emitted records whose `unix` decoded to garbage (far-past / a 2027 spike
-    // / a future date), which entered the DB verbatim before the ingest gate existed. These deletes purge
-    // the already-stored pollution ONCE on upgrade across EVERY device id (the bad rows can sit under
-    // "my-whoop" raw streams AND the "-noop" computed daily/sleep rows), so a normal analyzeRecent rescore
-    // recomputes the real days cleanly. Bounds are passed in from [MIN_PLAUSIBLE_UNIX]/[FUTURE_MARGIN]; the
-    // future-day string is the local "today" key so a future-DATED computed day is removed. Each returns
-    // the row count deleted (for the heal log). Re-running is harmless (idempotent — nothing left to match).
+    // A bad strap clock decoded `unix` to garbage (far-past or a future date) before the ingest gate
+    // existed. These deletes purge the pollution across EVERY device id (raw "my-whoop" streams AND
+    // "-noop" computed rows), using bounds from [MIN_PLAUSIBLE_UNIX]/[FUTURE_MARGIN] (future-day string
+    // = local "today"). Each returns the row count deleted; idempotent (nothing left to match on a re-run).
 
     /** Raw stream rows whose unix-second `ts` is implausible (before [minTs] or after [maxTs]). One per
      *  raw table (all keyed by `ts`); summed by the repository. */
@@ -768,15 +717,14 @@ interface WhoopDao : DeviceRegistryDao {
     @Query("DELETE FROM battery WHERE ts < :minTs OR ts > :maxTs")
     suspend fun pruneBatteryByTs(minTs: Long, maxTs: Long): Int
 
-    /** Daily-metric rows whose `day` key is FUTURE (lexicographically after [today], valid for "yyyy-MM-dd",
-     *  any source) or implausibly old (before [minDay]) AND computed (`-noop`). The far-past floor is
-     *  `-noop`-scoped so a WHOOP CSV import (bare "my-whoop") carrying REAL multi-year history is never
-     *  purged (v8.2.1). String compare is correct for ISO dates. */
+    /** Daily-metric rows whose `day` is FUTURE (after [today], any source) or implausibly old (before
+     *  [minDay]) AND computed (`-noop`). The far-past floor is `-noop`-scoped, so a WHOOP CSV import
+     *  ("my-whoop") carrying REAL multi-year history is never purged. String compare is correct for ISO dates. */
     @Query("DELETE FROM dailyMetric WHERE day > :today OR (day < :minDay AND deviceId LIKE '%-noop')")
     suspend fun pruneDailyMetricByDay(today: String, minDay: String): Int
 
     /** Sleep-session rows whose onset `startTs` is future (after [maxTs], any source) or implausibly old
-     *  (before [minTs]) AND computed (`-noop`), so an imported multi-year sleep history survives (v8.2.1). */
+     *  (before [minTs]) AND computed (`-noop`), so an imported multi-year sleep history survives. */
     @Query("DELETE FROM sleepSession WHERE startTs > :maxTs OR (startTs < :minTs AND deviceId LIKE '%-noop')")
     suspend fun pruneSleepSessionByTs(minTs: Long, maxTs: Long): Int
 }

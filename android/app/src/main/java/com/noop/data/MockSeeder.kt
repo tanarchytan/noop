@@ -12,29 +12,22 @@ import kotlin.math.sqrt
 import kotlin.random.Random
 
 /**
- * Seeds a comprehensive, self-contained mock dataset so the **dev** build is a full
- * walkthrough of every screen — Today, Sleep, Trends, Workouts, Health, Stress,
- * Insights, Explore, Compare, Apple Health — with no strap and no import required.
+ * Seeds a self-contained mock dataset so every screen (Today, Sleep, Trends, Workouts,
+ * Health, Stress, Insights, Explore, Compare, Apple Health) has data with no strap or
+ * import needed. Gated by the caller to `BuildConfig.ENABLE_MOCK`; a no-op if "my-whoop"
+ * already holds daily rows, so it runs at most once and never clobbers real data.
  *
- * The caller gates this to `BuildConfig.ENABLE_MOCK`, so the full app never seeds and
- * starts clean. It is a no-op if "my-whoop" already holds daily rows, so it runs at most
- * once and never clobbers real data.
- *
- * Everything here is **synthetic and deterministic** (fixed RNG seed). Nothing is real
- * biometric data. Values are physiologically plausible and internally correlated
- * (recovery ↔ HRV ↔ resting-HR ↔ sleep; strain ↔ workouts; a slow fitness drift over
- * the window) so the charts, trends and insights all read like a real account.
+ * Everything is synthetic and deterministic (fixed RNG seed), physiologically plausible
+ * and internally correlated (recovery ↔ HRV ↔ resting-HR ↔ sleep; strain ↔ workouts; a
+ * slow fitness drift over the window).
  */
 object MockSeeder {
 
     private const val WHOOP = "my-whoop"
     private const val APPLE = "apple-health"
-    // The NOOP-COMPUTED strap source ("<strap>-noop") the IntelligenceEngine persists its derived weekly
-    // scores under (fitness_age / vo2max_est / vitality / body_age). The Health screen + Today "Your cards"
-    // + Trends resolve these through the computed UNION (WhoopRepository.metricSeriesComputedUnion), which in
-    // the mock (activeStrapId "my-whoop") reads "my-whoop-noop" — so the mock MUST seed them here, not under
-    // the imported "my-whoop" source, or those surfaces read empty ("No Data") while the rest of the mock is
-    // full. Mirrors the real engine's write target.
+    // NOOP-COMPUTED strap source ("<strap>-noop") holding IntelligenceEngine's derived weekly scores
+    // (fitness_age / vo2max_est / vitality / body_age). The computed UNION resolves these under
+    // "my-whoop-noop" for the mock, so seeding here (not under "my-whoop") is required or those cards read empty.
     private const val WHOOP_NOOP = "$WHOOP-noop"
     private const val DAYS = 120
 
@@ -52,12 +45,10 @@ object MockSeeder {
     }
 
     /**
-     * Mock-only: seed a SECOND paired device (an Oura ring) into the registry so the Devices screen shows
-     * the WHOOP (Active) alongside a paired Oura ring out of the box — no real hardware needed. The WHOOP
-     * `pairedDevice` row itself is created by the v7→v8 migration; this only adds the mock ring, and only
-     * if the registry currently holds exactly the WHOOP (so it runs at most once and never clobbers a real
-     * pairing). Gated by the caller to `BuildConfig.ENABLE_MOCK`. Status `paired` (not active), so the
-     * SourceCoordinator stays dormant on the WHOOP and the existing live flow is untouched.
+     * Mock-only: adds a second paired device (an Oura ring) so Devices shows the WHOOP (Active)
+     * alongside a paired ring, no real hardware needed. Only runs if the registry currently holds
+     * exactly the WHOOP, so it fires once and never clobbers a real pairing. Status `paired` (not
+     * active) keeps SourceCoordinator dormant on the WHOOP.
      */
     suspend fun seedMockDeviceIfNeeded(registry: DeviceRegistry) {
         val devices = registry.all()
@@ -246,9 +237,9 @@ object MockSeeder {
             }
         }
 
-        // --- weekly Fitness Age + VO2max estimate (the engine stamps these on each week's
-        // Saturday; mirror that here so the Fitness Age screen renders in the mock build).
-        // Trends from ~42 → ~36 (younger) as the mock "fitness" drift climbs; vo2max ~44 → ~50.
+        // --- weekly Fitness Age + VO2max estimate, stamped on each week's Saturday so the
+        // Fitness Age screen renders in the mock build. Trends ~42 → ~36 (younger) as the
+        // mock "fitness" drift climbs; vo2max ~44 → ~50.
         var fitnessAge = 42.0
         var vo2 = 44.0
         var vitality = 55.0      // weekly Vitality (0–100) trending up as the mock habits improve
@@ -257,10 +248,9 @@ object MockSeeder {
             val date = startDay.plusDays(i.toLong())
             if (date.dayOfWeek.value != 6) continue // 6 = Saturday
             val day = date.toString()
-            // Seed under the NOOP-COMPUTED source (WHOOP_NOOP), exactly where the IntelligenceEngine writes
-            // these derived weekly scores in the real app — so the Health screen, the Today "Your cards"
-            // Fitness age / Vitality cards and Trends (all via the computed union) resolve them in the mock instead
-            // of showing "No Data". Trends ~42 → ~34 (younger) for Fitness age; vitality climbs ~55 → ~80.
+            // Seeded under the NOOP-COMPUTED source (WHOOP_NOOP), where IntelligenceEngine writes these
+            // weekly scores, so the computed union resolves them for Health / Today "Your cards" /
+            // Trends instead of "No Data". Fitness age trends ~42 → ~34; vitality climbs ~55 → ~80.
             series.add(MetricSeriesRow(WHOOP_NOOP, day, "fitness_age",
                 round1((fitnessAge + gauss(rng, 0.0, 0.3)).coerceIn(34.0, 44.0))))
             series.add(MetricSeriesRow(WHOOP_NOOP, day, "vo2max_est",
@@ -275,11 +265,9 @@ object MockSeeder {
             bodyAgeMock -= 0.6
         }
 
-        // --- daily "stress" series (0–3) under my-whoop, EXACTLY as a real WHOOP import derives it
-        // (WhoopImporter): z = 0.6·((rhr−rmean)/rsd) − 0.6·((hrv−hmean)/hsd), stress = clamp(1.5 + z, 0, 3).
-        // Without this the mock had no "stress" series at all, so the Today "Your cards" Stress card,
-        // the Stress screen's stored-series path and Trends all read empty. Seeding it makes the mock
-        // match an imported export and fixes Stress everywhere in one place.
+        // --- daily "stress" series (0–3) under my-whoop, matching WhoopImporter's derivation exactly:
+        // z = 0.6·((rhr−rmean)/rsd) − 0.6·((hrv−hmean)/hsd), stress = clamp(1.5 + z, 0, 3). Feeds the
+        // Today "Your cards" Stress card, the Stress screen's stored-series path, and Trends.
         run {
             val rhrAll = daily.mapNotNull { it.restingHr?.toDouble() }
             val hrvAll = daily.mapNotNull { it.avgHrv }
@@ -313,8 +301,8 @@ object MockSeeder {
     private fun round1(x: Double) = round(x * 10.0) / 10.0
     private fun round2(x: Double) = round(x * 100.0) / 100.0
 
-    /** Mean + (population) standard deviation of a sample; SD floored so a z-score never divides by zero.
-     *  Mirrors WhoopImporter.meanStd, used to derive the mock "stress" series exactly like a real import. */
+    /** Mean + population standard deviation of a sample; SD floored so a z-score never divides by zero.
+     *  Used to derive the mock "stress" series the same way WhoopImporter.meanStd does. */
     private fun meanStd(a: List<Double>): Pair<Double, Double> {
         if (a.isEmpty()) return 0.0 to 1.0
         val m = a.sum() / a.size
