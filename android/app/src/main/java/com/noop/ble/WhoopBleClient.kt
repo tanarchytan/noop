@@ -189,9 +189,14 @@ data class LiveState(
         return copy(rr = intervals, rrRecent = capped)
     }
 
-    /** Blank all live biometric readouts (HR + R-R + the rolling buffer) so a stale heart rate or R-R
-     *  strip can't outlive the link. Applied on disconnect alongside the charging/bond clears. */
+    /** Blank all live biometric readouts (HR + R-R + the rolling buffer + battery) so a stale reading
+     *  can't outlive the link. Applied on disconnect alongside the charging/bond clears.
+     *
+     *  [batteryPct] belongs here because it is as strap-specific as the firmware readout beside it, and
+     *  a 5/MG only ever reports it from a polled 0x2A19 read — so connecting a DIFFERENT strap would
+     *  otherwise keep showing the previous one's charge until a read happened to land. */
     fun clearedBiometrics(): LiveState = copy(heartRate = null, rr = emptyList(), rrRecent = emptyList(),
+                                              batteryPct = null,
                                               streamingLiveHR = false)   // a dropped link is no longer streaming
 }
 
