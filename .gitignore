@@ -61,3 +61,7 @@ err.txt
 # These two stay ignored so an older checkout does not resurrect them.
 dev-docs/
 dev-notes/
+
+# Device screenshots and scratch captures taken while testing on hardware. Ignored because a
+# blanket stage has swept them into a commit before.
+.dev-screens/
