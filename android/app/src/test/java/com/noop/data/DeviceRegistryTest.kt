@@ -287,4 +287,57 @@ class DeviceRegistryTest {
         assertEquals("polar-1", reg.dayOwner("2026-06-15")!!.deviceId)
         assertEquals(false, reg.dayOwner("2026-06-15")!!.locked)
     }
+
+    // MARK: - the pre-registry bucket is data, not hardware
+
+    private fun bucketDao(): FakeRegistryDao = FakeRegistryDao().apply {
+        devices["my-whoop"] = PairedDeviceRow(
+            id = "my-whoop", brand = "WHOOP", model = "WHOOP", nickname = null,
+            sourceKind = SourceKind.legacy.name, capabilities = "hr,hrv",
+            status = DeviceStatus.active.name, addedAt = 100, lastSeenAt = 100,
+        )
+    }
+
+    /** An install that migrated but never paired must not be shown a strap that does not exist. */
+    @Test
+    fun theBucketIsNotADevice() = runBlocking {
+        val reg = registryWith(bucketDao())
+        assertEquals("still in the provenance list", 1, reg.all().size)
+        assertEquals("but not a device", emptyList<String>(), reg.devices().map { it.id })
+    }
+
+    /** Adoption is the moment a device is known to exist. */
+    @Test
+    fun adoptingAStrapTurnsTheBucketIntoADevice() = runBlocking {
+        val dao = bucketDao()
+        val reg = registryWith(dao)
+        reg.setPeripheralId("my-whoop", "DA:F7:41:80:FB:D4")
+        assertEquals(listOf("my-whoop"), reg.devices().map { it.id })
+        assertEquals(SourceKind.liveBLE.name, dao.devices["my-whoop"]!!.sourceKind)
+        assertEquals("DA:F7:41:80:FB:D4", dao.devices["my-whoop"]!!.peripheralId)
+    }
+
+    /** Clearing an address must not invent one. */
+    @Test
+    fun clearingAnAddressPromotesNothing() = runBlocking {
+        val dao = bucketDao()
+        registryWith(dao).setPeripheralId("my-whoop", null)
+        assertEquals(SourceKind.legacy.name, dao.devices["my-whoop"]!!.sourceKind)
+    }
+
+    /** Promotion is narrowed to the bucket, so an import keeps its kind even if it gains an address. */
+    @Test
+    fun promotionCannotRewriteAnImportsKind() = runBlocking {
+        val dao = FakeRegistryDao().apply {
+            devices["whoop-import"] = PairedDeviceRow(
+                id = "whoop-import", brand = "WHOOP", model = "WHOOP", nickname = null,
+                sourceKind = SourceKind.fileImport.name, capabilities = "hr",
+                status = DeviceStatus.paired.name, addedAt = 100, lastSeenAt = 100,
+            )
+        }
+        val reg = registryWith(dao)
+        reg.setPeripheralId("whoop-import", "DA:F7:41:80:FB:D4")
+        assertEquals(SourceKind.fileImport.name, dao.devices["whoop-import"]!!.sourceKind)
+        assertEquals(emptyList<String>(), reg.devices().map { it.id })
+    }
 }

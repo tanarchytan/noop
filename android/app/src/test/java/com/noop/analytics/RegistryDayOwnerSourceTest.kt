@@ -180,4 +180,35 @@ class RegistryDayOwnerSourceTest {
         // With only the active strap and it having NO data, there is no owner (honest gap).
         assertNull(resolveWith(src, "2026-06-15", mapOf("my-whoop" to false)))
     }
+
+    /** The pre-registry bucket names rows with no known source, so it ranks below every real one. */
+    @Test
+    fun theLegacyBucketRanksLast() = runBlocking {
+        val dao = FakeDao().apply {
+            devices["strap"] = device("strap", "WHOOP", SourceKind.liveBLE, DeviceStatus.active)
+            devices["other"] = device("other", "WHOOP", SourceKind.liveBLE, DeviceStatus.paired)
+            devices["import"] = device("import", "WHOOP", SourceKind.fileImport, DeviceStatus.paired)
+            devices["ride"] = device("ride", "GPX", SourceKind.activityFile, DeviceStatus.paired)
+            devices["legacy"] = device("legacy", "WHOOP", SourceKind.legacy, DeviceStatus.paired)
+        }
+        val byId = RegistryDayOwnerSource(registry(dao)).candidatePriorities().toMap()
+        assertEquals(0, byId["strap"])
+        assertEquals(1, byId["other"])
+        assertEquals(2, byId["import"])
+        assertEquals(3, byId["ride"])
+        assertEquals(4, byId["legacy"])
+    }
+
+    /** A day the real strap covers is never taken by the bucket, even though both hold rows. */
+    @Test
+    fun theLegacyBucketNeverTakesADayFromAStrap() = runBlocking {
+        val dao = FakeDao().apply {
+            devices["strap"] = device("strap", "WHOOP", SourceKind.liveBLE, DeviceStatus.active)
+            devices["legacy"] = device("legacy", "WHOOP", SourceKind.legacy, DeviceStatus.paired)
+        }
+        val src = RegistryDayOwnerSource(registry(dao))
+        assertEquals("strap", resolveWith(src, "2026-06-15", mapOf("strap" to true, "legacy" to true)))
+        // But it still owns a day nothing else covers, so old history is not orphaned.
+        assertEquals("legacy", resolveWith(src, "2026-06-15", mapOf("strap" to false, "legacy" to true)))
+    }
 }

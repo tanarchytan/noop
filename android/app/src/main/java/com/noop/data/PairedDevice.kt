@@ -61,7 +61,17 @@ enum class DeviceStatus { active, paired, archived }
 // `activityFile`: a GPX/TCX/FIT activity file under the `activity-file` device. Ranked BELOW
 // `fileImport` (a whole-day WHOOP CSV export) by the day-owner resolver, so a 90-minute ride never
 // displaces a full-day HR source; it owns a day only when nothing else has data.
-enum class SourceKind { liveBLE, historyBLE, cloudImport, fileImport, oura, activityFile }
+// `legacy`: the bucket holding rows written before the device registry existed. It names a pile of
+// data, not a device, so it is never listed as one and never owns a day over a real source. When a
+// strap adopts it (its peripheralId is set) it becomes a `liveBLE` device, which is the only moment a
+// device is known to exist.
+enum class SourceKind { liveBLE, historyBLE, cloudImport, fileImport, oura, activityFile, legacy }
+
+/** The kinds that are an actual device the user owns, as opposed to a file, a service or a data
+ *  bucket. Presentation and device-scoped actions filter on this, so an id with no device behind it
+ *  can never render as one. */
+val DEVICE_SOURCE_KINDS: Set<String> =
+    setOf(SourceKind.liveBLE, SourceKind.historyBLE, SourceKind.oura).map { it.name }.toSet()
 
 /** A canonical metric a source can provide — drives capability-aware UI + the day-owner resolver.
  *  Stored as the enum name inside the comma-joined `capabilities` string. */

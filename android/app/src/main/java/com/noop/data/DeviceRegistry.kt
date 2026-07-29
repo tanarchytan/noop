@@ -30,8 +30,13 @@ class DeviceRegistry(
         },
     )
 
-    /** All paired devices, oldest first. */
+    /** Every registered source, oldest first — devices, imports and the legacy bucket alike. This is
+     *  the provenance list; use [devices] for anything the user meets as a device. */
     suspend fun all(): List<PairedDeviceRow> = dao.pairedDevices()
+
+    /** The sources that are an actual device ([DEVICE_SOURCE_KINDS]). A file import or the
+     *  pre-registry bucket names data, not hardware, so it never reaches a device list. */
+    suspend fun devices(): List<PairedDeviceRow> = all().filter { it.sourceKind in DEVICE_SOURCE_KINDS }
 
     /** The single active device id, or null if none. */
     suspend fun activeDeviceId(): String? = dao.activeDeviceId()
@@ -53,10 +58,25 @@ class DeviceRegistry(
     /** Archive a device — keeps its row and samples (invariant I4). */
     suspend fun archive(id: String) = dao.archiveDevice(id)
 
-    /** Persist (or clear) a device's stable BLE peripheral identifier (the MAC address on Android).
-     *  Lets the seeded "my-whoop" adopt its strap's address on first connect, and a specific WHOOP
-     *  confirm its identity. Façade over [DeviceRegistryDao.setPeripheralId]. */
-    suspend fun setPeripheralId(id: String, peripheralId: String?) = dao.setPeripheralId(id, peripheralId)
+    /**
+     * Persist (or clear) a device's stable BLE peripheral identifier (the MAC address on Android).
+     * Lets the pre-registry bucket adopt its strap's address on first connect, and a specific WHOOP
+     * confirm its identity.
+     *
+     * Adoption is the moment a device is known to exist, so a `legacy` bucket becomes a `liveBLE`
+     * device here rather than being listed as one on the chance that a strap shows up.
+     */
+    suspend fun setPeripheralId(id: String, peripheralId: String?) {
+        transactor.run {
+            dao.setPeripheralId(id, peripheralId)
+            if (peripheralId == null) return@run
+            // Narrowed to `legacy`, so this can never rewrite the kind of an import or a real device.
+            val row = dao.pairedDevices().firstOrNull { it.id == id } ?: return@run
+            if (row.sourceKind == SourceKind.legacy.name) {
+                dao.upsertPairedDevice(row.copy(sourceKind = SourceKind.liveBLE.name, peripheralId = peripheralId))
+            }
+        }
+    }
 
     /** The paired device whose `peripheralId` matches [peripheralId], or null if none — resolves a
      *  strap discovered by its MAC address back to its registry row. */

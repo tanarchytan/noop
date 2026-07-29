@@ -97,8 +97,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /** The process-wide device registry — the single source of paired devices + the active one. */
     val deviceRegistry: com.noop.data.DeviceRegistry get() = noopApp.deviceRegistry
 
-    /** All paired devices (oldest first), read fresh. The screen re-reads after every mutation. */
-    suspend fun pairedDevices(): List<com.noop.data.PairedDeviceRow> = noopApp.deviceRegistry.all()
+    /** The paired DEVICES (oldest first), read fresh — a file import or the pre-registry bucket is a
+     *  data source, not hardware, so it never appears here. The screen re-reads after every mutation. */
+    suspend fun pairedDevices(): List<com.noop.data.PairedDeviceRow> = noopApp.deviceRegistry.devices()
 
     /** Add (or update) a paired device. */
     suspend fun addPairedDevice(row: com.noop.data.PairedDeviceRow) = noopApp.deviceRegistry.add(row)

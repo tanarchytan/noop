@@ -11,9 +11,9 @@ import com.noop.protocol.DeviceFamily
  * without giving the pure-JVM engine a Room dependency.
  *
  * Priority: 0 = the active strap, 1 = other live (BLE/historyBLE) straps, 2 = imports
- * (cloud/file). Lower wins; archived devices are excluded. With only the seeded active
- * "my-whoop" row paired (the default, single-WHOOP case), the sole candidate is priority 0,
- * so the engine resolves to "my-whoop" for every day.
+ * (cloud/file), 3 = an activity file, 4 = the pre-registry bucket. Lower wins; archived devices are
+ * excluded. The bucket ranks last because it names data with no known source, so it takes a day only
+ * when nothing else covers it.
  */
 class RegistryDayOwnerSource(private val registry: DeviceRegistry) : IntelligenceEngine.DayOwnerSource {
 
@@ -29,6 +29,7 @@ class RegistryDayOwnerSource(private val registry: DeviceRegistry) : Intelligenc
                 // ride only wins a day nothing else covers.
                 val priority = when {
                     d.id == activeId -> 0
+                    d.sourceKind == SourceKind.legacy.name -> 4
                     d.sourceKind == SourceKind.activityFile.name -> 3
                     isImport -> 2
                     else -> 1

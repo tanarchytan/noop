@@ -100,6 +100,13 @@ abstract class WhoopDatabase : RoomDatabase() {
                         "`rawU16At26` INTEGER, `unpinned` BLOB, " +
                         "PRIMARY KEY(`deviceId`, `ts`))",
                 )
+                // The pre-registry bucket was seeded as a live BLE device, so an install that never
+                // paired a strap listed one that does not exist. Retag it for what it is. A bucket a
+                // strap has since adopted (peripheralId set) is a real device and keeps its kind.
+                db.execSQL(
+                    "UPDATE `pairedDevice` SET `sourceKind` = 'legacy' " +
+                        "WHERE `id` = 'my-whoop' AND `peripheralId` IS NULL",
+                )
             }
         }
 
