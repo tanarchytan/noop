@@ -2981,6 +2981,13 @@ class WhoopBleClient(
         reset()
         // Remember the device so a later dropout can reconnect straight to it.
         lastDevice = device
+        // A never-bonded strap has no link key, so the encrypted handshake write is refused
+        // (status 5/15) and the bond watchdog bounces the link every 7s. Ask the OS to pair first —
+        // this is what raises the system pairing prompt. An already-bonded strap is untouched.
+        if (shouldRequestOsBond(device.bondState)) {
+            log("Strap is not bonded — requesting OS pairing before the handshake")
+            safeGatt("createBond") { device.createBond() }
+        }
         // Close any prior/pending GATT so a direct-reconnect attempt doesn't leak the old client.
         // close() can throw on a dead binder; swallow it — we're replacing the handle anyway.
         try { gatt?.close() } catch (t: Throwable) { log("prior gatt.close() threw ${t.javaClass.simpleName} (ignored)") }
@@ -5467,6 +5474,16 @@ internal fun redactStrapLogPii(s: String): String = try {
 } catch (t: Throwable) {
     "[redaction error - line withheld]"
 }
+
+/**
+ * Whether to ask the OS to pair with a strap in [bondState] before connecting.
+ *
+ * Only a strap with NO bond: it has no link key, so the encrypted handshake write is refused and the
+ * bond watchdog bounces the link before anything can complete. BONDING is already in progress and
+ * BONDED needs nothing, so both are left alone. Pure and file-scope so it unit-tests without
+ * constructing the BLE client.
+ */
+internal fun shouldRequestOsBond(bondState: Int): Boolean = bondState == BluetoothDevice.BOND_NONE
 
 /**
  * Whether the live 0x2A37 profile's R-R should be persisted for a strap of [family].
