@@ -3,12 +3,16 @@ package com.noop.analytics
 import org.json.JSONArray
 import org.json.JSONObject
 import uniffi.whoop_ffi.MainNightBlock
+import uniffi.whoop_ffi.MainNightScoredBlock
 import uniffi.whoop_ffi.SleepHistoryBlock
 import uniffi.whoop_ffi.bridgedNightGroups as ffiBridgedNightGroups
 import uniffi.whoop_ffi.habitualMidsleepSec as ffiHabitualMidsleepSec
 import uniffi.whoop_ffi.mainNightGroupIndices as ffiMainNightGroupIndices
+import uniffi.whoop_ffi.mainNightGroupIndicesScored as ffiMainNightGroupIndicesScored
 import uniffi.whoop_ffi.mainNightIndex as ffiMainNightIndex
+import uniffi.whoop_ffi.mainNightIndexScored as ffiMainNightIndexScored
 import uniffi.whoop_ffi.mainNightSelection as ffiMainNightSelection
+import uniffi.whoop_ffi.mainNightSelectionScored as ffiMainNightSelectionScored
 
 /**
  * Decode a sleep session's `stagesJSON` into stage MINUTE totals, and aggregate a night's blocks into
@@ -148,6 +152,20 @@ object SleepStageTotals {
         val midpointSec: Long get() = start + (end - start) / 2
     }
 
+    /** One candidate scored on what its stages DECODED: the effective onset plus the asleep and in-bed
+     *  seconds the hypnogram holds. A block whose stages do not decode reads its clock span for both, so
+     *  the score falls back to duration rather than to zero. */
+    data class ScoredNightBlock(val onset: Long, val asleepS: Double, val inBedS: Double)
+
+    /** The scored reading of one block: its decoded asleep/in-bed seconds, or its clock span when
+     *  [stagesJSON] decodes to nothing (an unstaged or stub block, where the span is all we know). */
+    fun scoredBlock(onset: Long, end: Long, stagesJSON: String?): ScoredNightBlock {
+        val m = minutes(stagesJSON)
+        val span = (end - onset).coerceAtLeast(0L).toDouble()
+        return if (m == null) ScoredNightBlock(onset, span, span)
+        else ScoredNightBlock(onset, m.asleep * 60.0, m.inBed * 60.0)
+    }
+
     /** True when a block's onset falls in the cold-start overnight band (>= [OVERNIGHT_START_HOUR] or
      *  < [OVERNIGHT_END_HOUR], local; kept in sync with `SleepStager.isOvernightOnset`). No longer a
      *  gate for the scored selector, only feeds the cold-start alignment bonus. [offsetSec] is seconds
@@ -223,6 +241,21 @@ object SleepStageTotals {
     fun mainNightIndex(blocks: List<NightBlock>, offsetSec: Long, habitualMidsleepSec: Long? = null): Int? =
         ffiMainNightIndex(blocks.map { MainNightBlock(it.start, it.end) }, offsetSec, habitualMidsleepSec)?.toInt()
 
+    // ── The same pick, scored on DECODED stage time (one scorer, in whoop-rs) ─────────────────────────
+
+    /** As [mainNightIndex] but scored on each block's DECODED asleep time instead of its clock span, so a
+     *  candidate the stager filled with wake cannot out-score a shorter real night. */
+    fun mainNightIndexScored(blocks: List<ScoredNightBlock>, offsetSec: Long, habitualMidsleepSec: Long? = null): Int? =
+        ffiMainNightIndexScored(blocks.map { MainNightScoredBlock(it.onset, it.asleepS, it.inBedS) }, offsetSec, habitualMidsleepSec)
+            ?.toInt()
+
+    /** As [mainNightGroupIndices] but scored on DECODED asleep time: candidates bridge on
+     *  `[onset, onset + inBedS]` and a group scores as the SUM of its fragments, so a bridged gap adds
+     *  nothing to either term. */
+    fun mainNightGroupIndicesScored(blocks: List<ScoredNightBlock>, offsetSec: Long, habitualMidsleepSec: Long? = null): List<Int>? =
+        ffiMainNightGroupIndicesScored(blocks.map { MainNightScoredBlock(it.onset, it.asleepS, it.inBedS) }, offsetSec, habitualMidsleepSec)
+            ?.map { it.toInt() }
+
     // ── Selection REASON (explainability — why THIS block won) ───────────────────────────────────────
 
     /** Why the main-night selector chose the block it chose, from the same signals the score used (asleep
@@ -250,13 +283,23 @@ object SleepStageTotals {
         val sel = ffiMainNightSelection(
             blocks.map { MainNightBlock(it.start, it.end) }, offsetSec, habitualMidsleepSec,
         ) ?: return null
-        val reason = when (sel.reason) {
-            uniffi.whoop_ffi.MainNightReason.ONLY_BLOCK -> MainNightReason.onlyBlock
-            uniffi.whoop_ffi.MainNightReason.LONGEST -> MainNightReason.longest
-            uniffi.whoop_ffi.MainNightReason.LONGEST_NEAR_USUAL -> MainNightReason.longestNearUsual
-            uniffi.whoop_ffi.MainNightReason.ALIGNED_TO_USUAL -> MainNightReason.alignedToUsual
-        }
-        return MainNightSelection(sel.index.toInt(), reason, sel.asleepSec)
+        return MainNightSelection(sel.index.toInt(), reasonOf(sel.reason), sel.asleepSec)
+    }
+
+    /** As [mainNightSelection] but scored on DECODED asleep time, so [MainNightSelection.asleepSec] is the
+     *  winner's real sleep rather than its time in bed and "longest" ranks by that. */
+    fun mainNightSelectionScored(blocks: List<ScoredNightBlock>, offsetSec: Long, habitualMidsleepSec: Long? = null): MainNightSelection? {
+        val sel = ffiMainNightSelectionScored(
+            blocks.map { MainNightScoredBlock(it.onset, it.asleepS, it.inBedS) }, offsetSec, habitualMidsleepSec,
+        ) ?: return null
+        return MainNightSelection(sel.index.toInt(), reasonOf(sel.reason), sel.asleepSec)
+    }
+
+    private fun reasonOf(r: uniffi.whoop_ffi.MainNightReason): MainNightReason = when (r) {
+        uniffi.whoop_ffi.MainNightReason.ONLY_BLOCK -> MainNightReason.onlyBlock
+        uniffi.whoop_ffi.MainNightReason.LONGEST -> MainNightReason.longest
+        uniffi.whoop_ffi.MainNightReason.LONGEST_NEAR_USUAL -> MainNightReason.longestNearUsual
+        uniffi.whoop_ffi.MainNightReason.ALIGNED_TO_USUAL -> MainNightReason.alignedToUsual
     }
 
     /** The night's daily sleep aggregate over these blocks' `stagesJSON`, or null if none decode. */
@@ -385,90 +428,35 @@ object SleepStageTotals {
         return HonoredAggregate(agg, applied)
     }
 
+    /** The candidates of the edit/recompute seam as scored blocks: each keyed by its detected `startTs`,
+     *  read at its EFFECTIVE onset with the asleep and in-bed seconds its stages decode. */
+    private fun scoredOf(blocks: List<Pair<Long, String?>>, onsetByStart: Map<Long, Long>): List<ScoredNightBlock> =
+        blocks.map { b ->
+            val onset = onsetByStart[b.first] ?: b.first
+            val m = minutes(b.second)
+            ScoredNightBlock(onset, (m?.asleep ?: 0.0) * 60.0, (m?.inBed ?: 0.0) * 60.0)
+        }
+
     /** The original-index group (ascending) of the day's MAIN night on the STAGES path: the main night plus
      *  adjacent fragments [bridgedNightGroups] folds into it, so the edit/recompute seam sums the same
-     *  fragments `analyzeDay` does. Null only for an empty list. */
+     *  fragments `analyzeDay` does. One scorer, in whoop-rs. Null only for an empty list. */
     internal fun mainNightGroupIndicesByStages(
         blocks: List<Pair<Long, String?>>,
         onsetByStart: Map<Long, Long>,
         offsetSec: Long,
         habitualMidsleepSec: Long? = null,
-    ): List<Int>? {
-        if (blocks.isEmpty()) return null
-        fun onset(b: Pair<Long, String?>): Long = onsetByStart[b.first] ?: b.first
-        fun effEnd(b: Pair<Long, String?>): Long = onset(b) + ((minutes(b.second)?.inBed ?: 0.0) * 60.0).toLong()
-        // The bridge is [bridgedNightGroups]' — one implementation, in whoop-rs. Only the effective
-        // span (onset + decoded in-bed) is Kotlin's, so this seam folds in the same fragments the
-        // Sleep tab does.
-        val groups = bridgedNightGroups(blocks.map { NightBlock(onset(it), effEnd(it)) }, offsetSec)
-            .map { it.indices }
-        // Score each bridged group by a synthesized SUMMED block anchored at the group's earliest onset, via
-        // the same per-stages scorer, so the pick matches the bare path on a single-block day.
-        val groupBlocks = ArrayList<Pair<Long, String?>>()
-        val groupOnsets = HashMap<Long, Long>()
-        for (g in groups) {
-            val anchorIdx = g.minByOrNull { onset(blocks[it]) } ?: g[0]
-            val anchorStart = blocks[anchorIdx].first
-            val summed = summedStagesJSON(g.map { blocks[it].second })
-            groupBlocks.add(anchorStart to summed)
-            groupOnsets[anchorStart] = onset(blocks[anchorIdx])
-        }
-        val winner = mainNightIndexByStages(groupBlocks, groupOnsets, offsetSec, habitualMidsleepSec)
-            ?: return null
-        return groups[winner].sorted()
-    }
+    ): List<Int>? =
+        mainNightGroupIndicesScored(scoredOf(blocks, onsetByStart), offsetSec, habitualMidsleepSec)
 
-    /** A synthetic minute-dict `stagesJSON` whose per-stage minutes are the SUM of the inputs' decoded
-     *  minutes: used only to SCORE a bridged group as one block (decoded asleep minutes + in-bed span).
-     *  Pure; null when nothing decodes (the group then scores 0, like an undecodable block). */
-    internal fun summedStagesJSON(stagesJSONs: List<String?>): String? {
-        val total = Minutes()
-        var any = false
-        for (j in stagesJSONs) {
-            val m = minutes(j) ?: continue
-            total.awake += m.awake; total.light += m.light
-            total.deep += m.deep; total.rem += m.rem
-            any = true
-        }
-        if (!any) return null
-        // Keys alphabetical (awake, deep, light, rem), though the decoder is key-order-independent;
-        // this is only ever fed back into `minutes(...)` to score the group.
-        return "{\"awake\":${total.awake},\"deep\":${total.deep},\"light\":${total.light},\"rem\":${total.rem}}"
-    }
-
-    /** Index into [blocks] of the day's MAIN night: score(block) = asleepMinutes + alignmentBonus, where asleepMinutes
-     *  is the block's decoded ASLEEP minutes (not in-bed) and the bonus credits a midpoint near [habitualMidsleepSec]
-     *  (or the overnight band, cold-start). Undecoded blocks score 0; exact ties break toward the EARLIER onset. */
+    /** Index into [blocks] of the day's MAIN night on the STAGES path: the shared scorer over each block's
+     *  decoded ASLEEP minutes, read at its effective onset. Undecoded blocks score 0 here (the caller
+     *  supplies stages by construction); [scoredBlock] is the clock-fallback reading. */
     internal fun mainNightIndexByStages(
         blocks: List<Pair<Long, String?>>,
         onsetByStart: Map<Long, Long>,
         offsetSec: Long,
         habitualMidsleepSec: Long? = null,
-    ): Int? {
-        if (blocks.isEmpty()) return null
-        val target = targetMidsleepSec(habitualMidsleepSec)
-        fun onset(b: Pair<Long, String?>): Long = onsetByStart[b.first] ?: b.first
-        fun score(b: Pair<Long, String?>): Double {
-            val m = minutes(b.second)
-            val asleepMin = m?.asleep ?: 0.0
-            val inBedSec = ((m?.inBed ?: 0.0) * 60.0).toLong()
-            val midSec = localSecOfDay(onset(b) + inBedSec / 2, offsetSec)
-            return asleepMin + alignmentBonusMinutes(midSec, target)
-        }
-        var bestIdx = 0
-        for (i in 1 until blocks.size) {
-            val cand = blocks[i]
-            val best = blocks[bestIdx]
-            val cs = score(cand)
-            val bs = score(best)
-            val candWins = when {
-                cs != bs -> cs > bs
-                else -> onset(cand) < onset(best)
-            }
-            if (candWins) bestIdx = i
-        }
-        return bestIdx
-    }
+    ): Int? = mainNightIndexScored(scoredOf(blocks, onsetByStart), offsetSec, habitualMidsleepSec)
 
     // ── Habitual midsleep (learned timing — non-circular dependency) ──────────────────────────────
 

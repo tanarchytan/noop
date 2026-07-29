@@ -29,7 +29,8 @@ class SleepUiStructureTest {
             "SleepScreen.kt" to setOf("SleepScreen"),
             "SleepModels.kt" to setOf(
                 "Stages", "Metric", "ImportedSleepSeries", "SleepModel", "HeroNight", "HeroDisplay",
-                "selectNight", "mainSleepBlock", "mainSleepGroup", "mainSleepSpan", "consistencyNightSpans",
+                "selectNight", "mainSleepBlock", "scoredNightBlock", "mainSleepGroup", "mainSleepSpan",
+                "consistencyNightSpans",
                 "PRE_ONSET_STUB_MAX_MIN", "PRE_ONSET_STUB_ASLEEP_MAX_MIN",
                 "PRE_ONSET_STUB_MINOR_FRAC", "PRE_ONSET_STUB_MINOR_ASLEEP_FLOOR_MIN",
                 "decodedAsleepMinutes", "isPreOnsetAwakeStub", "sumGroupStages", "uiTzOffsetSec",

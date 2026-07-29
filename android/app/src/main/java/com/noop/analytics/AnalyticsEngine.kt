@@ -197,9 +197,14 @@ object AnalyticsEngine {
         // ── The day's MAIN night ──────────────────────────────────────────────
         // Sleep-duration figures (asleep/stage minutes, efficiency, disturbances, Rest, debt ledger)
         // describe only the MAIN night: fragments split by a short wake are bridged into one scored
-        // group by [SleepStageTotals.mainNightGroupIndices]; naps stay separate rows in `sleepSessions`.
-        val mainGroupIdx = SleepStageTotals.mainNightGroupIndices(
-            matched.map { SleepStageTotals.NightBlock(it.start, it.end) },
+        // group by [SleepStageTotals.mainNightGroupIndicesScored]; naps stay separate rows in
+        // `sleepSessions`. Candidates are scored on the sleep their hypnogram DECODED, not on their clock
+        // span, so a span the stager filled with wake cannot be named the day's night.
+        val mainGroupIdx = SleepStageTotals.mainNightGroupIndicesScored(
+            matched.map {
+                val hm = SleepStager.hypnogramMetrics(it)
+                SleepStageTotals.ScoredNightBlock(it.start, hm.tstS, hm.tibS)
+            },
             tzOffsetSeconds, habitualMidsleepSec,
         ) ?: emptyList()
         val mainGroup: List<DetectedSleep> = mainGroupIdx.map { matched[it] }

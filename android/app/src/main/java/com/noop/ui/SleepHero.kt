@@ -348,12 +348,12 @@ private fun MainSleepFooter(
  * same [SleepStageTotals.mainNightSelection] API the analytics pick uses. null only when the day has no blocks.
  */
 internal fun mainSleepReasonText(blocks: List<SleepSession>, habitualMidsleepSec: Long?): String? {
-    val sel = SleepStageTotals.mainNightSelection(
-        blocks.map { SleepStageTotals.NightBlock(it.effectiveStartTs, it.endTs) },
+    val sel = SleepStageTotals.mainNightSelectionScored(
+        blocks.map { SleepStageTotals.scoredBlock(it.effectiveStartTs, it.endTs, it.stagesJSON) },
         uiTzOffsetSec(),
         habitualMidsleepSec,
     ) ?: return null
-    // Round to whole minutes for "Xh Ym".
+    // Round to whole minutes for "Xh Ym"; `asleepSec` is the winner's decoded sleep, not its time in bed.
     val dur = durationText(sel.asleepSec / 60.0)
     return when (sel.reason) {
         SleepStageTotals.MainNightReason.onlyBlock ->

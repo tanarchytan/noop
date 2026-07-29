@@ -787,9 +787,15 @@ internal object IntegrityCheckingUniffiLib {
     ): Int
     external fun uniffi_whoop_ffi_checksum_func_main_night_group_indices(
     ): Int
+    external fun uniffi_whoop_ffi_checksum_func_main_night_group_indices_scored(
+    ): Int
     external fun uniffi_whoop_ffi_checksum_func_main_night_index(
     ): Int
+    external fun uniffi_whoop_ffi_checksum_func_main_night_index_scored(
+    ): Int
     external fun uniffi_whoop_ffi_checksum_func_main_night_selection(
+    ): Int
+    external fun uniffi_whoop_ffi_checksum_func_main_night_selection_scored(
     ): Int
     external fun uniffi_whoop_ffi_checksum_func_nap_evaluate(
     ): Int
@@ -1085,9 +1091,15 @@ internal object UniffiLib {
     ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_func_main_night_group_indices(`blocks`: RustBuffer.ByValue,`offsetS`: Long,`habitualMidsleepSec`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
+    external fun uniffi_whoop_ffi_fn_func_main_night_group_indices_scored(`blocks`: RustBuffer.ByValue,`offsetS`: Long,`habitualMidsleepSec`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_func_main_night_index(`blocks`: RustBuffer.ByValue,`offsetS`: Long,`habitualMidsleepSec`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
+    external fun uniffi_whoop_ffi_fn_func_main_night_index_scored(`blocks`: RustBuffer.ByValue,`offsetS`: Long,`habitualMidsleepSec`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_func_main_night_selection(`blocks`: RustBuffer.ByValue,`offsetS`: Long,`habitualMidsleepSec`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    external fun uniffi_whoop_ffi_fn_func_main_night_selection_scored(`blocks`: RustBuffer.ByValue,`offsetS`: Long,`habitualMidsleepSec`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_func_nap_evaluate(`gravity`: RustBuffer.ByValue,`hr`: RustBuffer.ByValue,`restingHr`: RustBuffer.ByValue,`config`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
@@ -1413,10 +1425,19 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_whoop_ffi_checksum_func_main_night_group_indices() != 11991) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_whoop_ffi_checksum_func_main_night_group_indices_scored() != 18979) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_whoop_ffi_checksum_func_main_night_index() != 32490) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_whoop_ffi_checksum_func_main_night_index_scored() != 14753) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_whoop_ffi_checksum_func_main_night_selection() != 15459) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_whoop_ffi_checksum_func_main_night_selection_scored() != 19350) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_whoop_ffi_checksum_func_nap_evaluate() != 45721) {
@@ -4436,6 +4457,52 @@ public object FfiConverterTypeMainNightBlock: FfiConverterRustBuffer<MainNightBl
     override fun write(value: MainNightBlock, buf: ByteBuffer) {
             FfiConverterLong.write(value.`start`, buf)
             FfiConverterLong.write(value.`end`, buf)
+    }
+}
+
+
+
+/**
+ * One candidate scored on what its stages DECODED: effective onset plus asleep and in-bed seconds.
+ */
+data class MainNightScoredBlock (
+    var `onset`: kotlin.Long
+    , 
+    var `asleepS`: kotlin.Double
+    , 
+    var `inBedS`: kotlin.Double
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeMainNightScoredBlock: FfiConverterRustBuffer<MainNightScoredBlock> {
+    override fun read(buf: ByteBuffer): MainNightScoredBlock {
+        return MainNightScoredBlock(
+            FfiConverterLong.read(buf),
+            FfiConverterDouble.read(buf),
+            FfiConverterDouble.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: MainNightScoredBlock) = (
+            FfiConverterLong.allocationSize(value.`onset`) +
+            FfiConverterDouble.allocationSize(value.`asleepS`) +
+            FfiConverterDouble.allocationSize(value.`inBedS`)
+    )
+
+    override fun write(value: MainNightScoredBlock, buf: ByteBuffer) {
+            FfiConverterLong.write(value.`onset`, buf)
+            FfiConverterDouble.write(value.`asleepS`, buf)
+            FfiConverterDouble.write(value.`inBedS`, buf)
     }
 }
 
@@ -9255,6 +9322,34 @@ public object FfiConverterSequenceTypeMainNightBlock: FfiConverterRustBuffer<Lis
 /**
  * @suppress
  */
+public object FfiConverterSequenceTypeMainNightScoredBlock: FfiConverterRustBuffer<List<MainNightScoredBlock>> {
+    override fun read(buf: ByteBuffer): List<MainNightScoredBlock> {
+        val len = buf.getInt()
+        return List<MainNightScoredBlock>(len) {
+            FfiConverterTypeMainNightScoredBlock.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<MainNightScoredBlock>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeMainNightScoredBlock.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<MainNightScoredBlock>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeMainNightScoredBlock.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterSequenceTypePpgEstimate: FfiConverterRustBuffer<List<PpgEstimate>> {
     override fun read(buf: ByteBuffer): List<PpgEstimate> {
         val len = buf.getInt()
@@ -10890,6 +10985,23 @@ public object FfiConverterSequenceOptionalDouble: FfiConverterRustBuffer<List<ko
     )
     }
     
+
+        /**
+         * The main-night group scored on DECODED stage time: one scorer, fed what the hypnogram holds instead
+         * of the clock span, so the stages path and the detected path cannot name different nights.
+         */ fun `mainNightGroupIndicesScored`(`blocks`: List<MainNightScoredBlock>, `offsetS`: kotlin.Long, `habitualMidsleepSec`: kotlin.Long?): List<kotlin.UInt>? {
+            return FfiConverterOptionalSequenceUInt.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_func_main_night_group_indices_scored(
+    
+        
+        FfiConverterSequenceTypeMainNightScoredBlock.lower(`blocks`),
+        FfiConverterLong.lower(`offsetS`),
+        FfiConverterOptionalLong.lower(`habitualMidsleepSec`),_status)
+}
+    )
+    }
+    
  fun `mainNightIndex`(`blocks`: List<MainNightBlock>, `offsetS`: kotlin.Long, `habitualMidsleepSec`: kotlin.Long?): kotlin.UInt? {
             return FfiConverterOptionalUInt.lift(
     uniffiRustCall() { _status ->
@@ -10903,6 +11015,22 @@ public object FfiConverterSequenceOptionalDouble: FfiConverterRustBuffer<List<ko
     )
     }
     
+
+        /**
+         * The day's main night scored on DECODED stage time rather than the clock span.
+         */ fun `mainNightIndexScored`(`blocks`: List<MainNightScoredBlock>, `offsetS`: kotlin.Long, `habitualMidsleepSec`: kotlin.Long?): kotlin.UInt? {
+            return FfiConverterOptionalUInt.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_func_main_night_index_scored(
+    
+        
+        FfiConverterSequenceTypeMainNightScoredBlock.lower(`blocks`),
+        FfiConverterLong.lower(`offsetS`),
+        FfiConverterOptionalLong.lower(`habitualMidsleepSec`),_status)
+}
+    )
+    }
+    
  fun `mainNightSelection`(`blocks`: List<MainNightBlock>, `offsetS`: kotlin.Long, `habitualMidsleepSec`: kotlin.Long?): MainNightSel? {
             return FfiConverterOptionalTypeMainNightSel.lift(
     uniffiRustCall() { _status ->
@@ -10910,6 +11038,22 @@ public object FfiConverterSequenceOptionalDouble: FfiConverterRustBuffer<List<ko
     
         
         FfiConverterSequenceTypeMainNightBlock.lower(`blocks`),
+        FfiConverterLong.lower(`offsetS`),
+        FfiConverterOptionalLong.lower(`habitualMidsleepSec`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * The scored main-night pick plus why it won; `asleep_sec` is the winner's decoded asleep time.
+         */ fun `mainNightSelectionScored`(`blocks`: List<MainNightScoredBlock>, `offsetS`: kotlin.Long, `habitualMidsleepSec`: kotlin.Long?): MainNightSel? {
+            return FfiConverterOptionalTypeMainNightSel.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_func_main_night_selection_scored(
+    
+        
+        FfiConverterSequenceTypeMainNightScoredBlock.lower(`blocks`),
         FfiConverterLong.lower(`offsetS`),
         FfiConverterOptionalLong.lower(`habitualMidsleepSec`),_status)
 }

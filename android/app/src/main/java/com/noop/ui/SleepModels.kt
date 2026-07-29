@@ -211,13 +211,18 @@ internal fun selectNight(
  */
 internal fun mainSleepBlock(blocks: List<SleepSession>, habitualMidsleepSec: Long? = null): SleepSession? {
     if (blocks.isEmpty()) return null
-    val idx = SleepStageTotals.mainNightIndex(
-        blocks.map { SleepStageTotals.NightBlock(it.effectiveStartTs, it.endTs) },
+    val idx = SleepStageTotals.mainNightIndexScored(
+        blocks.map { scoredNightBlock(it) },
         uiTzOffsetSec(),
         habitualMidsleepSec,
     ) ?: return null
     return blocks[idx]
 }
+
+/** One session as a scored candidate: its effective onset with the asleep/in-bed seconds its stages
+ *  decode, falling back to the clock span when there are no usable stages. */
+private fun scoredNightBlock(s: SleepSession): SleepStageTotals.ScoredNightBlock =
+    SleepStageTotals.scoredBlock(s.effectiveStartTs, s.endTs, s.stagesJSON)
 
 /**
  * The day's MAIN-night GROUP — the winning block PLUS any adjacent fragments bridged into it (a wake gap
@@ -225,8 +230,8 @@ internal fun mainSleepBlock(blocks: List<SleepSession>, habitualMidsleepSec: Lon
  * AnalyticsEngine rolls it up. Only blocks outside the group are naps. Returns ascending by effective onset.
  */
 internal fun mainSleepGroup(blocks: List<SleepSession>, habitualMidsleepSec: Long? = null): List<SleepSession> {
-    val idx = SleepStageTotals.mainNightGroupIndices(
-        blocks.map { SleepStageTotals.NightBlock(it.effectiveStartTs, it.endTs) },
+    val idx = SleepStageTotals.mainNightGroupIndicesScored(
+        blocks.map { scoredNightBlock(it) },
         uiTzOffsetSec(),
         habitualMidsleepSec,
     ) ?: return emptyList()

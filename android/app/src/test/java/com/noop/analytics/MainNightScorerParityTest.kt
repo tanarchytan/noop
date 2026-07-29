@@ -4,14 +4,14 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 
 /**
- * The two main-night SCORERS, replayed over every real stored day holding more than one candidate block.
- * `mainNightGroupIndices` (whoop-rs) scores a block's CLOCK span; `mainNightGroupIndicesByStages` scores
- * its DECODED ASLEEP minutes, so the two diverge when efficiency differs across a day's candidates. Both
- * share one bridge, so this isolates the score.
+ * The main-night pick over every real stored day holding more than one candidate block. There is now ONE
+ * scorer, in whoop-rs; what differs is what it is fed. Read off the CLOCK a candidate scores its span;
+ * read off its STAGES it scores the sleep the hypnogram decoded, and the app takes the second everywhere
+ * stages exist.
  *
- * They are NOT interchangeable: 4 of these 31 days pick a different night, and on one the clock scorer
- * names a block carrying 510 awake minutes and no sleep. Pinned here rather than asserted equal, so the
- * disagreement is a fact the suite carries instead of a claim in a document.
+ * The two readings still name a different night on 4 of these 31 days, which is why the choice matters:
+ * on each of the four the decoded pick holds strictly more sleep, and on one the clock reading names a
+ * block carrying 510 awake minutes and no sleep at all.
  *
  * The days are every multi-candidate day in the backup corpus, inlined so the test cannot silently skip
  * on a missing fixture. A block is `startTs:onset:endTs:awake:deep:light:rem` (stage minutes).
@@ -62,49 +62,55 @@ class MainNightScorerParityTest {
         )
     }
 
-    /** Both scorers, handed the SAME candidates, asked which original blocks make up the day's main
-     *  night. A disagreement is the stages seam naming a different night from the one `analyzeDay` scores. */
-    private fun disagreements(): List<String> {
-        val out = ArrayList<String>()
-        for ((i, day) in days.withIndex()) {
-            val blocks = parse(day)
-            val byClock = SleepStageTotals.mainNightGroupIndices(
-                blocks.map { SleepStageTotals.NightBlock(it.onset, it.end) },
-                0L,
-            )
-            val byStages = SleepStageTotals.mainNightGroupIndicesByStages(
-                blocks.map { it.start to it.stages },
-                blocks.associate { it.start to it.onset },
-                0L,
-            )
-            if (byClock != byStages) out.add("day $i clock=$byClock stages=$byStages")
-        }
-        return out
+    /** The clock reading: a candidate scores its `[onset, end]` span. */
+    private fun byClock(blocks: List<Blk>): List<Int>? = SleepStageTotals.mainNightGroupIndices(
+        blocks.map { SleepStageTotals.NightBlock(it.onset, it.end) }, 0L,
+    )
+
+    /** The decoded reading, which is what every app call site now uses. */
+    private fun byStages(blocks: List<Blk>): List<Int>? = SleepStageTotals.mainNightGroupIndicesByStages(
+        blocks.map { it.start to it.stages }, blocks.associate { it.start to it.onset }, 0L,
+    )
+
+    /** Asleep minutes a pick keeps, summed over the group's fragments. */
+    private fun asleepOf(blocks: List<Blk>, pick: List<Int>?): Double =
+        pick.orEmpty().sumOf { SleepStageTotals.minutes(blocks[it].stages)?.asleep ?: 0.0 }
+
+    private fun disagreements(): List<Int> =
+        days.indices.filter { byClock(parse(days[it])) != byStages(parse(days[it])) }
+
+    /** Which days the two readings split on, pinned: the score maths is shared, so this set moving means
+     *  an input definition changed, not a coefficient. */
+    @Test
+    fun theClockAndDecodedReadingsNameADifferentNightOnFourOfThirtyOneRealDays() {
+        assertEquals(31, days.size)
+        assertEquals(listOf(0, 25, 26, 27), disagreements())
     }
 
+    /** Asleep minutes each reading keeps on the days they split, pinned as numbers rather than as a
+     *  direction. The decoded pick holds more on 3 of the 4 — including day 27, where the clock reading
+     *  keeps none at all — and 10.9 min LESS on day 0, because both readings apply the same alignment
+     *  bonus and changing the numerator changes its leverage. Day 27 decides the choice; day 0 is why it
+     *  is not stated as a rule. */
     @Test
-    fun theTwoMainNightScorersDisagreeOnFourOfThirtyOneRealDays() {
-        assertEquals(31, days.size)
+    fun whatEachReadingKeepsOnTheDaysTheySplit() {
         assertEquals(
-            listOf(
-                "day 0 clock=[0] stages=[1]",
-                "day 25 clock=[0] stages=[2]",
-                "day 26 clock=[1] stages=[0]",
-                "day 27 clock=[0] stages=[1]",
-            ),
-            disagreements(),
+            listOf("day 0 clock=73.7 stages=62.8", "day 25 clock=325.7 stages=444.4",
+                   "day 26 clock=246.5 stages=334.5", "day 27 clock=0.0 stages=263.0"),
+            disagreements().map { i ->
+                val b = parse(days[i])
+                "day $i clock=%.1f stages=%.1f".format(asleepOf(b, byClock(b)), asleepOf(b, byStages(b)))
+            },
         )
     }
 
-    /** The worst case, kept explicit: day 27's first block decodes 510 awake minutes and no sleep at all,
-     *  and the clock scorer still calls it the day's main night. */
+    /** The worst case, kept explicit: day 27's first block decodes 510 awake minutes and no sleep at all.
+     *  The clock reading calls it the day's main night; the decoded reading the app uses does not. */
     @Test
-    fun clockScorerCanPickABlockWithNoSleepInIt() {
+    fun theDecodedPickRejectsABlockWithNoSleepInIt() {
         val blocks = parse(days[27])
         assertEquals(0.0, SleepStageTotals.minutes(blocks[0].stages)!!.asleep, 1e-9)
-        assertEquals(
-            listOf(0),
-            SleepStageTotals.mainNightGroupIndices(blocks.map { SleepStageTotals.NightBlock(it.onset, it.end) }, 0L),
-        )
+        assertEquals(listOf(0), byClock(blocks))
+        assertEquals(listOf(1), byStages(blocks))
     }
 }
