@@ -397,7 +397,8 @@ private fun ConnectStep(viewModel: AppViewModel) {
         val family = strap.family
         val modelLabel = when (family) {
             WhoopModel.WHOOP4 -> "4.0"
-            WhoopModel.WHOOP5_MG -> "5.0 MG"
+            // Slashed: one WhoopModel covers both, so naming one of them is a claim we cannot make.
+            WhoopModel.WHOOP5_MG -> "5.0 / MG"
             null -> "WHOOP"
         }
         // Point the scan/connect family + persist it WITHOUT the model-switch teardown (which would clear

@@ -232,9 +232,11 @@ fun AddDeviceWizard(
         val now = System.currentTimeMillis() / 1000
         val pw = pickedWhoop
         val device: PairedDeviceRow? = if (pw != null && type?.whoopModel != null) {
-            // WHOOP: full capability set; id namespaced by address; model "4.0" / "5.0 MG".
+            // WHOOP: full capability set; id namespaced by address; model "4.0" / "5.0 / MG".
+            // The 5-series label keeps the slash because nothing on the wire tells a 5.0 from an MG —
+            // one WhoopModel covers both — and "5.0 MG" read as a claim that the strap is an MG.
             val wm = type!!.whoopModel!!
-            val modelLabel = if (wm == WhoopModel.WHOOP4) "4.0" else "5.0 MG"
+            val modelLabel = if (wm == WhoopModel.WHOOP4) "4.0" else "5.0 / MG"
             PairedDeviceRow(
                 id = "whoop-${pw.address}",
                 brand = "WHOOP",
