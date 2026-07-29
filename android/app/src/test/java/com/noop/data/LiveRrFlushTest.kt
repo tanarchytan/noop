@@ -9,6 +9,9 @@ import org.junit.Test
  * of the buffer it may take, and [assignRrSeq] numbers what it takes. A wall-second handed over in two
  * batches restarts `seq` and `ord` from zero, so an equal-rrMs beat in it collides on the R-R primary key
  * and INSERT-OR-IGNORE drops it. Replays the client's buffer rule against that.
+ *
+ * Live R-R reaches storage only for a strap whose offload is empty (`persistsLiveRr`); this governs
+ * what that strap banks.
  */
 class LiveRrFlushTest {
 

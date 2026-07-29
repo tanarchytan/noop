@@ -4306,13 +4306,22 @@ class WhoopBleClient(
      * Persist the buffered standard HR/RR up to [liveFlushCutoff], holding the newest wall-second back
      * so one second is never split across two inserts. [closing] drains the tail on teardown.
      * Re-buffers on failure.
+     *
+     * R-R rides [persistLiveRr]: the historical record already carries every beat, stamped by the strap,
+     * so storing the live copy too banks each beat twice under two clocks.
      */
     private suspend fun flushStandardHr(closing: Boolean = false) {
+        val keepRr = persistLiveRr()
         val (hr, rr) = synchronized(collectorLock) {
             val cutoff = liveFlushCutoff(stdHr, stdRr, closing)
             val h = ArrayList(stdHr.filter { it.ts < cutoff })
-            val r = ArrayList(stdRr.filter { it.ts < cutoff })
-            if (h.isEmpty() && r.isEmpty()) return
+            val r = if (keepRr) ArrayList(stdRr.filter { it.ts < cutoff }) else ArrayList()
+            if (h.isEmpty() && r.isEmpty()) {
+                // Always drain, or a dropped stream would grow the buffer without bound.
+                stdHr.removeAll { it.ts < cutoff }
+                stdRr.removeAll { it.ts < cutoff }
+                return
+            }
             stdHr.removeAll { it.ts < cutoff }
             stdRr.removeAll { it.ts < cutoff }
             h to r
@@ -4320,9 +4329,11 @@ class WhoopBleClient(
         try {
             repository.insert(StreamBatch(hr = hr, rr = rr), deviceId)
         } catch (t: Throwable) {
-            synchronized(collectorLock) { stdHr.addAll(0, hr); stdRr.addAll(0, rr) }
+            synchronized(collectorLock) { stdHr.addAll(0, hr); if (keepRr) stdRr.addAll(0, rr) }
         }
     }
+
+    private fun persistLiveRr(): Boolean = persistsLiveRr(connectedFamily, whoop5EmptyOffload.historyEmpty)
 
     // ====================================================================================
     // MARK: Historical offload
@@ -5451,6 +5462,17 @@ internal fun redactStrapLogPii(s: String): String = try {
 } catch (t: Throwable) {
     "[redaction error - line withheld]"
 }
+
+/**
+ * Whether the live 0x2A37 profile's R-R should be persisted for a strap of [family].
+ *
+ * The historical record carries every beat already, stamped by the strap's own clock, so banking the
+ * live copy as well stores each beat twice under two clocks. The live copy is kept only for a 5/MG
+ * whose offload is empty ([historyEmpty]), where it is the one source there is. Pure and file-scope so
+ * it unit-tests without constructing the BLE client.
+ */
+internal fun persistsLiveRr(family: DeviceFamily, historyEmpty: Boolean): Boolean =
+    family == DeviceFamily.WHOOP5 && historyEmpty
 
 /** Prefix a compact, parseable domain marker onto an already-redacted strap-log line, or return it
  *  unchanged when no domain is given. The export filters on this "[<id>] " marker. Pure and
