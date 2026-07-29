@@ -759,6 +759,14 @@ class WhoopRepository(private val dao: WhoopDao) {
     suspend fun dismissedSleeps(strapDeviceId: String = "my-whoop"): List<DismissedSleep> =
         dao.dismissedSleeps(strapDeviceId) + dao.dismissedSleeps(computedDeviceId(strapDeviceId))
 
+    /** Hand-edited computed nights in [from, to], read across the SAME computed union the display uses
+     *  ([computedSleepSessionsUnion]) rather than one id. The edit twin of [dismissedSleeps]: an edit
+     *  made before the active strap id changed lives under the old computed namespace, and a read
+     *  pinned to the current one misses it, so the recompute re-creates the detected twin beside it.
+     *  Each row keeps its own `deviceId` — the heal writes back under that, never a passed-in id. */
+    suspend fun editedSleeps(strapDeviceId: String, from: Long, to: Long): List<SleepSession> =
+        computedSleepSessionsUnion(strapDeviceId, from, to).filter { it.userEdited }
+
     /**
      * Persist a retroactive / edited manual workout under the strap source. [replacing] is the row the
      * edit started from:

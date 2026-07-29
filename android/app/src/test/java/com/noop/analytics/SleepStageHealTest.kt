@@ -3,6 +3,8 @@ package com.noop.analytics
 import com.noop.data.GravitySample
 import com.noop.data.HrSample
 import com.noop.data.SleepSession
+import com.noop.data.WhoopRepository
+import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals
@@ -109,22 +111,22 @@ class SleepStageHealTest {
     // ── End-to-end: drive selfHealEditedStages' exact loop over an in-memory store ───────────────────
 
     /**
-     * Replays the EXACT body of [SleepStageHealer.selfHealEditedStages] over an in-memory map keyed by
-     * detected startTs (`restage` supplies the per-night re-derive; null = raw not dense). Returns
+     * Drives the REAL [SleepStageHealer.healLoop] over an in-memory store keyed by (deviceId, detected
+     * startTs), standing in for the `userEdited = 1`-scoped `updateSleepStages` write. Returns
      * (refreshedRows, writeCount) so callers assert both the heal write and the idempotent skip.
      */
     private fun runHealLoop(
-        store: MutableMap<Long, SleepSession>,
+        store: MutableMap<Pair<String, Long>, SleepSession>,
         edited: List<SleepSession>,
         restage: (SleepSession) -> String?,
     ): Pair<List<SleepSession>, Int> {
-        var writes = 0
-        for (row in edited) {
-            val newJSON = restage(row) ?: continue
-            if (newJSON == row.stagesJSON) continue
-            // updateSleepStages: stages-only write, bounds + userEdited untouched, keyed by detected startTs.
-            store[row.startTs] = store.getValue(row.startTs).copy(stagesJSON = newJSON)
-            writes++
+        val writes = runBlocking {
+            SleepStageHealer.healLoop(edited, { restage(it) }) { row, json ->
+                val key = row.deviceId to row.startTs
+                val stored = store[key] ?: return@healLoop 0
+                store[key] = stored.copy(stagesJSON = json)
+                1
+            }
         }
         return store.values.filter { it.userEdited } to writes
     }
@@ -143,7 +145,7 @@ class SleepStageHealTest {
             deviceId = "my-whoop-noop", startTs = start, endTs = end,
             stagesJSON = fabricated, userEdited = true,
         )
-        val store = mutableMapOf(start to edited)
+        val store = mutableMapOf((edited.deviceId to start) to edited)
         val restage: (SleepSession) -> String? = { row ->
             SleepStageHealer.restageFromSamples(row.effectiveStartTs, row.endTs, grav, hr, emptyList(), emptyList())
         }
@@ -171,11 +173,62 @@ class SleepStageHealTest {
             deviceId = "my-whoop-noop", startTs = start, endTs = end,
             stagesJSON = fabricated, userEdited = true,
         )
-        val store = mutableMapOf(start to edited)
+        val store = mutableMapOf((edited.deviceId to start) to edited)
         // restage returns null (imported night: raw never dense).
         val (rows, writes) = runHealLoop(store, listOf(edited)) { null }
         assertEquals("a no-raw night must not be written", 0, writes)
         assertEquals("the user's edited (fabricated) stages must remain", fabricated, rows.single().stagesJSON)
+    }
+
+    // ── 5. Edits survive a change of active strap id ─────────────────────────────────────────────────
+
+    /**
+     * An edit made before the active strap id changed lives under the OLD computed namespace. The heal
+     * must write it back under its own `deviceId`, not a single passed-in id, or the correction is
+     * stranded and the recompute re-creates the detected twin beside it.
+     */
+    @Test
+    fun healWritesBackUnderEachRowsOwnComputedNamespace() {
+        val legacyStart = startAtHour(7)
+        val activeStart = startAtHour(20)
+        val dur = 6 * 60 * 60
+        val grav = stillGravity(legacyStart, dur) + stillGravity(activeStart, dur)
+        val hr = hrStream(legacyStart, dur, 50) + hrStream(activeStart, dur, 50)
+
+        val legacy = SleepSession(
+            deviceId = "my-whoop-noop", startTs = legacyStart, endTs = legacyStart + dur - 1,
+            stagesJSON = encoded(legacyStart, legacyStart + dur - 1, "wake"), userEdited = true,
+        )
+        val active = SleepSession(
+            deviceId = "whoop-AA:BB-noop", startTs = activeStart, endTs = activeStart + dur - 1,
+            stagesJSON = encoded(activeStart, activeStart + dur - 1, "wake"), userEdited = true,
+        )
+        val store = mutableMapOf((legacy.deviceId to legacyStart) to legacy, (active.deviceId to activeStart) to active)
+
+        val (rows, writes) = runHealLoop(store, listOf(legacy, active)) { row ->
+            SleepStageHealer.restageFromSamples(row.effectiveStartTs, row.endTs, grav, hr, emptyList(), emptyList())
+        }
+        assertEquals("both namespaces must heal", 2, writes)
+        assertEquals(2, rows.size)
+        for (row in rows) {
+            assertNotEquals(
+                "row under ${row.deviceId} must have been rewritten in its own namespace",
+                encoded(row.startTs, row.endTs, "wake"),
+                row.stagesJSON,
+            )
+        }
+    }
+
+    /**
+     * The edit read is scoped to the computed UNION, the same sources the display reads, so a strap-id
+     * install still sees an edit banked under the canonical legacy namespace.
+     */
+    @Test
+    fun editedSleepsAreReadAcrossTheComputedUnion() {
+        assertEquals(
+            listOf("whoop-AA:BB-noop", "my-whoop-noop"),
+            WhoopRepository.computedSourceIdsFor("whoop-AA:BB"),
+        )
     }
 
     // ── 4. Encoder determinism (the linchpin: equality-skip relies on stable key order) ──────────────

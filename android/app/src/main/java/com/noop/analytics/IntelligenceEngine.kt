@@ -673,7 +673,6 @@ object IntelligenceEngine {
         // breakdown only (bounds untouched). Idempotent; must run before `editsByStart` so healed stages feed Rest/recovery this pass.
         val editedRows = SleepStageHealer.selfHealEditedStages(
             repo = repo,
-            computedDeviceId = computedId,
             strapDeviceId = importedDeviceId,
             windowStart = windowStart,
             windowEnd = nowSeconds,

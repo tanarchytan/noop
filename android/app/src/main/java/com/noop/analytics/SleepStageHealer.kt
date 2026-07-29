@@ -89,37 +89,50 @@ object SleepStageHealer {
     }
 
     /**
-     * Self-heal pass: re-derive stages for every user-edited night in `[windowStart, windowEnd]` under
-     * the COMPUTED source ([computedDeviceId]), rewriting the stage breakdown ONLY (via
+     * The heal loop with its I/O injected, returning the number of rows written. [restage] re-derives a
+     * row's stages (null = raw not dense yet); [write] persists them under the row's OWN `deviceId`,
+     * keyed by the IMMUTABLE detected `startTs`, and returns rows changed. Extracted so a test drives
+     * this loop rather than a copy of it.
+     */
+    internal suspend fun healLoop(
+        edited: List<SleepSession>,
+        restage: suspend (SleepSession) -> String?,
+        write: suspend (SleepSession, String) -> Int,
+    ): Int {
+        var writes = 0
+        for (row in edited) {
+            val newJSON = restage(row) ?: continue
+            if (newJSON == row.stagesJSON) continue
+            if (write(row, newJSON) > 0) writes++
+        }
+        return writes
+    }
+
+    /**
+     * Self-heal pass: re-derive stages for every user-edited night in `[windowStart, windowEnd]` across
+     * the computed union ([WhoopRepository.editedSleeps]), rewriting the stage breakdown ONLY (via
      * [WhoopRepository.updateSleepStages], scoped to `userEdited = 1`), never the user's correction.
-     * Reads/writes the SAME computed source [IntelligenceEngine] reads its edited rows from, so healed
-     * stages flow into this run's daily aggregate. Same idempotency guarantee as the class doc above.
-     * Returns the (possibly refreshed) edited rows for the caller to score.
+     * Same idempotency guarantee as the class doc above. Returns the (possibly refreshed) edited rows
+     * for the caller to score, so an edit under a retired computed id still reaches the recompute guard.
      */
     suspend fun selfHealEditedStages(
         repo: WhoopRepository,
-        computedDeviceId: String,
         strapDeviceId: String,
         windowStart: Long,
         windowEnd: Long,
     ): List<SleepSession> {
-        suspend fun editedRows(): List<SleepSession> =
-            repo.sleepSessions(computedDeviceId, windowStart, windowEnd).filter { it.userEdited }
+        suspend fun editedRows(): List<SleepSession> = repo.editedSleeps(strapDeviceId, windowStart, windowEnd)
 
         val edited = editedRows()
         if (edited.isEmpty()) return emptyList()
-        var healed = false
-        for (row in edited) {
-            // Re-derive over the LOCKED corrected window (effective onset → wake), reading raw under the
-            // STRAP id (where sensor streams live), not the computed namespace. Skip when not dense yet,
-            // or when the result already matches what's stored (no write).
-            val newJSON = restageFromRaw(repo, strapDeviceId, row.effectiveStartTs, row.endTs) ?: continue
-            if (newJSON == row.stagesJSON) continue
-            // Keyed by the IMMUTABLE detected startTs (never effectiveStartTs) so it lands on the right
-            // primary-key row; the DAO scopes the write to userEdited = 1.
-            val n = repo.updateSleepStages(computedDeviceId, row.startTs, newJSON)
-            if (n > 0) healed = true
-        }
-        return if (healed) editedRows() else edited
+        // Re-derive over the LOCKED corrected window (effective onset → wake), reading raw under the
+        // STRAP id (where sensor streams live), not the computed namespace. The write goes back to the
+        // row's own deviceId, which the union read may have sourced from a retired namespace.
+        val healed = healLoop(
+            edited,
+            { row -> restageFromRaw(repo, strapDeviceId, row.effectiveStartTs, row.endTs) },
+            { row, json -> repo.updateSleepStages(row.deviceId, row.startTs, json) },
+        )
+        return if (healed > 0) editedRows() else edited
     }
 }
