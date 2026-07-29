@@ -234,10 +234,5 @@ class LiveSessionEngine(private val config: Config, private val startTs: Int) {
         return previous // inside the margin zone: hold, don't flicker
     }
 
-    private fun median(xs: List<Double>): Double {
-        val sorted = xs.sorted()
-        val n = sorted.size
-        if (n == 0) return 0.0
-        return if (n % 2 == 1) sorted[n / 2] else (sorted[n / 2 - 1] + sorted[n / 2]) / 2.0
-    }
+    private fun median(xs: List<Double>): Double = RustScores.median(xs)
 }

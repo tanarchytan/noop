@@ -204,12 +204,7 @@ object CyclePhaseEngine {
 
     // ── Small stats / day helpers (self-contained) ──
 
-    internal fun median(xs: List<Double>): Double {
-        if (xs.isEmpty()) return 0.0
-        val s = xs.sorted()
-        val n = s.size
-        return if (n % 2 == 1) s[n / 2] else (s[n / 2 - 1] + s[n / 2]) / 2.0
-    }
+    internal fun median(xs: List<Double>): Double = RustScores.median(xs)
 
     internal fun medianAbsoluteDeviation(xs: List<Double>, center: Double): Double {
         if (xs.isEmpty()) return 0.0

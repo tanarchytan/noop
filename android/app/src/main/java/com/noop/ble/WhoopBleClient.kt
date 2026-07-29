@@ -33,6 +33,8 @@ import com.noop.data.RrRow
 import com.noop.data.StreamBatch
 import com.noop.data.StreamPersistence
 import com.noop.data.WhoopRepository
+import com.noop.data.LIVE_FLUSH_ROWS
+import com.noop.data.liveFlushCutoff
 import com.noop.protocol.BackfillCaptureJsonl
 import com.noop.protocol.BackfillCaptureRecord
 import com.noop.protocol.BackfillCaptureSummary
@@ -4289,23 +4291,30 @@ class WhoopBleClient(
 
     /**
      * Buffer one standard 0x2A37 reading (carries a wall-clock ts directly, no clock ref needed).
-     * Auto-flushes ~every 30 readings.
+     * Arms a flush past [LIVE_FLUSH_ROWS] buffered rows.
      */
     private fun ingestStandardHr(hr: Int, rr: List<Int>, ts: Long) {
         val shouldFlush = synchronized(collectorLock) {
             if (hr in 30..220) stdHr.add(HrRow(ts, hr))
             for (r in rr) if (r in 250..3000) stdRr.add(RrRow(ts, r))
-            stdHr.size + stdRr.size >= 30
+            stdHr.size + stdRr.size >= LIVE_FLUSH_ROWS
         }
         if (shouldFlush) ioScope.launch { flushStandardHr() }
     }
 
-    /** Persist the buffered standard HR/RR. Re-buffers on failure. */
-    private suspend fun flushStandardHr() {
+    /**
+     * Persist the buffered standard HR/RR up to [liveFlushCutoff], holding the newest wall-second back
+     * so one second is never split across two inserts. [closing] drains the tail on teardown.
+     * Re-buffers on failure.
+     */
+    private suspend fun flushStandardHr(closing: Boolean = false) {
         val (hr, rr) = synchronized(collectorLock) {
-            if (stdHr.isEmpty() && stdRr.isEmpty()) return
-            val h = ArrayList(stdHr); val r = ArrayList(stdRr)
-            stdHr.clear(); stdRr.clear()
+            val cutoff = liveFlushCutoff(stdHr, stdRr, closing)
+            val h = ArrayList(stdHr.filter { it.ts < cutoff })
+            val r = ArrayList(stdRr.filter { it.ts < cutoff })
+            if (h.isEmpty() && r.isEmpty()) return
+            stdHr.removeAll { it.ts < cutoff }
+            stdRr.removeAll { it.ts < cutoff }
             h to r
         }
         try {
@@ -4930,7 +4939,7 @@ class WhoopBleClient(
         }
 
         // Persist anything buffered before tearing down. Runs on the IO scope.
-        ioScope.launch { flushLive(); flushStandardHr() }
+        ioScope.launch { flushLive(); flushStandardHr(closing = true) }
 
         // Reset all per-connection state and clear UI flags, including the syncing pill (a dropped link
         // mid-offload must not leave "Syncing strap history..." stuck on). clearedBiometrics() also blanks

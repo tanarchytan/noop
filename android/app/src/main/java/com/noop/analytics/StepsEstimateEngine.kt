@@ -195,11 +195,7 @@ object StepsEstimateEngine {
         return Math.round(motion * calibration.coefficient).toInt().coerceIn(0, MAX_DAILY_STEPS)
     }
 
-    internal fun median(xs: List<Double>): Double {
-        if (xs.isEmpty()) return 0.0
-        val s = xs.sorted(); val n = s.size
-        return if (n % 2 == 1) s[n / 2] else (s[n / 2 - 1] + s[n / 2]) / 2.0
-    }
+    internal fun median(xs: List<Double>): Double = RustScores.median(xs)
 
     /**
      * Weighted median of [xs] with per-element [weights]. Sort by value, walk the cumulative weight, and

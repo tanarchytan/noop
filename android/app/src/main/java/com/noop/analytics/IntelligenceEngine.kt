@@ -1458,11 +1458,7 @@ object IntelligenceEngine {
         return r / 100.0
     }
 
-    private fun medianOfDoubles(xs: List<Double>): Double {
-        if (xs.isEmpty()) return 0.0
-        val s = xs.sorted(); val n = s.size
-        return if (n % 2 == 1) s[n / 2] else (s[n / 2 - 1] + s[n / 2]) / 2.0
-    }
+    private fun medianOfDoubles(xs: List<Double>): Double = RustScores.median(xs)
     private fun saturdayKeyOnOrBefore(dayStr: String): String = try {
         val d = java.time.LocalDate.parse(dayStr)               // yyyy-MM-dd
         val back = (d.dayOfWeek.value + 1) % 7                  // SAT->0, SUN->1, MON->2 ... FRI->6

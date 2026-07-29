@@ -81,7 +81,8 @@ data class RrRow(val ts: Long, val rrMs: Int)
  * need it: PK (deviceId, ts, rrMs) alone + IGNORE-on-conflict drops the second of two equal successive
  * intervals, biasing RMSSD high. Keying on (ts, rrMs, seq) keeps a distinct beat its own key even across
  * separate insert batches; re-syncing identical records reproduces the same key, so insert stays
- * idempotent. Residual: two equal beats straddling a live-flush boundary can still collide. Pure, testable.
+ * idempotent. Numbering restarts per batch, so a caller must hand a wall-second over whole —
+ * [liveFlushCutoff] is what keeps the live buffer doing that. Pure, testable.
  */
 internal fun assignRrSeq(deviceId: String, rows: List<RrRow>): List<RrInterval> {
     val seqByBeat = HashMap<Pair<Long, Int>, Int>()
@@ -96,6 +97,18 @@ internal fun assignRrSeq(deviceId: String, rows: List<RrRow>): List<RrInterval> 
         RrInterval(deviceId = deviceId, ts = row.ts, rrMs = row.rrMs, seq = s, ord = o)
     }
 }
+
+/** Buffered live rows (HR and R-R together) that arm a flush of the standard-profile stream. */
+internal const val LIVE_FLUSH_ROWS = 30
+
+/**
+ * The exclusive `ts` a live flush may emit up to: everything strictly older than the newest buffered
+ * wall-second, so [assignRrSeq] never numbers half a second. [closing] releases the held-back tail when
+ * the link is going down. Returns a floor over an empty buffer, so nothing is emitted.
+ */
+internal fun liveFlushCutoff(hr: List<HrRow>, rr: List<RrRow>, closing: Boolean): Long =
+    if (closing) Long.MAX_VALUE
+    else maxOf(hr.maxOfOrNull { it.ts } ?: Long.MIN_VALUE, rr.maxOfOrNull { it.ts } ?: Long.MIN_VALUE)
 
 /** payloadJSON is the deterministic sorted-keys JSON for the remaining parsed fields. */
 data class EventEntry(val ts: Long, val kind: String, val payloadJSON: String)

@@ -8,32 +8,35 @@ import java.util.Random
 import kotlin.math.abs
 import kotlin.math.roundToInt
 import kotlin.math.sin
-import kotlin.math.sqrt
 
 /**
- * R-R version rundown. Replays identical synthetic sleep windows through the THREE algorithm versions
- * and reports how each one's computed RMSSD deviates from the clean-rhythm reference.
+ * R-R version rundown. Replays identical synthetic sleep windows through the THREE storage/cleaning
+ * generations and reports how each one's computed RMSSD deviates from the clean-rhythm reference.
  *
  * Each version is reproduced from the CURRENT tree's own public functions, so every column is the real
  * noop code path, not a re-implementation:
- *   ryanbr base : rmssdRaw(cleanRR( dedup-by-(ts,rrMs) ))       old PK+IGNORE drops equal same-second beats, no gap handling
- *   + 2 PRs     : rmssdRaw(cleanRR( all beats ))                seq PK keeps duplicates (#163), still splices across a dropped beat
- *   rr-opt      : RustScores.analyzeRaw( all beats ).rmssd      keeps duplicates AND skips the successive diff across a dropped beat
+ *   ryanbr base : rmssdRaw(cleanRR( dedup-by-(ts,rrMs) ))   value-only key drops equal same-second beats
+ *   + seq key   : rmssdRaw(cleanRR( all beats ))            keeps them, still splices across a dropped beat
+ *   rr-opt      : RustScores.analyzeRaw( all beats ).rmssd  keeps them AND skips the diff across a drop
  *
- * The generator injects equal same-second pairs, which is also the shape the report-seam rule reads as a
- * strap re-reporting, so rr-opt is scored through the seam-blind entry point. The seam is scored on real
- * captured reports in RealDataRundownTest instead.
+ * Beats are stamped off a running beat clock into per-second reports, so a timestamp follows from the
+ * intervals before it and an equal pair shares a second exactly when it really falls inside one. That is
+ * the shape the storage key and the cleaning are scored on. The report seam is NOT scored here and
+ * cannot be: [RustScores.analyzeRaw] takes bare intervals, with no timestamps for a seam rule to read.
+ * Real reports are scored in RealDataRundownTest.
  *
  * Reference = RMSSD of the artifact-free rounded RR (the true rhythm). This is a synthetic yardstick,
- * NOT a WHOOP label: real WHOOP agreement needs a captured R-R night paired to the WHOOP CSV export,
- * which slots into the same report once available.
+ * NOT a WHOOP label: real WHOOP agreement needs a captured R-R night paired to the WHOOP CSV export.
  *
  * The test writes build/rr-rundown.md and asserts the accuracy ordering improves monotonically
- * (ryanbr error >= +2PR error >= rr-opt error) across the whole set.
+ * (ryanbr error >= +seq error >= rr-opt error) across the whole set.
  */
 class RrVersionRundownTest {
 
     private data class Beat(val ts: Long, val rrMs: Int)
+
+    /** One generated window: the stream as stored, the artifact-free rhythm, and that rhythm's RMSSD. */
+    private data class Window(val captured: List<Beat>, val clean: List<Beat>, val reference: Double)
 
     private fun rmssd(x: List<Double>): Double = RustScores.rmssdRaw(x) ?: Double.NaN
 
@@ -56,62 +59,66 @@ class RrVersionRundownTest {
 
     /**
      * One ~5-minute sleep window. Builds a clean rhythm (respiratory sinus arrhythmia + slow drift +
-     * noise), forces [nEqualDup] real equal same-second pairs into the true rhythm (the exact structure
-     * the old PK drops), computes the reference over that true rhythm, then adds [nEctopic] out-of-range
-     * beats (the optical artifacts cleaning removes). Returns the captured stream and the reference RMSSD.
+     * noise), injects [nEqualDup] equal SUCCESSIVE intervals into it, then stamps every beat with the
+     * wall-second its running beat time lands in. An equal pair shares a timestamp exactly when it really
+     * falls inside one second. [nEctopic] out-of-range beats (the optical artifacts the range filter
+     * removes) go on the captured copy only.
      */
-    private fun genWindow(seed: Long, nBeats: Int, baseRr: Double, nEqualDup: Int, nEctopic: Int): Pair<List<Beat>, Double> {
+    private fun genWindow(seed: Long, nBeats: Int, baseRr: Double, nEqualDup: Int, nEctopic: Int): Window {
         val rng = Random(seed)
-        val beats = ArrayList<Beat>(nBeats)
-        var tSec = 0.0
+        val rr = ArrayList<Int>(nBeats)
         for (i in 0 until nBeats) {
             val rsa = 35.0 * sin(2.0 * Math.PI * i / 12.0)      // ~breathing modulation
             val drift = 20.0 * sin(2.0 * Math.PI * i / 400.0)   // slow trend
             val noise = rng.nextGaussian() * 12.0
-            val rr = (baseRr + rsa + drift + noise).coerceIn(600.0, 1300.0)
-            tSec += rr / 1000.0
-            beats.add(Beat(tSec.toLong(), rr.roundToInt()))
+            rr.add((baseRr + rsa + drift + noise).coerceIn(400.0, 1300.0).roundToInt())
         }
-        // Force real equal same-second pairs into the TRUE rhythm: the next beat shares ts AND rrMs, a
-        // genuine zero-difference interval that the old PK+IGNORE silently drops (biasing RMSSD high).
         repeat(nEqualDup) {
-            val idx = rng.nextInt(beats.size - 1)
-            val b = beats[idx]
-            beats[idx + 1] = Beat(b.ts, b.rrMs)
+            val idx = rng.nextInt(rr.size - 1)
+            rr[idx + 1] = rr[idx]
         }
-        val reference = rmssd(beats.map { it.rrMs.toDouble() })
-        // The captured stream adds optical artifacts (out of range), removed by the range filter.
-        val captured = ArrayList(beats)
+        var tMs = 0L
+        val clean = rr.map { ms -> tMs += ms; Beat(tMs / 1000L, ms) }
+        val captured = ArrayList(clean)
         repeat(nEctopic) {
             val idx = 1 + rng.nextInt(captured.size - 2)
             captured[idx] = captured[idx].copy(rrMs = 5000)
         }
-        return captured to reference
+        return Window(captured, clean, rmssd(clean.map { it.rrMs.toDouble() }))
     }
+
+    /** Beats the value-only key drops: a repeat of an (ts, rrMs) already seen in the window. */
+    private fun droppedByValueKey(beats: List<Beat>): Int = beats.size - dedupTsRr(beats).size
+
 
     @Test
     fun rundown() {
         val rows = StringBuilder()
         rows.append("# R-R version rundown (synthetic reference nights)\n\n")
         rows.append("Reference = RMSSD of the artifact-free true rhythm. Values in ms. err = |version - reference|.\n\n")
-        rows.append("| # | baseRR | dup | ect | ref | ryanbr | err | +2PR | err | rr-opt | err |\n")
-        rows.append("|---|---|---|---|---|---|---|---|---|---|---|\n")
+        rows.append("| # | baseRR | inj | drop | ect | ref | ryanbr | err | +seq | err | rr-opt | err |\n")
+        rows.append("|---|---|---|---|---|---|---|---|---|---|---|---|\n")
 
         var sumRef = 0.0
         var errRyanbr = 0.0
         var errTwoPr = 0.0
         var errRrOpt = 0.0
+        var dropped = 0
         val n = 24
         for (i in 0 until n) {
-            val baseRr = 900.0 + (i % 6) * 50.0            // 900..1150 ms (52..67 bpm)
+            val baseRr = 600.0 + (i % 6) * 110.0           // 600..1150 ms (100..52 bpm)
             val nBeats = (300000.0 / baseRr).roundToInt()  // ~5 minutes of beats
-            val dup = 3 + (i % 5) * 2                        // 3..11 equal same-second pairs
+            val inj = 3 + (i % 5) * 2                        // 3..11 equal successive intervals
             val ect = 2 + (i % 4) * 2                        // 2..8 out-of-range artifacts
-            val (beats, ref) = genWindow(seed = 1000L + i, nBeats = nBeats, baseRr = baseRr, nEqualDup = dup, nEctopic = ect)
+            val w = genWindow(seed = 1000L + i, nBeats = nBeats, baseRr = baseRr, nEqualDup = inj, nEctopic = ect)
+            val beats = w.captured
+            val ref = w.reference
+            val drop = droppedByValueKey(beats)
+            dropped += drop
             val vR = vRyanbr(beats); val vP = vTwoPr(beats); val vO = vRrOpt(beats)
             sumRef += ref; errRyanbr += abs(vR - ref); errTwoPr += abs(vP - ref); errRrOpt += abs(vO - ref)
             rows.append(
-                "| ${i + 1} | ${baseRr.roundToInt()} | $dup | $ect | ${f(ref)} | ${f(vR)} | ${f(abs(vR - ref))} | " +
+                "| ${i + 1} | ${baseRr.roundToInt()} | $inj | $drop | $ect | ${f(ref)} | ${f(vR)} | ${f(abs(vR - ref))} | " +
                     "${f(vP)} | ${f(abs(vP - ref))} | ${f(vO)} | ${f(abs(vO - ref))} |\n"
             )
         }
@@ -119,18 +126,20 @@ class RrVersionRundownTest {
         rows.append("\n## Mean absolute error vs true rhythm (ms), over $n windows\n\n")
         rows.append("| version | MAE | vs ryanbr |\n|---|---|---|\n")
         rows.append("| ryanbr base | ${f(maeR)} | - |\n")
-        rows.append("| + 2 PRs (seq #163) | ${f(maeP)} | ${pct(maeR, maeP)} |\n")
+        rows.append("| + seq key | ${f(maeP)} | ${pct(maeR, maeP)} |\n")
         rows.append("| rr-opt (gap-aware) | ${f(maeO)} | ${pct(maeR, maeO)} |\n")
-        rows.append("\nMean reference RMSSD ${f(sumRef / n)} ms.\n")
+        rows.append("\nMean reference RMSSD ${f(sumRef / n)} ms. Beats the value-only key drops: $dropped.\n")
 
         File("build").mkdirs()
         val out = File("build/rr-rundown.md")
         out.writeText(rows.toString())
         println("RR-RUNDOWN written to ${out.absolutePath}")
-        println("MAE ryanbr=${f(maeR)} +2PR=${f(maeP)} rr-opt=${f(maeO)}")
+        println("MAE ryanbr=${f(maeR)} +seq=${f(maeP)} rr-opt=${f(maeO)} dropped=$dropped")
 
+        // Without beats the value-only key drops, the first column measures nothing.
+        assertTrue("corpus must carry same-second equal beats", dropped > 0)
         // Accuracy must improve monotonically as each fix lands.
-        assertTrue("seq fix should not worsen error", maeP <= maeR + 1e-9)
+        assertTrue("seq key should not worsen error", maeP <= maeR + 1e-9)
         assertTrue("gap-aware should not worsen error", maeO <= maeP + 1e-9)
         assertTrue("rr-opt should be the most accurate", maeO <= maeR + 1e-9)
     }
@@ -138,7 +147,4 @@ class RrVersionRundownTest {
     private fun f(x: Double): String = if (x.isNaN()) "nan" else String.format("%.2f", x)
     private fun pct(base: Double, v: Double): String =
         if (base <= 0) "-" else String.format("%+.1f%%", (v - base) / base * 100.0)
-
-    // keep sqrt import used if inlined later
-    @Suppress("unused") private fun rms(x: DoubleArray): Double = sqrt(x.map { it * it }.average())
 }

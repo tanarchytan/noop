@@ -83,12 +83,8 @@ class RustVo2maxParityTest {
         val strainDays: List<Double>, // DailyMetric.strain per gate day
     )
 
-    /** Byte-for-byte copy of IntelligenceEngine.medianOfDoubles (private there). */
-    private fun medianOfDoubles(xs: List<Double>): Double {
-        if (xs.isEmpty()) return 0.0
-        val s = xs.sorted(); val n = s.size
-        return if (n % 2 == 1) s[n / 2] else (s[n / 2 - 1] + s[n / 2]) / 2.0
-    }
+    /** The same median the engine reduces its nightly resting HR with. */
+    private fun medianOfDoubles(xs: List<Double>): Double = RustScores.median(xs)
 
     /**
      * Run the SAME derivation fitnessAgeRows does (median RHR + strain->PA-index), then compare the two
