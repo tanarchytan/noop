@@ -141,16 +141,6 @@ object SleepStageTotals {
     /** Circular distance (seconds) at/after which the alignment bonus is 0. */
     const val ALIGNMENT_ZERO_SEC = 5 * 3_600L
 
-    /** Adjacent sleep runs separated by a wake gap shorter than this (minutes) are bridged into one block
-     *  for selection, so a biphasic / briefly-interrupted main sleep is scored as one night. Matches the
-     *  research's <60 min "same sleep period" threshold. */
-    const val GAP_BRIDGE_MAX_MIN = 60
-
-    /** Wider wake-gap bridge (minutes) for an overnight night-tail fragment: a wake gap (>= [GAP_BRIDGE_MAX_MIN],
-     *  < this) still bridges rather than splitting one night into a nap plus a main sleep. Applies only when
-     *  the later fragment's onset is still in the overnight band, so a daytime nap is never folded in. */
-    const val NIGHT_TAIL_BRIDGE_MAX_MIN = 90
-
     /** One candidate block for main-night selection: its effective onset and end (unix seconds). A user
      *  wake/bed edit moves [end], never the detected onset key. */
     data class NightBlock(val start: Long, val end: Long) {
@@ -396,8 +386,8 @@ object SleepStageTotals {
     }
 
     /** The original-index group (ascending) of the day's MAIN night on the STAGES path: the main night plus
-     *  adjacent fragments bridged into it (a wake gap shorter than [GAP_BRIDGE_MAX_MIN]), so the edit/
-     *  recompute seam sums the same fragments `analyzeDay` does. Null only for an empty list. */
+     *  adjacent fragments [bridgedNightGroups] folds into it, so the edit/recompute seam sums the same
+     *  fragments `analyzeDay` does. Null only for an empty list. */
     internal fun mainNightGroupIndicesByStages(
         blocks: List<Pair<Long, String?>>,
         onsetByStart: Map<Long, Long>,
@@ -407,32 +397,11 @@ object SleepStageTotals {
         if (blocks.isEmpty()) return null
         fun onset(b: Pair<Long, String?>): Long = onsetByStart[b.first] ?: b.first
         fun effEnd(b: Pair<Long, String?>): Long = onset(b) + ((minutes(b.second)?.inBed ?: 0.0) * 60.0).toLong()
-        // Order by effective onset so bridging sees neighbours.
-        val order = blocks.indices.sortedBy { onset(blocks[it]) }
-        val bridgeS = GAP_BRIDGE_MAX_MIN * 60L
-        val nightTailBridgeS = NIGHT_TAIL_BRIDGE_MAX_MIN * 60L
-        val groups = ArrayList<MutableList<Int>>()
-        val groupEnd = ArrayList<Long>()     // running effective end of each bridged group
-        for (idx in order) {
-            val b = blocks[idx]
-            val last = groupEnd.lastOrNull()
-            if (last != null) {
-                val gap = onset(b) - last
-                // Same two-tier bridge as `mainNightGroupIndices`: short-wake bridge below GAP_BRIDGE_MAX_MIN,
-                // then the wider night-tail bridge up to NIGHT_TAIL_BRIDGE_MAX_MIN only when the fragment's
-                // onset is still in the overnight band, so this folds in the same fragments as the Sleep tab.
-                val bridges = gap >= 0 &&
-                    (gap < bridgeS ||
-                        (gap < nightTailBridgeS && isOvernightOnset(onset(b), offsetSec)))
-                if (bridges) {
-                    groups[groups.size - 1].add(idx)
-                    groupEnd[groupEnd.size - 1] = maxOf(last, effEnd(b))
-                    continue
-                }
-            }
-            groups.add(mutableListOf(idx))
-            groupEnd.add(effEnd(b))
-        }
+        // The bridge is [bridgedNightGroups]' — one implementation, in whoop-rs. Only the effective
+        // span (onset + decoded in-bed) is Kotlin's, so this seam folds in the same fragments the
+        // Sleep tab does.
+        val groups = bridgedNightGroups(blocks.map { NightBlock(onset(it), effEnd(it)) }, offsetSec)
+            .map { it.indices }
         // Score each bridged group by a synthesized SUMMED block anchored at the group's earliest onset, via
         // the same per-stages scorer, so the pick matches the bare path on a single-block day.
         val groupBlocks = ArrayList<Pair<Long, String?>>()

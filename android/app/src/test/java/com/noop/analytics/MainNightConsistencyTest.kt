@@ -706,7 +706,7 @@ class MainNightConsistencyTest {
     // ── a real overnight night split by a 60–90 min wake is ONE sleep, not nap + sleep ──────────
 
     /** A real overnight sleep split by a ~70-min mid-night wake folds into one main-night group via the
-     *  night-tail bridge (overnight-band onset, ≤ NIGHT_TAIL_BRIDGE_MAX_MIN); the gap folds into awake,
+     *  night-tail bridge (overnight-band onset, ≤ 90 min); the gap folds into awake,
      *  no stage invented. */
     @Test
     fun overnightNightSplitBySeventyMinuteWakeMergesIntoOneSleepNotNap() {
@@ -735,7 +735,7 @@ class MainNightConsistencyTest {
         assertEquals(listOf(0), SleepStageTotals.mainNightGroupIndices(blocks, 0L))
     }
 
-    /** A wake gap at/over NIGHT_TAIL_BRIDGE_MAX_MIN (90 min) is not a mid-night wake, so the blocks stay
+    /** A wake gap at/over the night-tail bridge (90 min) is not a mid-night wake, so the blocks stay
      *  separate even for an overnight-band onset. */
     @Test
     fun overnightGapAtOrAboveNinetyMinutesDoesNotBridge() {

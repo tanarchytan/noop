@@ -7,7 +7,7 @@ import org.junit.Test
 
 /**
  * [mainSleepSpan] bridges a night split into two stored fragments (brief mid-night wake, gap <
- * [com.noop.analytics.SleepStageTotals.GAP_BRIDGE_MAX_MIN]) into one bed-wake span, so every screen
+ * the short-wake bridge) into one bed-wake span, so every screen
  * reports the same "last night" instead of naming one fragment alone.
  */
 class MainSleepSpanTest {
@@ -18,7 +18,7 @@ class MainSleepSpanTest {
         endTs = 1_800_000_000L + 2 * 3600 + 14 * 60,                 // 2h14m asleep, then a brief wake
     )
 
-    // A 20-minute mid-night wake -- well under GAP_BRIDGE_MAX_MIN (60 min) -- so this is ONE
+    // A 20-minute mid-night wake -- well under the 60-min short-wake bridge -- so this is ONE
     // interrupted night, not a nap followed by a separate main sleep.
     private val fragment2 = SleepSession(
         deviceId = "my-whoop",
