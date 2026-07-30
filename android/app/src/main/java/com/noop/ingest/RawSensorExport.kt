@@ -1,10 +1,7 @@
 package com.noop.ingest
 
 import android.content.Context
-import android.content.Intent
 import android.os.Build
-import android.widget.Toast
-import androidx.core.content.FileProvider
 import com.noop.BuildConfig
 import com.noop.data.WhoopRepository
 import java.io.File
@@ -21,7 +18,8 @@ import java.util.Locale
  *
  * `hr` reads the RAW `hrSample` table (NOT WhoopDao.hrSamples, which COALESCE-unions in the v26
  * PPG-derived HR); PPG HR is its own `ppghr` stream so a measured HR is never confused with a
- * derived estimate. On-device only: written to cache/logs and shared via ACTION_SEND.
+ * derived estimate. On-device only: written to cache/logs, from where [com.noop.ui.DebugBundle]
+ * carries it inside the full debug export.
  */
 object RawSensorExport {
 
@@ -129,47 +127,26 @@ object RawSensorExport {
     }
 
     /**
-     * Build the CSV for the strap source and fire a share sheet (text/csv). Runs the DB read
-     * off the main thread; toasts a per-stream summary so the user sees what was captured (and that the
-     * deeper 5/MG streams are empty until they've been unlocked). On-device only.
+     * Write the CSV for [deviceId] into cache/logs and return the file, or null when nothing could be
+     * written. Streams straight to disk (never holds the CSV as a String); the caller ships it inside the
+     * debug bundle. On-device only.
      */
-    suspend fun export(
+    suspend fun writeFile(
         context: Context,
         repo: WhoopRepository,
-        deviceId: String = "my-whoop",
+        deviceId: String,
         windowDays: Long = OFFLOAD_WINDOW_DAYS,
-    ) {
+    ): File? =
         runCatching {
             val now = System.currentTimeMillis() / 1000
             val dir = File(context.cacheDir, "logs").apply { mkdirs() }
             val file = File(dir, "noop-raw-sensors.csv")
-            // Stream straight to disk through an 8 KB buffer — never hold the whole CSV as a String.
-            val counts = file.bufferedWriter().use { w ->
-                w.append("# NOOP raw sensor export · last 24h · long-format CSV\n")
+            file.bufferedWriter().use { w ->
+                w.append("# NOOP raw sensor export · last $windowDays days · long-format CSV\n")
                 w.append("# App: ${BuildConfig.VERSION_NAME} (${BuildConfig.TIER}) · Android ${Build.VERSION.RELEASE} (SDK ${Build.VERSION.SDK_INT}) · ${Build.MANUFACTURER} ${Build.MODEL}\n")
                 w.append("# One row per decoded sample; only the row's `stream` columns are filled. Times are UTC.\n")
                 writeCsv(w, repo, deviceId, now - windowDays * 86_400, now)
             }
-
-            val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
-            val send = Intent(Intent.ACTION_SEND).apply {
-                type = "text/csv"
-                putExtra(Intent.EXTRA_STREAM, uri)
-                putExtra(Intent.EXTRA_SUBJECT, "NOOP raw sensor export")
-                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-            }
-            context.startActivity(Intent.createChooser(send, "Export raw sensor data"))
-
-            val total = counts.values.sum()
-            val summary = if (total == 0) {
-                "No samples in the last 24h - wear the strap and let it sync, then export again."
-            } else {
-                // Compact "hr 3204 · rr 812 · …" line, only non-empty streams.
-                counts.filterValues { it > 0 }.entries.joinToString(" · ") { "${it.key} ${it.value}" }
-            }
-            Toast.makeText(context, summary, Toast.LENGTH_LONG).show()
-        }.onFailure {
-            Toast.makeText(context, "Couldn't export sensor data: ${it.message}", Toast.LENGTH_LONG).show()
-        }
-    }
+            file
+        }.getOrNull()
 }

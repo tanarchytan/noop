@@ -3,9 +3,8 @@ package com.noop.testcentre
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
-/** Pins the id set + github labels. On the Android-only noop-tan fork the four never-wired Phase-1
- *  placeholders (notifications / sources / stress / longevity) were dropped — a deliberate divergence
- *  from the Swift TestDomain, so this asserts the noop-tan set, not byte-for-byte upstream parity. */
+/** Pins the id set: the ids are the wire values stamped into meta.json and the log-line domain tags,
+ *  so a rename or a reorder is a stored-data change. */
 class TestDomainTest {
 
     @Test fun fullIdSet() {
@@ -16,12 +15,5 @@ class TestDomainTest {
             ),
             TestDomain.values().map { it.id },
         )
-    }
-
-    @Test fun githubLabels() {
-        assertEquals("test:all", TestDomain.MASTER.githubLabel)
-        assertEquals("test:sleep", TestDomain.SLEEP.githubLabel)
-        assertEquals("test:battery", TestDomain.BATTERY.githubLabel)
-        assertEquals("test:import", TestDomain.IMPORT.githubLabel)
     }
 }

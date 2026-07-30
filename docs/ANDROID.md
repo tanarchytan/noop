@@ -442,7 +442,7 @@ By default the log is kept **only** in an in-memory ring buffer (so a normal use
 connection log to the device-wide system log). To watch a session live while developing, turn the
 log on:
 
-1. In the app: **Settings → Strap → "Debug logging"** (off by default).
+1. In the app: **Debug → "Enable debug"** (off by default; it also starts the frame capture).
 2. Then tail it over adb, filtered to the BLE client tag:
 
    ```bash
@@ -454,10 +454,12 @@ log on:
    #   D WhoopBleClient: Backfill: session ended — reason=HISTORY_COMPLETE
    ```
 
-The toggle drives `WhoopBleClient.debugLogcat` (persisted as `NoopPrefs.KEY_DEBUG_LOGGING`); it
-gates only the `Log.d` call. Whether or not it is on, **Settings → Strap → "Share strap log"**
-exports the same in-app buffer to a file (the path for users with no adb). What the log does and
-does not contain — and why logcat is opt-in — is covered in `PRIVACY_SECURITY.md` §2.4.
+The switch drives `WhoopBleClient.debugLogcat` (persisted as `NoopPrefs.KEY_DEBUG_LOGGING`), which
+gates only the `Log.d` call, and `PuffinExperiment.isCaptureEnabled`, which starts the on-phone frame
+capture. Whether or not it is on, **Debug → "Strap debug export"** writes the same in-app buffer to a
+file (the path for users with no adb), and **"Full debug export"** adds the capture files and the
+decoded-sample CSV in one zip. What the log and the capture do and do not contain — and why both are
+opt-in — is covered in `PRIVACY_SECURITY.md` §2.4.
 
 ---
 

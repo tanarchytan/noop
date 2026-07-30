@@ -7,12 +7,10 @@ import com.noop.CrashCapture
 import com.noop.ble.redactStrapLogPii
 
 /**
- * Twin of the Swift TestBundleAssembler: gathers the bundle files, re-runs the redaction pass over EVERY
- * file, applies the 20 MB cap, and hands the entries to LogExport.exportBundle.
- *
- * The CRITICAL fix (spec section 5.3): today only the WhoopBleClient.log() sink scrubs, so a serial
- * embedded in raw-capture console text would ship unredacted. We re-run the file-scope redactStrapLogPii
- * over every entry here, the single scrub point, and stamp meta.redaction = "v2".
+ * Gathers the inline bundle files (report.txt, last-crash.txt, meta.json), re-runs the redaction pass over
+ * EVERY one of them, applies the 20 MB cap, and returns them ready to zip. The single scrub point: the
+ * WhoopBleClient.log() sink scrubs its own lines, and re-running it here covers everything else, stamped
+ * as meta.redaction. The streamed capture files are scrubbed line by line by LogExport.writeZip instead.
  */
 object TestBundleAssembler {
 
@@ -36,15 +34,15 @@ object TestBundleAssembler {
             }
         }
 
-    /** A bundle entry that is binary (image bytes), never text to scrub. screenshot.png is the only one
-     *  today; raw-capture.jsonl stays text (JSON lines) and is still scrubbed. */
+    /** A bundle entry that is binary (image bytes), never text to scrub. screenshot.png is the only one;
+     *  a .jsonl entry stays text (JSON lines) and is still scrubbed. */
     private fun isBinaryEntry(name: String): Boolean = name == DisplayScreenshot.BUNDLE_NAME
 
     /**
-     * Hard cap the bundle at [capBytes] (20 MB default, under GitHub's 25 MB; spec section 5.4). The
-     * strap-log tail is already bounded, so only raw-capture can exceed. Keep the MOST-RECENT tail of
-     * raw-capture.jsonl and trim from the front. Returns the capped entries plus whether truncation
-     * happened, which the caller writes to meta.truncated.
+     * Hard cap the inline entries at [capBytes] (20 MB default) by trimming the LARGEST one to the budget
+     * the others leave it, keeping its most-recent tail. A backstop: report.txt rides a bounded ring buffer
+     * and meta.json is small, so nothing normally reaches the cap. Returns the capped entries plus whether
+     * truncation happened, which the caller writes to meta.truncated.
      */
     fun capEntries(
         entries: List<Pair<String, ByteArray>>,
@@ -52,12 +50,12 @@ object TestBundleAssembler {
     ): Pair<List<Pair<String, ByteArray>>, Boolean> {
         val total = entries.sumOf { it.second.size }
         if (total <= capBytes) return entries to false
-        val rawName = "raw-capture.jsonl"
-        val nonRaw = entries.filter { it.first != rawName }.sumOf { it.second.size }
-        val budget = maxOf(0, capBytes - nonRaw)
+        val biggest = entries.maxByOrNull { it.second.size }?.first ?: return entries to false
+        val others = entries.filter { it.first != biggest }.sumOf { it.second.size }
+        val budget = maxOf(0, capBytes - others)
         var truncated = false
         val capped = entries.map { (name, data) ->
-            if (name == rawName && data.size > budget) {
+            if (name == biggest && data.size > budget) {
                 truncated = true
                 name to data.copyOfRange(data.size - budget, data.size)  // keep the tail
             } else {
@@ -67,25 +65,19 @@ object TestBundleAssembler {
         return capped to truncated
     }
 
-    // assemble (the entrypoint behind the Report button, the Group D integration seam) ----------------
+    // assemble (the inline half of the debug export; DebugBundle adds the streamed capture files) --------
 
     /**
-     * Gather the report files for [profile], redact EVERY file, cap the bundle, then build and append
-     * meta.json (carrying the truncated flag from the cap) and redact-pass it too. Returns the final,
-     * already-redacted + already-capped entries ready for LogExport.exportBundle.
+     * Gather the inline files for [profile], redact every one, cap them, then build and append meta.json
+     * (carrying the truncated flag from the cap) and redact-pass it too. Returns the final, already-redacted
+     * and already-capped entries ready to zip.
      *
-     * Group B left this entrypoint to Group D (the Test Centre IA) on purpose: it is the one place that
-     * reaches into the live app (the strap log, the crash capture, the diagnostics, TestCentre) to gather
-     * the actual bytes, so it lives with the screen that binds the Report button. The pure primitives
-     * (redactEntries, capEntries) stay where Group B shipped them; this just composes them in order.
+     * [logText] is the live strap-log tail so the assembler stays off the BLE client and is testable; the
+     * header and last crash are added here to match the strap-log file.
      *
-     * [logText] is the live strap-log tail (vm.ble.exportLogText()) so the assembler stays off the BLE
-     * client and is testable; the header and last crash are added here to match the strap-log file.
-     *
-     * [storage] / [strapModel] (#1002): the REAL probes, gathered by the caller (the row counts are
-     * suspend store reads, so the sync assembler can't run them itself). null means the probe could not
-     * run - meta then carries the zeroed block, which stays honest: zeros are "nothing readable", never
-     * a made-up figure. Twin of the Swift assembler's parameters.
+     * [storage] / [strapModel] are the caller's REAL probes (the row counts are suspend store reads, so the
+     * sync assembler cannot run them itself). null means the probe could not run: meta then carries the
+     * zeroed block, which stays honest, because zeros mean "nothing readable" and never a made-up figure.
      */
     fun assemble(
         context: Context,
@@ -110,7 +102,7 @@ object TestBundleAssembler {
             appendLine("-".repeat(40))
         }
         val body = logText.ifBlank {
-            "(strap log is empty, connect to your strap, reproduce the issue, then report again)"
+            "(strap log is empty, connect to your strap, reproduce the issue, then export again)"
         }
         // CAPTURE-completeness: append the "Capture check" section so report.txt itself states, per active
         // domain, whether its killer trace landed. Computed over the header+body that will ship (the guard
@@ -128,11 +120,9 @@ object TestBundleAssembler {
             crashWasCaptured = true
         }
 
-        // 1b. Display & Performance: capture a screenshot for the DISPLAY profile as screenshot.png. The
-        //     binary PNG is kept OUT of the redact pass (redaction
-        //     scrubs text identifiers, not pixels). The screenshot is still covered by the mandatory
-        //     review-before-share gate, which names the attachment. A capture only happens for the gated
-        //     profile, so a non-display report never grabs a shot. Mirrors the Swift assembler.
+        // 1b. A DISPLAY-profile bundle carries a screenshot. The binary PNG is kept OUT of the redact pass
+        //     (redaction scrubs text identifiers, not pixels) and is named by the review gate, so the user
+        //     can cancel rather than share it. Any other profile never grabs a shot.
         val wantsShot = profile == TestDomain.DISPLAY
         val shot: Pair<String, ByteArray>? = if (wantsShot) {
             DisplayScreenshot.capturePNG(context)?.let { png -> DisplayScreenshot.BUNDLE_NAME to png }
@@ -140,19 +130,16 @@ object TestBundleAssembler {
             null
         }
 
-        // 2. Redact every gathered TEXT file, then cap. The screenshot is included in the cap input (NOT the
-        //    redact input) so its bytes COUNT against the 20 MB cap: capEntries budgets raw-capture as
-        //    capBytes - (everything else), so a large/retina PNG shrinks the raw-capture tail rather than
-        //    breaching the cap. Only raw-capture is trimmed; report.txt is bounded and the PNG is kept whole.
+        // 2. Redact every gathered TEXT file, then cap. The screenshot rides the cap input (NOT the redact
+        //    input) so its bytes count against the ceiling, shrinking the trimmed entry rather than
+        //    breaching it.
         val redacted = redactEntries(entries)
         val (capped, truncated) = capEntries(redacted + listOfNotNull(shot))
         val out = ArrayList(capped)
 
         // 3. meta.json: the machine-readable tie. Answers + startedAt come off the single TestCentre
-        //    surface. Storage + strapModel (#1002) are the caller's REAL probes (Phase 1 shipped
-        //    hardcoded zeros here, so every meta.json read "db_bytes: 0" even on a multi-GB library and
-        //    maintainers triaged blind); a null probe falls back to the zeroed block - zeros mean
-        //    "unreadable", we still never fabricate. The Android build is unsigned-flavour, channel "GitHub".
+        //    surface; storage + strapModel are the caller's real probes, and a null probe falls back to the
+        //    zeroed block, where zeros mean "unreadable" rather than a fabricated figure.
         val started = tc.startedAt(profile)?.let {
             java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssXXX", java.util.Locale.US)
                 .format(java.util.Date(it * 1000L))
@@ -171,27 +158,20 @@ object TestBundleAssembler {
             storage = storage ?: TestBundleMeta.Storage(dbBytes = 0, rows = emptyMap(), rawCaptureBytes = 0),
             redaction = REDACTION_VERSION,
             truncated = truncated,
-            // The same completeness guard, machine-readable. Computed over the SHIPPING report.txt (the
-            // capped, redacted one) so meta.capture_check and the report.txt section can never disagree:
-            // a non-MASTER report keeps report.txt small, and the cap only ever trims raw-capture, so the
-            // report body the guard read above is byte-identical to the one in `capped`.
+            // The same completeness guard, machine-readable, computed over the SHIPPING report.txt so
+            // meta.capture_check and the report.txt section can never disagree.
             captureCheck = ReportCompleteness.captureCheckMeta(reportText, activeDomains).let {
                 TestBundleMeta.CaptureCheck(traces = it.traces, complete = it.complete)
             },
         )
-        // meta.json has no PII shapes, but route it through the same sink so the whole bundle has passed
-        // one scrub point (5.3).
+        // meta.json has no PII shapes, but route it through the same sink so every inline entry has passed
+        // one scrub point.
         out += redactEntries(listOf("meta.json" to meta.encoded().toByteArray()))
 
-        // 4. Bundle robustness check (twin of the Swift assembler's): the last-line verifier over the FINAL
-        //    bytes about to ship. Confirms report.txt + meta.json are present/non-empty, the screenshot is
-        //    honoured when expected, a captured crash is attached, and - the #453 / 5.3 net - that no raw
-        //    MAC / serial survived redaction in any text entry. We append its PII-free summary line to the
-        //    report.txt so a maintainer reads the verdict ("bundle ok ... leaks=0") in the report itself; a
-        //    failure is surfaced, never silently shipped. Re-redact only the rewritten report.txt entry (its
-        //    summary line is fixed-format and PII-free, but route it through the same sink for the 5.3
-        //    guarantee). The robustness scan reads the bundle WITHOUT the summary line, so it can never
-        //    self-reference.
+        // 4. Bundle robustness check over the FINAL bytes: report.txt + meta.json present and non-empty, the
+        //    screenshot honoured when expected, a captured crash attached, and no raw MAC / serial surviving
+        //    redaction in any text entry. Its PII-free summary line is appended to report.txt so the verdict
+        //    ships with the bundle. The scan reads the bundle WITHOUT that line, so it cannot self-reference.
         val robustness = BundleRobustness.verify(
             entries = out,
             expectScreenshot = wantsShot,

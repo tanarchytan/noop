@@ -26,6 +26,7 @@ import com.noop.analytics.WorkoutSport
 import com.noop.location.GpsSession
 import kotlinx.coroutines.Job
 import com.noop.ble.LiveState
+import com.noop.ble.PuffinExperiment
 import com.noop.ble.WhoopConnectionService
 import com.noop.ble.WhoopModel
 import androidx.health.connect.client.HealthConnectClient
@@ -1574,15 +1575,24 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     /**
-     * Flip "Debug logging" (driven by Settings → Strap). Persists the preference and pushes it to the
-     * live BLE client so it takes effect immediately. Default OFF: the strap log stays in the in-app
-     * ring buffer (and the "Share strap log" export) but is not mirrored to logcat unless the user opts
-     * in — so a normal user never writes the connection log to the system log. With it on, developers
-     * can watch the connection live over `adb logcat -s WhoopBleClient`.
+     * The Debug screen's single "Enable debug" switch: logcat mirroring of the strap log (pushed to the
+     * live client so it takes effect at once) plus the on-phone research capture. Default OFF, so a normal
+     * user neither writes the connection log to the system log nor records raw frames.
      */
-    fun setDebugLogging(enabled: Boolean) {
+    fun setDebugEnabled(enabled: Boolean) {
         NoopPrefs.setDebugLogging(appContext, enabled)
         ble.debugLogcat = enabled
+        PuffinExperiment.from(appContext).isCaptureEnabled = enabled
+    }
+
+    /**
+     * The switch's state, normalising an install where an older build left the two halves disagreeing:
+     * either half on reads as on, and writes both. One decision, never a half-on capture.
+     */
+    fun reconcileDebugEnabled(): Boolean {
+        val on = NoopPrefs.debugLogging(appContext) || PuffinExperiment.from(appContext).isCaptureEnabled
+        if (on) setDebugEnabled(true)
+        return on
     }
 
     // --- Health Connect periodic auto-sync (Samsung Health → Health Connect → NOOP) ---

@@ -22,9 +22,9 @@ class PuffinExperiment(private val prefs: SharedPreferences) {
         get() = prefs.getBoolean(KEY, false)
         set(v) = prefs.edit().putBoolean(KEY, v).apply()
 
-    /** True if the user opted in to recording raw 5/MG backfill frames to a shareable JSONL file
-     *  (default false). Separate from [isEnabled]: probes send commands at the strap, capture only
-     *  records what arrives — different risk profiles, different switches. */
+    /** True if the user opted in to the debug capture: raw frames, decoded records, event frames and deep
+     *  buffers, each to its own JSONL file (default false). Driven by the Debug screen's one switch, which
+     *  also mirrors the strap log to logcat. Separate from [isEnabled], which SENDS commands at the strap. */
     var isCaptureEnabled: Boolean
         get() = prefs.getBoolean(KEY_CAPTURE, false)
         set(v) = prefs.edit().putBoolean(KEY_CAPTURE, v).apply()

@@ -95,4 +95,32 @@ class HistoryRecordSinkTest {
         val o = JSONObject(HistoryRecordSink.line("d", null, ByteArray(0)))
         assertEquals("", o.getString("frame"))
     }
+
+    /**
+     * The Debug screen tells the user this capture costs about 25 MB a night, so the line width that figure
+     * rests on is pinned here. Input: one real worn v18 record as whoop-rs decodes it (the field map and the
+     * 124-byte frame), written out at one record per strap-second over an eight-hour night.
+     */
+    @Test
+    fun theNightlyVolumeMatchesWhatTheDebugScreenStates() {
+        val fields = linkedMapOf<String, Any?>(
+            "hist_version" to 18, "unix" to 1_780_916_150, "heart_rate" to 102,
+            "rr_intervals" to listOf(602, 613), "skin_temp_raw" to 3057,
+            "step_motion_counter" to 50, "activity_class" to 0, "sleep_state" to 0,
+            "gravity_x" to -0.7251733541488647, "gravity_y" to 0.4944165050983429,
+            "gravity_z" to 0.4968554675579071, "dynamic_acceleration_g" to 0.009159564971923828,
+            "temp_aux_1_raw" to 247, "temp_aux_2_raw" to 265, "record_index" to 25_443_699L,
+            "sleep_state_raw" to 0, "optical_baseline_a" to 101, "optical_baseline_b" to 111,
+            "optical_amp_a" to 30, "optical_amp_b" to 30, "optical_signal_poor" to false,
+            "raw_u8_28" to 141, "raw_u8_29" to 101, "raw_u16_30" to 25_444,
+            "raw_f32_105" to -5.230665683746338, "raw_u16_26" to 2683,
+            "unpinned" to ByteArray(13) { it.toByte() },
+        )
+        val bytesPerRecord = HistoryRecordSink.line("DA:F7:41:80:FB:D4", fields, ByteArray(124)).length + 1
+        val mbPerNight = bytesPerRecord * 28_800.0 / 1_048_576.0
+        assertTrue(
+            "a night of records is $mbPerNight MB; the Debug screen says about 25",
+            mbPerNight > 20.0 && mbPerNight < 30.0,
+        )
+    }
 }

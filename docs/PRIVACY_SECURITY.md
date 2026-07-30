@@ -318,11 +318,26 @@ secret payload). The one mild identifier is the strap's advertised name (e.g.
 **only** to the in-app buffer — it is *not* written to Android's system log
 (`Log.d`/logcat). A user has no reason to emit the connection log to the device-wide
 log, so they don't. Developers who want to watch a session live over
-`adb logcat -s WhoopBleClient` turn on **Settings → Strap → "Debug logging"**
-(persisted as `NoopPrefs.KEY_DEBUG_LOGGING`, default `false`); the flag drives
+`adb logcat -s WhoopBleClient` turn on **Debug → "Enable debug"** (persisted as
+`NoopPrefs.KEY_DEBUG_LOGGING`, default `false`); the flag drives
 `WhoopBleClient.debugLogcat`, which gates the single `Log.d` call. The in-app buffer
-and the "Share strap log" export work the same whether or not debug logging is on, so
+and the "Strap debug export" work the same whether or not debug logging is on, so
 the diagnostic path is always available without ever defaulting users into logcat.
+
+**The same switch starts the research capture, and that capture *does* hold
+biometrics.** "Enable debug" also sets `PuffinExperiment.isCaptureEnabled`, which writes
+four append-only JSONL files under the app's private `filesDir`: every raw offload frame
+(`whoop5-backfill-capture.jsonl`), the decoded record behind each frame
+(`noop-records.jsonl`), the strap's EVENT frames (`whoop5-events.jsonl`) and, once the
+5/MG deep-data unlock is on, the high-rate optical and IMU buffers
+(`whoop5-deepbuffers.jsonl`). Unlike the strap log these carry heart rate, R-R,
+skin temperature, motion and SpO₂ — the decoded records alone run about 25 MB per night
+of wear on a 5/MG — so the switch is off by default, each file rotates at its own cap
+(about 280 MB in total across both generations of all four), and the Debug screen states
+all of that on screen. Nothing is uploaded: the files leave the phone only through the
+"Full debug export" share sheet, where every line is scrubbed of MAC and serial by
+`LogExport.writeZip` as it copies and the review dialog names each attachment with its
+size before anything is shared.
 
 ### 2.5 Wrist alerts: the Android notification listener
 
@@ -530,7 +545,8 @@ dedicated source id `nutrition-csv`, alongside your other metrics and entirely o
 | CSV import | Zip bomb / oversized entries | 256 MB per-entry cap (declared + running budget); CRC32 verify | `StrandImport/WhoopExportImporter.swift` |
 | CSV import | Arbitrary archive members | Filename allow-list; tolerant optional-column parsing | `StrandImport/WhoopExportImporter.swift` |
 | Data at rest | Disk theft / offline access | Relies on FileVault + sandbox container; SQLCipher available as an option | `WhoopStore/WhoopStore.swift` |
-| Diagnostics log | Leaking the strap log to the device-wide system log | In-app ring buffer only; logcat mirroring is **opt-in** (Settings → Strap → "Debug logging", default off); no biometric values / tokens logged (§2.4) | `android/.../ble/WhoopBleClient.kt` (`debugLogcat`), `android/.../ui/MainActivity.kt` (`NoopPrefs`) |
+| Diagnostics log | Leaking the strap log to the device-wide system log | In-app ring buffer only; logcat mirroring is **opt-in** (Debug → "Enable debug", default off); no biometric values / tokens logged (§2.4) | `android/.../ble/WhoopBleClient.kt` (`debugLogcat`), `android/.../ui/MainActivity.kt` (`NoopPrefs`) |
+| Debug capture | Biometric frames written to disk, then shared | Same opt-in switch, default off; app-private `filesDir`; capped and rotated per file; every exported line scrubbed of MAC/serial, and the review dialog names each attachment with its size before the share (§2.4) | `android/.../ui/DebugBundle.kt`, `android/.../ui/LogExport.kt` (`writeZip`), `android/.../testcentre/ReportReviewGate.kt` |
 
 ---
 

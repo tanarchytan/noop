@@ -5,9 +5,9 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * Twin of the Swift ReportReviewGateTests: the mandatory, non-skippable review gate (spec sections
- * 9, 12). A fresh or cancelled gate never clears; only an explicit confirm clears; the preview shows
- * the report.txt the user is about to share.
+ * The mandatory, non-skippable review gate. A fresh or cancelled gate never clears, only an explicit
+ * confirm clears, and the preview states everything that is about to leave the phone: the text inline and
+ * each streamed attachment by name and size.
  */
 class ReportReviewGateTest {
 
@@ -24,6 +24,18 @@ class ReportReviewGateTest {
         val gate = ReportReviewGate(sampleEntries())
         assertTrue(gate.previewText.contains("line 1"))
         assertTrue(gate.previewText.contains("line 2"))
+    }
+
+    @Test
+    fun previewNamesEveryAttachmentWithItsSize() {
+        val gate = ReportReviewGate(
+            sampleEntries(),
+            listOf("records.jsonl" to 26_870_400L, "events.jsonl" to 4096L),
+        )
+        val preview = gate.previewText
+        assertTrue(preview.contains("=== report.txt ==="))
+        assertTrue(preview.contains("records.jsonl  25.6 MB"))
+        assertTrue(preview.contains("events.jsonl  4 KB"))
     }
 
     @Test
