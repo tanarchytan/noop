@@ -126,6 +126,21 @@ cd android && ./gradlew assembleFullDebug                  # build the debug APK
 #  that tree is NOT present on noop-tan; those commands don't apply here.)
 ```
 
+**These build your WORKING TREE, not your commit.** HEAD once failed to compile for weeks because a commit
+added a call to a `NoopPrefs` function that existed only as an uncommitted change: `compileFullDebugKotlin`
+passed for everyone locally, because everyone had the file. `android.yml` would have caught it; nobody had
+pushed. When a commit adds a caller of something you did not also commit, check the commit itself:
+
+```bash
+git worktree add /tmp/headcheck <sha>
+cd /tmp/headcheck/android && ./gradlew compileFullDebugKotlin --no-daemon
+git worktree remove /tmp/headcheck --force
+```
+
+Two related traps: read test totals from `app/build/test-results/**/*.xml` and confirm `skipped=0` rather
+than trusting Gradle's exit code, and never pipe a build through `tail` and then trust the status — the
+exit code is the last stage's, and you throw away the error you needed.
+
 ### What each CI job covers — and the gaps
 On `noop-tan`, Android is the only CI-covered target:
 
