@@ -41,24 +41,24 @@ motion spine.
 
 | File | What is left |
 |---|---|
-| `StrainScorer` (188) | per-bout TRIMP; the daily figure already delegates |
-| `SleepStager` (506) | `sessionHrvWindows`, `hypnogramMetrics`, `findPeaks`, `standardDeviation` |
+| `StrainScorer` (153) | per-bout TRIMP; the daily figure already delegates |
+| `SleepStager` (420) | `sessionHrvWindows`, `hypnogramMetrics`, `findPeaks`, `standardDeviation` |
 
 ### Statistical engines, untouched
 
 | File | Algorithm | Why it matters |
 |---|---|---|
-| `RecoveryDrivers` (295) | per-driver marginal swing via the recovery logistic | **Highest risk.** It re-implements the model Rust owns; if they drift, the app explains a score using different maths than produced it |
-| `ReadinessEngine` (388) | z-scores + ACWR acute:chronic + Foster monotony | feeds the Coupled screen |
-| `EffectRanker` (323) | Welch t-test + Cohen's d | |
-| `ActivityCostEngine` (307) | rest-baseline vs next-morning delta + bounce-back | |
-| `RecoveryForecast` (242) | OLS slope + weighted tomorrow-Charge | |
-| `StepsEstimateEngine` (242) | motion-weighted-median coefficient fit | 4.0 only |
-| `ResonanceEngine` (218) | per-breath RSA amplitude | |
-| `AutoWorkoutDetector` (210) | elevated-HR span growth + dip tolerance | |
-| `CaffeineDecay` (165) | exponential half-life | |
-| `IllnessDistance` (157) | Mahalanobis + Gauss-Jordan inversion | |
-| `Analytics` (157) | legacy `IllnessWatch`, naive RMSSD, Tanaka ladder | secondary path; the gold path already uses Rust |
+| `RecoveryDrivers` (289) | per-driver marginal swing via the recovery logistic | **Highest risk.** It re-implements the model Rust owns; if they drift, the app explains a score using different maths than produced it |
+| `ReadinessEngine` (374) | z-scores + ACWR acute:chronic + Foster monotony | feeds the Coupled screen |
+| `EffectRanker` (311) | Welch t-test + Cohen's d | |
+| `ActivityCostEngine` (214) | rest-baseline vs next-morning delta + bounce-back | |
+| `RecoveryForecast` (224) | OLS slope + weighted tomorrow-Charge | |
+| `StepsEstimateEngine` (227) | motion-weighted-median coefficient fit | 4.0 only |
+| `ResonanceEngine` (214) | per-breath RSA amplitude | |
+| `AutoWorkoutDetector` (192) | elevated-HR span growth + dip tolerance | |
+| `CaffeineDecay` (156) | exponential half-life | |
+| `IllnessDistance` (151) | Mahalanobis + Gauss-Jordan inversion | |
+| `Analytics` (150) | legacy `IllnessWatch`, naive RMSSD, Tanaka ladder | secondary path; the gold path already uses Rust |
 
 ### Decode leaks — the clearest border violations
 
@@ -66,12 +66,18 @@ Byte decode belongs in Rust, and a hardware-verified twin already exists for eac
 
 | File | Lines | Rust twin |
 |---|---|---|
-| `protocol/Streams.kt` | 288 | skin-temp register → °C affine calibration |
+| `protocol/Streams.kt` | 297 | skin-temp register → °C affine calibration |
 | `protocol/Framing.kt` | 119 | `framing::decode` already does this reassembly |
 | `protocol/Whoop5RawImu.kt` | 96 | `records::gen5::v21_imu` |
 | `protocol/Crc.kt` | 42 | `crc::crc32_zlib`; now only synthesises test trailers |
 
 ---
+
+**The counts above were re-derived 2026-07-30** by `dev-notes/noop-tan/audit_kotlin_algorithms.py`, which
+also checks that each row's named member is still in its file and that every whoop-rs FFI export is
+referenced by app Kotlin. All 17 rows still carry their maths — nothing has been ported since this file was
+written — and 14 of the 17 recorded counts were stale, thirteen smaller after a comment pass and one
+larger. Re-run it before trusting a number here.
 
 ## Suggested order
 
