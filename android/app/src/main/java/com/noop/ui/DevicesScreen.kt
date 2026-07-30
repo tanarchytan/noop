@@ -34,6 +34,7 @@ import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.RemoveCircleOutline
+import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material.icons.filled.Watch
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
@@ -126,6 +127,8 @@ fun DevicesScreen(
     var removeTarget by remember { mutableStateOf<PairedDeviceRow?>(null) }
     var deleteDataTarget by remember { mutableStateOf<PairedDeviceRow?>(null) }
     var rebootTarget by remember { mutableStateOf<PairedDeviceRow?>(null) }
+ // The device whose wrist picker is open.
+    var wristTarget by remember { mutableStateOf<PairedDeviceRow?>(null) }
  // WHOOP 4.0 reboot probe (Test Centre → Connection, 4.0 only) — the device whose probe sheet is open.
     var probeTarget by remember { mutableStateOf<PairedDeviceRow?>(null) }
  // After removing the ACTIVE device with other devices still paired, prompt to pick a new active one.
@@ -226,6 +229,11 @@ fun DevicesScreen(
                     SourceCoordinator.isWhoop(device) && !live.whoop5Detected &&
                     TestCentre.from(context).active(TestDomain.CONNECTION)
                 ) { { probeTarget = device } } else null,
+ // Wrist select: same gate as Restart (live-connected 5/MG). The 4.0 has no confirmed SELECT_WRIST
+ // framing, so it is not offered there.
+                onSetWrist = if (device.status == DeviceStatus.active.name && live.connected &&
+                    SourceCoordinator.isWhoop(device) && live.whoop5Detected
+                ) { { wristTarget = device } } else null,
             )
         }
 
@@ -328,6 +336,19 @@ fun DevicesScreen(
         )
     }
 
+ // --- Wrist picker (5/MG, live-connected). Writes SELECT_WRIST; the ack lands in the strap log. ---
+    wristTarget?.let {
+        WristDialog(
+            current = NoopPrefs.strapWristRight(context),
+            onPick = { right ->
+                viewModel.selectWrist(right)
+                Toast.makeText(context, "Wrist set to ${if (right) "right" else "left"}", Toast.LENGTH_SHORT).show()
+                wristTarget = null
+            },
+            onDismiss = { wristTarget = null },
+        )
+    }
+
  // --- WHOOP 4.0 reboot probe : only reachable with Test Centre → Connection on + a 4.0 connected.
  // Tries each candidate frame one at a time so the strap log shows which one actually reboots. ---
     probeTarget?.let {
@@ -407,6 +428,8 @@ private fun DeviceCard(
  // WHOOP 4.0 reboot probe (Test Centre → Connection, 4.0 only). Non-null only when the parent has
  // decided the probe applies (live-connected WHOOP 4.0 + Connection test mode on); null otherwise.
     onRebootProbe: (() -> Unit)? = null,
+ // Wrist select (5/MG only, live-connected). Non-null only when the parent decided it applies.
+    onSetWrist: (() -> Unit)? = null,
 ) {
     val profile = deviceProfile(device)
  // The per-device actions menu's open state is hoisted here so the WHOLE card is a tap target that opens
@@ -515,6 +538,7 @@ private fun DeviceCard(
                     onDisconnect = onDisconnect,
                     onReboot = onReboot,
                     onRebootProbe = onRebootProbe,
+                    onSetWrist = onSetWrist,
                 )
             }
         }
@@ -633,6 +657,7 @@ private fun DeviceActionsMenu(
     onDisconnect: (() -> Unit)? = null,
     onReboot: (() -> Unit)? = null,
     onRebootProbe: (() -> Unit)? = null,
+    onSetWrist: (() -> Unit)? = null,
 ) {
     Box {
         IconButton(
@@ -680,6 +705,11 @@ private fun DeviceActionsMenu(
  // Connection on + a live WHOOP 4.0). Finds the real reboot frame the 4.0 accepts.
                 if (onRebootProbe != null) {
                     MenuItem("Reboot probe (4.0 RE)…", Icons.Filled.BugReport) { onOpenChange(false); onRebootProbe() }
+                }
+ // Which wrist the strap is worn on — a persistent strap-config write, so it is offered only for the
+ // live-connected 5/MG and picked in a dialog by the parent.
+                if (onSetWrist != null) {
+                    MenuItem("Wrist…", Icons.Filled.SwapHoriz) { onOpenChange(false); onSetWrist() }
                 }
                 if (onRemove != null) {
                     HorizontalDivider(color = Palette.hairline)
@@ -748,6 +778,48 @@ private fun WhoopFirstFooter() {
 }
 
 // MARK: - Shared dialogs
+
+/** Wrist picker: writes SELECT_WRIST to the strap. `current` is the side NOOP last wrote (null = never),
+ * not a strap readback, so the dialog says so rather than implying it read the strap. */
+@Composable
+private fun WristDialog(
+    current: Boolean?,
+    onPick: (Boolean) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = Palette.surfaceOverlay,
+        title = { Text("Which wrist?", style = NoopType.title2, color = Palette.textPrimary) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(Metrics.space12)) {
+                Text(
+                    "Tells the strap which wrist it's on. The strap uses this for its own sensor " +
+                        "handling; NOOP's metrics are unaffected. Watch the strap log for the ack — the " +
+                        "payload shape isn't confirmed yet, so a strap may answer UNSUPPORTED.",
+                    style = NoopType.subhead,
+                    color = Palette.textSecondary,
+                )
+                listOf(false to "Left", true to "Right").forEach { (right, label) ->
+                    TextButton(onClick = { onPick(right) }, modifier = Modifier.fillMaxWidth()) {
+                        Text(
+                            if (current == right) "$label  ·  last sent" else label,
+                            style = NoopType.body,
+                            color = Palette.accent,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {},
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel", style = NoopType.body, color = Palette.textSecondary)
+            }
+        },
+    )
+}
 
 /** WHOOP 4.0 reboot probe : a candidate list, one button per unconfirmed reboot frame. Gated to
  * Test Centre → Connection + a live 4.0 at the call site. Twin of the macOS DevicesView confirmationDialog. */

@@ -719,6 +719,17 @@ object NoopPrefs {
             if (fw.isNullOrBlank()) remove(KEY_LAST_FIRMWARE) else putString(KEY_LAST_FIRMWARE, fw)
         }.apply()
     }
+
+    /** The wrist last sent to the strap with SELECT_WRIST (true = right). This is what NOOP wrote, not
+     *  a strap readback — the strap's own body-location block is not decoded in-app. Null = never set. */
+    const val KEY_WRIST_RIGHT = "noop.strapWristRight"
+
+    fun strapWristRight(context: Context): Boolean? =
+        if (of(context).contains(KEY_WRIST_RIGHT)) of(context).getBoolean(KEY_WRIST_RIGHT, false) else null
+
+    fun setStrapWristRight(context: Context, right: Boolean) {
+        of(context).edit().putBoolean(KEY_WRIST_RIGHT, right).apply()
+    }
 }
 
 /**
