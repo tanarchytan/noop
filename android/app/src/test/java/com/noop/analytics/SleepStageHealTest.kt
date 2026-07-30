@@ -180,6 +180,152 @@ class SleepStageHealTest {
         assertEquals("the user's edited (fabricated) stages must remain", fabricated, rows.single().stagesJSON)
     }
 
+    // ── The OTHER half: a bed-only edit's END re-detects, a hand-set wake does not
+
+    /**
+     * Drives the REAL [SleepStageHealer.refreshLoop] over an in-memory store, whose write applies the
+     * DAO's own scope (`userEdited = 1 AND endTsAdjusted IS NULL`) so the test pins the durable
+     * predicate and not just the picker. Returns (rows, writeCount).
+     */
+    private fun runRefreshLoop(
+        store: MutableMap<Pair<String, Long>, SleepSession>,
+        edited: List<SleepSession>,
+        detectedSpans: List<Pair<Long, Long>>,
+    ): Pair<List<SleepSession>, Int> {
+        val writes = runBlocking {
+            SleepStageHealer.refreshLoop(edited, detectedSpans) { row, end ->
+                val key = row.deviceId to row.startTs
+                val stored = store[key] ?: return@refreshLoop 0
+                if (!stored.userEdited || stored.endTsAdjusted != null) return@refreshLoop 0
+                store[key] = stored.copy(endTs = end)
+                1
+            }
+        }
+        return store.values.toList() to writes
+    }
+
+    /**
+     * THE defect: the bed picker passes the detected wake straight through and `userEdited` then
+     * exempted the whole row, so an end computed before the raw finished offloading froze for good.
+     * With the wake unset, fresh detection replaces it.
+     */
+    @Test
+    fun bedOnlyEditLetsTheDetectedEndRefresh() {
+        val detectedStart = startAtHour(8)
+        val shortEnd = detectedStart + 3 * 60 * 60      // computed mid-offload
+        val freshEnd = shortEnd + 59 * 60               // what a complete stream detects
+        val edited = SleepSession(
+            deviceId = "my-whoop-noop", startTs = detectedStart, endTs = shortEnd,
+            userEdited = true, startTsAdjusted = detectedStart - 30 * 60, // bedtime moved earlier
+            endTsAdjusted = null,                                          // the wake was NOT set
+        )
+        val store = mutableMapOf((edited.deviceId to detectedStart) to edited)
+
+        val (rows, writes) = runRefreshLoop(store, listOf(edited), listOf(detectedStart to freshEnd))
+        assertEquals("a bed-only edit's end must be refreshed", 1, writes)
+        val healed = rows.single()
+        assertEquals("the end must move to fresh detection's", freshEnd, healed.endTs)
+        assertEquals("the effective end follows, since no wake was set", freshEnd, healed.effectiveEndTs)
+        assertEquals("the hand-set bedtime must survive", detectedStart - 30 * 60, healed.startTsAdjusted)
+        assertTrue("userEdited must stay set", healed.userEdited)
+        assertNull("no wake was set, so none is banked", healed.endTsAdjusted)
+    }
+
+    /** The other side of the same bit: a wake the user picked is frozen and never moves. */
+    @Test
+    fun handSetWakeIsNeverRefreshed() {
+        val detectedStart = startAtHour(9)
+        val handSetEnd = detectedStart + 4 * 60 * 60
+        val freshSpan = detectedStart to detectedStart + 7 * 60 * 60
+        val edited = SleepSession(
+            deviceId = "my-whoop-noop", startTs = detectedStart, endTs = detectedStart + 3 * 60 * 60,
+            userEdited = true, endTsAdjusted = handSetEnd,
+        )
+        val store = mutableMapOf((edited.deviceId to detectedStart) to edited)
+
+        val (rows, writes) = runRefreshLoop(store, listOf(edited), listOf(freshSpan))
+        assertEquals("a hand-set wake must not be refreshed", 0, writes)
+        assertEquals("the user's wake is what the app reads", handSetEnd, rows.single().effectiveEndTs)
+        assertNull(
+            "the picker itself must decline a frozen row",
+            SleepStageHealer.refreshedEnd(edited, listOf(freshSpan)),
+        )
+    }
+
+    /** Largest overlap wins, so a nap clipping a night's tail can't hand the night the nap's end. */
+    @Test
+    fun refreshTakesTheLargestOverlappingSpan() {
+        val start = startAtHour(10)
+        val night = start to start + 7 * 60 * 60
+        val nap = start + 6 * 60 * 60 to start + 6 * 60 * 60 + 20 * 60
+        val row = SleepSession(
+            deviceId = "d", startTs = start, endTs = start + 6 * 60 * 60 + 30 * 60, userEdited = true,
+        )
+        assertEquals(
+            "the night, not the nap, supplies the end",
+            night.second, SleepStageHealer.refreshedEnd(row, listOf(nap, night)),
+        )
+    }
+
+    @Test
+    fun refreshDeclinesWhenNothingWouldMoveOrTheSpanIsWrong() {
+        val start = startAtHour(11)
+        val row = SleepSession(deviceId = "d", startTs = start, endTs = start + 5 * 60 * 60, userEdited = true)
+        assertNull("no detection to hand", SleepStageHealer.refreshedEnd(row, emptyList()))
+        assertNull(
+            "no overlap",
+            SleepStageHealer.refreshedEnd(row, listOf(start + 40 * 60 * 60 to start + 46 * 60 * 60)),
+        )
+        assertNull(
+            "an identical end is not a change",
+            SleepStageHealer.refreshedEnd(row, listOf(start to start + 5 * 60 * 60)),
+        )
+        // A refreshed end at/before the row's own onset would invert the window.
+        val lateBed = row.copy(startTsAdjusted = start + 4 * 60 * 60)
+        assertNull(
+            "an end at/before the hand-set onset is refused",
+            SleepStageHealer.refreshedEnd(lateBed, listOf(start to start + 3 * 60 * 60)),
+        )
+    }
+
+    /**
+     * The two halves in the order the pass runs them: the END first, so the stage re-derive covers the
+     * refreshed window in the SAME pass rather than a stale one.
+     */
+    @Test
+    fun endRefreshRunsBeforeTheStageRederiveSoStagesCoverTheNewWindow() {
+        val start = startAtHour(12)
+        val shortEnd = start + 3 * 60 * 60
+        val freshEnd = start + 6 * 60 * 60
+        val grav = stillGravity(start, 6 * 60 * 60)
+        val hr = hrStream(start, 6 * 60 * 60, 50)
+        val edited = SleepSession(
+            deviceId = "my-whoop-noop", startTs = start, endTs = shortEnd,
+            stagesJSON = encoded(start, shortEnd, "wake"), userEdited = true,
+        )
+        val store = mutableMapOf((edited.deviceId to start) to edited)
+
+        val (afterRefresh, refreshWrites) = runRefreshLoop(store, listOf(edited), listOf(start to freshEnd))
+        assertEquals(1, refreshWrites)
+        val (afterHeal, healWrites) = runHealLoop(store, afterRefresh) { row ->
+            SleepStageHealer.restageFromSamples(
+                row.effectiveStartTs, row.effectiveEndTs, grav, hr, emptyList(), emptyList(),
+            )
+        }
+        assertEquals("the refreshed night must then re-stage", 1, healWrites)
+        val stagedEnd = lastStageEnd(afterHeal.single().stagesJSON)
+        assertEquals("staging must reach the REFRESHED wake, not the short one", freshEnd, stagedEnd)
+    }
+
+    /** The largest `end` in a stagesJSON segment array — how far the breakdown actually reaches. */
+    private fun lastStageEnd(stagesJSON: String?): Long {
+        val arr = org.json.JSONArray(stagesJSON)
+        var last = 0L
+        for (i in 0 until arr.length()) last = maxOf(last, arr.getJSONObject(i).getLong("end"))
+        return last
+    }
+
+
     // ── 5. Edits survive a change of active strap id ─────────────────────────────────────────────────
 
     /**

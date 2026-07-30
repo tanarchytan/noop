@@ -320,21 +320,32 @@ CSV / Apple-Health data arrives through `StrandImport`. Every cache table follow
 contract: a `Codable` struct, an idempotent `ON CONFLICT(...) DO UPDATE` upsert keyed by its
 natural key (latest value wins), and range-read accessors that run off-main.
 
-### `sleepSession` *(v4)*
+### `sleepSession` *(v4, +v7 / v11 / v101 columns)*
 
-One row per sleep session (`MetricsCache.swift`, `struct CachedSleepSession`).
+One row per sleep session (`data/Entities.kt`, `data class SleepSession`).
 
-| Column | Type | Notes |
-| --- | --- | --- |
-| `deviceId` | TEXT NOT NULL | Part of PK. |
-| `startTs` | INTEGER NOT NULL | Session start, unix seconds. Part of PK. |
-| `endTs` | INTEGER NOT NULL | Session end, unix seconds. |
-| `efficiency` | DOUBLE | Sleep efficiency, nullable. |
-| `restingHr` | INTEGER | Resting HR, nullable. |
-| `avgHrv` | DOUBLE | Average HRV, nullable. |
-| `stagesJSON` | TEXT | Verbatim JSON array of stage segments (`[{start,end,stage}]`), nullable — stored as a string so the cache stays schema-agnostic about staging shape. |
+| Column | Type | Migration | Notes |
+| --- | --- | --- | --- |
+| `deviceId` | TEXT NOT NULL | v4 | Part of PK. |
+| `startTs` | INTEGER NOT NULL | v4 | The DETECTED session start, unix seconds. Part of PK, so it never moves — a hand-corrected onset goes in `startTsAdjusted`. |
+| `endTs` | INTEGER NOT NULL | v4 | The DETECTED session end, unix seconds. The post-sync heal refreshes it while `endTsAdjusted` is null. |
+| `efficiency` | DOUBLE | v4 | Sleep efficiency, nullable. |
+| `restingHr` | INTEGER | v4 | Resting HR, nullable. |
+| `avgHrv` | DOUBLE | v4 | Average HRV, nullable. |
+| `stagesJSON` | TEXT | v4 | Verbatim JSON array of stage segments (`[{start,end,stage}]`), nullable — stored as a string so the cache stays schema-agnostic about staging shape. |
+| `userEdited` | INTEGER NOT NULL DEFAULT 0 | v7 | The user hand-corrected a bound. Keeps the recompute from re-inserting the detected twin over it. |
+| `startTsAdjusted` | INTEGER | v7 | The hand-set onset, nullable. |
+| `motionJSON` | TEXT | v11 | Per-epoch motion magnitudes on the `stagesJSON` 30 s grid, nullable. |
+| `sleepStateJSON` | TEXT | v11 | Per-epoch decoded v18 band `sleep_state`, nullable. |
+| `endTsAdjusted` | INTEGER | v101 | The hand-set wake, nullable. |
 
 **Primary key:** `(deviceId, startTs)`. Read by `startTs` range, oldest first.
+
+**Durable bed/wake editing — read the EFFECTIVE bounds.** `startTs` / `endTs` are what the detector
+found; `startTsAdjusted` / `endTsAdjusted` are what the user picked, each null until they pick that
+bound. Display, sorting, day bucketing and re-staging all go through `effectiveStartTs` /
+`effectiveEndTs` (`adjusted ?: detected`). A null `endTsAdjusted` is what lets the post-sync heal
+replace an end computed before the raw finished offloading; a non-null one freezes it.
 
 ### `dailyMetric` *(v4, +v7 columns)*
 

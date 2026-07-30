@@ -34,20 +34,20 @@ object SleepSessionDedup {
     /** Seconds of overlap between the two sessions' EFFECTIVE spans (edited onsets honoured, the
      *  same spans display / day assignment place the block by). 0 when disjoint. */
     internal fun overlapSeconds(a: SleepSession, b: SleepSession): Long =
-        maxOf(0L, minOf(a.endTs, b.endTs) - maxOf(a.effectiveStartTs, b.effectiveStartTs))
+        maxOf(0L, minOf(a.effectiveEndTs, b.effectiveEndTs) - maxOf(a.effectiveStartTs, b.effectiveStartTs))
 
     /**
      * True when [a] and [b] are overlapping copies of the same night: overlap at least
      * [MIN_OVERLAP_SECONDS] absolute, or at least [MIN_OVERLAP_FRACTION_OF_SHORTER] of the shorter
-     * session. Uses only (effectiveStartTs, endTs) — the model has no banked-at column to compare.
+     * session. Uses only the effective span — the model has no banked-at column to compare.
      */
     fun isDuplicate(a: SleepSession, b: SleepSession): Boolean {
         val overlap = overlapSeconds(a, b)
         if (overlap <= 0L) return false
         if (overlap >= MIN_OVERLAP_SECONDS) return true
         val shorter = minOf(
-            maxOf(a.endTs - a.effectiveStartTs, 0L),
-            maxOf(b.endTs - b.effectiveStartTs, 0L),
+            maxOf(a.effectiveEndTs - a.effectiveStartTs, 0L),
+            maxOf(b.effectiveEndTs - b.effectiveStartTs, 0L),
         )
         return shorter > 0L && overlap.toDouble() >= MIN_OVERLAP_FRACTION_OF_SHORTER * shorter.toDouble()
     }
@@ -60,7 +60,7 @@ object SleepSessionDedup {
      *   2. Bank recency: startTs in [freshStarts] (the caller passes the keys it banked this
      *      pass, since the row model has no banked-at column of its own).
      *   3. Longest effective duration: the fullest capture of the night.
-     *   4. Latest endTs, then latest startTs: a stable tie-break so results are reproducible.
+     *   4. Latest effective end, then latest startTs: a stable tie-break so results are reproducible.
      *
      * Greedy sweep in preference order: a session is kept unless it overlap-duplicates an
      * already-kept one (edited rows are exempt and always kept). Both outputs are sorted by
@@ -71,8 +71,8 @@ object SleepSessionDedup {
         val ordered = sessions.sortedWith(
             compareByDescending<SleepSession> { it.userEdited }
                 .thenByDescending { it.startTs in freshStarts }
-                .thenByDescending { it.endTs - it.effectiveStartTs }
-                .thenByDescending { it.endTs }
+                .thenByDescending { it.effectiveEndTs - it.effectiveStartTs }
+                .thenByDescending { it.effectiveEndTs }
                 .thenByDescending { it.startTs },
         )
         val kept = ArrayList<SleepSession>()

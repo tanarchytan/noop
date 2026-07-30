@@ -178,7 +178,7 @@ internal fun HeartRateTrendCard(
         // as more than one block (#294).
         sleepToday = runCatching {
             val overlapping = viewModel.repo.sleepSessions("my-whoop", start - 18 * 3600L, end)
-                .filter { it.startTs <= end && it.endTs >= start }   // overlaps the window
+                .filter { it.startTs <= end && it.effectiveEndTs >= start }   // overlaps the window
             val habitualMidsleepSec = viewModel.repo.habitualMidsleepSec("my-whoop")
             mainSleepSpan(overlapping, habitualMidsleepSec)?.let { (spanStart, spanEnd) ->
                 SleepSession(deviceId = "my-whoop", startTs = spanStart, endTs = spanEnd)
@@ -630,9 +630,9 @@ private fun OverviewHRChart(
     // Sleep band span clamped to the window; only drawn when it overlaps a visible stretch. Uses the
     // EFFECTIVE onset so a hand-edited bedtime moves the band. (PR #395)
     val sleepStartX = sleep?.let { xFor(it.effectiveStartTs) }
-    val sleepEndX = sleep?.let { xFor(it.endTs) }
+    val sleepEndX = sleep?.let { xFor(it.effectiveEndTs) }
     // Charge marker sits at wake (sleep end), else the window start; hidden while recovery is null.
-    val chargeX = recovery?.let { sleep?.let { s -> xForStrict(s.endTs) } }
+    val chargeX = recovery?.let { sleep?.let { s -> xForStrict(s.effectiveEndTs) } }
     // Effort marker pinned to the latest sample (right edge) when a strain exists.
     val effortX = strain?.let { if (n > 1) plotW else null }
 
@@ -641,7 +641,7 @@ private fun OverviewHRChart(
     val markerDescription = remember(sleep, recovery, strain, workouts, effortScale) {
         buildList {
             add("24-hour heart rate")
-            if (sleep != null) add("sleep band ${hrHoursMinutes((sleep.endTs - sleep.effectiveStartTs).toInt())}")
+            if (sleep != null) add("sleep band ${hrHoursMinutes((sleep.effectiveEndTs - sleep.effectiveStartTs).toInt())}")
             if (recovery != null) add("${recovery.roundToInt()} percent Charge at wake")
             if (strain != null) add("${UnitFormatter.effortDisplay(strain, effortScale)} Effort now")
             if (workouts.isNotEmpty()) add("${workouts.size} workout${if (workouts.size == 1) "" else "s"} marked")
@@ -752,7 +752,7 @@ private fun OverviewHRChart(
             val topPadDp = 10.dp
             // Sleep duration pill at the band's leading edge.
             if (sleepStartX != null && (sleepEndX ?: 0f) > (sleepStartX)) {
-                val durLabel = hrHoursMinutes((sleep.endTs - sleep.effectiveStartTs).toInt())
+                val durLabel = hrHoursMinutes((sleep.effectiveEndTs - sleep.effectiveStartTs).toInt())
                 ChartMarkerPill(
                     text = durLabel,
                     color = Palette.sleepLight,

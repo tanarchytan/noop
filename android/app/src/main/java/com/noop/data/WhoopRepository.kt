@@ -373,8 +373,17 @@ class WhoopRepository(private val dao: WhoopDao) {
      *  IMMUTABLE PK, so this upsert REPLACEs the row IN PLACE — a delete-then-reinsert would mutate the
      *  PK and let a later re-detect insert a second row beside the edited one, double-counting time in
      *  bed. [SleepSession.userEdited]=true keeps the overlap guard from re-inserting the detected twin;
-     *  every other field is preserved via [SleepSession.copy]. */
-    suspend fun updateSleepSessionTimes(session: SleepSession, newStartTs: Long, newEndTs: Long) {
+     *  every other field is preserved via [SleepSession.copy].
+     *
+     *  [wakeSetByUser] says which bound the user actually moved. Only a wake the user set is banked in
+     *  [SleepSession.endTsAdjusted] and frozen; a bed-only edit leaves it null and [SleepSession.endTs]
+     *  detected, so [SleepStageHealer] may still refresh the end once more raw lands. */
+    suspend fun updateSleepSessionTimes(
+        session: SleepSession,
+        newStartTs: Long,
+        newEndTs: Long,
+        wakeSetByUser: Boolean,
+    ) {
         // Belt-and-braces: never persist a future-ending or inverted corrected window, whatever the UI
         // sent. The Sleep screen's own guards should make this unreachable; it is the last line so no
         // client misbehaviour can write a phantom night the display merge cannot render.
@@ -382,12 +391,14 @@ class WhoopRepository(private val dao: WhoopDao) {
             newStartTs, newEndTs, System.currentTimeMillis() / 1000L,
         ) ?: return
         val reclipped = com.noop.analytics.SleepWindowReclip.reclip(
-            session.stagesJSON, session.effectiveStartTs, session.endTs, safeStartTs, safeEndTs,
+            session.stagesJSON, session.effectiveStartTs, session.effectiveEndTs, safeStartTs, safeEndTs,
         )
         dao.upsertSleepSessions(
             listOf(session.copy(
                 startTsAdjusted = safeStartTs,
-                endTs = safeEndTs,
+                endTsAdjusted = com.noop.analytics.SleepEditGuard.frozenWake(
+                    session.endTsAdjusted, safeEndTs, wakeSetByUser,
+                ),
                 userEdited = true,
                 stagesJSON = reclipped ?: session.stagesJSON,
             )),
@@ -402,7 +413,7 @@ class WhoopRepository(private val dao: WhoopDao) {
      *  window where the row is gone but no tombstone exists, letting the next recompute resurrect it. */
     suspend fun deleteSleepSession(session: SleepSession) {
         if (com.noop.analytics.DismissedSleepGuard.writesTombstoneOnDelete(session.userEdited)) {
-            dao.insertDismissedSleep(listOf(DismissedSleep(session.deviceId, session.startTs, session.endTs)))
+            dao.insertDismissedSleep(listOf(DismissedSleep(session.deviceId, session.startTs, session.effectiveEndTs)))
         }
         dao.deleteSleepSession(session.deviceId, session.startTs)
     }
@@ -475,8 +486,9 @@ class WhoopRepository(private val dao: WhoopDao) {
      *  the chosen window from raw via [SleepStageHealer.restageFromRaw] (same density gate + stager the
      *  bed/wake edit uses), falling back to a single "wake" block when the strap has no dense data yet —
      *  the self-heal swaps in real stages once raw lands. Written under the COMPUTED source as its own
-     *  session (userEdited=true, startTsAdjusted=null) so it is never folded into the main night. Purely
-     *  additive — IGNORE-on-conflict makes a same-onset add a no-op. */
+     *  session (userEdited=true, startTsAdjusted=null — the chosen onset IS the PK) so it is never
+     *  folded into the main night. The chosen wake IS hand-set, so it is banked in endTsAdjusted and
+     *  frozen against the end refresh. Purely additive — IGNORE-on-conflict makes a same-onset add a no-op. */
     suspend fun addManualNap(strapDeviceId: String, startTs: Long, endTs: Long) {
         // Belt-and-braces (same rule as updateSleepSessionTimes): a manually-added session can't end in
         // the future or invert; a future nap would otherwise own the tab's newest day as an all-awake
@@ -498,6 +510,7 @@ class WhoopRepository(private val dao: WhoopDao) {
                 stagesJSON = stagesJSON,
                 userEdited = true,
                 startTsAdjusted = null,
+                endTsAdjusted = safeEndTs,
             ),
         )
     }
@@ -530,6 +543,13 @@ class WhoopRepository(private val dao: WhoopDao) {
      *  [detectedStartTs]. Returns rows changed. */
     suspend fun updateSleepStages(deviceId: String, detectedStartTs: Long, stagesJSON: String): Int =
         dao.updateSleepStages(deviceId, detectedStartTs, stagesJSON)
+
+    /** The other half of that heal: replace a user-edited night's DETECTED wake with the one a fresh
+     *  detection gives, leaving the onset, the stages and the userEdited flag untouched. Scoped by the
+     *  DAO to `userEdited = 1` rows whose `endTsAdjusted IS NULL`, so a wake the user set never moves;
+     *  keyed by the IMMUTABLE [detectedStartTs]. Returns rows changed. */
+    suspend fun refreshSleepEnd(deviceId: String, detectedStartTs: Long, detectedEndTs: Long): Int =
+        dao.refreshSleepEnd(deviceId, detectedStartTs, detectedEndTs)
 
     // MARK: - Per-epoch sleep analytics (v18: motionJSON / sleepStateJSON). Banked beside stagesJSON on
     // the sleepSession row; written/read through targeted methods so the @Upsert recompute/import path
@@ -894,7 +914,7 @@ class WhoopRepository(private val dao: WhoopDao) {
         val offsetSec = (java.util.TimeZone.getDefault().getOffset(System.currentTimeMillis()) / 1000).toLong()
         val blocks = (imported + computed).mapNotNull { s ->
             val start = s.effectiveStartTs
-            val end = s.endTs
+            val end = s.effectiveEndTs
             if (end <= start) {
                 null
             } else {
@@ -1453,13 +1473,13 @@ class WhoopRepository(private val dao: WhoopDao) {
             return byDay.values.sortedBy { it.day }
         }
 
-        /** Drop sleep blocks sharing an identical (startTs, endTs) — the same physical night recorded
+        /** Drop sleep blocks sharing an identical (startTs, effective end) — the same physical night recorded
          *  under two union ids — keeping the FIRST seen (callers pass active-strap-first lists, so the
          *  active copy survives). Genuinely distinct blocks (a nap + a main night) are preserved. Pure
          *  companion form so the JVM tests exercise it without Room ([ResolverUnionTest]). */
         internal fun dedupSleepBlocks(sessions: List<SleepSession>): List<SleepSession> {
             val seen = HashSet<Pair<Long, Long>>()
-            return sessions.filter { seen.add(it.startTs to it.endTs) }
+            return sessions.filter { seen.add(it.startTs to it.effectiveEndTs) }
         }
 
         /** Drop exact-duplicate workouts sharing an identical (startTs, sport) natural key — the same
@@ -1807,8 +1827,8 @@ class WhoopRepository(private val dao: WhoopDao) {
             val days = HashSet<String>()
             for (s in sessions) {
                 if (!s.userEdited) continue
-                val offsetSec = (java.util.TimeZone.getDefault().getOffset(s.endTs * 1000) / 1000).toLong()
-                days.add(com.noop.analytics.AnalyticsEngine.dayString(s.endTs, offsetSec))
+                val offsetSec = (java.util.TimeZone.getDefault().getOffset(s.effectiveEndTs * 1000) / 1000).toLong()
+                days.add(com.noop.analytics.AnalyticsEngine.dayString(s.effectiveEndTs, offsetSec))
             }
             return days
         }
@@ -1826,8 +1846,8 @@ class WhoopRepository(private val dao: WhoopDao) {
             computed: List<SleepSession>,
         ): List<SleepSession> {
             fun endDay(s: SleepSession): String {
-                val offsetSec = (java.util.TimeZone.getDefault().getOffset(s.endTs * 1000) / 1000).toLong()
-                return com.noop.analytics.AnalyticsEngine.dayString(s.endTs, offsetSec)
+                val offsetSec = (java.util.TimeZone.getDefault().getOffset(s.effectiveEndTs * 1000) / 1000).toLong()
+                return com.noop.analytics.AnalyticsEngine.dayString(s.effectiveEndTs, offsetSec)
             }
             return mergeSleepRichness(imported, computed, ::endDay).sortedBy { it.startTs }
         }

@@ -37,7 +37,7 @@ class SleepEditDurabilityTest {
         detected: List<SleepSession>,
         edited: List<SleepSession>,
     ): List<SleepSession> {
-        val editedWindows = edited.map { it.effectiveStartTs to it.endTs }
+        val editedWindows = edited.map { it.effectiveStartTs to it.effectiveEndTs }
         return detected.filterNot { s ->
             editedWindows.any { (start, end) -> s.startTs < end && start < s.endTs }
         }

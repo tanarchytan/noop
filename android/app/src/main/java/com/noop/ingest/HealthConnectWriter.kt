@@ -227,7 +227,7 @@ object HealthConnectWriter {
         // Workout + sleep windows where the full-resolution series matters; everything else decimates.
         val windows = buildList {
             repo.workouts(deviceId, frontier, now).forEach { add(HealthExportPlan.Window(it.startTs, it.endTs)) }
-            repo.sleepSessions(deviceId, frontier, now).forEach { add(HealthExportPlan.Window(it.startTs, it.endTs)) }
+            repo.sleepSessions(deviceId, frontier, now).forEach { add(HealthExportPlan.Window(it.startTs, it.effectiveEndTs)) }
         }
 
         val plan = HealthExportPlan.heartRate(samples, windows, frontier)
@@ -265,7 +265,7 @@ object HealthConnectWriter {
         val now = System.currentTimeMillis() / 1000
         val floor = now - WINDOW_DAYS * 86_400
         val sessions = repo.sleepSessionsMerged(deviceId, from = floor, to = now)
-            .map { HealthExportPlan.SleepInput(it.startTs, it.effectiveStartTs, it.endTs, it.stagesJSON) }
+            .map { HealthExportPlan.SleepInput(it.startTs, it.effectiveStartTs, it.effectiveEndTs, it.stagesJSON) }
         val offsetSec = (java.util.TimeZone.getDefault().getOffset(now * 1000) / 1000).toLong()
         val plans = HealthExportPlan.sleepSessions(sessions, now, offsetSec)
         if (plans.isEmpty()) return 0

@@ -166,7 +166,7 @@ internal fun Hero(
     lastIndex: Int,
     onNavigate: (Int) -> Unit,
     session: SleepSession? = null,
-    onUpdateTimes: (SleepSession, Long, Long) -> Unit = { _, _, _ -> },
+    onUpdateTimes: (SleepSession, Long, Long, Boolean) -> Unit = { _, _, _, _ -> },
     onDeleteSession: (SleepSession) -> Unit = {},
     onAddNap: (Long, Long) -> Unit = { _, _ -> },
     onPickNightDate: ((LocalDate) -> Unit)? = null,
@@ -180,7 +180,7 @@ internal fun Hero(
     // Whole-group time-in-bed minutes for a fragmented night: Σ fragment windows, gaps excluded, computed by
     // `selectNight`. Null for single-block days → the session-window / stage-total fallbacks apply.
     groupInBedMin: Double? = null,
-    // The whole bridged night's clock window: on a split night `session` is one fragment, so its endTs is
+    // The whole bridged night's clock window: on a split night `session` is one fragment, so its end is
     // NOT the night's wake — the Asleep/Woke row and the hypnogram axis read these instead. Null (single-block
     // days) falls back to the session window.
     windowOnsetTs: Long? = null,
@@ -191,7 +191,7 @@ internal fun Hero(
         // The night's clock window (fell-asleep / woke) as its own labelled row — the nav-header caption
         // truncates between the chevrons on a phone, hiding the two times people look for first. Shown for
         // every night with a session. The window is the WHOLE night's, not the edit-anchor fragment's endTs.
-        session?.let { SleepWindowRow(windowOnsetTs ?: it.effectiveStartTs, windowWakeTs ?: it.endTs) }
+        session?.let { SleepWindowRow(windowOnsetTs ?: it.effectiveStartTs, windowWakeTs ?: it.effectiveEndTs) }
         if (display == null) {
             // Honest fallback: no usable stage data for this night — never silently substitute another
             // night's hypnogram.
@@ -208,7 +208,7 @@ internal fun Hero(
             // subtitle tracks the edit via EFFECTIVE onset. A fragmented night prefers the GROUP total —
             // `session` is only the WINNING fragment, so its window alone undershoots the summed minutes.
             val inBedMin = groupInBedMin
-                ?: session?.let { (it.endTs - it.effectiveStartTs) / 60.0 }
+                ?: session?.let { (it.effectiveEndTs - it.effectiveStartTs) / 60.0 }
                 ?: s.total
             val subtitle = "${durationText(inBedMin)} in bed · ${display.efficiencyText} efficiency" +
                 (if (display.realSegments != null) " · approx. stages (on-device)" else "")
@@ -228,9 +228,9 @@ internal fun Hero(
                         realSegments = real,
                         s = s,
                         // The axis spans the WHOLE night (to the group's last wake); labelling it off the
-                        // session fragment's endTs cut the clock labels short on a split night.
+                        // session fragment's own end cut the clock labels short on a split night.
                         onsetTs = windowOnsetTs ?: session?.effectiveStartTs,
-                        wakeTs = windowWakeTs ?: session?.endTs,
+                        wakeTs = windowWakeTs ?: session?.effectiveEndTs,
                         motionEpochs = motionEpochs,
                     )
                 }
@@ -250,7 +250,7 @@ internal fun Hero(
                         HypnogramWithAxis(
                             stages = segments,
                             onsetTs = session?.effectiveStartTs,
-                            wakeTs = session?.endTs,
+                            wakeTs = session?.effectiveEndTs,
                         )
                     } else {
                         Text(
@@ -285,14 +285,14 @@ internal fun Hero(
 private fun NapsCard(
     main: SleepSession,
     naps: List<SleepSession>,
-    onEditNapTimes: (SleepSession, Long, Long) -> Unit,
+    onEditNapTimes: (SleepSession, Long, Long, Boolean) -> Unit,
     onDeleteNap: (SleepSession) -> Unit,
     // The LEARNED habitual midsleep, fed to the main-night selector so the "why this is your main sleep"
     // reason matches the hero. null = cold-start band.
     habitualMidsleepSec: Long? = null,
 ) {
-    val mainMin = (main.endTs - main.effectiveStartTs) / 60.0
-    val napMin = naps.sumOf { (it.endTs - it.effectiveStartTs) / 60.0 }
+    val mainMin = (main.effectiveEndTs - main.effectiveStartTs) / 60.0
+    val napMin = naps.sumOf { (it.effectiveEndTs - it.effectiveStartTs) / 60.0 }
     NoopCard(padding = Metrics.space14, tint = Palette.restColor) {
         Column(verticalArrangement = Arrangement.spacedBy(Metrics.space12)) {
             Text("DAYTIME SLEEP", style = NoopType.overline, color = Palette.textTertiary)
@@ -349,7 +349,7 @@ private fun MainSleepFooter(
  */
 internal fun mainSleepReasonText(blocks: List<SleepSession>, habitualMidsleepSec: Long?): String? {
     val sel = SleepStageTotals.mainNightSelectionScored(
-        blocks.map { SleepStageTotals.scoredBlock(it.effectiveStartTs, it.endTs, it.stagesJSON) },
+        blocks.map { SleepStageTotals.scoredBlock(it.effectiveStartTs, it.effectiveEndTs, it.stagesJSON) },
         uiTzOffsetSec(),
         habitualMidsleepSec,
     ) ?: return null

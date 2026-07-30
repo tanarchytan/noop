@@ -92,7 +92,7 @@ fun SleepScreen(
             // Imported wins per local wake-day, with the richness exception (a stage-less import yields to
             // a computed day that has stages) — the same rule WhoopRepository.mergeSleep uses. Sort by
             // EFFECTIVE onset so a hand-edited bedtime orders the night correctly.
-            WhoopRepository.mergeSleepRichness(imported, computed) { localEndDay(it.endTs) }
+            WhoopRepository.mergeSleepRichness(imported, computed) { localEndDay(it.effectiveEndTs) }
                 .sortedBy { it.effectiveStartTs }
         }.getOrDefault(emptyList())
         nightOffset = 0
@@ -156,7 +156,7 @@ fun SleepScreen(
     var showJournalPrompt by remember { mutableStateOf(false) }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     LaunchedEffect(sleeps) {
-        val latestEnd = sleeps.lastOrNull()?.endTs ?: return@LaunchedEffect
+        val latestEnd = sleeps.lastOrNull()?.effectiveEndTs ?: return@LaunchedEffect
         val nowS = System.currentTimeMillis() / 1000L
         val hoursAgo = (nowS - latestEnd) / 3600.0
         if (hoursAgo in 0.0..12.0) {
@@ -223,7 +223,7 @@ fun SleepScreen(
     // merge key), newest day first, blocks within a day oldest→newest. Each day is ONE ◀/▶ stop, so a
     // split-sleep / nap day reads as one night and a single-night day isn't stuck on dead arrows.
     val navDays = remember(sleeps) {
-        sleeps.groupBy { localDayString(it.endTs) }
+        sleeps.groupBy { localDayString(it.effectiveEndTs) }
             .toSortedMap(reverseOrder())                       // newest day first
             .map { (_, blocks) -> blocks.sortedBy { it.effectiveStartTs } }
     }
@@ -251,7 +251,7 @@ fun SleepScreen(
     // Jump to a night by its (local) wake-day. navDays is newest-day-first, so the day's index IS its offset.
     val onPickNightDate: (LocalDate) -> Unit = { targetDate ->
         val targetStr = targetDate.toString()
-        val dayIdx = navDays.indexOfFirst { day -> day.any { localDayString(it.endTs) == targetStr } }
+        val dayIdx = navDays.indexOfFirst { day -> day.any { localDayString(it.effectiveEndTs) == targetStr } }
         if (dayIdx >= 0) nightOffset = dayIdx
     }
 
@@ -315,7 +315,7 @@ fun SleepScreen(
                 lastIndex = max(navDays.lastIndex, 0),
                 onNavigate = { nightOffset = it },
                 session = night?.session,
-                onUpdateTimes = { s, start, end ->
+                onUpdateTimes = { s, start, end, wakeSetByUser ->
                     // Belt-and-braces: never apply a future-ending or inverted window, whatever the pickers
                     // produced. Sharing one safe window here keeps the in-memory copy and the DB write in
                     // lockstep. Same rule as WhoopRepository.updateSleepSessionTimes.
@@ -323,18 +323,20 @@ fun SleepScreen(
                     if (safe != null) {
                         val (safeStart, safeEnd) = safe
                         // Optimistic: rewrite this session in `sleeps` so metrics recompute now, then persist
-                        // off the UI thread. Keep the IMMUTABLE detected startTs, store the corrected onset in
-                        // startTsAdjusted (userEdited=true); reclip stagesJSON so the hypnogram updates instantly.
+                        // off the UI thread. Keep the IMMUTABLE detected startTs and the detected endTs; the
+                        // corrected bounds go in startTsAdjusted / endTsAdjusted, the latter only when the user
+                        // set the wake. Reclip stagesJSON so the hypnogram updates instantly.
                         sleeps = sleeps.map {
                             if (it.deviceId == s.deviceId && it.startTs == s.startTs) {
-                                val reclipped = SleepWindowReclip.reclip(it.stagesJSON, it.effectiveStartTs, it.endTs, safeStart, safeEnd)
-                                it.copy(startTsAdjusted = safeStart, endTs = safeEnd, userEdited = true,
+                                val reclipped = SleepWindowReclip.reclip(it.stagesJSON, it.effectiveStartTs, it.effectiveEndTs, safeStart, safeEnd)
+                                it.copy(startTsAdjusted = safeStart, userEdited = true,
+                                        endTsAdjusted = SleepEditGuard.frozenWake(it.endTsAdjusted, safeEnd, wakeSetByUser),
                                         stagesJSON = reclipped ?: it.stagesJSON)
                             } else {
                                 it
                             }
                         }
-                        scope.launch { vm.updateSleepSessionTimes(s, safeStart, safeEnd) }
+                        scope.launch { vm.updateSleepSessionTimes(s, safeStart, safeEnd, wakeSetByUser) }
                     } else {
                         // The clamp refused a future/inverted window. Never drop an edit silently — tell the
                         // user why nothing changed.
@@ -370,7 +372,7 @@ fun SleepScreen(
                                 return AnalyticsEngine.dayString(ts, offsetSec)
                             }
                             // Same imported-wins + richness merge as the main loader.
-                            WhoopRepository.mergeSleepRichness(importedSessions, computed) { localEndDay(it.endTs) }
+                            WhoopRepository.mergeSleepRichness(importedSessions, computed) { localEndDay(it.effectiveEndTs) }
                                 .sortedBy { it.effectiveStartTs }
                         }.getOrDefault(sleeps)
                     }

@@ -297,7 +297,8 @@ concerns:
 - `dailyMetric` — one row per `(deviceId, day)`: `recovery`, `strain`, sleep stage minutes,
   `restingHr`, `avgHrv`, `spo2Pct`, `skinTempDevC`, `respRateBpm`, `exerciseCount`.
 - `sleepSession` — one row per `(deviceId, startTs)` with `efficiency`, `restingHr`, `avgHrv`, and
-  a JSON `stagesJSON` hypnogram.
+  a JSON `stagesJSON` hypnogram, plus the hand-set bounds `startTsAdjusted` / `endTsAdjusted` that
+  `effectiveStartTs` / `effectiveEndTs` read in preference to the detected pair.
 - `journal`, `workout`, `appleDaily` — imported journal answers, workouts (WHOOP + Apple Health),
   and Apple-Health daily aggregates.
 

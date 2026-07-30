@@ -118,13 +118,14 @@ interface WhoopDao : DeviceRegistryDao {
 
     /** Manually ADD a sleep session the detector missed (e.g. a daytime nap). `onConflict = IGNORE`
      *  makes it purely ADDITIVE: never clobbers an existing session sharing the onset second (returns
-     *  -1). userEdited = true (recompute guard) + startTsAdjusted = null protect/pin it. */
+     *  -1). userEdited = true (recompute guard) + startTsAdjusted = null + endTsAdjusted = the chosen
+     *  wake (the user picked both bounds, so neither re-detects) protect/pin it. */
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertSleepSession(row: SleepSession): Long
 
     /**
      * Replace ONLY the stage breakdown of a user-edited night, leaving its bed/wake bounds
-     * (startTsAdjusted/endTs) and userEdited flag untouched — used by the post-sync heal that swaps
+     * (startTsAdjusted/endTsAdjusted) and userEdited flag untouched — used by the post-sync heal that swaps
      * in real stages once raw arrives for a night edited before it landed (edit-time stages were a
      * fabricated placeholder). Scoped to `userEdited = 1` (Room stores Boolean true as INTEGER 1), so
      * it never rewrites an un-edited night. Keyed by the IMMUTABLE detected (deviceId, startTs), never
@@ -135,6 +136,20 @@ interface WhoopDao : DeviceRegistryDao {
             "WHERE deviceId = :deviceId AND startTs = :detectedStartTs AND userEdited = 1"
     )
     suspend fun updateSleepStages(deviceId: String, detectedStartTs: Long, stagesJSON: String): Int
+
+    /**
+     * Refresh a hand-edited night's DETECTED wake from a fresh detection, leaving its onset, its stage
+     * breakdown and the userEdited flag untouched — the other half of the heal above, for a night whose
+     * end was computed before the raw finished offloading. Scoped to `userEdited = 1` AND
+     * `endTsAdjusted IS NULL`, so a wake the user set is never moved. Keyed by the IMMUTABLE detected
+     * (deviceId, startTs). Returns rows changed (0 when none match).
+     */
+    @Query(
+        "UPDATE sleepSession SET endTs = :detectedEndTs " +
+            "WHERE deviceId = :deviceId AND startTs = :detectedStartTs " +
+            "AND userEdited = 1 AND endTsAdjusted IS NULL"
+    )
+    suspend fun refreshSleepEnd(deviceId: String, detectedStartTs: Long, detectedEndTs: Long): Int
 
     /** v18: write per-epoch motion magnitudes (compact JSON array) for one session, banked beside
      *  `stagesJSON` on the same row. Keyed by the IMMUTABLE (deviceId, startTs); `null` clears the
@@ -364,7 +379,8 @@ interface WhoopDao : DeviceRegistryDao {
             "AND efficiency IS NULL AND restingHr IS NULL AND avgHrv IS NULL " +
             "AND motionJSON IS NULL AND sleepStateJSON IS NULL " +
             "AND EXISTS (SELECT 1 FROM sleepSession c WHERE c.deviceId LIKE '%-noop' " +
-            "AND c.startTs < sleepSession.endTs AND c.endTs > sleepSession.startTs)"
+            "AND c.startTs < sleepSession.endTs " +
+            "AND COALESCE(c.endTsAdjusted, c.endTs) > sleepSession.startTs)"
     )
     suspend fun purgeHcShadowedSleepSessions(): Int
 

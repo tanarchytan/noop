@@ -87,24 +87,24 @@ object AndroidDiagnostics {
                 return@runCatching
             }
             var session = recent.last()   // non-null (list checked non-empty), newest by ASC start order
-            var skin = repo.skinTempSamples(id, session.startTs, session.endTs, Int.MAX_VALUE)
+            var skin = repo.skinTempSamples(id, session.startTs, session.effectiveEndTs, Int.MAX_VALUE)
             if (skin.isEmpty()) {
                 for (s in recent.asReversed()) {
-                    val sk = repo.skinTempSamples(id, s.startTs, s.endTs, Int.MAX_VALUE)
+                    val sk = repo.skinTempSamples(id, s.startTs, s.effectiveEndTs, Int.MAX_VALUE)
                     if (sk.isNotEmpty()) { session = s; skin = sk; break }
                 }
             }
-            val grav = repo.gravitySamples(id, session.startTs, session.endTs, Int.MAX_VALUE)
-            val hr = repo.hrSamples(id, session.startTs, session.endTs, Int.MAX_VALUE)
-            val rr = repo.rrIntervals(id, session.startTs, session.endTs, Int.MAX_VALUE)
-            val resp = repo.respSamples(id, session.startTs, session.endTs, Int.MAX_VALUE)
+            val grav = repo.gravitySamples(id, session.startTs, session.effectiveEndTs, Int.MAX_VALUE)
+            val hr = repo.hrSamples(id, session.startTs, session.effectiveEndTs, Int.MAX_VALUE)
+            val rr = repo.rrIntervals(id, session.startTs, session.effectiveEndTs, Int.MAX_VALUE)
+            val resp = repo.respSamples(id, session.startTs, session.effectiveEndTs, Int.MAX_VALUE)
             add("Night ${dayStamp(session.startTs)}: grav=${grav.size} hr=${hr.size} rr=${rr.size} resp=${resp.size} skin=${skin.size}")
             if (grav.isEmpty() && hr.isEmpty()) {
                 add("(no raw biometric samples under '$id' for this night — expected on a freshly re-added strap; reconnect + let a history sync run, then re-export)")
                 return@runCatching
             }
             val det = com.noop.analytics.DetectedSleep(
-                start = session.startTs, end = session.endTs,
+                start = session.startTs, end = session.effectiveEndTs,
                 efficiency = session.efficiency ?: 0.0, stages = emptyList(),
                 restingHR = session.restingHr, avgHRV = session.avgHrv,
             )

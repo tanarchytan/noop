@@ -14,14 +14,16 @@ import kotlin.math.max
  * FABRICATES a trailing "wake" block when no per-second staging exists yet, and stamps
  * `userEdited = true`. If the raw synced later, that fabricated breakdown was frozen forever.
  *
- * Fix: invoked from [IntelligenceEngine] after each sync backfill, before scoring — re-derives stages
- * from the raw over each edited night's LOCKED bounds (effective onset → wake) and rewrites the stage
- * breakdown ONLY, never the user's correction or the `userEdited` flag. Takes [WhoopRepository] as a
- * parameter because [SleepStager.stageSession] is internal to this package.
+ * Fix: invoked from [IntelligenceEngine] after each sync backfill, before scoring, in two halves.
+ * First the END: a night whose wake the user never set carries a DETECTED end
+ * ([SleepSession.endTsAdjusted] null), so a fresh detection over the same night replaces it. Then the
+ * STAGES: re-derived from the raw over the night's bounds, rewriting the breakdown ONLY. Neither half
+ * touches the user's own onset, a wake the user DID set, or the `userEdited` flag. Takes
+ * [WhoopRepository] as a parameter because [SleepStager.stageSession] is internal to this package.
  *
  * Idempotent: a night already staged from raw re-derives to byte-identical JSON (skips the write); a
  * night edited-too-early heals once its raw is dense; a true imported night (never dense) is left
- * untouched ([restageFromRaw] returns null); only `userEdited = 1` rows are touched, bounds never move.
+ * untouched ([restageFromRaw] returns null); only `userEdited = 1` rows are touched.
  */
 object SleepStageHealer {
 
@@ -109,28 +111,77 @@ object SleepStageHealer {
     }
 
     /**
-     * Self-heal pass: re-derive stages for every user-edited night in `[windowStart, windowEnd]` across
-     * the computed union ([WhoopRepository.editedSleeps]), rewriting the stage breakdown ONLY (via
-     * [WhoopRepository.updateSleepStages], scoped to `userEdited = 1`), never the user's correction.
-     * Same idempotency guarantee as the class doc above. Returns the (possibly refreshed) edited rows
-     * for the caller to score, so an edit under a retired computed id still reaches the recompute guard.
+     * The detected end [detectedSpans] gives this row's night, or null when nothing should move: the
+     * user set this wake ([SleepSession.endTsAdjusted]), no span overlaps the row, the end would not
+     * move, or the end would land at/before the row's own onset. Picks the LARGEST overlap, since a
+     * re-detected onset drifts and a nap can clip a night's tail.
+     */
+    fun refreshedEnd(row: SleepSession, detectedSpans: List<Pair<Long, Long>>): Long? {
+        if (row.endTsAdjusted != null) return null
+        val start = row.effectiveStartTs
+        val end = row.effectiveEndTs
+        val best = detectedSpans
+            .map { (s, e) -> (minOf(end, e) - maxOf(start, s)) to e }
+            .filter { it.first > 0L }
+            .maxByOrNull { it.first }
+            ?: return null
+        val fresh = best.second
+        return if (fresh != row.endTs && fresh > start) fresh else null
+    }
+
+    /**
+     * The end-refresh loop with its I/O injected, returning the number of rows written. [write] persists
+     * the fresh end under the row's OWN `deviceId`, keyed by the IMMUTABLE detected `startTs`, and
+     * returns rows changed. Extracted so a test drives this loop rather than a copy of it.
+     */
+    internal suspend fun refreshLoop(
+        edited: List<SleepSession>,
+        detectedSpans: List<Pair<Long, Long>>,
+        write: suspend (SleepSession, Long) -> Int,
+    ): Int {
+        var writes = 0
+        for (row in edited) {
+            val fresh = refreshedEnd(row, detectedSpans) ?: continue
+            if (write(row, fresh) > 0) writes++
+        }
+        return writes
+    }
+
+    /**
+     * Self-heal pass: for every user-edited night in `[windowStart, windowEnd]` across the computed union
+     * ([WhoopRepository.editedSleeps]), refresh a still-DETECTED end from [detectedSpans] (via
+     * [WhoopRepository.refreshSleepEnd]) and then rewrite the stage breakdown (via
+     * [WhoopRepository.updateSleepStages]), both scoped to `userEdited = 1` and neither touching the
+     * user's own correction. Same idempotency guarantee as the class doc above. Returns the (possibly
+     * refreshed) edited rows for the caller to score, so an edit under a retired computed id still
+     * reaches the recompute guard.
      */
     suspend fun selfHealEditedStages(
         repo: WhoopRepository,
         strapDeviceId: String,
         windowStart: Long,
         windowEnd: Long,
+        // This pass's freshly detected in-bed spans. Empty leaves every end where it is, so a caller
+        // with no detection to hand degrades to the stages-only heal.
+        detectedSpans: List<Pair<Long, Long>> = emptyList(),
     ): List<SleepSession> {
         suspend fun editedRows(): List<SleepSession> = repo.editedSleeps(strapDeviceId, windowStart, windowEnd)
 
-        val edited = editedRows()
+        var edited = editedRows()
         if (edited.isEmpty()) return emptyList()
-        // Re-derive over the LOCKED corrected window (effective onset → wake), reading raw under the
-        // STRAP id (where sensor streams live), not the computed namespace. The write goes back to the
-        // row's own deviceId, which the union read may have sourced from a retired namespace.
+        // The END first, so the stage re-derive below runs over the refreshed bounds in the SAME pass.
+        val refreshed = refreshLoop(
+            edited,
+            detectedSpans,
+            { row, end -> repo.refreshSleepEnd(row.deviceId, row.startTs, end) },
+        )
+        if (refreshed > 0) edited = editedRows()
+        // Re-derive over the night's window (effective onset → wake), reading raw under the STRAP id
+        // (where sensor streams live), not the computed namespace. The write goes back to the row's own
+        // deviceId, which the union read may have sourced from a retired namespace.
         val healed = healLoop(
             edited,
-            { row -> restageFromRaw(repo, strapDeviceId, row.effectiveStartTs, row.endTs) },
+            { row -> restageFromRaw(repo, strapDeviceId, row.effectiveStartTs, row.effectiveEndTs) },
             { row, json -> repo.updateSleepStages(row.deviceId, row.startTs, json) },
         )
         return if (healed > 0) editedRows() else edited

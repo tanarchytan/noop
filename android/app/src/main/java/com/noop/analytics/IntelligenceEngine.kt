@@ -308,7 +308,7 @@ object IntelligenceEngine {
         diag: (String) -> Unit,
     ): Int {
         val healable = repo.sleepSessions(computedId, windowStart, nowSeconds, 4000).filter {
-            AnalyticsEngine.dayString(it.endTs, tzOffsetSeconds) in oldestDay..newestDay
+            AnalyticsEngine.dayString(it.effectiveEndTs, tzOffsetSeconds) in oldestDay..newestDay
         }
         val dropped = SleepSessionDedup.dedupe(healable, freshStarts = keptStarts).dropped
         for (stale in dropped) repo.deleteSleepSessionRowOnly(stale)
@@ -669,13 +669,14 @@ object IntelligenceEngine {
         // COMPUTED ("-noop") only: an edited IMPORTED night's recovery/performance still come from the export verbatim, keyed by the immutable detected `startTs`.
         //
         // Self-heals any night edited before its raw streams synced ([SleepStageHealer.selfHealEditedStages]):
-        // re-derives stages from the now-available raw over the night's locked bounds, rewriting the stage
-        // breakdown only (bounds untouched). Idempotent; must run before `editsByStart` so healed stages feed Rest/recovery this pass.
+        // refreshes a still-detected end from this pass's own detection, then re-derives stages from the
+        // now-available raw. Must run before `editsByStart` so both feed Rest/recovery this pass.
         val editedRows = SleepStageHealer.selfHealEditedStages(
             repo = repo,
             strapDeviceId = importedDeviceId,
             windowStart = windowStart,
             windowEnd = nowSeconds,
+            detectedSpans = scoredNights.flatMap { res -> res.sleepSessions.map { it.start to it.end } },
         )
         // [editsByStart] / [editOnsetByStart] are built per day inside the scoring loop, scoped to the day
         // each edit belongs to. sleepEditedDaily folds any edited row that isn't a twin of this day's
@@ -691,8 +692,8 @@ object IntelligenceEngine {
 
         for (res in scoredNights) {
             // Scope the edits to this day before folding: a userEdited row belongs to the day its night
-            // ends on (endTs is stable under a bedtime edit, only the onset moves), so filtering here keeps
-            // a single-night edit from overriding every night. editOnsetByStart still carries the corrected bedtime for this day's blocks.
+            // ends on, so filtering here keeps a single-night edit from overriding every night.
+            // The effective end is the user's wake when they set one, else the detected one this pass wrote. editOnsetByStart still carries the corrected bedtime for this day's blocks.
             val dayEditedRows = editedRowsForDay(editedRows, res.daily.day, tzOffsetSeconds)
             val editsByStart: Map<Long, String?> = dayEditedRows.associate { it.startTs to it.stagesJSON }
             val editOnsetByStart: Map<Long, Long> = dayEditedRows.associate { it.startTs to it.effectiveStartTs }
@@ -869,7 +870,7 @@ object IntelligenceEngine {
         // Durability guard: drop any freshly-detected session that time-overlaps a night the user has
         // hand-corrected. A detected onset drifts as more raw data arrives, so without this a re-detected
         // night would upsert as a second row beside the edited one and double-count time-in-bed. Overlap uses the edit's effective window.
-        val editedWindows = editedRows.map { it.effectiveStartTs to it.endTs }
+        val editedWindows = editedRows.map { it.effectiveStartTs to it.effectiveEndTs }
         // Also drops any re-detected night the user has deleted: a dismissedSleep tombstone keeps it
         // from regenerating. Reads the union of imported + computed ids, so a tombstone under either
         // namespace is found; overlap (not exact startTs) since a re-detected onset drifts.
@@ -966,7 +967,7 @@ object IntelligenceEngine {
                 val dayKey = AnalyticsEngine.dayString(dayMid, tzOffsetSeconds)
                 val owner = resolveDayOwner(repo, ownerSource, candidatePriorities, dayKey, dayMid, dayEnd, importedDeviceId)
                 repo.sleepSessions(owner, dayMid - SECONDS_PER_DAY, dayEnd, STREAM_LIMIT)
-                    .forEach { asleep += it.effectiveStartTs to it.endTs }
+                    .forEach { asleep += it.effectiveStartTs to it.effectiveEndTs }
                 // Continuity, not the day's min..max: a min..max mask would count mid-day gaps as worn,
                 // and for this index worn-but-unmeasured reads as awake.
                 val hrTs = repo.hrSamples(owner, dayMid, dayEnd, STREAM_LIMIT).map { it.ts }
@@ -1329,7 +1330,7 @@ object IntelligenceEngine {
         val merged = SleepSessionDedup.dedupe(imported + computed).kept
         val blocks = merged.mapNotNull { s ->
             val start = s.effectiveStartTs
-            val end = s.endTs
+            val end = s.effectiveEndTs
             if (end <= start) {
                 null
             } else {
@@ -1342,14 +1343,14 @@ object IntelligenceEngine {
 
     /**
      * The edited/hand-logged sleep rows that belong to [day]: an edit belongs to the day its night ends
-     * on (`dayString(endTs)`), matching AnalyticsEngine's end-day session bucket; `endTs` is stable under
-     * a bedtime edit (only the onset moves), so scoping per day stops one edit leaking its total onto every night.
+     * on (`dayString(effectiveEndTs)`), matching AnalyticsEngine's end-day session bucket, so scoping per
+     * day stops one edit leaking its total onto every night.
      */
     internal fun editedRowsForDay(
         editedRows: List<SleepSession>,
         day: String,
         tzOffsetSeconds: Long,
-    ): List<SleepSession> = editedRows.filter { AnalyticsEngine.dayString(it.endTs, tzOffsetSeconds) == day }
+    ): List<SleepSession> = editedRows.filter { AnalyticsEngine.dayString(it.effectiveEndTs, tzOffsetSeconds) == day }
 
     /**
      * Overrides a day's detected sleep aggregates with the user's hand-corrected window: substitutes

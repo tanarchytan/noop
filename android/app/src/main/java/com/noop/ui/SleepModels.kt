@@ -160,8 +160,8 @@ internal fun selectNight(
     val heroGroup = group.dropWhile {
         it.effectiveStartTs < onsetTsForHero && isPreOnsetAwakeStub(it, groupRefAsleepMin)
     }
-    val utcKey = AnalyticsEngine.dayString(session.endTs)
-    val localKey = localDayString(session.endTs)
+    val utcKey = AnalyticsEngine.dayString(session.effectiveEndTs)
+    val localKey = localDayString(session.effectiveEndTs)
     val dayKey = listOf(utcKey, localKey).firstOrNull { key ->
         days.any { it.day == key && (it.deepMin ?: 0.0) + (it.remMin ?: 0.0) + (it.lightMin ?: 0.0) > 0.0 }
     } ?: utcKey
@@ -178,8 +178,8 @@ internal fun selectNight(
     // MINUTES (sumGroupStages) or groupInBedMin — those keep the fragment-only accounting (asleep ≤ in-bed).
     val groupSegments = groupSegmentsRaw?.let { segs ->
         val seams = heroGroup.zipWithNext().mapNotNull { (prev, next) ->
-            if (next.effectiveStartTs > prev.endTs)
-                PersistedSegment(prev.endTs, next.effectiveStartTs, "wake") else null
+            if (next.effectiveStartTs > prev.effectiveEndTs)
+                PersistedSegment(prev.effectiveEndTs, next.effectiveStartTs, "wake") else null
         }
         (segs + seams).sortedBy { it.start }
     }
@@ -194,11 +194,11 @@ internal fun selectNight(
     // non-stub fragment onward), so label from THAT fragment's onset, closed by the group's latest wake.
     // `session` stays the edit anchor only.
     val heroOnsetTs = heroGroup.firstOrNull()?.effectiveStartTs ?: session.effectiveStartTs
-    val heroWakeTs = heroGroup.maxOfOrNull { it.endTs } ?: session.endTs
+    val heroWakeTs = heroGroup.maxOfOrNull { it.effectiveEndTs } ?: session.effectiveEndTs
     // Whole-group time-in-bed (minutes) — fragment windows summed, gaps excluded — so the subtitle matches
     // the multi-fragment stage total beside it. Single-block days stay null.
     val groupInBedMin = if (heroGroup.size > 1) {
-        heroGroup.sumOf { (it.endTs - it.effectiveStartTs).coerceAtLeast(0L) } / 60.0
+        heroGroup.sumOf { (it.effectiveEndTs - it.effectiveStartTs).coerceAtLeast(0L) } / 60.0
     } else null
     return HeroNight(session, dayKey, segments, clockLabelFor(heroOnsetTs, heroWakeTs), napBlocks, groupStages,
         groupSegments, groupMotion, groupInBedMin, heroOnsetTs, heroWakeTs)
@@ -222,7 +222,7 @@ internal fun mainSleepBlock(blocks: List<SleepSession>, habitualMidsleepSec: Lon
 /** One session as a scored candidate: its effective onset with the asleep/in-bed seconds its stages
  *  decode, falling back to the clock span when there are no usable stages. */
 private fun scoredNightBlock(s: SleepSession): SleepStageTotals.ScoredNightBlock =
-    SleepStageTotals.scoredBlock(s.effectiveStartTs, s.endTs, s.stagesJSON)
+    SleepStageTotals.scoredBlock(s.effectiveStartTs, s.effectiveEndTs, s.stagesJSON)
 
 /**
  * The day's MAIN-night GROUP — the winning block PLUS any adjacent fragments bridged into it (a wake gap
@@ -247,7 +247,7 @@ internal fun mainSleepSpan(blocks: List<SleepSession>, habitualMidsleepSec: Long
     val group = mainSleepGroup(blocks, habitualMidsleepSec)
     val first = group.firstOrNull() ?: return null
     val last = group.lastOrNull() ?: return null
-    return first.effectiveStartTs to last.endTs
+    return first.effectiveStartTs to last.effectiveEndTs
 }
 
 /** Longest a leading block can be and still count as a spurious pre-sleep awake stub. Generous (a few hours)
@@ -269,7 +269,7 @@ internal fun consistencyNightSpans(
     habitualMidsleepSec: Long? = null,
     limit: Int = 14,
 ): List<Pair<Long, Long>> =
-    sleeps.groupBy { localDayString(it.endTs) }
+    sleeps.groupBy { localDayString(it.effectiveEndTs) }
         .toSortedMap()
         .values
         .mapNotNull { blocks -> mainSleepSpan(blocks.sortedBy { it.effectiveStartTs }, habitualMidsleepSec) }
@@ -299,7 +299,7 @@ internal fun decodedAsleepMinutes(stagesJSON: String?, effectiveStartTs: Long): 
  *  block ([refAsleepMin]). Used only to skip such a stub when it leads the main-night group. [refAsleepMin]
  *  defaults to 0 (relative test off) so existing callers are byte-identical. */
 internal fun isPreOnsetAwakeStub(frag: SleepSession, refAsleepMin: Double = 0.0): Boolean {
-    val spanMin = (frag.endTs - frag.effectiveStartTs) / 60.0
+    val spanMin = (frag.effectiveEndTs - frag.effectiveStartTs) / 60.0
     if (spanMin > PRE_ONSET_STUB_MAX_MIN) return false
     val asleepMin = decodedAsleepMinutes(frag.stagesJSON, frag.effectiveStartTs)
     if (asleepMin <= PRE_ONSET_STUB_ASLEEP_MAX_MIN) return true
@@ -431,7 +431,7 @@ internal fun buildSleepModel(
     // Prefer stage minutes from the session's (possibly reclipped) stagesJSON when it belongs to this night,
     // so a wake-time edit updates the stage cards immediately without waiting on a rescore.
     val sessionStageMins = session
-        ?.takeIf { AnalyticsEngine.dayString(it.endTs) == latest.day || localDayString(it.endTs) == latest.day }
+        ?.takeIf { AnalyticsEngine.dayString(it.effectiveEndTs) == latest.day || localDayString(it.effectiveEndTs) == latest.day }
         // Trim to the EFFECTIVE onset before summing, so a hand-edited bedtime the raw was too sparse to
         // re-stage can't show pre-onset stages that push asleep past time-in-bed. No-op when the session
         // already starts at its onset. Matches the analytics-side clamp.
@@ -522,7 +522,7 @@ internal fun buildSleepModel(
     val realSegments = heroSegments?.map { seg -> seg.stage to ((seg.end - seg.start) / 60f) }
         ?: session
             ?.takeIf {
-                AnalyticsEngine.dayString(it.endTs) == latest.day || localDayString(it.endTs) == latest.day
+                AnalyticsEngine.dayString(it.effectiveEndTs) == latest.day || localDayString(it.effectiveEndTs) == latest.day
             }
             ?.let { parsePersistedSegments(it.stagesJSON) }
             ?.map { seg -> seg.stage to ((seg.end - seg.start) / 60f) }
@@ -734,7 +734,7 @@ internal fun clockLabel(latest: DailyMetric, session: SleepSession?): String {
 
 /** "Wed 4 Jun · 22:50–06:48" — the night-nav header's date · onset–wake line. */
 private fun sessionClockLabel(session: SleepSession): String =
-    clockLabelFor(session.effectiveStartTs, session.endTs) // EFFECTIVE onset so an edited bedtime shows
+    clockLabelFor(session.effectiveStartTs, session.effectiveEndTs) // EFFECTIVE bounds so an edit shows
 
 /** Same date · onset–wake line from explicit unix-second bounds (the group-aligned bedtime). */
 private fun clockLabelFor(onsetTs: Long, wakeTs: Long): String {

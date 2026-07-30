@@ -79,10 +79,21 @@ abstract class WhoopDatabase : RoomDatabase() {
         }
 
         /**
+         * The hand-set wake time, splitting the one `userEdited` bit into a bound each. Nullable, so
+         * every existing row reads back null and its end is re-detectable — except a wake the user
+         * already set, which the backfill freezes off the wake picker's whole-minute fingerprint.
+         */
+        internal val SLEEP_END_ADJUSTED_MIGRATION_SQL: List<String> = listOf(
+            "ALTER TABLE `sleepSession` ADD COLUMN `endTsAdjusted` INTEGER",
+            "UPDATE `sleepSession` SET `endTsAdjusted` = `endTs` " +
+                "WHERE `userEdited` = 1 AND `endTs` % 60 = 0",
+        )
+
+        /**
          * Additive columns off the v1-tan base: the beat's position within its second (so RMSSD reads
-         * beats in emission order, not by magnitude), the daily heart-rate zone minutes, and the v18
-         * per-second channels the stream funnel was decoding but dropping. All nullable, so existing
-         * rows read back null.
+         * beats in emission order, not by magnitude), the daily heart-rate zone minutes, the v18
+         * per-second channels the stream funnel was decoding but dropping, and the hand-set wake time.
+         * All nullable, so existing rows read back null.
          */
         internal val MIGRATION_100_101 = object : Migration(100, 101) {
             override fun migrate(db: SupportSQLiteDatabase) {
@@ -100,6 +111,7 @@ abstract class WhoopDatabase : RoomDatabase() {
                         "`rawU16At26` INTEGER, `unpinned` BLOB, " +
                         "PRIMARY KEY(`deviceId`, `ts`))",
                 )
+                for (stmt in SLEEP_END_ADJUSTED_MIGRATION_SQL) db.execSQL(stmt)
                 // The pre-registry bucket was seeded as a live BLE device, so an install that never
                 // paired a strap listed one that does not exist. Retag it for what it is. A bucket a
                 // strap has since adopted (peripheralId set) is a real device and keeps its kind.

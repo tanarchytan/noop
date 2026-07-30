@@ -220,10 +220,10 @@ object WhoopCsvExporter {
             .append("Sleep need (min),Sleep debt (min),Source\r\n")
         for (s in sessions.sortedBy { it.startTs }) {
             val stages = stageMinutes(s.stagesJSON)
-            val inBedMin = if (s.endTs > s.startTs) (s.endTs - s.startTs) / 60.0 else null
+            val inBedMin = if (s.effectiveEndTs > s.startTs) (s.effectiveEndTs - s.startTs) / 60.0 else null
             sb.append(
                 listOf(
-                    cycleStart(s), utc(s.startTs), utc(s.endTs), "UTC+00:00",
+                    cycleStart(s), utc(s.startTs), utc(s.effectiveEndTs), "UTC+00:00",
                     // NOOP never stores a nap flag — everything exports as a main sleep so the
                     // importer keeps it (it drops nap rows).
                     "false", "", "",
@@ -401,7 +401,7 @@ object WhoopCsvExporter {
                 "physiological_cycles.csv" to cyclesCsv(daily, seriesByDay, sourceByDay).toByteArray(),
                 "sleeps.csv" to sleepsCsv(
                     sleeps,
-                    cycleStart = { com.noop.analytics.AnalyticsEngine.dayString(it.endTs, tzOffsetSec) + " 00:00:00" },
+                    cycleStart = { com.noop.analytics.AnalyticsEngine.dayString(it.effectiveEndTs, tzOffsetSec) + " 00:00:00" },
                 ) { s ->
                     if (s.deviceId.endsWith("-noop")) "noop (APPROXIMATE)" else "import"
                 }.toByteArray(),

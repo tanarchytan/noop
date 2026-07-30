@@ -116,7 +116,7 @@ internal fun SleepUndoBanner(session: SleepSession, onUndo: () -> Unit) {
     val timeFmt = SimpleDateFormat("HH:mm", Locale.US)
     // effectiveStartTs is the displayed onset (a userEdited night's corrected bed time).
     val startText = timeFmt.format(java.util.Date(session.effectiveStartTs * 1000L))
-    val endText = timeFmt.format(java.util.Date(session.endTs * 1000L))
+    val endText = timeFmt.format(java.util.Date(session.effectiveEndTs * 1000L))
     // Branch the copy on userEdited: a hand-edited/added (nap) night writes no tombstone, so the
     // "won't detect ... again" promise applies only to a DETECTED delete.
     val message = if (session.userEdited) {
@@ -152,7 +152,7 @@ internal fun SleepUndoBanner(session: SleepSession, onUndo: () -> Unit) {
 @Composable
 internal fun NapRow(
     nap: SleepSession,
-    onEditNapTimes: (SleepSession, Long, Long) -> Unit,
+    onEditNapTimes: (SleepSession, Long, Long, Boolean) -> Unit,
     onDeleteNap: (SleepSession) -> Unit,
 ) {
     val context = LocalContext.current
@@ -162,8 +162,8 @@ internal fun NapRow(
     // "Why this is a nap" explainer: everything other than the chosen main block is a nap. Inline
     // disclosure (Compose has no anchored popover here).
     var showWhy by remember(nap.startTs) { mutableStateOf(false) }
-    val window = "${clockTimeLabel(nap.effectiveStartTs)} - ${clockTimeLabel(nap.endTs)}"
-    val durMin = (nap.endTs - nap.effectiveStartTs) / 60.0
+    val window = "${clockTimeLabel(nap.effectiveStartTs)} - ${clockTimeLabel(nap.effectiveEndTs)}"
+    val durMin = (nap.effectiveEndTs - nap.effectiveStartTs) / 60.0
     Column(verticalArrangement = Arrangement.spacedBy(Metrics.space10)) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -257,7 +257,7 @@ internal fun NapRow(
     // Edit step 2 — nap END time-only; its day DERIVED as the first instant strictly after the chosen start
     // (within 24h), so a nap stays on the right day.
     if (editingEnd && pendingStart > 0L) {
-        val endCal = Calendar.getInstance().apply { timeInMillis = nap.endTs * 1000L }
+        val endCal = Calendar.getInstance().apply { timeInMillis = nap.effectiveEndTs * 1000L }
         DisposableEffect(Unit) {
             val dialog = TimePickerDialog(
                 context,
@@ -268,7 +268,8 @@ internal fun NapRow(
                         set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
                         if (timeInMillis / 1000L <= pendingStart) add(Calendar.DAY_OF_MONTH, 1)
                     }
-                    onEditNapTimes(nap, pendingStart, cal.timeInMillis / 1000L)
+                    // Both bounds were picked, so the wake is hand-set.
+                    onEditNapTimes(nap, pendingStart, cal.timeInMillis / 1000L, true)
                     editingEnd = false
                     pendingStart = 0L
                 },
@@ -294,7 +295,7 @@ internal fun NightNavHeader(
     clock: String?,
     onNavigate: (Int) -> Unit,
     session: SleepSession? = null,
-    onUpdateTimes: (SleepSession, Long, Long) -> Unit = { _, _, _ -> },
+    onUpdateTimes: (SleepSession, Long, Long, Boolean) -> Unit = { _, _, _, _ -> },
     onDeleteSession: (SleepSession) -> Unit = {},
     onAddNap: (Long, Long) -> Unit = { _, _ -> },
     onPickNightDate: ((LocalDate) -> Unit)? = null,
@@ -309,7 +310,7 @@ internal fun NightNavHeader(
     var showDatePicker by remember { mutableStateOf(false) }
     // A corrected (start, end) window that no longer touches the night's recorded coverage parks here awaiting
     // an explicit confirm — committing it silently would fabricate an all-awake phantom night. null = nothing pending.
-    var pendingDisjointTimes by remember { mutableStateOf<Pair<Long, Long>?>(null) }
+    var pendingDisjointTimes by remember { mutableStateOf<Triple<Long, Long, Boolean>?>(null) }
     // Manual nap add: pick a start, then an end, both anchored to THIS night's wake day so the new nap lands
     // on the right day. napStartTs holds the chosen start between the two pickers.
     var addingNapStart by remember { mutableStateOf(false) }
@@ -320,7 +321,7 @@ internal fun NightNavHeader(
     if (showTimeChoice && session != null) {
         val timeFmt = SimpleDateFormat("HH:mm", Locale.US)
         val bedText = timeFmt.format(Date(session.effectiveStartTs * 1000L))
-        val wakeText = timeFmt.format(Date(session.endTs * 1000L))
+        val wakeText = timeFmt.format(Date(session.effectiveEndTs * 1000L))
         val blockShape2 = RoundedCornerShape(Metrics.cornerSm)
         androidx.compose.material3.AlertDialog(
             onDismissRequest = { showTimeChoice = false },
@@ -371,12 +372,12 @@ internal fun NightNavHeader(
     // Commit funnel for BOTH time edits: a corrected window that abandons the night's recorded coverage has
     // no data to stage from, so it parks behind an explicit confirm rather than silently creating an all-awake
     // phantom night. An in-coverage window commits straight through.
-    fun commitTimes(s: SleepSession, newStart: Long, newEnd: Long) {
+    fun commitTimes(s: SleepSession, newStart: Long, newEnd: Long, wakeSetByUser: Boolean) {
         val coverageStart = minOf(s.startTs, s.effectiveStartTs)
-        if (SleepEditGuard.isDisjoint(newStart, newEnd, coverageStart, s.endTs)) {
-            pendingDisjointTimes = newStart to newEnd
+        if (SleepEditGuard.isDisjoint(newStart, newEnd, coverageStart, s.effectiveEndTs)) {
+            pendingDisjointTimes = Triple(newStart, newEnd, wakeSetByUser)
         } else {
-            onUpdateTimes(s, newStart, newEnd)
+            onUpdateTimes(s, newStart, newEnd, wakeSetByUser)
         }
     }
 
@@ -399,10 +400,11 @@ internal fun NightNavHeader(
                     val bedTs = SleepEditGuard.autoCorrectedBed(
                         previousBedTs = session.effectiveStartTs,
                         candidateBedTs = cal.timeInMillis / 1000L,
-                        originalWakeTs = session.endTs,
+                        originalWakeTs = session.effectiveEndTs,
                         nowTs = System.currentTimeMillis() / 1000L,
                     )
-                    commitTimes(session, bedTs, session.endTs)
+                    // The wake is passed through, not set, so it stays re-detectable.
+                    commitTimes(session, bedTs, session.effectiveEndTs, false)
                     editingBed = false
                 },
                 startCal.get(Calendar.HOUR_OF_DAY),
@@ -419,7 +421,7 @@ internal fun NightNavHeader(
     // day. The picked time-of-day lands on the first instant strictly after the effective bed instant (within
     // 24h). An independent wake date would silently re-bucket a night onto the wrong day (selectNight keys off endTs).
     if (editingWake && session != null) {
-        val endCal = Calendar.getInstance().apply { timeInMillis = session.endTs * 1000L }
+        val endCal = Calendar.getInstance().apply { timeInMillis = session.effectiveEndTs * 1000L }
         DisposableEffect(Unit) {
             val dialog = TimePickerDialog(
                 context,
@@ -437,7 +439,7 @@ internal fun NightNavHeader(
                     // Pass the EFFECTIVE onset so a wake-only edit preserves a previously-edited bedtime rather
                     // than resetting it to the detected startTs. Routed through the disjoint-confirm funnel like
                     // the bed edit.
-                    commitTimes(session, bedTs, cal.timeInMillis / 1000L)
+                    commitTimes(session, bedTs, cal.timeInMillis / 1000L, true)
                     editingWake = false
                 },
                 endCal.get(Calendar.HOUR_OF_DAY),
@@ -476,7 +478,7 @@ internal fun NightNavHeader(
     // Manual nap step 1: pick the nap's START time, anchored to the night's wake DAY. Defaults to ~1h after
     // the night's wake.
     if (addingNapStart && session != null) {
-        val anchorTs = session.endTs + 3_600L
+        val anchorTs = session.effectiveEndTs + 3_600L
         val startCal = Calendar.getInstance().apply { timeInMillis = anchorTs * 1000L }
         DisposableEffect(Unit) {
             val dialog = TimePickerDialog(
@@ -557,7 +559,7 @@ internal fun NightNavHeader(
             },
             confirmButton = {
                 TextButton(onClick = {
-                    onUpdateTimes(session, pendingTimes.first, pendingTimes.second)
+                    onUpdateTimes(session, pendingTimes.first, pendingTimes.second, pendingTimes.third)
                     pendingDisjointTimes = null
                 }) { Text("Move anyway", style = NoopType.subhead, color = Palette.statusWarning) }
             },

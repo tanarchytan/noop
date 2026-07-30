@@ -300,6 +300,9 @@ data class DailyMetric(
  *   - [startTsAdjusted]: the hand-set onset time. [startTs] stays the IMMUTABLE detected primary
  *     key, so upsert REPLACEs the row in place instead of duplicating at a moved key. Nullable;
  *     null means unedited (use startTs). Display/sort/re-staging use [effectiveStartTs].
+ *   - [endTsAdjusted]: the hand-set wake time, the same shape one bound over. [endTs] stays the
+ *     DETECTED wake, which the post-sync heal refreshes while this is null, so a bed-only edit's
+ *     end keeps improving as raw arrives. Display/sort/re-staging use [effectiveEndTs].
  */
 @Entity(tableName = "sleepSession", primaryKeys = ["deviceId", "startTs"])
 data class SleepSession(
@@ -325,13 +328,20 @@ data class SleepSession(
     // and so preserves them.
     val motionJSON: String? = null,
     val sleepStateJSON: String? = null,
+    // Last, matching the ALTER TABLE that adds it: the hand-set wake, null until the user sets one.
+    // Nullable INTEGER with no SQL DEFAULT, so old rows read back null and their end re-detects.
+    val endTsAdjusted: Long? = null,
 ) {
     /** The bed (onset) time to DISPLAY / sort / re-stage by: the user's hand-set onset when edited,
      *  else the immutable detected [startTs]. */
     val effectiveStartTs: Long get() = startTsAdjusted ?: startTs
 
+    /** The wake time to DISPLAY / sort / re-stage by: the user's hand-set wake when they set one,
+     *  else the detected [endTs], which the heal may still refresh. */
+    val effectiveEndTs: Long get() = endTsAdjusted ?: endTs
+
     /** Whole-block duration in hours (effective onset → wake). */
-    val durationHours: Double get() = (endTs - effectiveStartTs) / 3600.0
+    val durationHours: Double get() = (effectiveEndTs - effectiveStartTs) / 3600.0
 
     /**
      * DERIVED nap classification, computed at READ time, no schema column. A block is a nap when

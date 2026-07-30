@@ -12,6 +12,8 @@ import java.time.ZoneId
  *      acceptance.
  *   3. [clampedEditWindow]: the repository belt-and-braces; no code path may persist a future or
  *      inverted window even if a client UI misbehaves.
+ *   4. [frozenWake]: which bound an edit actually froze, so the bed picker's passed-through wake
+ *      stays re-detectable while a wake the user picked does not.
  */
 object SleepEditGuard {
 
@@ -68,4 +70,13 @@ object SleepEditGuard {
         if (cappedEnd <= start) return null
         return start to cappedEnd
     }
+
+    /**
+     * Rule 4: the `endTsAdjusted` an edit leaves behind. A wake the user PICKED is banked and frozen;
+     * a bed-only edit passes the wake through, so [previous] survives — null stays null and the end
+     * stays re-detectable. One owner for the rule the repository write and the optimistic UI copy
+     * must agree on.
+     */
+    fun frozenWake(previous: Long?, newEndTs: Long, wakeSetByUser: Boolean): Long? =
+        if (wakeSetByUser) newEndTs else previous
 }

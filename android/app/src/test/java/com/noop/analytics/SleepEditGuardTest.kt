@@ -176,4 +176,30 @@ class SleepEditGuardTest {
         assertNull(SleepEditGuard.clampedEditWindow(5_000, 4_000, nowTs = 10_000))
         assertNull(SleepEditGuard.clampedEditWindow(5_000, 5_000, nowTs = 10_000))
     }
+
+    // MARK: Rule 4: which bound the edit froze
+
+    /** The bed picker passes the wake through, so nothing is banked and the end stays re-detectable. */
+    @Test
+    fun bedOnlyEditBanksNoWake() {
+        assertNull(SleepEditGuard.frozenWake(previous = null, newEndTs = 5_000, wakeSetByUser = false))
+    }
+
+    /** A wake the user picked is banked, which is what freezes it against the end refresh. */
+    @Test
+    fun wakeEditBanksThePickedTime() {
+        assertEquals(5_000L, SleepEditGuard.frozenWake(previous = null, newEndTs = 5_000, wakeSetByUser = true))
+    }
+
+    /** A later bed-only edit must not un-freeze a wake the user set earlier. */
+    @Test
+    fun bedOnlyEditPreservesAnEarlierHandSetWake() {
+        assertEquals(4_200L, SleepEditGuard.frozenWake(previous = 4_200, newEndTs = 4_200, wakeSetByUser = false))
+    }
+
+    /** Re-picking the wake replaces the banked value rather than keeping the first one. */
+    @Test
+    fun wakeEditReplacesAnEarlierHandSetWake() {
+        assertEquals(6_000L, SleepEditGuard.frozenWake(previous = 4_200, newEndTs = 6_000, wakeSetByUser = true))
+    }
 }

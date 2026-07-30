@@ -97,8 +97,8 @@ fun CoupledScreen(
             val now = System.currentTimeMillis() / 1000L
             val imported = vm.repo.sleepSessions("my-whoop", 0L, now)
             val computed = vm.repo.sleepSessions(vm.repo.computedDeviceId("my-whoop"), 0L, now)
-            val importedEnds = imported.map { it.endTs }.toHashSet()
-            (imported + computed.filter { it.endTs !in importedEnds }).sortedBy { it.effectiveStartTs }
+            val importedEnds = imported.map { it.effectiveEndTs }.toHashSet()
+            (imported + computed.filter { it.effectiveEndTs !in importedEnds }).sortedBy { it.effectiveStartTs }
         }.getOrDefault(emptyList())
     }
 
@@ -569,7 +569,7 @@ private fun sleepNeedForDay(day: DailyMetric?, days: List<DailyMetric>, imported
  */
 private fun bedWakeSpan(sleeps: List<SleepSession>, habitualMidsleepSec: Long?): String? {
     val windowStart = System.currentTimeMillis() / 1000L - 36 * 3600L // within the last 36h counts as last night
-    val candidates = sleeps.filter { it.endTs > windowStart }
+    val candidates = sleeps.filter { it.effectiveEndTs > windowStart }
     val span = mainSleepSpan(candidates, habitualMidsleepSec) ?: return null
     val fmt = SimpleDateFormat("HH:mm", Locale.getDefault())
     return "${fmt.format(Date(span.first * 1000L))} - ${fmt.format(Date(span.second * 1000L))}"

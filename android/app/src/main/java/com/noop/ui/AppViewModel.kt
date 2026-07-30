@@ -1186,8 +1186,14 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      *  sleep_performance honor the corrected window without waiting for the 15-min loop — matching Swift
      *  SleepView, which calls analyzeRecent() right after editSleepTimes. Swallows persist failures — the
      *  Sleep screen already applied the change optimistically. */
-    suspend fun updateSleepSessionTimes(session: com.noop.data.SleepSession, newStartTs: Long, newEndTs: Long) {
-        runCatching { repository.updateSleepSessionTimes(session, newStartTs, newEndTs) }
+    suspend fun updateSleepSessionTimes(
+        session: com.noop.data.SleepSession,
+        newStartTs: Long,
+        newEndTs: Long,
+        // True only when the user picked the WAKE: that freezes it, a bed-only edit leaves it re-detectable.
+        wakeSetByUser: Boolean,
+    ) {
+        runCatching { repository.updateSleepSessionTimes(session, newStartTs, newEndTs, wakeSetByUser) }
         rescoreAfterEdit()
     }
 
@@ -2039,7 +2045,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val now = System.currentTimeMillis() / 1000L
         return runCatching {
             vmRepoSleepSessions(now)
-                .filter { now >= it.effectiveStartTs && now < it.endTs }
+                .filter { now >= it.effectiveStartTs && now < it.effectiveEndTs }
                 .maxByOrNull { it.effectiveStartTs }
         }.getOrNull()
     }
@@ -2062,7 +2068,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         // Through the ViewModel's own edit path, NOT the repository's: that one re-scores the affected
         // day, so Rest/efficiency/totals reflect the shortened night instead of going stale.
         return runCatching {
-            updateSleepSessionTimes(active, active.effectiveStartTs, now)
+            updateSleepSessionTimes(active, active.effectiveStartTs, now, wakeSetByUser = true)
             true
         }.getOrDefault(false)
     }
