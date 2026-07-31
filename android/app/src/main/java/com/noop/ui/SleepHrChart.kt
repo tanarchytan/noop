@@ -64,6 +64,18 @@ internal fun windowFraction(ts: Long, windowStart: Long, windowSpanSec: Double):
 }
 
 /**
+ * The points the chart can draw: finite, positive bpm inside the window, in time order. Fewer than two
+ * leaves nothing to stroke, which is the night-with-no-HR state the caller renders as a note.
+ */
+internal fun hrChartSeries(
+    points: List<TimelinePoint>,
+    windowStart: Long,
+    windowEnd: Long,
+): List<TimelinePoint> = points
+    .filter { it.ts in windowStart..windowEnd && it.value.isFinite() && it.value > 0.0 }
+    .sortedBy { it.ts }
+
+/**
  * bpm axis bounds for [points], rounded out to [HR_AXIS_ROUND_BPM] and widened to at least one tick
  * step so a flat night still has a readable scale. Empty input yields a neutral resting band.
  */
@@ -156,7 +168,7 @@ internal fun SleepHrChart(
     val (windowStart, windowEnd) = remember(onsetTs, wakeTs) { hrChartWindow(onsetTs, wakeTs) }
     val windowSpanSec = (windowEnd - windowStart).toDouble()
     val inWindow = remember(points, windowStart, windowEnd) {
-        points.filter { it.ts in windowStart..windowEnd && it.value.isFinite() && it.value > 0.0 }
+        hrChartSeries(points, windowStart, windowEnd)
     }
     if (inWindow.size < 2) {
         Text(

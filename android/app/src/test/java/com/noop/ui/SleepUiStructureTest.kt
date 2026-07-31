@@ -52,7 +52,8 @@ class SleepUiStructureTest {
             "SleepHrChart.kt" to setOf(
                 "HR_CHART_TARGET_POINTS", "HR_CHART_PAD_FRAC", "HR_CHART_PAD_MIN_SEC",
                 "HR_CHART_PAD_MAX_SEC", "HR_TRACE_GAP_STEPS", "HR_AXIS_ROUND_BPM", "HR_AXIS_TICK_BPM",
-                "hrChartWindow", "hrChartBucketSec", "windowFraction", "hrAxisBounds", "hrAxisTicks",
+                "hrChartWindow", "hrChartBucketSec", "windowFraction", "hrChartSeries",
+                "hrAxisBounds", "hrAxisTicks",
                 "hrTraceRuns", "stageBandsInWindow", "SleepHrChart", "HrBoundLabels",
             ),
             "Charts.kt" to setOf(
