@@ -21,6 +21,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -180,6 +182,9 @@ internal fun Hero(
     // days) falls back to the session window.
     windowOnsetTs: Long? = null,
     windowWakeTs: Long? = null,
+    // The night's downsampled heart rate over the padded sleep window, read by SleepScreen. Empty → the
+    // chart's honest "no heart-rate detail" note.
+    hrPoints: List<TimelinePoint> = emptyList(),
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(Metrics.gap)) {
         NightNavHeader(nightOffset, lastIndex, clock, onNavigate, session, onUpdateTimes, onDeleteSession, onAddNap, onPickNightDate)
@@ -211,7 +216,14 @@ internal fun Hero(
             // rows, which ARE the legend (no footer). Anything else keeps the proportional strip +
             // StageBreakdownRows footer.
             val real = display.realSegments?.takeIf { it.size >= 2 }
+            // The axis spans the WHOLE night (to the group's last wake); labelling it off the session
+            // fragment's own end cut the clock labels short on a split night. The HR chart shares it.
+            val axisOnsetTs = windowOnsetTs ?: session?.effectiveStartTs
+            val axisWakeTs = windowWakeTs ?: session?.effectiveEndTs
             if (real != null) {
+                // Held here, not in StageTimeline, so tapping a stage row also bands the HR chart above it.
+                // Keyed on the night's segments so navigating nights clears the selection.
+                var selectedStage by remember(real) { mutableStateOf<String?>(null) }
                 ChartCard(
                     title = "Stage breakdown",
                     subtitle = subtitle,
@@ -219,15 +231,24 @@ internal fun Hero(
                     tint = Palette.restColor,
                     footer = {},
                 ) {
-                    StageTimeline(
-                        realSegments = real,
-                        s = s,
-                        // The axis spans the WHOLE night (to the group's last wake); labelling it off the
-                        // session fragment's own end cut the clock labels short on a split night.
-                        onsetTs = windowOnsetTs ?: session?.effectiveStartTs,
-                        wakeTs = windowWakeTs ?: session?.effectiveEndTs,
-                        motionEpochs = motionEpochs,
-                    )
+                    Column(verticalArrangement = Arrangement.spacedBy(Metrics.space14)) {
+                        SleepHrChart(
+                            points = hrPoints,
+                            onsetTs = axisOnsetTs,
+                            wakeTs = axisWakeTs,
+                            realSegments = real,
+                            selectedStage = selectedStage,
+                        )
+                        StageTimeline(
+                            realSegments = real,
+                            s = s,
+                            onsetTs = axisOnsetTs,
+                            wakeTs = axisWakeTs,
+                            motionEpochs = motionEpochs,
+                            selectedStage = selectedStage,
+                            onSelectStage = { selectedStage = it },
+                        )
+                    }
                 }
             } else {
                 ChartCard(
@@ -237,22 +258,33 @@ internal fun Hero(
                     tint = Palette.restColor,
                     footer = { StageBreakdownRows(s) },
                 ) {
-                    // Reconstructed architecture (light → deep → light → rem → light → awake) as the flat
-                    // proportional strip. No MotionStrip / fake steps — invented architecture has no genuine
-                    // timeline to anchor to.
-                    val segments = stageSegments(s)
-                    if (segments.isNotEmpty()) {
-                        HypnogramWithAxis(
-                            stages = segments,
-                            onsetTs = session?.effectiveStartTs,
-                            wakeTs = session?.effectiveEndTs,
+                    Column(verticalArrangement = Arrangement.spacedBy(Metrics.space14)) {
+                        // Measured HR still belongs here, but with NO bands: the architecture below it is
+                        // reconstructed, so it has no genuine timeline to highlight against.
+                        SleepHrChart(
+                            points = hrPoints,
+                            onsetTs = axisOnsetTs,
+                            wakeTs = axisWakeTs,
+                            realSegments = emptyList(),
+                            selectedStage = null,
                         )
-                    } else {
-                        Text(
-                            "No stage breakdown for this night.",
-                            style = NoopType.subhead,
-                            color = Palette.textTertiary,
-                        )
+                        // Reconstructed architecture (light → deep → light → rem → light → awake) as the flat
+                        // proportional strip. No MotionStrip / fake steps — invented architecture has no genuine
+                        // timeline to anchor to.
+                        val segments = stageSegments(s)
+                        if (segments.isNotEmpty()) {
+                            HypnogramWithAxis(
+                                stages = segments,
+                                onsetTs = session?.effectiveStartTs,
+                                wakeTs = session?.effectiveEndTs,
+                            )
+                        } else {
+                            Text(
+                                "No stage breakdown for this night.",
+                                style = NoopType.subhead,
+                                color = Palette.textTertiary,
+                            )
+                        }
                     }
                 }
             }

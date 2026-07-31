@@ -412,6 +412,8 @@ object Metrics {
     val stageSegMinWidth = 2.dp      // width floor so a brief fragment reads as a block, not a hairline
     val stageSegCorner = 1.5.dp      // solid segment rounding
     val stageInsightHeight = 36.dp   // fixed insight slot height — selection never reflows the card
+    val hrChartHeight = 132.dp       // night HR trace over the sleep window, above the stage rows
+    val hrChartGutter = 26.dp        // bpm label gutter; the bound-label row shares it so both align
     val trendStripHeight = 120.dp
     val sparklineHeight = 28.dp
     val segmentBarHeight = 18.dp

@@ -17,10 +17,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -119,6 +116,8 @@ private const val STAGE_ROW_SMOOTH_SEC = 90.0
  * The WHOOP-style per-stage timeline stack for real-stage nights. Four tappable rows in WHOOP order
  * (AWAKE · LIGHT · DEEP · REM), each a hatched full-night track with solid segments on the shared onset→wake
  * axis; MotionStrip + the clock-label axis sit under the rows on the same timeline. The rows ARE the legend.
+ *
+ * [selectedStage] is held by the caller, so the night HR chart above these rows highlights the same stage.
  */
 @Composable
 internal fun StageTimeline(
@@ -127,20 +126,11 @@ internal fun StageTimeline(
     onsetTs: Long?,
     wakeTs: Long?,
     motionEpochs: List<Double>,
+    selectedStage: String?,
+    onSelectStage: (String?) -> Unit,
 ) {
-    // Night span: the session window when we have one (the clock axis uses the same span), else
-    // the segments' own summed minutes — the fractions are identical either way.
-    val weightSec = realSegments.sumOf { (_, wt) -> if (wt.isFinite() && wt > 0f) wt.toDouble() * 60.0 else 0.0 }
-    val spanSec = if (onsetTs != null && wakeTs != null && wakeTs > onsetTs) {
-        (wakeTs - onsetTs).toDouble()
-    } else {
-        weightSec
-    }
-    val intervals = remember(realSegments, spanSec) {
-        displaySmoothed(stageIntervalsFromWeights(realSegments, spanSec), STAGE_ROW_SMOOTH_SEC)
-    }
-    // Tap-to-highlight; keyed on the night's segments so navigating nights clears the selection.
-    var selectedStage by remember(realSegments) { mutableStateOf<String?>(null) }
+    val spanSec = nightSpanSec(realSegments, onsetTs, wakeTs)
+    val intervals = remember(realSegments, spanSec) { nightStageIntervals(realSegments, spanSec) }
 
     Column(verticalArrangement = Arrangement.spacedBy(Metrics.space8)) {
         listOf(
@@ -157,7 +147,7 @@ internal fun StageTimeline(
                 spans = stageRowSpans(intervals, label, spanSec),
                 selected = selectedStage == label,
                 dimmed = selectedStage != null && selectedStage != label,
-                onTap = { selectedStage = if (selectedStage == label) null else label },
+                onTap = { onSelectStage(if (selectedStage == label) null else label) },
             )
         }
         // MotionStrip UNDER the rows on the same timeline. Same inner insets as the rows' tracks so epochs
@@ -473,6 +463,26 @@ internal fun displaySmoothed(
     }
     return ivs
 }
+
+/**
+ * The night's drawable span in seconds: the session window when there is one, else the segments' own
+ * summed minutes. The stage rows and the HR chart share it, so their fractions describe one timeline.
+ */
+internal fun nightSpanSec(
+    realSegments: List<Pair<String, Float>>,
+    onsetTs: Long?,
+    wakeTs: Long?,
+): Double {
+    if (onsetTs != null && wakeTs != null && wakeTs > onsetTs) return (wakeTs - onsetTs).toDouble()
+    return realSegments.sumOf { (_, wt) -> if (wt.isFinite() && wt > 0f) wt.toDouble() * 60.0 else 0.0 }
+}
+
+/** The night's display-smoothed stage runs over [spanSec] — the one derivation both stage readers use. */
+internal fun nightStageIntervals(
+    realSegments: List<Pair<String, Float>>,
+    spanSec: Double,
+): List<StageInterval> =
+    displaySmoothed(stageIntervalsFromWeights(realSegments, spanSec), STAGE_ROW_SMOOTH_SEC)
 
 /** Canonical stage key: trims, lowercases, and folds "wake"/"awake" alias (Charts.stageColor parity). */
 internal fun canonicalStage(name: String): String {

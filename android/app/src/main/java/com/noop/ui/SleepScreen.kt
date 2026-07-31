@@ -242,6 +242,24 @@ fun SleepScreen(
     }
     val display = remember(model, night) { heroDisplay(model, night) }
 
+    // The navigated night's HR for the hero chart, downsampled in SQL to at most HR_CHART_TARGET_POINTS
+    // buckets over the padded sleep window — a night is up to ~9h of per-second rows. Same active ∪
+    // canonical union the rest of the screen reads, so a re-added strap's nights aren't blank.
+    var nightHr by remember { mutableStateOf<List<TimelinePoint>>(emptyList()) }
+    LaunchedEffect(night) {
+        val onset = night?.heroOnsetTs
+        val wake = night?.heroWakeTs
+        nightHr = if (onset == null || wake == null || wake <= onset) {
+            emptyList()
+        } else {
+            runCatching {
+                val (from, to) = hrChartWindow(onset, wake)
+                vm.repo.hrBucketsUnion(vm.activeStrapId, from, to, hrChartBucketSec(to - from))
+                    .map { TimelinePoint(it.bucket, it.avgBpm) }
+            }.getOrDefault(emptyList())
+        }
+    }
+
     // A stage-less SELECTED day (e.g. the newest after a bad hand-edit) must not hide the tab's history.
     // The tiles / ledger / trends are full-history and independent of the browsed night, so anchor them to
     // the newest stage-bearing day when the selected day's model fails. Null only when NO day has stages.
@@ -383,6 +401,7 @@ fun SleepScreen(
                 groupInBedMin = night?.groupInBedMin,
                 windowOnsetTs = night?.heroOnsetTs,
                 windowWakeTs = night?.heroWakeTs,
+                hrPoints = nightHr,
             )
             }
             // Tiles / ledger / trends read the FULL-history model: they stay up when only the selected day's

@@ -40,6 +40,13 @@ object MockSeeder {
     internal const val CRASH_OUT_HOUR = 20
     internal const val CRASH_OUT_MINUTE = 41
 
+    /** Nights (newest last) that get per-minute HR, so the Sleep hero's HR chart has a real trace. The
+     *  whole 120-day window at this cadence is six figures of rows, which is not a fixture. */
+    internal const val HR_NIGHTS = 21
+    /** Seconds between seeded HR samples, and how far either side of a night they run. */
+    internal const val HR_STEP_SEC = 60L
+    internal const val HR_EDGE_PAD_SEC = 1_800L
+
     /** Effort rescale factor: the old 0–21 strain scale → the new 0–100 Effort scale (100/21). */
     private const val STRAIN_SCALE = 100.0 / 21.0
 
@@ -297,8 +304,12 @@ object MockSeeder {
             }
         }
 
+        // Per-minute HR across the most recent nights, generated last so no earlier draw shifts.
+        val hr = sleeps.takeLast(HR_NIGHTS).flatMap { nightHrSamples(rng, it) }
+
         repo.upsertDailyMetrics(daily)
         repo.upsertSleepSessions(sleeps)
+        if (hr.isNotEmpty()) repo.insertHr(hr)
         repo.upsertMetricSeries(series)
         repo.upsertAppleDaily(apple)
         if (workouts.isNotEmpty()) repo.upsertWorkouts(workouts)
@@ -319,6 +330,28 @@ object MockSeeder {
         spo2Pct = null, skinTempDevC = null, skinTempAbsC = null, respRateBpm = null,
         spo2Red = null, spo2Ir = null, recoveryIndexSlope = null,
     )
+
+    /**
+     * One night's per-minute HR: the night's own resting rate, dipping and lifting across four sleep
+     * cycles, with the half hour either side of the session raised to a lying-awake rate. Spans that
+     * padded window so the Sleep hero's chart has a trace beyond its dashed onset and wake bounds.
+     */
+    internal fun nightHrSamples(rng: Random, s: SleepSession): List<HrSample> {
+        val base = (s.restingHr ?: 55).toDouble()
+        val from = s.startTs - HR_EDGE_PAD_SEC
+        val to = s.endTs + HR_EDGE_PAD_SEC
+        val span = (to - from).coerceAtLeast(1L).toDouble()
+        val out = ArrayList<HrSample>((((to - from) / HR_STEP_SEC) + 1).toInt())
+        var ts = from
+        while (ts <= to) {
+            val cycles = cos(2.0 * PI * ((ts - from) / span) * 4.0)
+            val awakeLift = if (ts < s.startTs || ts > s.endTs) 14.0 else 0.0
+            val bpm = base + 6.0 - cycles * 5.0 + awakeLift + gauss(rng, 0.0, 2.2)
+            out.add(HrSample(deviceId = WHOOP, ts = ts, bpm = bpm.coerceIn(38.0, 130.0).toInt()))
+            ts += HR_STEP_SEC
+        }
+        return out
+    }
 
     /** Box–Muller normal sample. */
     private fun gauss(rng: Random, mean: Double, sd: Double): Double {
