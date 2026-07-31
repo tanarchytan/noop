@@ -79,6 +79,22 @@ import java.util.UUID
 import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.atomic.AtomicInteger
 
+/** What [WhoopBleClient.renameStrap] did with a name. [message] is the user-facing wording, and is
+ *  also what lands in [LiveState.renameStatus], so the two can never drift apart. */
+enum class StrapRename(val message: String) {
+    Sent("Sent - your strap will reboot to apply, then reconnect with the new name."),
+    NotWhoop4("Saved on this phone. Only a WHOOP 4.0 can take the name over Bluetooth."),
+    NotConnected("Saved on this phone. Connect the strap to give it the same Bluetooth name."),
+    EmptyName("Enter a name first."),
+}
+
+/** Whether renaming [device] should also write the strap's advertising name, so one rename keeps the
+ *  registry row and the band's Bluetooth name identical. [WhoopBleClient.renameStrap] writes to
+ *  whichever strap the client holds, so only the ACTIVE WHOOP row may reach it: an archived or merely
+ *  paired row, and any non-WHOOP source, renames locally. */
+fun writesStrapName(device: com.noop.data.PairedDeviceRow): Boolean =
+    SourceCoordinator.isWhoop(device) && device.status == com.noop.data.DeviceStatus.active.name
+
 /**
  * Immutable snapshot of the live connection + biometric state. The ViewModel observes this flow.
  *
@@ -129,9 +145,9 @@ data class LiveState(
     val worn: Boolean = true,
     val lastEvent: String? = null,
     /** The strap's current BLE advertising name (the WHOOP 4.0 device name from the OS), captured on
-     *  connect. Drives the "Rename strap" card in Settings → Strap. Null until connected. */
+     *  connect. This is the name the Devices rename writes over. Null until connected. */
     val advertisingName: String? = null,
-    /** Status of the last strap-rename attempt (sent / validation reason), surfaced in Settings → Strap.
+    /** Wording of the last strap-rename attempt, the [StrapRename] the Devices rename returned.
      *  Replaced by the next attempt. */
     val renameStatus: String? = null,
     /** True while actively scanning for the strap (so the UI can show "Searching…"). */
@@ -2243,23 +2259,23 @@ class WhoopBleClient(
      * SET_ADVERTISING_NAME (cmd 77). Payload `[0x00,0x00] + UTF-8 name + [0x00]`, clamped to 24 UTF-8
      * bytes so it can't overflow the advertising packet; the strap reboots to apply, so the new name
      * appears on the next connect (the OS re-reads it). WHOOP 4.0 only — a 5/MG uses puffin framing and
-     * a different device-config path. Requires a bonded link. Result via [LiveState.renameStatus].
-     * Reversible: rename again any time.
+     * a different device-config path. Requires a bonded link. Reversible: rename again any time.
+     * Returns what it did so the caller can say so; [LiveState.renameStatus] carries the same wording.
      */
-    fun renameStrap(rawName: String) {
+    fun renameStrap(rawName: String): StrapRename {
         val name = rawName.trim()
         if (connectedFamily != DeviceFamily.WHOOP4) {
-            _state.update { it.copy(renameStatus = "Renaming is WHOOP 4.0 only.") }
+            _state.update { it.copy(renameStatus = StrapRename.NotWhoop4.message) }
             log("Strap rename: WHOOP 4.0 only — ignored.")
-            return
+            return StrapRename.NotWhoop4
         }
         if (!_state.value.connected || !_state.value.bonded) {
-            _state.update { it.copy(renameStatus = "Connect and pair your strap first.") }
-            return
+            _state.update { it.copy(renameStatus = StrapRename.NotConnected.message) }
+            return StrapRename.NotConnected
         }
         if (name.isEmpty()) {
-            _state.update { it.copy(renameStatus = "Enter a name first.") }
-            return
+            _state.update { it.copy(renameStatus = StrapRename.EmptyName.message) }
+            return StrapRename.EmptyName
         }
         // The whoop-rs builder clamps to 24 UTF-8 bytes on a char boundary; clamp a local copy for the log.
         var clamped = name
@@ -2268,9 +2284,8 @@ class WhoopBleClient(
             RustCodec.advertisingNameFrame(s, name)
         }
         log("Strap rename: wrote advertising name=$clamped")
-        _state.update { it.copy(
-            renameStatus = "Sent - your strap will reboot to apply, then reconnect with the new name.",
-        ) }
+        _state.update { it.copy(renameStatus = StrapRename.Sent.message) }
+        return StrapRename.Sent
     }
 
     // Reboot (user-initiated, confirmation-gated).

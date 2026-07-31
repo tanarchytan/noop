@@ -139,9 +139,23 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         if (com.noop.ble.SourceCoordinator.isWhoop(id, devices)) ble.releaseStrap()
     }
 
-    /** Rename a device (blank clears the nickname → falls back to brand+model). */
-    suspend fun renamePairedDevice(id: String, nickname: String?) =
+    /**
+     * Rename a device: ONE name, so the registry row and the strap's Bluetooth advertising name never
+     * diverge. [com.noop.ble.WhoopBleClient.renameStrap] writes to whichever strap the client holds, so
+     * the wire write is gated on [id] being that strap — renaming an archived row must never rename the
+     * band on the wrist. Blank clears the nickname (→ brand+model) and writes nothing.
+     * Returns null when there was no strap to write to, else what the write did.
+     */
+    suspend fun renamePairedDevice(id: String, nickname: String?): com.noop.ble.StrapRename? {
         noopApp.deviceRegistry.rename(id, nickname)
+        val name = nickname?.trim().orEmpty()
+        if (name.isEmpty()) return null
+        val devices = runCatching { noopApp.deviceRegistry.all() }.getOrDefault(emptyList())
+        val device = devices.firstOrNull { it.id == id } ?: return null
+        if (!com.noop.ble.SourceCoordinator.isWhoop(device)) return null
+        if (!com.noop.ble.writesStrapName(device)) return com.noop.ble.StrapRename.NotConnected
+        return ble.renameStrap(name)
+    }
 
     /** Permanently delete all of a device's recorded data (its registry row is kept). */
     suspend fun deletePairedDeviceData(id: String) = noopApp.deviceRegistry.deleteDeviceData(id)

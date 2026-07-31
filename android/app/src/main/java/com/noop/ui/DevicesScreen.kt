@@ -283,12 +283,18 @@ fun DevicesScreen(
         )
     }
 
- // --- Rename ---
+ // --- Rename. One name: the registry row and, for a live-connected 4.0, the strap's Bluetooth name.
+ // The outcome is shown rather than assumed — a 5/MG cannot take the name over the wire.
     renameTarget?.let { device ->
         RenameDialog(
             device = device,
+            isWhoop = SourceCoordinator.isWhoop(device),
             onSave = { name ->
-                scope.launch { viewModel.renamePairedDevice(device.id, name); reload() }
+                scope.launch {
+                    val wrote = viewModel.renamePairedDevice(device.id, name)
+                    reload()
+                    if (wrote != null) Toast.makeText(context, wrote.message, Toast.LENGTH_LONG).show()
+                }
                 renameTarget = null
             },
             onDismiss = { renameTarget = null },
@@ -866,6 +872,7 @@ private fun RebootProbeDialog(
 @Composable
 private fun RenameDialog(
     device: PairedDeviceRow,
+    isWhoop: Boolean,
     onSave: (String) -> Unit,
     onDismiss: () -> Unit,
 ) {
@@ -877,7 +884,12 @@ private fun RenameDialog(
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(Metrics.space12)) {
                 Text(
-                    "Give ${device.brand} ${device.model} a name you'll recognise.",
+                    if (isWhoop) {
+                        "Give ${device.brand} ${device.model} a name you'll recognise. A WHOOP 4.0 takes " +
+                            "the same name over Bluetooth, so the two always match."
+                    } else {
+                        "Give ${device.brand} ${device.model} a name you'll recognise."
+                    },
                     style = NoopType.subhead,
                     color = Palette.textSecondary,
                 )
