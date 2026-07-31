@@ -177,12 +177,6 @@ object SleepStageTotals {
         return hour >= OVERNIGHT_START_HOUR || hour < OVERNIGHT_END_HOUR
     }
 
-    /** Local time-of-day, in seconds [0, 86400), of a unix timestamp shifted east by [offsetSec]. */
-    internal fun localSecOfDay(ts: Long, offsetSec: Long): Long {
-        val local = ts + offsetSec
-        return ((local % SECONDS_PER_DAY) + SECONDS_PER_DAY) % SECONDS_PER_DAY
-    }
-
     /** Smallest circular distance (seconds, 0..43200) between two times-of-day, so 23:30 and 00:30 are
      *  3600s apart, not 82800. Both inputs are seconds-of-day in [0, 86400). */
     internal fun circularDistanceSec(a: Long, b: Long): Long {
@@ -199,22 +193,6 @@ object SleepStageTotals {
             val span = ((OVERNIGHT_END_HOUR - OVERNIGHT_START_HOUR) * 3_600L + SECONDS_PER_DAY) % SECONDS_PER_DAY
             return (startSec + span / 2) % SECONDS_PER_DAY
         }
-
-    /** The alignment bonus (MINUTES) a block earns for sitting near the target midsleep. Full
-     *  [ALIGNMENT_BONUS_MIN] within [ALIGNMENT_FULL_WINDOW_SEC], decaying linearly to 0 by
-     *  [ALIGNMENT_ZERO_SEC]. [blockMidSec]/[targetMidSec] are local times-of-day in seconds. */
-    internal fun alignmentBonusMinutes(blockMidSec: Long, targetMidSec: Long): Double {
-        val d = circularDistanceSec(blockMidSec, targetMidSec)
-        if (d <= ALIGNMENT_FULL_WINDOW_SEC) return ALIGNMENT_BONUS_MIN
-        if (d >= ALIGNMENT_ZERO_SEC) return 0.0
-        val frac = (ALIGNMENT_ZERO_SEC - d).toDouble() / (ALIGNMENT_ZERO_SEC - ALIGNMENT_FULL_WINDOW_SEC).toDouble()
-        return ALIGNMENT_BONUS_MIN * frac
-    }
-
-    /** The target midsleep time-of-day (seconds) the scorer aligns to: the learned [habitualMidsleepSec]
-     *  when supplied, else the cold-start overnight-band center. */
-    internal fun targetMidsleepSec(habitualMidsleepSec: Long?): Long =
-        habitualMidsleepSec ?: coldStartAnchorSec
 
     /** One bridged night group over the whole input: the fragments (as ORIGINAL indices, ascending) plus
      *  the group's inter-fragment wake seams (start, end) pairs. Produced by [bridgedNightGroups] for

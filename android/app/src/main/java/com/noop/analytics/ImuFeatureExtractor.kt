@@ -31,12 +31,6 @@ data class ImuActivityFeatures(
 
 object ImuFeatureExtractor {
 
-    /** Cadence search band, Hz — human gait/pedal foot rate (~72-210 steps/min). Below the IMU Nyquist. */
-    val cadenceBand: ClosedFloatingPointRange<Double> = 1.2..3.5
-
-    /** A cadence peak below this normalized autocorrelation strength is treated as "no rhythm" (→ null Hz). */
-    const val minCadenceStrength = 0.20
-
     /** Extract features from [samples] (from one or more [Whoop5ImuFrame]s, in order) at [sampleRateHz]. */
     /** Feature vector over one window of raw samples. The maths lives in whoop-rs. */
     fun extract(samples: List<RawImuSample>, sampleRateHz: Int): ImuActivityFeatures =

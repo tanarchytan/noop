@@ -16,7 +16,7 @@ import uniffi.whoop_ffi.HourPointInfo
  * score. The day is its own baseline, no history needed beyond the day itself.
  *
  * "Sustained high stress" fires only when the most recent [sustainedHours] covered hours
- * ALL sit in the HIGH band (≥ [highBandFloor]); drives a passive Breathe suggestion, never
+ * ALL sit in the HIGH band; drives a passive Breathe suggestion, never
  * a notification.
  *
  * APPROXIMATE and non-clinical: an hour with too little data is reported with a null level
@@ -30,8 +30,6 @@ object DaytimeStress {
     const val minHourHrSamples: Int = 300
     /** Bucket width for the timeline, in seconds (one hour). */
     const val bucketSeconds: Long = 3_600L
-    /** Band floor for "high" on the shared 0–3 scale (matches StressBand.High). */
-    const val highBandFloor: Double = 2.0
     /** Consecutive most-recent covered hours that must all be HIGH to flag sustained stress. */
     const val sustainedHours: Int = 3
     /** First/last local hour-of-day treated as "waking" for the timeline (06:00–22:00). */

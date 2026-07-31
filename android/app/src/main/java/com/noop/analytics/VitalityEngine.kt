@@ -12,7 +12,6 @@ object VitalityEngine {
 
     const val minBodyAge = 20.0
     const val maxBodyAge = 90.0
-    const val minFactors = 3
     const val bandYears = 5.0
 
     data class Inputs(

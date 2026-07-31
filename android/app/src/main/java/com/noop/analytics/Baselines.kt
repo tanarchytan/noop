@@ -25,40 +25,15 @@ object Baselines {
     // Constants
     // ─────────────────────────────────────────────────────────────────────────
 
-    /** Winsorization clamp: fold only within ±`winsorK` × spread. */
-    const val winsorK: Double = 3.0
-
-    /** Hard-reject gate: drop the night if beyond `hardOutlierK` × spread. */
-    const val hardOutlierK: Double = 5.0
-
     /** Minimum valid nights before "provisionally" trusted. */
     const val minNightsSeed: Int = 4
 
     /** Minimum valid nights before fully trusted. */
     const val minNightsTrust: Int = 14
 
-    /** Missing-night count after which a baseline is marked stale. */
-    const val staleDays: Int = 14
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // Early-life anti-anchoring
-    // ─────────────────────────────────────────────────────────────────────────
-    //
-    // A cold-start seed with an artificially high first night can lock the baseline high for
-    // weeks: the tight floor spread makes the hard-outlier gate reject genuine lower nights and
-    // makes the z-score hypersensitive. Early life adapts the center fast and suspends that gate
-    // until spread has widened (settles back to normal smoothing after earlyAdaptNights).
-
     /** Valid-night count below which the baseline is "young": fast center adaptation + suspended
      *  hard-outlier gate. Chosen so convergence happens in days, not weeks. */
     const val earlyAdaptNights: Int = 8
-
-    /** Center half-life (nights) used while the baseline is young — much faster than halfLifeB. */
-    const val earlyHalfLifeB: Double = 3.0
-
-    /** Multiplier on spread for the Winsor clamp while young, so an honest lower night isn't clamped
-     *  flat against a floor-tight band before the spread has had a chance to widen. */
-    const val earlySpreadInflate: Double = 2.5
 
     /** SharedPreferences key for the manual HRV-baseline recalibration epoch (epoch SECONDS).
      *  0 / absent = no recalibration. Written by the Settings "Recalibrate HRV baseline" button. */
@@ -92,9 +67,6 @@ object Baselines {
 
     /** Baseline config for the RecoveryScorer Activity-Balance / previous-day-Effort term. */
     val strainCfg: MetricCfg get() = metricCfg.getValue("strain")
-
-    /** Convert a half-life in nights to an EWMA smoothing factor. */
-    internal fun lambda(halfLife: Double): Double = 1.0 - 0.5.pow(1.0 / halfLife)
 
     // ─────────────────────────────────────────────────────────────────────────
     // Winsorized EWMA update (production model)

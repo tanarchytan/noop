@@ -141,13 +141,6 @@ object BackupSync {
     data class Restorable(val name: String, val timeMs: Long)
 
     /**
-     * One `.noopbak` document as the SAF cursor sees it: display name, its Uri, and the raw last-modified
-     * ms the provider reported (0 when the column is null). Two docs can share [name] (Drive duplicates,
-     * a sync client dropping the same date-only file twice); the [uri] is what keeps them distinct.
-     */
-    data class BackupDoc(val name: String, val uri: Uri, val modifiedMs: Long)
-
-    /**
      * ALL `.noopbak` files (any name) ordered newest-first for the restore picker (#852). Canonical
      * names use their embedded UTC stamp; the rest fall back to the file date [fileDateMs] gives for
      * that name (0 when unknown). Non-`.noopbak` files are dropped. Pure, so it's unit-tested; the I/O
@@ -170,8 +163,7 @@ object BackupSync {
      * embedded stamp; the rest by the provider's last-modified ms.
      *
      * Generic over the doc type via [name]/[modifiedMs] accessors so the pure ordering is unit-testable
-     * WITHOUT constructing an Android [Uri] (this project has no Robolectric). The I/O layer feeds it
-     * [BackupDoc]s straight from the cursor.
+     * WITHOUT constructing an Android [Uri] (this project has no Robolectric).
      */
     fun <T> restorableDocsNewestFirst(
         docs: List<T>,

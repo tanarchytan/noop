@@ -61,7 +61,7 @@ class Issue547RepeatRepro {
     /**
      * One night's worth of a strap-on-a-table block: a CONTINUOUS, perfectly still ("worn", HR present)
      * ~12h span from 22:00 local on day D-1 to ~10:00 local on day D. Gravity is a CONSTANT vector
-     * (per-sample delta 0g < gravityStillThresholdG 0.01g → "still") and HR sits well below the day's
+     * (per-sample delta 0g < the 0.01g still threshold → "still") and HR sits well below the day's
      * median band so confirmSleepWithHR vouches it as sleep. Onset 22:00 is OUTSIDE the daytime band so
      * the block is overnight-anchored and skips the daytime false-sleep guard. Sampled every 30 s so a
      * 12h block carries ~1440 HR + ~1440 gravity samples (>> MIN_HR_SAMPLES 200). The block END lands on
@@ -76,7 +76,7 @@ class Issue547RepeatRepro {
         val grav = ArrayList<GravitySample>()
         var t = start
         // Deterministic sub-threshold sensor jitter (a REAL strap on a desk is never a perfect flatline —
-        // it has tiny vibration/thermal noise). Magnitude kept WELL under gravityStillThresholdG (0.01g)
+        // it has tiny vibration/thermal noise). Magnitude kept WELL under the 0.01g still threshold
         // so every sample is still "still", but the stream has non-zero variance (no flatline rejection).
         var seed = 0x547L
         fun jitter(): Double { seed = (seed * 6364136223846793005L + 1442695040888963407L); return ((seed ushr 40) % 200 - 100) / 100_000.0 } // ±0.001g

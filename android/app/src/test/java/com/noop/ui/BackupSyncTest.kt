@@ -130,8 +130,8 @@ class BackupSyncTest {
 
     /**
      * A stand-in for the SAF cursor row. The pure ordering never touches a real [android.net.Uri]
-     * (no Robolectric in this project), so a distinct [id] plays the "keeps them apart" role the Uri
-     * plays in production [BackupSync.BackupDoc]s.
+     * (no Robolectric in this project), so a distinct [id] plays the "keeps them apart" role a Uri
+     * plays for a real document.
      */
     private data class FakeDoc(val id: String, val docName: String, val modified: Long)
 

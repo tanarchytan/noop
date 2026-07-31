@@ -14,18 +14,11 @@ import kotlin.math.roundToInt
 // or a supplement/drug, never a guarantee.
 object CircadianEngine {
 
-    // ── Tuning constants (pinned by test) ──
-    const val minDaysForFit: Int = 7
-    const val goodDaysForFit: Int = 14
-    const val minRelativeAmplitude: Double = 0.10
+    // ── Tuning constants ──
+    //
+    // The cosinor fit and its gates are whoop-rs `circadian`, whose constants are the definitions.
+    // What is left is the shift step the local jet-lag plan applies.
     const val maxShiftPerDayHours: Double = 1.0
-    const val cbtMinBeforeWakeHours: Double = 2.5
-    const val acrophaseAfterCbtMinHours: Double = 12.0
-
-    // ── Inputs ──
-
-    /** One per-hour rest-activity sample: local clock hour (0..<24, may be fractional) + motion volume. */
-    data class ActivityBin(val hour: Double, val activity: Double)
 
     // ── Phase estimate ──
 

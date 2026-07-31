@@ -79,9 +79,6 @@ object RecoveryScorer {
     /** Logistic offset so Z=0 → 58%. */
     const val logisticZ0: Double = -0.20
 
-    /** WHOOP-published population-average recovery (%). Cold-start fallback. */
-    const val populationMean: Double = 58.0
-
     /** Recovery band thresholds (WHOOP color scheme). */
     const val bandRedMax: Double = 34.0
     const val bandYellowMax: Double = 67.0
