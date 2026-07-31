@@ -1011,18 +1011,21 @@ class WhoopRepository(private val dao: WhoopDao) {
     suspend fun dailyMetricDeviceIds(): List<String> = dao.dailyMetricDeviceIds()
 
     /**
-     * Delete the Health-Connect-shaped "my-whoop" shadow rows an import wrote over strap-covered days:
-     *
-     *  - Sleep sessions: un-edited, signal-less windows (no efficiency/HR/HRV/motion) that overlap ANY
-     *    computed ("-noop") session.
-     *  - Daily rows: HC-shaped rows (no efficiency/stages/recovery/strain/steps) on a day a computed
-     *    source also covers.
-     *
-     * The discriminators never match a WHOOP CSV / wearable-export import (those carry efficiency /
-     * stage minutes) or user-edited rows, so real data survives. Idempotent; returns the total rows deleted.
+     * Delete the Health-Connect-shaped "my-whoop" sleep sessions an import wrote over strap-covered
+     * nights: un-edited, signal-less windows (no efficiency/HR/HRV/motion) overlapping ANY computed
+     * ("-noop") session. Never matches a WHOOP CSV / wearable-export import (those carry efficiency or
+     * HR/HRV) or a user-edited row. Idempotent; returns the rows deleted.
      */
-    suspend fun purgeHcShadowedStrapDays(): Int =
-        dao.purgeHcShadowedSleepSessions() + dao.purgeHcShadowedDailyMetrics()
+    suspend fun purgeHcShadowedSleepDays(): Int = dao.purgeHcShadowedSleepSessions()
+
+    /**
+     * One-shot repair for daily rows Health Connect wrote under "my-whoop" before it had its own source:
+     * move them to "health-connect", where they gap-fill instead of outranking a strap-measured day. The
+     * predicate is a provenance proof, not a heuristic — see [WhoopDao.moveHcDailyRowsToOwnSource]. A row
+     * it cannot prove is left where it is, so a "my-whoop" a real strap adopted is never disturbed.
+     * Idempotent; returns the rows moved.
+     */
+    suspend fun refileHcDailyRows(): Int = dao.moveHcDailyRowsToOwnSource()
 
     /**
      * One-time refile: move legacy Health Connect data out of the shared "apple-health" bucket into
@@ -1328,9 +1331,9 @@ class WhoopRepository(private val dao: WhoopDao) {
     ): MetricSeriesResolution {
         val candidates = sourceCandidates(key, preferredSource, strapDeviceId)
         // First candidate wins per day; later candidates only fill days no earlier one covered. Exception
-        // inside [resolveFirstWins]: a day held only by a WEAK sleep-total (a bare Health Connect
-        // aggregate under "my-whoop", e.g. a constant bedtime-schedule span) yields to a later candidate's
-        // REAL scored night, so a resolver read agrees with the mergeDaily dashboards.
+        // inside [resolveFirstWins]: a day held only by a WEAK sleep-total (a bare phone aggregate, e.g. a
+        // constant bedtime-schedule span) yields to a later candidate's REAL scored night, so a resolver
+        // read agrees with the mergeDaily dashboards.
         val perCandidate = candidates.map { it to resolvedRows(it, from, to) }
         return MetricSeriesResolution(preferredSource, candidates, resolveFirstWins(perCandidate))
     }
@@ -1355,10 +1358,10 @@ class WhoopRepository(private val dao: WhoopDao) {
         for (row in dao.metricSeries(candidate.source, candidate.key, from, to)) {
             byDay[row.day] = CandidateRow(row.day, row.value)
         }
-        // A sleep-total read off a BARE daily aggregate (no efficiency, no stage minutes — the Health
-        // Connect "my-whoop" backfill shape, where a stage-less bedtime-SCHEDULE record makes the total
-        // a target rather than measured sleep) is flagged WEAK so a later candidate's real scored night
-        // can supersede it in [resolveFirstWins]. Every other daily column stays strong.
+        // A sleep-total read off a BARE daily aggregate (no efficiency, no stage minutes — a phone shape,
+        // where a stage-less bedtime-SCHEDULE record makes the total a target rather than measured sleep)
+        // is flagged WEAK so a later candidate's real scored night can supersede it in [resolveFirstWins].
+        // Every other daily column stays strong.
         val sleepTotalKey = candidate.key == "sleep_total_min" || candidate.key == "asleep_min"
         for (row in dao.dailyMetricsRange(candidate.source, from, bufferDayAfter(to))) {
             if (!byDay.containsKey(row.day)) {
@@ -1587,6 +1590,11 @@ class WhoopRepository(private val dao: WhoopDao) {
                 appleCompatibleKey(key)?.let {
                     candidates.add(MetricSourceCandidate(APPLE_HEALTH_SOURCE, it))
                 }
+                // Health Connect LAST, mirroring [GAP_FILL_SOURCE_IDS] in the dashboard merge so a
+                // resolver read and a mergeDaily read agree on precedence. Its vitals sit on a
+                // "health-connect" DailyMetric row, read through [dailyColumn] under the WHOOP key, so a
+                // phone-only day still resolves while every strap and import source outranks it.
+                candidates.add(MetricSourceCandidate(HEALTH_CONNECT_SOURCE, key))
                 return uniqued(candidates)
             }
             if (preferredSource == APPLE_HEALTH_SOURCE) {

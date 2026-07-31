@@ -123,6 +123,26 @@ class HealthConnectGapFillPrecedenceTest {
     }
 
     @Test
+    fun bloodOxygenFillsOnlyWhereTheStrapRecordedNone() {
+        // The importer's SpO2 top-up used to insert a "my-whoop" row, which outranked a strap SpO2 held
+        // under "<strapId>-noop". Banked under the phone's own source it does what it always claimed to.
+        val strapWithSpo2 = strapRow.copy(spo2Pct = 96.0)
+        val filled = WhoopRepository.mergeDaily(
+            imported = emptyList(),
+            computed = listOf(strapWithSpo2),
+            gapFill = listOf(hcRow.copy(spo2Pct = 91.0)),
+        )
+        assertEquals(96.0, filled[0].spo2Pct!!, 0.0)
+
+        val gapped = WhoopRepository.mergeDaily(
+            imported = emptyList(),
+            computed = listOf(strapRow),
+            gapFill = listOf(hcRow.copy(spo2Pct = 91.0)),
+        )
+        assertEquals(91.0, gapped[0].spo2Pct!!, 0.0)
+    }
+
+    @Test
     fun healthConnectNeverOutranksAWhoopImportEither() {
         // A genuine WHOOP export under "my-whoop" is the top bucket; the phone still only fills gaps.
         val csvRow = DailyMetric(

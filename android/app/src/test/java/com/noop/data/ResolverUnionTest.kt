@@ -33,11 +33,14 @@ class ResolverUnionTest {
 
     // --- sourceCandidates: the resolver's #814 union ---
 
-    /** Single-WHOOP install: uniqued() collapses the active + canonical pairs to ONE pair, so the
-     *  candidate list , and therefore every resolver read , is byte-identical to the pre-fix behaviour. */
+    /** Single-WHOOP install: uniqued() collapses the active + canonical pairs to ONE pair, leaving the
+     *  WHOOP pair plus the Health Connect gap-fill that closes every candidate list. */
     @Test
     fun singleDeviceCandidatesCollapseToCanonicalPair() {
-        assertEquals(listOf("my-whoop", "my-whoop-noop"), candidateSources(strap = canonical))
+        assertEquals(
+            listOf("my-whoop", "my-whoop-noop", "health-connect"),
+            candidateSources(strap = canonical),
+        )
     }
 
     /** After a re-add the resolver tries the ACTIVE strap first (live/measured wins per day), then the
@@ -47,22 +50,24 @@ class ResolverUnionTest {
     @Test
     fun reAddCandidatesUnionActiveThenCanonical() {
         assertEquals(
-            listOf(reAdded, "my-whoop", "$reAdded-noop", "my-whoop-noop"),
+            listOf(reAdded, "my-whoop", "$reAdded-noop", "my-whoop-noop", "health-connect"),
             candidateSources(strap = reAdded),
         )
     }
 
-    /** A vital with a declared Apple-Health mapping appends the Apple candidate LAST , after the whole
-     *  WHOOP union , so a real Apple export fills only days no WHOOP source covers. The Apple candidate
-     *  carries the MAPPED key ("rhr" → "resting_hr"), not the WHOOP key. */
+    /** A vital with a declared Apple-Health mapping appends the Apple candidate after the whole WHOOP
+     *  union, so a real Apple export fills only days no WHOOP source covers, and Health Connect follows
+     *  it as the lowest-precedence gap-fill. The Apple candidate carries the MAPPED key
+     *  ("rhr" → "resting_hr"); Health Connect keeps the WHOOP key, since its vitals sit on a DailyMetric
+     *  row read through dailyColumn. */
     @Test
     fun appleFallbackAppendsLastWithMappedKey() {
         val candidates = WhoopRepository.sourceCandidates("rhr", canonical, reAdded)
         assertEquals(
-            listOf(reAdded, "my-whoop", "$reAdded-noop", "my-whoop-noop", "apple-health"),
+            listOf(reAdded, "my-whoop", "$reAdded-noop", "my-whoop-noop", "apple-health", "health-connect"),
             candidates.map { it.source },
         )
-        assertEquals("resting_hr", candidates.last().key)
+        assertEquals("resting_hr", candidates[candidates.size - 2].key)
     }
 
     /** A derived score with NO Apple mapping never grows an Apple candidate , the resolver must not

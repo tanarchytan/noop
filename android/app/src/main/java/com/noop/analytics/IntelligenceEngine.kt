@@ -183,7 +183,7 @@ object IntelligenceEngine {
     ) {
         val importScoredDays = HashSet<String>().apply { addAll(dailies.map { it.day }) }
         val importSourceIds = buildList {
-            add(importedDeviceId) // Health Connect imports its DailyMetric rows under the strap source.
+            add(importedDeviceId)
             add(WhoopRepository.APPLE_HEALTH_SOURCE)
             add(WhoopRepository.HEALTH_CONNECT_SOURCE)
             addAll(WEARABLE_IMPORT_SOURCES)

@@ -385,19 +385,18 @@ interface WhoopDao : DeviceRegistryDao {
     suspend fun purgeHcShadowedSleepSessions(): Int
 
     /**
-     * Heal: delete "my-whoop" daily rows shaped like a Health Connect backfill (no efficiency / stage
-     * minutes / disturbances / recovery / strain / steps — HC only writes totals + vitals) on a day a
-     * computed ("-noop") source also covers, so the sparse row can't shadow the computed day in the
-     * imported-wins merge. CSV-imported days carry stage minutes + efficiency and are never matched.
+     * Repair: move Health-Connect-written daily rows out of the "my-whoop" bucket into "health-connect",
+     * where the read side ranks them below every strap source instead of letting a phone aggregate
+     * outrank a measured vital. Moving rather than deleting keeps the row as a gap-fill candidate.
+     *
+     * A row qualifies only when every column OUTSIDE HC's write set is null
+     * ([HC_DAILY_FOREIGN_COLUMNS_NULL]) and at least one column INSIDE it is not. That is the shape no
+     * other writer produces, so a WHOOP CSV import and a "my-whoop" a real strap has adopted are both
+     * left exactly where they are. `OR IGNORE` keeps a row whose day already carries a "health-connect"
+     * twin rather than overwriting the newer one. Idempotent; returns the rows moved.
      */
-    @Query(
-        "DELETE FROM dailyMetric WHERE deviceId = 'my-whoop' " +
-            "AND efficiency IS NULL AND deepMin IS NULL AND remMin IS NULL AND lightMin IS NULL " +
-            "AND disturbances IS NULL AND recovery IS NULL AND strain IS NULL " +
-            "AND steps IS NULL AND activeKcalEst IS NULL " +
-            "AND day IN (SELECT day FROM dailyMetric d WHERE d.deviceId LIKE '%-noop')"
-    )
-    suspend fun purgeHcShadowedDailyMetrics(): Int
+    @Query(MOVE_HC_DAILY_ROWS_SQL)
+    suspend fun moveHcDailyRowsToOwnSource(): Int
 
     /**
      * The most-recent [limit] daily metrics for a device, returned oldest-first. Backs the bounded
@@ -542,6 +541,33 @@ interface WhoopDao : DeviceRegistryDao {
         /** The constant device-id the daily marker projection is written under, so Compare/Explore/
          *  Coach see markers as a single-source series. */
         const val LAB_BOOK_SOURCE_ID = "lab-book"
+
+        /** Every `dailyMetric` column OUTSIDE Health Connect's write set, as a NULL test. A row where
+         *  all of these are null carries only columns HC writes, which is the provenance proof
+         *  [moveHcDailyRowsToOwnSource] moves on. Pinned against the entity by
+         *  HealthConnectDailyRoutingTest, so a new column fails a test rather than silently widening
+         *  what the repair claims to have proven. */
+        const val HC_DAILY_FOREIGN_COLUMNS_NULL =
+            "efficiency IS NULL AND deepMin IS NULL AND remMin IS NULL AND lightMin IS NULL " +
+                "AND disturbances IS NULL AND recovery IS NULL AND strain IS NULL " +
+                "AND skinTempDevC IS NULL AND skinTempAbsC IS NULL " +
+                "AND steps IS NULL AND activeKcalEst IS NULL " +
+                "AND zone1to3Min IS NULL AND zone4to5Min IS NULL " +
+                "AND spo2Red IS NULL AND spo2Ir IS NULL " +
+                "AND sleepNeedHours IS NULL AND sleepConsistency IS NULL " +
+                "AND recoveryIndexSlope IS NULL AND priorDayEffort IS NULL"
+
+        /** The complement of [HC_DAILY_FOREIGN_COLUMNS_NULL]: the columns Health Connect does write.
+         *  Requiring one to be present keeps the repair off an all-null row, which proves nothing. */
+        const val HC_DAILY_ANY_WRITE_COLUMN =
+            "totalSleepMin IS NOT NULL OR restingHr IS NOT NULL OR avgHrv IS NOT NULL " +
+                "OR spo2Pct IS NOT NULL OR respRateBpm IS NOT NULL OR exerciseCount IS NOT NULL"
+
+        /** The repair statement [moveHcDailyRowsToOwnSource] runs, as a constant so a test pins the SQL
+         *  that actually ships rather than a copy of it. */
+        const val MOVE_HC_DAILY_ROWS_SQL =
+            "UPDATE OR IGNORE dailyMetric SET deviceId = 'health-connect' WHERE deviceId = 'my-whoop' " +
+                "AND " + HC_DAILY_FOREIGN_COLUMNS_NULL + " AND (" + HC_DAILY_ANY_WRITE_COLUMN + ")"
     }
 
     // MARK: - One-time refile: separate legacy Health Connect data from the Apple Health bucket.

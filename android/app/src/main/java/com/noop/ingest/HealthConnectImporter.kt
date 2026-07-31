@@ -49,9 +49,10 @@ import kotlin.reflect.KClass
  * into the same Room store [WhoopRepository] uses. Timestamps are wall-clock unix seconds.
  *
  * Device-id mapping: daily aggregates (steps/calories/VO2max/weight/avg-HR) -> [AppleDaily] under
- * "apple-health"; autonomic markers (resting-HR/HRV/sleep/SpO2/respiration) -> [DailyMetric] under
- * "my-whoop", but only for days the strap doesn't already cover (a raw "my-whoop" row or computed
- * "my-whoop-noop" row — a strap-only user is covered via the computed rows); exercise sessions ->
+ * "health-connect"; autonomic markers (resting-HR/HRV/sleep/SpO2/respiration) -> [DailyMetric] under
+ * "health-connect" too, where WhoopRepository's gap-fill bucket ranks them below every strap source,
+ * and still only for days the strap doesn't already cover; sleep SESSIONS -> [SleepSession] under
+ * "my-whoop", where mergeSleepRichness yields them to a night the strap staged; exercise sessions ->
  * [WorkoutRow] under "health-connect".
  *
  * Permissions are assumed granted before [import] is called; otherwise it returns
@@ -71,9 +72,9 @@ object HealthConnectImporter {
     // treat a day the strap computed as already-owned too, or the sparse HC row shadows it.
     private const val WHOOP_COMPUTED = "$WHOOP-noop"
     // Health Connect data is stored under its own source ("health-connect"), not the shared
-    // "apple-health" bucket, so it isn't mis-attributed to Apple Health in the UI. (The
-    // recovery/sleep backfill still lands under "my-whoop"; only the external-health
-    // aggregates + workouts carry this source.)
+    // "apple-health" bucket, so it isn't mis-attributed to Apple Health in the UI and so the read side
+    // can rank it below every strap source. The sleep SESSIONS still land under "my-whoop", where
+    // WhoopRepository.mergeSleepRichness already yields them to a night the strap staged.
     const val HC_DEVICE = "health-connect"
     private const val HC_WORKOUT_SOURCE = "health-connect"
 
@@ -147,10 +148,14 @@ object HealthConnectImporter {
         // Refile any legacy Health Connect data that landed in the shared "apple-health" bucket, before
         // importing, so a re-import refiles cleanly instead of duplicating across both sources.
         try { repo.refileLegacyHealthConnect() } catch (_: Exception) { /* best-effort */ }
-        // Purge sparse HC-shaped "my-whoop" sleep/daily rows sitting over nights the strap's computed
+        // Purge sparse HC-shaped "my-whoop" sleep sessions sitting over nights the strap's computed
         // ("-noop") source already covers, before this import's own coverage gate is read so the
         // healed state is what gets consulted. Idempotent, best-effort like the refile above.
-        try { repo.purgeHcShadowedStrapDays() } catch (_: Exception) { /* best-effort */ }
+        try { repo.purgeHcShadowedSleepDays() } catch (_: Exception) { /* best-effort */ }
+        // Move daily rows this importer wrote under "my-whoop" before it had its own source, so they
+        // gap-fill rather than outrank a strap-measured vital. Runs before any write below, so
+        // "health-connect" holds no row this run could collide with. Best-effort and idempotent.
+        try { repo.refileHcDailyRows() } catch (_: Exception) { /* best-effort */ }
 
         val client = client(context)
 
@@ -552,31 +557,20 @@ object HealthConnectImporter {
             }
             a.leanMassKg?.let { metricSeriesRows += MetricSeriesRow(HC_DEVICE, day, "lean_mass", round2(it)) }
 
-            // DailyMetric (my-whoop): resting-HR / HRV / sleep-minutes / SpO2 / respiration,
-            // ONLY for days the strap does not already cover (raw OR computed).
+            // DailyMetric (health-connect): resting-HR / HRV / sleep-minutes / SpO2 / respiration. Its own
+            // source, so WhoopRepository's gap-fill bucket ranks it BELOW every strap source instead of
+            // letting a phone aggregate outrank a measured vital. Still skips days the strap already
+            // covers, so nothing is written that only precedence would then have to discard.
             if (day !in coveredDays) {
-                val rhr = if (a.rhrCount > 0) round(a.rhrSum.toDouble() / a.rhrCount).toInt() else null
-                val hrv = if (a.hrvCount > 0) round1(a.hrvSum / a.hrvCount) else null
-                val sleep = if (a.hasSleep) round1(a.sleepMin) else null
-                val spo2 = if (a.spo2Count > 0) round1(a.spo2Sum / a.spo2Count) else null
-                val resp = if (a.respCount > 0) round1(a.respSum / a.respCount) else null
-                val exCount = if (a.exerciseCount > 0) a.exerciseCount else null
-                val hasMetric = rhr != null || hrv != null || sleep != null ||
-                    spo2 != null || resp != null || exCount != null
-                if (hasMetric) {
-                    dailyRows.add(
-                        DailyMetric(
-                            deviceId = WHOOP,
-                            day = day,
-                            totalSleepMin = sleep,
-                            restingHr = rhr,
-                            avgHrv = hrv,
-                            spo2Pct = spo2,
-                            respRateBpm = resp,
-                            exerciseCount = exCount,
-                        )
-                    )
-                }
+                hcDailyRow(
+                    day = day,
+                    restingHr = if (a.rhrCount > 0) round(a.rhrSum.toDouble() / a.rhrCount).toInt() else null,
+                    hrv = if (a.hrvCount > 0) round1(a.hrvSum / a.hrvCount) else null,
+                    sleepMin = if (a.hasSleep) round1(a.sleepMin) else null,
+                    spo2 = if (a.spo2Count > 0) round1(a.spo2Sum / a.spo2Count) else null,
+                    respRate = if (a.respCount > 0) round1(a.respSum / a.respCount) else null,
+                    exerciseCount = if (a.exerciseCount > 0) a.exerciseCount else null,
+                )?.let { dailyRows.add(it) }
             } else if (spo2FillAllowed && a.spo2Count > 0) {
                 spo2Fills.add(day to round1(a.spo2Sum / a.spo2Count))
             }
@@ -590,7 +584,7 @@ object HealthConnectImporter {
             }
             if (metricSeriesRows.isNotEmpty()) repo.upsertMetricSeries(metricSeriesRows)
             if (dailyRows.isNotEmpty()) {
-                repo.upsertDevice(WHOOP, name = "WHOOP")
+                repo.upsertDevice(HC_DEVICE, name = "Health Connect")
                 repo.upsertDailyMetrics(dailyRows)
             }
             // Write the collected sleep sessions under WHOOP, but only for days the strap does not
@@ -603,9 +597,10 @@ object HealthConnectImporter {
             if (workouts.isNotEmpty()) {
                 repo.upsertWorkouts(workouts)
             }
-            // Gap-fill only: the statement leaves a day that already carries a reading untouched, so a
-            // strap value is never replaced and re-importing changes nothing.
-            for ((day, pct) in spo2Fills) repo.fillMissingSpo2(WHOOP, day, pct)
+            // Banked under HC's own source: the row it inserts is a gap-fill candidate, so it reaches a
+            // strap day only where nothing above it carries blood oxygen. Writing it under "my-whoop"
+            // inserted an imported-bucket row that OUTRANKED a strap SpO2 held under "<strapId>-noop".
+            for ((day, pct) in spo2Fills) repo.fillMissingSpo2(HC_DEVICE, day, pct)
         } catch (e: Exception) {
             return ImportSummary.failure(SOURCE, "Saving Health Connect data failed: ${e.message}")
         }
@@ -1020,6 +1015,38 @@ object HealthConnectImporter {
 
     private fun round1(x: Double) = round(x * 10.0) / 10.0
     private fun round2(x: Double) = round(x * 100.0) / 100.0
+
+    /**
+     * One day's Health Connect daily row, or null when the day carries none of the six values HC
+     * supplies. Banked under [HC_DEVICE] rather than the strap's bucket, so WhoopRepository's gap-fill
+     * merge ranks it below every strap source instead of letting a phone aggregate outrank a measured
+     * vital. The six named here are the whole write set the repair's provenance test relies on.
+     */
+    internal fun hcDailyRow(
+        day: String,
+        restingHr: Int?,
+        hrv: Double?,
+        sleepMin: Double?,
+        spo2: Double?,
+        respRate: Double?,
+        exerciseCount: Int?,
+    ): DailyMetric? {
+        if (restingHr == null && hrv == null && sleepMin == null &&
+            spo2 == null && respRate == null && exerciseCount == null
+        ) {
+            return null
+        }
+        return DailyMetric(
+            deviceId = HC_DEVICE,
+            day = day,
+            totalSleepMin = sleepMin,
+            restingHr = restingHr,
+            avgHrv = hrv,
+            spo2Pct = spo2,
+            respRateBpm = respRate,
+            exerciseCount = exerciseCount,
+        )
+    }
 
     /** Per-local-day accumulator. */
     private class DayAcc {
