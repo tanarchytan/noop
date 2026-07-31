@@ -83,18 +83,17 @@ import kotlinx.coroutines.launch
 
 /** What the user is adding. Drives the prep copy AND which scan/register path runs. */
 private enum class DeviceType {
-    Whoop5MG, Whoop4,
+    Whoop,
     // EXPERIMENTAL tier - best-effort, clean-room, can't be hardware-verified here. Fails to an honest
     // message and never fabricates data.
     Oura;
 
-    val isWhoop: Boolean get() = this == Whoop4 || this == Whoop5MG
+    val isWhoop: Boolean get() = this == Whoop
+    /** Family FALLBACK for a strap whose advertisement did not name one. Nothing on the wire tells a 5.0
+     *  from an MG and the user cannot tell NOOP either, so the pick reads the advertised family and this
+     *  is only the floor. */
     val whoopModel: WhoopModel?
-        get() = when (this) {
-            Whoop4 -> WhoopModel.WHOOP4
-            Whoop5MG -> WhoopModel.WHOOP5_MG
-            else -> null
-        }
+        get() = if (this == Whoop) WhoopModel.WHOOP5_MG else null
 
     /** True for the EXPERIMENTAL tier (shown under a clearly-labelled "Experimental" heading). */
     val isExperimental: Boolean get() = this == Oura
@@ -110,8 +109,7 @@ private enum class DeviceType {
 
     val title: String
         get() = when (this) {
-            Whoop5MG -> "WHOOP 5.0 / MG"
-            Whoop4 -> "WHOOP 4.0"
+            Whoop -> "WHOOP"
             Oura -> "Oura ring"
         }
 }
@@ -173,7 +171,7 @@ fun AddDeviceWizard(
 
     fun startScan(t: DeviceType) {
         // Only WHOOP types reach the generic Prep/Pick flow; Oura runs its own step machine (ouraScanner).
-        if (t.isWhoop) viewModel.presentWhoopScan(t.whoopModel ?: WhoopModel.WHOOP4)
+        if (t.isWhoop) viewModel.presentWhoopScanAll()
     }
 
     fun stopAllScans() {
@@ -235,7 +233,12 @@ fun AddDeviceWizard(
             // WHOOP: full capability set; id namespaced by address; model "4.0" / "5.0 / MG".
             // The 5-series label keeps the slash because nothing on the wire tells a 5.0 from an MG —
             // one WhoopModel covers both — and "5.0 MG" read as a claim that the strap is an MG.
-            val wm = type!!.whoopModel!!
+            // The family is what the strap ADVERTISED, not what was picked from the type menu; the menu
+            // is only the fallback for a strap whose advertisement did not say. Recording it is what
+            // makes the SourceCoordinator's reconnect target the right service, the same way onboarding
+            // records the family at pick.
+            val wm = pw.family ?: type!!.whoopModel!!
+            viewModel.noteDetectedModel(wm)
             val modelLabel = if (wm == WhoopModel.WHOOP4) "4.0" else "5.0 / MG"
             PairedDeviceRow(
                 id = "whoop-${pw.address}",
@@ -428,7 +431,7 @@ fun AddDeviceWizard(
                                 viewModel.stopWhoopScan()
                                 step = WizardStep.Confirm
                             },
-                            onRescan = { viewModel.presentWhoopScan(t.whoopModel ?: WhoopModel.WHOOP4) },
+                            onRescan = { viewModel.presentWhoopScanAll() },
                         )
                     }
                     WizardStep.Confirm -> ConfirmStep(
@@ -533,11 +536,8 @@ private fun ouraHeaderSubtitle(step: OuraStep, advanced: Boolean): String? = whe
 @Composable
 private fun TypeStep(onPick: (DeviceType) -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        TypeRow(Icons.Filled.Watch, DeviceType.Whoop5MG.title, "Newer WHOOP band. Experimental in NOOP") {
-            onPick(DeviceType.Whoop5MG)
-        }
-        TypeRow(Icons.Filled.Watch, DeviceType.Whoop4.title, "NOOP's primary, fully-supported band") {
-            onPick(DeviceType.Whoop4)
+        TypeRow(Icons.Filled.Watch, DeviceType.Whoop.title, "4.0, 5.0 or MG. NOOP works out which it is") {
+            onPick(DeviceType.Whoop)
         }
 
         // EXPERIMENTAL tier - clearly labelled, opt-in, best-effort. Honest about what it can actually
@@ -676,7 +676,7 @@ private fun PrepStep(type: DeviceType, onScan: () -> Unit) {
             Text(type.title, style = NoopType.title2, color = Palette.textPrimary)
         }
 
-        if (type == DeviceType.Whoop5MG) {
+        if (type.isWhoop) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -688,7 +688,7 @@ private fun PrepStep(type: DeviceType, onScan: () -> Unit) {
             ) {
                 Icon(Icons.Filled.Science, contentDescription = null, tint = Palette.statusWarning, modifier = Modifier.size(18.dp))
                 Text(
-                    "WHOOP 5.0 / MG support is newer and still experimental in NOOP.",
+                    "WHOOP 4.0 is fully supported. 5.0 / MG support is newer and still experimental.",
                     style = NoopType.footnote,
                     color = Palette.statusWarning,
                 )
@@ -735,15 +735,10 @@ private fun PrepStep(type: DeviceType, onScan: () -> Unit) {
 
 /** Type-specific "get it ready" guidance - the point of the branching wizard. US English copy. */
 private fun prepInstructions(type: DeviceType): List<String> = when (type) {
-    DeviceType.Whoop4 -> listOf(
-        "Put your WHOOP 4.0 on your wrist and make sure it's awake.",
-        "Make sure it's NOT connected to the official WHOOP app right now.",
-        "NOOP will look for it nearby.",
-    )
-    DeviceType.Whoop5MG -> listOf(
-        "WHOOP 5.0 / MG bonds to one device at a time, so unpair it from the official WHOOP app first.",
-        "Put the band into pairing mode, on your wrist and awake.",
-        "NOOP will look for it nearby.",
+    DeviceType.Whoop -> listOf(
+        "Put your WHOOP on your wrist and make sure it's awake.",
+        "A strap bonds to one device at a time, so unpair it from the official WHOOP app first.",
+        "NOOP will look for it nearby and work out whether it is a 4.0, a 5.0 or an MG.",
     )
     // Oura runs the factory-reset-and-adopt prep inside OuraFlow (ouraPrepInstructions), so this generic
     // branch is unreached for Oura; kept for the exhaustive when.
