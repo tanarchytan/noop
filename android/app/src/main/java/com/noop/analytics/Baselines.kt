@@ -2,7 +2,6 @@ package com.noop.analytics
 
 import kotlin.math.abs
 import kotlin.math.max
-import kotlin.math.pow
 
 /*
  * Baselines.kt — personal rolling baselines per nightly metric.
@@ -74,7 +73,7 @@ object Baselines {
 
     /**
      * Incorporate one new nightly value into the baseline state: seeds on null state, skip-and-holds
-     * a null or out-of-range value, marks a value beyond `hardOutlierK` × spread as seen-but-not-
+     * a null or out-of-range value, marks a value beyond the hard-outlier gate as seen-but-not-
      * folded, and otherwise folds it via Winsorized EWMA center + EWMA-abs-dev spread update.
      */
     fun update(state: BaselineState?, value: Double?, cfg: MetricCfg): BaselineState {

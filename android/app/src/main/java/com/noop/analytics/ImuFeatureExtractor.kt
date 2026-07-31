@@ -21,7 +21,7 @@ data class ImuActivityFeatures(
     val gyroEnergyDps: Double,
     /** RMS of the accel first-difference (jerk), in g/sample — impact / explosiveness. */
     val jerkRms: Double,
-    /** Dominant cadence in the gait band, Hz — null when no rhythmic peak clears [minCadenceStrength].
+    /** Dominant cadence in the gait band, Hz — null when no rhythmic peak clears the strength floor.
      *  Multiply by 60 for steps/min. */
     val cadenceHz: Double?,
     /** Normalized strength (0..1) of that cadence peak — high = rhythmic, low = bursty or still. */

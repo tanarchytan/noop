@@ -323,7 +323,7 @@ private fun sumGroupStages(group: List<SleepSession>): StageMins? {
 }
 
 /** The device's current UTC offset (seconds east), fed to the selector's `offsetSec` so the timing test reads
- *  the user's clock via the same `offsetSec` math the engine uses ([SleepStageTotals.localSecOfDay]) rather
+ *  the user's clock via the same `offsetSec` math the engine uses rather
  *  than a DST-fragile Calendar.get(HOUR_OF_DAY) gate. */
 internal fun uiTzOffsetSec(): Long =
     java.util.TimeZone.getDefault().getOffset(System.currentTimeMillis()) / 1000L

@@ -27,7 +27,7 @@ import kotlin.math.roundToInt
  *                loop must accumulate in the identical order or the last ULP diverges.
  *   • trap #17 (numpy-linear percentile) is NOT on this path: `strain()` takes an explicit `maxHR`
  *                (the store site passes [StrainScorer.tanakaHRmax]) and falls back to `220−age`, never
- *                to the observed-percentile HRmax — that helper ([StrainScorer.estimateHRmax]) is a
+ *                to the observed-percentile HRmax — that helper (whoop-rs `strain`) is a
  *                Tier-2 concern used elsewhere, so it is out of scope for the stored strain value.
  *
  * Equality is asserted on the raw IEEE-754 bits (see [assertBitEq]) — the strictest reading of "the

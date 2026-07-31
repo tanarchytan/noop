@@ -59,7 +59,7 @@ object StrainScorer {
      * samples and below [minSpanSeconds] of HR coverage) or when maxHR ≤ restingHR (invalid HRR).
      *
      * @param hr time-ordered [HrSample] list.
-     * @param maxHR HRmax (bpm). Defaults to 220 − defaultAge when null.
+     * @param maxHR HRmax (bpm). Defaults to the whoop-rs default-age HRmax when null.
      * @param restingHR resting HR (bpm) for the HRR denominator (default 60).
      * @param sex "male"/"female" — selects the Banister coefficient (ignored by Edwards).
      */

@@ -81,7 +81,7 @@ class VitalBandsTest {
 
     @Test
     fun staleBaseline_fallsBackToPopulation() {
-        // 20 valid nights then 20 missing (> staleDays = 14): status STALE → population.
+        // 20 valid nights then 20 missing (past the 14-night stale gate): status STALE → population.
         val hist: List<Double?> = List(20) { 35.0 as Double? } + List(20) { null }
         val r = VitalBands.band(35.0, hist, hrvPop, hrvCfg)
         assertEquals(VitalBands.Basis.POPULATION, r.basis)

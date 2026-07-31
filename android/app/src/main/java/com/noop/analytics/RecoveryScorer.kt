@@ -20,7 +20,7 @@ import kotlin.math.max
  * Each metric is a robust z-score vs its personal baseline (mean + EWMA-abs-dev
  * spread); the composite squashes through a logistic anchored so Z=0 -> ~58%
  * (WHOOP's published population average). Returns null (cold-start) until the HRV
- * baseline has MIN_NIGHTS_SEED valid nights; [populationMean] (58.0) is a fallback
+ * baseline has MIN_NIGHTS_SEED valid nights; the population mean (58.0) is a fallback
  * callers should flag.
  *
  * `start` / `end` are wall-clock unix SECONDS (Long).

@@ -53,6 +53,6 @@ object VitalityEngine {
     /** Each present driver's signed log-hazard, without the three-driver gate. */
     fun contributions(inputs: Inputs): List<Contribution> = RustScores.vitalityContributions(inputs)
 
-    /** Full Vitality + Body Age. Null until at least [minFactors] drivers are present. */
+    /** Full Vitality + Body Age. Null until at least three drivers are present. */
     fun compute(inputs: Inputs): Result? = RustScores.vitality(inputs)
 }
