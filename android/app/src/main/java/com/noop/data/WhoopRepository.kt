@@ -1039,12 +1039,13 @@ class WhoopRepository(private val dao: WhoopDao) {
         }
     }
 
-    // MARK: - Merged reads (imported source wins per day; computed "-noop" gap-fills)
+    // MARK: - Merged reads (imported wins per day; computed "-noop" gap-fills; phone fills last)
     //
     // IntelligenceEngine persists on-device scores under "<deviceId>-noop"; the dashboard should see
     // BOTH sources so a strap-only user still gets a populated dashboard, while a real WHOOP import
-    // always wins on the days it covers. The screens point their "my-whoop" reads at these merged
-    // variants (no DAO/schema change; the per-day precedence lives in one place).
+    // always wins on the days it covers. [GAP_FILL_SOURCE_IDS] is a third bucket below both: a phone
+    // aggregate fills a column nothing above it has and never replaces one that does. The screens point
+    // their "my-whoop" reads at these merged variants (no DAO/schema change; precedence lives in one place).
 
     /** The computed-source id for a given imported [deviceId] (e.g. "my-whoop" → "my-whoop-noop"). */
     fun computedDeviceId(deviceId: String): String = "$deviceId-noop"
@@ -1123,11 +1124,17 @@ class WhoopRepository(private val dao: WhoopDao) {
     suspend fun daysMerged(deviceId: String): List<DailyMetric> {
         val imported = unionByDay(importedSourceIds(deviceId).map { dao.days(it) })
         val computed = unionByDay(computedSourceIds(deviceId).map { dao.days(it) })
+        val gapFill = unionByDay(GAP_FILL_SOURCE_IDS.map { dao.days(it) })
         // Days the user hand-edited the sleep of (the edit lives under the computed source): on those
         // days the computed sleep fields win over a re-imported night. Pool the edited sessions across
         // every computed source in the union so a re-add doesn't lose an earlier-id edit's precedence.
         val editedSessions = computedSourceIds(deviceId).flatMap { dao.editedSleepSessions(it) }
-        return mergeDaily(imported = imported, computed = computed, userEditedDays = userEditedDays(editedSessions))
+        return mergeDaily(
+            imported = imported,
+            computed = computed,
+            userEditedDays = userEditedDays(editedSessions),
+            gapFill = gapFill,
+        )
     }
 
     /**
@@ -1155,9 +1162,15 @@ class WhoopRepository(private val dao: WhoopDao) {
         combine(
             unionDaysFlow(importedSourceIds(deviceId).map { dao.daysFlow(it) }),
             unionDaysFlow(computedSourceIds(deviceId).map { dao.daysFlow(it) }),
+            unionDaysFlow(GAP_FILL_SOURCE_IDS.map { dao.daysFlow(it) }),
             editedSleepSessionsFlow(deviceId),
-        ) { imported, computed, edited ->
-            mergeDaily(imported = imported, computed = computed, userEditedDays = userEditedDays(edited))
+        ) { imported, computed, gapFill, edited ->
+            mergeDaily(
+                imported = imported,
+                computed = computed,
+                userEditedDays = userEditedDays(edited),
+                gapFill = gapFill,
+            )
         }
 
     /**
@@ -1176,11 +1189,17 @@ class WhoopRepository(private val dao: WhoopDao) {
         combine(
             unionDaysFlow(importedSourceIds(deviceId).map { dao.recentDaysFlow(it, RECENT_DAYS_CAP) }),
             unionDaysFlow(computedSourceIds(deviceId).map { dao.recentDaysFlow(it, RECENT_DAYS_CAP) }),
+            unionDaysFlow(GAP_FILL_SOURCE_IDS.map { dao.recentDaysFlow(it, RECENT_DAYS_CAP) }),
             editedSleepSessionsFlow(deviceId),
-        ) { imported, computed, edited ->
+        ) { imported, computed, gapFill, edited ->
             // recentDaysFlow returns newest-first (DESC LIMIT); mergeDaily re-sorts ascending by day, so the
             // emitted order matches daysMergedFlow exactly.
-            mergeDaily(imported = imported, computed = computed, userEditedDays = userEditedDays(edited))
+            mergeDaily(
+                imported = imported,
+                computed = computed,
+                userEditedDays = userEditedDays(edited),
+                gapFill = gapFill,
+            )
         }
 
     /** Pooled user-edited sleep sessions across every computed source in the active∪canonical union, so a
@@ -1446,6 +1465,16 @@ class WhoopRepository(private val dao: WhoopDao) {
         fun computedSourceIdsFor(activeDeviceId: String): List<String> =
             importedSourceIdsFor(activeDeviceId).map { "$it-noop" }
 
+        /**
+         * The LOWEST-precedence daily sources: phone aggregates that GAP-FILL only. Health Connect
+         * measures nothing itself, it re-publishes what a phone or another app recorded, so its row may
+         * supply a column no strap source carries and may never replace one that does ([mergeDaily]'s
+         * gapFill bucket). Agrees with [com.noop.analytics.MetricArbitrationPolicy]'s tier 2 for
+         * HEALTH_CONNECT on vitals and sleep; the phone-counts-steps tier 0 does not apply here because
+         * a "health-connect" daily row never carries `steps` (steps land on appleDaily).
+         */
+        val GAP_FILL_SOURCE_IDS: List<String> = listOf(HEALTH_CONNECT_SOURCE)
+
         /** Pick the winner among per-source LATEST rows ([computedSourceIdsFor] order, active-strap
          *  first): the strictly newest day wins; a shared newest day keeps the FIRST seen (the active
          *  strap) — byte-identical to what `mergeComputedSeriesUnion(...).lastOrNull()` yields on the
@@ -1627,12 +1656,11 @@ class WhoopRepository(private val dao: WhoopDao) {
 
         /**
          * Whether [d]'s sleep block is a BARE aggregate — a totalSleepMin with NO efficiency and no
-         * stage minutes beside it. That is exactly the shape HealthConnectImporter backfills under
-         * "my-whoop" (only the aggregates HC carries), and on a phone whose OS banks a stage-less
-         * bedtime-SCHEDULE record the total is the schedule length, a target rather than measured sleep.
-         * Session-grade rows (WHOOP CSV / Xiaomi imports, every strap-computed night) always carry
-         * efficiency and/or stages, so they never match. Shared by [mergeDaily] and the cross-source
-         * resolver so both read paths apply ONE definition of "not real scored sleep".
+         * stage minutes beside it. That is the shape a phone aggregate carries, and on a phone whose OS
+         * banks a stage-less bedtime-SCHEDULE record the total is the schedule length, a target rather
+         * than measured sleep. Session-grade rows (WHOOP CSV / Xiaomi imports, every strap-computed
+         * night) always carry efficiency and/or stages, so they never match. Shared by [mergeDaily] and
+         * the cross-source resolver so both read paths apply ONE definition of "not real scored sleep".
          */
         internal fun bareSleepAggregate(d: DailyMetric): Boolean =
             d.totalSleepMin != null && d.efficiency == null &&
@@ -1734,15 +1762,20 @@ class WhoopRepository(private val dao: WhoopDao) {
          * imports-win merge, and every non-edited day is unchanged.
          *
          * An imported row whose sleep block is a BARE aggregate (totalSleepMin with no efficiency and no
-         * stage minutes — the Health Connect "my-whoop" backfill shape) never overrides a night the strap
-         * actually scored: the computed row's WHOLE sleep block wins for that day. Keeps a
-         * bedtime-SCHEDULE span out of every sleep surface while a session-grade import (WHOOP CSV /
-         * Xiaomi) still wins exactly as before.
+         * stage minutes) never overrides a night the strap actually scored: the computed row's WHOLE
+         * sleep block wins for that day. Keeps a bedtime-SCHEDULE span out of every sleep surface while a
+         * session-grade import (WHOOP CSV / Xiaomi) still wins exactly as before.
+         *
+         * [gapFill] is the lowest-precedence bucket ([GAP_FILL_SOURCE_IDS]): a phone aggregate supplies a
+         * column no row above it carries and can never replace one that does, so a strap-measured HRV,
+         * resting HR or respiration always outranks the phone's figure for the same day. A day nothing
+         * above covers is taken whole, so a phone-only history stays on the dashboard.
          */
         internal fun mergeDaily(
             imported: List<DailyMetric>,
             computed: List<DailyMetric>,
             userEditedDays: Set<String> = emptySet(),
+            gapFill: List<DailyMetric> = emptyList(),
         ): List<DailyMetric> {
             val byDay = LinkedHashMap<String, DailyMetric>()
             for (d in computed) byDay[d.day] = d // computed first…
@@ -1814,6 +1847,30 @@ class WhoopRepository(private val dao: WhoopDao) {
                 } else {
                     merged
                 }
+            }
+            // Lowest precedence. A day nothing above covers is taken whole; otherwise the phone row only
+            // supplies columns still absent. Named rather than looped over every nullable field because a
+            // "health-connect" daily row carries exactly these six by construction — the same set
+            // HealthConnectImporter writes and [WhoopDao.HC_DAILY_FOREIGN_COLUMNS_NULL] proves absent
+            // elsewhere.
+            for (g in gapFill) {
+                val above = byDay[g.day]
+                if (above == null) {
+                    byDay[g.day] = g
+                    continue
+                }
+                // A phone sleep total is a bare aggregate ([bareSleepAggregate]); it must never sit beside
+                // measured stages, so it fills only a row carrying no sleep signal of its own.
+                val noSleepAbove = above.totalSleepMin == null && above.efficiency == null &&
+                    above.deepMin == null && above.remMin == null && above.lightMin == null
+                byDay[g.day] = above.copy(
+                    totalSleepMin = if (noSleepAbove) g.totalSleepMin else above.totalSleepMin,
+                    restingHr = above.restingHr ?: g.restingHr,
+                    avgHrv = above.avgHrv ?: g.avgHrv,
+                    spo2Pct = above.spo2Pct ?: g.spo2Pct,
+                    respRateBpm = above.respRateBpm ?: g.respRateBpm,
+                    exerciseCount = above.exerciseCount ?: g.exerciseCount,
+                )
             }
             return byDay.values.sortedBy { it.day }
         }
