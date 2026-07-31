@@ -468,21 +468,14 @@ internal fun freshRestScore(
     return if (isCarryStale(lastDay, today)) null else lastValue
 }
 
-/** The carried recovery caption stamp, keyed on that scored day's own date. "Last night" is only true
- *  when the carried day IS yesterday; skip a night and the same read is yesterday-but-one, so it reads
- *  "Latest sleep · <date>". The wording asks that question directly rather than reusing the freshness
- *  cap, which spans two days and so called a skipped night "Last night". Mirrors iOS carriedCaption. */
+/** The carried recovery caption stamp, keyed on that scored day's own date and its recency. Within the
+ *  freshness cap it reads "Last night · <date>"; once the carried day is older than the cap (#779) it reads
+ *  "Latest sleep · <date>" so a weeks-old import is never surfaced as "Last night". Shared by every carried
+ *  recovery read-out so the prior-day provenance reads identically. Mirrors iOS carriedCaption. */
 internal fun carriedCaption(priorDayKey: String, today: String = LocalDate.now().toString()): String {
-    val prefix = if (isPreviousDay(priorDayKey, today)) "Last night" else "Latest sleep"
+    val prefix = if (isCarryStale(priorDayKey, today)) "Latest sleep" else "Last night"
     return "$prefix · ${lastChargeDateLabel(priorDayKey)}"
 }
-
-/** True when [priorDayKey] is the calendar day immediately before [today]. An unparseable key reads
- *  false, so the caption falls back to the weaker "Latest sleep" claim rather than the stronger one. */
-internal fun isPreviousDay(priorDayKey: String, today: String = LocalDate.now().toString()): Boolean =
-    runCatching {
-        ChronoUnit.DAYS.between(LocalDate.parse(priorDayKey), LocalDate.parse(today)) == 1L
-    }.getOrDefault(false)
 
 // ════════════════════════════════════════════════════════════════════════════════════════════════════
 // Explainability layer, COMPONENTS 2, 3, 4 (spec: 2026-06-20-sleep-guidance-explainability.md)
