@@ -10,10 +10,12 @@ import java.io.File
  * that deleted the surface calling them and left the capability behind, and each was invisible to this
  * suite: the Live Session entry card, the battery-optimisation prompt, and the strap rename.
  *
- * A declaration whose name appears exactly ONCE across the whole module is that shape exactly — the one
- * occurrence is its own declaration, so nothing calls it, not even a test. Comments are stripped (a KDoc
- * `[Name]` link mentions a name without using it) and string literals are kept, so a name reached
- * reflectively still reads as live; the test errs towards calling dead code live.
+ * A declaration whose name appears exactly ONCE across `src/main` is that shape exactly — the one
+ * occurrence is its own declaration, so no screen reaches it. Tests are NOT scanned, deliberately: a
+ * helper only a test calls is unreachable from the app, which is the thing being asserted, and the 15
+ * that are in that state are named in [allowed] with the reason. Comments are stripped (a KDoc `[Name]`
+ * link mentions a name without using it) and string literals are kept, so a name reached reflectively
+ * still reads as live; the test errs towards calling dead code live.
  *
  * [TodayUiStructureTest] asserts which FILE declares a symbol and stayed green through all three, because
  * declaring a composable and placing it are different things. This asserts the second one.

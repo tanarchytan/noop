@@ -68,9 +68,9 @@ import kotlinx.coroutines.launch
 // Different bands pair COMPLETELY differently, so this wizard asks the device TYPE first, then gives
 // type-specific prep guidance and runs the RIGHT scan/connect for that type:
 //
-//   • WHOOP 4.0 / WHOOP 5.0 (MG)  → the WHOOP present-scan ([AppViewModel.presentWhoopScan]) targeted at
-//     the chosen family. Lists nearby straps from [AppViewModel.discoveredWhoops] (a present-only mode
-//     that never auto-connects).
+//   • WHOOP → the present-scan ([AppViewModel.presentWhoopScanAll]) over BOTH families at once; the
+//     strap says which it is. Lists nearby straps from [AppViewModel.discoveredWhoops] (a present-only
+//     mode that never auto-connects).
 //   • Oura ring (EXPERIMENTAL) → its OWN factory-reset-and-adopt sub-flow over an isolated
 //     [OuraLiveSource]. Lists from its `discovered` flow.
 //

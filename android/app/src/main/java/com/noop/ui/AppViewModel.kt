@@ -192,8 +192,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     // MARK: - Add-a-device wizard (multi-WHOOP, MW-4) — thin pass-throughs to the BLE client.
 
-    /** WHOOP straps surfaced by the wizard's present-scan ([presentWhoopScan]), WITHOUT auto-connecting.
-     *  The wizard observes this directly so its pick list updates as straps appear. */
+    /** WHOOP straps surfaced by the wizard's present-scan ([presentWhoopScanAll]), WITHOUT
+     *  auto-connecting. The wizard observes this directly so its pick list updates as straps appear. */
     val discoveredWhoops: StateFlow<List<com.noop.ble.WhoopBleClient.DiscoveredWhoop>> = ble.discoveredWhoops
 
     /** The active Oura ring's live adopt outcome, mirrored from the [com.noop.ble.SourceCoordinator]. The
@@ -218,6 +218,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      * Mirrors the macOS AppModel.presentWhoopScan + BLEManager.prepareForPresentScan. The persisted
      * family selection is updated too so a later real connect to the chosen strap targets the right
      * family.
+     *
+     * NO CALLER: both wizards now scan every family at once ([presentWhoopScanAll]). Kept, with
+     * [WhoopBleClient.prepareForPresentScan] and [WhoopBleClient.scanForWhoops], as the single-family
+     * fallback until the merged scan has run against a real 4.0 and a real 5/MG.
      */
     fun presentWhoopScan(model: WhoopModel) {
         _selectedModel.value = model
