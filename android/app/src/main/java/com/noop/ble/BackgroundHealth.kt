@@ -11,11 +11,11 @@ import android.provider.Settings
  * Android background-survival helpers. NOOP runs a foreground service + exact alarms, but aggressive
  * OEM battery managers kill even those, so the reliable lever is a USER action: whitelist NOOP from
  * battery optimisation (and, on the worst vendors, enable auto-start). Centralises the detection + the
- * intents that fix it, so the Settings toggle and the Test Centre diagnostics share ONE source of truth.
+ * intents that fix it, so `MainActivity.presentBatteryWhitelistOnce` and [AndroidDiagnostics] agree.
  *
  * POPUP DISCIPLINE: nothing here fires a system dialog on its own - [batteryExemptionIntent] and
- * [oemAutostartIntent] only build Intents; the caller starts one on a user tap, and the toggle reflects
- * live [isBatteryExempt] state so an already-exempt user is never re-prompted.
+ * [oemAutostartIntent] only build Intents; the caller starts one, gated on live [isBatteryExempt]
+ * state so an already-exempt user is never prompted. [oemAutostartIntent] has no caller.
  *
  * The whitelist adds NO battery cost of its own - it removes a premature kill, not extra work. The real
  * cost is the sync toggles the user already enabled; this only lets that work survive the night.
@@ -25,7 +25,7 @@ object BackgroundHealth {
     /**
      * Manufacturers whose proprietary battery managers kill background work regardless of the AOSP
      * foreground-service contract (the dontkillmyapp.com set). ONE canonical list — [AndroidDiagnostics]
-     * and the Settings toggle both read it here so the two can never drift. Pure.
+     * reads it here rather than carrying its own, so the two can never drift. Pure.
      */
     val AGGRESSIVE_VENDORS: List<String> =
         listOf("xiaomi", "oppo", "vivo", "huawei", "oneplus", "realme", "meizu")

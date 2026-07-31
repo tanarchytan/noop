@@ -5,7 +5,6 @@ import android.content.Context
 import android.content.pm.PackageManager
 import android.os.BatteryManager
 import android.os.Build
-import android.os.PowerManager
 
 /**
  * The Android environment-header block (spec section 3.4), bringing Android to the same shape as the iOS
@@ -264,19 +263,16 @@ object AndroidDiagnostics {
     /** Doze exemption: an app NOT exempt from battery optimisation is the #1 cause of missed overnight
      *  background work on Android. */
     private fun batteryOptimisationText(context: Context): String = runCatching {
-        val pm = context.getSystemService(Context.POWER_SERVICE) as? PowerManager
-        when (pm?.isIgnoringBatteryOptimizations(context.packageName)) {
-            true -> "exempt (background work allowed)"
-            false -> "NOT exempt (Android may kill overnight background BLE)"
-            null -> "unknown"
-        }
+        // Same read the launch-time whitelist prompt gates on, so the diagnostic and the fix agree.
+        // An unreadable PowerManager reads as NOT exempt, which is the warning direction.
+        if (com.noop.ble.BackgroundHealth.isBatteryExempt(context)) "exempt (background work allowed)"
+        else "NOT exempt (Android may kill overnight background BLE)"
     }.getOrDefault("unknown")
 
     /** A coarse OEM-kill heuristic by manufacturer (the aggressive-background-kill vendors). Pure and
      *  internal so it unit-tests without a Context (the suite stays Robolectric-free). */
     internal fun oemKillHeuristic(manufacturer: String): String =
-        // Single source of truth for the aggressive-vendor set (#386): the same list the Settings
-        // "Keep NOOP alive overnight" toggle gates on, so the diagnostic and the fix never disagree.
+        // Single source of truth for the aggressive-vendor set, shared with [BackgroundHealth].
         if (com.noop.ble.BackgroundHealth.isAggressiveVendor(manufacturer))
             "aggressive vendor (${manufacturer.lowercase()}), whitelist NOOP to keep it alive"
         else "standard"

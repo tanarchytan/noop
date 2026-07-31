@@ -26,6 +26,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.noop.BuildConfig
 import com.noop.NoopApplication
+import com.noop.ble.BackgroundHealth
 import com.noop.ble.WhoopModel
 import com.noop.data.MockSeeder
 import com.noop.data.WhoopRepository
@@ -72,6 +73,11 @@ class MainActivity : ComponentActivity() {
             requestBlePermissions()
         }
 
+        // Aggressive OEM battery managers kill the overnight foreground service unless NOOP is exempt,
+        // and the OS grants that only through a visible dialog. Present it once. Wrapped because a
+        // ROM that hides the action must never block launch.
+        runCatching { presentBatteryWhitelistOnce() }
+
         // Re-arm the daily debug export (#510) so its schedule self-heals after a reboot or app update
         // (WorkManager is KEEP, so this is a no-op when already scheduled, and cancels itself when the
         // feature is off). Wrapped because a WorkManager hiccup must never block launch.
@@ -100,6 +106,23 @@ class MainActivity : ComponentActivity() {
                 NoopRoot()
             }
         }
+    }
+
+    /**
+     * Offer [BackgroundHealth.batteryExemptionIntent] to an onboarded user who keeps the background
+     * connection on and is not already exempt, at most once. The flag is persisted BEFORE the dialog,
+     * so a ROM that rejects the action still never re-prompts.
+     */
+    private fun presentBatteryWhitelistOnce() {
+        val prefs = NoopPrefs.of(this)
+        if (!prefs.getBoolean(NoopPrefs.KEY_ONBOARDED, false)) return
+        if (!NoopPrefs.backgroundConnection(this)) return
+        if (prefs.getBoolean(NoopPrefs.KEY_ASKED_BATTERY_WHITELIST, false)) return
+        if (BackgroundHealth.isBatteryExempt(this)) return
+
+        prefs.edit().putBoolean(NoopPrefs.KEY_ASKED_BATTERY_WHITELIST, true).apply()
+        runCatching { startActivity(BackgroundHealth.batteryExemptionIntent(this)) }
+            .onFailure { runCatching { startActivity(BackgroundHealth.appBatterySettingsIntent(this)) } }
     }
 
     /** Request the BLE permissions appropriate to the running OS version. */
@@ -166,6 +189,10 @@ object NoopPrefs {
     const val KEY_LAST_SEEN_CHANGELOG = "noop.lastSeenChangelogVersion"
     /** "Keep connected in the background", drives [com.noop.ble.WhoopConnectionService]. Default on. */
     const val KEY_BACKGROUND_CONNECTION = "noop.backgroundConnection"
+
+    /** Set once the battery-optimisation whitelist dialog has been presented, so it never repeats.
+     *  Read by [MainActivity.presentBatteryWhitelistOnce]. */
+    const val KEY_ASKED_BATTERY_WHITELIST = "noopAskedBatteryWhitelist"
 
     /** The calendar day (yyyy-MM-dd) on which the morning-journal nudge was last shown, keeps the
      *  Sleep screen's "Good morning" sheet to at most once per day. */
