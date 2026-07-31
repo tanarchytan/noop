@@ -2,7 +2,6 @@ package com.noop.ui
 
 import com.noop.data.DailyMetric
 import java.time.LocalDate
-import java.time.LocalTime
 import java.time.ZoneId
 import java.time.ZonedDateTime
 
@@ -122,6 +121,3 @@ internal fun lastSkinTempRow(days: List<DailyMetric>, todayKey: String): DailyMe
 
 /** 04:00 local — the hour the logical day rolls. Between midnight and this hour, Today stays put. */
 internal const val LOGICAL_DAY_ROLLOVER_HOUR: Int = 4
-
-/** Exposed for symmetry / call-site readability (start of the rollover window). */
-internal val LOGICAL_DAY_ROLLOVER_TIME: LocalTime = LocalTime.of(LOGICAL_DAY_ROLLOVER_HOUR, 0)

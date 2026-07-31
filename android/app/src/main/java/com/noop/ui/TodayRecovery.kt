@@ -43,7 +43,6 @@ import com.noop.analytics.Baselines
 import com.noop.analytics.CalibrationMilestones
 import com.noop.analytics.ChargeDriver
 import com.noop.analytics.RecoveryDrivers
-import com.noop.analytics.RecoveryScorer
 import com.noop.analytics.RestScorer
 import com.noop.analytics.ScoreConfidence
 import com.noop.data.DailyMetric

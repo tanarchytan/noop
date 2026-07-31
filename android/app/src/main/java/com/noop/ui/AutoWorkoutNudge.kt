@@ -32,7 +32,6 @@ import androidx.compose.ui.unit.dp
 import com.noop.analytics.AutoWorkoutDetector
 import com.noop.analytics.AutoWorkoutDetectorTrace
 import com.noop.data.DailyMetric
-import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId

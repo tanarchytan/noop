@@ -1,6 +1,5 @@
 package com.noop.protocol
 
-import com.noop.data.StreamBatch
 import uniffi.whoop_ffi.HistorySummary
 import uniffi.whoop_ffi.Live
 import uniffi.whoop_ffi.Response

@@ -1,23 +1,15 @@
 package com.noop.ui
 
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableDoubleStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.semantics.clearAndSetSemantics
-import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.dp
 import java.util.Calendar
 import kotlin.math.max
 import kotlin.math.min
@@ -245,46 +237,6 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.renderLiquidSky(
 private val liquidSettleColor: Color
     get() = Palette.surfaceBase
 
-// MARK: - LiquidSky (animated) — per-frame twinkle + breath
-
-/**
- * The animated time-of-day liquid sky. Drives twinkle + the slow breath of light per frame via
- * `withFrameNanos`. Under Reduce Motion it collapses to the static picture (no frame loop) — matching
- * the house motion rule. [hour] defaults to live local time (hour + minute/60) when null.
- *
- * Mirrors the iOS `LiquidSky` view (TimelineView.animation at 20fps → here an unbounded frame loop;
- * only the sinusoid phase matters, so the picture is identical).
- */
-@Composable
-fun LiquidSky(hour: Double? = null, modifier: Modifier = Modifier) {
-    val reduced = rememberReduceMotion()
-    val settle = liquidSettleColor
-    val h = hour ?: liquidLiveHour()
-
-    if (reduced) {
-        // No frame loop under Reduce Motion — pose the static picture once.
-        Canvas(modifier = modifier) { renderLiquidSky(hour = h, now = 0.0, settle = settle, animate = false) }
-        return
-    }
-
-    // Monotonic seconds clock: accumulate raw frame nanos → seconds. Only the sinusoid phase matters
-    // (the iOS `now` is seconds-since-reference), so a from-zero accumulator gives the same motion.
-    var seconds by remember { mutableDoubleStateOf(0.0) }
-    LaunchedEffect(Unit) {
-        var last = 0L
-        while (true) {
-            withFrameNanos { frame ->
-                if (last != 0L) seconds += (frame - last) / 1_000_000_000.0
-                last = frame
-            }
-        }
-    }
-
-    Canvas(modifier = modifier) {
-        renderLiquidSky(hour = h, now = seconds, settle = settle, animate = true)
-    }
-}
-
 // MARK: - LiquidSkyStatic — rendered once, no frame loop, no twinkle/breath (scroll perf)
 
 /**
@@ -302,23 +254,4 @@ fun LiquidSkyStatic(hour: Double? = null, modifier: Modifier = Modifier, settleS
     Canvas(modifier = modifier) {
         renderLiquidSky(hour = h, now = 0.0, settle = settle, animate = false, settleStrength = settleStrength)
     }
-}
-
-// MARK: - liquidScaffoldSky — the full-bleed header background any screen drops in
-
-/**
- * A subtle full-bleed time-of-day sky for any screen's top background, so the liquid atmosphere carries
- * across EVERY tab. Same static sky as the chart-heavy tabs at a modest header [height], top-aligned,
- * so the charts/cards below sit on the dark canvas — the redesign's "the options change, not the page"
- * feel. Non-interactive + accessibility-hidden (pure decoration). Mirrors the iOS `liquidScaffoldSky`.
- */
-@Composable
-fun liquidScaffoldSky(height: Dp = 240.dp) {
-    LiquidSkyStatic(
-        hour = null,
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(height)
-            .clearAndSetSemantics {}, // decorative — invisible to TalkBack
-    )
 }

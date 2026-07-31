@@ -6,27 +6,22 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.clearAndSetSemantics
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import kotlin.math.max
@@ -172,66 +167,3 @@ private fun pipColor(
 
 /** A small, glow-free brightness lift for the lead-edge segment — blend the tint toward white. */
 private fun brighten(color: Color): Color = lerp(color, Color.White, 0.22f)
-
-// MARK: - PipBarRow (card-ready WHOOP metric row)
-
-/**
- * A card-ready row: UPPERCASE label + big white value/unit on top, the [PipBar] beneath. Matches
- * the WHOOP metric-row type — bold white number with a smaller-weight unit suffix over a tracked
- * overline label. Drop into a card for an instant metric tile. Mirrors iOS `PipBarRow`.
- *
- * @param label the label (rendered uppercased with overline tracking).
- * @param value the value for the bar, in [range].
- * @param range the value's domain.
- * @param tint lit-segment fill colour.
- * @param valueText the big value string shown on top (already formatted, e.g. "87" or "9.0").
- * @param unit optional smaller-weight unit suffix (e.g. "%", "bpm"). null hides it.
- * @param segments segment count, forwarded to the bar.
- */
-@Composable
-fun PipBarRow(
-    label: String,
-    value: Float,
-    tint: Color,
-    valueText: String,
-    range: ClosedFloatingPointRange<Float> = 0f..100f,
-    unit: String? = null,
-    segments: Int = 24,
-    modifier: Modifier = Modifier,
-) {
-    Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .clearAndSetSemantics {
-                contentDescription = if (unit != null) "$label: $valueText $unit" else "$label: $valueText"
-            },
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        // UPPERCASE label.
-        Text(
-            text = label.uppercase(),
-            style = NoopType.overline,
-            color = Palette.textSecondary,
-        )
-
-        // Big white value + smaller-weight unit suffix.
-        Row(verticalAlignment = Alignment.Bottom) {
-            Text(
-                text = valueText,
-                style = NoopType.number(30f, weight = FontWeight.Bold),
-                color = Palette.textPrimary,
-            )
-            if (unit != null) {
-                Text(
-                    text = unit,
-                    style = NoopType.headline,
-                    color = Palette.textTertiary,
-                    modifier = Modifier.padding(start = 4.dp, bottom = 2.dp),
-                )
-            }
-        }
-
-        // The segmented count-up bar.
-        PipBar(value = value, range = range, segments = segments, tint = tint)
-    }
-}

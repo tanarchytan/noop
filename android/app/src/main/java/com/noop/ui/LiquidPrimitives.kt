@@ -24,7 +24,6 @@ import android.view.HapticFeedbackConstants
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
@@ -280,35 +279,4 @@ fun Modifier.liquidPress(interactionSource: InteractionSource): Modifier = compo
         scaleY = scale
         this.alpha = alpha
     }
-}
-
-// MARK: - CountUpNumber — a bare numeric count-up (wraps the app's CountUpText)
-//
-// The iOS `CountUpNumber` is a tiny Animatable value that rolls an integer to its target inside a
-// `withAnimation` block. The Android app ALREADY has `CountUpText` (NoopMotion.kt) — the same count-up
-// behaviour, Reduce-Motion-aware — so this is a thin wrapper over it (NOT a re-implementation), formatting
-// the rolled value as a plain rounded integer with monospaced/tabular figures. Reach for `CountUpText`
-// directly when you need a custom format/units; use this only when a bare integer count-up is wanted.
-
-/**
- * A bare integer count-up — the shown number rolls smoothly to [value] whenever it changes (and on first
- * appear). A thin wrapper over the app's [CountUpText] (NoopMotion.kt); it does NOT duplicate the count-up
- * logic. Renders the rounded integer in [style] / [color] (defaults to `NoopType.number(26f)`, tabular, and
- * `Palette.textPrimary`), matching the iOS `CountUpNumber(value:font:)` monospaced-digit numeral. Honours
- * Reduce Motion (via CountUpText).
- */
-@Composable
-fun CountUpNumber(
-    value: Double,
-    modifier: Modifier = Modifier,
-    style: TextStyle = NoopType.number(26f),
-    color: Color = Palette.textPrimary,
-) {
-    CountUpText(
-        value = value,
-        format = { "${Math.round(it)}" },
-        style = style,
-        color = color,
-        modifier = modifier,
-    )
 }

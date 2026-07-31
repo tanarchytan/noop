@@ -19,7 +19,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.MonitorHeart
 import androidx.compose.material.icons.filled.Refresh
@@ -60,7 +59,6 @@ import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.nativeCanvas
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.contentDescription
@@ -274,65 +272,6 @@ private fun HrvSnapshotButton(enabled: Boolean, onClick: () -> Unit) {
 }
 
 // (Sync status + "Sync now" moved to DevicesScreen.kt — the strap-history control belongs with the devices.)
-
-// MARK: - Records & sources (Swift parity) — discoverable deep-links into the on-device records
-//
-// Mirrors the Swift Health screen's "Records & sources" section: two clickable rows that route into
-// the Lab Book (your own bloods / BP / body numbers) and the fused multi-source record ("Your Data,
-// Fused"). Both live entirely on this phone, so the overline says so. Plain navigation rows in the
-// house NoopCard style with an icon, a title/subtitle and a trailing chevron, each carrying a single
-// combined contentDescription for screen readers.
-
-/** One navigation row in the Records & sources section: a tinted glyph, a title + subtitle, and a
- * trailing chevron, wrapped in a clickable NoopCard with a combined accessibility label. */
-@Composable
-private fun RecordRow(
-    icon: ImageVector,
-    tint: Color,
-    title: String,
-    subtitle: String,
-    onClick: () -> Unit,
-) {
- // liquidPress on the whole tappable row — the SAME interactionSource drives the clickable + the press
- // so the card settles inward on tap (the pilot LiquidPressStyle feel). Nav route is unchanged.
-    val interaction = remember { MutableInteractionSource() }
-    NoopCard(
-        modifier = Modifier
-            .liquidPress(interaction)
-            .clickable(
-                interactionSource = interaction,
-                indication = null,
-                onClick = onClick,
-            )
-            .semantics { contentDescription = "$title. $subtitle" },
-        padding = Metrics.space16,
-    ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(Metrics.space12),
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(34.dp)
-                    .clip(RoundedCornerShape(Metrics.cornerSm))
-                    .background(tint.copy(alpha = 0.14f)),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(Metrics.iconSmall))
-            }
-            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(Metrics.space2)) {
-                Text(title, style = NoopType.headline, color = Palette.textPrimary)
-                Text(subtitle, style = NoopType.footnote, color = Palette.textTertiary)
-            }
-            Icon(
-                Icons.Filled.ChevronRight,
-                contentDescription = null,
-                tint = Palette.textTertiary,
-                modifier = Modifier.size(Metrics.iconSmall),
-            )
-        }
-    }
-}
 
 // MARK: - Skin-temperature suite (v5 pillar) — a Health section
 //
@@ -848,8 +787,6 @@ private fun ReadinessRow(item: FitnessReadinessItem) {
         )
     }
 }
-
-private fun yearWord(years: Int): String = if (kotlin.math.abs(years) == 1) "year" else "years"
 
 // MARK: - Derived live HR
 //

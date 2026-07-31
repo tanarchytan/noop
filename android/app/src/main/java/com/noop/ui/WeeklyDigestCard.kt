@@ -29,7 +29,6 @@ import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.noop.analytics.RestScorer
 import com.noop.analytics.WeeklyDigest
 import com.noop.analytics.WeeklyDigestEngine
@@ -97,44 +96,6 @@ fun buildWeeklyDigest(
         anchorDay = anchorDay,
         effortDisplayFactor = effortDisplayFactor,
     )
-}
-
-// MARK: - Embeddable card
-
-/**
- * The weekly digest as a single card (for Today / Trends). Renders nothing when there's
- * no data this week, so it's safe to always place.
- */
-@Composable
-fun WeeklyDigestCard(vm: AppViewModel, modifier: Modifier = Modifier) {
-    val days by vm.recentDays.collectAsStateWithLifecycle()
-    val factor = effortDisplayFactor(UnitPrefs.effortScale(LocalContext.current))
-    val digest = buildWeeklyDigest(days, effortDisplayFactor = factor)
-    if (digest.isEmpty) return
-    NoopCard(modifier = modifier) {
-        WeeklyDigestContent(digest = digest, compact = true)
-    }
-}
-
-// MARK: - Full screen
-
-/** The weekly digest as a full screen (for a nav destination). */
-@Composable
-fun WeeklyDigestScreen(vm: AppViewModel) {
-    val days by vm.recentDays.collectAsStateWithLifecycle()
-    val factor = effortDisplayFactor(UnitPrefs.effortScale(LocalContext.current))
-    ScreenScaffold(title = "Week in review", subtitle = "Your Monday-to-Sunday, read in one glance.") {
-        val digest = buildWeeklyDigest(days, effortDisplayFactor = factor)
-        if (digest.isEmpty) {
-            DataPendingNote(
-                title = "No readings this week yet",
-                body = "Wear your strap or import your WHOOP export in Data Sources. Once this week has a " +
-                    "day or two of data, your week-in-review appears here.",
-            )
-        } else {
-            NoopCard { WeeklyDigestContent(digest = digest, compact = false) }
-        }
-    }
 }
 
 // MARK: - Shared content

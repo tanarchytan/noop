@@ -1,8 +1,5 @@
 package com.noop.ui
 
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -29,7 +26,7 @@ import java.util.Calendar
 //  - The rings + WHITE numbers + labels MUST stay legible: a faint bottom-up dark scrim sits UNDER the
 //    ring content so a bright midday scene never washes out the white text. No tinting of the rest of
 //    the screen — this is confined to the hero region (the caller clips it to the rounded card).
-//  - Reuses the [DayPart]/hour helper convention from TimeOfDayBackground.kt (clock-derived).
+//  - Derives its scene from the local clock hour, the same way the liquid sky does.
 //
 // HOUR -> SCENE map (local hour 0..23), per the placed day-cycle assets:
 //   0,1,2,3,4 -> scene1 (deep night); 5 -> scene2; 6 -> scene3; 7 -> scene6; 8,9 -> scene7 (sunrise);
@@ -79,18 +76,6 @@ fun Modifier.sceneHeroBackground(
     fadeEndFraction: Float = 0.72f,
     scrim: Boolean = true,
 ): Modifier = this.then(SceneHeroBackgroundModifier(drawable, maxAlpha, fadeEndFraction, scrim))
-
-/** Composable form for callers that prefer a child layer over a modifier — fills the parent. */
-@Composable
-fun SceneHeroBackground(
-    modifier: Modifier = Modifier,
-    drawable: Int = currentSceneDrawable(),
-    maxAlpha: Float = 0.42f,
-    fadeEndFraction: Float = 0.72f,
-    scrim: Boolean = true,
-) {
-    Box(modifier = modifier.fillMaxSize().sceneHeroBackground(drawable, maxAlpha, fadeEndFraction, scrim))
-}
 
 /**
  * The backing modifier: draws the scene image (aspect-fill, top-aligned) UNDER the content, fades it
@@ -285,24 +270,3 @@ fun Modifier.sceneScreenBackground(
         }
 }
 
-/**
- * Composable child-layer form of [sceneScreenBackground] for callers that prefer a layer over a modifier.
- * Fills the parent's WIDTH and stands [height] tall (the backdrop band; the scene fades to the canvas
- * within it). Drop it as the FIRST child of the screen's wrapping Box (anchored top) so the scroll content
- * floats over it. Mirrors the iOS `SceneScreenBackground` view.
- */
-@Composable
-fun SceneScreenBackground(
-    modifier: Modifier = Modifier,
-    drawable: Int = currentSceneDrawable(),
-    height: Dp = SceneScreenHeightDefault,
-    maxAlpha: Float = 0.95f,
-    fadeEndFraction: Float = 0.92f,
-) {
-    Box(
-        modifier = modifier
-            .fillMaxWidth()
-            .height(height)
-            .sceneScreenBackground(drawable, maxAlpha, fadeEndFraction),
-    )
-}

@@ -21,7 +21,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.ButtonDefaults
@@ -64,7 +63,6 @@ import com.noop.analytics.HydrationStore
 import com.noop.analytics.RecoveryScorer
 import com.noop.analytics.StrainScorer
 import com.noop.data.DailyMetric
-import com.noop.data.WhoopRepository
 import com.noop.ingest.HealthConnectImporter
 import android.widget.Toast
 import kotlinx.coroutines.launch
