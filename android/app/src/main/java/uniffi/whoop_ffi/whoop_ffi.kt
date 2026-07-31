@@ -3193,6 +3193,7 @@ public object FfiConverterTypeBaselineStateInfo: FfiConverterRustBuffer<Baseline
 
 /**
  * Daytime-stress result: the per-hour scores plus the day mean, peak hour, and the trailing high run.
+ * The core's band minutes are not on this record yet; adding them is a uniffi record change.
  */
 data class DaytimeStressInfo (
     var `hours`: List<ScoredHourInfo>
