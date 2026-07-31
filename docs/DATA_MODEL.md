@@ -3,8 +3,17 @@
 NOOP is a standalone, fully offline companion app for WHOOP straps (4.0 and 5.0). It talks to
 the user's own strap directly over Bluetooth Low Energy — no WHOOP cloud or account
 is involved, and stores everything it decodes locally in a single SQLite database.
-This document describes that on-device database: every table, its columns, natural keys, indexes,
-and the migration history that produced the current schema.
+This document describes that on-device database table by table: its columns, natural keys, indexes,
+and the migration history that produced the schema.
+
+> **Which store this is.** `noop-tan` is Android-only and carries no Swift, so the tables and
+> migrations below are the **upstream (`ryanbr/noop`) GRDB** schema — the reference you target when
+> you PR a change back, not the store this app runs. This branch's store is **Room**:
+> `android/…/data/WhoopDatabase.kt` over the entities in `android/…/data/Entities.kt`, each carrying
+> its primary key and per-column meaning as KDoc. The two must agree on the resulting schema (the
+> parity contract in `CLAUDE.md`) but share no version numbers — this migrator runs to v25, so a
+> `v101` below is a Room version, marked as such. Tables Room has and GRDB does not are documented
+> only at the entity.
 
 > **Scope note.** Interacting with the strap here means interoperating with the user's *own*
 > device and the data it has already recorded. NOOP is **not affiliated with, endorsed by, or
@@ -320,7 +329,7 @@ CSV / Apple-Health data arrives through `StrandImport`. Every cache table follow
 contract: a `Codable` struct, an idempotent `ON CONFLICT(...) DO UPDATE` upsert keyed by its
 natural key (latest value wins), and range-read accessors that run off-main.
 
-### `sleepSession` *(v4, +v7 / v11 / v101 columns)*
+### `sleepSession` *(v4, +v7 / v11 columns, +v101 Room)*
 
 One row per sleep session (`data/Entities.kt`, `data class SleepSession`).
 
@@ -337,7 +346,7 @@ One row per sleep session (`data/Entities.kt`, `data class SleepSession`).
 | `startTsAdjusted` | INTEGER | v7 | The hand-set onset, nullable. |
 | `motionJSON` | TEXT | v11 | Per-epoch motion magnitudes on the `stagesJSON` 30 s grid, nullable. |
 | `sleepStateJSON` | TEXT | v11 | Per-epoch decoded v18 band `sleep_state`, nullable. |
-| `endTsAdjusted` | INTEGER | v101 | The hand-set wake, nullable. |
+| `endTsAdjusted` | INTEGER | v101 (Room) | The hand-set wake, nullable. |
 
 **Primary key:** `(deviceId, startTs)`. Read by `startTs` range, oldest first.
 
