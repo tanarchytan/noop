@@ -41,8 +41,8 @@ motion spine.
 
 | File | What is left |
 |---|---|
-| `StrainScorer` (153) | per-bout TRIMP; the daily figure already delegates |
-| `SleepStager` (418) | `sessionHrvWindows`, `hypnogramMetrics`, `findPeaks`, `standardDeviation` |
+| `StrainScorer` (77) | per-bout TRIMP; the daily figure already delegates |
+| `SleepStager` (256) | `sessionHrvWindows`, `hypnogramMetrics`, `findPeaks`, `standardDeviation` |
 
 ### Statistical engines, untouched
 

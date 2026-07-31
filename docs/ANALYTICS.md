@@ -10,7 +10,7 @@ The scoring and decode math is **not** in this repo. It lives in **whoop-rs**, a
 NOOP (Android, Kotlin via uniffi) and any other client. The authoritative per-algorithm reference, with
 every formula, its file, and its tests, is:
 
-> **`whoop-rs/docs/algorithms.md`** (crate `physio-algo`, 308 tests). Read that first.
+> **`whoop-rs/docs/algorithms.md`** (crate `physio-algo`, 321 tests). Read that first.
 
 Android reaches it through the generated `uniffi.whoop_ffi` binding. Two Kotlin bridge files are the entire
 delegation surface:
