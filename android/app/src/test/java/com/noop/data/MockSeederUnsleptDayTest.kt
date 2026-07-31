@@ -51,6 +51,17 @@ class MockSeederUnsleptDayTest {
         "zone1to3Min", "zone4to5Min", "sleepNeedHours", "sleepConsistency", "priorDayEffort",
     )
 
+    /**
+     * The partition below only proves anything while the fixture sets EVERY metric column: a new entity
+     * column left unset here reads back null after the strip and lands on the cleared side for free,
+     * which is the answer nobody decided. This is the assertion that makes adding one fail.
+     */
+    @Test
+    fun theFixtureSetsEveryMetricColumn() {
+        val unset = nullColumns(full)
+        assertEquals("a metric column this fixture never sets: $unset", emptySet<String>(), unset)
+    }
+
     @Test
     fun everyNightProducedColumnIsClearedAndTheDaysOwnColumnsSurvive() {
         val stripped = MockSeeder.withoutSleep(full)
