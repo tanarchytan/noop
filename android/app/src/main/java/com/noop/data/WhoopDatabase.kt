@@ -131,6 +131,18 @@ abstract class WhoopDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * The `my-whoop` bucket a fresh install starts with: `legacy`, so it is data rather than a
+         * device, and `peripheralId` NULL so adoption stays the moment a device is known to exist.
+         * Same end state MIGRATION_100_101 gives an upgraded install.
+         */
+        internal fun freshInstallBucketSql(now: Long): String =
+            "INSERT OR IGNORE INTO `pairedDevice` " +
+                "(`id`, `brand`, `model`, `nickname`, `sourceKind`, `capabilities`, " +
+                "`status`, `addedAt`, `lastSeenAt`) VALUES " +
+                "('my-whoop', 'WHOOP', 'WHOOP', NULL, 'legacy', " +
+                "'hr,hrv,spo2,skinTemp,sleep,strainLoad', 'active', $now, $now)"
+
         @Volatile
         private var instance: WhoopDatabase? = null
 
@@ -273,7 +285,7 @@ abstract class WhoopDatabase : RoomDatabase() {
                     "INSERT OR IGNORE INTO `pairedDevice` " +
                         "(`id`, `brand`, `model`, `nickname`, `sourceKind`, `capabilities`, " +
                         "`status`, `addedAt`, `lastSeenAt`) VALUES " +
-                        "('my-whoop', 'WHOOP', 'WHOOP', NULL, 'liveBLE', " +
+                        "('my-whoop', 'WHOOP', 'WHOOP', NULL, 'legacy', " +
                         "'hr,hrv,spo2,skinTemp,sleep,strainLoad', 'active', $now, $now)",
                 )
             }
@@ -610,20 +622,14 @@ abstract class WhoopDatabase : RoomDatabase() {
                 // schema mismatch. Room throws loudly instead; CI guards the SQL.
                 .addMigrations(*ALL_MIGRATIONS.toTypedArray())
                 // A fresh install builds the schema straight at the current version and runs NO
-                // migrations, so the MIGRATION_7_8 "my-whoop" registry seed never fires and a paired,
-                // streaming WHOOP never appears in the Devices list. Seed the canonical row on create
-                // too (same idempotent INSERT OR IGNORE as the migration) so a first-ever install
-                // still lists its WHOOP.
+                // migrations, so the "my-whoop" bucket every pre-registry write lands in would not
+                // exist. Seed it on create as `legacy` — a pile of data, not a device — which is the
+                // state an upgraded install reaches via MIGRATION_100_101. It is listed as a device
+                // only once a strap adopts it (DeviceRegistry.setPeripheralId), the one moment a
+                // device is known to exist.
                 .addCallback(object : RoomDatabase.Callback() {
                     override fun onCreate(db: SupportSQLiteDatabase) {
-                        val now = System.currentTimeMillis() / 1000
-                        db.execSQL(
-                            "INSERT OR IGNORE INTO `pairedDevice` " +
-                                "(`id`, `brand`, `model`, `nickname`, `sourceKind`, `capabilities`, " +
-                                "`status`, `addedAt`, `lastSeenAt`) VALUES " +
-                                "('my-whoop', 'WHOOP', 'WHOOP', NULL, 'liveBLE', " +
-                                "'hr,hrv,spo2,skinTemp,sleep,strainLoad', 'active', $now, $now)",
-                        )
+                        db.execSQL(freshInstallBucketSql(System.currentTimeMillis() / 1000))
                     }
                 })
                 .build()
