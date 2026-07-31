@@ -1,13 +1,8 @@
 package com.noop.analytics
 
-import kotlin.math.PI
 import kotlin.math.abs
-import kotlin.math.atan2
 import kotlin.math.ceil
-import kotlin.math.cos
 import kotlin.math.roundToInt
-import kotlin.math.sin
-import kotlin.math.sqrt
 
 // Body-clock phase estimate (consumed via FFI, see [fromRust]) plus a jet-lag / shift-work light and
 // sleep-timing plan computed locally. Independent implementation of published methods: cosinor phase

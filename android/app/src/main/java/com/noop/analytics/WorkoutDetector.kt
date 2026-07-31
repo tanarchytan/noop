@@ -2,11 +2,6 @@ package com.noop.analytics
 
 import com.noop.data.GravitySample
 import com.noop.data.HrSample
-import kotlin.math.abs
-import kotlin.math.ceil
-import kotlin.math.min
-import kotlin.math.roundToLong
-import kotlin.math.sqrt
 
 /*
  * WorkoutDetector.kt — retroactive workout detection from the 1 Hz store.

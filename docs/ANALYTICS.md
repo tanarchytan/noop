@@ -10,7 +10,7 @@ The scoring and decode math is **not** in this repo. It lives in **whoop-rs**, a
 NOOP (Android, Kotlin via uniffi) and any other client. The authoritative per-algorithm reference, with
 every formula, its file, and its tests, is:
 
-> **`whoop-rs/docs/algorithms.md`** (crate `physio-algo`, 206 tests). Read that first.
+> **`whoop-rs/docs/algorithms.md`** (crate `physio-algo`, 308 tests). Read that first.
 
 Android reaches it through the generated `uniffi.whoop_ffi` binding. Two Kotlin bridge files are the entire
 delegation surface:
@@ -34,7 +34,7 @@ identical across clients and gives the math one home with one test suite.
 |---|---|---|---|---|
 | **Charge** | How recovered are you? | `RecoveryScorer` -> `RustScores.recovery` | whoop-rs `recovery.rs` | `recovery` |
 | **Effort** | How hard did your heart work? | `StrainScorer` -> `RustScores.strain` | whoop-rs `strain.rs` | `strain` |
-| **Rest** | How restorative was your sleep? | Rest composite in `AnalyticsEngine` | Kotlin (whoop-rs `rest.rs` not yet wired) | `sleep_performance` |
+| **Rest** | How restorative was your sleep? | `RestScorer.restFromDaily` in `AnalyticsEngine` | whoop-rs `rest.rs` | `sleep_performance` |
 
 The display names changed (Recovery to Charge, Strain to Effort, Sleep Performance to Rest) and Effort was
 rescaled 0-21 to 0-100, but the internal keys are unchanged so stored history and imports keep working.
@@ -58,7 +58,7 @@ The algorithm is in Rust; the Kotlin file marshals inputs and calls `RustScores`
 | Effort / Strain | `StrainScorer` | `strainScore`, `strainDefaultDenominator` |
 | Resting HR | `AnalyticsEngine` | `sessionRestingHr`, `dailyRestingHr` |
 | Respiratory rate (RSA) | `AnalyticsEngine` | `respRateFromRr` |
-| HR zones + time-in-zone | `HrZones` | `hrZonesForAge`, `hrTimeInZone` |
+| HR zones + time-in-zone | `AnalyticsEngine`, `AppViewModel` | `hrZonesForAge`, `hrTimeInZone` |
 | Baevsky Stress Index | `StressIndex` | `stressIndex`, `stressComponents` |
 | Stress onset (live nudge) | `StressOnsetDetector` | `stressOnsetEvaluate` |
 | Fitness Age / VO2max | `FitnessAgeEngine` | `vo2maxEstimate`, `fitnessAgeCompute` |
@@ -72,6 +72,11 @@ The algorithm is in Rust; the Kotlin file marshals inputs and calls `RustScores`
 | Daytime stress | `DaytimeStress` (Kotlin bucketing, Rust scoring) | `daytimeStress` |
 | HRV frequency domain (Lomb-Scargle LF/HF) | `HrvFreqDomain` (thin router) | `hrvFreqDomain` |
 | Short-nap detection (tri-state) | `NapDetector` (thin router) | `napEvaluate` |
+| Vitality / Body Age (Gompertz) | `VitalityEngine` (thin router) | `vitalityCompute`, `vitalityContributions`, `vitalityRmssdNorm`, `vitalitySleepConsistency` |
+| Circadian phase (COSINOR) | `CircadianEngine.fromRust` | `circadianPhaseFromSamples` |
+
+HrZones.kt keeps no zone maths either: the age-derived zones and time-in-zone come from Rust, and the
+file is only the display band builder for an already-known max HR.
 
 Steps / Calories(day) / Rest / SleepDebt / DaytimeStress / HRV-freq no longer keep a Kotlin oracle: the math
 was DELETED once whoop-rs parity was proven, so each engine is now a thin router and its Kotlin test is an
@@ -82,14 +87,12 @@ recency-weighted path and the full config table.
 
 ### 2. Ported to whoop-rs, still running in Kotlin
 
-whoop-rs implements these too, but the Android call site has not been cut over yet, so the Kotlin copy is
-what runs today.
-
-| Metric | Kotlin file | whoop-rs home | Why not yet |
-|---|---|---|---|
-| Workout detection | `AutoWorkoutDetector`, `WorkoutDetector` | `workout.rs` | Rust `WorkoutSession` drops `hrmax`/`hrmaxSource`; independent impls, not byte-parity. Needs reconcile. |
-| Calories (per-bout) | `Calories` | `calories.rs` | only `WorkoutDetector` (Kotlin) calls it; moves with Workout. |
-| IMU activity features | `ImuFeatureExtractor` | `imu_features.rs` | no UI surface (BLE deep-buffer diagnostic only). |
+**Currently empty.** Every algorithm with a whoop-rs implementation is reached from the Android call
+site. The last three holdouts were cut over and their Kotlin maths deleted, so each is now a router:
+`WorkoutDetector` and its nested `Calories` call `workoutDetect` / `caloriesBout` (Rust
+`WorkoutSession` carries `hrmax` and `hrmaxSource`, so nothing was lost), and `ImuFeatureExtractor`
+calls `imuFeatures`. `AutoWorkoutDetector` is not a port of `workout.rs` but its own live-nudge
+detector, and stays in section 3.
 
 ### 3. Kotlin-only (no whoop-rs port yet)
 
@@ -99,10 +102,9 @@ downstream and secondary metrics NOOP layers on top of the core scores.
 | Area | Kotlin engines |
 |---|---|
 | Illness early-warning | `IllnessSignalEngine`, `IllnessDistance` (Mahalanobis) |
-| Vitality / Body Age (Gompertz) | `VitalityEngine`, `VitalBands` |
+| Vitality bands (display ranges) | `VitalBands` |
 | Readiness (ACWR / Foster monotony) | `ReadinessEngine` |
 | Recovery forecast | `RecoveryForecast`, `RecoveryDrivers` |
-| Circadian phase (COSINOR) | `CircadianEngine` |
 | Menstrual cycle phase | `CyclePhaseEngine` |
 | Dose to response | `DoseResponseEngine`, `DoseResponsePriors` |
 | Effect ranking (Cohen's d, Welch t) | `EffectRanker` |

@@ -63,10 +63,8 @@ import com.noop.notif.InactivityNotifier
 import com.noop.ui.BiofeedbackPrefs
 import com.noop.ui.InactivityPrefs
 import com.noop.ui.NoopPrefs
-import com.noop.ui.NotifPrefs
 import com.noop.ui.ProfileStore
 import com.noop.ui.StressNudgeCenter
-import com.noop.ui.UnitPrefs
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob

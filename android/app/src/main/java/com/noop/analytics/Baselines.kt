@@ -2,9 +2,7 @@ package com.noop.analytics
 
 import kotlin.math.abs
 import kotlin.math.max
-import kotlin.math.min
 import kotlin.math.pow
-import kotlin.math.sqrt
 
 /*
  * Baselines.kt — personal rolling baselines per nightly metric.

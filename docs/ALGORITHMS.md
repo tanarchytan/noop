@@ -42,7 +42,7 @@ motion spine.
 | File | What is left |
 |---|---|
 | `StrainScorer` (153) | per-bout TRIMP; the daily figure already delegates |
-| `SleepStager` (420) | `sessionHrvWindows`, `hypnogramMetrics`, `findPeaks`, `standardDeviation` |
+| `SleepStager` (418) | `sessionHrvWindows`, `hypnogramMetrics`, `findPeaks`, `standardDeviation` |
 
 ### Statistical engines, untouched
 
@@ -73,11 +73,11 @@ Byte decode belongs in Rust, and a hardware-verified twin already exists for eac
 
 ---
 
-**The counts above were re-derived 2026-07-30** by `dev-notes/noop-tan/audit_kotlin_algorithms.py`, which
-also checks that each row's named member is still in its file and that every whoop-rs FFI export is
-referenced by app Kotlin. All 17 rows still carry their maths — nothing has been ported since this file was
-written — and 14 of the 17 recorded counts were stale, thirteen smaller after a comment pass and one
-larger. Re-run it before trusting a number here.
+**The counts above are re-derived** by `dev-notes/noop-tan/audit_kotlin_algorithms.py`, which reads each
+one out of this table, compares it against the file, checks the row's named member is still there, and
+checks every whoop-rs FFI export is reached from app Kotlin by a qualified `uniffi.whoop_ffi` call. It
+audits `ANALYTICS.md` in the same pass. All 17 rows still carry their maths — nothing has been ported
+since this file was written. Re-run it before trusting a number here.
 
 ## Suggested order
 

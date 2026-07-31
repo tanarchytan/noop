@@ -2,8 +2,6 @@ package com.noop.analytics
 
 import com.noop.protocol.RawImuSample
 import com.noop.protocol.Whoop5ImuFrame
-import kotlin.math.roundToInt
-import kotlin.math.sqrt
 
 // Activity features from decoded WHOOP 5/MG raw 6-axis IMU. The offload buffer decodes to 100 Hz
 // 3-axis accel (g) + 3-axis gyro (deg/s); at that rate the accelerometer resolves gait cadence,

@@ -1,6 +1,5 @@
 package com.noop.ui
 
-import com.noop.analytics.SleepStageTotals
 import com.noop.data.SleepSession
 import org.junit.After
 import org.junit.Assert.assertEquals

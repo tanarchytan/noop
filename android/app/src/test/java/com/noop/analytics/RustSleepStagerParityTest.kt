@@ -4,7 +4,6 @@ import com.noop.data.GravitySample
 import com.noop.data.HrSample
 import com.noop.data.RrInterval
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**

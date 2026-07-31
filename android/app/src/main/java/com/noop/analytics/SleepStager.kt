@@ -2,9 +2,7 @@ package com.noop.analytics
 
 import com.noop.data.GravitySample
 import com.noop.data.HrSample
-import com.noop.data.RespSample
 import com.noop.data.RrInterval
-import com.noop.data.StepSample
 import kotlin.math.abs
 import kotlin.math.sqrt
 

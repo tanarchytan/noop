@@ -22,7 +22,6 @@ import androidx.health.connect.client.units.Temperature
 import androidx.health.connect.client.units.TemperatureDelta
 import com.noop.NoopApplication
 import com.noop.data.WhoopRepository
-import com.noop.protocol.DeviceFamily
 import com.noop.data.WorkoutRow
 import com.noop.ui.NoopPrefs
 import java.time.Instant

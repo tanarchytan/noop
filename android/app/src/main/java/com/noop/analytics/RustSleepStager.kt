@@ -9,7 +9,6 @@ import uniffi.whoop_ffi.SleepAccelSample
 import uniffi.whoop_ffi.SleepHrSample
 import uniffi.whoop_ffi.SleepInput
 import uniffi.whoop_ffi.SleepRrRun
-import uniffi.whoop_ffi.SleepSegment
 import uniffi.whoop_ffi.SleepStage
 import uniffi.whoop_ffi.SleepStepSample
 import uniffi.whoop_ffi.SleepStreams

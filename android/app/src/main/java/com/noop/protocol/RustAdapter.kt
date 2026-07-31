@@ -1,14 +1,5 @@
 package com.noop.protocol
 
-import com.noop.data.GravityRow
-import com.noop.data.HrRow
-import com.noop.data.RespRow
-import com.noop.data.RrRow
-import com.noop.data.SkinTempRow
-import com.noop.data.SleepStateRow
-import com.noop.data.Spo2PctRow
-import com.noop.data.Spo2Row
-import com.noop.data.StepRow
 import com.noop.data.StreamBatch
 import uniffi.whoop_ffi.HistorySummary
 import uniffi.whoop_ffi.Live
