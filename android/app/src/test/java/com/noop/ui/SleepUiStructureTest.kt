@@ -78,11 +78,14 @@ class SleepUiStructureTest {
             "SleepMetrics.kt" to setOf(
                 "MetricGrid", "SleepDebtLedgerCard", "DebtDeltaBars", "StagesVsTypical", "Hairline",
                 "StageRow", "drawRoundRectFill", "DurationTrend", "TrendPlaceholder", "DateAxisRow",
-                "ChartCard", "ChartFooter", "SparkTile", "SleepEmptyState", "HoursVsNeededCard",
-                "LegendDot", "SleepNightTiming", "SleepConsistencyCard", "SleepMetricRange", "SleepMetricSpec",
-                "sleepMetricSpec", "buildSleepMetricPoints", "filterSleepMetricPoints",
-                "SleepMetricDetailSheetContent",
+                "SparkTile", "SleepEmptyState", "HoursVsNeededCard",
+                "LegendDot", "SleepNightTiming", "SleepConsistencyCard",
             ),
+            "SleepMetricDetail.kt" to setOf(
+                "SleepMetricRange", "SleepMetricSpec", "sleepMetricSpec", "buildSleepMetricPoints",
+                "filterSleepMetricPoints", "SleepMetricDetailSheetContent",
+            ),
+            "ChartCard.kt" to setOf("ChartCard", "ChartCardFooter", "CardHairline"),
         )
 
         expectedOwners.forEach { (name, expectedDeclarations) ->
