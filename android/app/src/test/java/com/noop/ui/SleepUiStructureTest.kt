@@ -8,7 +8,7 @@ import java.io.File
 
 class SleepUiStructureTest {
     private val topLevelDeclaration = Regex(
-        """(?m)^(?:(?:internal|private|public)\s+)?(?:(?:data|sealed|enum)\s+)?(?:(?:class|object|interface|(?:const\s+)?val|var)\s+([A-Za-z_][A-Za-z0-9_]*)|fun\s+(?:<[^>\r\n]+>\s*)?(?:[A-Za-z_][A-Za-z0-9_<>,?.\s]*\.)?([A-Za-z_][A-Za-z0-9_]*)\s*\()""",
+        """(?m)^(?:(?:internal|private|public)\s+)?(?:suspend\s+)?(?:(?:data|sealed|enum)\s+)?(?:(?:class|object|interface|(?:const\s+)?val|var)\s+([A-Za-z_][A-Za-z0-9_]*)|fun\s+(?:<[^>\r\n]+>\s*)?(?:[A-Za-z_][A-Za-z0-9_<>,?.\s]*\.)?([A-Za-z_][A-Za-z0-9_]*)\s*\()""",
     )
 
     private fun uiSourceDir(): File? {
@@ -26,7 +26,20 @@ class SleepUiStructureTest {
         assumeTrue("UI sources unavailable", dir != null)
 
         val expectedOwners = mapOf(
-            "SleepScreen.kt" to setOf("SleepScreen"),
+            "SleepNightScreen.kt" to setOf(
+                "SleepNightScreen", "loadSleeps", "provisionalNap", "restHeroSource",
+            ),
+            "SleepNightHeader.kt" to setOf(
+                "SleepNightHeader", "nightOffsetLabel", "SleepWindowRow", "SleepTime",
+            ),
+            "SleepNaps.kt" to setOf(
+                "SleepUndoBanner", "NapsCard", "NapRow", "MainSleepFooter", "mainSleepReasonText",
+                "NapSummaryCell",
+            ),
+            "SleepEditSheet.kt" to setOf(
+                "SleepEditField", "SleepEditSheetContent", "SleepEditRow", "SleepEditChip",
+                "SleepEditAction", "SleepEditPicker", "editDateLabel", "SleepEditTarget",
+            ),
             "SleepModels.kt" to setOf(
                 "Stages", "Metric", "ImportedSleepSeries", "SleepModel", "HeroNight", "HeroDisplay",
                 "selectNight", "mainSleepBlock", "scoredNightBlock", "mainSleepGroup", "mainSleepSpan",
@@ -77,16 +90,11 @@ class SleepUiStructureTest {
                 "formatLineValue", "nearestIndexForX", "nearestBarIndexForX",
                 "meanBucketDownsample", "drawRoundedTrack", "drawSegment",
             ),
-            "SleepEditor.kt" to setOf("SleepUndoBanner", "NapRow", "NightNavHeader"),
-            "SleepHero.kt" to setOf(
-                "restHeroSource", "Hero", "NapsCard", "MainSleepFooter",
-                "mainSleepReasonText", "NapSummaryCell", "SleepWindowRow", "SleepTime",
-            ),
             "SleepEmptyState.kt" to setOf("SleepEmptyState"),
             "SleepTrendCards.kt" to setOf(
                 "TIME_IN_BED_CHART_HEIGHT", "SLEEP_TREND_NIGHTS", "SleepTimeInBedCard",
                 "SleepEfficiencyTrendCard", "SleepTrendShell", "SleepTrendDayLabels", "trendDayLabel",
-            ),
+            ),
             "SleepNeedCard.kt" to setOf(
                 "NEED_BAR_HEIGHT", "DEBT_STRIP_HEIGHT", "LEDGER_SWATCH", "SleepNeedCard", "NeedBar",
                 "NeedLedgerRow", "DebtBalanceStrip",
@@ -112,7 +120,7 @@ class SleepUiStructureTest {
             assertEquals("$name declaration ownership changed", expectedDeclarations, actualDeclarations)
         }
 
-        val screen = File(dir, "SleepScreen.kt").readText()
-        assertTrue("SleepScreen.kt must remain orchestration-sized", screen.lineSequence().count() < 700)
+        val screen = File(dir, "SleepNightScreen.kt").readText()
+        assertTrue("SleepNightScreen.kt must remain orchestration-sized", screen.lineSequence().count() < 700)
     }
 }

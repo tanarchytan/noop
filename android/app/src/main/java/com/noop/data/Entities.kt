@@ -346,7 +346,7 @@ data class SleepSession(
     /**
      * DERIVED nap classification, computed at READ time, no schema column. A block is a nap when
      * SHORT (< [NAP_MAX_HOURS]) or DAYTIME-onset (onset outside the overnight window); the day's
-     * MAIN sleep is resolved separately (see SleepScreen.mainSleepBlock). A long overnight
+     * MAIN sleep is resolved separately (see SleepModels.mainSleepBlock). A long overnight
      * split-sleep block is NOT a nap.
      */
     val isNapShaped: Boolean

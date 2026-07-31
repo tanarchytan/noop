@@ -6,7 +6,7 @@ import org.junit.Test
 
 /**
  * Unit tests for [canonicalStage] + [stageRowSpans]: the (fracStart, fracWidth) spans of one
- * stage's intervals within the night, feeding a single StageRowTrack canvas per timeline row.
+ * stage's intervals within the night, feeding a single track canvas per stage row.
  */
 class StageRowSpansTest {
 

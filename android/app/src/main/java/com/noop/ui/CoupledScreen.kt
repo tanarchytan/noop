@@ -89,7 +89,7 @@ fun CoupledScreen(
     val today by vm.today.collectAsStateWithLifecycle()
     val days by vm.recentDays.collectAsStateWithLifecycle()
 
-    // Last night's sleep sessions (imported + computed-only), the SAME resolution SleepScreen uses, keyed on
+    // Last night's sleep sessions (imported + computed-only), the SAME resolution SleepNightScreen uses, keyed on
     // `days` so a sync/import reloads. Only needed for the bed-wake span footnote.
     var sleeps by remember { mutableStateOf<List<SleepSession>>(emptyList()) }
     LaunchedEffect(days) {
@@ -110,7 +110,7 @@ fun CoupledScreen(
     }
 
     // Imported export-verbatim sleep figures (sleep_performance / need), preferred over the on-device
-    // approximation, mirroring SleepScreen. Keyed on `days` (metricSeries has no Flow).
+    // approximation, mirroring SleepNightScreen. Keyed on `days` (metricSeries has no Flow).
     var importedPerf by remember { mutableStateOf<Map<String, Double>>(emptyMap()) }
     var importedNeed by remember { mutableStateOf<Map<String, Double>>(emptyMap()) }
     LaunchedEffect(days) {
@@ -551,7 +551,7 @@ internal fun strainBandWord(fraction: Double): String = when {
 
 /**
  * The night's need (minutes): the imported per-day figure when the export carried one, else the shared
- * >= 7.5h personal-mean floor (matches SleepScreen needMin / SleepView.sleepNeedMin).
+ * >= 7.5h personal-mean floor (matches SleepNightScreen needMin / SleepView.sleepNeedMin).
  */
 private fun sleepNeedForDay(day: DailyMetric?, days: List<DailyMetric>, importedNeed: Map<String, Double>): Double {
     day?.day?.let { key -> importedNeed[key]?.takeIf { it > 0 }?.let { return it } }

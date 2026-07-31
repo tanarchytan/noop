@@ -9,7 +9,7 @@ import java.util.Calendar
 import java.util.TimeZone
 
 /**
- * [SleepConsistencyCard] once iterated raw sessions directly, so a bridged night-tail fragment (already
+ * [SleepScheduleCard] once iterated raw sessions directly, so a bridged night-tail fragment (already
  * folded into ONE night by the hero via [mainSleepGroup]/[mainSleepSpan]) still drew as its own low bar,
  * got counted as an extra "night", and skewed the bed/wake SD and consistency score. [consistencyNightSpans]
  * is the fix: group by local wake-day (the same key the browsable day list uses), then resolve each day
