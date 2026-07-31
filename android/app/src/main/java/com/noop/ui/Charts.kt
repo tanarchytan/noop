@@ -135,40 +135,6 @@ private fun DrawScope.drawBaseline(color: Color = Palette.hairline) {
     )
 }
 
-// MARK: - Sparkline
-
-@Composable
-fun Sparkline(
-    values: List<Double>,
-    modifier: Modifier = Modifier,
-    color: Color = Palette.accent,
-) {
-    val axSummary = seriesSummary(values, "Trend")
-    Box(
-        modifier = modifier
-            .fillMaxWidth()
-            .height(Metrics.sparklineHeight)
-            .clearAndSetSemantics { contentDescription = axSummary }
-            .drawWithCache {
-                val strokePx = 2f
-                val pad = strokePx
-                val pts = pointsFor(values, size.width, size.height, pad, pad)
-                if (pts.isEmpty()) {
-                    onDrawBehind { drawBaseline() }
-                } else {
-                    val path = Path().apply {
-                        moveTo(pts.first().x, pts.first().y)
-                        for (i in 1 until pts.size) lineTo(pts[i].x, pts[i].y)
-                    }
-                    val stroke = Stroke(width = strokePx, cap = StrokeCap.Round, join = StrokeJoin.Round)
-                    onDrawBehind {
-                        drawPath(path = path, color = color, style = stroke)
-                    }
-                }
-            },
-    )
-}
-
 // MARK: - LineChart
 
 @Composable

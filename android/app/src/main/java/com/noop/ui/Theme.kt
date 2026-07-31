@@ -401,7 +401,6 @@ object Metrics {
     val sparkWidthWide = 48.dp   // inline trend beside a tile value — kept compact so the value (which
                                  // shrinks to fit, #332) keeps enough room to stay legible at full size
     val sparkWidth = 58.dp
-    val sparkHeight = 22.dp
     val motionStripHeight = 40.dp   // #407 — the subordinate movement/restlessness trace under the hypnogram
     // iOS #988 port — WHOOP-style per-stage sleep timeline rows (design 2026-07-10).
     val stageRowTrackHeight = 20.dp  // hatched night track + solid stage segments
@@ -414,7 +413,6 @@ object Metrics {
     val hrChartHeight = 132.dp       // night HR trace over the sleep window, above the stage rows
     val hrChartGutter = 26.dp        // bpm label gutter; the bound-label row shares it so both align
     val trendStripHeight = 120.dp
-    val sparklineHeight = 28.dp
     val segmentBarHeight = 18.dp
     val legendSwatch = 9.dp
     val legendLineWidth = 14.dp

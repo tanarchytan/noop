@@ -9,8 +9,6 @@ import com.noop.data.DailyMetric
 import com.noop.data.SleepSession
 import org.json.JSONArray
 import org.json.JSONObject
-import java.time.LocalDate
-import java.time.format.DateTimeFormatter
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -616,44 +614,7 @@ private fun mean(vals: List<Double>): Double? = if (vals.isEmpty()) null else va
 
 internal fun pctValue(v: Double?): String = v?.let { "${it.roundToInt()}%" } ?: "—"
 
-/** "+12% vs typical" / "−0.4 rpm vs typical" — the latest-vs-mean caption every tile carries. */
-internal fun vsTypical(latest: Double?, typical: Double?, suffix: String, decimals: Int = 0): String {
-    if (latest == null || typical == null || typical == 0.0) return "vs typical - "
-    val diff = latest - typical
-    val sign = if (diff >= 0) "+" else "−"
-    val mag = abs(diff)
-    val num = if (decimals == 0) "${mag.roundToInt()}" else String.format(Locale.US, "%.${decimals}f", mag)
-    return "$sign$num$suffix vs typical"
-}
-
-internal fun debtCaption(debt: Double?): String {
-    if (debt == null) return "vs need"
-    return if (debt < 15.0) "On target" else "Below need"
-}
-
-internal fun debtColor(debt: Double?): Color = when {
-    debt == null -> Palette.textPrimary
-    debt < 15.0 -> Palette.statusPositive
-    debt < 60.0 -> Palette.statusWarning
-    else -> Palette.statusCritical
-}
-
 // MARK: - Sleep-debt ledger formatting
-
-/**
- * "≈2h 10m" magnitude headline — leading "≈" because it's an accumulated estimate. Reads
- * "On target" inside the deadband so a few stray minutes don't show as debt.
- */
-internal fun debtHeadline(ledger: SleepDebtLedger): String =
-    if (ledger.magnitudeMin < SleepDebt.ON_TARGET_BAND_MIN) "On target"
-    else "≈${durationText(ledger.magnitudeMin)}"
-
-/** Short tag beside the headline: sleep debt / surplus / balanced. */
-internal fun debtTag(ledger: SleepDebtLedger): String = when {
-    ledger.magnitudeMin < SleepDebt.ON_TARGET_BAND_MIN -> "balanced"
-    ledger.isDebt -> "sleep debt"
-    else -> "surplus"
-}
 
 /** Plain-English read of the running balance over the window. */
 internal fun debtRead(ledger: SleepDebtLedger): String {
@@ -691,12 +652,6 @@ internal fun durationText(minutes: Double): String {
     val m = max(0, minutes.roundToInt())
     return if (m < 60) "${m}m" else "${m / 60}h ${m % 60}m"
 }
-
-/** A short "4 Jun" date label from a YYYY-MM-DD day string. */
-internal fun shortDayLabel(day: String): String =
-    runCatching {
-        LocalDate.parse(day).format(DateTimeFormatter.ofPattern("d MMM", Locale.US))
-    }.getOrDefault(day)
 
 internal fun List<Double>.sleepAverageOrNull(): Double? =
     if (isEmpty()) null else sum() / size

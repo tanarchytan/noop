@@ -265,6 +265,12 @@ fun SleepScreen(
     // the newest stage-bearing day when the selected day's model fails. Null only when NO day has stages.
     val tilesModel = remember(model, days, imported) { model ?: fallbackSleepModel(days, imported) }
 
+    // The trailing week's bridged bed→wake spans, the one derivation the schedule and time-in-bed cards
+    // share so they can't disagree on what counts as one night.
+    val weekSpans = remember(sleeps, habitualMidsleep) {
+        consistencyNightSpans(sleeps, habitualMidsleep, limit = SLEEP_TREND_NIGHTS)
+    }
+
     // Jump to a night by its (local) wake-day. navDays is newest-day-first, so the day's index IS its offset.
     val onPickNightDate: (LocalDate) -> Unit = { targetDate ->
         val targetStr = targetDate.toString()
@@ -425,24 +431,42 @@ fun SleepScreen(
                 // doesn't smart-cast across a lambda boundary).
                 val m = tilesModel
                 item { Spacer(Modifier.height(Metrics.selectorTopUp)) }
-                item { MetricGrid(m, onMetricClick = { detailMetricKey = it }) }
-                item { Spacer(Modifier.height(Metrics.selectorTopUp)) }
-                item { SleepDebtLedgerCard(m.sleepDebtLedger) }
-                // StagesVsTypical describes ONE night's deep/REM/light minutes under "Selected night", so it
-                // must read the SELECTED day's model, never the full-history fallback — else it would label
-                // another day's stages as this night. Hidden when the selected day has no stage model.
-                if (model != null) {
-                    // Bind a non-null local so the smart-cast carries into the item {} lambda.
-                    val selectedModel = model
-                    item { Spacer(Modifier.height(Metrics.selectorTopUp)) }
-                    item { StagesVsTypical(selectedModel) }
+                item {
+                    // The night's asleep total against the personal need. The hero stages' asleep sum is
+                    // the selected night's; the trend tail is the newest, so prefer the former when the
+                    // selected day built a model.
+                    val sleptMin = model?.stages?.asleep ?: ((m.trendHours.lastOrNull() ?: 0.0) * 60.0)
+                    val neededMin = (m.trendNeedHours.lastOrNull() ?: 0.0) * 60.0
+                    SleepNeedCard(
+                        percent = m.hoursVsNeeded.latest,
+                        typicalPercent = m.hoursVsNeeded.typical,
+                        sleptMin = sleptMin,
+                        neededMin = if (neededMin > 0.0) neededMin else m.sleepDebtLedger.needMin,
+                        ledger = m.sleepDebtLedger,
+                    )
                 }
                 item { Spacer(Modifier.height(Metrics.selectorTopUp)) }
-                item { DurationTrend(m) }
+                item {
+                    SleepScheduleCard(
+                        score = m.consistency.latest,
+                        typicalScore = m.consistency.typical,
+                        nights = weekSpans.let(::sleepScheduleNights),
+                        habitualMidsleepSec = habitualMidsleep,
+                        needMin = m.sleepDebtLedger.needMin,
+                    )
+                }
                 item { Spacer(Modifier.height(Metrics.selectorTopUp)) }
-                item { HoursVsNeededCard(m) }
+                item { SectionHeader("Weekly trends", overline = "Sleep", trailing = "Last 7 nights") }
                 item { Spacer(Modifier.height(Metrics.selectorTopUp)) }
-                item { SleepConsistencyCard(sleeps, habitualMidsleep) }
+                item { SleepTimeInBedCard(nights = weekSpans.let(::sleepScheduleNights), spans = weekSpans) }
+                item { Spacer(Modifier.height(Metrics.selectorTopUp)) }
+                item {
+                    SleepEfficiencyTrendCard(
+                        series = m.efficiency.series,
+                        dates = m.trendDates,
+                        onOpenDetail = { detailMetricKey = "efficiency" },
+                    )
+                }
             }
         }
     }

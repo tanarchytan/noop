@@ -36,9 +36,9 @@ class SleepUiStructureTest {
                 "decodedAsleepMinutes", "isPreOnsetAwakeStub", "sumGroupStages", "uiTzOffsetSec",
                 "heroDisplay", "stagesFromSegments", "StageMins", "parseSessionStages",
                 "buildSleepModel", "fallbackSleepModel", "metricAtDay", "consistencySeries", "mean",
-                "pctValue", "vsTypical", "debtCaption", "debtColor", "debtHeadline",
-                "debtTag", "debtRead", "debtBalanceColor", "debtSigned", "durationText",
-                "shortDayLabel", "sleepAverageOrNull", "clockLabel", "sessionClockLabel",
+                "pctValue",
+                "debtRead", "debtBalanceColor", "debtSigned", "durationText",
+                "sleepAverageOrNull", "clockLabel", "sessionClockLabel",
                 "clockLabelFor", "localDayString", "clockTimeLabel",
             ),
             "SleepStageTimeline.kt" to setOf(
@@ -65,7 +65,7 @@ class SleepUiStructureTest {
                 "hrTraceRuns", "stageBandsInWindow", "SleepHrChart", "HrBoundLabels",
             ),
             "Charts.kt" to setOf(
-                "Sparkline", "LineChart", "LineSeries", "MultiLineChart",
+                "LineChart", "LineSeries", "MultiLineChart",
                 "BarChart", "Hypnogram", "SegmentBar",
                 "ClockLabelRow",
                 "TimelinePoint", "TimelineChart",
@@ -82,11 +82,19 @@ class SleepUiStructureTest {
                 "restHeroSource", "Hero", "NapsCard", "MainSleepFooter",
                 "mainSleepReasonText", "NapSummaryCell", "SleepWindowRow", "SleepTime",
             ),
-            "SleepMetrics.kt" to setOf(
-                "MetricGrid", "SleepDebtLedgerCard", "DebtDeltaBars", "StagesVsTypical", "Hairline",
-                "StageRow", "drawRoundRectFill", "DurationTrend", "TrendPlaceholder", "DateAxisRow",
-                "SparkTile", "SleepEmptyState", "HoursVsNeededCard",
-                "LegendDot", "SleepNightTiming", "SleepConsistencyCard",
+            "SleepEmptyState.kt" to setOf("SleepEmptyState"),
+            "SleepTrendCards.kt" to setOf(
+                "TIME_IN_BED_CHART_HEIGHT", "SLEEP_TREND_NIGHTS", "SleepTimeInBedCard",
+                "SleepEfficiencyTrendCard", "SleepTrendShell", "SleepTrendDayLabels", "trendDayLabel",
+            ),
+            "SleepNeedCard.kt" to setOf(
+                "NEED_BAR_HEIGHT", "DEBT_STRIP_HEIGHT", "LEDGER_SWATCH", "SleepNeedCard", "NeedBar",
+                "NeedLedgerRow", "DebtBalanceStrip",
+            ),
+            "SleepScheduleCard.kt" to setOf(
+                "SCHEDULE_Y_MIN", "SCHEDULE_Y_MAX", "SCHEDULE_HOUR_LINES", "SCHEDULE_CHART_HEIGHT",
+                "SCHEDULE_Y_GUTTER_PX", "SECONDS_PER_HOUR", "SleepScheduleNight", "SleepScheduleCard",
+                "scheduleHourLabel", "optimalSleepBand", "sleepScheduleNights",
             ),
             "SleepMetricDetail.kt" to setOf(
                 "SleepMetricRange", "SleepMetricSpec", "sleepMetricSpec", "buildSleepMetricPoints",
