@@ -61,7 +61,7 @@ class SleepUiStructureTest {
                 "formatLineValue", "nearestIndexForX", "nearestBarIndexForX",
                 "meanBucketDownsample", "drawRoundedTrack", "drawSegment",
             ),
-            "SleepEditor.kt" to setOf("SleepMarkCard", "SleepUndoBanner", "NapRow", "NightNavHeader"),
+            "SleepEditor.kt" to setOf("SleepUndoBanner", "NapRow", "NightNavHeader"),
             "SleepHero.kt" to setOf(
                 "LIQUID_HERO_FILL", "LIQUID_HERO_RADIUS", "RestHero", "SleepHeroVessel",
                 "sleepScoreWord", "restHeroSource", "Hero", "NapsCard", "MainSleepFooter",
