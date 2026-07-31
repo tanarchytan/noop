@@ -137,7 +137,7 @@ sealed class HistoricalMeta {
  * advance the trim cursor for data we never durably stored.
  */
 fun classifyHistoricalMeta(frame: ByteArray, family: DeviceFamily): HistoricalMeta {
-    val m = RustCodec.decodeMetadata(family == DeviceFamily.WHOOP5, frame) ?: return HistoricalMeta.Other
+    val m = RustCodec.decodeMetadata(family.gen, frame) ?: return HistoricalMeta.Other
     if (!m.crcOk) return HistoricalMeta.Other
     return when (m.metaType.toInt()) {
         MetadataType.HISTORY_START.rawValue -> HistoricalMeta.Start
@@ -409,7 +409,7 @@ fun extractHistoricalStreams(
                 // Fallback (rare during a plain type-47 offload): HR/RR off a realtime header. Its
                 // timestamp is a device-epoch value, so it DOES get the wall-clock offset. whoop-rs is the
                 // sole decoder; a plain type-43 raw header surfaces no biometrics (null → skip).
-                val live = RustCodec.decodeLive(family == DeviceFamily.WHOOP5, frame) as? Live.Realtime ?: continue
+                val live = RustCodec.decodeLive(family.gen, frame) as? Live.Realtime ?: continue
                 val ts = wall(live.unix.toInt()) ?: continue
                 // #547: gate the wall()-corrected ts on the same plausibility window — a bad device clock
                 // here would otherwise inject a far-past / future-dated HR/RR row.
@@ -444,7 +444,7 @@ fun extractHistoricalStreams(
             PacketType.COMMAND_RESPONSE.rawValue -> {
                 // No device timestamp on COMMAND_RESPONSE → stamp battery at wallClockRef (Swift parity).
                 // whoop-rs decodes the response; only a GET_BATTERY_LEVEL reply carries a percent.
-                (RustCodec.decodeResponse(family == DeviceFamily.WHOOP5, frame) as? Response.Battery)?.let {
+                (RustCodec.decodeResponse(family.gen, frame) as? Response.Battery)?.let {
                     battery.add(BatteryRow(ts = wallClockRef.toLong(), soc = it.percent, mv = null, charging = null))
                 }
             }

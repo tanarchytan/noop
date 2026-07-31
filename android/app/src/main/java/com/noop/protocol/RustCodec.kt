@@ -16,6 +16,13 @@ import uniffi.whoop_ffi.dataRangePagesBehind as ffiDataRangePagesBehind
 import uniffi.whoop_ffi.hrvRmssdGapAware
 import uniffi.whoop_ffi.ppgHr
 
+/** The codec generation a strap family speaks — the one [DeviceFamily] → [Gen] mapping. */
+val DeviceFamily.gen: Gen
+    get() = when (this) {
+        DeviceFamily.WHOOP4 -> Gen.GEN4
+        DeviceFamily.WHOOP5 -> Gen.GEN5
+    }
+
 /**
  * Bridge to the Rust whoop-ffi codec (the from-scratch whoop-rs core, shared across apps). Native BLE
  * still owns the radio and feeds frame bytes here; nothing async or radio-bound crosses the FFI. The full
@@ -25,20 +32,20 @@ import uniffi.whoop_ffi.ppgHr
 object RustCodec {
     private val gen5 by lazy { WhoopCodec(Gen.GEN5) }
     private val gen4 by lazy { WhoopCodec(Gen.GEN4) }
-    private fun codec(isGen5: Boolean) = if (isGen5) gen5 else gen4
+    private fun codec(gen: Gen) = if (gen == Gen.GEN5) gen5 else gen4
 
     /** Decode one type-47 HISTORICAL_DATA frame to its full per-second summary, or null. */
-    fun decodeHistory(isGen5: Boolean, frame: ByteArray): HistorySummary? = codec(isGen5).decodeHistory(frame)
+    fun decodeHistory(gen: Gen, frame: ByteArray): HistorySummary? = codec(gen).decodeHistory(frame)
 
     /** Decode one live-notify frame (realtime HR/R-R, on-wrist r22, event/battery, console), or null. */
-    fun decodeLive(isGen5: Boolean, frame: ByteArray): Live? = codec(isGen5).decodeLive(frame)
+    fun decodeLive(gen: Gen, frame: ByteArray): Live? = codec(gen).decodeLive(frame)
 
     /** Decode one command response (identity/battery/clock/data-range/firmware), or null. */
-    fun decodeResponse(isGen5: Boolean, frame: ByteArray): Response? = codec(isGen5).decodeResponse(frame)
+    fun decodeResponse(gen: Gen, frame: ByteArray): Response? = codec(gen).decodeResponse(frame)
 
     /** Decode one METADATA frame's offload-state fields (meta_type/unix/trim_cursor/crc_ok), or null.
      *  Drives the historical-offload trim: a wrong trim would delete un-drained history. */
-    fun decodeMetadata(isGen5: Boolean, frame: ByteArray): MetadataInfo? = codec(isGen5).decodeMetadata(frame)
+    fun decodeMetadata(gen: Gen, frame: ByteArray): MetadataInfo? = codec(gen).decodeMetadata(frame)
 
     /** Newest plausible unix banked (GET_DATA_RANGE), scanning every offset, preferring non-future. */
     fun dataRangeNewest(frame: ByteArray, wallNowUnix: Long, futureSkewSeconds: Long): Long? =
@@ -63,22 +70,22 @@ object RustCodec {
     //     keeps only the send policy (seq counter, 5/MG allow-list, opt-in gates, R22 ordering). ---
 
     /** Generic COMMAND frame for [cmd]+[payload]; null if the codec refuses a destructive opcode. */
-    fun commandFrame(isGen5: Boolean, seq: Int, cmd: Int, payload: ByteArray): ByteArray? =
-        codec(isGen5).commandFrame(seq.toUByte(), cmd.toUByte(), payload)
+    fun commandFrame(gen: Gen, seq: Int, cmd: Int, payload: ByteArray): ByteArray? =
+        codec(gen).commandFrame(seq.toUByte(), cmd.toUByte(), payload)
 
     /** 5/MG one-shot maverick buzz (the notify preset). */
     fun buzzFrame(seq: Int): ByteArray = gen5.buzzFrame(seq.toUByte())
 
     /** GET_BATTERY_LEVEL (also the 4.0 bond-establishing write). */
-    fun getBatteryFrame(isGen5: Boolean, seq: Int): ByteArray = codec(isGen5).getBatteryFrame(seq.toUByte())
+    fun getBatteryFrame(gen: Gen, seq: Int): ByteArray = codec(gen).getBatteryFrame(seq.toUByte())
 
     /** SET_CLOCK 8-byte form (newer firmware). */
-    fun setClockFrame(isGen5: Boolean, seq: Int, nowUnix: Long): ByteArray =
-        codec(isGen5).setClockFrame(seq.toUByte(), nowUnix.toUInt())
+    fun setClockFrame(gen: Gen, seq: Int, nowUnix: Long): ByteArray =
+        codec(gen).setClockFrame(seq.toUByte(), nowUnix.toUInt())
 
     /** SET_CLOCK legacy 9-byte form (older 4.0 firmware). */
-    fun setClockLegacyFrame(isGen5: Boolean, seq: Int, nowUnix: Long): ByteArray =
-        codec(isGen5).setClockLegacyFrame(seq.toUByte(), nowUnix.toUInt())
+    fun setClockLegacyFrame(gen: Gen, seq: Int, nowUnix: Long): ByteArray =
+        codec(gen).setClockLegacyFrame(seq.toUByte(), nowUnix.toUInt())
 
     /** SET_ALARM_TIME 5/MG rev4 body. */
     fun alarmSetFrame(seq: Int, wakeEpochMs: Long, alarmId: Int = 1): ByteArray =

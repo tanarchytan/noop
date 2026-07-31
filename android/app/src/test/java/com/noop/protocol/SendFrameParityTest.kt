@@ -2,6 +2,7 @@ package com.noop.protocol
 
 import org.junit.Assert.assertEquals
 import org.junit.Test
+import uniffi.whoop_ffi.Gen
 
 /**
  * Permanent byte-lock for the SEND path: every outbound frame the whoop-rs FFI builds is frozen here as
@@ -17,11 +18,11 @@ class SendFrameParityTest {
 
     @Test
     fun `gen5 generic command frame`() =
-        assertEquals("aa010c000001e74123072a010203000060fd64e4", h(RustCodec.commandFrame(true, seq, 0x2A, byteArrayOf(1, 2, 3))!!))
+        assertEquals("aa010c000001e74123072a010203000060fd64e4", h(RustCodec.commandFrame(Gen.GEN5, seq, 0x2A, byteArrayOf(1, 2, 3))!!))
 
     @Test
     fun `gen4 generic command frame`() =
-        assertEquals("aa0800a8230703008a9aa1bd", h(RustCodec.commandFrame(false, seq, 3, byteArrayOf(0))!!))
+        assertEquals("aa0800a8230703008a9aa1bd", h(RustCodec.commandFrame(Gen.GEN4, seq, 3, byteArrayOf(0))!!))
 
     @Test
     fun `gen5 maverick buzz frame`() =
@@ -29,17 +30,17 @@ class SendFrameParityTest {
 
     @Test
     fun `gen4 get-battery bond frame`() =
-        assertEquals("aa0800a823071a009233a126", h(RustCodec.getBatteryFrame(false, seq)))
+        assertEquals("aa0800a823071a009233a126", h(RustCodec.getBatteryFrame(Gen.GEN4, seq)))
 
     @Test
     fun `set clock 8-byte form both families`() {
-        assertEquals("aa0f00c323070a00ae556a0000000046975e9b", h(RustCodec.setClockFrame(false, seq, 1_784_000_000L)))
-        assertEquals("aa0110000001e0d123070a00ae556a0000000000bf55264d", h(RustCodec.setClockFrame(true, seq, 1_784_000_000L)))
+        assertEquals("aa0f00c323070a00ae556a0000000046975e9b", h(RustCodec.setClockFrame(Gen.GEN4, seq, 1_784_000_000L)))
+        assertEquals("aa0110000001e0d123070a00ae556a0000000000bf55264d", h(RustCodec.setClockFrame(Gen.GEN5, seq, 1_784_000_000L)))
     }
 
     @Test
     fun `set clock legacy 9-byte form`() =
-        assertEquals("aa10005723070a00ae556a0000000000bf55264d", h(RustCodec.setClockLegacyFrame(false, seq, 1_784_000_000L)))
+        assertEquals("aa10005723070a00ae556a0000000000bf55264d", h(RustCodec.setClockLegacyFrame(Gen.GEN4, seq, 1_784_000_000L)))
 
     @Test
     fun `gen5 rev4 alarm set frame`() =
@@ -73,8 +74,8 @@ class SendFrameParityTest {
 
     @Test
     fun `whoop5 offload commands match the goose-acked bytes`() {
-        assertEquals("aa0108000001e67123012200dbf3b335", h(RustCodec.commandFrame(true, 1, 34, byteArrayOf())!!))
-        assertEquals("aa0108000001e6712302160075bedf8c", h(RustCodec.commandFrame(true, 2, 22, byteArrayOf())!!))
+        assertEquals("aa0108000001e67123012200dbf3b335", h(RustCodec.commandFrame(Gen.GEN5, 1, 34, byteArrayOf())!!))
+        assertEquals("aa0108000001e6712302160075bedf8c", h(RustCodec.commandFrame(Gen.GEN5, 2, 22, byteArrayOf())!!))
     }
 
     @Test
@@ -90,6 +91,6 @@ class SendFrameParityTest {
         assertEquals("aa0114000001e1e1230113012f980000000000000000000098cb83a5", h(RustCodec.buzzFrame(1)))
         assertEquals("aa011c000001e381230142040100f15365be0f2f980000000000000000071e00392f2ac9", h(RustCodec.alarmSetFrame(1, 1_700_000_000_123L)))
         assertEquals("aa010c000001e74123014502ff000000267ffc4f", h(RustCodec.alarmDisableFrame(1)))
-        assertEquals("aa010c000001e741230144020100000017cd19e2", h(RustCodec.commandFrame(true, 1, 68, byteArrayOf(0x02, 0x01))!!))
+        assertEquals("aa010c000001e741230144020100000017cd19e2", h(RustCodec.commandFrame(Gen.GEN5, 1, 68, byteArrayOf(0x02, 0x01))!!))
     }
 }

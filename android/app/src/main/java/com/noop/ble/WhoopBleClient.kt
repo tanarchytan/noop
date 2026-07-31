@@ -47,6 +47,7 @@ import com.noop.protocol.RustAdapter
 import com.noop.protocol.RustCodec
 import com.noop.protocol.Whoop5Config
 import com.noop.protocol.extractStreams
+import com.noop.protocol.gen
 import com.noop.analytics.Baselines
 import com.noop.analytics.BatterySocLine
 import com.noop.analytics.IntelligenceEngine
@@ -75,6 +76,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import uniffi.whoop_ffi.Gen
 import java.util.UUID
 import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.atomic.AtomicInteger
@@ -1959,7 +1961,8 @@ class WhoopBleClient(
      * runHapticsPattern) are link-cheap. The bond write and any acked command use WITH response.
      */
     fun send(cmd: CommandNumber, payload: ByteArray = byteArrayOf(0), withResponse: Boolean = false) {
-        val gen5 = connectedFamily == DeviceFamily.WHOOP5
+        val gen = connectedFamily.gen
+        val gen5 = gen == Gen.GEN5
         // WHOOP 5/MG haptics differ from 4.0 on opcode AND payload: cmd 0x13 (not 79, which a real MG
         // rejects) + the maverick "notify" preset body. Everything else builds via the generic FFI
         // command builder; the frame bytes are byte-identical to the former Kotlin envelope (test-locked).
@@ -1967,7 +1970,7 @@ class WhoopBleClient(
         val sent = sendCommand(cmd, withResponse) { s ->
             when {
                 gen5 && isHaptics -> RustCodec.buzzFrame(s)
-                else -> RustCodec.commandFrame(isGen5 = gen5, seq = s, cmd = cmd.rawValue, payload = payload)
+                else -> RustCodec.commandFrame(gen, seq = s, cmd = cmd.rawValue, payload = payload)
             }
         }
         if (sent) {
@@ -4027,11 +4030,11 @@ class WhoopBleClient(
      */
     private fun sendSetClockBothForms(withResponse: Boolean = false) {
         val now = System.currentTimeMillis() / 1000L
-        val gen5 = connectedFamily == DeviceFamily.WHOOP5
-        val sent = sendCommand(CommandNumber.SET_CLOCK, withResponse) { s -> RustCodec.setClockFrame(gen5, s, now) }
+        val gen = connectedFamily.gen
+        val sent = sendCommand(CommandNumber.SET_CLOCK, withResponse) { s -> RustCodec.setClockFrame(gen, s, now) }
         if (sent) log("→ SET_CLOCK (8-byte)")
         if (selectedModel == WhoopModel.WHOOP4) {
-            val legacy = sendCommand(CommandNumber.SET_CLOCK, withResponse) { s -> RustCodec.setClockLegacyFrame(false, s, now) }
+            val legacy = sendCommand(CommandNumber.SET_CLOCK, withResponse) { s -> RustCodec.setClockLegacyFrame(Gen.GEN4, s, now) }
             if (legacy) log("→ SET_CLOCK (legacy 9-byte)")
         }
     }
@@ -4124,7 +4127,7 @@ class WhoopBleClient(
     private fun writeBondFrame(ch: BluetoothGattCharacteristic) {
         val ops = gattOps ?: return
         val s = seq.incrementAndGet() and 0xFF
-        val bondFrame = RustCodec.getBatteryFrame(isGen5 = false, seq = s)
+        val bondFrame = RustCodec.getBatteryFrame(Gen.GEN4, seq = s)
         log("Bonding: confirmed write GET_BATTERY_LEVEL to 61080002")
         writeInFlight = true   // hold the slot until onCharacteristicWrite fires (with response).
         // safeGatt: a throw means the binder died — teardown, return false, fall into the
@@ -4198,7 +4201,7 @@ class WhoopBleClient(
                 connectHandshakeDone = true
                 noteRebootReconnectIfNeeded()
                 sendCommand(CommandNumber.SET_CLOCK, withResponse = true) { s ->
-                    RustCodec.setClockFrame(isGen5 = true, seq = s, nowUnix = System.currentTimeMillis() / 1000L)
+                    RustCodec.setClockFrame(Gen.GEN5, seq = s, nowUnix = System.currentTimeMillis() / 1000L)
                 }
                 send(CommandNumber.GET_CLOCK, byteArrayOf(), withResponse = true)
                 // Populate the battery ring right after connect, not only once the Live screen opens. Posted

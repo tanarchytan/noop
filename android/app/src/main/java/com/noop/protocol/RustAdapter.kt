@@ -1,5 +1,6 @@
 package com.noop.protocol
 
+import uniffi.whoop_ffi.Gen
 import uniffi.whoop_ffi.HistorySummary
 import uniffi.whoop_ffi.Live
 import uniffi.whoop_ffi.Response
@@ -13,9 +14,6 @@ import uniffi.whoop_ffi.Response
  * (the app-side plausibility/clock path runs in [extractHistoricalStreams], never re-done here).
  */
 object RustAdapter {
-
-    /** Family → the FFI's Gen5 flag. */
-    private fun isGen5(family: DeviceFamily) = family == DeviceFamily.WHOOP5
 
     // --- Row mappers -------------------------------------------------------------------------------
 
@@ -65,7 +63,7 @@ object RustAdapter {
      *  v26 PPG / console / CRC-failed / non-record frame — whoop-rs rejects a bad-CRC frame itself, so a
      *  garbled/forged offload frame yields null (archived by rejectedHistoricalRecords, never stored). */
     fun recordFields(frame: ByteArray, family: DeviceFamily): Map<String, Any?>? =
-        RustCodec.decodeHistory(isGen5(family), frame)?.let { summaryToHistMap(it) }
+        RustCodec.decodeHistory(family.gen, frame)?.let { summaryToHistMap(it) }
 
     /** (kind, rawTs, residual) for a widened [Live.Event] — the pieces the storing event tail needs. */
     fun eventFieldsFromLive(ev: Live.Event): EventFields =
@@ -74,7 +72,7 @@ object RustAdapter {
     /** Decode one offload/live EVENT frame via whoop-rs into the stored (kind, rawTs, residual) contract.
      *  null when the frame is not an event. */
     fun eventFields(frame: ByteArray, family: DeviceFamily): EventFields? {
-        val live = RustCodec.decodeLive(isGen5(family), frame)
+        val live = RustCodec.decodeLive(family.gen, frame)
         return if (live is Live.Event) eventFieldsFromLive(live) else null
     }
 
@@ -109,7 +107,8 @@ object RustAdapter {
      * as the previous Kotlin live decoder did.
      */
     fun parseFrame(frame: ByteArray, family: DeviceFamily): ParsedFrame {
-        val gen5 = isGen5(family)
+        val gen = family.gen
+        val gen5 = gen == Gen.GEN5
         val minSize = if (gen5) 12 else 8
         if (frame.size < minSize || frame[0] != 0xAA.toByte()) return ParsedFrame.invalid()
 
@@ -119,31 +118,31 @@ object RustAdapter {
 
         when (name) {
             "REALTIME_DATA" ->
-                (RustCodec.decodeLive(gen5, frame) as? Live.Realtime)?.let { rt ->
+                (RustCodec.decodeLive(gen, frame) as? Live.Realtime)?.let { rt ->
                     crcOk = true
                     parsed["timestamp"] = rt.unix.toInt()
                     parsed["heart_rate"] = rt.heartRate.toInt()
                     parsed["rr_intervals"] = rt.rrIntervals.map { it.toInt() }.filter { it > 0 }
                 }
             "EVENT" ->
-                (RustCodec.decodeLive(gen5, frame) as? Live.Event)?.let { ev ->
+                (RustCodec.decodeLive(gen, frame) as? Live.Event)?.let { ev ->
                     crcOk = true
                     parsed["event"] = eventKind(ev.number.toInt())
                     parsed["event_timestamp"] = ev.unix.toInt()
                     parsed.putAll(eventResidual(ev))
                 }
             "CONSOLE_LOGS" ->
-                (RustCodec.decodeLive(gen5, frame) as? Live.Console)?.let { c ->
+                (RustCodec.decodeLive(gen, frame) as? Live.Console)?.let { c ->
                     crcOk = true
                     parsed["console"] = c.text
                 }
             "COMMAND_RESPONSE" ->
-                RustCodec.decodeResponse(gen5, frame)?.let { resp ->
+                RustCodec.decodeResponse(gen, frame)?.let { resp ->
                     crcOk = true
                     mapResponse(resp, gen5, parsed)
                 }
             "METADATA" ->
-                RustCodec.decodeMetadata(gen5, frame)?.let { md ->
+                RustCodec.decodeMetadata(gen, frame)?.let { md ->
                     crcOk = md.crcOk
                     parsed["meta_type"] = metaLabel(md.metaType.toInt())
                     // whoop-rs reads unix@inner3 / trim@inner13 and zero-fills when the (shorter
@@ -162,7 +161,7 @@ object RustAdapter {
      *  registry. Mirrors the previous live decoder's `typeName`, so the stored/capture labels are
      *  unchanged. */
     private fun classifyTypeName(frame: ByteArray, family: DeviceFamily): String {
-        val innerStart = if (isGen5(family)) 8 else 4
+        val innerStart = if (family == DeviceFamily.WHOOP5) 8 else 4
         val t = frame.getOrNull(innerStart)?.toInt()?.and(0xFF) ?: return "typeUnknown"
         return when (t) {
             PuffinPacketType.PUFFIN_COMMAND_RESPONSE -> "COMMAND_RESPONSE"
