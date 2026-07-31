@@ -459,6 +459,8 @@ fun TodayScreen(
  // here (null ↔ runner only — the per-second snapshot is scoped inside the entry card) so a running
  // session keeps its way-back-in card even if the beta flag was just switched off.
     var showLiveSession by remember { mutableStateOf(false) }
+    val liveSessionsEnabled = remember { LiveSessionPrefs.enabled(context) }
+    val activeLiveSession by LiveSessionRunner.active.collectAsStateWithLifecycle()
  // S4: the Synthesis card collapses to a one-liner that expands on tap (default collapsed). Mirrors iOS.
     var synthesisExpanded by remember { mutableStateOf(false) }
  // S5: the Key Metrics grid caps at the first METRICS_COLLAPSED_CAP tiles behind a "Show all metrics"
@@ -1204,6 +1206,25 @@ fun TodayScreen(
                         )
                     }
                 }
+            }
+        }
+
+ // LIVE SESSIONS (beta): the compact "Start session" entry, directly under the hero. Today only
+ // (offset 0 — a session is a now-thing), gated on the Settings beta flag; a RUNNING session keeps the
+ // card visible regardless, since it is the way back into the dismissed session dialog.
+        if (selectedDayOffset == 0 && (liveSessionsEnabled || activeLiveSession != null)) {
+            item {
+                LiveSessionEntryCard(
+                    onOpen = {
+                        // Only BEGIN when nothing is in flight: an active runner (running, or ended and
+                        // holding its unseen summary) is re-presented, never displaced — so a tap cannot
+                        // discard a running session or a summary awaiting its "Done".
+                        if (LiveSessionRunner.active.value == null) {
+                            startOrResumeLiveSession(viewModel, context)
+                        }
+                        showLiveSession = true
+                    },
+                )
             }
         }
 
