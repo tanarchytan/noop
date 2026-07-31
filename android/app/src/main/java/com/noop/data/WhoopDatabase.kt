@@ -285,7 +285,7 @@ abstract class WhoopDatabase : RoomDatabase() {
                     "INSERT OR IGNORE INTO `pairedDevice` " +
                         "(`id`, `brand`, `model`, `nickname`, `sourceKind`, `capabilities`, " +
                         "`status`, `addedAt`, `lastSeenAt`) VALUES " +
-                        "('my-whoop', 'WHOOP', 'WHOOP', NULL, 'legacy', " +
+                        "('my-whoop', 'WHOOP', 'WHOOP', NULL, 'liveBLE', " +
                         "'hr,hrv,spo2,skinTemp,sleep,strainLoad', 'active', $now, $now)",
                 )
             }
