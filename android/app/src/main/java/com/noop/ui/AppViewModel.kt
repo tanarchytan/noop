@@ -2095,8 +2095,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         ble.externalLog(mark.logLine())
         ble.buzz(1)
         viewModelScope.launch {
-            // Use the SAME "my-whoop" series source the Sleep screen's mark card writes (SleepScreen.kt)
-            // and reads back from, so a double-tap mark lands in the same place a tapped one does.
+            // The "my-whoop" series source, which is where a mark has always been written. The strap
+            // double-tap is now the only way to record one; the Sleep screen's card is gone.
             runCatching { repository.upsertMetricSeries(listOf(mark.metricPoint("my-whoop"))) }
         }
     }

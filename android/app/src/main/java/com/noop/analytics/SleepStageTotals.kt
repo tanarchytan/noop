@@ -120,9 +120,9 @@ object SleepStageTotals {
 
     // ── Canonical main-night selection (learned-timing scored pick) ──────────────────────────────────
 
-    /** Broad overnight band used ONLY for the cold-start alignment bonus (NOT a gate). The band is
-     *  [OVERNIGHT_START_HOUR, OVERNIGHT_END_HOUR) local, reconciled with the detector's
-     *  `SleepStager.isOvernightOnset` window [20:00, 11:00) so the selector and detector agree. */
+    /** Broad overnight band, NOT a gate. The band is [OVERNIGHT_START_HOUR, OVERNIGHT_END_HOUR) local,
+     *  reconciled with the detector's `SleepStager.isOvernightOnset` window [20:00, 11:00) so the
+     *  selector and detector agree. The alignment bonus it used to feed is computed in whoop-rs. */
     const val OVERNIGHT_START_HOUR = 20
 
     /** Local hour (exclusive) that closes the cold-start overnight band, matching the detector's
@@ -132,18 +132,6 @@ object SleepStageTotals {
 
     /** Seconds in a day, for circular time-of-day math. */
     const val SECONDS_PER_DAY = 86_400L
-
-    /** Fixed alignment credit (MINUTES) added to a block's asleep minutes when its midpoint sits on the
-     *  habitual midsleep (or, cold-start, the overnight band center). A BONUS, not a gate: a long enough
-     *  off-timing block can still out-score a short well-timed one. ~90 min ≈ one sleep cycle. */
-    const val ALIGNMENT_BONUS_MIN: Double = 90.0
-
-    /** Full alignment bonus within this many seconds (circular) of the habitual midsleep; decays linearly
-     *  to 0 at [ALIGNMENT_ZERO_SEC]. ±2h full, →0 by ±5h. */
-    const val ALIGNMENT_FULL_WINDOW_SEC = 2 * 3_600L
-
-    /** Circular distance (seconds) at/after which the alignment bonus is 0. */
-    const val ALIGNMENT_ZERO_SEC = 5 * 3_600L
 
     /** One candidate block for main-night selection: its effective onset and end (unix seconds). A user
      *  wake/bed edit moves [end], never the detected onset key. */
@@ -167,9 +155,8 @@ object SleepStageTotals {
     }
 
     /** True when a block's onset falls in the cold-start overnight band (>= [OVERNIGHT_START_HOUR] or
-     *  < [OVERNIGHT_END_HOUR], local; kept in sync with `SleepStager.isOvernightOnset`). No longer a
-     *  gate for the scored selector, only feeds the cold-start alignment bonus. [offsetSec] is seconds
-     *  EAST of UTC. */
+     *  < [OVERNIGHT_END_HOUR], local; kept in sync with `SleepStager.isOvernightOnset`). Not a gate for
+     *  the scored selector, which runs in whoop-rs. [offsetSec] is seconds EAST of UTC. */
     fun isOvernightOnset(ts: Long, offsetSec: Long): Boolean {
         val local = ts + offsetSec
         val secOfDay = ((local % SECONDS_PER_DAY) + SECONDS_PER_DAY) % SECONDS_PER_DAY
@@ -183,16 +170,6 @@ object SleepStageTotals {
         val raw = Math.abs(a - b) % SECONDS_PER_DAY
         return minOf(raw, SECONDS_PER_DAY - raw)
     }
-
-    /** The cold-start anchor: the CENTER of the overnight band [OVERNIGHT_START_HOUR, OVERNIGHT_END_HOUR),
-     *  as a time-of-day in seconds. The band wraps midnight (20:00 → 11:00 = 15h wide) so the center is
-     *  03:30 local. */
-    val coldStartAnchorSec: Long
-        get() {
-            val startSec = OVERNIGHT_START_HOUR * 3_600L
-            val span = ((OVERNIGHT_END_HOUR - OVERNIGHT_START_HOUR) * 3_600L + SECONDS_PER_DAY) % SECONDS_PER_DAY
-            return (startSec + span / 2) % SECONDS_PER_DAY
-        }
 
     /** One bridged night group over the whole input: the fragments (as ORIGINAL indices, ascending) plus
      *  the group's inter-fragment wake seams (start, end) pairs. Produced by [bridgedNightGroups] for

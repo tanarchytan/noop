@@ -2,7 +2,6 @@ package com.noop.ui
 
 import android.app.DatePickerDialog
 import android.app.TimePickerDialog
-import com.noop.analytics.SleepMarkType
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -24,9 +23,6 @@ import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.WbSunny
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -55,54 +51,6 @@ import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 import androidx.compose.runtime.mutableLongStateOf
-
-// MARK: - Sleep marks
-//
-// Tap to log "going to sleep" / "I'm awake". Tapping reports the mark up to [onMark], which persists it to
-// the `sleep_mark` series + the shareable strap log, then confirms with a Toast. LOGGING ONLY: a mark never
-// touches the sleep detector or the night boundaries.
-
-@Composable
-internal fun SleepMarkCard(onMark: (SleepMarkType) -> Unit) {
-    Column(verticalArrangement = Arrangement.spacedBy(Metrics.gap)) {
-        SectionHeader(title = "Sleep marks", overline = "Tap to log", trailing = "Phase 1")
-        NoopCard(tint = Palette.restColor) {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text(
-                    "Tap when you're heading to bed or when you wake. Each tap is logged with the time. It doesn't change tonight's detected sleep.",
-                    style = NoopType.footnote,
-                    color = Palette.textTertiary,
-                )
-                Row(horizontalArrangement = Arrangement.spacedBy(Metrics.gap)) {
-                    Button(
-                        onClick = { onMark(SleepMarkType.BEDTIME) },
-                        modifier = Modifier.weight(1f).semantics { contentDescription = "Log going to sleep" },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = Palette.surfaceInset,
-                            contentColor = Palette.textPrimary,
-                        ),
-                    ) {
-                        Icon(Icons.Filled.Bedtime, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(Modifier.width(8.dp))
-                        Text("Going to sleep", style = NoopType.subhead)
-                    }
-                    Button(
-                        onClick = { onMark(SleepMarkType.WAKE) },
-                        modifier = Modifier.weight(1f).semantics { contentDescription = "Log waking up" },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = Palette.surfaceInset,
-                            contentColor = Palette.textPrimary,
-                        ),
-                    ) {
-                        Icon(Icons.Filled.WbSunny, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(Modifier.width(8.dp))
-                        Text("I'm awake", style = NoopType.subhead)
-                    }
-                }
-            }
-        }
-    }
-}
 
 /**
  * The transient UNDO strip after a suppressing sleep delete: a Rest-tinted card stating the window NOOP
