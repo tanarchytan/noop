@@ -60,6 +60,19 @@ class StrapRenameTest {
         StrapRename.entries.forEach { assertTrue(it.name, it.message.isNotBlank()) }
     }
 
+    /**
+     * A write the link refused must not read as sent. `renameStrap` guards on the connected/bonded
+     * STATE FLAGS, which lag the GATT link, so `sendCommand` can still return false — and its result
+     * used to be discarded, so a rename that never left the phone reported "Sent - your strap will
+     * reboot to apply". Both directions are asserted, so a mapping that always answers one way fails.
+     */
+    @Test
+    fun onlyAWriteTheLinkAcceptedReportsAsSent() {
+        assertEquals(StrapRename.Sent, renameOutcome(queued = true))
+        assertEquals(StrapRename.NotConnected, renameOutcome(queued = false))
+        assertTrue(renameOutcome(queued = false).message.contains("Saved on this phone"))
+    }
+
     /** Only [StrapRename.Sent] may claim the strap took the name; the rest must say the rename is local,
      *  which is what stops a 5/MG rename from reporting a wire write that never happened. */
     @Test

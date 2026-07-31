@@ -97,6 +97,14 @@ enum class StrapRename(val message: String) {
 fun writesStrapName(device: com.noop.data.PairedDeviceRow): Boolean =
     SourceCoordinator.isWhoop(device) && device.status == com.noop.data.DeviceStatus.active.name
 
+/** What a rename reports once the wire write has, or has not, been queued. Only a write the link
+ *  accepted may read as [StrapRename.Sent]: the local name is already saved either way, so a refused
+ *  write costs nothing but claiming it went would tell the user their band answers to a name it never
+ *  took. `sendCommand` returns false when the GATT link or the command characteristic is gone, which
+ *  the connected/bonded state flags can lag behind. */
+internal fun renameOutcome(queued: Boolean): StrapRename =
+    if (queued) StrapRename.Sent else StrapRename.NotConnected
+
 /**
  * Immutable snapshot of the live connection + biometric state. The ViewModel observes this flow.
  *
@@ -2283,12 +2291,13 @@ class WhoopBleClient(
         // The whoop-rs builder clamps to 24 UTF-8 bytes on a char boundary; clamp a local copy for the log.
         var clamped = name
         while (clamped.toByteArray(Charsets.UTF_8).size > 24) clamped = clamped.dropLast(1)
-        sendCommand(CommandNumber.SET_ADVERTISING_NAME, withResponse = true) { s ->
+        val queued = sendCommand(CommandNumber.SET_ADVERTISING_NAME, withResponse = true) { s ->
             RustCodec.advertisingNameFrame(s, name)
         }
-        log("Strap rename: wrote advertising name=$clamped")
-        _state.update { it.copy(renameStatus = StrapRename.Sent.message) }
-        return StrapRename.Sent
+        val outcome = renameOutcome(queued)
+        log("Strap rename: advertising name=$clamped ${if (queued) "written" else "NOT written, link refused it"}")
+        _state.update { it.copy(renameStatus = outcome.message) }
+        return outcome
     }
 
     // Reboot (user-initiated, confirmation-gated).
