@@ -739,21 +739,17 @@ private fun daytimeLineDescription(hours: List<DaytimeStress.HourPoint>): String
 
 @Composable
 private fun StressTotalsBar(day: DaytimeStress.Result) {
-    val scored = day.scored
-    if (scored.isEmpty()) return
-
-    val calm = scored.count { (it.level ?: 0.0) < 1.0 }
-    val high = scored.count { (it.level ?: 0.0) >= 2.0 }
-    val moderate = scored.size - calm - high
-    val total = scored.size.toDouble()
+    // The minutes and the banding are whoop-rs's; the total only scales the tubes against each other.
+    val total = day.lowMinutes + day.mediumMinutes + day.highMinutes
+    if (total <= 0L) return
 
     NoopCard(tint = Palette.stressColor) {
         Column(verticalArrangement = Arrangement.spacedBy(Metrics.space14)) {
             Overline("Time in band")
 
-            TimeInBandRow(StressTotalsBand.Calm, calm, total)
-            TimeInBandRow(StressTotalsBand.Moderate, moderate, total)
-            TimeInBandRow(StressTotalsBand.High, high, total)
+            TimeInBandRow(StressTotalsBand.Calm, day.lowMinutes, total)
+            TimeInBandRow(StressTotalsBand.Moderate, day.mediumMinutes, total)
+            TimeInBandRow(StressTotalsBand.High, day.highMinutes, total)
         }
     }
 }
@@ -767,12 +763,13 @@ private enum class StressTotalsBand(val title: String, val color: Color) {
 /** One band's share of the scored waking hours as a liquid tube row: a swatch + label on the left, the
  * band-tinted [LiquidTube] filled to hours/total, and the hour count on the right. Posed (animated=false). */
 @Composable
-private fun TimeInBandRow(band: StressTotalsBand, hours: Int, total: Double) {
-    val frac = if (total > 0) hours / total else 0.0
+private fun TimeInBandRow(band: StressTotalsBand, minutes: Long, total: Long) {
+    val frac = if (total > 0L) minutes.toDouble() / total.toDouble() else 0.0
+    val label = durationText(minutes.toDouble())
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .semantics { contentDescription = "${band.title} ${hours} hours" },
+            .semantics { contentDescription = "${band.title} $label" },
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(Metrics.space10),
     ) {
@@ -780,12 +777,12 @@ private fun TimeInBandRow(band: StressTotalsBand, hours: Int, total: Double) {
             modifier = Modifier
                 .size(Metrics.legendSwatch)
                 .clip(CircleShape)
-                .background(if (hours > 0) band.color else Palette.surfaceInset),
+                .background(if (minutes > 0L) band.color else Palette.surfaceInset),
         )
         Text(
             band.title,
             style = NoopType.captionNumber,
-            color = if (hours > 0) band.color else Palette.textTertiary,
+            color = if (minutes > 0L) band.color else Palette.textTertiary,
             modifier = Modifier.width(72.dp),
         )
         LiquidTube(
@@ -796,11 +793,11 @@ private fun TimeInBandRow(band: StressTotalsBand, hours: Int, total: Double) {
             modifier = Modifier.weight(1f),
         )
         Text(
-            "${hours}h",
+            label,
             style = NoopType.captionNumber,
-            color = if (hours > 0) Palette.textSecondary else Palette.textTertiary,
+            color = if (minutes > 0L) Palette.textSecondary else Palette.textTertiary,
             textAlign = TextAlign.End,
-            modifier = Modifier.width(32.dp),
+            modifier = Modifier.width(56.dp),
         )
     }
 }

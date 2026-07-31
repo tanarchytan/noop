@@ -10,7 +10,7 @@ The scoring and decode math is **not** in this repo. It lives in **whoop-rs**, a
 NOOP (Android, Kotlin via uniffi) and any other client. The authoritative per-algorithm reference, with
 every formula, its file, and its tests, is:
 
-> **`whoop-rs/docs/algorithms.md`** (crate `physio-algo`, 321 tests). Read that first.
+> **`whoop-rs/docs/algorithms.md`** (crate `physio-algo`, 323 tests). Read that first.
 
 Android reaches it through the generated `uniffi.whoop_ffi` binding. Two Kotlin bridge files are the entire
 delegation surface:
@@ -69,7 +69,7 @@ The algorithm is in Rust; the Kotlin file marshals inputs and calls `RustScores`
 | Rest (sleep performance) | `RestScorer.restFromDaily`, `AnalyticsEngine` | `restScore` |
 | Sleep debt ledger | `RustScores.sleepDebtLedger`; `SleepModels` reads the types | `sleepDebtLedger` |
 | Daily stress | `StressModel.build` (baseline assembly stays Kotlin) | `dailyStress` |
-| Daytime stress | `DaytimeStress` (Kotlin bucketing, Rust scoring) | `daytimeStress` |
+| Windowed stress, day + night | `DaytimeStress` (Kotlin bucketing, Rust scoring + banding) | `daytimeStress`, `sleepStress` |
 | HRV frequency domain (Lomb-Scargle LF/HF) | `HrvFreqDomain` (thin router) | `hrvFreqDomain` |
 | Short-nap detection (tri-state) | `NapDetector` (thin router) | `napEvaluate` |
 | Vitality / Body Age (Gompertz) | `VitalityEngine` (thin router) | `vitalityCompute`, `vitalityContributions`, `vitalityRmssdNorm`, `vitalitySleepConsistency` |

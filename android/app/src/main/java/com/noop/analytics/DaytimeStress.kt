@@ -71,6 +71,10 @@ object DaytimeStress {
         val dayMean: Double?,
         /** Peak scored hour (highest level), or null. */
         val peak: HourPoint?,
+        /** Minutes in each band exactly as whoop-rs tallied them; never re-counted here. */
+        val lowMinutes: Long,
+        val mediumMinutes: Long,
+        val highMinutes: Long,
     ) {
         /** The scored hours only (level non-null), in time order. */
         val scored: List<HourPoint> get() = hours.filter { it.level != null }
@@ -78,7 +82,7 @@ object DaytimeStress {
         companion object {
             /** Empty read — used when the day had no usable intraday HR at all. */
             val EMPTY = Result(emptyList(), sustainedHigh = false, sustainedRun = 0,
-                dayMean = null, peak = null)
+                dayMean = null, peak = null, lowMinutes = 0L, mediumMinutes = 0L, highMinutes = 0L)
         }
     }
 
@@ -159,7 +163,8 @@ object DaytimeStress {
         }
         if (points.isEmpty()) return Result.EMPTY
         val peak = info.peakHour?.let { ph -> points.firstOrNull { it.hour == ph } }
-        return Result(points, info.sustainedHigh, info.sustainedRun.toInt(), info.dayMean, peak)
+        return Result(points, info.sustainedHigh, info.sustainedRun.toInt(), info.dayMean, peak,
+            info.lowMinutes, info.mediumMinutes, info.highMinutes)
     }
 
     // MARK: - Helpers

@@ -28,6 +28,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.noop.analytics.AnalyticsEngine
+import com.noop.analytics.DaytimeStress
 import com.noop.analytics.SleepEditGuard
 import com.noop.data.DailyMetric
 import com.noop.data.SleepSession
@@ -253,6 +254,13 @@ fun SleepNightScreen(
         consistencyNightSpans(sleeps, habitualMidsleep, limit = SLEEP_TREND_NIGHTS)
     }
 
+    // The same week's sleep stress, one whoop-rs `sleep_stress` read per night. Oldest first, so the
+    // last entry is the freshest night and owns the performance card's fourth driver.
+    var weekStress by remember { mutableStateOf<List<SleepStressNight>>(emptyList()) }
+    LaunchedEffect(weekSpans) {
+        weekStress = runCatching { loadSleepStress(vm, weekSpans) }.getOrDefault(emptyList())
+    }
+
     // Jump to a night by its (local) wake-day. navDays is newest-day-first, so the day's index IS its offset.
     val onPickNightDate: (LocalDate) -> Unit = { targetDate ->
         val targetStr = targetDate.toString()
@@ -384,12 +392,17 @@ fun SleepNightScreen(
                 SleepPerformanceCard(
                     score = scored?.performance?.latest,
                     asleepMin = model?.stages?.asleep,
-                    // The fourth reference driver is sleep stress, which whoop-rs computes but does not
-                    // export, so three ship rather than a fabricated fourth.
+                    // The fourth driver is the freshest night's high-stress share, straight off
+                    // whoop-rs `sleep_stress`; its 0 is the good end, so its strip reads mirrored.
                     drivers = listOf(
                         SleepDriver("Hours vs. needed", scored?.hoursVsNeeded?.latest),
                         SleepDriver("Sleep consistency", scored?.consistency?.latest),
                         SleepDriver("Sleep efficiency", scored?.efficiency?.latest),
+                        SleepDriver(
+                            "High sleep stress",
+                            weekStress.lastOrNull()?.highSharePct,
+                            higherIsBetter = false,
+                        ),
                     ),
                     source = restHeroSource(imported, days),
                 )
@@ -505,6 +518,8 @@ fun SleepNightScreen(
                         onOpenDetail = { detailMetricKey = "efficiency" },
                     )
                 }
+                item { Spacer(Modifier.height(Metrics.selectorTopUp)) }
+                item { SleepStressCard(nights = weekStress) }
             }
         }
     }
@@ -529,6 +544,40 @@ internal suspend fun loadSleeps(vm: AppViewModel): List<SleepSession> {
     }
     return WhoopRepository.mergeSleepRichness(imported, computed) { localEndDay(it.effectiveEndTs) }
         .sortedBy { it.effectiveStartTs }
+}
+
+/** Rows read per night for the stress card — above a 14 h night of 1 Hz HR, so a long night is never
+ *  silently truncated into a shorter one. */
+private const val SLEEP_STRESS_ROW_LIMIT = 60_000
+
+/**
+ * One whoop-rs `sleep_stress` read per night in [spans]: that night's own HR + R-R, bucketed by the
+ * same aggregator the Stress screen's day path uses and scored with no hour-of-day filter. A night
+ * that scored no bucket is dropped rather than drawn as a zero.
+ */
+internal suspend fun loadSleepStress(
+    vm: AppViewModel,
+    spans: List<Pair<Long, Long>>,
+): List<SleepStressNight> {
+    val labels = sleepScheduleNights(spans)
+    return spans.mapIndexedNotNull { i, (onsetTs, wakeTs) ->
+        if (wakeTs <= onsetTs) return@mapIndexedNotNull null
+        val tzOffsetSec = (java.util.TimeZone.getDefault().getOffset(onsetTs * 1000L) / 1000).toLong()
+        val hr = vm.repo.hrSamples(vm.activeStrapId, onsetTs, wakeTs, SLEEP_STRESS_ROW_LIMIT)
+        val rr = vm.repo.rrIntervals(vm.activeStrapId, onsetTs, wakeTs, SLEEP_STRESS_ROW_LIMIT)
+        val info = DaytimeStress.analyzeNight(hr, rr, tzOffsetSec)
+        if (info.hours.isEmpty()) {
+            null
+        } else {
+            SleepStressNight(
+                label = labels[i].label,
+                lowMinutes = info.lowMinutes,
+                mediumMinutes = info.mediumMinutes,
+                highMinutes = info.highMinutes,
+                highSharePct = info.highSharePct,
+            )
+        }
+    }
 }
 
 /** Default bounds for a nap the user is about to log: half an hour, an hour after the night's wake. */

@@ -28,6 +28,7 @@ class SleepUiStructureTest {
         val expectedOwners = mapOf(
             "SleepNightScreen.kt" to setOf(
                 "SleepNightScreen", "loadSleeps", "provisionalNap", "restHeroSource",
+                "SLEEP_STRESS_ROW_LIMIT", "loadSleepStress",
             ),
             "SleepNightHeader.kt" to setOf(
                 "SleepNightHeader", "nightOffsetLabel", "SleepWindowRow", "SleepTime",
@@ -67,7 +68,7 @@ class SleepUiStructureTest {
             "SleepPerformanceCard.kt" to setOf(
                 "SLEEP_HERO_FILL", "SLEEP_HERO_RADIUS", "SLEEP_VESSEL_DIAMETER", "DRIVER_TIERS",
                 "SleepDriver", "SleepPerformanceCard", "SleepScoreVessel", "SleepDriverRow",
-                "SleepDriverStrip", "driverTierIndex", "driverTierColor", "driverTierWord",
+                "SleepDriverStrip", "driverTierIndex", "driverTierLit", "driverTierColor", "driverTierWord",
                 "SleepDriverLegend",
             ),
             "SleepHrChart.kt" to setOf(
@@ -94,6 +95,9 @@ class SleepUiStructureTest {
             "SleepTrendCards.kt" to setOf(
                 "TIME_IN_BED_CHART_HEIGHT", "SLEEP_TREND_NIGHTS", "SleepTimeInBedCard",
                 "SleepEfficiencyTrendCard", "SleepTrendShell", "SleepTrendDayLabels", "trendDayLabel",
+                "SLEEP_STRESS_CHART_HEIGHT", "SLEEP_STRESS_LOW", "SLEEP_STRESS_MEDIUM",
+                "SLEEP_STRESS_HIGH", "SLEEP_STRESS_LEGEND", "SleepStressNight", "SleepStressCard",
+                "SleepStressLegend", "sleepStressDescription",
             ),
             "SleepNeedCard.kt" to setOf(
                 "NEED_BAR_HEIGHT", "DEBT_STRIP_HEIGHT", "LEDGER_SWATCH", "SleepNeedCard", "NeedBar",

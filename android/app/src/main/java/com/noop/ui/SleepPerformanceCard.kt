@@ -40,9 +40,14 @@ private const val DRIVER_TIERS = 3
 
 /**
  * One driver under the sleep-performance score. [percent] is 0-100 and may be absent, which draws an
- * empty strip and an em dash rather than a zero.
+ * empty strip and an em dash rather than a zero. [higherIsBetter] is false for a driver whose 0 is the
+ * good end (high sleep stress), which flips only which tier the strip lights, never the value.
  */
-internal data class SleepDriver(val label: String, val percent: Double?)
+internal data class SleepDriver(
+    val label: String,
+    val percent: Double?,
+    val higherIsBetter: Boolean = true,
+)
 
 /**
  * SLEEP PERFORMANCE — the night's score in a liquid vessel, the drivers behind it as labelled strips,
@@ -147,7 +152,7 @@ private fun SleepDriverRow(driver: SleepDriver) {
             maxLines = 1,
             modifier = Modifier.weight(1f),
         )
-        SleepDriverStrip(pct)
+        SleepDriverStrip(pct, driver.higherIsBetter)
         Text(
             pctValue(pct),
             style = NoopType.captionNumber,
@@ -160,8 +165,8 @@ private fun SleepDriverRow(driver: SleepDriver) {
 
 /** Three equal tiers of the 0-100 range; the one the value lands in takes that tier's colour. */
 @Composable
-private fun SleepDriverStrip(percent: Double?) {
-    val filled = percent?.let { driverTierIndex(it) }
+private fun SleepDriverStrip(percent: Double?, higherIsBetter: Boolean) {
+    val filled = percent?.let { driverTierLit(it, higherIsBetter) }
     Row(
         horizontalArrangement = Arrangement.spacedBy(Metrics.space4),
         modifier = Modifier.width(96.dp),
@@ -181,6 +186,10 @@ private fun SleepDriverStrip(percent: Double?) {
 /** Which third of 0-100 [percent] falls in, clamped to the top tier at 100. */
 internal fun driverTierIndex(percent: Double): Int =
     ((percent / 100.0) * DRIVER_TIERS).toInt().coerceIn(0, DRIVER_TIERS - 1)
+
+/** The tier the strip lights: the value's own third, mirrored for a driver whose 0 is the good end. */
+internal fun driverTierLit(percent: Double, higherIsBetter: Boolean): Int =
+    driverTierIndex(percent).let { if (higherIsBetter) it else DRIVER_TIERS - 1 - it }
 
 private fun driverTierColor(tier: Int): Color = when (tier) {
     0 -> Palette.statusWarning
