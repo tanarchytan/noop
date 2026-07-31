@@ -6,7 +6,7 @@ import com.noop.data.HrSample
 import com.noop.data.RrInterval
 import com.noop.data.Spo2Sample
 import com.noop.data.StepSample
-import uniffi.whoop_ffi.DaytimeStressInfo
+import uniffi.whoop_ffi.WindowedStressInfo
 import uniffi.whoop_ffi.NapConfigInfo
 import uniffi.whoop_ffi.NapVerdictInfo
 import com.noop.protocol.RawImuSample
@@ -414,12 +414,19 @@ internal object RustScores {
             baseline.map { StressDayInfo(it.first, it.second) },
         )
 
-    // ── Daytime autonomic stress (per-hour activation) ───────────────────────
+    // ── Windowed autonomic stress (per-hour activation, day + night) ─────────
 
-    /** Score waking-hour aggregates for autonomic activation. Returns the whoop-rs `DaytimeStressInfo`
-     *  (scored hours + day mean + peak hour + trailing high run); the caller reassembles its timeline. */
-    fun daytimeStress(hours: List<HourPointInfo>): DaytimeStressInfo =
+    /** Score waking-hour aggregates for autonomic activation. Returns the whoop-rs `WindowedStressInfo`
+     *  (scored hours + mean + peak hour + trailing high run + band minutes); the caller reassembles its
+     *  timeline. Hour-of-day 06:00-22:00 is selected in whoop-rs. */
+    fun daytimeStress(hours: List<HourPointInfo>): WindowedStressInfo =
         uniffi.whoop_ffi.daytimeStress(hours)
+
+    /** Score one night's hourly aggregates on the same formula and bands — twin of [daytimeStress] with
+     *  no hour-of-day filter, so the caller passes ONLY the buckets inside the sleep span. Feeds the
+     *  sleep-stress card and the fourth sleep-performance driver. */
+    fun sleepStress(hours: List<HourPointInfo>): WindowedStressInfo =
+        uniffi.whoop_ffi.sleepStress(hours)
 
     // ── Frequency-domain HRV (Lomb-Scargle LF/HF) ────────────────────────────
 

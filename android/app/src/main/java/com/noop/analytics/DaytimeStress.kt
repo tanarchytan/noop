@@ -3,6 +3,7 @@ package com.noop.analytics
 import com.noop.data.HrSample
 import com.noop.data.RrInterval
 import uniffi.whoop_ffi.HourPointInfo
+import uniffi.whoop_ffi.WindowedStressInfo
 
 /*
  * DaytimeStress.kt — an intraday (hour-by-hour) read of the SAME autonomic stress proxy
@@ -130,22 +131,31 @@ object DaytimeStress {
         return aggs
     }
 
+    /**
+     * Score ONE SLEEP WINDOW's HR + R-R on the same formula and the same bands. whoop-rs applies no
+     * hour-of-day filter here, so the caller passes only the night's samples; [SleepStressCard] and the
+     * fourth sleep-performance driver read the band minutes and share it returns.
+     */
+    fun analyzeNight(hr: List<HrSample>, rr: List<RrInterval>, tzOffsetSeconds: Long = 0L): WindowedStressInfo =
+        RustScores.sleepStress(toHourPoints(bucketize(hr, rr, tzOffsetSeconds)))
+
+    /** One hour bucket's aggregates as the border's own record, keyed on the LOCAL hour-of-day. */
+    private fun toHourPoints(aggs: List<HourAgg>): List<HourPointInfo> =
+        aggs.map { HourPointInfo(hourOfDay(it.bucket), it.meanHr, it.rmssd) }
+
     /** Score the hourly aggregates in whoop-rs (daytime_stress), then reassemble the full
      *  timeline (unscored hours kept for the UI). Adopts the whoop-rs peak on a tie (last hour). */
     internal fun scoreRust(aggs: List<HourAgg>, tzOffsetSeconds: Long): Result {
-        val hourPoints = aggs.map { a ->
-            HourPointInfo((floorDiv(a.bucket, bucketSeconds) % 24).toInt(), a.meanHr, a.rmssd)
-        }
-        val info = RustScores.daytimeStress(hourPoints)
+        val info = RustScores.daytimeStress(toHourPoints(aggs))
         val scoredByHour = info.hours.associateBy { it.hour }
 
         val points = ArrayList<HourPoint>(aggs.size)
         for (a in aggs) {
             if (!isWakingHour(a.bucket)) continue
-            val hourOfDay = (floorDiv(a.bucket, bucketSeconds) % 24).toInt()
+            val hour = hourOfDay(a.bucket)
             val wallStart = a.bucket - tzOffsetSeconds
-            val level = if (a.meanHr != null) scoredByHour[hourOfDay]?.stress else null
-            points.add(HourPoint(hourOfDay, wallStart, level, a.meanHr, a.rmssd))
+            val level = if (a.meanHr != null) scoredByHour[hour]?.stress else null
+            points.add(HourPoint(hour, wallStart, level, a.meanHr, a.rmssd))
         }
         if (points.isEmpty()) return Result.EMPTY
         val peak = info.peakHour?.let { ph -> points.firstOrNull { it.hour == ph } }
@@ -164,12 +174,13 @@ object DaytimeStress {
         return if (r != 0L && (r < 0L) != (b < 0L)) q - 1 else q
     }
 
+    /** The LOCAL hour-of-day (0–23) a bucket start falls in — the key the border's records carry. */
+    private fun hourOfDay(bucket: Long): Int = (floorDiv(bucket, bucketSeconds) % 24).toInt()
+
     /**
      * Whether a local hour-bucket start falls inside the waking window the timeline scores
      * (06:00–22:00). Picks which hours [scoreRust] keeps when it reassembles the timeline.
      */
-    private fun isWakingHour(bucket: Long): Boolean {
-        val hourOfDay = (floorDiv(bucket, bucketSeconds) % 24).toInt()
-        return hourOfDay >= wakingStartHour && hourOfDay < wakingEndHour
-    }
+    private fun isWakingHour(bucket: Long): Boolean =
+        hourOfDay(bucket) >= wakingStartHour && hourOfDay(bucket) < wakingEndHour
 }

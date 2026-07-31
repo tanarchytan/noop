@@ -825,6 +825,8 @@ internal object IntegrityCheckingUniffiLib {
     ): Int
     external fun uniffi_whoop_ffi_checksum_func_series_slope(
     ): Int
+    external fun uniffi_whoop_ffi_checksum_func_sleep_stress(
+    ): Int
     external fun uniffi_whoop_ffi_checksum_func_vitality_compute(
     ): Int
     external fun uniffi_whoop_ffi_checksum_func_vitality_contributions(
@@ -1129,6 +1131,8 @@ internal object UniffiLib {
     ): Double
     external fun uniffi_whoop_ffi_fn_func_series_slope(`values`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): Double
+    external fun uniffi_whoop_ffi_fn_func_sleep_stress(`hours`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_func_vitality_compute(`chronoAge`: Double,`restingHr`: RustBuffer.ByValue,`vo2max`: RustBuffer.ByValue,`expectedVo2max`: RustBuffer.ByValue,`sleepHours`: RustBuffer.ByValue,`sleepRegularityIndex`: RustBuffer.ByValue,`sleepConsistency`: RustBuffer.ByValue,`rmssd`: RustBuffer.ByValue,`rmssdNorm`: RustBuffer.ByValue,`steps`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_func_vitality_contributions(`chronoAge`: Double,`restingHr`: RustBuffer.ByValue,`vo2max`: RustBuffer.ByValue,`expectedVo2max`: RustBuffer.ByValue,`sleepHours`: RustBuffer.ByValue,`sleepRegularityIndex`: RustBuffer.ByValue,`sleepConsistency`: RustBuffer.ByValue,`rmssd`: RustBuffer.ByValue,`rmssdNorm`: RustBuffer.ByValue,`steps`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
@@ -1473,13 +1477,16 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_whoop_ffi_checksum_func_daily_stress() != 7585) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_whoop_ffi_checksum_func_daytime_stress() != 44505) {
+    if (lib.uniffi_whoop_ffi_checksum_func_daytime_stress() != 34874) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_whoop_ffi_checksum_func_series_median() != 48020) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_whoop_ffi_checksum_func_series_slope() != 39922) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_whoop_ffi_checksum_func_sleep_stress() != 12416) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_whoop_ffi_checksum_func_vitality_compute() != 29108) {
@@ -3186,63 +3193,6 @@ public object FfiConverterTypeBaselineStateInfo: FfiConverterRustBuffer<Baseline
             FfiConverterInt.write(value.`nValid`, buf)
             FfiConverterInt.write(value.`nightsSinceUpdate`, buf)
             FfiConverterString.write(value.`status`, buf)
-    }
-}
-
-
-
-/**
- * Daytime-stress result: the per-hour scores plus the day mean, peak hour, and the trailing high run.
- * The core's band minutes are not on this record yet; adding them is a uniffi record change.
- */
-data class DaytimeStressInfo (
-    var `hours`: List<ScoredHourInfo>
-    , 
-    var `dayMean`: kotlin.Double?
-    , 
-    var `peakHour`: kotlin.Int?
-    , 
-    var `sustainedHigh`: kotlin.Boolean
-    , 
-    var `sustainedRun`: kotlin.UInt
-    
-){
-    
-
-    
-
-    
-    companion object
-}
-
-/**
- * @suppress
- */
-public object FfiConverterTypeDaytimeStressInfo: FfiConverterRustBuffer<DaytimeStressInfo> {
-    override fun read(buf: ByteBuffer): DaytimeStressInfo {
-        return DaytimeStressInfo(
-            FfiConverterSequenceTypeScoredHourInfo.read(buf),
-            FfiConverterOptionalDouble.read(buf),
-            FfiConverterOptionalInt.read(buf),
-            FfiConverterBoolean.read(buf),
-            FfiConverterUInt.read(buf),
-        )
-    }
-
-    override fun allocationSize(value: DaytimeStressInfo) = (
-            FfiConverterSequenceTypeScoredHourInfo.allocationSize(value.`hours`) +
-            FfiConverterOptionalDouble.allocationSize(value.`dayMean`) +
-            FfiConverterOptionalInt.allocationSize(value.`peakHour`) +
-            FfiConverterBoolean.allocationSize(value.`sustainedHigh`) +
-            FfiConverterUInt.allocationSize(value.`sustainedRun`)
-    )
-
-    override fun write(value: DaytimeStressInfo, buf: ByteBuffer) {
-            FfiConverterSequenceTypeScoredHourInfo.write(value.`hours`, buf)
-            FfiConverterOptionalDouble.write(value.`dayMean`, buf)
-            FfiConverterOptionalInt.write(value.`peakHour`, buf)
-            FfiConverterBoolean.write(value.`sustainedHigh`, buf)
-            FfiConverterUInt.write(value.`sustainedRun`, buf)
     }
 }
 
@@ -6478,6 +6428,84 @@ public object FfiConverterTypeVitalityInfo: FfiConverterRustBuffer<VitalityInfo>
             FfiConverterDouble.write(value.`bandYears`, buf)
             FfiConverterSequenceTypeVitalityContribution.write(value.`contributions`, buf)
             FfiConverterUInt.write(value.`factorsUsed`, buf)
+    }
+}
+
+
+
+/**
+ * One scored window set — a day or a night, since both derive from one formula: the per-bucket
+ * scores, the set mean, its peak hour, the trailing high run, and the minutes in each band.
+ * `high_share_pct` is the high band's share of the scored minutes, `None` when nothing scored.
+ */
+data class WindowedStressInfo (
+    var `hours`: List<ScoredHourInfo>
+    , 
+    var `dayMean`: kotlin.Double?
+    , 
+    var `peakHour`: kotlin.Int?
+    , 
+    var `sustainedHigh`: kotlin.Boolean
+    , 
+    var `sustainedRun`: kotlin.UInt
+    , 
+    var `lowMinutes`: kotlin.Long
+    , 
+    var `mediumMinutes`: kotlin.Long
+    , 
+    var `highMinutes`: kotlin.Long
+    , 
+    var `highSharePct`: kotlin.Double?
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeWindowedStressInfo: FfiConverterRustBuffer<WindowedStressInfo> {
+    override fun read(buf: ByteBuffer): WindowedStressInfo {
+        return WindowedStressInfo(
+            FfiConverterSequenceTypeScoredHourInfo.read(buf),
+            FfiConverterOptionalDouble.read(buf),
+            FfiConverterOptionalInt.read(buf),
+            FfiConverterBoolean.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterLong.read(buf),
+            FfiConverterLong.read(buf),
+            FfiConverterLong.read(buf),
+            FfiConverterOptionalDouble.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: WindowedStressInfo) = (
+            FfiConverterSequenceTypeScoredHourInfo.allocationSize(value.`hours`) +
+            FfiConverterOptionalDouble.allocationSize(value.`dayMean`) +
+            FfiConverterOptionalInt.allocationSize(value.`peakHour`) +
+            FfiConverterBoolean.allocationSize(value.`sustainedHigh`) +
+            FfiConverterUInt.allocationSize(value.`sustainedRun`) +
+            FfiConverterLong.allocationSize(value.`lowMinutes`) +
+            FfiConverterLong.allocationSize(value.`mediumMinutes`) +
+            FfiConverterLong.allocationSize(value.`highMinutes`) +
+            FfiConverterOptionalDouble.allocationSize(value.`highSharePct`)
+    )
+
+    override fun write(value: WindowedStressInfo, buf: ByteBuffer) {
+            FfiConverterSequenceTypeScoredHourInfo.write(value.`hours`, buf)
+            FfiConverterOptionalDouble.write(value.`dayMean`, buf)
+            FfiConverterOptionalInt.write(value.`peakHour`, buf)
+            FfiConverterBoolean.write(value.`sustainedHigh`, buf)
+            FfiConverterUInt.write(value.`sustainedRun`, buf)
+            FfiConverterLong.write(value.`lowMinutes`, buf)
+            FfiConverterLong.write(value.`mediumMinutes`, buf)
+            FfiConverterLong.write(value.`highMinutes`, buf)
+            FfiConverterOptionalDouble.write(value.`highSharePct`, buf)
     }
 }
 
@@ -11250,8 +11278,8 @@ public object FfiConverterSequenceOptionalDouble: FfiConverterRustBuffer<List<ko
         /**
          * Score waking hours for autonomic activation against the day's own calm-hour quartiles (Q25 HR, Q75
          * RMSSD). Each hour needs its own HR gate applied by the caller (a `None` mean_hr hour is skipped).
-         */ fun `daytimeStress`(`hours`: List<HourPointInfo>): DaytimeStressInfo {
-            return FfiConverterTypeDaytimeStressInfo.lift(
+         */ fun `daytimeStress`(`hours`: List<HourPointInfo>): WindowedStressInfo {
+            return FfiConverterTypeWindowedStressInfo.lift(
     uniffiRustCall() { _status ->
     UniffiLib.uniffi_whoop_ffi_fn_func_daytime_stress(
     
@@ -11286,6 +11314,22 @@ public object FfiConverterSequenceOptionalDouble: FfiConverterRustBuffer<List<ko
     
         
         FfiConverterSequenceDouble.lower(`values`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Score one sleep window's buckets on the same formula and the same 0–3 bands. No hour-of-day filter
+         * is applied, so the caller passes ONLY the buckets inside the span — a night crosses midnight and
+         * one hour range cannot say "22:00 to 06:00".
+         */ fun `sleepStress`(`hours`: List<HourPointInfo>): WindowedStressInfo {
+            return FfiConverterTypeWindowedStressInfo.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_func_sleep_stress(
+    
+        
+        FfiConverterSequenceTypeHourPointInfo.lower(`hours`),_status)
 }
     )
     }
