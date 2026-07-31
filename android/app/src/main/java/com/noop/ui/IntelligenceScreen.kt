@@ -474,13 +474,14 @@ private fun sleepValue(totalMin: Double?): String {
  * The By-Day numbers are always NOOP's on-device scores, but when an import covers the day it wins the
  * dashboard merge (mergeDaily), so the badge says so instead of the old hard-coded "NOOP-computed".
  * A computed row's id ends in "-noop"; imports keep their source id ("my-whoop" export, "apple-health" /
- * "health-connect"). Brand wording matches the rest of the app (macOS DaySource: "On-device"/"Whoop"/
- * "Apple Health"); imports use the accent tint, computed rows the charge tint. (Sleep overhaul §2.6.)
+ * "health-connect"). Each phone store is named for what it is — the two are separate sources here and a
+ * day can come from either. Imports use the accent tint, computed rows the charge tint.
  */
 internal fun daySourceBadge(deviceId: String): Pair<String, Color> = when {
     deviceId.endsWith("-noop") -> "On-device" to Palette.chargeColor
-    deviceId == com.noop.data.WhoopRepository.APPLE_HEALTH_SOURCE ||
-        deviceId == com.noop.data.WhoopRepository.HEALTH_CONNECT_SOURCE -> "Apple Health" to Palette.accent
+    deviceId == com.noop.data.WhoopRepository.APPLE_HEALTH_SOURCE -> "Apple Health" to Palette.accent
+    deviceId == com.noop.data.WhoopRepository.HEALTH_CONNECT_SOURCE ->
+        com.noop.analytics.FusionSource.HEALTH_CONNECT.displayName to Palette.accent
     else -> "Whoop" to Palette.accent
 }
 
