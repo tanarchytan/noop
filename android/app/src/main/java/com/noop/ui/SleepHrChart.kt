@@ -232,10 +232,14 @@ internal fun SleepHrChart(
                 isAntiAlias = true
             }
             val fm = paint.fontMetrics
+            // Baseline centred on its gridline, then held inside the plot. The floor is also the ceiling's
+            // lower bound, so a squeezed chart clamps instead of throwing out of a draw scope.
+            val labelTop = -fm.ascent
+            val labelBottom = maxOf(h - fm.descent, labelTop)
             ticks.forEach { bpm ->
                 val ty = y(bpm.toDouble())
                 drawLine(gridColor, Offset(gutter, ty), Offset(size.width, ty), strokeWidth = 1f)
-                val baseline = (ty - (fm.ascent + fm.descent) / 2f).coerceIn(-fm.ascent, h - fm.descent)
+                val baseline = (ty - (fm.ascent + fm.descent) / 2f).coerceIn(labelTop, labelBottom)
                 drawContext.canvas.nativeCanvas.drawText(bpm.toString(), 0f, baseline, paint)
             }
 
