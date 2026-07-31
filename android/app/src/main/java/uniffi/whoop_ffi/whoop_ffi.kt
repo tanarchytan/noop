@@ -1545,7 +1545,7 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_whoop_ffi_checksum_method_whoopcodec_get_data_range_frame() != 27950) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_whoop_ffi_checksum_method_whoopcodec_get_hello_frame() != 38141) {
+    if (lib.uniffi_whoop_ffi_checksum_method_whoopcodec_get_hello_frame() != 5168) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_whoop_ffi_checksum_method_whoopcodec_offload_abort() != 60182) {
@@ -2258,8 +2258,9 @@ public interface WhoopCodecInterface {
     fun `getDataRangeFrame`(`seq`: kotlin.UByte): kotlin.ByteArray
     
     /**
-     * GET_HELLO (identity + firmware), family-forked. The `[0x00]` payload matches the client's default
-     * no-arg body (frame-identical to empty on Gen5 after padding; it is the trailing byte Gen4 expects).
+     * GET_HELLO (identity + firmware), family-forked: Gen5 takes the `[0x01]` b3 selector, Gen4 the
+     * GET_HELLO_HARVARD opcode. The Gen4 body here is one byte, matching what the app sends;
+     * `whoop-client`'s `info` sends nine. Unsettled — no 4.0 has run against either on this radio.
      */
     fun `getHelloFrame`(`seq`: kotlin.UByte): kotlin.ByteArray
     
@@ -2763,8 +2764,9 @@ open class WhoopCodec: Disposable, AutoCloseable, WhoopCodecInterface
 
     
     /**
-     * GET_HELLO (identity + firmware), family-forked. The `[0x00]` payload matches the client's default
-     * no-arg body (frame-identical to empty on Gen5 after padding; it is the trailing byte Gen4 expects).
+     * GET_HELLO (identity + firmware), family-forked: Gen5 takes the `[0x01]` b3 selector, Gen4 the
+     * GET_HELLO_HARVARD opcode. The Gen4 body here is one byte, matching what the app sends;
+     * `whoop-client`'s `info` sends nine. Unsettled — no 4.0 has run against either on this radio.
      */override fun `getHelloFrame`(`seq`: kotlin.UByte): kotlin.ByteArray {
             return FfiConverterByteArray.lift(
     callWithHandle {

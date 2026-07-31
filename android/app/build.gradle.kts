@@ -246,3 +246,25 @@ val buildRustHostDll = tasks.register<Exec>("buildRustHostDll") {
     onlyIf { whoopRsDir.resolve("Cargo.toml").exists() }
 }
 tasks.withType<Test>().configureEach { dependsOn(buildRustHostDll) }
+
+// --- The libraries that reach a PHONE, which the task above does not cover ---
+// `buildRustHostDll` keeps the JVM tests honest, and cargo tracks its freshness. The `.so` under
+// jniLibs/ are committed artifacts, so nothing rebuilt them: on 2026-07-31 they sat 17 hours and 13
+// library source files behind crates/ while the suite passed green against a freshly built host
+// library. Green tests, stale device, and no signal anywhere.
+//
+// Bindings and library must move TOGETHER. uniffi puts an API checksum in whoop_ffi.kt and the pair
+// disagreeing fails at init — and the checksum covers DOCSTRINGS, so a comment-only edit to an
+// exported item is enough to break it. That is far too subtle to leave to remembering a four-step.
+//
+// --ensure hashes crates/ and rebuilds only when the stamp disagrees, so the common case costs
+// milliseconds. The onlyIf covers one case and one only: no sibling whoop-rs checkout at all, as on a
+// CI runner building the app alone. A checkout that IS present with a missing cargo or cargo-ndk fails
+// the build from inside the script, rather than quietly shipping whatever `.so` is lying around.
+val syncRustJniLibs = tasks.register<Exec>("syncRustJniLibs") {
+    workingDir = whoopRsDir
+    commandLine("python", whoopRsDir.resolve("tools/sync-jnilibs.py").absolutePath, "--ensure")
+    onlyIf { whoopRsDir.resolve("tools/sync-jnilibs.py").exists() }
+}
+tasks.matching { it.name.startsWith("merge") && it.name.endsWith("JniLibFolders") }
+    .configureEach { dependsOn(syncRustJniLibs) }
