@@ -313,13 +313,21 @@ fun SleepScreen(
                 SleepEmptyState()
             }
         } else {
-            // REST HERO — the night's sleep-performance score, else a big hours-slept headline. The score
-            // is a full-history latest (series.last), so it reads from `tilesModel` when the selected day's
+            // SLEEP PERFORMANCE — the night's score and the drivers behind it. The score is a
+            // full-history latest (series.last), so it reads from `tilesModel` when the selected day's
             // model failed to build: real data over a zeroed gauge.
             item {
-                RestHero(
-                    score = (model ?: tilesModel)?.performance?.latest,
+                val scored = model ?: tilesModel
+                SleepPerformanceCard(
+                    score = scored?.performance?.latest,
                     asleepMin = model?.stages?.asleep,
+                    // The fourth reference driver is sleep stress, which whoop-rs computes but does not
+                    // export, so three ship rather than a fabricated fourth.
+                    drivers = listOf(
+                        SleepDriver("Hours vs. needed", scored?.hoursVsNeeded?.latest),
+                        SleepDriver("Sleep consistency", scored?.consistency?.latest),
+                        SleepDriver("Sleep efficiency", scored?.efficiency?.latest),
+                    ),
                     source = restHeroSource(imported, days),
                 )
             }
@@ -402,6 +410,12 @@ fun SleepScreen(
                 windowOnsetTs = night?.heroOnsetTs,
                 windowWakeTs = night?.heroWakeTs,
                 hrPoints = nightHr,
+                typicalByStage = mapOf(
+                    "Light" to model?.typicalLightMin,
+                    "Deep" to model?.typicalDeepMin,
+                    "REM" to model?.typicalRemMin,
+                ),
+                typicalAsleepMin = model?.typicalTotalMin,
             )
             }
             // Tiles / ledger / trends read the FULL-history model: they stay up when only the selected day's

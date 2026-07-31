@@ -36,18 +36,26 @@ class SleepUiStructureTest {
                 "decodedAsleepMinutes", "isPreOnsetAwakeStub", "sumGroupStages", "uiTzOffsetSec",
                 "heroDisplay", "stagesFromSegments", "StageMins", "parseSessionStages",
                 "buildSleepModel", "fallbackSleepModel", "metricAtDay", "consistencySeries", "mean",
-                "stageSegments", "pctValue", "vsTypical", "debtCaption", "debtColor", "debtHeadline",
+                "pctValue", "vsTypical", "debtCaption", "debtColor", "debtHeadline",
                 "debtTag", "debtRead", "debtBalanceColor", "debtSigned", "durationText",
                 "shortDayLabel", "sleepAverageOrNull", "clockLabel", "sessionClockLabel",
                 "clockLabelFor", "localDayString", "clockTimeLabel",
             ),
-            "SleepTimeline.kt" to setOf(
-                "StageBreakdownRows", "StageBreakdownRow",
-                "STAGE_ROW_SMOOTH_SEC", "StageTimeline", "StageTimelineRow", "StageRowTrack", "StageInsight",
-                "stageInsightLine", "MotionStrip", "PersistedSegment",
-                "parsePersistedSegments", "StageInterval", "stageIntervalsFromWeights",
-                "displaySmoothed", "canonicalStage", "stageRowSpans",
-                "nightSpanSec", "nightStageIntervals",
+            "SleepStageTimeline.kt" to setOf(
+                "STAGE_ROW_SMOOTH_SEC", "PersistedSegment", "parsePersistedSegments",
+                "StageInterval", "stageIntervalsFromWeights", "displaySmoothed", "canonicalStage",
+                "stageRowSpans", "nightSpanSec", "nightStageIntervals",
+            ),
+            "SleepStagesCard.kt" to setOf(
+                "STAGE_ORDER", "SleepStagesCard", "SleepStagesHeadline", "SleepStageRows", "SleepStageRow",
+                "SleepStageDot", "SleepStageTrack", "SleepMotionStrip", "SleepStageInsight",
+                "SleepStagesFooter", "stageMinutes", "stageRowColor",
+            ),
+            "SleepPerformanceCard.kt" to setOf(
+                "SLEEP_HERO_FILL", "SLEEP_HERO_RADIUS", "SLEEP_VESSEL_DIAMETER", "DRIVER_TIERS",
+                "SleepDriver", "SleepPerformanceCard", "SleepScoreVessel", "SleepDriverRow",
+                "SleepDriverStrip", "driverTierIndex", "driverTierColor", "driverTierWord",
+                "SleepDriverLegend",
             ),
             "SleepHrChart.kt" to setOf(
                 "HR_CHART_TARGET_POINTS", "HR_CHART_PAD_FRAC", "HR_CHART_PAD_MIN_SEC",
@@ -59,7 +67,7 @@ class SleepUiStructureTest {
             "Charts.kt" to setOf(
                 "Sparkline", "LineChart", "LineSeries", "MultiLineChart",
                 "BarChart", "Hypnogram", "SegmentBar",
-                "HypnogramWithAxis", "ClockLabelRow",
+                "ClockLabelRow",
                 "TimelinePoint", "TimelineChart",
                 "GlowEndCap", "TileSparkline",
                 "timelineBucketSeconds", "zoomedWindow", "chartTimeTicks",
@@ -71,8 +79,7 @@ class SleepUiStructureTest {
             ),
             "SleepEditor.kt" to setOf("SleepUndoBanner", "NapRow", "NightNavHeader"),
             "SleepHero.kt" to setOf(
-                "LIQUID_HERO_FILL", "LIQUID_HERO_RADIUS", "RestHero", "SleepHeroVessel",
-                "sleepScoreWord", "restHeroSource", "Hero", "NapsCard", "MainSleepFooter",
+                "restHeroSource", "Hero", "NapsCard", "MainSleepFooter",
                 "mainSleepReasonText", "NapSummaryCell", "SleepWindowRow", "SleepTime",
             ),
             "SleepMetrics.kt" to setOf(

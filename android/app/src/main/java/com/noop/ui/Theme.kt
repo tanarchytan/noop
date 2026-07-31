@@ -402,7 +402,6 @@ object Metrics {
                                  // shrinks to fit, #332) keeps enough room to stay legible at full size
     val sparkWidth = 58.dp
     val sparkHeight = 22.dp
-    val stageStripHeight = 34.dp
     val motionStripHeight = 40.dp   // #407 — the subordinate movement/restlessness trace under the hypnogram
     // iOS #988 port — WHOOP-style per-stage sleep timeline rows (design 2026-07-10).
     val stageRowTrackHeight = 20.dp  // hatched night track + solid stage segments

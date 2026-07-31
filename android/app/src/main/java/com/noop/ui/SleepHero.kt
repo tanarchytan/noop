@@ -42,107 +42,6 @@ import com.noop.data.SleepSession
 import java.time.LocalDate
 import kotlin.math.roundToInt
 
-// MARK: - Liquid hero tokens
-//
-// The hero card the sleep-performance vessel floats on: a translucent near-black fill so the card floats
-// OVER the day-of-sky with the vessel + white count-up number crisp; radius 26 + a white@0.11 hairline give
-// the frosted-glass edge.
-private val LIQUID_HERO_FILL: Color = Color(red = 13f / 255f, green = 14f / 255f, blue = 20f / 255f, alpha = 0.80f)
-private val LIQUID_HERO_RADIUS: Dp = 26.dp
-
-// MARK: - REST HERO — liquid sky + sleep-performance vessel
-//
-// A frosted translucent-black hero card on the screen-level liquid sky. With a 0–100 sleep-performance
-// score it carries a [LiquidVessel] filled to score/100 with the number counting up; with no score, a big
-// count-up hours-slept headline. A [SourceBadge] states WHOOP-imported vs NOOP on-device.
-
-@Composable
-internal fun RestHero(score: Double?, asleepMin: Double?, source: String) {
-    Column(verticalArrangement = Arrangement.spacedBy(Metrics.gap)) {
-        SectionHeader("Sleep performance", overline = "Last night", trailing = "Rest")
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                // The liquid hero CARD: translucent near-black over the day-of-sky (fill + white hairline =
-                // the frosted-glass edge), keeping the vessel + white count-up number crisp.
-                .clip(RoundedCornerShape(LIQUID_HERO_RADIUS))
-                .background(LIQUID_HERO_FILL.copy(alpha = LIQUID_HERO_FILL.alpha * CardAppearance.opacity))
-                .border(1.dp, Color.White.copy(alpha = 0.11f * CardAppearance.opacity), RoundedCornerShape(LIQUID_HERO_RADIUS)),
-        ) {
-            Column(
-                modifier = Modifier.fillMaxWidth().padding(Metrics.space24),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(Metrics.space14),
-            ) {
-                if (score != null) {
-                    // The score as a liquid VESSEL filled to score/100 in the Rest colour, with the number
-                    // counting up over it. Runs live (slosh + tilt) since a real value is loaded.
-                    SleepHeroVessel(
-                        fraction = (score / 100.0).coerceIn(0.0, 1.0),
-                        value = score,
-                        tint = Palette.restColor,
-                        diameter = 184.dp,
-                    )
-                    Text(sleepScoreWord(score), style = NoopType.subhead, color = Palette.textSecondary)
-                } else {
-                    // No 0–100 score — lead with hours slept as a big headline whose minutes tick up on
-                    // appear (the same count-up the scored hero rolls).
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(Metrics.space4),
-                        modifier = Modifier.padding(vertical = Metrics.space16),
-                    ) {
-                        CountUpText(
-                            value = asleepMin ?: 0.0,
-                            format = { durationText(it) },
-                            style = NoopType.number(46f),
-                            color = Palette.restBright,
-                        )
-                        Text("asleep last night", style = NoopType.subhead, color = Palette.textSecondary)
-                    }
-                }
-                SourceBadge(text = source, tint = Palette.restColor)
-            }
-        }
-    }
-}
-
-/**
- * The sleep-performance score as a liquid VESSEL with the value counting up over it. A [LiquidVessel] fills
- * to [fraction] (0..1) in [tint] at [diameter]; a [CountUpText] rolls the number to [value] over it. The
- * number is hit-transparent so a tap falls THROUGH to the vessel, which owns its own tap→splash+haptic.
- */
-@Composable
-private fun SleepHeroVessel(fraction: Double, value: Double, tint: Color, diameter: Dp) {
-    Box(modifier = Modifier.size(diameter), contentAlignment = Alignment.Center) {
-        LiquidVessel(
-            value = fraction.coerceIn(0.0, 1.0),
-            tint = tint,
-            animated = true,
-            modifier = Modifier.size(diameter),
-        )
-        // Count-up number over the vessel — white, tabular, soft shadow, hit-transparent so the tap reaches
-        // the vessel. Size ≈ diameter × 0.27, capped.
-        val numberSp = (diameter.value * 0.27f).coerceIn(20f, 52f)
-        CountUpText(
-            value = value,
-            format = { it.roundToInt().toString() },
-            style = NoopType.number(numberSp, weight = FontWeight.Bold)
-                .copy(shadow = Shadow(color = Color.Black.copy(alpha = 0.5f), offset = Offset(0f, 1f), blurRadius = 6f)),
-            color = Color.White,
-            modifier = Modifier.clearAndSetSemantics {},
-        )
-    }
-}
-
-/** A short Rest state word for the hero gauge. */
-private fun sleepScoreWord(score: Double): String = when {
-    score < 50.0 -> "Poor"
-    score < 70.0 -> "Fair"
-    score < 85.0 -> "Good"
-    else -> "Optimal"
-}
-
 /**
  * Whether the night's sleep-performance score is WHOOP's imported figure or NOOP's on-device
  * approximation, so the hero is honest about provenance.
@@ -185,6 +84,10 @@ internal fun Hero(
     // The night's downsampled heart rate over the padded sleep window, read by SleepScreen. Empty → the
     // chart's honest "no heart-rate detail" note.
     hrPoints: List<TimelinePoint> = emptyList(),
+    // The personal mean minutes per stage and asleep total, marked on each stage row so the night reads
+    // against the wearer's own habit. An absent mean simply has no marker.
+    typicalByStage: Map<String, Double?> = emptyMap(),
+    typicalAsleepMin: Double? = null,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(Metrics.gap)) {
         NightNavHeader(nightOffset, lastIndex, clock, onNavigate, session, onUpdateTimes, onDeleteSession, onAddNap, onPickNightDate)
@@ -210,84 +113,22 @@ internal fun Hero(
             val inBedMin = groupInBedMin
                 ?: session?.let { (it.effectiveEndTs - it.effectiveStartTs) / 60.0 }
                 ?: s.total
-            val subtitle = "${durationText(inBedMin)} in bed · ${display.efficiencyText} efficiency" +
-                (if (display.realSegments != null) " · approx. stages (on-device)" else "")
-            // True per-epoch segments (≥ 2 — a single run has no transitions) get the per-stage timeline
-            // rows, which ARE the legend (no footer). Anything else keeps the proportional strip +
-            // StageBreakdownRows footer.
-            val real = display.realSegments?.takeIf { it.size >= 2 }
             // The axis spans the WHOLE night (to the group's last wake); labelling it off the session
             // fragment's own end cut the clock labels short on a split night. The HR chart shares it.
             val axisOnsetTs = windowOnsetTs ?: session?.effectiveStartTs
             val axisWakeTs = windowWakeTs ?: session?.effectiveEndTs
-            if (real != null) {
-                // Held here, not in StageTimeline, so tapping a stage row also bands the HR chart above it.
-                // Keyed on the night's segments so navigating nights clears the selection.
-                var selectedStage by remember(real) { mutableStateOf<String?>(null) }
-                ChartCard(
-                    title = "Stage breakdown",
-                    subtitle = subtitle,
-                    trailing = durationText(s.asleep),
-                    tint = Palette.restColor,
-                    footer = {},
-                ) {
-                    Column(verticalArrangement = Arrangement.spacedBy(Metrics.space14)) {
-                        SleepHrChart(
-                            points = hrPoints,
-                            onsetTs = axisOnsetTs,
-                            wakeTs = axisWakeTs,
-                            realSegments = real,
-                            selectedStage = selectedStage,
-                        )
-                        StageTimeline(
-                            realSegments = real,
-                            s = s,
-                            onsetTs = axisOnsetTs,
-                            wakeTs = axisWakeTs,
-                            motionEpochs = motionEpochs,
-                            selectedStage = selectedStage,
-                            onSelectStage = { selectedStage = it },
-                        )
-                    }
-                }
-            } else {
-                ChartCard(
-                    title = "Stage breakdown",
-                    subtitle = subtitle,
-                    trailing = durationText(s.asleep),
-                    tint = Palette.restColor,
-                    footer = { StageBreakdownRows(s) },
-                ) {
-                    Column(verticalArrangement = Arrangement.spacedBy(Metrics.space14)) {
-                        // Measured HR still belongs here, but with NO bands: the architecture below it is
-                        // reconstructed, so it has no genuine timeline to highlight against.
-                        SleepHrChart(
-                            points = hrPoints,
-                            onsetTs = axisOnsetTs,
-                            wakeTs = axisWakeTs,
-                            realSegments = emptyList(),
-                            selectedStage = null,
-                        )
-                        // Reconstructed architecture (light → deep → light → rem → light → awake) as the flat
-                        // proportional strip. No MotionStrip / fake steps — invented architecture has no genuine
-                        // timeline to anchor to.
-                        val segments = stageSegments(s)
-                        if (segments.isNotEmpty()) {
-                            HypnogramWithAxis(
-                                stages = segments,
-                                onsetTs = session?.effectiveStartTs,
-                                wakeTs = session?.effectiveEndTs,
-                            )
-                        } else {
-                            Text(
-                                "No stage breakdown for this night.",
-                                style = NoopType.subhead,
-                                color = Palette.textTertiary,
-                            )
-                        }
-                    }
-                }
-            }
+            SleepStagesCard(
+                stages = s,
+                realSegments = display.realSegments,
+                typicalByStage = typicalByStage,
+                typicalAsleepMin = typicalAsleepMin,
+                inBedMin = inBedMin,
+                efficiencyText = display.efficiencyText,
+                onsetTs = axisOnsetTs,
+                wakeTs = axisWakeTs,
+                motionEpochs = motionEpochs,
+                hrPoints = hrPoints,
+            )
         }
         // Naps card: the day's blocks OTHER than the main night, each editable / deletable via the same
         // mechanism main sleep uses, plus a Main / Nap(s) / Total split.

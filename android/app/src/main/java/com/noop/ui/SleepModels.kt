@@ -612,26 +612,6 @@ private fun consistencySeries(days: List<DailyMetric>, selectedDay: String? = nu
 
 private fun mean(vals: List<Double>): Double? = if (vals.isEmpty()) null else vals.sum() / vals.size
 
-// MARK: - Stage segment reconstruction (durations only)
-
-/**
- * Lay the stage minutes end-to-end as proportional hypnogram segments: light → deep → light → rem → light →
- * awake (deep early, REM later, awake last). Weights are minutes; the Hypnogram normalizes them to width.
- */
-internal fun stageSegments(s: Stages): List<Pair<String, Float>> {
-    val out = ArrayList<Pair<String, Float>>()
-    fun add(name: String, minutes: Double) {
-        if (minutes > 0.0) out.add(name to minutes.toFloat())
-    }
-    add("light", s.light * 0.4)
-    add("deep", s.deep)
-    add("light", s.light * 0.3)
-    add("rem", s.rem)
-    add("light", s.light * 0.3)
-    add("awake", s.awake)
-    return out
-}
-
 // MARK: - Formatting helpers
 
 internal fun pctValue(v: Double?): String = v?.let { "${it.roundToInt()}%" } ?: "—"

@@ -646,69 +646,6 @@ internal fun stageColor(name: String): Color = when (name.trim().lowercase()) {
     else -> Palette.sleepLight
 }
 
-// MARK: - HypnogramWithAxis (proportional strip with time hairlines and clock labels)
-
-@Composable
-fun HypnogramWithAxis(
-    stages: List<Pair<String, Float>>,
-    onsetTs: Long?,
-    wakeTs: Long?,
-) {
-    val showsAxis = onsetTs != null && wakeTs != null
-    Column(verticalArrangement = Arrangement.spacedBy(Metrics.space6)) {
-        Canvas(modifier = Modifier.fillMaxWidth().height(Metrics.stageStripHeight)) {
-            val w = size.width
-            val h = size.height
-            if (w <= 0f || h <= 0f) return@Canvas
-
-            drawLine(
-                color = Palette.surfaceInset,
-                start = Offset(0f, h / 2f),
-                end = Offset(w, h / 2f),
-                strokeWidth = h,
-                cap = StrokeCap.Round,
-            )
-
-            val weights = stages.map { it.second }.map { if (it.isFinite() && it > 0f) it else 0f }
-            val total = weights.sum()
-            if (stages.isEmpty() || total <= 0f) return@Canvas
-
-            val minSegW = h / 2f
-            val floored = weights.map { wt -> if (wt > 0f) maxOf(w * (wt / total), minSegW) else 0f }
-            val flooredSum = floored.sum()
-            val scale = if (flooredSum > w) w / flooredSum else 1f
-            val radius = CornerRadius(2.dp.toPx(), 2.dp.toPx())
-            var x = 0f
-            stages.forEachIndexed { i, (name, _) ->
-                val segW = floored[i] * scale
-                if (segW <= 0f) return@forEachIndexed
-                drawRoundRect(
-                    color = stageColor(name),
-                    topLeft = Offset(x, 0f),
-                    size = Size(segW.coerceAtMost(w - x), h),
-                    cornerRadius = radius,
-                )
-                x += segW
-            }
-
-            if (showsAxis) {
-                listOf(0f, 0.5f, 1f).forEach { frac ->
-                    val hx = w * frac
-                    drawLine(
-                        color = Palette.hairline,
-                        start = Offset(hx, 0f),
-                        end = Offset(hx, h),
-                        strokeWidth = 1f,
-                    )
-                }
-            }
-        }
-        if (showsAxis && onsetTs != null && wakeTs != null) {
-            ClockLabelRow(onsetTs, wakeTs)
-        }
-    }
-}
-
 @Composable
 fun ClockLabelRow(onsetTs: Long, wakeTs: Long) {
     val onset = clockTimeLabel(onsetTs)
