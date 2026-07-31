@@ -151,6 +151,33 @@ class SleepHrChartTest {
         assertEquals(bandsFor("awake", onset, wake), bandsFor("Wake", onset, wake))
     }
 
+    /**
+     * The bands and the stage rows read ONE derivation, so they cannot disagree about where a stage was.
+     * Same runs, same order, and each band re-anchored onto the wider window maps back to the row's own
+     * fraction of the sleep span. A second derivation in the chart would drift here and nowhere else.
+     */
+    @Test
+    fun theBandsAreTheRowsOwnSpansReAnchoredOntoTheWiderWindow() {
+        val onset = 1_700_000_000L
+        val wake = onset + 4 * hour
+        val segments = listOf("light" to 60f, "deep" to 30f, "rem" to 45f, "light" to 45f, "deep" to 60f)
+        val spanSec = nightSpanSec(segments, onset, wake)
+        val intervals = nightStageIntervals(segments, spanSec)
+        val (start, end) = hrChartWindow(onset, wake)
+        val windowSpan = (end - start).toDouble()
+        val lead = (onset - start).toDouble()
+
+        listOf("light", "deep", "rem").forEach { stage ->
+            val rows = stageRowSpans(intervals, stage, spanSec)
+            val bands = stageBandsInWindow(intervals, onset, start, windowSpan, stage)
+            assertEquals("$stage: one band per row segment", rows.size, bands.size)
+            rows.zip(bands).forEach { (row, band) ->
+                assertEquals("$stage start", (lead + row.first * spanSec) / windowSpan, band.first.toDouble(), 1e-3)
+                assertEquals("$stage width", row.second * spanSec / windowSpan, band.second.toDouble(), 1e-3)
+            }
+        }
+    }
+
     @Test
     fun noStagesMeansNoBands() {
         val onset = 1_700_000_000L
