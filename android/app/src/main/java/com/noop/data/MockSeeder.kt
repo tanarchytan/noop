@@ -176,7 +176,7 @@ object MockSeeder {
                     SleepSession(
                         deviceId = WHOOP, startTs = onset, endTs = onset + inBedSec,
                         efficiency = round1(efficiency), restingHr = rhr, avgHrv = round1(hrv),
-                        stagesJSON = stagesJson(deep, rem, light, disturbances),
+                        stagesJSON = stagesJson(deep, rem, light, disturbances, onset, onset + inBedSec),
                     )
                 )
             }
@@ -372,15 +372,33 @@ object MockSeeder {
         return m to maxOf(sqrt(v), 0.0001)
     }
 
-    /** A plausible light→deep→rem cycle as a stage-segments array (minutes). Tolerant by design. */
-    private fun stagesJson(deep: Double, rem: Double, light: Double, awakeMin: Int): String {
+    /**
+     * A plausible light→deep→rem cycle as TIMESTAMPED stage segments tiling `[startTs, endTs]`.
+     *
+     * It used to emit `{"stage", "min"}`, which no reader understood: the timeline's
+     * [parsePersistedSegments] needs `start`/`end` and returned null, so the hero fell to its
+     * reconstructed branch and tap-to-highlight had no real timeline to highlight; and the totals
+     * parser's array branch reads durations from `start`/`end` too, so it scored every stage zero.
+     * The vocabulary was wrong as well — whoop-rs emits `wake`, not `awake`.
+     */
+    internal fun stagesJson(deep: Double, rem: Double, light: Double, awakeMin: Int, startTs: Long, endTs: Long): String {
+        val cycle = listOf(
+            "light" to light * 0.35, "deep" to deep * 0.6, "light" to light * 0.30,
+            "rem" to rem * 0.6, "deep" to deep * 0.4, "light" to light * 0.35,
+            "rem" to rem * 0.4, "wake" to awakeMin.toDouble(),
+        ).filter { it.second > 0.0 }
+        val totalMin = cycle.sumOf { it.second }
+        if (totalMin <= 0.0 || endTs <= startTs) return "[]"
+        // Scale the cycle onto the real span so the segments tile it exactly, leaving no gap the
+        // timeline would render as missing and no overhang past the wake time.
+        val perMin = (endTs - startTs).toDouble() / totalMin
         val arr = JSONArray()
-        fun seg(stage: String, min: Double) {
-            arr.put(JSONObject().put("stage", stage).put("min", round1(min)))
+        var t = startTs
+        cycle.forEachIndexed { i, (stage, min) ->
+            val end = if (i == cycle.lastIndex) endTs else t + (min * perMin).toLong()
+            if (end > t) arr.put(JSONObject().put("stage", stage).put("start", t).put("end", end))
+            t = end
         }
-        seg("light", light * 0.35); seg("deep", deep * 0.6); seg("light", light * 0.30)
-        seg("rem", rem * 0.6); seg("deep", deep * 0.4); seg("light", light * 0.35)
-        seg("rem", rem * 0.4); seg("awake", awakeMin.toDouble())
         return arr.toString()
     }
 }
