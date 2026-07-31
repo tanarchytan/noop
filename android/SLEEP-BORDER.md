@@ -20,8 +20,9 @@ The edit self-heal (`SleepStageHealer`) re-stages one edited span via `RustSleep
 - **The detect memo** (`detectCache`) and stream fingerprints — a perf cache, not math.
 - **`SleepStageTotals`** — `stagesJSON` decode + the `dailyAggregateHonoringEdits` user-edit seam
   (substitute an edited block's stages, union manual naps, honor the effective onset). Pure storage/edit
-  glue over Room-persisted JSON. Its NightBlock main-night selection is a byte-identical twin of the Rust
-  `mainNight*` functions (routing it through the FFI is an optional follow-up).
+  glue over Room-persisted JSON. Its NightBlock main-night selection is NOT Kotlin: those entry points
+  delegate to the `mainNight*` FFI, as the "main-night selection routed through Rust" section below
+  records. What stays here are the thin holders and the `...ByStages` edit-seam selector.
 - **The HRV-window / respiration layer** — `sessionHrvWindows`, `lastDeepRun`, `HrvWindow` — a separate
   display concern (the #141 deep-HRV-window feature), not detection/staging. The scored session avgHrv
   itself is computed in whoop-rs (`RustScores.windowedAvgHrv`); this path stays only for the stage-tagged
@@ -41,8 +42,9 @@ and the binding must always regenerate **together**.
 ## Verified
 
 The Kotlin gate tests that predate this move now run **through the native `analyzeSleep`** and pass with
-their **original byte-identical expectations** — cross-language parity confirmed on the JVM host. 2446 unit
-tests green, `assembleFullDebug` builds. The redundant Kotlin sleep tests were dropped (ported to Rust).
+their **original byte-identical expectations** — cross-language parity confirmed on the JVM host.
+2,485 unit tests green (0 failures, 0 skipped, over 339 result files, measured 2026-07-31) and
+`assembleFullDebug` builds. The redundant Kotlin sleep tests were dropped (ported to Rust).
 
 ## Done: the last Kotlin classifier is retired
 
