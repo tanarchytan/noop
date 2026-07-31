@@ -20,8 +20,6 @@ class CaptureTrimParityTest {
         ((Character.digit(s[it * 2], 16) shl 4) + Character.digit(s[it * 2 + 1], 16)).toByte()
     }
 
-    private fun paren(s: String): Int = s.substringAfterLast('(').substringBefore(')').toInt()
-
     @Test
     fun `history_end trim and unix match the capture through the rust metadata path`() {
         val path = System.getenv("WHOOP_CAPTURE") ?: return // self-skip without the capture

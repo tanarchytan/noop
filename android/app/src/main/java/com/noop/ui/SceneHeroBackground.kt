@@ -9,8 +9,6 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.dp
 import com.noop.R
 import java.util.Calendar
 
@@ -177,8 +175,6 @@ private fun Modifier.SceneHeroBackgroundModifier(
 // bleeds it full-width and up behind the status bar). No glow.
 
 /** How far down the screen the scene reaches before it has fully faded into the flat canvas. */
-private val SceneScreenHeightDefault: Dp = 520.dp
-
 /**
  * Draw the day-cycle SCREEN backdrop behind this content: the [drawable] scene (current hour by default),
  * full-width and top-aligned, faded top-down into [Palette.surfaceBase] by [fadeEndFraction] of the

@@ -10,11 +10,6 @@ package com.noop.analytics
  * energy / sleep-stage outputs are APPROXIMATE, a wellness estimate, never medical advice.
  */
 
-/** On-device analytics namespace marker. */
-object StrandAnalytics {
-    const val VERSION: String = "0.1.0"
-}
-
 // ─────────────────────────────────────────────────────────────────────────────
 // HRV
 // ─────────────────────────────────────────────────────────────────────────────
