@@ -29,7 +29,16 @@ object MockSeeder {
     // (fitness_age / vo2max_est / vitality / body_age). The computed UNION resolves these under
     // "my-whoop-noop" for the mock, so seeding here (not under "my-whoop") is required or those cards read empty.
     private const val WHOOP_NOOP = "$WHOOP-noop"
-    private const val DAYS = 120
+    internal const val DAYS = 120
+
+    /** The one day in the window the wearer did not sleep at all: yesterday, so today carries the night
+     *  that follows it and both states are on screen. Fixed, never drawn, so every install matches. */
+    internal const val UNSLEPT_DAY_INDEX = DAYS - 2
+
+    /** Local bedtime on the evening sleep resumes, earlier than the usual ~23:10 so that night's start
+     *  day and end day differ. */
+    internal const val CRASH_OUT_HOUR = 20
+    internal const val CRASH_OUT_MINUTE = 41
 
     /** Effort rescale factor: the old 0–21 strain scale → the new 0–100 Effort scale (100/21). */
     private const val STRAIN_SCALE = 100.0 / 21.0
@@ -133,30 +142,37 @@ object MockSeeder {
                 else gauss(rng, 13.5, 2.4) + (nWorkouts - 1) * 2.5) * STRAIN_SCALE
                 ).coerceIn(3.0 * STRAIN_SCALE, 100.0)
 
-            daily.add(
-                DailyMetric(
-                    deviceId = WHOOP, day = day,
-                    totalSleepMin = round1(totalSleep), efficiency = round1(efficiency),
-                    deepMin = round1(deep), remMin = round1(rem), lightMin = round1(light),
-                    disturbances = disturbances, restingHr = rhr, avgHrv = round1(hrv),
-                    recovery = round1(recovery), strain = round1(strain), exerciseCount = nWorkouts,
-                    spo2Pct = round1(spo2), skinTempDevC = round2(skinTempDev),
-                    // Absolute nightly skin temp (~34 °C baseline + the deviation) so the Today card and
-                    // Health show a real temperature, not just the ±deviation.
-                    skinTempAbsC = round2(34.0 + skinTempDev), respRateBpm = round1(resp),
-                )
+            val unslept = i == UNSLEPT_DAY_INDEX
+            val fullRow = DailyMetric(
+                deviceId = WHOOP, day = day,
+                totalSleepMin = round1(totalSleep), efficiency = round1(efficiency),
+                deepMin = round1(deep), remMin = round1(rem), lightMin = round1(light),
+                disturbances = disturbances, restingHr = rhr, avgHrv = round1(hrv),
+                recovery = round1(recovery), strain = round1(strain), exerciseCount = nWorkouts,
+                spo2Pct = round1(spo2), skinTempDevC = round2(skinTempDev),
+                // Absolute nightly skin temp (~34 °C baseline + the deviation) so the Today card and
+                // Health show a real temperature, not just the ±deviation.
+                skinTempAbsC = round2(34.0 + skinTempDev), respRateBpm = round1(resp),
             )
+            daily.add(if (unslept) withoutSleep(fullRow) else fullRow)
 
-            // --- sleep session: previous night ~23:10 → wake ---
-            val onset = date.minusDays(1).atTime(23, 10).atZone(zone).toEpochSecond() + rng.nextInt(-1800, 1800)
+            // --- sleep session: previous night ~23:10 → wake. The night after the unslept day starts on
+            // that evening instead, so it spans two calendar days; the unslept day gets none. The draw is
+            // still taken either way, so every other day is unchanged. ---
+            val bedHour = if (i == UNSLEPT_DAY_INDEX + 1) CRASH_OUT_HOUR else 23
+            val bedMinute = if (i == UNSLEPT_DAY_INDEX + 1) CRASH_OUT_MINUTE else 10
+            val onset = date.minusDays(1).atTime(bedHour, bedMinute).atZone(zone).toEpochSecond() +
+                rng.nextInt(-1800, 1800)
             val inBedSec = ((totalSleep + totalSleep * (100 - efficiency) / 100) * 60).toLong()
-            sleeps.add(
-                SleepSession(
-                    deviceId = WHOOP, startTs = onset, endTs = onset + inBedSec,
-                    efficiency = round1(efficiency), restingHr = rhr, avgHrv = round1(hrv),
-                    stagesJSON = stagesJson(deep, rem, light, disturbances),
+            if (!unslept) {
+                sleeps.add(
+                    SleepSession(
+                        deviceId = WHOOP, startTs = onset, endTs = onset + inBedSec,
+                        efficiency = round1(efficiency), restingHr = rhr, avgHrv = round1(hrv),
+                        stagesJSON = stagesJson(deep, rem, light, disturbances),
+                    )
                 )
-            )
+            }
 
             // --- long-format extras (body composition) under my-whoop ---
             weight += gauss(rng, -0.02, 0.18)
@@ -290,6 +306,19 @@ object MockSeeder {
     }
 
     // MARK: - helpers
+
+    /**
+     * The daily row a day with NO sleep carries: the row EXISTS — an absent day and a day nobody slept
+     * are different states — and every column a NIGHT produces is null, the totals, the stage minutes,
+     * the vitals only measured during sleep, and the two scores those feed. Strain, activity, HR zones,
+     * sleep need and consistency and the prior day's effort belong to the day, and stay.
+     */
+    internal fun withoutSleep(d: DailyMetric): DailyMetric = d.copy(
+        totalSleepMin = null, efficiency = null, deepMin = null, remMin = null, lightMin = null,
+        disturbances = null, restingHr = null, avgHrv = null, recovery = null,
+        spo2Pct = null, skinTempDevC = null, skinTempAbsC = null, respRateBpm = null,
+        spo2Red = null, spo2Ir = null, recoveryIndexSlope = null,
+    )
 
     /** Box–Muller normal sample. */
     private fun gauss(rng: Random, mean: Double, sd: Double): Double {
