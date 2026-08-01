@@ -148,18 +148,6 @@ abstract class WhoopDatabase : RoomDatabase() {
             }
         }
 
-        /**
-         * The `my-whoop` bucket a fresh install starts with: `legacy`, so it is data rather than a
-         * device, and `peripheralId` NULL so adoption stays the moment a device is known to exist.
-         * Same end state MIGRATION_100_101 gives an upgraded install.
-         */
-        internal fun freshInstallBucketSql(now: Long): String =
-            "INSERT OR IGNORE INTO `pairedDevice` " +
-                "(`id`, `brand`, `model`, `nickname`, `sourceKind`, `capabilities`, " +
-                "`status`, `addedAt`, `lastSeenAt`) VALUES " +
-                "('my-whoop', 'WHOOP', 'WHOOP', NULL, 'legacy', " +
-                "'hr,hrv,spo2,skinTemp,sleep,strainLoad', 'active', $now, $now)"
-
         @Volatile
         private var instance: WhoopDatabase? = null
 
@@ -638,17 +626,11 @@ abstract class WhoopDatabase : RoomDatabase() {
                 // silent rebuild would lose already-acked, non-resendable strap history on any
                 // schema mismatch. Room throws loudly instead; CI guards the SQL.
                 .addMigrations(*ALL_MIGRATIONS.toTypedArray())
-                // A fresh install builds the schema straight at the current version and runs NO
-                // migrations, so the "my-whoop" bucket every pre-registry write lands in would not
-                // exist. Seed it on create as `legacy` — a pile of data, not a device — which is the
-                // state an upgraded install reaches via MIGRATION_100_101. It is listed as a device
-                // only once a strap adopts it (DeviceRegistry.setPeripheralId), the one moment a
-                // device is known to exist.
-                .addCallback(object : RoomDatabase.Callback() {
-                    override fun onCreate(db: SupportSQLiteDatabase) {
-                        db.execSQL(freshInstallBucketSql(System.currentTimeMillis() / 1000))
-                    }
-                })
+                // No seed on create. A fresh install owns no dataset until real data arrives — a
+                // WHOOP export, Health Connect, Apple Health, or the first strap that connects
+                // (DeviceRegistry.adoptStrap) — so the app shows an honest empty state instead of a
+                // band that does not exist. Reads still cover WhoopRepository.WHOOP_SOURCE, which is
+                // where a pre-registry write lands whether or not a row names it.
                 .build()
     }
 }

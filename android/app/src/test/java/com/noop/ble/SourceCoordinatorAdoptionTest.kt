@@ -10,6 +10,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -111,7 +112,12 @@ class SourceCoordinatorAdoptionTest {
         peripheralId = peripheralId,
     )
 
-    private fun coordinatorOver(dao: FakeRegistryDao, log: (String) -> Unit = {}): SourceCoordinator =
+    private fun coordinatorOver(
+        dao: FakeRegistryDao,
+        setWriteId: (String) -> Unit = {},
+        family: WhoopModel = WhoopModel.WHOOP5_MG,
+        log: (String) -> Unit = {},
+    ): SourceCoordinator =
         SourceCoordinator(
             context = null,                       // adoption path never reaches switchToStrap
             registry = registryWith(dao),
@@ -119,6 +125,8 @@ class SourceCoordinatorAdoptionTest {
             liveSink = { _, _ -> },
             startWhoop = {},
             stopWhoop = {},
+            setWhoopActiveDeviceId = setWriteId,
+            whoopFamily = { family },
             scope = CoroutineScope(Dispatchers.Unconfined), // launch runs eagerly inside runBlocking
             log = log,
         )
@@ -212,6 +220,74 @@ class SourceCoordinatorAdoptionTest {
         assertNull("a generic-strap active row must not adopt a WHOOP connection's address",
             dao.devices["polar-1"]!!.peripheralId)
         assertTrue(dao.devices.size == 1)
+    }
+
+    // ── lazy creation: the registry holds no device until a strap connects ───────
+
+    /** A fresh install seeds nothing, so the FIRST strap to connect is what mints the dataset — active,
+     *  named by its address, and the write id re-pointed at it. */
+    @Test
+    fun anEmptyRegistryMintsTheStrapOnFirstConnect() = runBlocking {
+        val dao = FakeRegistryDao()
+        var writeId: String? = null
+        val coordinator = coordinatorOver(dao, setWriteId = { writeId = it })
+
+        coordinator.connectedPeripheralChanged("AA:BB:CC:DD:EE:01")
+
+        val row = dao.devices["whoop-AA:BB:CC:DD:EE:01"]
+        assertNotNull("the first strap to connect must get a row", row)
+        assertEquals("AA:BB:CC:DD:EE:01", row!!.peripheralId)
+        assertEquals(DeviceStatus.active.name, row.status)
+        assertEquals(SourceKind.liveBLE.name, row.sourceKind)
+        assertEquals("5.0 / MG", row.model)
+        assertTrue(row.dataIncluded)
+        assertEquals("whoop-AA:BB:CC:DD:EE:01", writeId)
+    }
+
+    /** The family the link is on decides the recorded model, so skin temp reads on the right scale. */
+    @Test
+    fun aMintedRowRecordsTheConnectedFamily() = runBlocking {
+        val dao = FakeRegistryDao()
+        coordinatorOver(dao, family = WhoopModel.WHOOP4).connectedPeripheralChanged("AA:BB:CC:DD:EE:01")
+        assertEquals("4.0", dao.devices["whoop-AA:BB:CC:DD:EE:01"]!!.model)
+    }
+
+    /** Reconnecting mints nothing further — one strap, one row. */
+    @Test
+    fun aSecondConnectDoesNotMintATwin() = runBlocking {
+        val dao = FakeRegistryDao()
+        val coordinator = coordinatorOver(dao)
+        coordinator.connectedPeripheralChanged("AA:BB:CC:DD:EE:01")
+        coordinator.connectedPeripheralChanged(null)
+        coordinator.connectedPeripheralChanged("AA:BB:CC:DD:EE:01")
+        assertEquals(1, dao.devices.size)
+    }
+
+    /** An upgraded install whose only row is the WHOOP import sink still mints a real strap: the sink is
+     *  a pile of rows, so it never stands in for one and never adopts an address. */
+    @Test
+    fun theImportSinkAloneDoesNotStandInForAStrap() = runBlocking {
+        val dao = FakeRegistryDao().apply {
+            devices["my-whoop"] = whoopRow("my-whoop", peripheralId = null)
+                .copy(sourceKind = SourceKind.legacy.name, status = DeviceStatus.archived.name)
+        }
+        coordinatorOver(dao).connectedPeripheralChanged("AA:BB:CC:DD:EE:01")
+
+        assertNotNull(dao.devices["whoop-AA:BB:CC:DD:EE:01"])
+        assertNull("the sink must not adopt a strap address", dao.devices["my-whoop"]!!.peripheralId)
+        assertEquals(DeviceStatus.active.name, dao.devices["whoop-AA:BB:CC:DD:EE:01"]!!.status)
+    }
+
+    /** A registry that already knows a device is never auto-adopted into: the user's own pairing owns
+     *  which strap is active, and minting here would fork one strap across two rows. */
+    @Test
+    fun aRegistryThatAlreadyHoldsADeviceIsNotAutoAdopted() = runBlocking {
+        val dao = FakeRegistryDao().apply {
+            devices["whoop-known"] = whoopRow("whoop-known", peripheralId = "AA:BB:CC:DD:EE:09")
+                .copy(status = DeviceStatus.paired.name)
+        }
+        coordinatorOver(dao).connectedPeripheralChanged("AA:BB:CC:DD:EE:01")
+        assertEquals(1, dao.devices.size)
     }
 
     // ── make-active adopt-in-place (#74 keep) ───────────────────────────────────

@@ -339,15 +339,29 @@ class DeviceRegistryTest {
         assertEquals("but not a device", emptyList<String>(), reg.devices().map { it.id })
     }
 
-    /** Adoption is the moment a device is known to exist. */
+    /** The bucket never becomes a device, even if an old install left an address on it. A strap that
+     *  connects gets its OWN row from [DeviceRegistry.adoptStrap] instead. */
     @Test
-    fun adoptingAStrapTurnsTheBucketIntoADevice() = runBlocking {
+    fun theBucketNeverBecomesADevice() = runBlocking {
         val dao = bucketDao()
         val reg = registryWith(dao)
         reg.setPeripheralId("my-whoop", "DA:F7:41:80:FB:D4")
-        assertEquals(listOf("my-whoop"), reg.devices().map { it.id })
-        assertEquals(SourceKind.liveBLE.name, dao.devices["my-whoop"]!!.sourceKind)
-        assertEquals("DA:F7:41:80:FB:D4", dao.devices["my-whoop"]!!.peripheralId)
+        assertEquals(emptyList<String>(), reg.devices().map { it.id })
+        assertEquals(SourceKind.legacy.name, dao.devices["my-whoop"]!!.sourceKind)
+    }
+
+    /** The strap that connects gets a row of its own, active, and a second connect reuses it. */
+    @Test
+    fun adoptStrapMintsOneRowAndReusesIt() = runBlocking {
+        val dao = bucketDao()
+        val reg = registryWith(dao)
+        val id = reg.adoptStrap("DA:F7:41:80:FB:D4", model = "5.0 / MG", now = 500)
+        assertEquals("whoop-DA:F7:41:80:FB:D4", id)
+        assertEquals(listOf(id), reg.devices().map { it.id })
+        assertEquals(id, reg.activeDeviceId())
+        assertEquals("DA:F7:41:80:FB:D4", dao.devices[id]!!.peripheralId)
+        assertEquals("a second connect reuses the row", id, reg.adoptStrap("DA:F7:41:80:FB:D4", "5.0 / MG", 600))
+        assertEquals(2, reg.all().size)
     }
 
     /** Clearing an address must not invent one. */

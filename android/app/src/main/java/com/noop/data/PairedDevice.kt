@@ -85,11 +85,17 @@ enum class SourceKind { liveBLE, historyBLE, cloudImport, fileImport, oura, acti
 val DEVICE_SOURCE_KINDS: Set<String> =
     setOf(SourceKind.liveBLE, SourceKind.historyBLE, SourceKind.oura).map { it.name }.toSet()
 
-/** The straps the app may reach over BLE: real hardware ([DEVICE_SOURCE_KINDS]) that has not been
- *  removed. The PRESENCE axis, so it drives the picker, the scan and auto-connect and never a read —
- *  read scope is [PairedDeviceRow.dataIncluded] via `WhoopRepository.importedSourceIdsFor`. */
+/** True when [row] is hardware the user owns. The WHOOP import sink ([WhoopRepository.WHOOP_SOURCE])
+ *  is a data bucket whatever kind an old install left on it, so it is never one — it has no strap to
+ *  connect to, and offering it is what put a phantom band in the device list. */
+fun isDeviceRow(row: PairedDeviceRow): Boolean =
+    row.sourceKind in DEVICE_SOURCE_KINDS && row.id != WhoopRepository.WHOOP_SOURCE
+
+/** The straps the app may reach over BLE: hardware ([isDeviceRow]) that has not been removed. The
+ *  PRESENCE axis, so it drives the picker, the scan and auto-connect and never a read — read scope is
+ *  [PairedDeviceRow.dataIncluded] via [WhoopRepository.importedSourceIdsFor]. */
 fun connectableDevices(devices: List<PairedDeviceRow>): List<PairedDeviceRow> =
-    devices.filter { it.sourceKind in DEVICE_SOURCE_KINDS && it.status != DeviceStatus.archived.name }
+    devices.filter { isDeviceRow(it) && it.status != DeviceStatus.archived.name }
 
 /** A canonical metric a source can provide — drives capability-aware UI + the day-owner resolver.
  *  Stored as the enum name inside the comma-joined `capabilities` string. */

@@ -68,6 +68,10 @@ class SourceCoordinator(
      * compiling.
      */
     private val setWhoopActiveDeviceId: (String) -> Unit = {},
+    /** The WHOOP family the link is on, for the registry `model` label a lazily-created strap row
+     *  carries. Wired to the persisted family at the composition root; defaults to the 5 series, the
+     *  same fallback [com.noop.protocol.DeviceFamily.forRegistryModel] applies to an unknown label. */
+    private val whoopFamily: () -> WhoopModel = { WhoopModel.WHOOP5_MG },
     /** Background scope for the suspend registry reads + persist. SupervisorJob keeps one failure from
      *  cancelling the others; IO keeps DB work off the main thread. */
     private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.IO),
@@ -153,8 +157,8 @@ class SourceCoordinator(
     /**
      * The BLE engine connected to a WHOOP strap at [address] (null on disconnect). Persist that
      * stable identity onto the currently active device when it's a WHOOP and hasn't adopted one yet
-     * — so the legacy "my-whoop" learns its strap's address on first connect, and a freshly-paired
-     * WHOOP confirms its identity.
+     * — so a freshly-paired WHOOP confirms its identity — and MINT the dataset when the registry
+     * holds no device yet, which is how a fresh install gets its first one.
      *
      * Guards (so this never corrupts the registry):
      *   • null address (a disconnect/never-connected republish) → ignore.
@@ -171,7 +175,7 @@ class SourceCoordinator(
         connectedWhoopAddress = address
         if (address == null) return
         scope.launch {
-            val activeId = registry.activeDeviceId() ?: return@launch
+            val activeId = registry.activeDeviceId() ?: adoptFirstStrap(address) ?: return@launch
             val devices = registry.all()
             val row = devices.firstOrNull { it.id == activeId }
             if (!isWhoop(activeId, devices) || row == null) return@launch
@@ -194,6 +198,28 @@ class SourceCoordinator(
             }
         }
     }
+
+    /**
+     * Lazy creation: the registry names no active device and a WHOOP is on the link, so this is the
+     * first strap this install has met — mint its row via [DeviceRegistry.adoptStrap] and point the
+     * write id at it. Returns the new id, or null when some other device kind already holds the
+     * registry (a ring), in which case this connection is not ours to adopt.
+     */
+    private suspend fun adoptFirstStrap(address: String): String? {
+        val existing = registry.all()
+        if (existing.any { com.noop.data.isDeviceRow(it) }) return null
+        val id = registry.adoptStrap(address, model = whoopModelLabel())
+        setWhoopActiveDeviceId(id)
+        activeWhoopId = id
+        lastSeenId = id
+        log("First strap connected at $address — created its dataset as $id.")
+        return id
+    }
+
+    /** The registry `model` label for a freshly-adopted strap. Slashed for the 5 series because
+     *  nothing on the wire tells a 5.0 from an MG, matching what the Add wizard writes. */
+    private fun whoopModelLabel(): String =
+        if (whoopFamily() == WhoopModel.WHOOP4) "4.0" else "5.0 / MG"
 
     private suspend fun reconcile(id: String) {
         if (id == lastSeenId) return

@@ -64,7 +64,6 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.noop.ble.LiveState
 import com.noop.ble.SourceCoordinator
-import com.noop.ble.WhoopBleClient
 import com.noop.data.DeviceStatus
 import com.noop.data.PairedDeviceRow
 import com.noop.data.SourceKind
@@ -131,18 +130,9 @@ fun DevicesScreen(
  // After removing the ACTIVE device with other devices still paired, prompt to pick a new active one.
     var pickNewActive by remember { mutableStateOf(false) }
 
- // The seeded "my-whoop" doubles as the imported-WHOOP sink, so it is not a live band on an import-only
- // phone. Show it only when a WHOOP is bound HERE: connected now as the active source, or bonded before
- // (NoopPrefs.lastDevice, which no restore carries). A connected non-WHOOP strap must not un-hide it.
-    val activeIsWhoop = devices.orEmpty().firstOrNull { it.status == DeviceStatus.active.name }
-        ?.let { SourceCoordinator.isWhoop(it) } ?: false
- // Re-read on every connection change so a first-session bond (which persists lastDevice on connect)
- // keeps the card shown after the link later drops.
-    val bondedBefore = remember(live.connected) { NoopPrefs.lastDevice(context) != null }
-    val whoopBoundHere = (live.connected && activeIsWhoop) || bondedBefore
-    val all = devices.orEmpty().filter { device ->
-        !(device.id == WhoopBleClient.DEFAULT_DEVICE_ID && !whoopBoundHere)
-    }
+ // BLE only. The registry already drops what is not hardware (the WHOOP import sink included), so this
+ // screen lists straps and never a dataset — that lives in Data Sources.
+    val all = devices.orEmpty()
     val activeDevices = com.noop.data.connectableDevices(all)
     val removedDevices = all.filter { it.status == DeviceStatus.archived.name }
     val currentActiveName =
