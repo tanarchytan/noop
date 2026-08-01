@@ -34,9 +34,9 @@ class DeviceRegistry(
      *  the provenance list; use [devices] for anything the user meets as a device. */
     suspend fun all(): List<PairedDeviceRow> = dao.pairedDevices()
 
-    /** The sources that are an actual device ([DEVICE_SOURCE_KINDS]). A file import or the
-     *  pre-registry bucket names data, not hardware, so it never reaches a device list. */
-    suspend fun devices(): List<PairedDeviceRow> = all().filter { it.sourceKind in DEVICE_SOURCE_KINDS }
+    /** The sources that are an actual device ([isDeviceRow]). A file import, a service, or the WHOOP
+     *  import sink names data, not hardware, so it never reaches a device list. */
+    suspend fun devices(): List<PairedDeviceRow> = all().filter { isDeviceRow(it) }
 
     /** The single active device id, or null if none. */
     suspend fun activeDeviceId(): String? = dao.activeDeviceId()
@@ -55,26 +55,96 @@ class DeviceRegistry(
         }
     }
 
-    /** Archive a device — keeps its row and samples (invariant I4). */
+    /** Archive a device — the PRESENCE axis only. The row, its samples and its place in the read
+     *  scope all survive, so "removed, data kept" is what the user gets (invariant I4). */
     suspend fun archive(id: String) = dao.archiveDevice(id)
 
+    /** Include or exclude one dataset from every read. The INCLUSION axis: no sample row is touched,
+     *  and BLE presence is unaffected. */
+    suspend fun setDataIncluded(id: String, included: Boolean) = dao.setDataIncluded(id, included)
+
     /**
-     * Persist (or clear) a device's stable BLE peripheral identifier (the MAC address on Android).
-     * Lets the pre-registry bucket adopt its strap's address on first connect, and a specific WHOOP
-     * confirm its identity.
+     * Persist (or clear) a device's stable BLE peripheral identifier (the MAC address on Android), so
+     * a specific WHOOP confirms its identity on connect.
      *
      * Adoption is the moment a device is known to exist, so a `legacy` bucket becomes a `liveBLE`
-     * device here rather than being listed as one on the chance that a strap shows up.
+     * device here rather than being listed as one on the chance that a strap shows up. The WHOOP
+     * import sink is exempt: it is a pile of rows, and a strap gets its own row from [adoptStrap].
      */
     suspend fun setPeripheralId(id: String, peripheralId: String?) {
         transactor.run {
             dao.setPeripheralId(id, peripheralId)
-            if (peripheralId == null) return@run
+            if (peripheralId == null || id == WhoopRepository.WHOOP_SOURCE) return@run
             // Narrowed to `legacy`, so this can never rewrite the kind of an import or a real device.
             val row = dao.pairedDevices().firstOrNull { it.id == id } ?: return@run
             if (row.sourceKind == SourceKind.legacy.name) {
                 dao.upsertPairedDevice(row.copy(sourceKind = SourceKind.liveBLE.name, peripheralId = peripheralId))
             }
+        }
+    }
+
+    /**
+     * The strap at [peripheralId], creating its row the FIRST time one connects. A registry with no
+     * device is the honest empty state a fresh install starts in, so the dataset is minted here rather
+     * than seeded — and never for an address a row already pins, which would fork one strap in two.
+     * Returns the row's id.
+     */
+    suspend fun adoptStrap(
+        peripheralId: String,
+        model: String,
+        now: Long = System.currentTimeMillis() / 1000,
+        serial: String? = null,
+    ): String = transactor.run {
+        serial?.let { s ->
+            dao.pairedDevices().firstOrNull { it.serial?.equals(s, ignoreCase = true) == true }
+                ?.let { return@run it.id }
+        }
+        dao.deviceForPeripheralId(peripheralId)?.let { return@run it.id }
+        val id = "whoop-$peripheralId"
+        dao.pairedDevices().firstOrNull { it.id == id }?.let { return@run it.id }
+        dao.upsertPairedDevice(
+            PairedDeviceRow(
+                id = id,
+                brand = "WHOOP",
+                model = model,
+                nickname = null,
+                peripheralId = peripheralId,
+                sourceKind = SourceKind.liveBLE.name,
+                capabilities = "hr,hrv,spo2,skinTemp,sleep,strainLoad",
+                status = DeviceStatus.paired.name,
+                addedAt = now,
+                lastSeenAt = now,
+                serial = serial,
+            ),
+        )
+        dao.demoteActive()
+        dao.promote(id, now)
+        id
+    }
+
+    /**
+     * Bind a connected strap's own serial (GATT 0x2A25) to a registry row, per [StrapIdentity]:
+     * re-point the row that already carries it (a band back on a new address), or record it on the row
+     * this address already pins. Returns the row a REUSE landed on, so the caller can make it the write
+     * target; null for every other outcome, which writes nothing but the serial.
+     */
+    suspend fun bindSerial(
+        serial: String,
+        address: String,
+        now: Long = System.currentTimeMillis() / 1000,
+    ): String? = transactor.run {
+        when (val outcome = StrapIdentity.resolve(serial, address, dao.pairedDevices())) {
+            is StrapIdentity.Outcome.Reuse -> {
+                dao.setPeripheralId(outcome.id, address)
+                dao.demoteActive()
+                dao.promote(outcome.id, now)
+                outcome.id
+            }
+            is StrapIdentity.Outcome.Backfill -> {
+                dao.setSerial(outcome.id, serial)
+                null
+            }
+            is StrapIdentity.Outcome.Ambiguous, StrapIdentity.Outcome.None -> null
         }
     }
 

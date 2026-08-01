@@ -42,6 +42,12 @@ class RegistryDayOwnerSourceTest {
         override suspend fun archiveDevice(id: String) {
             devices[id]?.let { devices[id] = it.copy(status = DeviceStatus.archived.name) }
         }
+        override suspend fun setDataIncluded(id: String, included: Boolean) {
+            devices[id]?.let { devices[id] = it.copy(dataIncluded = included) }
+        }
+        override suspend fun setSerial(id: String, serial: String?) {
+            devices[id]?.let { devices[id] = it.copy(serial = serial) }
+        }
         override suspend fun deletePairedDevice(id: String) { devices.remove(id) }
         override suspend fun renameDevice(id: String, nickname: String?) {}
         override suspend fun setPeripheralId(id: String, peripheralId: String?) {
@@ -84,12 +90,17 @@ class RegistryDayOwnerSourceTest {
         },
     )
 
-    private fun device(id: String, brand: String, kind: SourceKind, status: DeviceStatus) =
-        PairedDeviceRow(
-            id = id, brand = brand, model = brand, nickname = null,
-            sourceKind = kind.name, capabilities = "hr,hrv",
-            status = status.name, addedAt = 100, lastSeenAt = 100,
-        )
+    private fun device(
+        id: String,
+        brand: String,
+        kind: SourceKind,
+        status: DeviceStatus,
+        included: Boolean = true,
+    ) = PairedDeviceRow(
+        id = id, brand = brand, model = brand, nickname = null,
+        sourceKind = kind.name, capabilities = "hr,hrv",
+        status = status.name, addedAt = 100, lastSeenAt = 100, dataIncluded = included,
+    )
 
     /** Resolve an owner the way IntelligenceEngine.resolveDayOwner does, given which devices have data. */
     private suspend fun resolveWith(
@@ -170,17 +181,30 @@ class RegistryDayOwnerSourceTest {
         assertEquals("oura", owner)
     }
 
+    /** A REMOVED device still owns the days it recorded — otherwise the scope keeps its rows and the
+     *  engine refuses to score them, which is the same disappearance one layer down. */
     @Test
-    fun archivedDeviceIsNotACandidate() = runBlocking {
+    fun aRemovedDeviceIsStillACandidate() = runBlocking {
         val dao = FakeDao().apply {
             devices["my-whoop"] = device("my-whoop", "WHOOP", SourceKind.liveBLE, DeviceStatus.active)
             devices["old"] = device("old", "Polar", SourceKind.liveBLE, DeviceStatus.archived)
         }
         val src = RegistryDayOwnerSource(registry(dao))
-        val ids = src.candidatePriorities().map { it.first }
-        assertEquals(listOf("my-whoop"), ids) // archived 'old' excluded
+        assertEquals(listOf("my-whoop", "old"), src.candidatePriorities().map { it.first })
+        assertEquals("old", resolveWith(src, "2026-06-15", mapOf("my-whoop" to false, "old" to true)))
+    }
+
+    /** An EXCLUDED dataset is the one that leaves — the same axis the read scope uses. */
+    @Test
+    fun anExcludedDeviceIsNotACandidate() = runBlocking {
+        val dao = FakeDao().apply {
+            devices["my-whoop"] = device("my-whoop", "WHOOP", SourceKind.liveBLE, DeviceStatus.active)
+            devices["old"] = device("old", "Polar", SourceKind.liveBLE, DeviceStatus.paired, included = false)
+        }
+        val src = RegistryDayOwnerSource(registry(dao))
+        assertEquals(listOf("my-whoop"), src.candidatePriorities().map { it.first })
         // With only the active strap and it having NO data, there is no owner (honest gap).
-        assertNull(resolveWith(src, "2026-06-15", mapOf("my-whoop" to false)))
+        assertNull(resolveWith(src, "2026-06-15", mapOf("my-whoop" to false, "old" to true)))
     }
 
     /** The pre-registry bucket names rows with no known source, so it ranks below every real one. */

@@ -2,8 +2,10 @@ package com.noop.data
 
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
@@ -56,6 +58,10 @@ class DeviceRegistryTest {
             devices[id]?.let { devices[id] = it.copy(status = DeviceStatus.archived.name) }
         }
 
+        override suspend fun setDataIncluded(id: String, included: Boolean) {
+            devices[id]?.let { devices[id] = it.copy(dataIncluded = included) }
+        }
+
         override suspend fun deletePairedDevice(id: String) { devices.remove(id) }
 
         override suspend fun renameDevice(id: String, nickname: String?) {
@@ -64,6 +70,10 @@ class DeviceRegistryTest {
 
         override suspend fun setPeripheralId(id: String, peripheralId: String?) {
             devices[id]?.let { devices[id] = it.copy(peripheralId = peripheralId) }
+        }
+
+        override suspend fun setSerial(id: String, serial: String?) {
+            devices[id]?.let { devices[id] = it.copy(serial = serial) }
         }
 
         override suspend fun deviceForPeripheralId(peripheralId: String): PairedDeviceRow? =
@@ -169,6 +179,30 @@ class DeviceRegistryTest {
         assertEquals(1, reg.all().size)
         assertEquals(DeviceStatus.archived.name, reg.all().first().status)
         assertNull(reg.activeDeviceId())
+    }
+
+    /** Archiving moves the PRESENCE axis only, so the dataset stays in every read. */
+    @Test
+    fun archiveLeavesTheDatasetIncluded() = runBlocking {
+        val reg = registryWith(seededDao())
+        reg.archive("my-whoop")
+        assertTrue(reg.all().first().dataIncluded)
+        assertTrue("my-whoop" in WhoopRepository.importedSourceIdsFor(reg.all()))
+    }
+
+    /** Excluding moves the INCLUSION axis only: presence and every sample row are untouched. */
+    @Test
+    fun setDataIncludedMovesNothingElse() = runBlocking {
+        val dao = seededDao()
+        val reg = registryWith(dao)
+        reg.setDataIncluded("my-whoop", false)
+        val row = reg.all().first()
+        assertFalse(row.dataIncluded)
+        assertEquals(DeviceStatus.active.name, row.status)
+        assertEquals("my-whoop", reg.activeDeviceId())
+        assertTrue("excluding must delete nothing", dao.deletedTables.isEmpty())
+        reg.setDataIncluded("my-whoop", true)
+        assertTrue(reg.all().first().dataIncluded)
     }
 
     @Test
@@ -309,15 +343,119 @@ class DeviceRegistryTest {
         assertEquals("but not a device", emptyList<String>(), reg.devices().map { it.id })
     }
 
-    /** Adoption is the moment a device is known to exist. */
+    /** The bucket never becomes a device, even if an old install left an address on it. A strap that
+     *  connects gets its OWN row from [DeviceRegistry.adoptStrap] instead. */
     @Test
-    fun adoptingAStrapTurnsTheBucketIntoADevice() = runBlocking {
+    fun theBucketNeverBecomesADevice() = runBlocking {
         val dao = bucketDao()
         val reg = registryWith(dao)
         reg.setPeripheralId("my-whoop", "DA:F7:41:80:FB:D4")
-        assertEquals(listOf("my-whoop"), reg.devices().map { it.id })
-        assertEquals(SourceKind.liveBLE.name, dao.devices["my-whoop"]!!.sourceKind)
-        assertEquals("DA:F7:41:80:FB:D4", dao.devices["my-whoop"]!!.peripheralId)
+        assertEquals(emptyList<String>(), reg.devices().map { it.id })
+        assertEquals(SourceKind.legacy.name, dao.devices["my-whoop"]!!.sourceKind)
+    }
+
+    /** The strap that connects gets a row of its own, active, and a second connect reuses it. */
+    @Test
+    fun adoptStrapMintsOneRowAndReusesIt() = runBlocking {
+        val dao = bucketDao()
+        val reg = registryWith(dao)
+        val id = reg.adoptStrap("DA:F7:41:80:FB:D4", model = "5.0 / MG", now = 500)
+        assertEquals("whoop-DA:F7:41:80:FB:D4", id)
+        assertEquals(listOf(id), reg.devices().map { it.id })
+        assertEquals(id, reg.activeDeviceId())
+        assertEquals("DA:F7:41:80:FB:D4", dao.devices[id]!!.peripheralId)
+        assertEquals("a second connect reuses the row", id, reg.adoptStrap("DA:F7:41:80:FB:D4", "5.0 / MG", 600))
+        assertEquals(2, reg.all().size)
+    }
+
+    // MARK: - serial identity (GATT 0x2A25)
+
+    /** A band back on a NEW address lands on the row that already holds its history: its address is
+     *  re-pointed, the row becomes the write target, and no stored deviceId moves. */
+    @Test
+    fun bindSerialReusesTheRowAKnownSerialNames() = runBlocking {
+        val dao = FakeRegistryDao().apply {
+            devices["whoop-old"] = PairedDeviceRow(
+                id = "whoop-old", brand = "WHOOP", model = "5.0 / MG", nickname = null,
+                peripheralId = "AA:AA:AA:AA:AA:AA", sourceKind = SourceKind.liveBLE.name,
+                capabilities = "hr", status = DeviceStatus.paired.name, addedAt = 100, lastSeenAt = 100,
+                serial = "5A00960910",
+            )
+        }
+        val reg = registryWith(dao)
+        assertEquals("whoop-old", reg.bindSerial("5A00960910", "BB:BB:BB:BB:BB:BB", now = 700))
+        assertEquals("BB:BB:BB:BB:BB:BB", dao.devices["whoop-old"]!!.peripheralId)
+        assertEquals("whoop-old", reg.activeDeviceId())
+        assertEquals("the row keeps its id, so every stored row keeps its provenance", 1, reg.all().size)
+    }
+
+    /** A row with no serial records the one the strap on its own address reports. */
+    @Test
+    fun bindSerialBackfillsAnUnverifiedRow() = runBlocking {
+        val dao = FakeRegistryDao().apply {
+            devices["whoop-a"] = PairedDeviceRow(
+                id = "whoop-a", brand = "WHOOP", model = "5.0 / MG", nickname = null,
+                peripheralId = "AA:AA:AA:AA:AA:AA", sourceKind = SourceKind.liveBLE.name,
+                capabilities = "hr", status = DeviceStatus.active.name, addedAt = 100, lastSeenAt = 100,
+            )
+        }
+        val reg = registryWith(dao)
+        assertNull("a backfill re-points nothing", reg.bindSerial("5A00960910", "AA:AA:AA:AA:AA:AA"))
+        assertEquals("5A00960910", dao.devices["whoop-a"]!!.serial)
+    }
+
+    /** Two different rows: nothing is written. A wrong merge fuses two straps' histories for good. */
+    @Test
+    fun bindSerialNeverMergesTwoRows() = runBlocking {
+        val dao = FakeRegistryDao().apply {
+            devices["whoop-old"] = PairedDeviceRow(
+                id = "whoop-old", brand = "WHOOP", model = "5.0 / MG", nickname = null,
+                peripheralId = "AA:AA:AA:AA:AA:AA", sourceKind = SourceKind.liveBLE.name,
+                capabilities = "hr", status = DeviceStatus.paired.name, addedAt = 100, lastSeenAt = 100,
+                serial = "5A00960910",
+            )
+            devices["whoop-new"] = PairedDeviceRow(
+                id = "whoop-new", brand = "WHOOP", model = "5.0 / MG", nickname = null,
+                peripheralId = "BB:BB:BB:BB:BB:BB", sourceKind = SourceKind.liveBLE.name,
+                capabilities = "hr", status = DeviceStatus.active.name, addedAt = 200, lastSeenAt = 200,
+            )
+        }
+        val reg = registryWith(dao)
+        assertNull(reg.bindSerial("5A00960910", "BB:BB:BB:BB:BB:BB"))
+        assertEquals("AA:AA:AA:AA:AA:AA", dao.devices["whoop-old"]!!.peripheralId)
+        assertNull("the second row must not inherit the serial", dao.devices["whoop-new"]!!.serial)
+        assertEquals(2, reg.all().size)
+        assertTrue("neither row's data is touched", dao.deletedTables.isEmpty())
+    }
+
+    /** An unreadable serial is simply never bound — the strap keeps its address-derived row, unverified. */
+    @Test
+    fun aStrapWithNoSerialKeepsItsAddressIdentity() = runBlocking {
+        val dao = bucketDao()
+        val reg = registryWith(dao)
+        val id = reg.adoptStrap("DA:F7:41:80:FB:D4", model = "5.0 / MG", now = 500)
+        assertNull("unverified until a serial is read", dao.devices[id]!!.serial)
+        assertEquals("DA:F7:41:80:FB:D4", dao.devices[id]!!.peripheralId)
+    }
+
+    /** A known serial short-circuits minting: a strap that connects on a new address before any binding
+     *  reuses its row rather than creating a twin. */
+    @Test
+    fun adoptStrapWithAKnownSerialReusesTheRow() = runBlocking {
+        val dao = FakeRegistryDao().apply {
+            devices["whoop-old"] = PairedDeviceRow(
+                id = "whoop-old", brand = "WHOOP", model = "5.0 / MG", nickname = null,
+                peripheralId = "AA:AA:AA:AA:AA:AA", sourceKind = SourceKind.liveBLE.name,
+                capabilities = "hr", status = DeviceStatus.paired.name, addedAt = 100, lastSeenAt = 100,
+                serial = "5A00960910",
+            )
+        }
+        val reg = registryWith(dao)
+        assertEquals(
+            "whoop-old",
+            reg.adoptStrap("BB:BB:BB:BB:BB:BB", model = "5.0 / MG", now = 700, serial = "5A00960910"),
+        )
+        assertEquals(1, reg.all().size)
     }
 
     /** Clearing an address must not invent one. */

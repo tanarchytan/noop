@@ -580,6 +580,13 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             ble.connectedPeripheralAddress
                 .collect { addr -> noopApp.sourceCoordinator.connectedPeripheralChanged(addr) }
         }
+        // The strap's own serial (GATT 0x2A25) lands a few seconds after the address and is what
+        // survives an address change, so a band that comes back on a new one reuses its dataset instead
+        // of minting a second. Same StateFlow distinct-emission property as the address above.
+        viewModelScope.launch {
+            ble.connectedStrapSerial
+                .collect { serial -> noopApp.sourceCoordinator.connectedSerialChanged(serial) }
+        }
         // Re-arm the strap's firmware alarm once per process-alive day. The firmware alarm is a single
         // absolute instant with NO recurrence and was previously re-armed ONLY on the bond edge — so a
         // strap that stays continuously bonded (a phone in range overnight) would fire once and then
@@ -775,10 +782,12 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                         // Manual "Recalibrate baseline" anchor (Settings → Charge advanced). The analytics
                         // layer is Context-free, so read the epoch (whole seconds, written as a Long by the
                         // button) here and thread it down — foldHistory drops every HRV night before it.
-                        baselineEpoch = NoopPrefs.of(appContext)
-                            .getLong(Baselines.hrvBaselineEpochKey, 0L).toDouble(),
-                        recoveryEpoch = NoopPrefs.of(appContext)
-                            .getLong(Baselines.recoveryBaselineEpochKey, 0L).toDouble(),
+                        baselineEpoch = repo.effectiveBaselineEpoch(
+                            NoopPrefs.of(appContext).getLong(Baselines.hrvBaselineEpochKey, 0L).toDouble(),
+                        ),
+                        recoveryEpoch = repo.effectiveBaselineEpoch(
+                            NoopPrefs.of(appContext).getLong(Baselines.recoveryBaselineEpochKey, 0L).toDouble(),
+                        ),
                         // Route the engine's per-day scoring diagnostic into the SAME shareable strap log
                         // every other subsystem writes to (ble.externalLog PII-scrubs each line), so a bug
                         // report ships proof of what was computed per day. Mirrors the macOS sink wired to
@@ -1306,10 +1315,12 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                     profileStore.stepsCalibrationConfidence = cal.confidence
                     profileStore.stepsCalibrationManual = cal.manual
                 },
-                baselineEpoch = NoopPrefs.of(appContext)
-                    .getLong(Baselines.hrvBaselineEpochKey, 0L).toDouble(),
-                recoveryEpoch = NoopPrefs.of(appContext)
-                    .getLong(Baselines.recoveryBaselineEpochKey, 0L).toDouble(),
+                baselineEpoch = repo.effectiveBaselineEpoch(
+                    NoopPrefs.of(appContext).getLong(Baselines.hrvBaselineEpochKey, 0L).toDouble(),
+                ),
+                recoveryEpoch = repo.effectiveBaselineEpoch(
+                    NoopPrefs.of(appContext).getLong(Baselines.recoveryBaselineEpochKey, 0L).toDouble(),
+                ),
                 // #195/#141: keep the HRV window consistent with the 15-min loop — without this a sleep edit
                 // would re-score + persist every night's HRV over the WHOLE night, silently overwriting the
                 // deep-window value (the "deep sleep window changes nothing" bug).

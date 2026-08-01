@@ -1,5 +1,6 @@
 package com.noop.analytics
 
+import com.noop.protocol.DeviceFamily
 import kotlin.math.abs
 import kotlin.math.max
 
@@ -144,23 +145,31 @@ object Baselines {
      * history is one brand, leaving [foldHistory] byte-identical.
      *
      * [sourceDays] must carry exactly ONE winning `(dayKey, sourceId)` per night, since the current
-     * era is read off the newest day's brand and a day carrying two brands would let the lexically
-     * later source pass for the current one. Brands are coarse, not [DeviceFamily]: every WHOOP-origin
-     * id is one brand, each wearable export its own. Detection must run before the per-day merge,
-     * which loses the brand.
+     * era is read off the newest day's bucket and a day carrying two would let the lexically later
+     * source pass for the current one. Detection must run before the per-day merge, which loses the
+     * source. [familyByDeviceId] resolves each WHOOP strap's [DeviceFamily] from the registry, so a
+     * 4.0 ↔ 5.0/MG swap opens an era (MAX86171 vs MAX86176 optics) while two straps of one family do
+     * not; a source with no family (an Apple/Health-Connect rider) is era-NEUTRAL and never opens one.
      */
-    fun deviceEraEpoch(sourceDays: List<Pair<String, String>>): Double {
+    fun deviceEraEpoch(
+        sourceDays: List<Pair<String, String>>,
+        familyByDeviceId: Map<String, DeviceFamily> = emptyMap(),
+    ): Double {
         if (sourceDays.isEmpty()) return 0.0
-        // Total order by (day, sourceId): a same-day mixed-brand row breaks the tie by sourceId,
+        // Total order by (day, sourceId): a same-day mixed-bucket row breaks the tie by sourceId,
         // not insertion order, so the computed epoch is deterministic regardless of input order.
         val sorted = sourceDays.sortedWith(compareBy({ it.first }, { it.second }))
-        val currentBrand = brandBucket(sorted.last().second)
-        // No brand change anywhere → no recalibration epoch.
-        if (sorted.none { brandBucket(it.second) != currentBrand }) return 0.0
-        // Walk back over the contiguous current-brand suffix; its first day opens the current era.
+        val buckets = sorted.map { eraBucket(it.second, familyByDeviceId) }
+        // The current era is the newest day that names one; a history of only neutral days has none.
+        val currentBucket = buckets.lastOrNull { it != null } ?: return 0.0
+        // No bucket change anywhere → no recalibration epoch.
+        if (buckets.none { it != null && it != currentBucket }) return 0.0
+        // Walk back over the contiguous current-bucket suffix (neutral days ride it); its first day
+        // opens the current era. A lone off-bucket day truncates it, dropping MORE history rather than
+        // mixing two scales.
         var eraStartDay = sorted.last().first
         for (i in sorted.indices.reversed()) {
-            if (brandBucket(sorted[i].second) != currentBrand) break
+            if (buckets[i] != null && buckets[i] != currentBucket) break
             eraStartDay = sorted[i].first
         }
         return runCatching {
@@ -170,20 +179,20 @@ object Baselines {
     }
 
     /**
-     * Coarse HRV-scale brand for a source id. Every WHOOP-origin id shares one scale; each
-     * wearable-export brand is its own. Unknown ids bucket to "whoop" (the strap source and its
-     * Apple/Health-Connect riders), so only a positively-identified wearable export changes the era.
+     * The era bucket for a source id, or null when the source is era-NEUTRAL and rides whichever era
+     * it falls in. Each wearable export is its own brand; a WHOOP strap buckets by [DeviceFamily], so
+     * 5.0 and MG (one AFE) share an era and a 4.0 does not.
      */
-    internal fun brandBucket(sourceId: String): String = when {
+    internal fun eraBucket(sourceId: String, familyByDeviceId: Map<String, DeviceFamily>): String? = when {
         // `startsWith` deliberately catches BOTH the export id ("oura-import") and the cloud id
         // ("oura-api"), so an Oura-cloud era and an Oura-export era read as the same brand.
         sourceId.startsWith("oura") -> "oura"
         sourceId.startsWith("fitbit") -> "fitbit"
         sourceId.startsWith("garmin") -> "garmin"
-        // "apple-health" / "health-connect" fall through to "whoop" ON PURPOSE: NOOP's Apple/HC daily
-        // rows ride the strap source's scale, and HC is a pass-through whose true origin is unknowable,
-        // so they must NOT open a false era boundary against WHOOP nights.
-        else -> "whoop"
+        // A registry strap: its family is the era. The computed sibling shares its strap's row.
+        else -> familyByDeviceId[sourceId.removeSuffix("-noop")]?.let { "whoop-${it.name}" }
+        // Everything else is NEUTRAL: an Apple/Health-Connect rider carries the strap's scale, and a
+        // source with no registry row has no family to claim, so neither may open a false boundary.
     }
 
     // ─────────────────────────────────────────────────────────────────────────

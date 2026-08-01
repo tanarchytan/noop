@@ -400,6 +400,16 @@ class WhoopBleClient(
         private val BATTERY_SERVICE: UUID = UUID.fromString("0000180f-0000-1000-8000-00805f9b34fb")
         private val BATTERY_CHAR: UUID = UUID.fromString("00002a19-0000-1000-8000-00805f9b34fb")
 
+        // Device Information: the strap's own serial. Not advertised, so it is only readable over a
+        // connection; it is what keeps a band's history when its BLE address changes.
+        private val DEVICE_INFO_SERVICE: UUID = UUID.fromString("0000180a-0000-1000-8000-00805f9b34fb")
+        private val SERIAL_NUMBER_CHAR: UUID = UUID.fromString("00002a25-0000-1000-8000-00805f9b34fb")
+
+        /** Attempts at the 0x2A25 read, and the delay before each. Spaced past the CCCD drain and the
+         *  bond so a read cannot take the single in-flight GATT slot from them; a strap that never
+         *  answers keeps its address-derived identity. */
+        private val SERIAL_READ_DELAYS_MS = longArrayOf(3_000L, 8_000L, 20_000L)
+
         // Client Characteristic Configuration Descriptor — written to enable notifications
         // (Android requires the explicit write; the local stack also needs setCharacteristicNotification).
         private val CCCD: UUID = UUID.fromString("00002902-0000-1000-8000-00805f9b34fb")
@@ -907,6 +917,11 @@ class WhoopBleClient(
      *  SourceCoordinator's first-connect identity adoption. */
     val connectedPeripheralAddress: StateFlow<String?> = _connectedPeripheralAddress.asStateFlow()
 
+    private val _connectedStrapSerial = MutableStateFlow<String?>(null)
+    /** The connected strap's own serial (GATT 0x2A25), or null while unread/disconnected. Lands a few
+     *  seconds after the address and drives SourceCoordinator's serial identity binding. */
+    val connectedStrapSerial: StateFlow<String?> = _connectedStrapSerial.asStateFlow()
+
     /** Add-a-WHOOP wizard present-scan flag: while true, [onScanResult] ACCUMULATES every discovered
      *  strap into [discoveredWhoops] instead of auto-connecting. Set by [scanForWhoops], cleared by
      *  [stopWhoopScan]. @Volatile: written on the main looper, read on the GATT/scan callback thread. */
@@ -1253,10 +1268,12 @@ class WhoopBleClient(
                         // analytics layer is Context-free, so read it here and thread it down so the
                         // post-backfill pass honours the recalibration too, not just the UI's 15-min loop.
                         // 0 = no recalibration.
-                        baselineEpoch = NoopPrefs.of(context)
-                            .getLong(Baselines.hrvBaselineEpochKey, 0L).toDouble(),
-                        recoveryEpoch = NoopPrefs.of(context)
-                            .getLong(Baselines.recoveryBaselineEpochKey, 0L).toDouble(),
+                        baselineEpoch = repository.effectiveBaselineEpoch(
+                            NoopPrefs.of(context).getLong(Baselines.hrvBaselineEpochKey, 0L).toDouble(),
+                        ),
+                        recoveryEpoch = repository.effectiveBaselineEpoch(
+                            NoopPrefs.of(context).getLong(Baselines.recoveryBaselineEpochKey, 0L).toDouble(),
+                        ),
                         // Nightly HRV over deep-sleep windows only when the user picked WHOOP-style. Read
                         // here (the analytics layer is Context-free) and thread it down, like baselineEpoch
                         // above — otherwise this pass would recompute over the WHOLE night, overwriting the
@@ -2427,6 +2444,29 @@ class WhoopBleClient(
      * (COMMAND_RESPONSE, u16/10) — reading both flashed 100% before the true value corrected it. WHOOP 4
      * uses ONLY the command; WHOOP 5/MG uses ONLY 0x2A19 (its proprietary command isn't framed).
      */
+    /**
+     * Read the strap's serial (GATT 0x2A25) on [attempt], retrying on the [SERIAL_READ_DELAYS_MS]
+     * schedule while it is still unknown and the link is up. A read only — the BLE safety contract
+     * forbids writes to hardware, and this adds none. A strap that never answers (older firmware, an
+     * unbonded refusal, no Device Information service) keeps its address-derived identity.
+     */
+    @SuppressLint("MissingPermission")
+    private fun scheduleSerialRead(attempt: Int) {
+        if (attempt >= SERIAL_READ_DELAYS_MS.size) return
+        handler.postDelayed({
+            val g = gatt ?: return@postDelayed
+            if (_connectedStrapSerial.value != null) return@postDelayed
+            val ops = gattOps
+            val ch = g.getService(DEVICE_INFO_SERVICE)?.getCharacteristic(SERIAL_NUMBER_CHAR)
+            if (ops == null || ch == null) {
+                if (attempt == 0) log("Serial (0x2A25) not offered by this strap — keeping its address identity")
+                return@postDelayed
+            }
+            safeGatt("readCharacteristic(serial)") { ops.readCharacteristicCompat(ch) }
+            scheduleSerialRead(attempt + 1)
+        }, SERIAL_READ_DELAYS_MS[attempt])
+    }
+
     fun refreshBattery() {
         val g = gatt
         if (g == null) {
@@ -3186,6 +3226,10 @@ class WhoopBleClient(
             // 3. Standard battery profile (plain %).
             g.getService(BATTERY_SERVICE)?.getCharacteristic(BATTERY_CHAR)?.let { cccdQueue.add(it) }
 
+            // 4. The strap's own serial (0x2A25), read — never written — on a delay so it cannot take
+            // the single in-flight GATT slot from the CCCD writes or the bond.
+            scheduleSerialRead(0)
+
             // Enable notifications one at a time. When the queue is fully drained, startSession() fires
             // the first command (bond / CLIENT_HELLO) — never racing the descriptor writes.
             //
@@ -3356,6 +3400,15 @@ class WhoopBleClient(
             uuid == BATTERY_CHAR -> if (connectedFamily != DeviceFamily.WHOOP4) {
                 bytes.firstOrNull()?.let { setBattery((it.toInt() and 0xFF).toDouble()) }
             } else Unit
+            // 0x2A25 = the strap's own serial, a UTF-8 string. Published for the registry's identity
+            // binding; a blank or unreadable value stays null so nothing is invented.
+            uuid == SERIAL_NUMBER_CHAR -> {
+                val serial = bytes.toString(Charsets.UTF_8).trim { it <= ' ' }
+                if (serial.isNotEmpty() && _connectedStrapSerial.value != serial) {
+                    _connectedStrapSerial.value = serial
+                    log("Strap serial (0x2A25): $serial")
+                }
+            }
             // WHOOP4 custom notify chars, OR the WHOOP 5/MG puffin notify chars (fd4b0003/4/5/7) once
             // bonded — both carry framed records (REALTIME_DATA etc.) through the family-aware reassembler.
             uuid == CMD_NOTIFY_CHAR || uuid == EVENT_NOTIFY_CHAR || uuid == DATA_NOTIFY_CHAR ||
@@ -5001,8 +5054,10 @@ class WhoopBleClient(
             historyLayoutVersion = null,
         ) }
         // Multi-WHOOP: the link is down - clear the published connected address so SourceCoordinator's
-        // adoption sink can't re-fire on a stale strap id.
+        // adoption sink can't re-fire on a stale strap id. Same for the serial, so the next strap's
+        // identity is never resolved against the last one's.
         _connectedPeripheralAddress.value = null
+        _connectedStrapSerial.value = null
         reset()
 
         // close() can itself throw DeadObjectException on a dead binder - teardown must NEVER throw,

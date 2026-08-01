@@ -1097,6 +1097,34 @@ class WhoopRepository(private val dao: WhoopDao) {
     suspend fun importedSourceIds(): List<String> = importedSourceIdsFor(dao.pairedDevices())
     suspend fun computedSourceIds(): List<String> = computedSourceIdsFor(dao.pairedDevices())
 
+    /**
+     * The recalibration anchor a baseline fold must honour: the later of the user's manual
+     * "Recalibrate baseline" epoch ([manualEpoch], 0 = none) and the newest device-era boundary. A
+     * strap swap across [com.noop.protocol.DeviceFamily] re-seeds the baseline on its own, so two
+     * incompatible optical scales never fold into one. Best-effort: a read failure keeps [manualEpoch].
+     */
+    suspend fun effectiveBaselineEpoch(manualEpoch: Double): Double =
+        maxOf(manualEpoch, runCatching { deviceEraEpoch() }.getOrDefault(0.0))
+
+    /**
+     * The newest device-era boundary over the read scope, as [com.noop.analytics.Baselines.deviceEraEpoch]
+     * wants it: exactly ONE winning `(day, sourceId)` per night, resolved the way [daysMerged] resolves
+     * a day (imported sources in scope order first, then their computed siblings), plus each strap's
+     * family from the registry. 0.0 when the whole history is one era.
+     */
+    suspend fun deviceEraEpoch(): Double {
+        val devices = dao.pairedDevices()
+        val ids = importedSourceIdsFor(devices)
+        val winner = LinkedHashMap<String, String>()
+        for (src in ids + ids.map { computedDeviceId(it) }) {
+            for (m in dao.days(src)) winner.putIfAbsent(m.day, src)
+        }
+        val familyByDeviceId = devices.associate {
+            it.id to com.noop.protocol.DeviceFamily.forRegistryModel(it.model)
+        }
+        return com.noop.analytics.Baselines.deviceEraEpoch(winner.toList(), familyByDeviceId)
+    }
+
     /** The reactive twin for the Flow reads: re-resolves when the registry changes, and only re-emits
      *  when the ID LIST moves (a `lastSeenAt` stamp must not resubscribe the dashboard). */
     private fun importedSourceIdsFlow(): Flow<List<String>> =
@@ -1161,7 +1189,7 @@ class WhoopRepository(private val dao: WhoopDao) {
      * All cached daily metrics, oldest first, merged with the on-device computed "-noop" scores.
      * Imported rows win per day; computed rows fill the days the import doesn't cover.
      *
-     * Both buckets are read over the registry read scope ([importedSourceIds]): every non-archived
+     * Both buckets are read over the registry read scope ([importedSourceIds]): every included
      * paired device plus the legacy import sink, so a second strap's days are visible instead of
      * excluded by construction. One id resolves to the same single read as before. The active id wins
      * per day inside each bucket ([unionByDay]); imports still win over computed across buckets
@@ -1497,17 +1525,19 @@ class WhoopRepository(private val dao: WhoopDao) {
 
         /**
          * The IMPORTED daily-source ids to read, derived from the registry [devices] (never from one id):
-         * the `active` device first, then every other non-`archived` device in registration order, then
-         * the legacy [WHOOP_SOURCE] last. Archiving a strap is how a user retires it, so an archived id
-         * is dropped; [WHOOP_SOURCE] is the import sink and the pre-registry bucket rather than a device,
-         * so it is always read. Active-first ordering makes every per-day pick take the active row.
-         * Companion form so [com.noop.ui.FusionDayAdapter] and the instance reads share ONE definition.
+         * the `active` device first, then every other included device in registration order, then the
+         * legacy [WHOOP_SOURCE] last. Scope follows [PairedDeviceRow.dataIncluded] ALONE — a removed
+         * (`archived`) strap is unreachable over BLE and keeps every day it recorded. [WHOOP_SOURCE] is
+         * the import sink rather than a device, so it is read unless its own row is excluded.
+         * Active-first ordering makes every per-day pick take the active row. Companion form so
+         * [com.noop.ui.FusionDayAdapter] and the instance reads share ONE definition.
          */
         fun importedSourceIdsFor(devices: List<PairedDeviceRow>): List<String> {
             val ids = LinkedHashSet<String>()
-            devices.firstOrNull { it.status == DeviceStatus.active.name }?.let { ids.add(it.id) }
-            for (d in devices) if (d.status != DeviceStatus.archived.name) ids.add(d.id)
-            ids.add(WHOOP_SOURCE)
+            devices.firstOrNull { it.status == DeviceStatus.active.name && it.dataIncluded }
+                ?.let { ids.add(it.id) }
+            for (d in devices) if (d.dataIncluded && d.id != WHOOP_SOURCE) ids.add(d.id)
+            if (devices.none { it.id == WHOOP_SOURCE && !it.dataIncluded }) ids.add(WHOOP_SOURCE)
             return ids.toList()
         }
 

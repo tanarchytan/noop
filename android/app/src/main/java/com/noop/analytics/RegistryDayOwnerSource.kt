@@ -1,7 +1,6 @@
 package com.noop.analytics
 
 import com.noop.data.DeviceRegistry
-import com.noop.data.DeviceStatus
 import com.noop.data.SourceKind
 import com.noop.protocol.DeviceFamily
 
@@ -11,16 +10,17 @@ import com.noop.protocol.DeviceFamily
  * without giving the pure-JVM engine a Room dependency.
  *
  * Priority: 0 = the active strap, 1 = other live (BLE/historyBLE) straps, 2 = imports
- * (cloud/file), 3 = an activity file, 4 = the pre-registry bucket. Lower wins; archived devices are
- * excluded. The bucket ranks last because it names data with no known source, so it takes a day only
- * when nothing else covers it.
+ * (cloud/file), 3 = an activity file, 4 = the pre-registry bucket. Lower wins; only an EXCLUDED
+ * dataset is dropped, matching [com.noop.data.WhoopRepository.importedSourceIdsFor], so a removed
+ * strap can still own the days it recorded. The bucket ranks last because it names data with no known
+ * source, so it takes a day only when nothing else covers it.
  */
 class RegistryDayOwnerSource(private val registry: DeviceRegistry) : IntelligenceEngine.DayOwnerSource {
 
     override suspend fun candidatePriorities(): List<Pair<String, Int>> {
         val activeId = registry.activeDeviceId()
         return registry.all()
-            .filter { it.status != DeviceStatus.archived.name }
+            .filter { it.dataIncluded }
             .map { d ->
                 val isImport = d.sourceKind == SourceKind.cloudImport.name ||
                     d.sourceKind == SourceKind.fileImport.name

@@ -46,9 +46,10 @@ class NoopApplication : Application() {
 
     /**
      * The WRITE id: the source live BLE samples are banked under, resolved once at startup from the
-     * registry and falling back to the legacy "my-whoop" when the registry has none yet (a fresh install
-     * before seeding must still have somewhere to write). READS never use it — a read scope comes from
-     * [WhoopRepository.importedSourceIds], so this fallback can no longer narrow what the user sees.
+     * registry and falling back to [WhoopBleClient.DEFAULT_DEVICE_ID] while the registry holds no
+     * device — the import sink, which every read covers, and which
+     * [SourceCoordinator.connectedPeripheralChanged] replaces with the strap's own id the moment one
+     * connects. READS never use it, so this fallback cannot narrow what the user sees.
      * Guarded blocking call: any failure is swallowed, so startup can never be broken by this.
      */
     val activeDeviceId: String by lazy {
@@ -101,6 +102,9 @@ class NoopApplication : Application() {
             // path — the coordinator only invokes them for a non-legacy WHOOP / a non-null peripheralId.
             setWhoopPreferredAddress = { addr -> ble.preferredAddress = addr },
             setWhoopActiveDeviceId = { id -> ble.setActiveDeviceId(id) },
+            // The family a lazily-created strap row records, so its skin-temp scale and reconnect
+            // service are right from the first connect. Same persisted value startWhoop reconnects on.
+            whoopFamily = { persistedWhoopModel() },
             // Generic-HR connect lifecycle → the SAME in-app strap log the user exports, so a
             // "connected but no data" report (issue #421) is no longer blind to the Polar/Wahoo/etc path.
             straplog = { ble.externalLog(it) },
