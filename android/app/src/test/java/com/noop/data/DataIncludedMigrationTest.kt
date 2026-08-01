@@ -7,10 +7,10 @@ import org.junit.Test
 
 /**
  * Guards the `pairedDevice.dataIncluded` statements ([WhoopDatabase.DATA_INCLUDED_MIGRATION_SQL]) that
- * split read scope off the BLE status, the unreleased v101 step carrying them, and the restore heal that
- * brings an earlier-v101 backup up to them. This environment has no Robolectric / Room-testing, so the
- * SQL is pinned to Room's generated shape for [PairedDeviceRow.dataIncluded] and the heal is proven on
- * the pure function that decides it.
+ * split read scope off the BLE status, and the unreleased v101 step carrying them. This environment has
+ * no Robolectric / Room-testing, so the SQL is pinned to Room's generated shape for
+ * [PairedDeviceRow.dataIncluded]. Bringing a backup written before the step up to it is
+ * [SchemaShape]'s job now, pinned in [SchemaShapeTest].
  */
 class DataIncludedMigrationTest {
 
@@ -62,8 +62,7 @@ class DataIncludedMigrationTest {
         )
     }
 
-    /** Each pair names the column its own statement adds. A mis-paired name makes the heal re-add a
-     *  column the store already has, which SQLite rejects outright. */
+    /** Each pair names the column its own statement adds, so the list stays self-describing. */
     @Test
     fun eachScopeColumnNameMatchesItsOwnStatement() {
         assertEquals(2, WhoopDatabase.DEVICE_SCOPE_COLUMNS.size)
@@ -75,40 +74,6 @@ class DataIncludedMigrationTest {
             WhoopDatabase.DATA_INCLUDED_MIGRATION_SQL,
             WhoopDatabase.DEVICE_SCOPE_COLUMNS.map { it.second },
         )
-    }
-
-    // ── The restore heal for a backup written before v101 absorbed the columns ───────────────────────
-
-    /** A store from the earlier v101 carries the version but neither column, so it needs both. */
-    @Test
-    fun aPreFoldStoreNeedsBothColumns() {
-        val before = setOf("id", "brand", "model", "nickname", "peripheralId", "sourceKind", "capabilities", "status", "addedAt", "lastSeenAt")
-        assertEquals(WhoopDatabase.DATA_INCLUDED_MIGRATION_SQL, WhoopDatabase.missingDeviceScopeSql(before))
-    }
-
-    /** The heal is idempotent: a current store asks for nothing, so a second restore is a no-op. */
-    @Test
-    fun aCurrentStoreNeedsNothing() {
-        val after = setOf("id", "status", "addedAt", "lastSeenAt", "dataIncluded", "serial")
-        assertEquals(emptyList<String>(), WhoopDatabase.missingDeviceScopeSql(after))
-        assertEquals(
-            "a store healed once must ask for nothing the second time",
-            emptyList<String>(),
-            WhoopDatabase.missingDeviceScopeSql(after + setOf("brand", "model")),
-        )
-    }
-
-    /** Half a heal (a run that died between the two ALTERs) asks only for the column still missing. */
-    @Test
-    fun aHalfHealedStoreNeedsOnlyTheRest() {
-        val half = setOf("id", "status", "dataIncluded")
-        assertEquals(listOf(WhoopDatabase.DATA_INCLUDED_MIGRATION_SQL[1]), WhoopDatabase.missingDeviceScopeSql(half))
-    }
-
-    /** SQLite column names are case-insensitive, so a differently-cased store must not be re-ALTERed. */
-    @Test
-    fun columnMatchingIgnoresCase() {
-        assertEquals(emptyList<String>(), WhoopDatabase.missingDeviceScopeSql(setOf("DATAINCLUDED", "Serial")))
     }
 
     /** Every version the migration list starts from reaches [WhoopDatabase.SCHEMA_VERSION] by following

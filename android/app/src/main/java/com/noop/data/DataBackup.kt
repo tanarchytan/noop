@@ -501,24 +501,17 @@ object DataBackup {
         }
     }
 
-    /** Every column name on [table] in [file], opened READ-ONLY so the probed file is never mutated.
-     *  Empty on failure or an absent table. Carries [PRESERVE_ON_CORRUPTION] for the same reason
-     *  [sqliteTableNames] does. */
-    private fun sqliteColumnNames(file: File, table: String): Set<String> {
+    /** [file]'s actual shape, opened READ-ONLY so the probed file is never mutated. Null when it
+     *  cannot be opened or holds no table at all — a damaged or foreign file, not a repairable one.
+     *  Carries [PRESERVE_ON_CORRUPTION] for the same reason [sqliteTableNames] does. */
+    private fun sqliteShape(file: File): Map<String, SchemaShape.Table>? {
         val db = runCatching {
             SQLiteDatabase.openDatabase(file.path, null, SQLiteDatabase.OPEN_READONLY, PRESERVE_ON_CORRUPTION)
-        }.getOrNull() ?: return emptySet()
+        }.getOrNull() ?: return null
         return try {
-            val names = LinkedHashSet<String>()
-            db.rawQuery("PRAGMA table_info(`$table`)", null).use { c ->
-                val nameIdx = c.getColumnIndex("name")
-                while (c.moveToNext()) {
-                    if (nameIdx >= 0) c.getString(nameIdx)?.let(names::add)
-                }
-            }
-            names
+            SchemaShape.read { sql -> db.rawQuery(sql, null) }.takeIf { it.isNotEmpty() }
         } catch (e: Exception) {
-            emptySet()
+            null
         } finally {
             runCatching { db.close() }
         }
@@ -642,28 +635,36 @@ object DataBackup {
     }
 
     /**
-     * Whether a staged store at [currentVersion] needs the migrate/heal path, given the `pairedDevice`
-     * columns it carries. False for an empty file (v0 = fresh Room, a foreign one is refused earlier),
-     * for anything ABOVE [targetVersion] — never repaired downward — and for a store already current in
-     * both version and shape. A store AT the target but missing a column the version absorbed while
-     * unreleased is the one same-version case that still needs work.
+     * Whether a staged store at [currentVersion] needs the migrate/repair path, given [shapePlan] —
+     * what it would take to bring its ACTUAL shape up to the current one, or null when that shape
+     * could not be read. False for an empty file (v0 = fresh Room, a foreign one is refused earlier),
+     * for anything ABOVE [targetVersion] — never repaired downward — and for a store already current
+     * in both version and shape. A store AT the target whose shape is not the current one is the
+     * same-version case that still needs work: the version alone never proves the shape.
      */
-    internal fun needsSchemaWork(currentVersion: Int, targetVersion: Int, pairedDeviceColumns: Set<String>): Boolean {
+    internal fun needsSchemaWork(
+        currentVersion: Int,
+        targetVersion: Int,
+        shapePlan: SchemaShape.RepairPlan?,
+    ): Boolean {
         if (currentVersion <= 0 || currentVersion > targetVersion) return false
         if (currentVersion < targetVersion) return true
-        // No readable `pairedDevice` at the current version is an unreadable or foreign file, not a
-        // pre-fold one — leave it to the integrity gate rather than opening it read-write.
-        if (pairedDeviceColumns.isEmpty()) return false
-        return WhoopDatabase.missingDeviceScopeSql(pairedDeviceColumns).isNotEmpty()
+        // An unreadable shape at the current version is a damaged or foreign file, not a repairable
+        // one — leave it to the integrity gate rather than opening it read-write.
+        if (shapePlan == null) return false
+        return !shapePlan.isClean
     }
 
     /**
-     * Migrates a staged backup SQLite file to the current Room schema version. MUST run after
+     * Migrates a staged backup SQLite file to the current Room schema. MUST run after
      * staging/origin validation but BEFORE [sqliteQuickCheckFailure], so the migration is
      * verified before it touches the live DB. Pins the open callback to the file's current
-     * version (skips [onUpgrade]), then runs the applicable [Migration]s and sets [targetVersion]
-     * directly. A backup already AT [targetVersion] is skipped untouched unless [needsSchemaWork]
-     * says its shape predates a column the version absorbed while unreleased.
+     * version (skips [onUpgrade]), runs the applicable [Migration]s, then brings whatever shape
+     * they left up to the one a fresh install carries.
+     *
+     * The version is what the file CLAIMS; [SchemaShape] is what it IS, and only the shape decides.
+     * The version and Room's identity are stamped last and only once the shape matches, so a store
+     * that cannot be brought up is refused instead of being certified as current.
      * Returns null on success, else an error string — the caller must then delete [stagedFile],
      * since its schema is not safe to restore.
      */
@@ -675,10 +676,12 @@ object DataBackup {
     ): String? {
         val currentVersion = readUserVersion(stagedFile)
             ?: return "Could not read the backup's schema version."
+        if (currentVersion <= 0 || currentVersion > targetVersion) return null
 
-        if (!needsSchemaWork(currentVersion, targetVersion, sqliteColumnNames(stagedFile, "pairedDevice"))) {
-            return null
-        }
+        val target = SchemaShape.readTarget(appContext)
+            ?: return "Could not read this version's schema to check the backup against."
+        val staged = sqliteShape(stagedFile)?.let { SchemaShape.plan(target.shape, it) }
+        if (!needsSchemaWork(currentVersion, targetVersion, staged)) return null
 
         val plan = planMigrationPath(currentVersion, targetVersion, migrations)
         val applicable = plan.path ?: return plan.error
@@ -702,33 +705,39 @@ object DataBackup {
                 for (migration in applicable) {
                     migration.migrate(db)
                 }
-                // Additive, idempotent, and the only step a same-version backup needs: a file written
-                // before v101 absorbed its last columns carries the version without them.
-                WhoopDatabase.healDeviceScopeColumns(db)
+                // Whatever the version chain did not reach: tables and columns the store lacks,
+                // derived from the target's own shape, so no list here can go stale.
+                val repair = SchemaShape.plan(target.shape, SchemaShape.read { db.query(it) })
+                if (repair.refusals.isNotEmpty()) return@runCatching refusal(currentVersion, repair)
+                for (statement in repair.statements) db.execSQL(statement)
+
+                // Re-read rather than assume the statements landed. Stamping an identity onto an
+                // unverified shape is what turns a loud rejection into a store that fails on a query.
+                val left = SchemaShape.plan(target.shape, SchemaShape.read { db.query(it) })
+                if (!left.isClean) return@runCatching refusal(currentVersion, left)
+
                 db.execSQL("PRAGMA user_version = $targetVersion")
-                // Manual migration updates SCHEMA + user_version but not Room's identity
-                // bookkeeping (room_master_table), which Room only rewrites on its own migration —
-                // left stale, the app rejects the store ("Room cannot verify the data
-                // integrity"). Copy the identity from a live store at the same schema instead
-                // (best-effort: an unreadable hash leaves prior behaviour).
-                runCatching {
-                    val liveHash = WhoopDatabase.get(appContext).openHelper.writableDatabase
-                        .query("SELECT identity_hash FROM room_master_table LIMIT 1").use { c ->
-                            if (c.moveToFirst()) c.getString(0) else null
-                        }
-                    if (liveHash != null) {
-                        db.execSQL("CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY, identity_hash TEXT)")
-                        db.execSQL("INSERT OR REPLACE INTO room_master_table (id, identity_hash) VALUES (42, ?)", arrayOf(liveHash))
-                    }
-                }
+                // Manual migration updates SCHEMA + user_version but not Room's identity bookkeeping
+                // (room_master_table), which Room only rewrites on its own migration — left stale, the
+                // app rejects the store. The identity comes from the same fresh store the shape did.
+                db.execSQL("CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY, identity_hash TEXT)")
+                db.execSQL(
+                    "INSERT OR REPLACE INTO room_master_table (id, identity_hash) VALUES (42, ?)",
+                    arrayOf(target.identityHash),
+                )
+                null // success
             } finally {
                 helper.close()
             }
-            null // success
         }.getOrElse { e ->
             "Migration from v$currentVersion to v$targetVersion failed: ${e.message}"
         }
     }
+
+    /** The message for a staged store whose shape could not be brought up to this version's. */
+    private fun refusal(currentVersion: Int, plan: SchemaShape.RepairPlan): String =
+        "The backup's v$currentVersion schema can't be brought up to this version's: " +
+            SchemaShape.describe(plan)
 
     /** Result of [planMigrationPath]: the ordered migrations to run, or an [error] when no step exists. */
     internal data class MigrationPlan(val path: List<Migration>?, val error: String?)

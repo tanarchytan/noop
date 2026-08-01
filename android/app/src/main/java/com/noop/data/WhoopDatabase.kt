@@ -79,9 +79,9 @@ abstract class WhoopDatabase : RoomDatabase() {
         }
 
         /**
-         * The two device columns [MIGRATION_100_101] adds, each beside the column name that proves it
-         * already ran: `dataIncluded`, the read-scope axis split off the BLE `status` (default 1, so
-         * every row — archived ones included — stays visible), and `serial`, the strap's GATT identity.
+         * The two device columns [MIGRATION_100_101] adds, each beside the column it declares:
+         * `dataIncluded`, the read-scope axis split off the BLE `status` (default 1, so every row —
+         * archived ones included — stays visible), and `serial`, the strap's GATT identity.
          */
         internal val DEVICE_SCOPE_COLUMNS: List<Pair<String, String>> = listOf(
             "dataIncluded" to "ALTER TABLE `pairedDevice` ADD COLUMN `dataIncluded` INTEGER NOT NULL DEFAULT 1",
@@ -90,24 +90,6 @@ abstract class WhoopDatabase : RoomDatabase() {
 
         /** The [DEVICE_SCOPE_COLUMNS] statements alone, in the order the migration runs them. */
         internal val DATA_INCLUDED_MIGRATION_SQL: List<String> = DEVICE_SCOPE_COLUMNS.map { it.second }
-
-        /**
-         * The [DEVICE_SCOPE_COLUMNS] statements a store at [SCHEMA_VERSION] still needs, given the
-         * `pairedDevice` columns it already has. Empty for a current store; the two ALTERs for one
-         * taken before v101 absorbed them. Drives [healDeviceScopeColumns].
-         */
-        internal fun missingDeviceScopeSql(presentColumns: Set<String>): List<String> =
-            DEVICE_SCOPE_COLUMNS.filterNot { (name, _) -> presentColumns.any { it.equals(name, ignoreCase = true) } }
-                .map { it.second }
-
-        /**
-         * Bring a store already at [SCHEMA_VERSION] up to the current `pairedDevice` shape. v101 was
-         * unreleased when it absorbed [DEVICE_SCOPE_COLUMNS], so a backup taken at the earlier v101
-         * carries the version without the columns. Additive and idempotent — a current store is untouched.
-         */
-        internal fun healDeviceScopeColumns(db: SupportSQLiteDatabase) {
-            for (stmt in missingDeviceScopeSql(columnNames(db, "pairedDevice"))) db.execSQL(stmt)
-        }
 
         /**
          * The hand-set wake time, splitting the one `userEdited` bit into a bound each. Nullable, so

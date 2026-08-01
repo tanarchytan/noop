@@ -189,31 +189,29 @@ class DataBackupMigrationTest {
 
     // ── needsSchemaWork: which staged stores are touched at all ───────────────
 
-    private val currentShape = setOf(
-        "id", "brand", "model", "nickname", "peripheralId", "sourceKind", "capabilities",
-        "status", "addedAt", "lastSeenAt", "dataIncluded", "serial",
-    )
-    private val preFoldShape = currentShape - setOf("dataIncluded", "serial")
+    private val atTargetShape = SchemaShape.RepairPlan(emptyList(), emptyList())
+    private val shortOfTarget = SchemaShape.RepairPlan(listOf("ALTER TABLE `t` ADD COLUMN `v` INTEGER"), emptyList())
+    private val unrepairable = SchemaShape.RepairPlan(emptyList(), listOf("t.v is missing and is part of the primary key"))
 
-    private fun needs(from: Int, columns: Set<String> = currentShape) =
-        DataBackup.needsSchemaWork(from, target, columns)
+    private fun needs(from: Int, shape: SchemaShape.RepairPlan? = atTargetShape) =
+        DataBackup.needsSchemaWork(from, target, shape)
 
     /** A store below the target migrates whatever shape it carries. */
     @Test
     fun needsSchemaWork_belowTarget_alwaysWorks() {
         for (v in listOf(2, 22, 99, target - 1)) assertTrue("v$v", needs(v))
-        assertTrue("shape is not what decides an older store", needs(target - 1, preFoldShape))
+        assertTrue("shape is not what decides an older store", needs(target - 1, shortOfTarget))
     }
 
-    /** The whole point of the fold: a store at the target whose shape predates the absorbed columns
-     *  is healed rather than skipped into Room's identity check. */
+    /** The whole point: a store at the target whose SHAPE is not the current one is repaired rather
+     *  than skipped into Room's identity check, whatever its version claims. */
     @Test
-    fun needsSchemaWork_atTargetWithThePreFoldShape_works() {
-        assertTrue(needs(target, preFoldShape))
-        assertTrue("either column missing is enough", needs(target, currentShape - "serial"))
+    fun needsSchemaWork_atTargetWithAnOlderShape_works() {
+        assertTrue(needs(target, shortOfTarget))
+        assertTrue("a shape that cannot be repaired must still not be skipped", needs(target, unrepairable))
     }
 
-    /** A current store is left byte-untouched — the common restore, and what makes the heal idempotent. */
+    /** A current store is left byte-untouched — the common restore, and what makes the repair idempotent. */
     @Test
     fun needsSchemaWork_atTargetAndCurrent_isSkipped() {
         assertFalse(needs(target))
@@ -224,7 +222,7 @@ class DataBackupMigrationTest {
     fun needsSchemaWork_aboveTarget_isNeverTouched() {
         for (v in listOf(target + 1, target + 2, 999)) {
             assertFalse("v$v must not be repaired downward", needs(v))
-            assertFalse("nor on a shape it does not carry", needs(v, preFoldShape))
+            assertFalse("nor on a shape it does not carry", needs(v, shortOfTarget))
         }
     }
 
@@ -235,11 +233,11 @@ class DataBackupMigrationTest {
         assertFalse(needs(-1))
     }
 
-    /** An unreadable probe reads as no columns. At the current version that is a damaged or foreign
-     *  file, not a pre-fold one, so it goes to the integrity gate instead of being opened read-write. */
+    /** An unreadable store has no shape to compare. At the current version that is a damaged or
+     *  foreign file, so it goes to the integrity gate instead of being opened read-write. */
     @Test
-    fun needsSchemaWork_atTargetWithNoReadableTable_isSkipped() {
-        assertFalse(needs(target, emptySet()))
-        assertTrue("an older store still migrates on its version alone", needs(target - 1, emptySet()))
+    fun needsSchemaWork_atTargetWithNoReadableShape_isSkipped() {
+        assertFalse(needs(target, null))
+        assertTrue("an older store still migrates on its version alone", needs(target - 1, null))
     }
 }
