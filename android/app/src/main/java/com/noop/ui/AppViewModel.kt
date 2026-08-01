@@ -320,6 +320,15 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     // order) and crash the constructor. Opt-OUT, default ON (Android has always run the watch);
     // port of macOS behavior.illnessWatch, which is opt-in.
     private val _illnessWatchEnabled = MutableStateFlow(NoopPrefs.illnessWatch(appContext))
+
+    /** The one live-HR want set: which screens/sessions asked, and whether the app's UI is on screen.
+     *  Only [applyRealtimeHr] reads it, so intent and reachability can never be applied separately.
+     *  Declared BEFORE the init block for the same reason as [_illnessWatchEnabled]: the ble.state
+     *  collector launched from init sweeps this on its first emission. */
+    private val realtimeHr = RealtimeHrArbiter()
+
+    /** What [applyRealtimeHr] last told the client, so a re-request doesn't re-blank the HR window. */
+    private var realtimeHrApplied = false
     /** Whether the illness early-warning runs (banner + notification). */
     val illnessWatchEnabled: StateFlow<Boolean> = _illnessWatchEnabled.asStateFlow()
 
@@ -1711,13 +1720,6 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             }
         }
     }
-
-    /** The one live-HR want set: which screens/sessions asked, and whether the app's UI is on screen.
-     *  Only [applyRealtimeHr] reads it, so intent and reachability can never be applied separately. */
-    private val realtimeHr = RealtimeHrArbiter()
-
-    /** What [applyRealtimeHr] last told the client, so a re-request doesn't re-blank the HR window. */
-    private var realtimeHrApplied = false
 
     /** Pending "the UI went away" apply, cancelled when it comes back — an Activity recreation must not
      *  toggle the strap's stream off and straight back on. */
