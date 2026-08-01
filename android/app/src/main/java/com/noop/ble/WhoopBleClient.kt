@@ -3401,7 +3401,7 @@ class WhoopBleClient(
             // 0x2A25 = the strap's own serial, a UTF-8 string. Published for the registry's identity
             // binding; a blank or unreadable value stays null so nothing is invented.
             uuid == SERIAL_NUMBER_CHAR -> {
-                val serial = bytes.toString(Charsets.UTF_8).trim().trim(' ')
+                val serial = bytes.toString(Charsets.UTF_8).trim { it <= ' ' }
                 if (serial.isNotEmpty() && _connectedStrapSerial.value != serial) {
                     _connectedStrapSerial.value = serial
                     log("Strap serial (0x2A25): $serial")
