@@ -1097,6 +1097,34 @@ class WhoopRepository(private val dao: WhoopDao) {
     suspend fun importedSourceIds(): List<String> = importedSourceIdsFor(dao.pairedDevices())
     suspend fun computedSourceIds(): List<String> = computedSourceIdsFor(dao.pairedDevices())
 
+    /**
+     * The recalibration anchor a baseline fold must honour: the later of the user's manual
+     * "Recalibrate baseline" epoch ([manualEpoch], 0 = none) and the newest device-era boundary. A
+     * strap swap across [com.noop.protocol.DeviceFamily] re-seeds the baseline on its own, so two
+     * incompatible optical scales never fold into one. Best-effort: a read failure keeps [manualEpoch].
+     */
+    suspend fun effectiveBaselineEpoch(manualEpoch: Double): Double =
+        maxOf(manualEpoch, runCatching { deviceEraEpoch() }.getOrDefault(0.0))
+
+    /**
+     * The newest device-era boundary over the read scope, as [com.noop.analytics.Baselines.deviceEraEpoch]
+     * wants it: exactly ONE winning `(day, sourceId)` per night, resolved the way [daysMerged] resolves
+     * a day (imported sources in scope order first, then their computed siblings), plus each strap's
+     * family from the registry. 0.0 when the whole history is one era.
+     */
+    suspend fun deviceEraEpoch(): Double {
+        val devices = dao.pairedDevices()
+        val ids = importedSourceIdsFor(devices)
+        val winner = LinkedHashMap<String, String>()
+        for (src in ids + ids.map { computedDeviceId(it) }) {
+            for (m in dao.days(src)) winner.putIfAbsent(m.day, src)
+        }
+        val familyByDeviceId = devices.associate {
+            it.id to com.noop.protocol.DeviceFamily.forRegistryModel(it.model)
+        }
+        return com.noop.analytics.Baselines.deviceEraEpoch(winner.toList(), familyByDeviceId)
+    }
+
     /** The reactive twin for the Flow reads: re-resolves when the registry changes, and only re-emits
      *  when the ID LIST moves (a `lastSeenAt` stamp must not resubscribe the dashboard). */
     private fun importedSourceIdsFlow(): Flow<List<String>> =

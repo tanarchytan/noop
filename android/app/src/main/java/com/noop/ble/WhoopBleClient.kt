@@ -1268,10 +1268,12 @@ class WhoopBleClient(
                         // analytics layer is Context-free, so read it here and thread it down so the
                         // post-backfill pass honours the recalibration too, not just the UI's 15-min loop.
                         // 0 = no recalibration.
-                        baselineEpoch = NoopPrefs.of(context)
-                            .getLong(Baselines.hrvBaselineEpochKey, 0L).toDouble(),
-                        recoveryEpoch = NoopPrefs.of(context)
-                            .getLong(Baselines.recoveryBaselineEpochKey, 0L).toDouble(),
+                        baselineEpoch = repository.effectiveBaselineEpoch(
+                            NoopPrefs.of(context).getLong(Baselines.hrvBaselineEpochKey, 0L).toDouble(),
+                        ),
+                        recoveryEpoch = repository.effectiveBaselineEpoch(
+                            NoopPrefs.of(context).getLong(Baselines.recoveryBaselineEpochKey, 0L).toDouble(),
+                        ),
                         // Nightly HRV over deep-sleep windows only when the user picked WHOOP-style. Read
                         // here (the analytics layer is Context-free) and thread it down, like baselineEpoch
                         // above — otherwise this pass would recompute over the WHOLE night, overwriting the
