@@ -259,7 +259,7 @@ fun TrendsExploreScreen(vm: AppViewModel) {
     // using the cheap bounded flow, so the cap is NOT raised (#797 stays fixed). Same merge as the dashboard.
     var fullHistory by remember { mutableStateOf<List<DailyMetric>?>(null) }
     LaunchedEffect(deviceId) {
-        fullHistory = runCatching { vm.repo.daysMerged(deviceId) }.getOrNull()
+        fullHistory = runCatching { vm.repo.daysMerged() }.getOrNull()
     }
 
     // Extra long-format keys from the metricSeries table (anything beyond the built-ins) , from the
@@ -267,10 +267,10 @@ fun TrendsExploreScreen(vm: AppViewModel) {
     // (nutrition-csv, noop-mood) and were invisible to a strap-only key scan (v2.2.0 parity).
     var extraKeys by remember { mutableStateOf<List<Pair<String, String?>>>(emptyList()) }
     LaunchedEffect(deviceId) {
-        // Scan the strap's series keys across the active-id ∪ canonical "my-whoop" union (SPINE / #814), so a
-        // re-added strap still discovers the keys the canonical import/engine wrote. `seriesSource = null`
-        // keeps these resolving against the strap path below; a single-WHOOP install scans just "my-whoop".
-        val strap = WhoopRepository.importedSourceIdsFor(deviceId)
+        // Scan the strap's series keys across the registry read scope, so every paired strap's keys are
+        // discovered, not just the active one's. `seriesSource = null` keeps these resolving against the
+        // strap path below.
+        val strap = vm.repo.importedSourceIds()
             .flatMap { id -> runCatching { vm.repo.metricKeys(id) }.getOrDefault(emptyList()) }
             .distinct()
             .map { it to null as String? }
@@ -344,8 +344,8 @@ fun TrendsExploreScreen(vm: AppViewModel) {
                         .map { SeriesPoint(it.day, it.value) }
                 } else {
                     val byDay = LinkedHashMap<String, Double>()
-                    // Active id first ⇒ wins the day; canonical only fills days the active id lacks.
-                    for (id in WhoopRepository.importedSourceIdsFor(deviceId)) {
+                    // Active id first ⇒ wins the day; later ids only fill days the active id lacks.
+                    for (id in vm.repo.importedSourceIds()) {
                         for (r in vm.repo.metricSeries(id, selected.seriesKey, "0000-00-00", "9999-99-99")) {
                             byDay.putIfAbsent(r.day, r.value)
                         }

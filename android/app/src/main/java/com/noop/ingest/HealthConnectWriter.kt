@@ -263,7 +263,7 @@ object HealthConnectWriter {
     private suspend fun writeSleep(client: HealthConnectClient, repo: WhoopRepository, deviceId: String): Int {
         val now = System.currentTimeMillis() / 1000
         val floor = now - WINDOW_DAYS * 86_400
-        val sessions = repo.sleepSessionsMerged(deviceId, from = floor, to = now)
+        val sessions = repo.sleepSessionsMerged(from = floor, to = now)
             .map { HealthExportPlan.SleepInput(it.startTs, it.effectiveStartTs, it.effectiveEndTs, it.stagesJSON) }
         val offsetSec = (java.util.TimeZone.getDefault().getOffset(now * 1000) / 1000).toLong()
         val plans = HealthExportPlan.sleepSessions(sessions, now, offsetSec)

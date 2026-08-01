@@ -27,6 +27,8 @@ class RegistryDayOwnerSourceTest {
         val devices = LinkedHashMap<String, PairedDeviceRow>()
         val owners = LinkedHashMap<String, DayOwnershipRow>()
         override suspend fun pairedDevices() = devices.values.sortedBy { it.addedAt }
+        override fun pairedDevicesFlow(): kotlinx.coroutines.flow.Flow<List<PairedDeviceRow>> =
+            kotlinx.coroutines.flow.flowOf(devices.values.sortedBy { it.addedAt })
         override suspend fun activeDeviceId() =
             devices.values.firstOrNull { it.status == DeviceStatus.active.name }?.id
         override suspend fun upsertPairedDevice(row: PairedDeviceRow) { devices[row.id] = row }

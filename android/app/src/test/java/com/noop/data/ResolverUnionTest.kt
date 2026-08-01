@@ -27,9 +27,14 @@ class ResolverUnionTest {
     private val canonical = "my-whoop"
     private val reAdded = "whoop-ABC123" // the id a re-added strap gets (whoop-<uuid>)
 
+    /** The read scope an install with [strap] active resolves to (registry-derived, active-first). */
+    private fun scope(strap: String): List<String> = WhoopRepository.importedSourceIdsFor(
+        if (strap == canonical) singleWhoopRegistry() else reAddedRegistry(strap),
+    )
+
     /** Candidate SOURCE ids for a strap-preferred read ("my-whoop" preferred, as every UI caller passes). */
     private fun candidateSources(strap: String, key: String = "recovery") =
-        WhoopRepository.sourceCandidates(key, canonical, strap).map { it.source }
+        WhoopRepository.sourceCandidates(key, canonical, scope(strap)).map { it.source }
 
     // --- sourceCandidates: the resolver's #814 union ---
 
@@ -62,7 +67,7 @@ class ResolverUnionTest {
      *  row read through dailyColumn. */
     @Test
     fun appleFallbackAppendsLastWithMappedKey() {
-        val candidates = WhoopRepository.sourceCandidates("rhr", canonical, reAdded)
+        val candidates = WhoopRepository.sourceCandidates("rhr", canonical, scope(reAdded))
         assertEquals(
             listOf(reAdded, "my-whoop", "$reAdded-noop", "my-whoop-noop", "apple-health", "health-connect"),
             candidates.map { it.source },
@@ -84,33 +89,32 @@ class ResolverUnionTest {
     fun applePreferredAndSingleSourcePathsUnchanged() {
         assertEquals(
             listOf("apple-health", "health-connect"),
-            WhoopRepository.sourceCandidates("hrv", "apple-health", reAdded).map { it.source },
+            WhoopRepository.sourceCandidates("hrv", "apple-health", scope(reAdded)).map { it.source },
         )
         assertEquals(
-            listOf("apple-health", "health-connect", "$reAdded-noop"),
-            WhoopRepository.sourceCandidates("steps", "apple-health", reAdded).map { it.source },
+            listOf("apple-health", "health-connect", "$reAdded-noop", "$canonical-noop"),
+            WhoopRepository.sourceCandidates("steps", "apple-health", scope(reAdded)).map { it.source },
         )
         assertEquals(
             listOf("nutrition-csv"),
-            WhoopRepository.sourceCandidates("calories_in", "nutrition-csv", reAdded).map { it.source },
+            WhoopRepository.sourceCandidates("calories_in", "nutrition-csv", scope(reAdded)).map { it.source },
         )
     }
 
-    // --- dedupSleepBlocks: the sleep-block union's exact-twin drop ---
+    // --- dedupSleepBlocks: the sleep-block union's cross-source collapse ---
 
     private fun block(source: String, start: Long, end: Long) =
         SleepSession(deviceId = source, startTs = start, endTs = end)
 
-    /** The same physical night recorded under BOTH union ids collapses to ONE block, and the FIRST-seen
-     *  (active-strap, since the callers pass active-first lists) copy survives , so the learner never
-     *  double-weights a night and the live row wins. */
+    /** The same physical night recorded under TWO ids collapses to ONE block, and the earlier-listed
+     *  (active-strap) copy survives , so the learner never double-weights a night and the live row wins. */
     @Test
     fun exactDuplicateNightKeepsActiveCopyOnly() {
         val night = 1_750_000_000L to 1_750_028_800L
         val deduped = WhoopRepository.dedupSleepBlocks(
             listOf(
-                block(reAdded, night.first, night.second), // active first, exactly as sleepSessionsUnion orders
-                block(canonical, night.first, night.second),
+                listOf(block(reAdded, night.first, night.second)), // active first, as the union orders
+                listOf(block(canonical, night.first, night.second)),
             ),
         )
         assertEquals(1, deduped.size)
@@ -118,30 +122,45 @@ class ResolverUnionTest {
     }
 
     /** Genuinely DISTINCT blocks all survive , a nap and a main night on the same day are never
-     *  collapsed (the union drops twins only, the per-day merge stays the caller's). */
+     *  collapsed (the union collapses cross-source copies only, the per-day merge stays the caller's). */
     @Test
     fun distinctBlocksSurviveNapPlusMainNight() {
         val deduped = WhoopRepository.dedupSleepBlocks(
             listOf(
-                block(reAdded, 1_750_000_000L, 1_750_028_800L), // main night
-                block(reAdded, 1_750_050_000L, 1_750_053_600L), // afternoon nap
-                block(canonical, 1_750_090_000L, 1_750_118_800L), // canonical-only older night
+                listOf(
+                    block(reAdded, 1_750_000_000L, 1_750_028_800L), // main night
+                    block(reAdded, 1_750_050_000L, 1_750_053_600L), // afternoon nap
+                ),
+                listOf(block(canonical, 1_750_090_000L, 1_750_118_800L)), // canonical-only older night
             ),
         )
         assertEquals(3, deduped.size)
     }
 
-    /** A block sharing only its START (an end-drifted re-detection) is NOT a twin , both survive, since
-     *  the dedup keys on the exact (startTs, endTs) pair, matching Swift's "\(startTs)-\(endTs)" key. */
+    /** Two straps stage one night at bounds MINUTES apart, so no exact key matches. The overlap rule
+     *  collapses them to the active strap's copy — the exact-key rule left both and listed the night
+     *  twice. */
     @Test
-    fun sameStartDifferentEndIsNotATwin() {
+    fun overlappingCopiesOfOneNightUnderTwoIdsCollapse() {
         val deduped = WhoopRepository.dedupSleepBlocks(
             listOf(
-                block(reAdded, 1_750_000_000L, 1_750_028_800L),
-                block(canonical, 1_750_000_000L, 1_750_030_000L),
+                listOf(block(reAdded, 1_750_000_000L, 1_750_028_800L)),
+                listOf(block(canonical, 1_750_000_346L, 1_750_030_000L)),
             ),
         )
-        assertEquals(2, deduped.size)
+        assertEquals(1, deduped.size)
+        assertEquals(reAdded, deduped[0].deviceId)
+    }
+
+    /** Two blocks under the SAME id are never collapsed against each other, whatever they overlap: one
+     *  source's own list is its own answer, so a single-source read is returned verbatim. */
+    @Test
+    fun sameSourceBlocksAreNeverCollapsed() {
+        val one = listOf(
+            block(reAdded, 1_750_000_000L, 1_750_028_800L),
+            block(reAdded, 1_750_000_000L, 1_750_030_000L),
+        )
+        assertEquals(one, WhoopRepository.dedupSleepBlocks(listOf(one)))
     }
 
     // --- mergeComputedSeriesUnion: the computed metricSeries day-union (#349) ---

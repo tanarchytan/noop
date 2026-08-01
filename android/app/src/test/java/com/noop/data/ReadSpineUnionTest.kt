@@ -32,16 +32,16 @@ class ReadSpineUnionTest {
      *  per bucket), so every merged read is byte-identical to the pre-#814 behaviour. */
     @Test
     fun singleWhoopInstallResolvesToCanonicalIdOnly() {
-        assertEquals(listOf("my-whoop"), WhoopRepository.importedSourceIdsFor(canonical))
-        assertEquals(listOf("my-whoop-noop"), WhoopRepository.computedSourceIdsFor(canonical))
+        assertEquals(listOf("my-whoop"), WhoopRepository.importedSourceIdsFor(singleWhoopRegistry()))
+        assertEquals(listOf("my-whoop-noop"), WhoopRepository.computedSourceIdsFor(singleWhoopRegistry()))
     }
 
     /** After a re-add the union is (active id, canonical), active FIRST so a per-day pick takes the
      *  active/live row; the computed ids mirror it ("<id>-noop"). */
     @Test
     fun reAddResolvesToActiveUnionCanonicalActiveFirst() {
-        assertEquals(listOf(reAdded, "my-whoop"), WhoopRepository.importedSourceIdsFor(reAdded))
-        assertEquals(listOf("$reAdded-noop", "my-whoop-noop"), WhoopRepository.computedSourceIdsFor(reAdded))
+        assertEquals(listOf(reAdded, "my-whoop"), WhoopRepository.importedSourceIdsFor(reAddedRegistry(reAdded)))
+        assertEquals(listOf("$reAdded-noop", "my-whoop-noop"), WhoopRepository.computedSourceIdsFor(reAddedRegistry(reAdded)))
     }
 
     /** The core regression: imported history written under the CANONICAL id must still surface after a
@@ -56,7 +56,7 @@ class ReadSpineUnionTest {
         val activeImport = emptyList<DailyMetric>() // imports never drift to the active id
 
         val importedUnion = WhoopRepository.unionByDay(
-            WhoopRepository.importedSourceIdsFor(reAdded).map { id ->
+            WhoopRepository.importedSourceIdsFor(reAddedRegistry(reAdded)).map { id ->
                 (canonicalImport + activeImport).filter { it.deviceId == id }
             },
         )

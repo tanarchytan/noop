@@ -851,7 +851,7 @@ object IntelligenceEngine {
         // Snapshot the persisted/merged daily history before the delete+re-upsert below rewrites the
         // computed window, so the Fitness Age gate (below) isn't undercut by this pass's own pruning: a
         // recompute only re-scores nights whose raw HR still lives in the store. Windowed to stay bounded.
-        val faPriorDaily = repo.daysMerged(importedDeviceId).filter { it.day in oldestDay..newestDay }
+        val faPriorDaily = repo.daysMerged().filter { it.day in oldestDay..newestDay }
 
         repo.deleteComputedDailyInRange(computedId, oldestDay, newestDay)
 
@@ -874,7 +874,7 @@ object IntelligenceEngine {
         // Also drops any re-detected night the user has deleted: a dismissedSleep tombstone keeps it
         // from regenerating. Reads the union of imported + computed ids, so a tombstone under either
         // namespace is found; overlap (not exact startTs) since a re-detected onset drifts.
-        val dismissedWindows = repo.dismissedSleeps(importedDeviceId).map { it.startTs to it.endTs }
+        val dismissedWindows = repo.dismissedSleeps().map { it.startTs to it.endTs }
         val skipWindows = editedWindows + dismissedWindows
         val sleepKept = DismissedSleepGuard.keeping(sleepRows, skipWindows) { it.startTs to it.endTs }
         if (sleepKept.isNotEmpty()) repo.upsertSleepSessions(sleepKept)
@@ -1436,7 +1436,7 @@ object IntelligenceEngine {
         val nowLocalMidnight = midnightLocal(nowSeconds, tzOffsetSeconds)
         val newestDay = AnalyticsEngine.dayString(nowLocalMidnight, tzOffsetSeconds)
         val oldestDay = AnalyticsEngine.dayString(nowLocalMidnight - (maxDays - 1) * SECONDS_PER_DAY, tzOffsetSeconds)
-        val gate7 = repo.daysMerged(importedDeviceId)
+        val gate7 = repo.daysMerged()
             .filter { it.day in oldestDay..newestDay }.sortedBy { it.day }.takeLast(7)
         val rows = fitnessAgeRows(gate7, profile, computedId, saturdayKeyOnOrBefore(newestDay))
         if (rows.isNotEmpty()) repo.upsertMetricSeries(rows)

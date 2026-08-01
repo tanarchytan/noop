@@ -5,6 +5,7 @@ import com.noop.analytics.FusionInput
 import com.noop.analytics.FusionResolver
 import com.noop.analytics.FusionSource
 import com.noop.data.DailyMetric
+import com.noop.data.PairedDeviceRow
 import com.noop.data.WhoopRepository
 
 /**
@@ -37,22 +38,18 @@ object FusionDayAdapter {
     )
 
     /**
-     * Each fusion source paired with the deviceId/source string(s) its daily rows are stored under. The
-     * strap (WHOOP_IMPORT) + its on-device computed sibling resolve against the ACTIVE strap id from the
-     * device registry, NOT the hardcoded "my-whoop" (SPINE / #814): a non-WHOOP active band stores its rows
-     * under its own id, so a hardcoded read would fuse the wrong device's data.
+     * Each fusion source paired with the deviceId/source string(s) its daily rows are stored under.
+     * WHOOP_IMPORT / NOOP_COMPUTED carry the registry read scope ([WhoopRepository.importedSourceIdsFor]) —
+     * every non-archived paired device plus the legacy import sink — so a second strap's day is fused
+     * rather than excluded by construction. The ids are ACTIVE-FIRST, so the per-day pick in [buildFor]
+     * takes the active (live/measured) row when several ids cover the requested day.
      *
-     * HIGH-2 union: WHOOP_IMPORT / NOOP_COMPUTED carry the UNION of (active id) AND the canonical
-     * "my-whoop": a re-added strap writes LIVE data under its fresh id while the WHOOP-export import (and
-     * the computed history derived from it) stays anchored on the canonical id, so reading only the active
-     * id would orphan that import on this record. The ids are ordered ACTIVE-FIRST, so the per-day pick in
-     * [buildFor] takes the active (live/measured) row over the canonical (imported) one when both cover the
-     * requested day. A single-WHOOP install resolves [activeStrapId] to "my-whoop" ⇒ a single id per source
-     * and byte-identical behaviour.
+     * All strap ids collapse into the single WHOOP_IMPORT source, so the arbitration sees one WHOOP value
+     * per day, never two straps in contention.
      */
-    private fun sourceIds(activeStrapId: String): List<Pair<FusionSource, List<String>>> = listOf(
-        FusionSource.WHOOP_IMPORT to WhoopRepository.importedSourceIdsFor(activeStrapId),
-        FusionSource.NOOP_COMPUTED to WhoopRepository.computedSourceIdsFor(activeStrapId),
+    private fun sourceIds(devices: List<PairedDeviceRow>): List<Pair<FusionSource, List<String>>> = listOf(
+        FusionSource.WHOOP_IMPORT to WhoopRepository.importedSourceIdsFor(devices),
+        FusionSource.NOOP_COMPUTED to WhoopRepository.computedSourceIdsFor(devices),
         FusionSource.APPLE_HEALTH to listOf(WhoopRepository.APPLE_HEALTH_SOURCE),
         FusionSource.HEALTH_CONNECT to listOf(WhoopRepository.HEALTH_CONNECT_SOURCE),
         FusionSource.XIAOMI_BAND to listOf(FusionSource.XIAOMI_BAND.id),
@@ -63,15 +60,13 @@ object FusionDayAdapter {
      * metric, and degrades gracefully: a single contributing source ⇒ a plain record with no provenance
      * noise (the screen reads [FusedRecord.contributingSourceCount]). Empty when no source has the day.
      *
-     * [activeStrapId] is the registry's active strap id (SPINE / #814): the strap + computed reads follow
-     * it instead of a hardcoded "my-whoop". Defaults to "my-whoop" so existing callers / tests on a
-     * single-WHOOP install are unaffected.
+     * The strap ids come from the registry via [repo], so there is no id for a caller to get wrong.
      */
     suspend fun buildFor(
         repo: WhoopRepository,
         day: String,
-        activeStrapId: String = WhoopRepository.WHOOP_SOURCE,
     ): FusedRecord {
+        val devices = runCatching { repo.pairedDevices() }.getOrDefault(emptyList())
         // One row per source for the requested day (or null when that source has nothing that day).
         //
         // #799: a source contributes ONLY the day it ACTUALLY covers. `firstOrNull { it.day == day }`
@@ -81,7 +76,7 @@ object FusionDayAdapter {
         // day is a clean null, dropping that source out of every metric for the day rather than carrying a
         // stale value forward. (firstOrNull over lastOrNull: day keys are unique per (deviceId, day) PK, so
         // either is the same single row; firstOrNull is the cheaper short-circuit.)
-        val perSource: List<Pair<FusionSource, DailyMetric?>> = sourceIds(activeStrapId).map { (source, ids) ->
+        val perSource: List<Pair<FusionSource, DailyMetric?>> = sourceIds(devices).map { (source, ids) ->
             // HIGH-2 union: a source may span MORE THAN ONE id (active strap ∪ canonical "my-whoop"). The ids
             // are active-FIRST, so `firstNotNullOfOrNull` takes the active (live/measured) row for the day and
             // only falls back to the canonical (imported) row when the active id doesn't cover it, so the import

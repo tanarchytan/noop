@@ -373,7 +373,7 @@ class SleepStageHealTest {
     fun editedSleepsAreReadAcrossTheComputedUnion() {
         assertEquals(
             listOf("whoop-AA:BB-noop", "my-whoop-noop"),
-            WhoopRepository.computedSourceIdsFor("whoop-AA:BB"),
+            WhoopRepository.computedSourceIdsFor(com.noop.data.reAddedRegistry("whoop-AA:BB")),
         )
     }
 

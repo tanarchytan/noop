@@ -68,7 +68,7 @@ import kotlinx.coroutines.withContext
  *     the live [DataBackup.importFrom] now also rejects a foreign-but-valid SQLite (Mac/GRDB or other-app DB).
  */
 @Composable
-fun BackupSyncScreen(repo: WhoopRepository, activeStrapId: String) {
+fun BackupSyncScreen(repo: WhoopRepository) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
@@ -204,9 +204,7 @@ fun BackupSyncScreen(repo: WhoopRepository, activeStrapId: String) {
     ) { uri ->
         if (uri == null) { busy = false; return@rememberLauncherForActivityResult }
         scope.launch {
-            // #458: thread the registry's ACTIVE strap id — the exporter's old "my-whoop" default
-            // exported an empty zip on live-BLE installs (the engine banks under "<strapId>-noop").
-            val result = withContext(Dispatchers.IO) { runCatching { WhoopCsvExporter.exportZip(context, uri, repo, activeStrapId) } }
+            val result = withContext(Dispatchers.IO) { runCatching { WhoopCsvExporter.exportZip(context, uri, repo) } }
             busy = false
             result.fold(
                 onSuccess = { msg ->

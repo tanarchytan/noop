@@ -1295,7 +1295,7 @@ class WhoopBleClient(
                     // so a UTC-bucket vs local-day split (rows persist but Today freezes) shows up in the
                     // shared strap log. Best-effort — a diagnostic read must never break scoring.
                     runCatching {
-                        val merged = repository.daysMerged(deviceId)
+                        val merged = repository.daysMerged()
                         val newest = merged.maxByOrNull { it.day }?.day ?: "—"
                         val todayKey = com.noop.ui.logicalDayKeyNow()
                         val present = if (merged.any { it.day == todayKey }) "present" else "MISSING"

@@ -328,10 +328,10 @@ private suspend fun readTimeline(
         // the canonical import history both render (matches Swift Repository.timelineSeries). [deviceId] is
         // already the active strap id; a single-WHOOP install resolves to "my-whoop" ⇒ one id ⇒ same read.
         return@withContext if (bucket <= 1L) {
-            runCatching { repo.hrSamplesUnion(deviceId, from, to, limit = 200_000) }.getOrDefault(emptyList())
+            runCatching { repo.hrSamplesUnion(from, to, limit = 200_000) }.getOrDefault(emptyList())
                 .map { TimelinePoint(it.ts, it.bpm.toDouble()) }
         } else {
-            runCatching { repo.hrBucketsUnion(deviceId, from, to, bucket) }.getOrDefault(emptyList())
+            runCatching { repo.hrBucketsUnion(from, to, bucket) }.getOrDefault(emptyList())
                 .map { TimelinePoint(it.bucket, it.avgBpm) }
         }
     }
@@ -343,12 +343,12 @@ private suspend fun readTimeline(
             // the window, returning (ts, value) already smoothed, so this returns before the downsample
             // below. The window/8 stride keeps a 1 Hz stream from emitting a point per beat at day scale.
             val hrvWindow = RustScores.hrvCleanCfg.rollingWindowSecs.toInt()
-            return@withContext runCatching { repo.rrIntervals(deviceId, from, to, 200_000) }.getOrDefault(emptyList())
+            return@withContext runCatching { repo.rrIntervalsUnion(from, to, 200_000) }.getOrDefault(emptyList())
                 .let { RustScores.rollingRmssd(it, windowSec = hrvWindow, stepSec = maxOf(1, hrvWindow / 8)) }
                 .map { (ts, v) -> TimelinePoint(ts, v) }
         }
         TimelineMetric.Spo2 ->
-            runCatching { repo.spo2Samples(deviceId, from, to, 200_000) }.getOrDefault(emptyList())
+            runCatching { repo.spo2SamplesUnion(from, to, 200_000) }.getOrDefault(emptyList())
                 .mapNotNull { if (it.ir > 0) TimelinePoint(it.ts, it.red.toDouble() / it.ir) else null }
         TimelineMetric.SkinTemp -> {
             // #938: family-aware raw→°C — 5/MG centidegrees (raw/100, #156), a WHOOP 4.0 v24 raw ADC map.
@@ -357,21 +357,21 @@ private suspend fun readTimeline(
             val model = runCatching { vm.pairedDevices() }.getOrDefault(emptyList())
                 .firstOrNull { it.id == deviceId }?.model
             val family = DeviceFamily.forRegistryModel(model)
-            runCatching { repo.skinTempSamples(deviceId, from, to, 200_000) }.getOrDefault(emptyList())
+            runCatching { repo.skinTempSamplesUnion(from, to, 200_000) }.getOrDefault(emptyList())
                 .map { TimelinePoint(it.ts, skinTempCelsius(it.raw, family)) }
         }
         TimelineMetric.Respiration ->
-            runCatching { repo.respSamples(deviceId, from, to, 200_000) }.getOrDefault(emptyList())
+            runCatching { repo.respSamplesUnion(from, to, 200_000) }.getOrDefault(emptyList())
                 .map { TimelinePoint(it.ts, it.raw.toDouble()) }
         TimelineMetric.Motion ->
-            runCatching { repo.gravitySamples(deviceId, from, to, 200_000) }.getOrDefault(emptyList())
+            runCatching { repo.gravitySamplesUnion(from, to, 200_000) }.getOrDefault(emptyList())
                 .map { TimelinePoint(it.ts, kotlin.math.sqrt(it.x * it.x + it.y * it.y + it.z * it.z)) }
         TimelineMetric.BandSleepState ->
             // #175: the strap's OWN band sleep_state (0 wake/1 still/2 asleep/3 up) as a stepped track. Read
             // the raw per-record stream (far sparser than 1 Hz HR, safe to load a day) and plot the 0-3 code
             // VERBATIM. Empty when the strap never reported it (a WHOOP 4.0, or a not-yet-offloaded window),
             // which the view renders as its honest "nothing here" state — never a fabricated flat line.
-            runCatching { repo.sleepStateSamples(deviceId, from, to, 200_000) }.getOrDefault(emptyList())
+            runCatching { repo.sleepStateSamplesUnion(from, to, 200_000) }.getOrDefault(emptyList())
                 .map { TimelinePoint(it.ts, it.state.toDouble()) }
     }
     if (raw.isEmpty() || bucket <= 1L) return@withContext raw

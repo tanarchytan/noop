@@ -45,10 +45,11 @@ class NoopApplication : Application() {
     val deviceRegistry: DeviceRegistry by lazy { DeviceRegistry(WhoopDatabase.get(this)) }
 
     /**
-     * Active device id resolved once at startup from the registry, falling back to the legacy
-     * "my-whoop" if the registry has none yet (so behaviour is unchanged today). Read with a guarded
-     * blocking call — a one-off indexed `LIMIT 1` query at composition time. Any failure (e.g. an early
-     * read before migration) is swallowed and falls back, so startup can never be broken by this.
+     * The WRITE id: the source live BLE samples are banked under, resolved once at startup from the
+     * registry and falling back to the legacy "my-whoop" when the registry has none yet (a fresh install
+     * before seeding must still have somewhere to write). READS never use it — a read scope comes from
+     * [WhoopRepository.importedSourceIds], so this fallback can no longer narrow what the user sees.
+     * Guarded blocking call: any failure is swallowed, so startup can never be broken by this.
      */
     val activeDeviceId: String by lazy {
         runCatching { runBlocking { deviceRegistry.activeDeviceId() } }

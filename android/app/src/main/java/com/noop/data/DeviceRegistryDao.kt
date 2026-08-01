@@ -3,6 +3,7 @@ package com.noop.data
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import kotlinx.coroutines.flow.Flow
 
 /**
  * The device-registry slice of the DAO (pairedDevice / dayOwnership, schema v8). Split into its own
@@ -16,6 +17,11 @@ interface DeviceRegistryDao {
     /** All paired devices, oldest first (ORDER BY addedAt ASC). */
     @Query("SELECT * FROM pairedDevice ORDER BY addedAt ASC")
     suspend fun pairedDevices(): List<PairedDeviceRow>
+
+    /** Reactive twin of [pairedDevices]: re-emits when the registry changes, so a read scope derived
+     *  from it follows a pair/archive/make-active without an app restart. */
+    @Query("SELECT * FROM pairedDevice ORDER BY addedAt ASC")
+    fun pairedDevicesFlow(): Flow<List<PairedDeviceRow>>
 
     /** The single `active` device id, or null if none (e.g. after archiving the only device). */
     @Query("SELECT id FROM pairedDevice WHERE status = 'active' LIMIT 1")

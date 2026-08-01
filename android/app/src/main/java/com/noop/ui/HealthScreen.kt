@@ -473,12 +473,12 @@ private fun AgesSection(vm: AppViewModel, days: List<DailyMetric>, profile: Prof
     var trend by remember { mutableStateOf<List<Pair<LineSeries, String>>>(emptyList()) }
     var infoOpen by remember { mutableStateOf(false) }
     LaunchedEffect(days) {
-        fitnessAge = runCatching { vm.repo.latestMetricComputedUnion(vm.activeStrapId, "fitness_age")?.value }.getOrNull()
-        bodyAge = runCatching { vm.repo.latestMetricComputedUnion(vm.activeStrapId, "body_age")?.value }.getOrNull()
-        rhythmAge = runCatching { vm.repo.latestMetricComputedUnion(vm.activeStrapId, "rhythm_age")?.value }.getOrNull()
+        fitnessAge = runCatching { vm.repo.latestMetricComputedUnion("fitness_age")?.value }.getOrNull()
+        bodyAge = runCatching { vm.repo.latestMetricComputedUnion("body_age")?.value }.getOrNull()
+        rhythmAge = runCatching { vm.repo.latestMetricComputedUnion("rhythm_age")?.value }.getOrNull()
         trend = runCatching {
             suspend fun series(key: String) = vm.repo
-                .metricSeriesComputedUnion(vm.activeStrapId, key, "0000-01-01", "9999-12-31")
+                .metricSeriesComputedUnion(key, "0000-01-01", "9999-12-31")
                 .associate { it.day to it.value }
             buildAgeTrend(days.map { it.day }, series("fitness_age"), series("body_age"), series("rhythm_age"), profile.dateOfBirthMillis)
         }.getOrDefault(emptyList())
@@ -2166,7 +2166,7 @@ private suspend fun buildSeriesVitalDetail(vm: AppViewModel, key: String): Vital
         title = "Fitness Age",
         unit = "yrs",
         color = Palette.chargeColor,
-        readings = vm.repo.metricSeriesComputedUnion(vm.activeStrapId, "fitness_age", "0000-01-01", "9999-12-31")
+        readings = vm.repo.metricSeriesComputedUnion("fitness_age", "0000-01-01", "9999-12-31")
             .map { VitalReading(it.day, it.value, it.deviceId) },
         format = { it.roundToInt().toString() },
     )
@@ -2175,7 +2175,7 @@ private suspend fun buildSeriesVitalDetail(vm: AppViewModel, key: String): Vital
         title = "Vitality",
         unit = "",
         color = Palette.metricPurple,
-        readings = vm.repo.metricSeriesComputedUnion(vm.activeStrapId, "vitality", "0000-01-01", "9999-12-31")
+        readings = vm.repo.metricSeriesComputedUnion("vitality", "0000-01-01", "9999-12-31")
             .map { VitalReading(it.day, it.value, it.deviceId) },
         format = { it.roundToInt().toString() },
     )
@@ -2190,8 +2190,7 @@ private suspend fun buildSeriesVitalDetail(vm: AppViewModel, key: String): Vital
  // estimate); this brings Android to parity. Real strap steps live in DailyMetric.steps; imported
  // steps in AppleDaily; the estimate in the "steps_est" series — three disjoint stores, so the
  // per-day `?:` chain never double-counts.
-        val real = vm.repo.resolvedSeries("steps", "my-whoop", "0000-00-00", "9999-99-99",
-            strapDeviceId = vm.activeStrapId)
+        val real = vm.repo.resolvedSeries("steps", "my-whoop", "0000-00-00", "9999-99-99")
             .points.associateBy({ it.day }, { VitalReading(it.day, it.value, it.source) })
         val imported = LinkedHashMap<String, VitalReading>()
         for (r in vm.repo.appleDaily("apple-health", "0000-01-01", "9999-12-31") +
@@ -2199,8 +2198,7 @@ private suspend fun buildSeriesVitalDetail(vm: AppViewModel, key: String): Vital
             val s = r.steps
             if (s != null && s > 0) imported.putIfAbsent(r.day, VitalReading(r.day, s.toDouble(), r.deviceId))
         }
-        val est = vm.repo.resolvedSeries("steps_est", "my-whoop", "0000-00-00", "9999-99-99",
-            strapDeviceId = vm.activeStrapId)
+        val est = vm.repo.resolvedSeries("steps_est", "my-whoop", "0000-00-00", "9999-99-99")
             .points.associateBy({ it.day }, { VitalReading(it.day, it.value, it.source) })
         VitalDetailModel(
             key = key,
@@ -2219,8 +2217,7 @@ private suspend fun buildSeriesVitalDetail(vm: AppViewModel, key: String): Vital
             vm.repo.appleDaily("health-connect", "0000-01-01", "9999-12-31")) {
             r.activeKcal?.let { imported.putIfAbsent(r.day, VitalReading(r.day, it, r.deviceId)) }
         }
-        val est = vm.repo.resolvedSeries("active_kcal", "my-whoop", "0000-00-00", "9999-99-99",
-            strapDeviceId = vm.activeStrapId)
+        val est = vm.repo.resolvedSeries("active_kcal", "my-whoop", "0000-00-00", "9999-99-99")
             .points.associateBy({ it.day }, { VitalReading(it.day, it.value, it.source) })
         VitalDetailModel(
             key = key,

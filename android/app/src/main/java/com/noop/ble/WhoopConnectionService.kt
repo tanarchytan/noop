@@ -176,7 +176,7 @@ class WhoopConnectionService : Service() {
                 // Defence-in-depth: if this flow errors, catch{emit} keeps combine running on ble.state
                 // with days frozen rather than killing the process. The bounded merge suffices since the
                 // notification reads only today's row, not the full re-merged history.
-                repo.recentDaysMergedFlow("my-whoop").catch { emit(emptyList()) },
+                repo.recentDaysMergedFlow().catch { emit(emptyList()) },
             ) { state, days ->
                 // Resolve the day the way the dashboard does, via the logical local day (rolls at 04:00),
                 // not a naive LocalDate.now() that rolls at midnight and looks up a not-yet-scored day.

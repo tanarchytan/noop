@@ -309,7 +309,7 @@ internal suspend fun WhoopRepository.workoutsAllSources(
     to: Long,
 ): List<WorkoutRow> =
     WorkoutEditing.dedupCrossSource(
-        workoutsUnion(activeDeviceId, from, to) +
+        workoutsUnion(from, to) +
             workouts("apple-health", from, to) +
             workouts("health-connect", from, to)
     )
