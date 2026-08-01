@@ -1521,10 +1521,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     /**
      * Drop the smoothing window and blank the hero number so a resume / re-attach shows "—" until a
-     * genuinely fresh sample arrives, instead of republishing the stale pre-gap median. Called on
-     * Live/Health screen entry (requestRealtimeHr 0->1), NOT on keep-alive re-arm, so steady-state
-     * smoothing is untouched. Mirrors AppModel.resetSmoothing and the existing disconnect() clear.
-     * Fixes #46 (HR jumped to a stale ~100 on reopen, then settled as fresh low samples refilled).
+     * genuinely fresh sample arrives, instead of republishing the stale pre-gap median. Called from
+     * [applyRealtimeHr] on the disarmed→armed edge only, NOT on keep-alive re-arm, so steady-state
+     * smoothing is untouched. Mirrors the existing disconnect() clear.
      */
     private fun resetSmoothing() {
         hrWindow.clear()
