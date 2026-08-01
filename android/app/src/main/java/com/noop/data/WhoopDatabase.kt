@@ -49,7 +49,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         PpgWaveformSampleEntity::class,
         V18Sample::class,
     ],
-    version = 101,
+    version = 102,
     exportSchema = false,
 )
 abstract class WhoopDatabase : RoomDatabase() {
@@ -59,7 +59,7 @@ abstract class WhoopDatabase : RoomDatabase() {
         const val DB_NAME = "noop_whoop.db"
 
         /** Current Room schema version. Must match [Database.version]. */
-        const val SCHEMA_VERSION = 101
+        const val SCHEMA_VERSION = 102
 
         /**
          * Ordered list of all Room migrations, earliest to latest, used by
@@ -74,8 +74,25 @@ abstract class WhoopDatabase : RoomDatabase() {
             MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14,
             MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18,
             MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21, MIGRATION_21_22,
-            MIGRATION_100_101,
+            MIGRATION_100_101, MIGRATION_101_102,
             ) + UPSTREAM_CATCHALL_MIGRATIONS
+        }
+
+        /**
+         * The data-inclusion axis: `pairedDevice.dataIncluded`, splitting read scope off the BLE
+         * `status`. Defaults to 1 so every existing row — archived ones included — keeps its history
+         * visible, which is the fault this migration exists to close.
+         */
+        internal val DATA_INCLUDED_MIGRATION_SQL: List<String> = listOf(
+            "ALTER TABLE `pairedDevice` ADD COLUMN `dataIncluded` INTEGER NOT NULL DEFAULT 1",
+        )
+
+        /** v101 -> v102: additive, the two-axis device columns. v101 shipped to a device carrying real
+         *  history, so its columns cannot grow further without breaking Room's identity check. */
+        internal val MIGRATION_101_102 = object : Migration(101, 102) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                for (stmt in DATA_INCLUDED_MIGRATION_SQL) db.execSQL(stmt)
+            }
         }
 
         /**

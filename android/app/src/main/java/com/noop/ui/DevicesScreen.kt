@@ -143,7 +143,7 @@ fun DevicesScreen(
     val all = devices.orEmpty().filter { device ->
         !(device.id == WhoopBleClient.DEFAULT_DEVICE_ID && !whoopBoundHere)
     }
-    val activeDevices = all.filter { it.status != DeviceStatus.archived.name }
+    val activeDevices = com.noop.data.connectableDevices(all)
     val removedDevices = all.filter { it.status == DeviceStatus.archived.name }
     val currentActiveName =
         all.firstOrNull { it.status == DeviceStatus.active.name }?.let { displayName(it) }
@@ -314,9 +314,9 @@ fun DevicesScreen(
                 scope.launch {
                     viewModel.archivePairedDevice(device.id)
                     devices = viewModel.pairedDevices()
- // If the removed device was active and other paired devices remain, prompt to pick a
+ // If the removed device was active and another reachable strap remains, prompt to pick a
  // new active one (the registry's reload demotes the active row to paired).
-                    if (wasActive && devices.orEmpty().any { it.status != DeviceStatus.archived.name }) {
+                    if (wasActive && com.noop.data.connectableDevices(devices.orEmpty()).isNotEmpty()) {
                         pickNewActive = true
                     }
                 }

@@ -2,8 +2,10 @@ package com.noop.data
 
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
@@ -54,6 +56,10 @@ class DeviceRegistryTest {
 
         override suspend fun archiveDevice(id: String) {
             devices[id]?.let { devices[id] = it.copy(status = DeviceStatus.archived.name) }
+        }
+
+        override suspend fun setDataIncluded(id: String, included: Boolean) {
+            devices[id]?.let { devices[id] = it.copy(dataIncluded = included) }
         }
 
         override suspend fun deletePairedDevice(id: String) { devices.remove(id) }
@@ -169,6 +175,30 @@ class DeviceRegistryTest {
         assertEquals(1, reg.all().size)
         assertEquals(DeviceStatus.archived.name, reg.all().first().status)
         assertNull(reg.activeDeviceId())
+    }
+
+    /** Archiving moves the PRESENCE axis only, so the dataset stays in every read. */
+    @Test
+    fun archiveLeavesTheDatasetIncluded() = runBlocking {
+        val reg = registryWith(seededDao())
+        reg.archive("my-whoop")
+        assertTrue(reg.all().first().dataIncluded)
+        assertTrue("my-whoop" in WhoopRepository.importedSourceIdsFor(reg.all()))
+    }
+
+    /** Excluding moves the INCLUSION axis only: presence and every sample row are untouched. */
+    @Test
+    fun setDataIncludedMovesNothingElse() = runBlocking {
+        val dao = seededDao()
+        val reg = registryWith(dao)
+        reg.setDataIncluded("my-whoop", false)
+        val row = reg.all().first()
+        assertFalse(row.dataIncluded)
+        assertEquals(DeviceStatus.active.name, row.status)
+        assertEquals("my-whoop", reg.activeDeviceId())
+        assertTrue("excluding must delete nothing", dao.deletedTables.isEmpty())
+        reg.setDataIncluded("my-whoop", true)
+        assertTrue(reg.all().first().dataIncluded)
     }
 
     @Test

@@ -39,7 +39,7 @@ object IntelligenceEngine {
      * reads from [importedDeviceId]. A DeviceRegistry-backed implementation is passed in by the UI.
      */
     interface DayOwnerSource {
-        /** Non-archived paired devices, each as a [DayOwnerResolver.Candidate] WITHOUT its hasData flag
+        /** Included paired devices, each as a [DayOwnerResolver.Candidate] WITHOUT its hasData flag
          *  resolved yet (priority only: 0 = active strap, 1 = other live straps, 2 = imports). */
         suspend fun candidatePriorities(): List<Pair<String, Int>>
 

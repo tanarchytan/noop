@@ -40,9 +40,15 @@ interface DeviceRegistryDao {
     @Query("UPDATE pairedDevice SET status = 'active', lastSeenAt = :now WHERE id = :id")
     suspend fun promote(id: String, now: Long)
 
-    /** Archive a device (keeps the row + its samples — invariant I4). */
+    /** Archive a device (keeps the row + its samples — invariant I4). Presence only: the row stays in
+     *  the read scope, so its recorded days keep rendering. */
     @Query("UPDATE pairedDevice SET status = 'archived' WHERE id = :id")
     suspend fun archiveDevice(id: String)
+
+    /** Include or exclude one dataset from every read ([WhoopRepository.importedSourceIdsFor]).
+     *  Touches no sample row: an excluded dataset is hidden, never deleted. */
+    @Query("UPDATE pairedDevice SET dataIncluded = :included WHERE id = :id")
+    suspend fun setDataIncluded(id: String, included: Boolean)
 
     /** Permanently delete a device's registry row. The full-delete op clears its samples first. */
     @Query("DELETE FROM pairedDevice WHERE id = :id")

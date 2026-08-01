@@ -9,6 +9,7 @@ internal fun deviceRow(
     status: DeviceStatus = DeviceStatus.paired,
     addedAt: Long = 0L,
     kind: SourceKind = SourceKind.liveBLE,
+    included: Boolean = true,
 ): PairedDeviceRow = PairedDeviceRow(
     id = id,
     brand = "WHOOP",
@@ -19,6 +20,7 @@ internal fun deviceRow(
     status = status.name,
     addedAt = addedAt,
     lastSeenAt = addedAt,
+    dataIncluded = included,
 )
 
 /** The registry of a single-WHOOP install: the seeded legacy id, active. */

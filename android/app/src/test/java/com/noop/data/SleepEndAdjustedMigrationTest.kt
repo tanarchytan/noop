@@ -41,10 +41,9 @@ class SleepEndAdjustedMigrationTest {
     }
 
     @Test
-    fun migration_isPartOfTheUnreleasedV101Step() {
+    fun migration_isTheV101Step() {
         assertEquals(100, WhoopDatabase.MIGRATION_100_101.startVersion)
         assertEquals(101, WhoopDatabase.MIGRATION_100_101.endVersion)
-        assertEquals("no version bump: v101 is unreleased", 101, WhoopDatabase.SCHEMA_VERSION)
     }
 
     // ── The accessor pair the column backs ───────────────────────────────────────────────────────────

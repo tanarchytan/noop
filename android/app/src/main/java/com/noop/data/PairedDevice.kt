@@ -1,5 +1,6 @@
 package com.noop.data
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 
@@ -15,6 +16,9 @@ import androidx.room.PrimaryKey
  * A device the user has paired. PK = [id] (== `deviceId` in the sample tables). [capabilities] is
  * the comma-joined set of [Metric] rawValues. Exactly one row is `active` at a time (invariant I1,
  * enforced in [DeviceRegistry.setActive]).
+ *
+ * Two INDEPENDENT axes: [status] is presence (BLE only), [dataIncluded] is inclusion (read scope
+ * only). They never gate each other, so "removed, data kept" is expressible.
  */
 @Entity(tableName = "pairedDevice")
 data class PairedDeviceRow(
@@ -26,14 +30,20 @@ data class PairedDeviceRow(
     /**
      * The strap's stable BLE peripheral identifier ([android.bluetooth.BluetoothDevice] MAC address).
      * Lets the BLE client pin a connect to ONE specific strap and look up a freshly-paired device.
-     * Nullable; the seeded "my-whoop" row stays NULL until the strap is (re)paired.
+     * Nullable; a row stays NULL until the strap is (re)paired.
      */
     val peripheralId: String? = null,
     val sourceKind: String,
     val capabilities: String, // comma-joined Metric rawValues, e.g. "hr,hrv,sleep"
+    /** PRESENCE, BLE only: scan, auto-connect, the device picker. Never narrows a read. */
     val status: String,
     val addedAt: Long, // unix seconds
     val lastSeenAt: Long, // unix seconds
+    /** INCLUSION, read scope only ([WhoopRepository.importedSourceIdsFor]). Toggled per dataset in
+     *  Data Sources; false hides this dataset's rows from every chart without deleting one. The SQL
+     *  default matches the migration's, so a created and a migrated table agree. */
+    @ColumnInfo(defaultValue = "1")
+    val dataIncluded: Boolean = true,
 )
 
 /**
@@ -50,7 +60,9 @@ data class DayOwnershipRow(
     val locked: Boolean = false,
 )
 
-/** Lifecycle of a paired device. Stored as the lowercase enum name. */
+/** PRESENCE of a paired device, stored as the lowercase enum name: [active] = the one connect
+ *  target, [paired] = known, [archived] = removed (never scanned for, never auto-connected, never
+ *  offered in the picker). Inclusion in a read is [PairedDeviceRow.dataIncluded], not this. */
 enum class DeviceStatus { active, paired, archived }
 
 /** How a device's data reaches the store. Stored as the enum name.
@@ -72,6 +84,12 @@ enum class SourceKind { liveBLE, historyBLE, cloudImport, fileImport, oura, acti
  *  can never render as one. */
 val DEVICE_SOURCE_KINDS: Set<String> =
     setOf(SourceKind.liveBLE, SourceKind.historyBLE, SourceKind.oura).map { it.name }.toSet()
+
+/** The straps the app may reach over BLE: real hardware ([DEVICE_SOURCE_KINDS]) that has not been
+ *  removed. The PRESENCE axis, so it drives the picker, the scan and auto-connect and never a read —
+ *  read scope is [PairedDeviceRow.dataIncluded] via `WhoopRepository.importedSourceIdsFor`. */
+fun connectableDevices(devices: List<PairedDeviceRow>): List<PairedDeviceRow> =
+    devices.filter { it.sourceKind in DEVICE_SOURCE_KINDS && it.status != DeviceStatus.archived.name }
 
 /** A canonical metric a source can provide — drives capability-aware UI + the day-owner resolver.
  *  Stored as the enum name inside the comma-joined `capabilities` string. */

@@ -8,12 +8,11 @@ import org.junit.Test
 import java.lang.reflect.Proxy
 
 /**
- * The read scope is the union of every non-archived paired device plus the legacy import sink, derived
- * from the registry. Before this, the scope was (active id, "my-whoop") built from ONE id, so a second
- * paired strap's days were excluded by construction and a null active device collapsed the scope onto an
- * archived phantom.
+ * The read scope is the union of every INCLUDED registry row plus the legacy import sink. Presence
+ * (`status`) is a BLE fact and never narrows it, so a removed strap keeps its recorded days; only the
+ * inclusion axis ([PairedDeviceRow.dataIncluded]) subtracts.
  *
- * Pins the four shapes: two straps, an archived strap, a single strap (byte-identical), and no active row.
+ * Pins the shapes: two straps, a removed strap, an excluded strap, a single strap, and no active row.
  */
 class MultiStrapReadScopeTest {
 
@@ -63,18 +62,61 @@ class MultiStrapReadScopeTest {
         )
     }
 
-    /** An ARCHIVED strap leaves the scope — archiving is how a user retires a band. The legacy sink is
-     *  not a device, so its archived status never removes it. */
+    /** A REMOVED (archived) strap stays in the scope: removing a band retires a radio, not a month of
+     *  history. This is the measured fault — 19 recorded nights went invisible on an archive. */
     @Test
-    fun archivedStrapLeavesTheScopeButTheLegacySinkStays() {
+    fun aRemovedStrapStaysInTheScope() {
         val devices = listOf(
             deviceRow(legacy, DeviceStatus.archived, addedAt = 0L),
             deviceRow(strapA, DeviceStatus.archived, addedAt = 1L),
             deviceRow(strapB, DeviceStatus.active, addedAt = 2L),
         )
         val ids = WhoopRepository.importedSourceIdsFor(devices)
-        assertFalse("an archived strap must not be read", strapA in ids)
+        assertTrue("a removed strap must still be read", strapA in ids)
+        assertEquals("straps in registration order, the import sink last", listOf(strapB, strapA, legacy), ids)
+    }
+
+    /** Only the INCLUSION axis subtracts. Excluding one strap drops exactly it; the removed one beside
+     *  it, still included, keeps rendering. */
+    @Test
+    fun anExcludedStrapLeavesTheScopeAndNothingElseDoes() {
+        val devices = listOf(
+            deviceRow(legacy, DeviceStatus.archived, addedAt = 0L),
+            deviceRow(strapA, DeviceStatus.archived, addedAt = 1L, included = false),
+            deviceRow(strapB, DeviceStatus.active, addedAt = 2L),
+        )
+        val ids = WhoopRepository.importedSourceIdsFor(devices)
+        assertFalse("an excluded dataset must not be read", strapA in ids)
         assertEquals(listOf(strapB, legacy), ids)
+    }
+
+    /** The import sink is read unless its OWN row is excluded — it is a data bucket, not a device, so
+     *  no BLE state ever removes it. */
+    @Test
+    fun theImportSinkFollowsItsOwnInclusionFlagOnly() {
+        assertTrue(legacy in WhoopRepository.importedSourceIdsFor(twoStraps()))
+        val excluded = listOf(
+            deviceRow(legacy, DeviceStatus.archived, addedAt = 0L, included = false),
+            deviceRow(strapB, DeviceStatus.active, addedAt = 2L),
+        )
+        assertEquals(listOf(strapB), WhoopRepository.importedSourceIdsFor(excluded))
+    }
+
+    /** The other axis, unchanged: a removed strap is unreachable over BLE, so the picker and
+     *  auto-connect never offer it — while its data stays visible above. */
+    @Test
+    fun theBleSurfaceStillExcludesARemovedStrap() {
+        val devices = listOf(
+            deviceRow(strapA, DeviceStatus.archived, addedAt = 1L),
+            deviceRow(strapB, DeviceStatus.active, addedAt = 2L),
+            deviceRow(legacy, DeviceStatus.paired, addedAt = 0L, kind = SourceKind.legacy),
+        )
+        assertEquals(listOf(strapB), connectableDevices(devices).map { it.id })
+        assertTrue("an EXCLUDED strap is still connectable — inclusion is not presence",
+            strapB in connectableDevices(
+                devices.map { if (it.id == strapB) it.copy(dataIncluded = false) else it },
+            ).map { it.id },
+        )
     }
 
     /** A single-strap install resolves to exactly the two ids it always did, in the same order. */
@@ -122,12 +164,31 @@ class MultiStrapReadScopeTest {
         )
     }
 
-    /** An archived strap's days stay hidden through the merged read, not just through the id list. */
+    /** A REMOVED strap's days stay visible through the merged read, not just in the id list — the
+     *  regression for the archive fault. */
     @Test
-    fun anArchivedStrapsDaysStayHidden() = runBlocking {
+    fun aRemovedStrapsDaysStayVisible() = runBlocking {
         val devices = listOf(
             deviceRow(legacy, DeviceStatus.archived, addedAt = 0L),
             deviceRow(strapA, DeviceStatus.archived, addedAt = 1L),
+            deviceRow(strapB, DeviceStatus.active, addedAt = 2L),
+        )
+        val repo = repo(
+            devices,
+            mapOf(
+                "$strapA-noop" to listOf(day("$strapA-noop", "2026-07-16", 420.0)),
+                "$strapB-noop" to listOf(day("$strapB-noop", "2026-07-30", 400.0)),
+            ),
+        )
+        assertEquals(listOf("2026-07-16", "2026-07-30"), repo.daysMerged().map { it.day })
+    }
+
+    /** Excluding that same strap is what hides it, and nothing else does. */
+    @Test
+    fun anExcludedStrapsDaysAreHidden() = runBlocking {
+        val devices = listOf(
+            deviceRow(legacy, DeviceStatus.archived, addedAt = 0L),
+            deviceRow(strapA, DeviceStatus.archived, addedAt = 1L, included = false),
             deviceRow(strapB, DeviceStatus.active, addedAt = 2L),
         )
         val repo = repo(

@@ -55,8 +55,13 @@ class DeviceRegistry(
         }
     }
 
-    /** Archive a device — keeps its row and samples (invariant I4). */
+    /** Archive a device — the PRESENCE axis only. The row, its samples and its place in the read
+     *  scope all survive, so "removed, data kept" is what the user gets (invariant I4). */
     suspend fun archive(id: String) = dao.archiveDevice(id)
+
+    /** Include or exclude one dataset from every read. The INCLUSION axis: no sample row is touched,
+     *  and BLE presence is unaffected. */
+    suspend fun setDataIncluded(id: String, included: Boolean) = dao.setDataIncluded(id, included)
 
     /**
      * Persist (or clear) a device's stable BLE peripheral identifier (the MAC address on Android).
