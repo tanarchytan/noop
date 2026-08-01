@@ -29,7 +29,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -106,11 +105,9 @@ fun HrvSnapshotScreen(
 
     val bonded = live.bonded
 
-    // Keep the live HR stream on for the duration of the reading (ref-counted with Live/Health/Breathe).
-    DisposableEffect(Unit) {
-        viewModel.requestRealtimeHr()
-        onDispose { viewModel.releaseRealtimeHr() }
-    }
+    // Keep the live HR stream on for the duration of the reading, and only while the app is on screen —
+    // a snapshot nobody is watching has nothing to capture.
+    RealtimeHrWhileVisible(viewModel, RealtimeHrOwner.HRV_SNAPSHOT)
 
     // Pull new R-R intervals into the capture buffer as they arrive — same path as BreatheScreen.
     LaunchedEffect(Unit) {

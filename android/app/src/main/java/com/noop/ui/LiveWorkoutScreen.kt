@@ -59,10 +59,11 @@ fun LiveWorkoutScreen(vm: AppViewModel, onClose: () -> Unit) {
     val bpm by vm.bpm.collectAsStateWithLifecycle()
     val activeWorkout by vm.activeWorkout.collectAsStateWithLifecycle()
 
-    // Keep the live HR stream on for the duration of the workout screen (ref-counted with Live/Health).
+    // Keep the live HR stream on for the duration of the in-exercise overlay. Background-eligible: the
+    // capture must keep running with the phone pocketed, so this want outlasts the app leaving the screen.
     DisposableEffect(Unit) {
-        vm.requestRealtimeHr()
-        onDispose { vm.releaseRealtimeHr() }
+        vm.requestRealtimeHr(RealtimeHrOwner.LIVE_WORKOUT)
+        onDispose { vm.releaseRealtimeHr(RealtimeHrOwner.LIVE_WORKOUT) }
     }
 
     // Keep the screen awake while recording (#703). Opt-in, default off; the toggle lives in Settings.

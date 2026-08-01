@@ -773,15 +773,23 @@ fun NoopRoot() {
     // #267: app-wide "came to foreground" hook, mirrors the iOS/macOS scenePhase == .active trigger.
     // requestSync(FOREGROUND) is a safe no-op when nothing's connected/bonded yet (e.g. during
     // onboarding), so this is placed above the onboarding gate rather than duplicated below it.
+    // ON_START/ON_STOP additionally drive the live-HR reachability gate: a screen want is armed only
+    // while the app's UI is actually on screen, so backgrounding can't leave the strap streaming.
     val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
     androidx.compose.runtime.DisposableEffect(lifecycleOwner, appViewModel) {
         val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
-            if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
-                appViewModel.ble.onForeground()
+            when (event) {
+                androidx.lifecycle.Lifecycle.Event.ON_START -> appViewModel.onAppVisible()
+                androidx.lifecycle.Lifecycle.Event.ON_RESUME -> appViewModel.ble.onForeground()
+                androidx.lifecycle.Lifecycle.Event.ON_STOP -> appViewModel.onAppHidden()
+                else -> Unit
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
-        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+            appViewModel.onAppHidden()
+        }
     }
 
     var onboarded by remember {

@@ -36,7 +36,6 @@ import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -125,13 +124,10 @@ fun HealthScreen(
     val cycleEnabled by vm.cycleTrackingEnabled.collectAsStateWithLifecycle()
     val hrMax = profile.hrMax
 
- // Health Monitor shows live HR too, so it must keep the realtime stream on while it's visible —
- // otherwise leaving the Live page stopped the stream and this page froze. Ref-counted
- // in the ViewModel, so handing off between Live and here never drops the stream.
-    DisposableEffect(Unit) {
-        vm.requestRealtimeHr()
-        onDispose { vm.releaseRealtimeHr() }
-    }
+ // Health Monitor shows live HR, so it holds the want while it is on screen AND the app is — the want
+ // is released at ON_STOP and leased, so backgrounding here can no longer leave the strap streaming.
+ // Owner-keyed in the ViewModel, so handing off with another HR screen never drops the stream.
+    RealtimeHrWhileVisible(vm, RealtimeHrOwner.HEALTH)
 
  // PERF (#scroll-jank): the BLE live state + smoothed bpm tick ~1Hz. Reading them in this body to
  // compute the empty-state gate recomposed the WHOLE Health screen on every HR tick. The body only

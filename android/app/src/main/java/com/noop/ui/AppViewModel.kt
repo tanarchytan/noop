@@ -545,6 +545,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 // Health hero falls to "—" rather than freezing on the last value; a transient gap with R-R
                 // still flowing keeps the median (matches AppModel.ingestHR's disconnect guard).
                 if (state.heartRate == null && state.rr.isEmpty()) resetSmoothing()
+                // Expire a live-HR want whose composition stopped renewing it, on the same tick the
+                // stream it is holding open arrives.
+                sweepRealtimeHr()
                 coachZone(state)
                 dispatchDoubleTap(state)
                 if (state.bonded && !lastBonded) {
@@ -1518,10 +1521,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     /**
      * Drop the smoothing window and blank the hero number so a resume / re-attach shows "—" until a
-     * genuinely fresh sample arrives, instead of republishing the stale pre-gap median. Called on
-     * Live/Health screen entry (requestRealtimeHr 0->1), NOT on keep-alive re-arm, so steady-state
-     * smoothing is untouched. Mirrors AppModel.resetSmoothing and the existing disconnect() clear.
-     * Fixes #46 (HR jumped to a stale ~100 on reopen, then settled as fresh low samples refilled).
+     * genuinely fresh sample arrives, instead of republishing the stale pre-gap median. Called from
+     * [applyRealtimeHr] on the disarmed→armed edge only, NOT on keep-alive re-arm, so steady-state
+     * smoothing is untouched. Mirrors the existing disconnect() clear.
      */
     private fun resetSmoothing() {
         hrWindow.clear()
@@ -1710,25 +1712,74 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    /** How many screens currently want the live HR stream (Live, Health Monitor, …). The stream stays
-     *  on while ANY of them is visible, so navigating between them doesn't stop it (issue #18: leaving
-     *  Live sent TOGGLE_REALTIME_HR=0, leaving Health Monitor with a frozen value). */
-    private var realtimeWanters = 0
+    /** The one live-HR want set: which screens/sessions asked, and whether the app's UI is on screen.
+     *  Only [applyRealtimeHr] reads it, so intent and reachability can never be applied separately. */
+    private val realtimeHr = RealtimeHrArbiter()
 
-    /** A screen that shows live HR appeared. Arms the realtime stream on the 0→1 transition, and
-     *  blanks the stale smoothing window so a resume shows "—" until a fresh sample lands (#46).
-     *  Guarded on 0→1 so a second concurrent HR screen doesn't re-clear an already-live window. */
-    fun requestRealtimeHr() {
-        if (realtimeWanters++ == 0) {
-            resetSmoothing()
-            ble.startRealtime()
+    /** What [applyRealtimeHr] last told the client, so a re-request doesn't re-blank the HR window. */
+    private var realtimeHrApplied = false
+
+    /** Pending "the UI went away" apply, cancelled when it comes back — an Activity recreation must not
+     *  toggle the strap's stream off and straight back on. */
+    private var realtimeVisibilityJob: Job? = null
+
+    /** A screen or session wants live HR; [RealtimeHrOwner] says whether it survives backgrounding.
+     *  The stream stays on while ANY owner holds it, so navigating between HR screens doesn't stop it. */
+    fun requestRealtimeHr(owner: RealtimeHrOwner) {
+        realtimeHr.request(owner, System.currentTimeMillis())
+        applyRealtimeHr()
+    }
+
+    /** Refresh a screen want's lease — its composition is still started. */
+    fun renewRealtimeHr(owner: RealtimeHrOwner) {
+        realtimeHr.renew(owner, System.currentTimeMillis())
+        applyRealtimeHr()
+    }
+
+    /** A live-HR owner went away. Safe to call unbalanced: it can never disturb another owner's want. */
+    fun releaseRealtimeHr(owner: RealtimeHrOwner) {
+        realtimeHr.release(owner, System.currentTimeMillis())
+        applyRealtimeHr()
+    }
+
+    /** The app's UI came back on screen — re-arm for any screen want still held. */
+    fun onAppVisible() {
+        realtimeVisibilityJob?.cancel()
+        realtimeVisibilityJob = null
+        realtimeHr.setVisible(true, System.currentTimeMillis())
+        applyRealtimeHr()
+    }
+
+    /** The app's UI left the screen. Applied after a short grace so an Activity recreation doesn't bounce
+     *  the stream; screen wants then disarm, and a live session or in-exercise workout keeps streaming. */
+    fun onAppHidden() {
+        realtimeVisibilityJob?.cancel()
+        realtimeVisibilityJob = viewModelScope.launch {
+            delay(VISIBILITY_GRACE_MS)
+            realtimeHr.setVisible(false, System.currentTimeMillis())
+            applyRealtimeHr()
         }
     }
 
-    /** A live-HR screen went away. Stops the realtime stream only when the last one leaves. */
-    fun releaseRealtimeHr() {
-        realtimeWanters = (realtimeWanters - 1).coerceAtLeast(0)
-        if (realtimeWanters == 0) ble.stopRealtime()
+    /** Re-read the want against the clock (this is what expires an unrenewed screen lease) and mirror it.
+     *  Called from the live-state collector, so an expired want is dropped within a tick of the stream. */
+    private fun sweepRealtimeHr() {
+        realtimeHr.evaluate(System.currentTimeMillis())
+        applyRealtimeHr()
+    }
+
+    /** Mirror the arbiter's decision onto the client. Each arm blanks the stale smoothing window so a
+     *  resume shows "—" until a fresh sample lands (#46) instead of republishing the pre-gap median. */
+    private fun applyRealtimeHr() {
+        val want = realtimeHr.armed
+        if (want == realtimeHrApplied) return
+        realtimeHrApplied = want
+        if (want) {
+            resetSmoothing()
+            ble.startRealtime()
+        } else {
+            ble.stopRealtime()
+        }
     }
 
     /** Refresh the battery reading. Reads the standard 0x2A19 characteristic (works on 5/MG, where the
@@ -2147,6 +2198,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         // #78 hole-4: drop the app-foreground salvage-probe hook with this ViewModel (the next Activity's
         // ViewModel re-registers its own), so a cleared VM can never leak resume callbacks.
         noopApp.unregisterActivityLifecycleCallbacks(salvageProbeLifecycleCallbacks)
+        // Drop this view-model's live-HR wants before it goes. The client keeps its want across
+        // reconnects, so a cleared view-model would otherwise leave the strap streaming for the life of
+        // the process, with no composition left that could ever release it.
+        realtimeHr.releaseAll(System.currentTimeMillis())
+        applyRealtimeHr()
         // The BLE client is process-owned (NoopApplication) and may be held up by
         // WhoopConnectionService, so we never shut it down here. Only drop the connection when the
         // user hasn't opted into background streaming — otherwise closing the UI would defeat the
@@ -2168,6 +2224,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         const val STRAP_ALARM_REARM_INTERVAL_MS = 24 * 60 * 60 * 1_000L
         /** SharedPreferences key for the persisted double-tap action (stored as the enum NAME). */
         const val DOUBLE_TAP_ACTION_KEY = "noop.doubleTapAction"
+        /** Grace before a hidden UI disarms the live-HR stream, so an Activity recreation doesn't
+         *  send the strap a TOGGLE_REALTIME_HR off/on pair. */
+        const val VISIBILITY_GRACE_MS = 1_500L
     }
 }
 
