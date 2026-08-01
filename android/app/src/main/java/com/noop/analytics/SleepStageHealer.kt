@@ -165,7 +165,7 @@ object SleepStageHealer {
         // with no detection to hand degrades to the stages-only heal.
         detectedSpans: List<Pair<Long, Long>> = emptyList(),
     ): List<SleepSession> {
-        suspend fun editedRows(): List<SleepSession> = repo.editedSleeps(strapDeviceId, windowStart, windowEnd)
+        suspend fun editedRows(): List<SleepSession> = repo.editedSleeps(windowStart, windowEnd)
 
         var edited = editedRows()
         if (edited.isEmpty()) return emptyList()

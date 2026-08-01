@@ -314,19 +314,14 @@ object WhoopCsvExporter {
      * can't mis-attribute them as WHOOP data) and write a zip to [uri]. Returns a human summary for
      * the toast.
      *
-     * [deviceId] is the registry's active strap id and has NO default on purpose: a `"my-whoop"`
-     * default would silently redirect a live-BLE install (whose engine banks computed scores under
-     * `"<strapId>-noop"`) into exporting `0 days, 0 sleeps, 0 journal entries` while the app still
-     * displays months of history. Every read below goes through the active∪canonical union
-     * resolvers ([WhoopRepository.importedSourceIds] / [WhoopRepository.computedSourceIds]), so
-     * BOTH install shapes export in full: live-BLE rows under the strap id AND canonical
-     * `"my-whoop"` rows from a prior CSV import (a single-canonical install collapses to one id).
+     * Every read goes through the registry read scope ([WhoopRepository.importedSourceIds] /
+     * [WhoopRepository.computedSourceIds]), so every install shape exports in full: live-BLE rows
+     * under each paired strap's own id AND legacy `"my-whoop"` rows from a prior CSV import.
      */
     suspend fun exportZip(
         context: Context,
         uri: Uri,
         repo: WhoopRepository,
-        deviceId: String,
     ): String {
         val hi = System.currentTimeMillis() / 1000 + 86_400
         // physiological_cycles keys each row by the LOCAL calendar day; the sleeps "Cycle start
@@ -335,28 +330,27 @@ object WhoopCsvExporter {
         // matching how analyze bucketed the stored days.
         val tzOffsetSec = java.time.ZoneId.systemDefault().rules.getOffset(java.time.Instant.now()).totalSeconds.toLong()
 
-        // The active∪canonical union ids: active strap FIRST, so a per-row dedup keeps the
-        // live/measured copy; a single-canonical install collapses to one id each.
-        val importedIds = repo.importedSourceIds(deviceId)
-        val computedIds = repo.computedSourceIds(deviceId)
+        // The read scope's ids: active strap FIRST, so a per-row dedup keeps the live/measured copy.
+        val importedIds = repo.importedSourceIds()
+        val computedIds = repo.computedSourceIds()
 
         // Daily: the same imported-wins merge the dashboards show (daysMerged resolves the union
         // internally); a day present under ANY imported source is "import", otherwise it came from
         // the on-device computed source.
-        val daily = repo.daysMerged(deviceId)
+        val daily = repo.daysMerged()
         val importedDays = importedIds.flatMap { repo.days(it) }.map { it.day }.toHashSet()
         val sourceByDay = daily.associate { d ->
             d.day to if (d.day in importedDays) "import" else "noop (APPROXIMATE)"
         }
 
-        val sleeps = repo.sleepSessionsMerged(deviceId, 0L, hi)
+        val sleeps = repo.sleepSessionsMerged(0L, hi)
         // Workouts: imported WHOOP ∪ on-device detected (which carries the "-noop" device id), each
         // side read across its union ids. Apple Health / Health Connect workouts are intentionally
         // omitted, matching the cycles/sleep cut. Dedup by (startTs, sport), imported first so it
         // wins — the same session can exist under both sides (e.g. a reimported export + BLE
         // re-detection), which would double-count it and inflate totals on reimport.
         val seenWorkouts = HashSet<String>()
-        val workouts = (repo.workoutsUnion(deviceId, 0L, hi) + repo.detectedWorkoutsUnion(deviceId, 0L, hi))
+        val workouts = (repo.workoutsUnion(0L, hi) + repo.detectedWorkoutsUnion(0L, hi))
             .filter { seenWorkouts.add("${it.startTs}|${it.sport}") }
         // Journal lives under the imported ids. Native in-app journal logging (a separate feature on
         // its own device id) isn't read here, keeping the exporter self-contained; the imported

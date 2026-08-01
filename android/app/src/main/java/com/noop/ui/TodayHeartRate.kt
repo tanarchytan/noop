@@ -169,7 +169,7 @@ internal fun HeartRateTrendCard(
         // #908: the Today HR curve reads the active strap ∪ canonical "my-whoop" union, NOT a hardcoded
         // "my-whoop". A strap re-added via the device manager banks live HR under its own fresh id, so a
         // pinned read showed the "no heart rate banked yet today" empty state. Single-WHOOP ⇒ one id ⇒ same.
-        buckets = viewModel.repo.hrBucketsUnion(viewModel.activeStrapId, start, end, 300L)
+        buckets = viewModel.repo.hrBucketsUnion(start, end, 300L)
         // The sleep that ended within the chart window (the night before / this morning), anchors
         // the band + the Charge-at-wake marker. A wide lower bound catches an onset before midnight.
         // Resolves the day's bridged MAIN-night span via `mainSleepSpan` (the SAME resolver the Sleep
@@ -179,7 +179,7 @@ internal fun HeartRateTrendCard(
         sleepToday = runCatching {
             val overlapping = viewModel.repo.sleepSessions("my-whoop", start - 18 * 3600L, end)
                 .filter { it.startTs <= end && it.effectiveEndTs >= start }   // overlaps the window
-            val habitualMidsleepSec = viewModel.repo.habitualMidsleepSec("my-whoop")
+            val habitualMidsleepSec = viewModel.repo.habitualMidsleepSec()
             mainSleepSpan(overlapping, habitualMidsleepSec)?.let { (spanStart, spanEnd) ->
                 SleepSession(deviceId = "my-whoop", startTs = spanStart, endTs = spanEnd)
             }

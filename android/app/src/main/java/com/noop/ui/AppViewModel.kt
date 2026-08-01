@@ -83,8 +83,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     val repo: WhoopRepository get() = repository
 
-    /** The registry's active strap id (the same id the read path resolves to). Public so the Test Centre
-     *  can read the right source for the CAPTURE-D data-volume snapshot. */
+    /** The registry's active strap id, for WRITES and for provenance LABELS. Never a read scope — reads
+     *  resolve their own ids from the registry ([WhoopRepository.importedSourceIds]). */
     val activeStrapId: String get() = deviceId
 
     // MARK: - Devices screen (multi-source Phase 1B)
@@ -288,11 +288,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     // store the Settings screen edits. Feeds the on-device scorer's HRmax/zones/calories.
     private val profileStore = ProfileStore.from(app.applicationContext)
 
-    /** The active strap source id (raw streams + imported history live under this). Resolved once at
-     *  startup from the device registry (see [NoopApplication.activeDeviceId]); falls back to the
-     *  legacy "my-whoop", so behaviour is unchanged today. Public (not private) so the Today screen's
-     *  workout union can follow a re-paired strap's fresh "whoop-<id>" instead of stranding its
-     *  recordings under a read pinned to the literal "my-whoop" (#814 twin of the Workouts screen). */
+    /** The WRITE id: the source live samples and manual entries are banked under, resolved once at
+     *  startup from the registry ([NoopApplication.activeDeviceId]). Reads derive their own scope, so
+     *  this id can no longer decide what the user sees. */
     val deviceId = noopApp.activeDeviceId
 
     /** Live connection + biometric snapshot, surfaced straight from the BLE client. */
@@ -480,7 +478,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         // illness watch. recentDaysMergedFlow caps each source to RECENT_DAYS_CAP most-recent days first, so
         // the merge stays bounded while every current surface (deepest Trends range, 7-day Fitness Age /
         // Vitality windows) keeps its data. Same oldest-first ordering as before.
-        repository.recentDaysMergedFlow(deviceId)
+        repository.recentDaysMergedFlow()
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     /**
@@ -1313,10 +1311,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             val now = System.currentTimeMillis() / 1000
             // #28: read across the strap-id + "my-whoop" union (like HR/sleep), so a re-added/newly-paired
             // strap whose workouts live under "my-whoop" isn't shown an empty Workouts screen.
-            val whoop = repository.workoutsUnion(deviceId, 0L, now)
+            val whoop = repository.workoutsUnion(0L, now)
             val apple = repository.workouts("apple-health", 0L, now) +
                 repository.workouts("health-connect", 0L, now)
-            val detected = repository.detectedWorkoutsUnion(deviceId, 0L, now)
+            val detected = repository.detectedWorkoutsUnion(0L, now)
             // Imported lifting sessions (Hevy / Liftosaur) carry a volume-load note but no HR — they're
             // a strength-volume estimate, not cardio. Kept OUT of the strap HR-fill below so we never
             // fabricate a heart rate the lift never measured.
@@ -1327,7 +1325,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             // HR-fill below like the imported Apple sessions — a GPX with no HR borrows the strap's, while a
             // FIT that already carries HR is untouched (fill only fills nulls).
             val activityFiles = repository.workouts(ActivityFileImporter.SOURCE_ID, 0L, now)
-            val markers = repository.dismissedDetected(deviceId)
+            val markers = repository.dismissedDetected()
             // Fill imported sessions' missing HR from strap samples (#77), same as before; detected /
             // manual rows already carry their own HR so they pass through unchanged. #961: also backfill a
             // strap-native row's Effort (strain) from the strap trace when it's null, so a live/manual
@@ -1451,7 +1449,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     suspend fun workoutHeartRateRecovery(from: Long, to: Long): uniffi.whoop_ffi.HrRecoveryInfo? {
         if (to <= from) return null
         val samples = runCatching {
-            repository.hrSamplesUnion(deviceId, maxOf(from, to - 300L), to + 5 * 60 + 15, limit = 2_000)
+            repository.hrSamplesUnion(maxOf(from, to - 300L), to + 5 * 60 + 15, limit = 2_000)
         }.getOrDefault(emptyList())
         return com.noop.analytics.RustScores.hrRecovery(samples, from, to, profileStore.hrMax.toDouble())
     }
@@ -1935,7 +1933,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         // SPINE / #814: the strap + computed reads follow the registry's ACTIVE strap id (the same id the
         // live read path resolves to), not a hardcoded "my-whoop", so a non-WHOOP active band fuses its OWN
         // data. A single-WHOOP install resolves to "my-whoop", so this is byte-identical there.
-        FusionDayAdapter.buildFor(repository, logicalDayKeyNow(), activeStrapId = deviceId)
+        FusionDayAdapter.buildFor(repository, logicalDayKeyNow())
 
     /** Toggle strap low/full battery notifications (#368). The notifier reads NoopPrefs on each
      *  live-state update, so persisting is all that's needed — no stream to re-arm. */

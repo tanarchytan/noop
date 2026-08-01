@@ -71,8 +71,8 @@ class HealthConnectDailyRoutingTest {
     @Test
     fun gapFillBucketIsDisjointFromTheStrapBuckets() {
         // A source in two buckets would be merged against itself and its precedence would be undefined.
-        val strap = WhoopRepository.importedSourceIdsFor("whoop-AA:BB") +
-            WhoopRepository.computedSourceIdsFor("whoop-AA:BB")
+        val strap = WhoopRepository.importedSourceIdsFor(reAddedRegistry("whoop-AA:BB")) +
+            WhoopRepository.computedSourceIdsFor(reAddedRegistry("whoop-AA:BB"))
         assertTrue(WhoopRepository.GAP_FILL_SOURCE_IDS.none { it in strap })
     }
 
@@ -84,7 +84,7 @@ class HealthConnectDailyRoutingTest {
         val candidates = WhoopRepository.sourceCandidates(
             key = "hrv",
             preferredSource = WhoopRepository.WHOOP_SOURCE,
-            strapDeviceId = "whoop-AA:BB",
+            strapIds = WhoopRepository.importedSourceIdsFor(reAddedRegistry("whoop-AA:BB")),
         )
         assertEquals(WhoopRepository.HEALTH_CONNECT_SOURCE, candidates.last().source)
         assertEquals("hrv", candidates.last().key)

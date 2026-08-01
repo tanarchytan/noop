@@ -106,7 +106,7 @@ fun CoupledScreen(
     // span below resolves the IDENTICAL block (#294) instead of a screen-local heuristic.
     var habitualMidsleepSec by remember { mutableStateOf<Long?>(null) }
     LaunchedEffect(days) {
-        habitualMidsleepSec = runCatching { vm.repo.habitualMidsleepSec("my-whoop") }.getOrNull()
+        habitualMidsleepSec = runCatching { vm.repo.habitualMidsleepSec() }.getOrNull()
     }
 
     // Imported export-verbatim sleep figures (sleep_performance / need), preferred over the on-device

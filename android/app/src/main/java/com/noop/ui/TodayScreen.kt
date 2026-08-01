@@ -346,10 +346,10 @@ fun TodayScreen(
             StressModel.build(days, stored)?.score
         }.getOrNull()
         fitnessAgeToday = runCatching {
-            viewModel.repo.latestMetricComputedUnion(viewModel.activeStrapId, "fitness_age")?.value
+            viewModel.repo.latestMetricComputedUnion("fitness_age")?.value
         }.getOrNull()
         vitalityToday = runCatching {
-            viewModel.repo.latestMetricComputedUnion(viewModel.activeStrapId, "vitality")?.value
+            viewModel.repo.latestMetricComputedUnion("vitality")?.value
         }.getOrNull()
  // Cache the computed triple + signature so a later re-mount with unchanged data restores them and
  // short-circuits the history-wide read above.
@@ -415,8 +415,7 @@ fun TodayScreen(
                 viewModel.repo.appleDaily("health-connect", "0000-01-01", "9999-12-31")) {
                 r.activeKcal?.let { imported.putIfAbsent(r.day, it) }
             }
-            val est = viewModel.repo.resolvedSeries("active_kcal", "my-whoop", "0000-00-00", "9999-99-99",
-                strapDeviceId = viewModel.activeStrapId)
+            val est = viewModel.repo.resolvedSeries("active_kcal", "my-whoop", "0000-00-00", "9999-99-99")
                 .points.associate { it.day to it.value }
             (imported.keys + est.keys).maxOrNull()?.let { imported[it] ?: est[it] }
         }.getOrNull()
@@ -608,8 +607,7 @@ fun TodayScreen(
     var stepsEstForDay by remember { mutableStateOf<Int?>(null) }
     LaunchedEffect(days, selectedDayKey) {
         val byDay = runCatching {
-            viewModel.repo.resolvedSeries("steps_est", "my-whoop", "0000-00-00", "9999-99-99",
-                strapDeviceId = viewModel.activeStrapId)
+            viewModel.repo.resolvedSeries("steps_est", "my-whoop", "0000-00-00", "9999-99-99")
                 .values.associate { it.first to it.second }
         }.getOrDefault(emptyMap())
         stepsEstForDay = byDay[selectedDayKey]?.let { Math.round(it).toInt() }
@@ -623,8 +621,7 @@ fun TodayScreen(
     var restScoreForDay by remember { mutableStateOf<Double?>(null) }
     LaunchedEffect(days, selectedDayKey, selectedDayOffset) {
         val byDay = runCatching {
-            viewModel.repo.resolvedSeries("sleep_performance", "my-whoop", "0000-00-00", "9999-99-99",
-                strapDeviceId = viewModel.activeStrapId)
+            viewModel.repo.resolvedSeries("sleep_performance", "my-whoop", "0000-00-00", "9999-99-99")
                 .values.associate { it.first to it.second }
         }.getOrDefault(emptyMap())
  // : the tail-fallback (latest scored night) is now freshness-gated. A live 5.0 whose sleep never
@@ -649,8 +646,7 @@ fun TodayScreen(
         val resolved = mutableMapOf<String, String>()
         for (key in listOf("recovery", "strain", "sleep_performance")) {
             val win = runCatching {
-                viewModel.repo.resolvedSeries(key, "my-whoop", selectedDayKey, selectedDayKey,
-                    strapDeviceId = viewModel.activeStrapId)
+                viewModel.repo.resolvedSeries(key, "my-whoop", selectedDayKey, selectedDayKey)
                     .points.lastOrNull { it.day == selectedDayKey }?.source
             }.getOrNull()
             if (win != null) resolved[key] = win
@@ -677,7 +673,7 @@ fun TodayScreen(
  // re-added through the device manager banks its live HR under its own fresh id, so a pinned
  // "my-whoop" read returned nothing and Effort integrated to 0 off an empty series. Single-WHOOP
  // install resolves to "my-whoop" ⇒ one id ⇒ byte-identical read.
-            val todayHr = runCatching { viewModel.repo.hrSamplesUnion(viewModel.activeStrapId, start, now) }
+            val todayHr = runCatching { viewModel.repo.hrSamplesUnion(start, now) }
                 .getOrDefault(emptyList())
  // effMaxHR resolution matches AnalyticsEngine: manual HR-max override first, else Tanaka from age.
             val effMaxHR = profileStore.hrMaxOverride.takeIf { it > 0 }?.toDouble()
@@ -788,8 +784,7 @@ fun TodayScreen(
             null
         } else {
             runCatching {
-                viewModel.repo.resolvedSeries("recovery", "my-whoop", carriedDay, carriedDay,
-                    strapDeviceId = viewModel.activeStrapId)
+                viewModel.repo.resolvedSeries("recovery", "my-whoop", carriedDay, carriedDay)
                     .points.lastOrNull { it.day == carriedDay }
                     ?.source
             }.getOrNull()
@@ -849,7 +844,7 @@ fun TodayScreen(
  // Union of the active strap id + legacy "my-whoop" , NOT the literal id alone: after a
  // re-pair the fresh recordings live under "whoop-<id>", and a pinned read undercounted them
  // in the Whoop pill exactly like the feed dropped them from "Latest Workouts".
-        val whoopWorkouts = viewModel.repo.workoutsUnion(viewModel.deviceId, 0L, now)
+        val whoopWorkouts = viewModel.repo.workoutsUnion(0L, now)
  // Apple Health and Health Connect are separate sources (since ), keep them separate in the
  // provenance footer too, so Health Connect data isn't mislabelled under the "Apple Health" pill
  //. The recent-workouts list below still unions all sources for a combined feed.

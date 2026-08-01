@@ -65,7 +65,7 @@ fun TrendsScreen(vm: AppViewModel) {
         // Merged: imported WHOOP days win; on-device computed days gap-fill the trends. Reads the registry's
         // ACTIVE strap id so daysMerged resolves the active-id ∪ canonical "my-whoop" union (SPINE / #814) ,
         // a re-added strap's data and the canonical import both surface; a single-WHOOP install is unchanged.
-        fullHistory = vm.repo.daysMerged(vm.activeStrapId)
+        fullHistory = vm.repo.daysMerged()
     }
     val days = fullHistory ?: reactiveDays
 
@@ -107,8 +107,7 @@ fun TrendsScreen(vm: AppViewModel) {
     var sleepPerfByDay by remember { mutableStateOf<Map<String, Double>>(emptyMap()) }
     LaunchedEffect(days) {
         sleepPerfByDay = runCatching {
-            vm.repo.resolvedSeries("sleep_performance", "my-whoop", "0000-00-00", "9999-99-99",
-                strapDeviceId = vm.activeStrapId)
+            vm.repo.resolvedSeries("sleep_performance", "my-whoop", "0000-00-00", "9999-99-99")
                 .values.associate { it.first to it.second }
         }.getOrDefault(emptyMap())
     }

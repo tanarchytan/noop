@@ -30,6 +30,9 @@ class DeviceRegistryTest {
         override suspend fun pairedDevices(): List<PairedDeviceRow> =
             devices.values.sortedBy { it.addedAt }
 
+        override fun pairedDevicesFlow(): kotlinx.coroutines.flow.Flow<List<PairedDeviceRow>> =
+            kotlinx.coroutines.flow.flowOf(devices.values.sortedBy { it.addedAt })
+
         override suspend fun activeDeviceId(): String? =
             devices.values.firstOrNull { it.status == DeviceStatus.active.name }?.id
 

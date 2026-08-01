@@ -7,28 +7,14 @@ import org.junit.Test
 import java.lang.reflect.Proxy
 
 /**
- * #172 / #175 regression — resolvedSeries() must honour a caller-threaded ACTIVE strap id.
+ * resolvedSeries() resolves its strap candidates from the REGISTRY, so a score banked under a
+ * re-added strap's computed sibling is found with no id threaded by the caller. There is no
+ * strapDeviceId argument left to pass wrongly, which is what used to leave the Today Rest ring on
+ * "Calibrating" while the Sleep tab showed fully scored nights.
  *
- * After a strap remove+re-add the IntelligenceEngine banks computed scores under
- * "<activeStrapId>-noop", not the canonical "my-whoop-noop". resolvedSeries() defaults
- * strapDeviceId to the canonical "my-whoop", and before #175 no UI caller overrode it, so
- * [WhoopRepository.sourceCandidates] probed only the canonical pair: the Today Rest ring fell
- * back to "Calibrating — needs a tracked night" and the Key Metrics Rest card showed no data
- * while the Sleep tab (already on the #814 union spine) showed fully scored nights.
- *
- * These tests pin the BEHAVIOUR either side of that seam, complementing [ResolverUnionTest]
- * (which pins the candidate LIST shape, #1008) and the call-site census in
- * [com.noop.ui.ResolvedSeriesCallSiteAuditTest]:
- *
- *   • threading the active id resolves scores banked under its computed sibling (the #175 fix);
- *   • the legacy canonical default MISSES those same scores (the #172 symptom, kept as a
- *     documented failure shape so the default is never mistaken for re-add-safe);
- *   • a single-strap install (active == canonical) resolves byte-identically threaded or not;
- *   • the #1008 union still holds through the threaded read: active wins its day, canonical
- *     fills the days banked before the re-add.
- *
- * Driven through a Proxy-stub [WhoopDao] (no Room): the resolver only touches metricSeries +
- * dailyMetricsRange, answered from a fixture list; everything else throws.
+ * Complements [ResolverUnionTest] (the candidate LIST shape). Driven through a Proxy-stub
+ * [WhoopDao] (no Room): the resolver touches pairedDevices + metricSeries + dailyMetricsRange,
+ * answered from fixtures; everything else throws.
  */
 class ResolvedSeriesActiveStrapTest {
 
@@ -42,7 +28,10 @@ class ResolvedSeriesActiveStrapTest {
     /** Build a repository whose metricSeries answers from [rows] (filtered like the real query:
      *  by deviceId + key + day window, ascending) and whose dailyMetricsRange is empty. Every
      *  other dao call throws, proof the resolver reached past its contract. */
-    private fun repo(rows: List<MetricSeriesRow>): WhoopRepository {
+    private fun repo(
+        rows: List<MetricSeriesRow>,
+        devices: List<PairedDeviceRow> = singleWhoopRegistry(),
+    ): WhoopRepository {
         val dao = Proxy.newProxyInstance(
             WhoopDao::class.java.classLoader,
             arrayOf(WhoopDao::class.java),
@@ -58,6 +47,7 @@ class ResolvedSeriesActiveStrapTest {
                         .sortedBy { it.day }
                 }
                 "dailyMetricsRange" -> emptyList<DailyMetric>()
+                "pairedDevices" -> devices
                 else -> throw UnsupportedOperationException("resolver must not call ${method.name}")
             }
         } as WhoopDao
@@ -70,18 +60,16 @@ class ResolvedSeriesActiveStrapTest {
     // --- the #175 fix: threading the active id reaches the re-added strap's banked scores ---
 
     @Test
-    fun reAddedStrap_threadedActiveId_resolvesScoresBankedUnderItsComputedSibling() = runBlocking {
+    fun reAddedStrap_resolvesScoresBankedUnderItsComputedSibling() = runBlocking {
         val repo = repo(
             listOf(
                 row("$reAdded-noop", "2026-07-08", 91.0),
                 row("$reAdded-noop", "2026-07-09", 84.0),
             ),
+            devices = reAddedRegistry(reAdded),
         )
 
-        val resolved = repo.resolvedSeries(
-            "sleep_performance", canonical, from, to,
-            strapDeviceId = reAdded,
-        )
+        val resolved = repo.resolvedSeries("sleep_performance", canonical, from, to)
 
         assertEquals(
             listOf("2026-07-08" to 91.0, "2026-07-09" to 84.0),
@@ -90,32 +78,30 @@ class ResolvedSeriesActiveStrapTest {
         assertEquals(listOf("$reAdded-noop"), resolved.usedSources)
     }
 
-    /** The #172 symptom, pinned: the legacy canonical DEFAULT cannot see scores banked under the
-     *  re-added strap's computed sibling — exactly why the Rest ring read "Calibrating" while the
-     *  Sleep tab showed scored nights. If this test ever starts passing, the default grew re-add
-     *  awareness and the eight #175 call-site overrides can be reconsidered. */
+    /** A strap the registry does not carry is out of scope: its scores stay invisible, so widening the
+     *  scope to the registry never widened it to every id in the table. */
     @Test
-    fun reAddedStrap_legacyCanonicalDefault_missesTheBankedScores() = runBlocking {
+    fun aStrapAbsentFromTheRegistryStaysOutOfScope() = runBlocking {
         val repo = repo(
             listOf(
                 row("$reAdded-noop", "2026-07-08", 91.0),
                 row("$reAdded-noop", "2026-07-09", 84.0),
             ),
+            devices = singleWhoopRegistry(),
         )
 
-        // No strapDeviceId: the pre-#175 caller shape.
         val resolved = repo.resolvedSeries("sleep_performance", canonical, from, to)
 
         assertTrue(
-            "canonical-default read must not see \"$reAdded-noop\" rows (got ${resolved.values})",
+            "an unregistered id must not be read (got ${resolved.values})",
             resolved.values.isEmpty(),
         )
     }
 
-    // --- the #175 "byte-identical" claim for single-strap installs ---
+    // --- the single-strap install resolves exactly as it always did ---
 
     @Test
-    fun singleStrapInstall_threadedAndDefaultReadsAreIdentical() = runBlocking {
+    fun singleStrapInstallResolvesTheCanonicalPairOnly() = runBlocking {
         val repo = repo(
             listOf(
                 row("$canonical-noop", "2026-07-08", 77.0),
@@ -123,21 +109,19 @@ class ResolvedSeriesActiveStrapTest {
             ),
         )
 
-        val threaded = repo.resolvedSeries(
-            "sleep_performance", canonical, from, to,
-            strapDeviceId = canonical, // activeStrapId resolves to the canonical id
-        )
-        val default = repo.resolvedSeries("sleep_performance", canonical, from, to)
+        val resolved = repo.resolvedSeries("sleep_performance", canonical, from, to)
 
-        assertEquals(default.candidates, threaded.candidates)
-        assertEquals(default.values, threaded.values)
-        assertEquals(listOf("2026-07-08" to 77.0, "2026-07-09" to 82.0), threaded.values)
+        assertEquals(
+            listOf(canonical, "$canonical-noop", "health-connect"),
+            resolved.candidates.map { it.source },
+        )
+        assertEquals(listOf("2026-07-08" to 77.0, "2026-07-09" to 82.0), resolved.values)
     }
 
-    // --- the #1008 union, exercised through the threaded read ---
+    // --- the union, exercised through the registry-derived read ---
 
     @Test
-    fun threadedRead_activeWinsItsDay_canonicalFillsHistoryBankedBeforeReAdd() = runBlocking {
+    fun activeWinsItsDay_canonicalFillsHistoryBankedBeforeReAdd() = runBlocking {
         val repo = repo(
             listOf(
                 // History banked under the canonical pair BEFORE the re-add…
@@ -146,12 +130,10 @@ class ResolvedSeriesActiveStrapTest {
                 // …and the re-added strap's own scored night for the 8th.
                 row("$reAdded-noop", "2026-07-08", 91.0),
             ),
+            devices = reAddedRegistry(reAdded),
         )
 
-        val resolved = repo.resolvedSeries(
-            "sleep_performance", canonical, from, to,
-            strapDeviceId = reAdded,
-        )
+        val resolved = repo.resolvedSeries("sleep_performance", canonical, from, to)
 
         // Active pair wins the day it covers; canonical fills the pre-re-add day. Nothing dropped.
         assertEquals(

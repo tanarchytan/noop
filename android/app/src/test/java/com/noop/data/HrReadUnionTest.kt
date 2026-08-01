@@ -103,7 +103,7 @@ class HrReadUnionTest {
         assertEquals("pinned my-whoop read is empty for a re-added strap", 0, byId.getValue(canonical).size)
 
         // The union read (what hrSamplesUnion does) resolves the source ids active-first, then merges.
-        val ids = WhoopRepository.importedSourceIdsFor(reAdded) // [whoop-abc, my-whoop]
+        val ids = WhoopRepository.importedSourceIdsFor(reAddedRegistry(reAdded)) // [whoop-abc, my-whoop]
         assertEquals(listOf(reAdded, canonical), ids)
         val union = WhoopRepository.mergeHrByTs(ids.map { byId.getValue(it) })
 
@@ -121,7 +121,7 @@ class HrReadUnionTest {
 
         assertEquals("pinned my-whoop bucket read is empty for a re-added strap", 0, byId.getValue(canonical).size)
 
-        val ids = WhoopRepository.importedSourceIdsFor(reAdded)
+        val ids = WhoopRepository.importedSourceIdsFor(reAddedRegistry(reAdded))
         val union = WhoopRepository.mergeHrBucketsByStart(ids.map { byId.getValue(it) })
 
         assertEquals("the union surfaces the full dense bucket day", dense.size, union.size)
@@ -163,7 +163,7 @@ class HrReadUnionTest {
         // A pinned "my-whoop" read finds no class: this is the vanished-icon bug.
         assertEquals(null, byId.getValue(canonical).lastOrNull { it.activityClass != null }?.activityClass)
 
-        val ids = WhoopRepository.importedSourceIdsFor(reAdded)
+        val ids = WhoopRepository.importedSourceIdsFor(reAddedRegistry(reAdded))
         assertEquals("union surfaces the re-added strap's latest class", 2,
             WhoopRepository.latestActivityClass(ids.map { byId.getValue(it) }))
     }

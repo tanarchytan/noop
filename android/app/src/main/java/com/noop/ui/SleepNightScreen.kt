@@ -97,7 +97,7 @@ fun SleepNightScreen(
     LaunchedEffect(days) {
         // Thread the ACTIVE strap id so the learner unions active + canonical nights; it resolves the
         // canonical "my-whoop" sibling internally either way.
-        habitualMidsleep = runCatching { vm.repo.habitualMidsleepSec(vm.activeStrapId) }.getOrNull()
+        habitualMidsleep = runCatching { vm.repo.habitualMidsleepSec() }.getOrNull()
     }
 
     // Persisted per-epoch MOTION keyed by each session's detected startTs. `selectNight` reads only the
@@ -236,7 +236,7 @@ fun SleepNightScreen(
         } else {
             runCatching {
                 val (from, to) = hrChartWindow(onset, wake)
-                vm.repo.hrBucketsUnion(vm.activeStrapId, from, to, hrChartBucketSec(to - from))
+                vm.repo.hrBucketsUnion(from, to, hrChartBucketSec(to - from))
                     .map { TimelinePoint(it.bucket, it.avgBpm) }
             }.getOrDefault(emptyList())
         }
@@ -521,8 +521,8 @@ fun SleepNightScreen(
  */
 internal suspend fun loadSleeps(vm: AppViewModel): List<SleepSession> {
     val now = System.currentTimeMillis() / 1000L
-    val imported = vm.repo.sleepSessionsUnion(vm.activeStrapId, 0L, now)
-    val computed = vm.repo.computedSleepSessionsUnion(vm.activeStrapId, 0L, now)
+    val imported = vm.repo.sleepSessionsUnion(0L, now)
+    val computed = vm.repo.computedSleepSessionsUnion(0L, now)
     fun localEndDay(ts: Long): String {
         val offsetSec = (java.util.TimeZone.getDefault().getOffset(ts * 1000) / 1000).toLong()
         return AnalyticsEngine.dayString(ts, offsetSec)

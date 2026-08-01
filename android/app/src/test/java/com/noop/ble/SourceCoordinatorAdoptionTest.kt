@@ -36,6 +36,8 @@ class SourceCoordinatorAdoptionTest {
         val owners = LinkedHashMap<String, DayOwnershipRow>()
 
         override suspend fun pairedDevices(): List<PairedDeviceRow> = devices.values.sortedBy { it.addedAt }
+        override fun pairedDevicesFlow(): kotlinx.coroutines.flow.Flow<List<PairedDeviceRow>> =
+            kotlinx.coroutines.flow.flowOf(devices.values.sortedBy { it.addedAt })
         override suspend fun activeDeviceId(): String? =
             devices.values.firstOrNull { it.status == DeviceStatus.active.name }?.id
         override suspend fun upsertPairedDevice(row: PairedDeviceRow) { devices[row.id] = row }

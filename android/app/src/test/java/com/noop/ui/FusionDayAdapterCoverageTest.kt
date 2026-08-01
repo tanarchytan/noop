@@ -2,6 +2,7 @@ package com.noop.ui
 
 import com.noop.analytics.FusionSource
 import com.noop.data.DailyMetric
+import com.noop.data.PairedDeviceRow
 import com.noop.data.WhoopDao
 import com.noop.data.WhoopRepository
 import kotlinx.coroutines.runBlocking
@@ -25,7 +26,10 @@ class FusionDayAdapterCoverageTest {
 
     /** Build a repository whose `days(deviceId)` returns the fixture rows for that id (else empty), and
      *  whose every OTHER dao call throws (proof the adapter touches nothing else). */
-    private fun repo(rowsByDevice: Map<String, List<DailyMetric>>): WhoopRepository {
+    private fun repo(
+        rowsByDevice: Map<String, List<DailyMetric>>,
+        devices: List<PairedDeviceRow> = com.noop.data.singleWhoopRegistry(),
+    ): WhoopRepository {
         val dao = Proxy.newProxyInstance(
             WhoopDao::class.java.classLoader,
             arrayOf(WhoopDao::class.java),
@@ -35,6 +39,7 @@ class FusionDayAdapterCoverageTest {
                 // a trailing Continuation (suspend ABI) is ignored. Returning the list synchronously is the
                 // supported way to stub a suspend fun through a Java Proxy.
                 "days" -> rowsByDevice[args?.get(0) as String].orEmpty()
+                "pairedDevices" -> devices
                 // Anything else proves the adapter reached past its contract.
                 else -> throw UnsupportedOperationException("FusionDayAdapter must not call ${method.name}")
             }
@@ -74,16 +79,11 @@ class FusionDayAdapterCoverageTest {
         // The active band stores its day under its OWN id. A hardcoded "my-whoop" read would miss it; the
         // active-id read fuses it. (SPINE / #814.)
         val activeId = "polar-h10"
+        val devices = com.noop.data.reAddedRegistry(activeId)
         val repo = repo(
-            mapOf(activeId to listOf(sleepRow(activeId, dayA, 480.0))),
-        )
+            mapOf(activeId to listOf(sleepRow(activeId, dayA, 480.0))), devices)
 
-        // Default (hardcoded my-whoop) sees nothing for this band.
-        val hardcoded = FusionDayAdapter.buildFor(repo, dayA)
-        assertEquals(0, hardcoded.contributingSourceCount)
-
-        // Active-id read fuses the band's own row, and attributes it to the WHOOP_IMPORT strap slot.
-        val active = FusionDayAdapter.buildFor(repo, dayA, activeStrapId = activeId)
+        val active = FusionDayAdapter.buildFor(repo, dayA)
         val sleep = active.rows.firstOrNull { it.point.metric == "sleep_total_min" }
         assertEquals(480.0, sleep?.point?.value)
         assertEquals(FusionSource.WHOOP_IMPORT, sleep?.point?.winningSource)
@@ -95,8 +95,9 @@ class FusionDayAdapterCoverageTest {
         val activeId = "garmin-hrm"
         val repo = repo(
             mapOf("$activeId-noop" to listOf(sleepRow("$activeId-noop", dayA, 421.0))),
+            com.noop.data.reAddedRegistry(activeId),
         )
-        val rec = FusionDayAdapter.buildFor(repo, dayA, activeStrapId = activeId)
+        val rec = FusionDayAdapter.buildFor(repo, dayA)
         val sleep = rec.rows.firstOrNull { it.point.metric == "sleep_total_min" }
         assertEquals(421.0, sleep?.point?.value)
         assertEquals(FusionSource.NOOP_COMPUTED, sleep?.point?.winningSource)

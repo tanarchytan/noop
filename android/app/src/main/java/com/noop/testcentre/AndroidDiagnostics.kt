@@ -170,7 +170,7 @@ object AndroidDiagnostics {
                     "steps=${recent.count { it.steps != null }}/$n  " +
                     "kcal=${recent.count { it.activeKcalEst != null }}/$n")
             } else add("Recent: no day rows")
-            val dv = repo.dataVolumeSnapshot(active)
+            val dv = repo.dataVolumeSnapshot()
             add("Volume: rawRows=${dv.dbRows}  importedDays=${dv.importedDays}  workouts=${dv.workouts}")
         }.onFailure { add("(daily data unavailable: ${it.message})") }
     }

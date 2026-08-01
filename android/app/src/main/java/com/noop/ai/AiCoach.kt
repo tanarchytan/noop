@@ -88,7 +88,7 @@ class AiCoach(private val repo: WhoopRepository) {
         val groundedFull = if (consent) {
             // Merged read, NOT raw days(): a live-strap user's scores live under "my-whoop-noop"
             // and a raw read misses them, the coach then claimed it had no data. (#124)
-            val days = runCatching { repo.daysMerged(deviceId) }.getOrDefault(emptyList())
+            val days = runCatching { repo.daysMerged() }.getOrDefault(emptyList())
             // Derived stress: a single Baevsky Stress Index summary line over TODAY's R-R, read the
             // same way StressScreen does (repo.rrIntervals over the local day) and gated UNDER this same
             // `consent` block as the HRV/RHR summary, a derived number, never raw R-R egress. Absent
@@ -137,7 +137,7 @@ class AiCoach(private val repo: WhoopRepository) {
         val tzOffset = java.util.TimeZone.getDefault().getOffset(nowSeconds * 1_000L) / 1_000L
         val localNow = nowSeconds + tzOffset
         val from = (localNow - Math.floorMod(localNow, 86_400L)) - tzOffset
-        val rr = repo.rrIntervals(deviceId, from, nowSeconds, limit = 200_000)
+        val rr = repo.rrIntervalsUnion(from, nowSeconds, limit = 200_000)
         return stressIndexLine(rr)
     }
 
@@ -293,7 +293,7 @@ class AiCoach(private val repo: WhoopRepository) {
 
         // --- Strongest associations on the user's own logged days (recovery as the outcome) ---
         val behaviours = runCatching { journalBehaviours() }.getOrDefault(emptyMap())
-        val days = runCatching { repo.daysMerged(deviceId) }.getOrDefault(emptyList())
+        val days = runCatching { repo.daysMerged() }.getOrDefault(emptyList())
         if (behaviours.isNotEmpty() && days.isNotEmpty()) {
             val recoveryByDay = days.mapNotNull { d -> d.recovery?.let { d.day to it } }.toMap()
             val ranked = runCatching { EffectRanker.rank(behaviours, recoveryByDay, "Charge") }
