@@ -44,6 +44,10 @@ data class PairedDeviceRow(
      *  default matches the migration's, so a created and a migrated table agree. */
     @ColumnInfo(defaultValue = "1")
     val dataIncluded: Boolean = true,
+    /** The strap's own serial (GATT 0x2A25), read over a connection because it is not advertised. The
+     *  identity that survives an address change; null means unverified, and an unverified row is never
+     *  merged with anything. Resolution lives in [StrapIdentity]. */
+    val serial: String? = null,
 )
 
 /**

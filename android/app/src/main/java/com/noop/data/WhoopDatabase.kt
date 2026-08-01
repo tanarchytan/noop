@@ -79,12 +79,13 @@ abstract class WhoopDatabase : RoomDatabase() {
         }
 
         /**
-         * The data-inclusion axis: `pairedDevice.dataIncluded`, splitting read scope off the BLE
-         * `status`. Defaults to 1 so every existing row — archived ones included — keeps its history
-         * visible, which is the fault this migration exists to close.
+         * The two device columns v102 adds: `dataIncluded`, the read-scope axis split off the BLE
+         * `status` (default 1, so every existing row — archived ones included — keeps its history
+         * visible), and `serial`, the strap's own GATT 0x2A25 identity (null = unverified).
          */
         internal val DATA_INCLUDED_MIGRATION_SQL: List<String> = listOf(
             "ALTER TABLE `pairedDevice` ADD COLUMN `dataIncluded` INTEGER NOT NULL DEFAULT 1",
+            "ALTER TABLE `pairedDevice` ADD COLUMN `serial` TEXT",
         )
 
         /** v101 -> v102: additive, the two-axis device columns. v101 shipped to a device carrying real

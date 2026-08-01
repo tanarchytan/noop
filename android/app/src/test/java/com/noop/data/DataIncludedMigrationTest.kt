@@ -16,16 +16,26 @@ class DataIncludedMigrationTest {
     private val sql = WhoopDatabase.DATA_INCLUDED_MIGRATION_SQL
 
     @Test
-    fun migration_addsOneNotNullColumnDefaultingToIncluded() {
-        assertEquals("one ADD COLUMN", 1, sql.size)
+    fun migration_addsTheTwoDeviceColumns() {
+        assertEquals("two ADD COLUMNs", 2, sql.size)
         assertEquals(
             "ALTER TABLE `pairedDevice` ADD COLUMN `dataIncluded` INTEGER NOT NULL DEFAULT 1",
             sql[0],
         )
-        val up = sql[0].uppercase()
+        assertEquals("ALTER TABLE `pairedDevice` ADD COLUMN `serial` TEXT", sql[1])
+        val up = sql.joinToString(" ").uppercase()
         for (banned in listOf("DROP ", "DELETE ", "UPDATE ")) {
             assertFalse("the step must stay additive: $banned", up.contains(banned))
         }
+        assertFalse("an unread serial must read back null", sql[1].uppercase().contains("NOT NULL"))
+    }
+
+    /** Nothing ever rewrites a stored `deviceId`: provenance is the only record of which strap measured
+     *  what, so identity resolution moves an ADDRESS onto a row, never rows onto each other. */
+    @Test
+    fun theStepRewritesNoStoredDeviceId() {
+        assertFalse(sql.joinToString(" ").contains("deviceId"))
+        assertEquals(null, deviceRow("x").serial)
     }
 
     /** DEFAULT 1 is the fix: every row an existing install already carries — the removed ones included

@@ -69,6 +69,11 @@ interface DeviceRegistryDao {
     @Query("SELECT * FROM pairedDevice WHERE peripheralId = :peripheralId LIMIT 1")
     suspend fun deviceForPeripheralId(peripheralId: String): PairedDeviceRow?
 
+    /** Record the strap's own serial (GATT 0x2A25) on its row. The `deviceId` is never rewritten, so
+     *  every stored sample keeps the provenance it was written with ([StrapIdentity]). */
+    @Query("UPDATE pairedDevice SET serial = :serial WHERE id = :id")
+    suspend fun setSerial(id: String, serial: String?)
+
     // MARK: deleteAllData — clear one device's recordings across every deviceId-keyed table.
     //
     // Room has no dynamic table names, so each device-scoped table gets its own DELETE here; the

@@ -568,6 +568,13 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             ble.connectedPeripheralAddress
                 .collect { addr -> noopApp.sourceCoordinator.connectedPeripheralChanged(addr) }
         }
+        // The strap's own serial (GATT 0x2A25) lands a few seconds after the address and is what
+        // survives an address change, so a band that comes back on a new one reuses its dataset instead
+        // of minting a second. Same StateFlow distinct-emission property as the address above.
+        viewModelScope.launch {
+            ble.connectedStrapSerial
+                .collect { serial -> noopApp.sourceCoordinator.connectedSerialChanged(serial) }
+        }
         // Re-arm the strap's firmware alarm once per process-alive day. The firmware alarm is a single
         // absolute instant with NO recurrence and was previously re-armed ONLY on the bond edge — so a
         // strap that stays continuously bonded (a phone in range overnight) would fire once and then

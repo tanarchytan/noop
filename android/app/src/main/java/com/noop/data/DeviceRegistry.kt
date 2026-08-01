@@ -93,7 +93,12 @@ class DeviceRegistry(
         peripheralId: String,
         model: String,
         now: Long = System.currentTimeMillis() / 1000,
+        serial: String? = null,
     ): String = transactor.run {
+        serial?.let { s ->
+            dao.pairedDevices().firstOrNull { it.serial?.equals(s, ignoreCase = true) == true }
+                ?.let { return@run it.id }
+        }
         dao.deviceForPeripheralId(peripheralId)?.let { return@run it.id }
         val id = "whoop-$peripheralId"
         dao.pairedDevices().firstOrNull { it.id == id }?.let { return@run it.id }
@@ -109,11 +114,38 @@ class DeviceRegistry(
                 status = DeviceStatus.paired.name,
                 addedAt = now,
                 lastSeenAt = now,
+                serial = serial,
             ),
         )
         dao.demoteActive()
         dao.promote(id, now)
         id
+    }
+
+    /**
+     * Bind a connected strap's own serial (GATT 0x2A25) to a registry row, per [StrapIdentity]:
+     * re-point the row that already carries it (a band back on a new address), or record it on the row
+     * this address already pins. Returns the row a REUSE landed on, so the caller can make it the write
+     * target; null for every other outcome, which writes nothing but the serial.
+     */
+    suspend fun bindSerial(
+        serial: String,
+        address: String,
+        now: Long = System.currentTimeMillis() / 1000,
+    ): String? = transactor.run {
+        when (val outcome = StrapIdentity.resolve(serial, address, dao.pairedDevices())) {
+            is StrapIdentity.Outcome.Reuse -> {
+                dao.setPeripheralId(outcome.id, address)
+                dao.demoteActive()
+                dao.promote(outcome.id, now)
+                outcome.id
+            }
+            is StrapIdentity.Outcome.Backfill -> {
+                dao.setSerial(outcome.id, serial)
+                null
+            }
+            is StrapIdentity.Outcome.Ambiguous, StrapIdentity.Outcome.None -> null
+        }
     }
 
     /** The paired device whose `peripheralId` matches [peripheralId], or null if none — resolves a

@@ -56,6 +56,9 @@ class SourceCoordinatorAdoptionTest {
         override suspend fun setDataIncluded(id: String, included: Boolean) {
             devices[id]?.let { devices[id] = it.copy(dataIncluded = included) }
         }
+        override suspend fun setSerial(id: String, serial: String?) {
+            devices[id]?.let { devices[id] = it.copy(serial = serial) }
+        }
         override suspend fun deletePairedDevice(id: String) { devices.remove(id) }
         override suspend fun renameDevice(id: String, nickname: String?) {
             devices[id]?.let { devices[id] = it.copy(nickname = nickname) }
@@ -288,6 +291,81 @@ class SourceCoordinatorAdoptionTest {
         }
         coordinatorOver(dao).connectedPeripheralChanged("AA:BB:CC:DD:EE:01")
         assertEquals(1, dao.devices.size)
+    }
+
+    // ── serial identity (GATT 0x2A25) ───────────────────────────────────────────
+
+    /** THE swap regression: the band comes back on a NEW address, reports the serial a row already
+     *  carries, and lands on that row — its history intact and the write id pointed at it. */
+    @Test
+    fun aStrapBackOnANewAddressReusesItsRow() = runBlocking {
+        val dao = FakeRegistryDao().apply {
+            devices["whoop-old"] = whoopRow("whoop-old", peripheralId = "AA:BB:CC:DD:EE:01")
+                .copy(serial = "5A00960910")
+        }
+        var writeId: String? = null
+        val coordinator = coordinatorOver(dao, setWriteId = { writeId = it })
+
+        coordinator.connectedPeripheralChanged("AA:BB:CC:DD:EE:99")
+        coordinator.connectedSerialChanged("5A00960910")
+
+        assertEquals("one row, re-pointed", 1, dao.devices.size)
+        assertEquals("AA:BB:CC:DD:EE:99", dao.devices["whoop-old"]!!.peripheralId)
+        assertEquals("whoop-old", dao.devices["whoop-old"]!!.id)
+        assertEquals("whoop-old", writeId)
+    }
+
+    /** A NEW serial on a row that has none records it; nothing is re-pointed and no row is created. */
+    @Test
+    fun aFirstSerialIsRecordedOnTheConnectedRow() = runBlocking {
+        val dao = FakeRegistryDao().apply {
+            devices["whoop-a"] = whoopRow("whoop-a", peripheralId = "AA:BB:CC:DD:EE:01")
+        }
+        val coordinator = coordinatorOver(dao)
+
+        coordinator.connectedPeripheralChanged("AA:BB:CC:DD:EE:01")
+        coordinator.connectedSerialChanged("5A00960910")
+
+        assertEquals("5A00960910", dao.devices["whoop-a"]!!.serial)
+        assertEquals(1, dao.devices.size)
+    }
+
+    /** An unreadable serial changes nothing: the strap keeps the address-derived row it already has. */
+    @Test
+    fun anUnreadableSerialMergesNothing() = runBlocking {
+        val dao = FakeRegistryDao().apply {
+            devices["whoop-a"] = whoopRow("whoop-a", peripheralId = "AA:BB:CC:DD:EE:01")
+            devices["whoop-b"] = whoopRow("whoop-b", peripheralId = "AA:BB:CC:DD:EE:02")
+                .copy(status = DeviceStatus.paired.name, serial = "5A00960910")
+        }
+        val coordinator = coordinatorOver(dao)
+
+        coordinator.connectedPeripheralChanged("AA:BB:CC:DD:EE:01")
+        coordinator.connectedSerialChanged(null)
+        coordinator.connectedSerialChanged("   ")
+
+        assertEquals(2, dao.devices.size)
+        assertNull(dao.devices["whoop-a"]!!.serial)
+        assertEquals("AA:BB:CC:DD:EE:02", dao.devices["whoop-b"]!!.peripheralId)
+    }
+
+    /** Two rows, one serial: never merged. Both keep their own address and their own history. */
+    @Test
+    fun aSerialNamingASecondRowMergesNothing() = runBlocking {
+        val dao = FakeRegistryDao().apply {
+            devices["whoop-old"] = whoopRow("whoop-old", peripheralId = "AA:BB:CC:DD:EE:01")
+                .copy(status = DeviceStatus.paired.name, serial = "5A00960910")
+            devices["whoop-new"] = whoopRow("whoop-new", peripheralId = "AA:BB:CC:DD:EE:02")
+        }
+        val coordinator = coordinatorOver(dao)
+
+        coordinator.connectedPeripheralChanged("AA:BB:CC:DD:EE:02")
+        coordinator.connectedSerialChanged("5A00960910")
+
+        assertEquals(2, dao.devices.size)
+        assertEquals("AA:BB:CC:DD:EE:01", dao.devices["whoop-old"]!!.peripheralId)
+        assertNull(dao.devices["whoop-new"]!!.serial)
+        assertEquals("whoop-new", dao.activeDeviceId())
     }
 
     // ── make-active adopt-in-place (#74 keep) ───────────────────────────────────

@@ -200,6 +200,28 @@ class SourceCoordinator(
     }
 
     /**
+     * The connected strap reported its own serial (GATT 0x2A25). Bind it to a registry row
+     * ([DeviceRegistry.bindSerial]): a band back on a NEW address lands on the row that already holds
+     * its history, and a row pinned to this address that has no serial yet records one. A REUSE also
+     * re-points the write id, since that row IS the strap on the link. Ignored with no address (the
+     * serial always follows a connect) or on a non-WHOOP active source.
+     */
+    fun connectedSerialChanged(serial: String?) {
+        val address = connectedWhoopAddress
+        if (serial.isNullOrBlank() || address == null) return
+        scope.launch {
+            val devices = registry.all()
+            val activeId = registry.activeDeviceId()
+            if (activeId != null && !isWhoop(activeId, devices)) return@launch
+            val reused = registry.bindSerial(serial, address) ?: return@launch
+            setWhoopActiveDeviceId(reused)
+            activeWhoopId = reused
+            lastSeenId = reused
+            log("Strap serial $serial identifies $reused — reusing its dataset at $address.")
+        }
+    }
+
+    /**
      * Lazy creation: the registry names no active device and a WHOOP is on the link, so this is the
      * first strap this install has met — mint its row via [DeviceRegistry.adoptStrap] and point the
      * write id at it. Returns the new id, or null when some other device kind already holds the

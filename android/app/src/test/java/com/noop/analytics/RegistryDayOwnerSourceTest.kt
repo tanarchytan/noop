@@ -45,6 +45,9 @@ class RegistryDayOwnerSourceTest {
         override suspend fun setDataIncluded(id: String, included: Boolean) {
             devices[id]?.let { devices[id] = it.copy(dataIncluded = included) }
         }
+        override suspend fun setSerial(id: String, serial: String?) {
+            devices[id]?.let { devices[id] = it.copy(serial = serial) }
+        }
         override suspend fun deletePairedDevice(id: String) { devices.remove(id) }
         override suspend fun renameDevice(id: String, nickname: String?) {}
         override suspend fun setPeripheralId(id: String, peripheralId: String?) {
