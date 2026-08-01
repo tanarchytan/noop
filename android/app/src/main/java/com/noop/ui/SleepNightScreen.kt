@@ -551,9 +551,9 @@ internal suspend fun loadSleeps(vm: AppViewModel): List<SleepSession> {
 private const val SLEEP_STRESS_ROW_LIMIT = 60_000
 
 /**
- * One whoop-rs `sleep_stress` read per night in [spans]: that night's own HR + R-R, bucketed by the
- * same aggregator the Stress screen's day path uses and scored with no hour-of-day filter. A night
- * that scored no bucket is dropped rather than drawn as a zero.
+ * One whoop-rs `sleep_stress` read per night in [spans]: that night's HR + R-R over the registry read
+ * scope, bucketed by the same aggregator the Stress screen's day path uses and scored with no
+ * hour-of-day filter. A night that scored no bucket is dropped rather than drawn as a zero.
  */
 internal suspend fun loadSleepStress(
     vm: AppViewModel,
@@ -563,8 +563,8 @@ internal suspend fun loadSleepStress(
     return spans.mapIndexedNotNull { i, (onsetTs, wakeTs) ->
         if (wakeTs <= onsetTs) return@mapIndexedNotNull null
         val tzOffsetSec = (java.util.TimeZone.getDefault().getOffset(onsetTs * 1000L) / 1000).toLong()
-        val hr = vm.repo.hrSamples(vm.activeStrapId, onsetTs, wakeTs, SLEEP_STRESS_ROW_LIMIT)
-        val rr = vm.repo.rrIntervals(vm.activeStrapId, onsetTs, wakeTs, SLEEP_STRESS_ROW_LIMIT)
+        val hr = vm.repo.hrSamplesUnion(onsetTs, wakeTs, SLEEP_STRESS_ROW_LIMIT)
+        val rr = vm.repo.rrIntervalsUnion(onsetTs, wakeTs, SLEEP_STRESS_ROW_LIMIT)
         val info = DaytimeStress.analyzeNight(hr, rr, tzOffsetSec)
         if (info.hours.isEmpty()) {
             null
