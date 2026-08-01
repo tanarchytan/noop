@@ -767,35 +767,37 @@ object AnalyticsEngine {
  */
 object RestScorer {
 
+    // Every value below is READ from whoop-rs (physio-algo rest), never declared here: one displayed
+    // Rest score reads them, so they have exactly one owner.
+
     /** Component weights (sum 1.0 when all present). */
-    const val wDuration: Double = 0.50
-    const val wEfficiency: Double = 0.20
-    const val wRestorative: Double = 0.20
-    const val wConsistency: Double = 0.10
+    val wDuration: Double = RustScores.restCfg.wDuration
+    val wEfficiency: Double = RustScores.restCfg.wEfficiency
+    val wRestorative: Double = RustScores.restCfg.wRestorative
+    val wConsistency: Double = RustScores.restCfg.wConsistency
 
     /** Default personal sleep need (hours) before any recent-average refinement. */
-    const val defaultSleepNeedHours: Double = 8.0
+    val defaultSleepNeedHours: Double = RustScores.restCfg.defaultSleepNeedHours
 
     /**
      * Healthy restorative (deep + REM) share of asleep time. A share at/above this earns full
-     * restorative credit; below it scales linearly. ~0.50 reflects ~20% deep + ~25–30% REM in a
-     * well-structured night.
+     * restorative credit; below it scales linearly.
      */
-    const val restorativeTargetShare: Double = 0.50
+    val restorativeTargetShare: Double = RustScores.restCfg.restorativeTargetShare
 
     /**
-     * Deep-sleep share of asleep time that earns FULL restorative credit (~13% is the healthy floor
-     * for adults; below it the restorative term scales down toward [deepFloorFactor]). Prevents a
-     * night with normal REM but almost no deep from earning near-full restorative credit.
+     * Deep-sleep share of asleep time that earns FULL restorative credit; below it the restorative
+     * term scales down toward [deepFloorFactor]. Prevents a night with normal REM but almost no deep
+     * from earning near-full restorative credit.
      */
-    const val deepShareTarget: Double = 0.13
+    val deepShareTarget: Double = RustScores.restCfg.deepShareTarget
 
-    /** Most the restorative term is scaled down when deep is ~absent — half, never zeroed, so a
-     *  low-deep night reads honestly without the whole night tanking. */
-    const val deepFloorFactor: Double = 0.5
+    /** Most the restorative term is scaled down when deep is ~absent — never zeroed, so a low-deep
+     *  night reads honestly without the whole night tanking. */
+    val deepFloorFactor: Double = RustScores.restCfg.deepFloorFactor
 
     /** Neutral consistency (fraction) used when the caller supplies no regularity signal. */
-    const val NEUTRAL_CONSISTENCY: Double = 0.5
+    val NEUTRAL_CONSISTENCY: Double = RustScores.restCfg.neutralConsistency
 
     /**
      * Diagnostic (Sleep & Rest test mode): the motion-coverage + staging context behind the Rest

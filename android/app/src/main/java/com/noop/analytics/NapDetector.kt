@@ -68,11 +68,11 @@ data class NapConfig(
 object NapDetector {
 
     // ── Defaults (the NapConfig data-class reads these) ──────────────────────
-    const val DEFAULT_MIN_NAP_MIN: Int = 20
-    const val DEFAULT_MAX_NAP_MIN: Int = 90
-    const val DEFAULT_STILL_THRESHOLD_G: Double = 0.08
-    const val DEFAULT_HR_SETTLE_MARGIN_BPM: Int = 8
-    const val DEFAULT_SMOOTH_WINDOW_S: Double = 120.0
+    val DEFAULT_MIN_NAP_MIN: Int = RustScores.napDefaults.minNapMin
+    val DEFAULT_MAX_NAP_MIN: Int = RustScores.napDefaults.maxNapMin
+    val DEFAULT_STILL_THRESHOLD_G: Double = RustScores.napDefaults.stillThresholdG
+    val DEFAULT_HR_SETTLE_MARGIN_BPM: Int = RustScores.napDefaults.hrSettleMarginBpm
+    val DEFAULT_SMOOTH_WINDOW_S: Double = RustScores.napDefaults.smoothWindowS
 
     /**
      * Classify the candidate window for a short nap. Pass the freshly-arrived [gravity] + [hr] for the

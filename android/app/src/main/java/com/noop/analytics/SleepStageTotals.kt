@@ -123,12 +123,12 @@ object SleepStageTotals {
     /** Broad overnight band, NOT a gate. The band is [OVERNIGHT_START_HOUR, OVERNIGHT_END_HOUR) local,
      *  reconciled with the detector's `SleepStager.isOvernightOnset` window [20:00, 11:00) so the
      *  selector and detector agree. The alignment bonus it used to feed is computed in whoop-rs. */
-    const val OVERNIGHT_START_HOUR = 20
+    val OVERNIGHT_START_HOUR: Int = RustScores.sleepWindowCfg.overnightStartHour.toInt()
 
     /** Local hour (exclusive) that closes the cold-start overnight band, matching the detector's
      *  [20:00, 11:00) onset window. A block onset in [OVERNIGHT_END_HOUR, OVERNIGHT_START_HOUR)
      *  is daytime; everything else is overnight. */
-    const val OVERNIGHT_END_HOUR = 11
+    val OVERNIGHT_END_HOUR: Int = RustScores.sleepWindowCfg.overnightEndHour.toInt()
 
     /** Seconds in a day, for circular time-of-day math. */
     const val SECONDS_PER_DAY = 86_400L
@@ -425,7 +425,7 @@ object SleepStageTotals {
 
     /** Minimum number of DAYS (with at least one block) before a habitual midsleep is trusted; a shorter
      *  history returns null (cold-start). ~2 weeks. */
-    const val HABITUAL_MIN_DAYS = 14
+    val HABITUAL_MIN_DAYS: Int = RustScores.sleepWindowCfg.habitualMinDays.toInt()
 
     /** The user's habitual midsleep as a LOCAL TIME-OF-DAY (seconds in [0, 86400)), or null when history is
      *  too short (cold-start): the CIRCULAR MEAN of the midpoint-time-of-day of the LONGEST block per local

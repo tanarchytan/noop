@@ -24,7 +24,7 @@ package com.noop.analytics
 object StressIndex {
 
     /** Minimum clean intervals before an SI is computed (the histogram's honest-data gate). */
-    const val MIN_BEATS: Int = 20
+    val MIN_BEATS: Int = RustScores.hrvCleanCfg.minBeats.toInt()
 
     /** Intermediate histogram terms, exposed so the UI can show the "why" behind an SI. */
     data class Components(

@@ -28,13 +28,13 @@ object SleepStager {
     // what the two predicates below read.
 
     /** Data gap (minutes) that always breaks a run. */
-    const val maxGapMin: Int = 20
+    val maxGapMin: Int = RustScores.sleepWindowCfg.maxGapMin.toInt()
 
     /** Local hour (inclusive) at which the daytime band begins. */
-    const val daytimeBandStartHour: Int = 11
+    val daytimeBandStartHour: Int = RustScores.sleepWindowCfg.daytimeBandStartHour.toInt()
 
     /** Local hour (exclusive) at which the daytime band ends: an onset in [start, end) is daytime. */
-    const val daytimeBandEndHour: Int = 20
+    val daytimeBandEndHour: Int = RustScores.sleepWindowCfg.daytimeBandEndHour.toInt()
 
     /** Seconds in a calendar day (for local-hour-of-day arithmetic). */
     const val secondsPerDay: Long = 86_400L
@@ -44,7 +44,7 @@ object SleepStager {
      * timespan. A dense 4.0 night has gravity spanning the whole HR window (≈1.0) and never trips
      * this; a 5.0 backfill clumps gravity into a fraction of the night.
      */
-    const val sparseGravitySpanFrac: Double = 0.5
+    val sparseGravitySpanFrac: Double = RustScores.sleepWindowCfg.sparseGravitySpanFrac
 
     // ── Sparse-gravity gate ────────────────────────────────────────────────────
 

@@ -117,7 +117,7 @@ object RecoveryForecaster {
     const val solidNeedNights: Int = 7
 
     /** Default personal sleep need (hours) when the caller has none to refine it. */
-    const val defaultNeedHours: Double = RestScorer.defaultSleepNeedHours
+    val defaultNeedHours: Double = RestScorer.defaultSleepNeedHours
 
     /**
      * Project tomorrow-morning Charge from tonight's known levers. APPROXIMATE; null

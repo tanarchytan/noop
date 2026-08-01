@@ -18,19 +18,20 @@ object StrainScorer {
 
     // ---- Constants ----
 
+    // The gates, the scale top and the log-map denominator are READ from whoop-rs (physio-algo
+    // strain); one displayed Effort score reads them, so they have exactly one owner.
+
     /** Minimum HR readings before computing strain on a DENSE stream (≈10 min at 1 Hz). */
-    const val minReadings: Int = 600
-    /** Wall-clock coverage (seconds) qualifying a sparse stream. 600 s = 10 min, matching the dense
-     *  gate's ≈10 min of 600 × 1 Hz samples, so both cadences trust the number at the same age. */
-    const val minSpanSeconds: Int = 600
+    val minReadings: Int = RustScores.strainCfg.minReadings.toInt()
+
+    /** Wall-clock coverage (seconds) qualifying a sparse stream, matching the dense gate’s span. */
+    val minSpanSeconds: Int = RustScores.strainCfg.minSpanSeconds.toInt()
 
     /** Top of the Effort scale (0–100). */
-    const val maxStrain: Double = 100.0
+    val maxStrain: Double = RustScores.strainCfg.maxStrain
 
-    /** Log-map denominator D = 7200 + 1: the Edwards daily ceiling (zone weight 5 for 24 h = 7200)
-     *  maps to exactly maxStrain, so ln(7201)/ln(7201) = 1 and the curve's saturation point is
-     *  independent of maxStrain (the rescale is a pure linear scale of the curve). */
-    const val strainDenominator: Double = 7201.0
+    /** Log-map denominator: the Edwards daily ceiling maps to exactly [maxStrain]. */
+    val strainDenominator: Double = RustScores.strainCfg.denominator
 
     const val defaultRestingHR: Double = 60.0
 

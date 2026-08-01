@@ -26,14 +26,14 @@ object Baselines {
     // ─────────────────────────────────────────────────────────────────────────
 
     /** Minimum valid nights before "provisionally" trusted. */
-    const val minNightsSeed: Int = 4
+    val minNightsSeed: Int = RustScores.baselinesCfg.minNightsSeed
 
     /** Minimum valid nights before fully trusted. */
-    const val minNightsTrust: Int = 14
+    val minNightsTrust: Int = RustScores.baselinesCfg.minNightsTrust
 
     /** Valid-night count below which the baseline is "young": fast center adaptation + suspended
      *  hard-outlier gate. Chosen so convergence happens in days, not weeks. */
-    const val earlyAdaptNights: Int = 8
+    val earlyAdaptNights: Int = RustScores.baselinesCfg.earlyAdaptNights
 
     /** SharedPreferences key for the manual HRV-baseline recalibration epoch (epoch SECONDS).
      *  0 / absent = no recalibration. Written by the Settings "Recalibrate HRV baseline" button. */
