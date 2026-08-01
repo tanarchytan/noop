@@ -49,7 +49,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         PpgWaveformSampleEntity::class,
         V18Sample::class,
     ],
-    version = 102,
+    version = 101,
     exportSchema = false,
 )
 abstract class WhoopDatabase : RoomDatabase() {
@@ -59,7 +59,7 @@ abstract class WhoopDatabase : RoomDatabase() {
         const val DB_NAME = "noop_whoop.db"
 
         /** Current Room schema version. Must match [Database.version]. */
-        const val SCHEMA_VERSION = 102
+        const val SCHEMA_VERSION = 101
 
         /**
          * Ordered list of all Room migrations, earliest to latest, used by
@@ -74,26 +74,39 @@ abstract class WhoopDatabase : RoomDatabase() {
             MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14,
             MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18,
             MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21, MIGRATION_21_22,
-            MIGRATION_100_101, MIGRATION_101_102,
+            MIGRATION_100_101,
             ) + UPSTREAM_CATCHALL_MIGRATIONS
         }
 
         /**
-         * The two device columns v102 adds: `dataIncluded`, the read-scope axis split off the BLE
-         * `status` (default 1, so every existing row — archived ones included — keeps its history
-         * visible), and `serial`, the strap's own GATT 0x2A25 identity (null = unverified).
+         * The two device columns [MIGRATION_100_101] adds, each beside the column name that proves it
+         * already ran: `dataIncluded`, the read-scope axis split off the BLE `status` (default 1, so
+         * every row — archived ones included — stays visible), and `serial`, the strap's GATT identity.
          */
-        internal val DATA_INCLUDED_MIGRATION_SQL: List<String> = listOf(
-            "ALTER TABLE `pairedDevice` ADD COLUMN `dataIncluded` INTEGER NOT NULL DEFAULT 1",
-            "ALTER TABLE `pairedDevice` ADD COLUMN `serial` TEXT",
+        internal val DEVICE_SCOPE_COLUMNS: List<Pair<String, String>> = listOf(
+            "dataIncluded" to "ALTER TABLE `pairedDevice` ADD COLUMN `dataIncluded` INTEGER NOT NULL DEFAULT 1",
+            "serial" to "ALTER TABLE `pairedDevice` ADD COLUMN `serial` TEXT",
         )
 
-        /** v101 -> v102: additive, the two-axis device columns. v101 shipped to a device carrying real
-         *  history, so its columns cannot grow further without breaking Room's identity check. */
-        internal val MIGRATION_101_102 = object : Migration(101, 102) {
-            override fun migrate(db: SupportSQLiteDatabase) {
-                for (stmt in DATA_INCLUDED_MIGRATION_SQL) db.execSQL(stmt)
-            }
+        /** The [DEVICE_SCOPE_COLUMNS] statements alone, in the order the migration runs them. */
+        internal val DATA_INCLUDED_MIGRATION_SQL: List<String> = DEVICE_SCOPE_COLUMNS.map { it.second }
+
+        /**
+         * The [DEVICE_SCOPE_COLUMNS] statements a store at [SCHEMA_VERSION] still needs, given the
+         * `pairedDevice` columns it already has. Empty for a current store; the two ALTERs for one
+         * taken before v101 absorbed them. Drives [healDeviceScopeColumns].
+         */
+        internal fun missingDeviceScopeSql(presentColumns: Set<String>): List<String> =
+            DEVICE_SCOPE_COLUMNS.filterNot { (name, _) -> presentColumns.any { it.equals(name, ignoreCase = true) } }
+                .map { it.second }
+
+        /**
+         * Bring a store already at [SCHEMA_VERSION] up to the current `pairedDevice` shape. v101 was
+         * unreleased when it absorbed [DEVICE_SCOPE_COLUMNS], so a backup taken at the earlier v101
+         * carries the version without the columns. Additive and idempotent — a current store is untouched.
+         */
+        internal fun healDeviceScopeColumns(db: SupportSQLiteDatabase) {
+            for (stmt in missingDeviceScopeSql(columnNames(db, "pairedDevice"))) db.execSQL(stmt)
         }
 
         /**
@@ -110,8 +123,8 @@ abstract class WhoopDatabase : RoomDatabase() {
         /**
          * Additive columns off the v1-tan base: the beat's position within its second (so RMSSD reads
          * beats in emission order, not by magnitude), the daily heart-rate zone minutes, the v18
-         * per-second channels the stream funnel was decoding but dropping, and the hand-set wake time.
-         * All nullable, so existing rows read back null.
+         * per-second channels the stream funnel was decoding but dropping, the hand-set wake time, and
+         * [DEVICE_SCOPE_COLUMNS]. Nullable but for `dataIncluded`, whose default keeps every row readable.
          */
         internal val MIGRATION_100_101 = object : Migration(100, 101) {
             override fun migrate(db: SupportSQLiteDatabase) {
@@ -130,6 +143,7 @@ abstract class WhoopDatabase : RoomDatabase() {
                         "PRIMARY KEY(`deviceId`, `ts`))",
                 )
                 for (stmt in SLEEP_END_ADJUSTED_MIGRATION_SQL) db.execSQL(stmt)
+                for (stmt in DATA_INCLUDED_MIGRATION_SQL) db.execSQL(stmt)
                 // The pre-registry bucket was seeded as a live BLE device, so an install that never
                 // paired a strap listed one that does not exist. Retag it for what it is. A bucket a
                 // strap has since adopted (peripheralId set) is a real device and keeps its kind.
@@ -603,18 +617,22 @@ abstract class WhoopDatabase : RoomDatabase() {
             return c.use { it.moveToFirst() && it.getInt(0) > 0 }
         }
 
-        /** True if [column] exists on [table]. */
-        private fun columnExists(db: SupportSQLiteDatabase, table: String, column: String): Boolean {
+        /** Every column name on [table], in declaration order; empty when the table is absent. */
+        private fun columnNames(db: SupportSQLiteDatabase, table: String): Set<String> {
             val c = db.query("PRAGMA table_info(`$table`)")
             val nameIdx = c.getColumnIndex("name")
             return c.use {
+                val names = LinkedHashSet<String>()
                 while (it.moveToNext()) {
-                    if (nameIdx >= 0 && it.getString(nameIdx).equals(column, ignoreCase = true))
-                        return@use true
+                    if (nameIdx >= 0) it.getString(nameIdx)?.let(names::add)
                 }
-                false
+                names
             }
         }
+
+        /** True if [column] exists on [table]. */
+        private fun columnExists(db: SupportSQLiteDatabase, table: String, column: String): Boolean =
+            columnNames(db, table).any { it.equals(column, ignoreCase = true) }
 
         private fun build(appContext: Context): WhoopDatabase =
             Room.databaseBuilder(appContext, WhoopDatabase::class.java, DB_NAME)
