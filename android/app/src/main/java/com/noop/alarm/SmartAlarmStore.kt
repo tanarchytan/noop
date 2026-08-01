@@ -1,6 +1,7 @@
 package com.noop.alarm
 
 import android.content.Context
+import com.noop.analytics.CalendarDay
 import android.content.SharedPreferences
 
 /**
@@ -27,8 +28,8 @@ class SmartAlarmStore(private val prefs: SharedPreferences) {
 
     /** Earliest acceptable wake time, minutes since midnight. Default 06:30. */
     var targetMinutes: Int
-        get() = prefs.getInt(KEY_TARGET, DEFAULT_TARGET).coerceIn(0, MINUTES_PER_DAY - 1)
-        set(v) = prefs.edit().putInt(KEY_TARGET, v.coerceIn(0, MINUTES_PER_DAY - 1)).apply()
+        get() = prefs.getInt(KEY_TARGET, DEFAULT_TARGET).coerceIn(0, CalendarDay.MINUTES_PER_DAY - 1)
+        set(v) = prefs.edit().putInt(KEY_TARGET, v.coerceIn(0, CalendarDay.MINUTES_PER_DAY - 1)).apply()
 
     /** Window length in minutes — how long after [targetMinutes] the guaranteed hard deadline sits.
      *  Clamped 5..60; default 30. A 0 window would collapse smart + fallback into one exact alarm,
@@ -56,7 +57,6 @@ class SmartAlarmStore(private val prefs: SharedPreferences) {
         private const val KEY_DEADLINE_MS = "alarm.scheduledDeadlineMs"
         private const val KEY_WINDOW_START_MS = "alarm.scheduledWindowStartMs"
 
-        const val MINUTES_PER_DAY = 24 * 60
         const val DEFAULT_TARGET = 6 * 60 + 30   // 06:30
         const val DEFAULT_WINDOW = 30
         const val WINDOW_MIN = 5

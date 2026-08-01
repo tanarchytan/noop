@@ -5,6 +5,7 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.os.Build
+import com.noop.analytics.CalendarDay
 import java.util.Calendar
 
 /**
@@ -54,7 +55,7 @@ object SmartAlarmScheduler {
         // The window's hard edge can roll past midnight (e.g. 23:50 + 30). Compute the next wall-clock
         // occurrence of that absolute minute-of-day, then derive the window-start from it so the two
         // edges stay on the same night even across the midnight boundary.
-        val deadline = nextOccurrence(deadlineMin % SmartAlarmStore.MINUTES_PER_DAY)
+        val deadline = nextOccurrence(deadlineMin % CalendarDay.MINUTES_PER_DAY)
         // Re-arm after a fire (audit): when the smart alarm fires EARLY on a light-sleep phase (e.g. 06:35
         // for a 07:00 deadline), the deadline's next occurrence is still TODAY 07:00 — so a plain re-arm
         // scheduled a second guaranteed wake the SAME morning, waking the user again. We just woke them

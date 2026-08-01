@@ -100,7 +100,7 @@ class NutritionCsvImporterTest {
         assertEquals(150.0, rows.value("2026-06-03", "protein_g"), 1e-9)
         assertEquals(180.0, rows.value("2026-06-03", "carbs_g"), 1e-9)
         assertEquals(60.0, rows.value("2026-06-03", "fat_g"), 1e-9)
-        assertEquals(180 * NutritionCsvImporter.LB_TO_KG, rows.value("2026-06-03", "weight"), 1e-6)
+        assertEquals(180 * IngestUnits.LB_TO_KG, rows.value("2026-06-03", "weight"), 1e-6)
     }
 
     @Test

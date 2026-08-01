@@ -3,8 +3,6 @@ package com.noop.analytics
 import com.noop.data.GravitySample
 import com.noop.data.HrSample
 import com.noop.data.RrInterval
-import kotlin.math.abs
-import kotlin.math.sqrt
 
 /*
  * SleepStager.kt — app-side seam over the whoop-rs sleep engine.
@@ -35,9 +33,6 @@ object SleepStager {
 
     /** Local hour (exclusive) at which the daytime band ends: an onset in [start, end) is daytime. */
     val daytimeBandEndHour: Int = RustScores.sleepWindowCfg.daytimeBandEndHour.toInt()
-
-    /** Seconds in a calendar day (for local-hour-of-day arithmetic). */
-    const val secondsPerDay: Long = 86_400L
 
     /**
      * Gravity is "sparse" when its timespan covers less than this fraction of the HR-sample
@@ -86,7 +81,7 @@ object SleepStager {
      * may carry its tail past the daytime-band start (a late wake).
      */
     internal fun isOvernightOnset(start: Long, tzOffsetSeconds: Long): Boolean {
-        val secOfDay = Math.floorMod(start + tzOffsetSeconds, secondsPerDay)
+        val secOfDay = Math.floorMod(start + tzOffsetSeconds, CalendarDay.SECONDS_PER_DAY)
         val hour = (secOfDay / 3_600L).toInt()
         return !(hour >= daytimeBandStartHour && hour < daytimeBandEndHour)
     }
@@ -100,46 +95,6 @@ object SleepStager {
      */
     val respPlausibleRangeBpm: ClosedFloatingPointRange<Double> = 8.0..25.0
 
-    /**
-     * Local-maxima peak finder mirroring scipy.find_peaks(distance, height):
-     * a sample is a peak if strictly greater than both neighbours and ≥ height;
-     * peaks closer than `distance` are resolved by keeping the taller.
-     */
-    internal fun findPeaks(x: List<Double>, distance: Int, height: Double): List<Int> {
-        val n = x.size
-        if (n < 3) return emptyList()
-        val candidates = ArrayList<Int>()
-        var i = 1
-        while (i < n - 1) {
-            if (x[i] > x[i - 1] && x[i] >= height) {
-                // handle flat plateaus: find right edge of the plateau
-                var j = i
-                while (j + 1 < n && x[j + 1] == x[i]) j += 1
-                if (j + 1 < n && x[j + 1] < x[i]) {
-                    candidates.add((i + j) / 2) // plateau midpoint
-                }
-                i = j + 1
-            } else {
-                i += 1
-            }
-        }
-        if (distance <= 1 || candidates.isEmpty()) return candidates
-        // Enforce minimum distance: greedily keep tallest, scipy-style.
-        val byHeight = candidates.sortedByDescending { x[it] }
-        val keep = BooleanArray(candidates.size) { true }
-        val indexOf = HashMap<Int, Int>(candidates.size)
-        for ((off, c) in candidates.withIndex()) indexOf[c] = off
-        for (p in byHeight) {
-            val pi = indexOf[p] ?: continue
-            if (!keep[pi]) continue
-            for ((qi, q) in candidates.withIndex()) {
-                if (qi != pi && keep[qi]) {
-                    if (abs(q - p) < distance) keep[qi] = false
-                }
-            }
-        }
-        return candidates.filterIndexed { off, _ -> keep[off] }.sorted()
-    }
 
     // ── Per-session HR / HRV ─────────────────────────────────────────────────
 
@@ -240,17 +195,4 @@ object SleepStager {
         )
     }
 
-    // ── Small stats helpers ───────────────────────────────────────────────────
-
-    /** Population standard deviation (numpy default, ddof=0). */
-    internal fun standardDeviation(values: List<Double>): Double {
-        if (values.isEmpty()) return 0.0
-        val mean = values.sum() / values.size.toDouble()
-        var ss = 0.0
-        for (v in values) {
-            val d = v - mean
-            ss += d * d
-        }
-        return sqrt(ss / values.size.toDouble())
-    }
 }

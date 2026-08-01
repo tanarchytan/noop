@@ -131,7 +131,6 @@ object SleepStageTotals {
     val OVERNIGHT_END_HOUR: Int = RustScores.sleepWindowCfg.overnightEndHour.toInt()
 
     /** Seconds in a day, for circular time-of-day math. */
-    const val SECONDS_PER_DAY = 86_400L
 
     /** One candidate block for main-night selection: its effective onset and end (unix seconds). A user
      *  wake/bed edit moves [end], never the detected onset key. */
@@ -159,7 +158,7 @@ object SleepStageTotals {
      *  the scored selector, which runs in whoop-rs. [offsetSec] is seconds EAST of UTC. */
     fun isOvernightOnset(ts: Long, offsetSec: Long): Boolean {
         val local = ts + offsetSec
-        val secOfDay = ((local % SECONDS_PER_DAY) + SECONDS_PER_DAY) % SECONDS_PER_DAY
+        val secOfDay = ((local % CalendarDay.SECONDS_PER_DAY) + CalendarDay.SECONDS_PER_DAY) % CalendarDay.SECONDS_PER_DAY
         val hour = (secOfDay / 3_600L).toInt()
         return hour >= OVERNIGHT_START_HOUR || hour < OVERNIGHT_END_HOUR
     }
@@ -167,8 +166,8 @@ object SleepStageTotals {
     /** Smallest circular distance (seconds, 0..43200) between two times-of-day, so 23:30 and 00:30 are
      *  3600s apart, not 82800. Both inputs are seconds-of-day in [0, 86400). */
     internal fun circularDistanceSec(a: Long, b: Long): Long {
-        val raw = Math.abs(a - b) % SECONDS_PER_DAY
-        return minOf(raw, SECONDS_PER_DAY - raw)
+        val raw = Math.abs(a - b) % CalendarDay.SECONDS_PER_DAY
+        return minOf(raw, CalendarDay.SECONDS_PER_DAY - raw)
     }
 
     /** One bridged night group over the whole input: the fragments (as ORIGINAL indices, ascending) plus

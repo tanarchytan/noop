@@ -52,19 +52,19 @@ object BreathPacer {
 
     /** Slowest / fastest paces the pacer will schedule, 3–12 breaths/min. Out-of-range `bpm` is
      *  clamped so the pacer never emits a zero or absurd offset. */
-    const val MIN_BPM: Double = 3.0
-    const val MAX_BPM: Double = 12.0
+    const val MIN_BREATHS_PER_MIN: Double = 3.0
+    const val MAX_BREATHS_PER_MIN: Double = 12.0
 
     // ── Pacer ────────────────────────────────────────────────────────────────
 
     /**
      * Build the haptic cue list for [cycles] breaths at [bpm] breaths/min: one inhale cue then one
      * exhale cue per cycle, in time order, splitting the cycle by [inhaleFraction]. Pure, like
-     * [HapticClock]. [bpm] clamps to [MIN_BPM, MAX_BPM], [inhaleFraction] to (0.1, 0.9); cycles < 1 → empty.
+     * [HapticClock]. [bpm] clamps to [MIN_BREATHS_PER_MIN, MAX_BREATHS_PER_MIN], [inhaleFraction] to (0.1, 0.9); cycles < 1 → empty.
      */
     fun schedule(bpm: Double, inhaleFraction: Double = DEFAULT_INHALE_FRACTION, cycles: Int): List<BreathCue> {
         if (cycles < 1) return emptyList()
-        val safeBpm = bpm.coerceIn(MIN_BPM, MAX_BPM)
+        val safeBpm = bpm.coerceIn(MIN_BREATHS_PER_MIN, MAX_BREATHS_PER_MIN)
         val frac = inhaleFraction.coerceIn(0.1, 0.9)
 
         // Cycle length in ms; integer so offsets are exact, with no float drift.
@@ -86,7 +86,7 @@ object BreathPacer {
      */
     fun sessionDurationMs(bpm: Double, cycles: Int): Int {
         if (cycles < 1) return 0
-        val safeBpm = bpm.coerceIn(MIN_BPM, MAX_BPM)
+        val safeBpm = bpm.coerceIn(MIN_BREATHS_PER_MIN, MAX_BREATHS_PER_MIN)
         val cycleMs = (60_000.0 / safeBpm).roundToInt()
         return cycleMs * cycles
     }

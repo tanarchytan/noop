@@ -1,6 +1,7 @@
 package com.noop.analytics
 
 import com.noop.data.RrInterval
+import kotlin.math.abs
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -27,7 +28,7 @@ import kotlin.math.roundToInt
  * The Kotlin twin is gone, so the reference here is [respRateReference]: a self-contained restatement of the
  * stored RSA spec — range-filter → cumulative beat times → 4 Hz linear resample → centered-mean detrend →
  * per-5-min findPeaks → `60.0 / median(intervals)` → median across windows → plausible-band clamp. It reuses
- * the surviving primitives ([SleepStager.findPeaks], [SleepStager.standardDeviation], [RustScores.rangeFilterRR],
+ * the surviving primitives ([RustScores.populationSD], [RustScores.rangeFilterRR],
  * [RustScores.median], [SleepStager.respPlausibleRangeBpm]) so it stays byte-identical to the deleted scorer.
  *
  * The gate is EXACT (delta 0.0). The pipeline is float-accumulation-order sensitive, and trap #1 (the
@@ -118,7 +119,7 @@ class RustRespRateParityTest {
             val mean = sum / (hi - lo + 1).toDouble()
             detrended[i] = grid[i] - mean
         }
-        if (SleepStager.standardDeviation(detrended.toList()) <= 1e-9) return nan
+        if (RustScores.populationSD(detrended.toList()) <= 1e-9) return nan
 
         // 5. Per ~5-min window peak-pick → 60/median(breath interval); median across.
         val minDistSamples = maxOf(2, (rsaMinPeakDistanceS * rsaResampleHz).roundToInt())
@@ -130,7 +131,7 @@ class RustRespRateParityTest {
             if (wEnd - w >= minDistSamples * 3) {
                 val winSeg = ArrayList<Double>(wEnd - w)
                 for (k in w until wEnd) winSeg.add(detrended[k])
-                val peaks = SleepStager.findPeaks(winSeg, distance = minDistSamples, height = 0.0)
+                val peaks = findPeaks(winSeg, distance = minDistSamples, height = 0.0)
                 if (peaks.size >= 3) {
                     val intervals = ArrayList<Double>(peaks.size - 1)
                     for (i in 1 until peaks.size) {
@@ -188,5 +189,46 @@ class RustRespRateParityTest {
         // Guard against a vacuous pass where every night was no-data on both sides.
         assertTrue("no night produced a finite resp-rate on either path (fixture too thin?)", scored > 0)
         println("[parity] resp-rate: $scored/${nights.length()} nights matched reference==Rust bit-for-bit")
+    }
+
+    /**
+     * Local-maxima peak finder mirroring scipy.find_peaks(distance, height):
+     * a sample is a peak if strictly greater than both neighbours and ≥ height;
+     * peaks closer than `distance` are resolved by keeping the taller.
+     */
+    private fun findPeaks(x: List<Double>, distance: Int, height: Double): List<Int> {
+        val n = x.size
+        if (n < 3) return emptyList()
+        val candidates = ArrayList<Int>()
+        var i = 1
+        while (i < n - 1) {
+            if (x[i] > x[i - 1] && x[i] >= height) {
+                // handle flat plateaus: find right edge of the plateau
+                var j = i
+                while (j + 1 < n && x[j + 1] == x[i]) j += 1
+                if (j + 1 < n && x[j + 1] < x[i]) {
+                    candidates.add((i + j) / 2) // plateau midpoint
+                }
+                i = j + 1
+            } else {
+                i += 1
+            }
+        }
+        if (distance <= 1 || candidates.isEmpty()) return candidates
+        // Enforce minimum distance: greedily keep tallest, scipy-style.
+        val byHeight = candidates.sortedByDescending { x[it] }
+        val keep = BooleanArray(candidates.size) { true }
+        val indexOf = HashMap<Int, Int>(candidates.size)
+        for ((off, c) in candidates.withIndex()) indexOf[c] = off
+        for (p in byHeight) {
+            val pi = indexOf[p] ?: continue
+            if (!keep[pi]) continue
+            for ((qi, q) in candidates.withIndex()) {
+                if (qi != pi && keep[qi]) {
+                    if (abs(q - p) < distance) keep[qi] = false
+                }
+            }
+        }
+        return candidates.filterIndexed { off, _ -> keep[off] }.sorted()
     }
 }
