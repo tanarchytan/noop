@@ -42,7 +42,7 @@ motion spine.
 | File | What is left |
 |---|---|
 | `StrainScorer` (78) | per-bout TRIMP; the daily figure already delegates. Its gates, scale and denominator now read whoop-rs |
-| `SleepStager` (200) | `sessionHrvWindows`, `hypnogramMetrics`. `findPeaks` moved to its parity test, `standardDeviation` deleted |
+| `SleepStager` (198) | `sessionHrvWindows`, `hypnogramMetrics`. `findPeaks` moved to its parity test, `standardDeviation` deleted |
 
 ### Statistical engines, untouched
 
@@ -52,7 +52,7 @@ motion spine.
 | `ReadinessEngine` (369) | z-scores + ACWR acute:chronic + Foster monotony | feeds the Coupled screen |
 | `EffectRanker` (311) | Welch t-test + Cohen's d | |
 | `ActivityCostEngine` (211) | rest-baseline vs next-morning delta + bounce-back | |
-| `RecoveryForecast` (211) | OLS slope + weighted tomorrow-Charge | |
+| `RecoveryForecast` (210) | OLS slope + weighted tomorrow-Charge | |
 | `StepsEstimateEngine` (227) | motion-weighted-median coefficient fit | 4.0 only |
 | `ResonanceEngine` (214) | per-breath RSA amplitude | |
 | `AutoWorkoutDetector` (192) | elevated-HR span growth + dip tolerance | |
