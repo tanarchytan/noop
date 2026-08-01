@@ -501,6 +501,29 @@ object DataBackup {
         }
     }
 
+    /** Every column name on [table] in [file], opened READ-ONLY so the probed file is never mutated.
+     *  Empty on failure or an absent table. Carries [PRESERVE_ON_CORRUPTION] for the same reason
+     *  [sqliteTableNames] does. */
+    private fun sqliteColumnNames(file: File, table: String): Set<String> {
+        val db = runCatching {
+            SQLiteDatabase.openDatabase(file.path, null, SQLiteDatabase.OPEN_READONLY, PRESERVE_ON_CORRUPTION)
+        }.getOrNull() ?: return emptySet()
+        return try {
+            val names = LinkedHashSet<String>()
+            db.rawQuery("PRAGMA table_info(`$table`)", null).use { c ->
+                val nameIdx = c.getColumnIndex("name")
+                while (c.moveToNext()) {
+                    if (nameIdx >= 0) c.getString(nameIdx)?.let(names::add)
+                }
+            }
+            names
+        } catch (e: Exception) {
+            emptySet()
+        } finally {
+            runCatching { db.close() }
+        }
+    }
+
     /** After an own-data (migrate) restore, copy the migrated "my-whoop" strap address into
      *  NoopPrefs.lastDevice — the reconnect target + the Devices "bound here" signal a fresh install lacks.
      *  Read-only, best-effort; a foreign row-copy never calls this, so a foreign peripheralId can't leak. */
@@ -619,12 +642,30 @@ object DataBackup {
     }
 
     /**
+     * Whether a staged store at [currentVersion] needs the migrate/heal path, given the `pairedDevice`
+     * columns it carries. False for an empty file (v0 = fresh Room, a foreign one is refused earlier),
+     * for anything ABOVE [targetVersion] — never repaired downward — and for a store already current in
+     * both version and shape. A store AT the target but missing a column the version absorbed while
+     * unreleased is the one same-version case that still needs work.
+     */
+    internal fun needsSchemaWork(currentVersion: Int, targetVersion: Int, pairedDeviceColumns: Set<String>): Boolean {
+        if (currentVersion <= 0 || currentVersion > targetVersion) return false
+        if (currentVersion < targetVersion) return true
+        // No readable `pairedDevice` at the current version is an unreadable or foreign file, not a
+        // pre-fold one — leave it to the integrity gate rather than opening it read-write.
+        if (pairedDeviceColumns.isEmpty()) return false
+        return WhoopDatabase.missingDeviceScopeSql(pairedDeviceColumns).isNotEmpty()
+    }
+
+    /**
      * Migrates a staged backup SQLite file to the current Room schema version. MUST run after
      * staging/origin validation but BEFORE [sqliteQuickCheckFailure], so the migration is
      * verified before it touches the live DB. Pins the open callback to the file's current
      * version (skips [onUpgrade]), then runs the applicable [Migration]s and sets [targetVersion]
-     * directly. Returns null on success, else an error string — the caller must then delete
-     * [stagedFile], since its schema is not safe to restore.
+     * directly. A backup already AT [targetVersion] is skipped untouched unless [needsSchemaWork]
+     * says its shape predates a column the version absorbed while unreleased.
+     * Returns null on success, else an error string — the caller must then delete [stagedFile],
+     * since its schema is not safe to restore.
      */
     fun migrateBackupIfNeeded(
         appContext: Context,
@@ -635,10 +676,9 @@ object DataBackup {
         val currentVersion = readUserVersion(stagedFile)
             ?: return "Could not read the backup's schema version."
 
-        // v0 = a fresh/empty Room database with no schema to migrate (a foreign backup is also
-        // user_version 0, but it is rejected earlier by the origin check, so it never reaches here).
-        if (currentVersion <= 0) return null
-        if (currentVersion >= targetVersion) return null
+        if (!needsSchemaWork(currentVersion, targetVersion, sqliteColumnNames(stagedFile, "pairedDevice"))) {
+            return null
+        }
 
         val plan = planMigrationPath(currentVersion, targetVersion, migrations)
         val applicable = plan.path ?: return plan.error
@@ -662,6 +702,9 @@ object DataBackup {
                 for (migration in applicable) {
                     migration.migrate(db)
                 }
+                // Additive, idempotent, and the only step a same-version backup needs: a file written
+                // before v101 absorbed its last columns carries the version without them.
+                WhoopDatabase.healDeviceScopeColumns(db)
                 db.execSQL("PRAGMA user_version = $targetVersion")
                 // Manual migration updates SCHEMA + user_version but not Room's identity
                 // bookkeeping (room_master_table), which Room only rewrites on its own migration —
