@@ -10,9 +10,10 @@ package com.noop.analytics
 // A wellness comparison, never a clinical biological age.
 object VitalityEngine {
 
-    const val minBodyAge = 20.0
-    const val maxBodyAge = 90.0
-    const val bandYears = 5.0
+    // The Body-Age clamp and the reading band are read from whoop-rs, never declared here.
+    val minBodyAge: Double = RustScores.vitalityCfg.minBodyAge
+    val maxBodyAge: Double = RustScores.vitalityCfg.maxBodyAge
+    val bandYears: Double = RustScores.vitalityCfg.bandYears
 
     data class Inputs(
         val chronoAge: Double,

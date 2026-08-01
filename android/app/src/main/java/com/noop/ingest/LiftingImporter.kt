@@ -40,9 +40,6 @@ object LiftingImporter {
 
     private const val SOURCE_LABEL = "Lifting"
 
-    /** Pounds → kilograms (exact avoirdupois definition). */
-    internal const val LB_TO_KG = 0.45359237
-
     /** Input ceiling — a lifting export is small; 64 MB is already generous. */
     private const val MAX_BYTES = 64L shl 20
 
@@ -209,7 +206,7 @@ object LiftingImporter {
             val setType = (row.cell("set_type", "type") ?: "").lowercase()
 
             val weightKg: Double? = (row.double("weight_kg", "weight", "weight_kgs")
-                ?: row.double("weight_lb", "weight_lbs", "weight_lbf")?.let { it * LB_TO_KG })
+                ?: row.double("weight_lb", "weight_lbs", "weight_lbf")?.let { it * IngestUnits.LB_TO_KG })
                 ?.takeIf { it.isFinite() }
             // Crafted-import guard: Kotlin's Double.toInt() SATURATES a non-finite/out-of-range
             // value (NaN→0, +inf→MAX) and would store garbage rather than crash. Bound reps to a
@@ -347,10 +344,10 @@ object LiftingImporter {
         if (raw is JSONObject) {
             val v = liftosaurDouble(raw.opt("value")) ?: return null
             val unit = raw.optString("unit", "").lowercase().ifEmpty { entryUnit }
-            return if (unit == "lb" || unit == "lbs") v * LB_TO_KG else v
+            return if (unit == "lb" || unit == "lbs") v * IngestUnits.LB_TO_KG else v
         }
         val v = liftosaurDouble(raw) ?: return null
-        return if (entryUnit == "lb" || entryUnit == "lbs") v * LB_TO_KG else v
+        return if (entryUnit == "lb" || entryUnit == "lbs") v * IngestUnits.LB_TO_KG else v
     }
 
     // MARK: - JSON scalar coercion

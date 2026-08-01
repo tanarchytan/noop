@@ -108,7 +108,7 @@ object ResonanceEngine {
      * [PaceScore.rsaAmplitude] == null.
      */
     fun scorePace(sample: PaceSample): PaceScore {
-        val cycleMs = 60_000.0 / maxOf(sample.bpm, BreathPacer.MIN_BPM)
+        val cycleMs = 60_000.0 / maxOf(sample.bpm, BreathPacer.MIN_BREATHS_PER_MIN)
         val cycleSec = cycleMs / 1000.0
 
         // Steady window: from startTs + transient to endTs.

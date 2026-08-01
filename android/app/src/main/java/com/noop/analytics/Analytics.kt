@@ -2,7 +2,6 @@ package com.noop.analytics
 
 import com.noop.data.DailyMetric
 import kotlin.math.roundToInt
-import kotlin.math.sqrt
 
 /**
  * Heart-rate variability.
@@ -16,17 +15,8 @@ object Hrv {
      *
      * Returns 0.0 when fewer than two intervals are available.
      */
-    fun rmssd(rr: List<Int>): Double {
-        if (rr.size < 2) return 0.0
-        var sum = 0.0
-        var n = 0
-        for (i in 1 until rr.size) {
-            val d = (rr[i] - rr[i - 1]).toDouble()
-            sum += d * d
-            n += 1
-        }
-        return if (n > 0) sqrt(sum / n.toDouble()) else 0.0
-    }
+    fun rmssd(rr: List<Int>): Double =
+        RustScores.rmssdRaw(rr.map { it.toDouble() }) ?: 0.0
 }
 
 /**
@@ -84,7 +74,7 @@ object IllnessWatch {
         val base = days.takeLast(31).dropLast(3)
 
         fun mean(vals: List<Double>): Double? =
-            if (vals.isEmpty()) null else vals.sum() / vals.size.toDouble()
+            if (vals.isEmpty()) null else RustScores.mean(vals)
 
         fun rm(selector: (DailyMetric) -> Double?): Double? =
             mean(recent.mapNotNull(selector))

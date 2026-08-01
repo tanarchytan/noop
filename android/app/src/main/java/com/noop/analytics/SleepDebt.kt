@@ -48,11 +48,11 @@ object SleepDebt {
      * Cap the ledger at the trailing two weeks — recent enough to be actionable, short
      * enough that one rough patch doesn't read as months of compounding debt.
      */
-    const val DEFAULT_WINDOW_NIGHTS: Int = 14
+    val DEFAULT_WINDOW_NIGHTS: Int = RustScores.sleepDebtCfg.defaultWindowNights.toInt()
 
     /**
      * "On target" deadband (minutes): a |balance| under this reads as balanced rather than
      * a debt/surplus, so a few stray minutes don't flip the headline.
      */
-    const val ON_TARGET_BAND_MIN: Double = 30.0
+    val ON_TARGET_BAND_MIN: Double = RustScores.sleepDebtCfg.onTargetBandMin
 }

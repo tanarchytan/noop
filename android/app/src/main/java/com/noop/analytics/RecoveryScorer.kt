@@ -1,21 +1,19 @@
 package com.noop.analytics
 
 import com.noop.data.HrSample
-import kotlin.math.max
 
 /*
  * RecoveryScorer.kt — resting HR during sleep + a transparent 0-100 recovery score
  * (NOOP "Charge").
  *
  * recovery() is a z-score + logistic composite, APPROXIMATE and not WHOOP-identical
- * (WHOOP's model is proprietary). Weights: HRV vs baseline W_HRV=0.55 (dominant,
- * higher is better), resting HR W_RHR=0.20 (lower better), respiration W_RESP=0.05
- * (lower better), sleep performance W_SLEEP=0.15 (higher better), skin-temp deviation
- * W_SKIN_TEMP=0.05 (SYMMETRIC: either direction away from baseline lowers Charge).
- * Two optional terms — resting-HR decline slope W_RECOVERY_INDEX=0.05, previous-day
- * Effort vs its EWMA baseline W_ACTIVITY_BALANCE=0.05 — fold in only when supplied;
- * a null term drops out and the remaining weights renormalize, so the score is
- * unchanged without it.
+ * (WHOOP's model is proprietary). Drivers: HRV vs baseline (dominant, higher better),
+ * resting HR (lower better), respiration (lower better), sleep performance (higher
+ * better) and skin-temp deviation (SYMMETRIC: either direction away from baseline
+ * lowers Charge). Two optional terms — resting-HR decline slope and previous-day
+ * Effort vs its EWMA baseline — fold in only when supplied; a null term drops out and
+ * the remaining weights renormalize, so the score is unchanged without it. Every
+ * weight is read from whoop-rs, never declared here.
  *
  * Each metric is a robust z-score vs its personal baseline (mean + EWMA-abs-dev
  * spread); the composite squashes through a logistic anchored so Z=0 -> ~58%
@@ -33,64 +31,63 @@ object RecoveryScorer {
     // Constants
     // ─────────────────────────────────────────────────────────────────────────
 
-    const val wHRV: Double = 0.55
-    const val wRHR: Double = 0.20
-    const val wResp: Double = 0.05
-    const val wSleep: Double = 0.15
+    // Every value below is READ from whoop-rs (physio-algo recovery), never declared here: the weights
+    // must sum coherently and one displayed score reads them, so they have exactly one owner.
+
+    val wHRV: Double = RustScores.recoveryCfg.wHrv
+    val wRHR: Double = RustScores.recoveryCfg.wRhr
+    val wResp: Double = RustScores.recoveryCfg.wResp
+    val wSleep: Double = RustScores.recoveryCfg.wSleep
 
     /** Skin-temperature deviation weight (symmetric illness/overreach penalty). */
-    const val wSkinTemp: Double = 0.05
+    val wSkinTemp: Double = RustScores.recoveryCfg.wSkinTemp
 
     /**
      * Skin-temp deviation scale (°C per z-unit). The term is −|skinTempDevC| / scale,
      * so a 1.0 °C absolute deviation from the personal baseline costs ≈ 1 z-unit of
      * Charge. skinTempDevC is the raw ±°C delta (DailyMetric.skinTempDevC), not a z.
-     *
-     * Must stay 1.0: halving it doubles the effective penalty weight of this term.
      */
-    const val skinTempDevScale: Double = 1.0
+    val skinTempDevScale: Double = RustScores.recoveryCfg.skinTempDevScale
 
     /**
-     * Recovery-Index weight (overnight resting-HR DECLINE slope, Oura's "Recovery Index"
-     * concept). Small and additive like [wSkinTemp]: folds in only when a slope is supplied.
+     * Recovery-Index weight (overnight resting-HR DECLINE slope). Small and additive like
+     * [wSkinTemp]: folds in only when a slope is supplied.
      */
-    const val wRecoveryIndex: Double = 0.05
+    val wRecoveryIndex: Double = RustScores.recoveryCfg.wRecoveryIndex
 
     /**
      * Recovery-Index slope scale (bpm/hour): a slope this many bpm/hour steeper than flat (0)
      * costs/earns ≈ 1 z-unit before weighting. Resting HR falling through the night is the
-     * expected good pattern; flat or rising (illness, alcohol, a late stimulant, restlessness)
-     * is not — the SIGN carries the meaning (negative = declining = good), unlike skin-temp's
-     * symmetric |deviation| penalty.
+     * expected good pattern; flat or rising is not — the SIGN carries the meaning (negative =
+     * declining = good), unlike skin-temp's symmetric |deviation| penalty.
      */
-    const val recoveryIndexScaleBpmPerHr: Double = 2.0
+    val recoveryIndexScaleBpmPerHr: Double = RustScores.recoveryCfg.recoveryIndexScaleBpmPerHr
 
     /**
-     * Activity-Balance / previous-day-Effort weight (collapses Oura's "Previous Day Activity"
-     * and "Activity Balance" readiness concepts into one term). Small and additive like
-     * [wSkinTemp]: folds in only when BOTH a previous-day Effort value and its personal EWMA
-     * baseline ([Baselines.strainCfg]) are supplied.
+     * Activity-Balance / previous-day-Effort weight. Small and additive like [wSkinTemp]: folds in
+     * only when BOTH a previous-day Effort value and its personal EWMA baseline
+     * ([Baselines.strainCfg]) are supplied.
      */
-    const val wActivityBalance: Double = 0.05
+    val wActivityBalance: Double = RustScores.recoveryCfg.wActivityBalance
 
     /** Logistic spread: ±2 z-units ≈ full Red–Green band (15%–95%). */
-    const val logisticK: Double = 1.6
+    val logisticK: Double = RustScores.recoveryCfg.logisticK
 
     /** Logistic offset so Z=0 → 58%. */
-    const val logisticZ0: Double = -0.20
+    val logisticZ0: Double = RustScores.recoveryCfg.logisticZ0
 
     /** Recovery band thresholds (WHOOP color scheme). */
-    const val bandRedMax: Double = 34.0
-    const val bandYellowMax: Double = 67.0
+    val bandRedMax: Double = RustScores.recoveryCfg.bandRedMax
+    val bandYellowMax: Double = RustScores.recoveryCfg.bandYellowMax
 
     /** Sleep-performance center ("good night" at ~85% efficiency). */
-    const val sleepPerfCenter: Double = 0.85
+    val sleepPerfCenter: Double = RustScores.recoveryCfg.sleepPerfCenter
 
     /** Sleep-performance scale (±2 z spans the normal range). */
-    const val sleepPerfScale: Double = 0.12
+    val sleepPerfScale: Double = RustScores.recoveryCfg.sleepPerfScale
 
     /** Rolling-mean HR window (seconds) for the resting-HR estimate (read by [recoveryIndexSlope]). */
-    const val restingHRWindowS: Int = 5 * 60
+    val restingHRWindowS: Int = RustScores.recoveryCfg.restingHrWindowS.toInt()
 
     // ─────────────────────────────────────────────────────────────────────────
     // Cold-start calibration progress
@@ -115,7 +112,7 @@ object RecoveryScorer {
      * regression is noise, not a pattern. 6 bins = 30 minutes, a deliberately low floor so a
      * short/partial night still gets a number rather than a routine null.
      */
-    const val recoveryIndexMinBins: Int = 6
+    val recoveryIndexMinBins: Int = RustScores.recoveryCfg.recoveryIndexMinBins.toInt()
 
     /**
      * Overnight resting-HR DECLINE slope (bpm/hour) across the in-bed window, the "Recovery
@@ -188,11 +185,9 @@ object RecoveryScorer {
         constructor(state: BaselineState) : this(mean = state.baseline, spread = state.spread)
     }
 
-    /** Robust z-score using EWMA spread: (value − mean) / (1.253 × spread). */
-    internal fun zScore(value: Double, mean: Double, spread: Double): Double {
-        val sigma = max(1.253 * spread, 1e-9)
-        return (value - mean) / sigma
-    }
+    /** Robust z-score against a baseline mean + EWMA spread. Computed in whoop-rs. */
+    internal fun zScore(value: Double, mean: Double, spread: Double): Double =
+        RustScores.zScore(value, mean, spread)
 
     // The recovery/Charge composite (z-score + logistic) lives in whoop-rs physio-algo, reached
     // via [RustScores.recovery]. [DriverBaseline], [zScore], [band], [recoveryIndexSlope] and

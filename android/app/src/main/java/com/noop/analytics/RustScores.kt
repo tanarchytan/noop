@@ -671,6 +671,48 @@ internal object RustScores {
     /** OLS slope of a series over x = 0, 1, 2, …; 0.0 under two points or a degenerate spread. */
     fun slope(values: List<Double>): Double = uniffi.whoop_ffi.seriesSlope(values)
 
+    /** Arithmetic mean; 0.0 when empty, so a caller that must show "no data" checks the input. */
+    fun mean(values: List<Double>): Double = uniffi.whoop_ffi.seriesMean(values)
+
+    /** Sample SD (n−1) of a series; 0.0 under two points. */
+    fun sampleSD(values: List<Double>): Double = uniffi.whoop_ffi.seriesSampleSd(values)
+
+    /** Population SD (÷n) of a series; 0.0 when empty. The per-window spread, not the baselines' n−1. */
+    fun populationSD(values: List<Double>): Double = uniffi.whoop_ffi.seriesPopulationSd(values)
+
+    /** Pearson r over two equal-length series; null under two pairs or on a flat series. */
+    fun pearson(xs: List<Double>, ys: List<Double>): Double? = uniffi.whoop_ffi.seriesPearson(xs, ys)
+
+    /** Robust z against a baseline mean + EWMA-abs-dev spread — the z the Charge drivers use. */
+    fun zScore(value: Double, mean: Double, spread: Double): Double =
+        uniffi.whoop_ffi.zScore(value, mean, spread)
+
+    // ── Tuning tables (whoop-rs owns every value; read, never copied) ─────────
+
+    /** Charge weights, logistic shape, band cuts and window gates. */
+    val recoveryCfg: uniffi.whoop_ffi.RecoveryCfgInfo by lazy { uniffi.whoop_ffi.recoveryCfg() }
+
+    /** Rest (sleep performance) weights and the duration / restorative shape. */
+    val restCfg: uniffi.whoop_ffi.RestCfgInfo by lazy { uniffi.whoop_ffi.restCfg() }
+
+    /** Effort scale, log-map denominator and the two coverage gates. */
+    val strainCfg: uniffi.whoop_ffi.StrainCfgInfo by lazy { uniffi.whoop_ffi.strainCfg() }
+
+    /** Baseline cold-start gates: seed, full trust, fast-adapt window. */
+    val baselinesCfg: uniffi.whoop_ffi.BaselinesCfgInfo by lazy { uniffi.whoop_ffi.baselinesCfg() }
+
+    /** Body-Age clamp and the reading's ± band. */
+    val vitalityCfg: uniffi.whoop_ffi.VitalityCfgInfo by lazy { uniffi.whoop_ffi.vitalityCfg() }
+
+    /** Sleep-debt ledger window and on-target band width. */
+    val sleepDebtCfg: uniffi.whoop_ffi.SleepDebtCfgInfo by lazy { uniffi.whoop_ffi.sleepDebtCfg() }
+
+    /** Nap detector defaults, before the user tunes them. */
+    val napDefaults: uniffi.whoop_ffi.NapDefaultsInfo by lazy { uniffi.whoop_ffi.napDefaults() }
+
+    /** Sleep detection + main-night window edges. */
+    val sleepWindowCfg: uniffi.whoop_ffi.SleepWindowCfgInfo by lazy { uniffi.whoop_ffi.sleepWindowCfg() }
+
     /** One metric's baseline configuration, read from whoop-rs so the tuning table has a single owner. */
     fun baselineMetricCfg(metric: String): MetricCfg? =
         uniffi.whoop_ffi.baselineMetricCfg(metric)?.let {

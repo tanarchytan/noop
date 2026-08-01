@@ -1,5 +1,6 @@
 package com.noop.ui
 
+import com.noop.analytics.CalendarDay
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -65,7 +66,7 @@ class DebugExportSchedulerTest {
     fun settingsClampTimeToValidMinuteOfDay() {
         // The store clamps out-of-range minutes; mirror SmartAlarmStore's defensive coercion shape.
         // (No SharedPreferences here — assert the bound constants are internally consistent.)
-        assertEquals(24 * 60, DebugExportSettings.MINUTES_PER_DAY)
-        assertTrue(DebugExportSettings.DEFAULT_TIME in 0 until DebugExportSettings.MINUTES_PER_DAY)
+        assertEquals(24 * 60, CalendarDay.MINUTES_PER_DAY)
+        assertTrue(DebugExportSettings.DEFAULT_TIME in 0 until CalendarDay.MINUTES_PER_DAY)
     }
 }

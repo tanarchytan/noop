@@ -9,6 +9,12 @@ package com.noop.analytics
  */
 internal object CalendarDay {
 
+    /** Seconds in a calendar day, for local-hour-of-day and circular time arithmetic. */
+    const val SECONDS_PER_DAY: Long = 86_400L
+
+    /** Minutes in a calendar day, for the wall-clock-minute settings the schedulers store. */
+    const val MINUTES_PER_DAY: Int = 24 * 60
+
     /** True for a leap year in the proleptic Gregorian calendar. */
     fun isLeap(y: Int): Boolean = (y % 4 == 0 && y % 100 != 0) || (y % 400 == 0)
 

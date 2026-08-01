@@ -23,7 +23,7 @@ import kotlin.math.floor
  *
  * The Kotlin twin is gone, so the reference is restated locally: [refComponents] is a byte-identical copy of
  * the deleted `StressIndex.componentsRaw` (50 ms Baevsky grid, lowest-index modal tie-break, degenerate-range
- * null), reusing the SURVIVING [RustScores.cleanRR] range+Malik pipeline and [StressIndex.MIN_BEATS] gate so
+ * null), reusing the SURVIVING [RustScores.cleanRR] range+Malik pipeline and [RustScores.hrvCleanCfg] clean-beat gate so
  * the reference stays identical to the deleted scorer. SI is pure f64 histogram arithmetic, so both sides
  * must land on the identical Double — a nonzero delta is a FAIL to report as a whoop-rs fix request, NOT a
  * tolerance to widen. Two legs:
@@ -59,7 +59,7 @@ class RustStressParityTest {
      */
     private fun refComponents(series: List<RrInterval>): RefComp? {
         val clean = RustScores.cleanRR(series.map { it.rrMs.toDouble() })
-        if (clean.size < StressIndex.MIN_BEATS) return null
+        if (clean.size < RustScores.hrvCleanCfg.minBeats.toInt()) return null
 
         val sec = clean.map { it / 1000.0 }
         val minV = sec.min()
@@ -193,7 +193,7 @@ class RustStressParityTest {
     @Test
     fun `rust matches Kotlin null semantics on degenerate R-R`() {
         // Too few clean beats (< MIN_BEATS) → honest null on both paths.
-        assertParity("too-few-beats", rr(List(StressIndex.MIN_BEATS - 1) { 800 }))
+        assertParity("too-few-beats", rr(List(RustScores.hrvCleanCfg.minBeats.toInt() - 1) { 800 }))
         // All-equal beats → MxDMn 0 → degenerate range → null (not Infinity) on both paths.
         assertParity("degenerate-range", rr(List(30) { 800 }))
     }

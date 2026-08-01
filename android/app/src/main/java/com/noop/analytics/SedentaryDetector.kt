@@ -85,7 +85,7 @@ data class SedentaryConfig(
     /** Minimum sedentary-bout length (minutes) before the first nudge (InactivityPrefs threshold). */
     val thresholdMinutes: Int = SedentaryDetector.DEFAULT_THRESHOLD_MINUTES,
     /** Rolling-mean window (seconds) for the movement signal. */
-    val smoothWindowSeconds: Double = SedentaryDetector.DEFAULT_SMOOTH_WINDOW_S,
+    val smoothWindowSeconds: Double = SedentaryDetector.SEDENTARY_SMOOTH_WINDOW_S,
     // Cadence + strength.
     /** If still seated, re-buzz this often (minutes). InactivityPrefs re-nudge, default 30. */
     val reNudgeMinutes: Int = SedentaryDetector.DEFAULT_RENUDGE_MINUTES,
@@ -119,11 +119,11 @@ object SedentaryDetector {
     /** Rolling-mean window (seconds) for the movement signal — long enough that desk reaches / typing
      *  flurries average out, short enough that sustained walking still crosses the threshold within a
      *  minute or two. */
-    const val DEFAULT_SMOOTH_WINDOW_S: Double = 240.0
+    const val SEDENTARY_SMOOTH_WINDOW_S: Double = 240.0
 
     /** Break a sedentary bout when the inter-record time gap exceeds this (seconds). Also the freshness
      *  tolerance the live path uses to decide a bout is still "current". */
-    const val MAX_GAP_S: Long = 20 * 60
+    const val SEDENTARY_MAX_GAP_S: Long = 20 * 60
 
     /** Default minimum sedentary-bout length (minutes) — InactivityPrefs threshold default. */
     const val DEFAULT_THRESHOLD_MINUTES: Int = 45
@@ -144,13 +144,13 @@ object SedentaryDetector {
     /**
      * Detect SEDENTARY bouts: stretches where the smoothed wrist-motion stays at/under [moveThresholdG]
      * — the user hasn't walked around — for ≥ [minMinutes]. Typing and the occasional reach stay below
-     * the threshold and keep the bout alive; sustained walking ends it, as does a data gap > [MAX_GAP_S].
+     * the threshold and keep the bout alive; sustained walking ends it, as does a data gap > [SEDENTARY_MAX_GAP_S].
      */
     fun detectSedentaryBouts(
         gravity: List<GravitySample>,
         moveThresholdG: Double = DEFAULT_MOVE_THRESHOLD_G,
         minMinutes: Int = DEFAULT_MIN_MINUTES,
-        smoothWindowSeconds: Double = DEFAULT_SMOOTH_WINDOW_S,
+        smoothWindowSeconds: Double = SEDENTARY_SMOOTH_WINDOW_S,
     ): List<InactivityPeriod> {
         val rows = gravity.sortedBy { it.ts }
         if (rows.size < 2) return emptyList()
@@ -171,7 +171,7 @@ object SedentaryDetector {
             runStart = -1
         }
         for (i in 0 until n) {
-            if (i > 0 && ts[i] - ts[i - 1] > MAX_GAP_S) closeRun(i - 1) // data gap ends the run
+            if (i > 0 && ts[i] - ts[i - 1] > SEDENTARY_MAX_GAP_S) closeRun(i - 1) // data gap ends the run
             if (smoothed[i] > moveThresholdG) {
                 closeRun(i - 1) // walking-level motion ends the sedentary run
             } else if (runStart < 0) {
@@ -224,7 +224,7 @@ object SedentaryDetector {
      *   2. Only act when this offload advanced the newest gravity ts (replayed / no-new-rows → no-op);
      *      when it did advance, persist the new `lastProcessedGravityTs`.
      *   3. Pick the most-recent qualifying bout (≥ [SedentaryConfig.thresholdMinutes]).
-     *   4. The bout must be CURRENT — its end within [MAX_GAP_S] of the newest sample (still seated).
+     *   4. The bout must be CURRENT — its end within [SEDENTARY_MAX_GAP_S] of the newest sample (still seated).
      *   5. Pass the global + active/quiet/worn gate ([mayBuzz]) on the bout's local end time.
      *   6. Re-nudge a continuing bout on the user's cadence; alert a distinct new bout (one that starts
      *      after the last buzzed bout's end, separated by movement) on its own crossing.
@@ -256,7 +256,7 @@ object SedentaryDetector {
         ).maxByOrNull { it.end } ?: return noBuzz(next)
 
         // The bout must be current — its end near the newest sample (the user is still seated).
-        if (newest - bout.end > MAX_GAP_S) return noBuzz(next, bout)
+        if (newest - bout.end > SEDENTARY_MAX_GAP_S) return noBuzz(next, bout)
         if (!mayBuzz(config, worn, bout.end, tzOffsetSec)) return noBuzz(next, bout)
 
         val reNudgeS = config.reNudgeMinutes * 60L

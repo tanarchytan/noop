@@ -41,24 +41,24 @@ motion spine.
 
 | File | What is left |
 |---|---|
-| `StrainScorer` (77) | per-bout TRIMP; the daily figure already delegates |
-| `SleepStager` (256) | `sessionHrvWindows`, `hypnogramMetrics`, `findPeaks`, `standardDeviation` |
+| `StrainScorer` (78) | per-bout TRIMP; the daily figure already delegates. Its gates, scale and denominator now read whoop-rs |
+| `SleepStager` (198) | `sessionHrvWindows`, `hypnogramMetrics`. `findPeaks` moved to its parity test, `standardDeviation` deleted |
 
 ### Statistical engines, untouched
 
 | File | Algorithm | Why it matters |
 |---|---|---|
 | `RecoveryDrivers` (289) | per-driver marginal swing via the recovery logistic | **Highest risk.** It re-implements the model Rust owns; if they drift, the app explains a score using different maths than produced it |
-| `ReadinessEngine` (374) | z-scores + ACWR acute:chronic + Foster monotony | feeds the Coupled screen |
+| `ReadinessEngine` (369) | z-scores + ACWR acute:chronic + Foster monotony | feeds the Coupled screen |
 | `EffectRanker` (311) | Welch t-test + Cohen's d | |
-| `ActivityCostEngine` (214) | rest-baseline vs next-morning delta + bounce-back | |
-| `RecoveryForecast` (224) | OLS slope + weighted tomorrow-Charge | |
+| `ActivityCostEngine` (211) | rest-baseline vs next-morning delta + bounce-back | |
+| `RecoveryForecast` (210) | OLS slope + weighted tomorrow-Charge | |
 | `StepsEstimateEngine` (227) | motion-weighted-median coefficient fit | 4.0 only |
 | `ResonanceEngine` (214) | per-breath RSA amplitude | |
 | `AutoWorkoutDetector` (192) | elevated-HR span growth + dip tolerance | |
 | `CaffeineDecay` (156) | exponential half-life | |
 | `IllnessDistance` (151) | Mahalanobis + Gauss-Jordan inversion | |
-| `Analytics` (150) | legacy `IllnessWatch`, naive RMSSD, Tanaka ladder | secondary path; the gold path already uses Rust |
+| `Analytics` (140) | legacy `IllnessWatch`, Tanaka ladder; RMSSD and the means now delegate | secondary path; the gold path already uses Rust |
 
 ### Decode leaks — the clearest border violations
 

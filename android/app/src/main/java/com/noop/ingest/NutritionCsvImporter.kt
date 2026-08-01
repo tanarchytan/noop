@@ -40,9 +40,6 @@ object NutritionCsvImporter {
     internal const val KEY_FAT_G = "fat_g"
     internal const val KEY_WEIGHT = "weight"
 
-    /** Pounds → kilograms (exact avoirdupois definition). */
-    internal const val LB_TO_KG = 0.45359237
-
     /** Input ceiling — a nutrition CSV is tiny; 64 MB is already absurdly generous. */
     private const val MAX_BYTES = 64L shl 20
 
@@ -209,7 +206,7 @@ object NutritionCsvImporter {
             cols.weight?.let { header ->
                 val raw = row.double(header)
                 if (raw != null && raw.isFinite() && raw > 0) {
-                    acc.weight = if (cols.weightIsPounds) raw * LB_TO_KG else raw
+                    acc.weight = if (cols.weightIsPounds) raw * IngestUnits.LB_TO_KG else raw
                 }
             }
         }

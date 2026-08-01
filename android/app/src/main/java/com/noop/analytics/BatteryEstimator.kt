@@ -196,7 +196,7 @@ object BatteryEstimator {
             spanPass = spanHours >= minSpanHours
             dropPass = drop >= minDropPct
             if (spanPass && dropPass && drop / spanHours > 0) {
-                lines.add("battery slope=${slope(drop / spanHours)}pct/h fitted from run endpoints")
+                lines.add("battery slope=${slopeText(drop / spanHours)}pct/h fitted from run endpoints")
             }
         } else {
             lines.add("battery dischargeRun too short to fit (run=${run.size} readings)")
@@ -214,7 +214,7 @@ object BatteryEstimator {
 
     private fun soc(v: Double) = String.format(Locale.US, "%.1f", v)
     private fun hrs(v: Double) = String.format(Locale.US, "%.1f", v)
-    private fun slope(v: Double) = String.format(Locale.US, "%.1f", v)
+    private fun slopeText(v: Double) = String.format(Locale.US, "%.1f", v)
 
     /** Display rule: hours under 48h ("~14h"), days above ("~4.5 days"). Unit text only, the UI adds the
      *  "left" / "remaining" copy. Locale-fixed so the tests stay stable. */

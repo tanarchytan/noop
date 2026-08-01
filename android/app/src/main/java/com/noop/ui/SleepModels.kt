@@ -2,6 +2,7 @@ package com.noop.ui
 
 import androidx.compose.ui.graphics.Color
 import com.noop.analytics.AnalyticsEngine
+import com.noop.analytics.RustScores
 import com.noop.analytics.SleepDebt
 import com.noop.analytics.SleepDebtLedger
 import com.noop.analytics.SleepStageTotals
@@ -608,7 +609,7 @@ private fun consistencySeries(days: List<DailyMetric>, selectedDay: String? = nu
     return Metric(current, mean(scores), scores)
 }
 
-private fun mean(vals: List<Double>): Double? = if (vals.isEmpty()) null else vals.sum() / vals.size
+private fun mean(vals: List<Double>): Double? = if (vals.isEmpty()) null else RustScores.mean(vals)
 
 // MARK: - Formatting helpers
 

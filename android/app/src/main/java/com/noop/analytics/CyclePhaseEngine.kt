@@ -15,9 +15,11 @@ import kotlin.math.roundToInt
 object CyclePhaseEngine {
 
     // ── Tuning constants (pinned by test) ──
-    const val wTemp: Double = 0.6
-    const val wRHR: Double = 0.2
-    const val wHRV: Double = 0.2
+    // Cycle-phase evidence weights. NOT the Charge driver weights they happen to sit near:
+    // these score a temperature/RHR/HRV pattern across a cycle, not a night against a baseline.
+    const val wCycleTemp: Double = 0.6
+    const val wCycleRHR: Double = 0.2
+    const val wCycleHRV: Double = 0.2
     const val elevationK: Double = 0.5
     const val minCycleDays: Int = 21
     const val maxCycleDays: Int = 40
@@ -185,9 +187,9 @@ object CyclePhaseEngine {
     fun fusedIndex(tempZ: Double?, rhrZ: Double?, hrvZ: Double?): Double? {
         var weighted = 0.0
         var wSum = 0.0
-        if (tempZ != null) { weighted += wTemp * tempZ; wSum += wTemp }
-        if (rhrZ != null) { weighted += wRHR * rhrZ; wSum += wRHR }
-        if (hrvZ != null) { weighted += wHRV * (-hrvZ); wSum += wHRV }
+        if (tempZ != null) { weighted += wCycleTemp * tempZ; wSum += wCycleTemp }
+        if (rhrZ != null) { weighted += wCycleRHR * rhrZ; wSum += wCycleRHR }
+        if (hrvZ != null) { weighted += wCycleHRV * (-hrvZ); wSum += wCycleHRV }
         if (wSum <= 0) return null
         return weighted / wSum
     }

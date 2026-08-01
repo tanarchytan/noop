@@ -1,7 +1,6 @@
 package com.noop.ai
 
 import com.noop.analytics.RustScores
-import com.noop.analytics.StressIndex
 import com.noop.data.RrInterval
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
@@ -49,8 +48,8 @@ class AiCoachStressLineTest {
 
     @Test
     fun tooFewBeatsYieldsNoLine() {
-        // Below StressIndex.MIN_BEATS → no SI → no line (never a fabricated number).
-        val tooFew = rr(List(StressIndex.MIN_BEATS - 1) { 800 })
+        // Below the whoop-rs clean-beat gate → no SI → no line (never a fabricated number).
+        val tooFew = rr(List(RustScores.hrvCleanCfg.minBeats.toInt() - 1) { 800 })
         assertNull(RustScores.stressIndex(tooFew))
         assertNull(AiCoach.stressIndexLine(tooFew))
     }

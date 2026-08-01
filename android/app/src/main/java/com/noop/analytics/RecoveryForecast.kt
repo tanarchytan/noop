@@ -3,7 +3,6 @@ package com.noop.analytics
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToInt
-import kotlin.math.sqrt
 
 /*
  * RecoveryForecast.kt — an evening estimate of TOMORROW-morning Charge.
@@ -117,7 +116,7 @@ object RecoveryForecaster {
     const val solidNeedNights: Int = 7
 
     /** Default personal sleep need (hours) when the caller has none to refine it. */
-    const val defaultNeedHours: Double = RestScorer.defaultSleepNeedHours
+    val defaultNeedHours: Double = RestScorer.defaultSleepNeedHours
 
     /**
      * Project tomorrow-morning Charge from tonight's known levers. APPROXIMATE; null
@@ -199,23 +198,10 @@ object RecoveryForecaster {
 
     // Stats (self-contained).
 
-    internal fun mean(values: List<Double>): Double {
-        if (values.isEmpty()) return 0.0
-        return values.sum() / values.size
-    }
+    internal fun mean(values: List<Double>): Double = RustScores.mean(values)
 
     /** Sample standard deviation (ddof = 1); 0 for fewer than 2 values. */
-    internal fun sampleSD(values: List<Double>): Double {
-        val n = values.size
-        if (n < 2) return 0.0
-        val m = mean(values)
-        var ss = 0.0
-        for (v in values) {
-            val d = v - m
-            ss += d * d
-        }
-        return sqrt(ss / (n - 1))
-    }
+    internal fun sampleSD(values: List<Double>): Double = RustScores.sampleSD(values)
 
     /** OLS slope of value vs the 0-based index (per-day trend); 0 for < 2 points. */
     internal fun leastSquaresSlope(values: List<Double>): Double = RustScores.slope(values)

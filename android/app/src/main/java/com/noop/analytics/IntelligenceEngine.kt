@@ -63,7 +63,6 @@ object IntelligenceEngine {
     /** Read cap per stream read: 200_000 samples. */
     const val STREAM_LIMIT: Int = 200_000
 
-    private const val SECONDS_PER_DAY: Long = 86_400L
 
     /** Imported wearable-export source ids whose daily aggregates can score a NOOP Charge/Rest for an
      *  import-only day. */
@@ -425,7 +424,7 @@ object IntelligenceEngine {
         // day (naps drop out); null under HABITUAL_MIN_DAYS of history falls back to the overnight bonus.
         val habitualMidsleepSec = computeHabitualMidsleep(
             repo, importedDeviceId, computedId,
-            nowLocalMidnight - maxDays * SECONDS_PER_DAY - 30 * 3_600L, nowSeconds, tzOffsetSeconds,
+            nowLocalMidnight - maxDays * CalendarDay.SECONDS_PER_DAY - 30 * 3_600L, nowSeconds, tzOffsetSeconds,
         )
 
         // Skin-temp family memoised per owner: [RegistryDayOwnerSource.skinTempFamily] runs a Room query,
@@ -434,7 +433,7 @@ object IntelligenceEngine {
         val skinFamilyByOwner = HashMap<String, DeviceFamily>()
         // The WHOOP 4.0 ADC offset is per-device, not per-night. Learn one anchor per owner from the
         // whole scan window and reuse it for every night so cross-night deviations survive.
-        val skinAnchorScanFrom = nowLocalMidnight - (maxDays - 1).toLong() * SECONDS_PER_DAY - 30 * 3_600L
+        val skinAnchorScanFrom = nowLocalMidnight - (maxDays - 1).toLong() * CalendarDay.SECONDS_PER_DAY - 30 * 3_600L
         val skinAnchorScanTo = nowLocalMidnight + 18 * 3_600L
         val skinAnchorByOwner = HashMap<String, Double>()
         val skinAnchorResolvedOwners = HashSet<String>()
@@ -443,21 +442,21 @@ object IntelligenceEngine {
         // one need + consistency for the whole pass, slowly-varying; sparse history -> engine defaults.
         val priorSleepHrs = repo.dailyMetrics(
             computedId,
-            AnalyticsEngine.dayString(nowLocalMidnight - (maxDays - 1) * SECONDS_PER_DAY, tzOffsetSeconds),
+            AnalyticsEngine.dayString(nowLocalMidnight - (maxDays - 1) * CalendarDay.SECONDS_PER_DAY, tzOffsetSeconds),
             AnalyticsEngine.dayString(nowLocalMidnight, tzOffsetSeconds),
         ).sortedBy { it.day }.mapNotNull { it.totalSleepMin }.map { it / 60.0 }.filter { it > 0 }
         val recentSleepNeed = if (priorSleepHrs.isEmpty()) null else RustScores.personalSleepNeedHours(priorSleepHrs.takeLast(14))
         val recentConsistency = VitalityEngine.sleepConsistency(priorSleepHrs.takeLast(7))
 
         for (offset in 0 until maxDays) {
-            val dayStart = nowLocalMidnight - offset * SECONDS_PER_DAY
+            val dayStart = nowLocalMidnight - offset * CalendarDay.SECONDS_PER_DAY
             val day = AnalyticsEngine.dayString(dayStart, tzOffsetSeconds)
             // Read a generous window around the night that ends on `day`; the stager finds the span.
             val from = dayStart - 30 * 3_600L
             // Sleep read-window END. A PAST day's night may end any time before the NEXT local midnight
             // (late sleepers wake well after noon), so it reads through to the next local midnight rather
             // than a hard `dayStart + 18h` cap; TODAY keeps the 18:00 cap (DAO clamps to now anyway).
-            val nextMidnight = dayStart + SECONDS_PER_DAY
+            val nextMidnight = dayStart + CalendarDay.SECONDS_PER_DAY
             val to = if (dayStart < nowLocalMidnight) nextMidnight else dayStart + 18 * 3_600L
 
             // I2: pick the single device that OWNS this day, and read ITS streams below. Single-device
@@ -512,7 +511,7 @@ object IntelligenceEngine {
             // above ends at dayStart+12h and would undercount a past day's late hours, so this reads
             // [localMidnight(day), +86400) instead, feeding dayHr/daySteps; MIN_HR_SAMPLES stays gated on the night window.
             val dayMidnight = midnightLocal(dayStart, tzOffsetSeconds)
-            val dayEnd = dayMidnight + SECONDS_PER_DAY - 1
+            val dayEnd = dayMidnight + CalendarDay.SECONDS_PER_DAY - 1
             // Same [owner] as the night window above (I2): the additive day totals must come from the one
             // device that owns the day, never a mix.
             val dayHr = repo.hrSamples(owner, dayMidnight, dayEnd, STREAM_LIMIT)
@@ -647,7 +646,7 @@ object IntelligenceEngine {
         // Real (non-detected) workouts in the scored window, used to de-duplicate detected bouts so a
         // user with both real sessions and a worn strap doesn't see the same session twice (mergeDaily's
         // per-day precedence doesn't cover the workout table). A detected bout overlapping any of these is skipped below.
-        val windowStart = nowSeconds - maxDays.toLong() * SECONDS_PER_DAY - 30 * 3_600L
+        val windowStart = nowSeconds - maxDays.toLong() * CalendarDay.SECONDS_PER_DAY - 30 * 3_600L
         val realWorkouts = repo.workouts(importedDeviceId, windowStart, nowSeconds) +
             repo.workouts("apple-health", windowStart, nowSeconds) +
             repo.workouts("health-connect", windowStart, nowSeconds)
@@ -842,7 +841,7 @@ object IntelligenceEngine {
         // the recompute window before re-upserting the local-keyed rows, so no stale UTC-keyed row can
         // coexist as a duplicate day. Scoped to the computed source only; imported rows are never touched.
         val oldestDay = AnalyticsEngine.dayString(
-            nowLocalMidnight - (maxDays - 1) * SECONDS_PER_DAY, tzOffsetSeconds,
+            nowLocalMidnight - (maxDays - 1) * CalendarDay.SECONDS_PER_DAY, tzOffsetSeconds,
         )
         val newestDay = AnalyticsEngine.dayString(nowLocalMidnight, tzOffsetSeconds)
 
@@ -957,16 +956,16 @@ object IntelligenceEngine {
         // the trailing week's staged sleep, with HR-reporting windows as the wear mask so a removed strap
         // reads as unknown rather than wakefulness. Falls back to a duration proxy (1 - CV of nightly hours) when coverage is too thin.
         val sriWindowDays = 8
-        val sriStart = midnightLocal(nowLocalMidnight - (sriWindowDays - 1) * SECONDS_PER_DAY, tzOffsetSeconds)
+        val sriStart = midnightLocal(nowLocalMidnight - (sriWindowDays - 1) * CalendarDay.SECONDS_PER_DAY, tzOffsetSeconds)
         val sriIndex: Double? = runCatching {
             val asleep = ArrayList<Pair<Long, Long>>()
             val covered = ArrayList<Pair<Long, Long>>()
             for (off in 0 until sriWindowDays) {
-                val dayMid = midnightLocal(nowLocalMidnight - off * SECONDS_PER_DAY, tzOffsetSeconds)
-                val dayEnd = dayMid + SECONDS_PER_DAY - 1
+                val dayMid = midnightLocal(nowLocalMidnight - off * CalendarDay.SECONDS_PER_DAY, tzOffsetSeconds)
+                val dayEnd = dayMid + CalendarDay.SECONDS_PER_DAY - 1
                 val dayKey = AnalyticsEngine.dayString(dayMid, tzOffsetSeconds)
                 val owner = resolveDayOwner(repo, ownerSource, candidatePriorities, dayKey, dayMid, dayEnd, importedDeviceId)
-                repo.sleepSessions(owner, dayMid - SECONDS_PER_DAY, dayEnd, STREAM_LIMIT)
+                repo.sleepSessions(owner, dayMid - CalendarDay.SECONDS_PER_DAY, dayEnd, STREAM_LIMIT)
                     .forEach { asleep += it.effectiveStartTs to it.effectiveEndTs }
                 // Continuity, not the day's min..max: a min..max mask would count mid-day gaps as worn,
                 // and for this index worn-but-unmeasured reads as awake.
@@ -998,8 +997,8 @@ object IntelligenceEngine {
         if (profile.age > 0) {
             val rhythmSamples = ArrayList<com.noop.data.GravitySample>()
             for (off in 0 until 14) {
-                val dayMid = midnightLocal(nowLocalMidnight - off * SECONDS_PER_DAY, tzOffsetSeconds)
-                val dayEnd = dayMid + SECONDS_PER_DAY - 1
+                val dayMid = midnightLocal(nowLocalMidnight - off * CalendarDay.SECONDS_PER_DAY, tzOffsetSeconds)
+                val dayEnd = dayMid + CalendarDay.SECONDS_PER_DAY - 1
                 val dayKey = AnalyticsEngine.dayString(dayMid, tzOffsetSeconds)
                 val owner = resolveDayOwner(repo, ownerSource, candidatePriorities, dayKey, dayMid, dayEnd, importedDeviceId)
                 rhythmSamples += repo.gravitySamples(owner, dayMid, dayEnd, STREAM_LIMIT)
@@ -1008,7 +1007,7 @@ object IntelligenceEngine {
                 s.dynAccelG?.let { uniffi.whoop_ffi.ActivitySample(s.ts, it) }
             }
             // A day or two of data fits a spurious rhythm, so require >= 7 distinct worn days first.
-            val wornDays = activitySamples.map { (it.unix + tzOffsetSeconds) / SECONDS_PER_DAY }.distinct().size
+            val wornDays = activitySamples.map { (it.unix + tzOffsetSeconds) / CalendarDay.SECONDS_PER_DAY }.distinct().size
             if (wornDays >= 7) {
                 val sexInput = when (profile.sex.lowercase(java.util.Locale.US)) {
                     "male" -> uniffi.whoop_ffi.SexInput.MALE
@@ -1044,7 +1043,7 @@ object IntelligenceEngine {
         // coefficient to strap-only days. Idempotent (re-upserts "steps_est"); inert until calibrated.
         val stepsCalDays = 60
         val calOldest = AnalyticsEngine.dayString(
-            nowLocalMidnight - (stepsCalDays - 1) * SECONDS_PER_DAY, tzOffsetSeconds)
+            nowLocalMidnight - (stepsCalDays - 1) * CalendarDay.SECONDS_PER_DAY, tzOffsetSeconds)
         // Phone reference steps per day, from the apple-health daily rows (steps > 0 only). The
         // Apple-Health importer banks `steps` in AppleDaily, not DailyMetric (sleep/HR/HRV only), so
         // this reads appleDaily here — reading dailyMetrics instead leaves the reference always empty.
@@ -1063,8 +1062,8 @@ object IntelligenceEngine {
         // (Owner resolution mirrors the scoring loop; a single-device install resolves to importedDeviceId.)
         val motionByDay = HashMap<String, Double>()
         for (off in 0 until stepsCalDays) {
-            val dayMid = midnightLocal(nowLocalMidnight - off * SECONDS_PER_DAY, tzOffsetSeconds)
-            val dayEnd = dayMid + SECONDS_PER_DAY - 1
+            val dayMid = midnightLocal(nowLocalMidnight - off * CalendarDay.SECONDS_PER_DAY, tzOffsetSeconds)
+            val dayEnd = dayMid + CalendarDay.SECONDS_PER_DAY - 1
             val dayKey = AnalyticsEngine.dayString(dayMid, tzOffsetSeconds)
             val owner = resolveDayOwner(repo, ownerSource, candidatePriorities, dayKey, dayMid, dayEnd, importedDeviceId)
             val grav = repo.gravitySamples(owner, dayMid, dayEnd, STREAM_LIMIT)
@@ -1435,7 +1434,7 @@ object IntelligenceEngine {
         val tzOffsetSeconds = java.util.TimeZone.getDefault().getOffset(nowSeconds * 1_000L) / 1_000L
         val nowLocalMidnight = midnightLocal(nowSeconds, tzOffsetSeconds)
         val newestDay = AnalyticsEngine.dayString(nowLocalMidnight, tzOffsetSeconds)
-        val oldestDay = AnalyticsEngine.dayString(nowLocalMidnight - (maxDays - 1) * SECONDS_PER_DAY, tzOffsetSeconds)
+        val oldestDay = AnalyticsEngine.dayString(nowLocalMidnight - (maxDays - 1) * CalendarDay.SECONDS_PER_DAY, tzOffsetSeconds)
         val gate7 = repo.daysMerged()
             .filter { it.day in oldestDay..newestDay }.sortedBy { it.day }.takeLast(7)
         val rows = fitnessAgeRows(gate7, profile, computedId, saturdayKeyOnOrBefore(newestDay))
@@ -1513,7 +1512,7 @@ object IntelligenceEngine {
         for ((day, v) in nightly) if (hist[day] == null) hist[day] = v
     }
 
-    internal fun midnightUtc(ts: Long): Long = ts - Math.floorMod(ts, SECONDS_PER_DAY)
+    internal fun midnightUtc(ts: Long): Long = ts - Math.floorMod(ts, CalendarDay.SECONDS_PER_DAY)
 
     /**
      * Floors a unix-seconds timestamp to 00:00:00 of its local calendar day. [offsetSec] is seconds
@@ -1521,7 +1520,7 @@ object IntelligenceEngine {
      * offsets and timestamps; [offsetSec] == 0 reduces exactly to [midnightUtc].
      */
     internal fun midnightLocal(ts: Long, offsetSec: Long): Long =
-        ts - Math.floorMod(ts + offsetSec, SECONDS_PER_DAY)
+        ts - Math.floorMod(ts + offsetSec, CalendarDay.SECONDS_PER_DAY)
 
     /**
      * The per-day diagnostic source token from the imported day-key sets. A WHOOP export covering [day]

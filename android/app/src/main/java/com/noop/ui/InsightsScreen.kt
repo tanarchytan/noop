@@ -48,6 +48,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.noop.analytics.RustScores
 import com.noop.data.DailyMetric
 import com.noop.data.JournalEntry
 import com.noop.data.WorkoutRow
@@ -1411,7 +1412,7 @@ private fun dayDistance(start: String, end: String): Int {
 }
 
 private fun mean(values: List<Double>): Double? =
-    if (values.isEmpty()) null else values.sum() / values.size
+    if (values.isEmpty()) null else RustScores.mean(values)
 
 // MARK: - Experiment persistence (SharedPreferences, parity with Swift @AppStorage keys)
 
@@ -1657,18 +1658,11 @@ private fun cohensD(a: List<Double>, b: List<Double>): Double {
     if (a.size < 2 || b.size < 2) return 0.0
     val ma = a.average()
     val mb = b.average()
-    val va = variance(a, ma)
-    val vb = variance(b, mb)
+    val va = RustScores.sampleSD(a).let { it * it }
+    val vb = RustScores.sampleSD(b).let { it * it }
     val pooled = sqrt(((a.size - 1) * va + (b.size - 1) * vb) / (a.size + b.size - 2).toDouble())
     if (pooled <= 0.0 || !pooled.isFinite()) return 0.0
     return (ma - mb) / pooled
-}
-
-/** Sample variance (n-1 denominator) about a known mean. */
-private fun variance(xs: List<Double>, mean: Double): Double {
-    if (xs.size < 2) return 0.0
-    val ss = xs.sumOf { val d = it - mean; d * d }
-    return ss / (xs.size - 1).toDouble()
 }
 
 /** Pearson r over two (day,value) series aligned on shared days. Returns (r, n) or
@@ -1692,25 +1686,12 @@ private fun pearsonLagged(series: List<Pair<String, Double>>, lagDays: Int): Pai
     return pearson(pairs)
 }
 
-/** Pearson correlation of paired samples. Null with <3 pairs or no variance. */
+/** Pearson correlation of paired samples, computed in whoop-rs. Null under 3 pairs (too few to
+ *  show) or on a flat series. */
 private fun pearson(pairs: List<Pair<Double, Double>>): Pair<Double, Int>? {
-    val n = pairs.size
-    if (n < 3) return null
-    val mx = pairs.sumOf { it.first } / n
-    val my = pairs.sumOf { it.second } / n
-    var sxy = 0.0
-    var sxx = 0.0
-    var syy = 0.0
-    for ((x, y) in pairs) {
-        val dx = x - mx
-        val dy = y - my
-        sxy += dx * dy
-        sxx += dx * dx
-        syy += dy * dy
-    }
-    val denom = sqrt(sxx * syy)
-    if (denom <= 0.0 || !denom.isFinite()) return null
-    return (sxy / denom).coerceIn(-1.0, 1.0) to n
+    if (pairs.size < 3) return null
+    val r = RustScores.pearson(pairs.map { it.first }, pairs.map { it.second }) ?: return null
+    return r.coerceIn(-1.0, 1.0) to pairs.size
 }
 
 /** Rough |r| threshold for "p < 0.05" at n pairs (critical r for a two-tailed test,

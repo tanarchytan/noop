@@ -24,7 +24,7 @@ import kotlin.math.max
 
 object StepsEstimateEngineTrace {
 
-    private fun r2(x: Double): Double = Math.round(x * 100.0) / 100.0
+    private fun round2(x: Double): Double = Math.round(x * 100.0) / 100.0
 
     /**
      * The WHOOP-4 motion-volume calibration trace. Given the per-day calibration points (each a motion volume
@@ -46,8 +46,8 @@ object StepsEstimateEngineTrace {
         for (p in usable) {
             val ratio = if (p.motion > 0) p.steps / p.motion else 0.0
             lines.add(
-                "stepsCal point motion=${r2(p.motion)} phoneRef=${p.steps.toInt()} " +
-                    "ratio=${r2(ratio)} (steps/motion votes weighted by motion)",
+                "stepsCal point motion=${round2(p.motion)} phoneRef=${p.steps.toInt()} " +
+                    "ratio=${round2(ratio)} (steps/motion votes weighted by motion)",
             )
         }
 
@@ -55,8 +55,8 @@ object StepsEstimateEngineTrace {
         val cal = StepsEstimateEngine.calibrate(points, manualOverride)
         if (cal != null && (usable.size >= StepsEstimateEngine.MIN_CALIBRATION_DAYS || cal.manual)) {
             lines.add(
-                "stepsCal fit k=${r2(cal.coefficient)} sampleDays=${cal.sampleDays} " +
-                    "confidence=${r2(cal.confidence)} manual=${cal.manual} " +
+                "stepsCal fit k=${round2(cal.coefficient)} sampleDays=${cal.sampleDays} " +
+                    "confidence=${round2(cal.confidence)} manual=${cal.manual} " +
                     "(k = motion-weighted median of steps/motion)",
             )
         } else {
@@ -69,13 +69,13 @@ object StepsEstimateEngineTrace {
                     )
                 is StepsEstimateEngine.CalibrationStatus.Manual ->
                     lines.add(
-                        "stepsCal fit k=${r2(status.coefficient)} sampleDays=${status.sampleDays} " +
+                        "stepsCal fit k=${round2(status.coefficient)} sampleDays=${status.sampleDays} " +
                             "confidence=1.0 manual=true (user-set k)",
                     )
                 is StepsEstimateEngine.CalibrationStatus.Calibrated ->
                     lines.add(
-                        "stepsCal fit k=${r2(status.coefficient)} sampleDays=${status.sampleDays} " +
-                            "confidence=${r2(status.confidence)} manual=false " +
+                        "stepsCal fit k=${round2(status.coefficient)} sampleDays=${status.sampleDays} " +
+                            "confidence=${round2(status.confidence)} manual=false " +
                             "(k = motion-weighted median of steps/motion)",
                     )
             }
@@ -168,7 +168,7 @@ object StepsEstimateEngineTrace {
         // rather than implying a real zero-step measurement.
         val scaledText = if (scaled > 0) scaled.toString() else "none"
         lines.add(
-            "stepsRaw total rawTicks=$rawTotal ticksPerStep=${r2(ticksPerStep)} " +
+            "stepsRaw total rawTicks=$rawTotal ticksPerStep=${round2(ticksPerStep)} " +
                 "scaledSteps=$scaledText (steps_est for the day)",
         )
         return lines

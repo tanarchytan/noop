@@ -5,6 +5,7 @@ import android.content.SharedPreferences
 import androidx.work.CoroutineWorker
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
+import com.noop.analytics.CalendarDay
 import java.util.Calendar
 
 /**
@@ -111,15 +112,14 @@ class DebugExportSettings(private val prefs: SharedPreferences) {
 
     /** Time-of-day to export, minutes since midnight. Clamped to a valid minute. Default 07:00. */
     var timeMinutes: Int
-        get() = prefs.getInt(KEY_TIME, DEFAULT_TIME).coerceIn(0, MINUTES_PER_DAY - 1)
-        set(v) = prefs.edit().putInt(KEY_TIME, v.coerceIn(0, MINUTES_PER_DAY - 1)).apply()
+        get() = prefs.getInt(KEY_TIME, DEFAULT_TIME).coerceIn(0, CalendarDay.MINUTES_PER_DAY - 1)
+        set(v) = prefs.edit().putInt(KEY_TIME, v.coerceIn(0, CalendarDay.MINUTES_PER_DAY - 1)).apply()
 
     companion object {
         private const val PREFS = "noop_debug_export"
         private const val KEY_ENABLED = "debugExport.enabled"
         private const val KEY_TIME = "debugExport.timeMinutes"
 
-        const val MINUTES_PER_DAY = 24 * 60
         const val DEFAULT_TIME = 7 * 60   // 07:00 — a log waiting when you wake.
 
         fun from(context: Context): DebugExportSettings =

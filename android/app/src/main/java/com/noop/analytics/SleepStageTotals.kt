@@ -123,15 +123,14 @@ object SleepStageTotals {
     /** Broad overnight band, NOT a gate. The band is [OVERNIGHT_START_HOUR, OVERNIGHT_END_HOUR) local,
      *  reconciled with the detector's `SleepStager.isOvernightOnset` window [20:00, 11:00) so the
      *  selector and detector agree. The alignment bonus it used to feed is computed in whoop-rs. */
-    const val OVERNIGHT_START_HOUR = 20
+    val OVERNIGHT_START_HOUR: Int = RustScores.sleepWindowCfg.overnightStartHour.toInt()
 
     /** Local hour (exclusive) that closes the cold-start overnight band, matching the detector's
      *  [20:00, 11:00) onset window. A block onset in [OVERNIGHT_END_HOUR, OVERNIGHT_START_HOUR)
      *  is daytime; everything else is overnight. */
-    const val OVERNIGHT_END_HOUR = 11
+    val OVERNIGHT_END_HOUR: Int = RustScores.sleepWindowCfg.overnightEndHour.toInt()
 
     /** Seconds in a day, for circular time-of-day math. */
-    const val SECONDS_PER_DAY = 86_400L
 
     /** One candidate block for main-night selection: its effective onset and end (unix seconds). A user
      *  wake/bed edit moves [end], never the detected onset key. */
@@ -159,7 +158,7 @@ object SleepStageTotals {
      *  the scored selector, which runs in whoop-rs. [offsetSec] is seconds EAST of UTC. */
     fun isOvernightOnset(ts: Long, offsetSec: Long): Boolean {
         val local = ts + offsetSec
-        val secOfDay = ((local % SECONDS_PER_DAY) + SECONDS_PER_DAY) % SECONDS_PER_DAY
+        val secOfDay = ((local % CalendarDay.SECONDS_PER_DAY) + CalendarDay.SECONDS_PER_DAY) % CalendarDay.SECONDS_PER_DAY
         val hour = (secOfDay / 3_600L).toInt()
         return hour >= OVERNIGHT_START_HOUR || hour < OVERNIGHT_END_HOUR
     }
@@ -167,8 +166,8 @@ object SleepStageTotals {
     /** Smallest circular distance (seconds, 0..43200) between two times-of-day, so 23:30 and 00:30 are
      *  3600s apart, not 82800. Both inputs are seconds-of-day in [0, 86400). */
     internal fun circularDistanceSec(a: Long, b: Long): Long {
-        val raw = Math.abs(a - b) % SECONDS_PER_DAY
-        return minOf(raw, SECONDS_PER_DAY - raw)
+        val raw = Math.abs(a - b) % CalendarDay.SECONDS_PER_DAY
+        return minOf(raw, CalendarDay.SECONDS_PER_DAY - raw)
     }
 
     /** One bridged night group over the whole input: the fragments (as ORIGINAL indices, ascending) plus
@@ -425,7 +424,7 @@ object SleepStageTotals {
 
     /** Minimum number of DAYS (with at least one block) before a habitual midsleep is trusted; a shorter
      *  history returns null (cold-start). ~2 weeks. */
-    const val HABITUAL_MIN_DAYS = 14
+    val HABITUAL_MIN_DAYS: Int = RustScores.sleepWindowCfg.habitualMinDays.toInt()
 
     /** The user's habitual midsleep as a LOCAL TIME-OF-DAY (seconds in [0, 86400)), or null when history is
      *  too short (cold-start): the CIRCULAR MEAN of the midpoint-time-of-day of the LONGEST block per local

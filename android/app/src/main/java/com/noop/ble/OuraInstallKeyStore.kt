@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.SharedPreferences
 import android.util.Base64
 import androidx.security.crypto.EncryptedSharedPreferences
+import com.noop.oura.OuraAuth
 import androidx.security.crypto.MasterKey
 
 /**
@@ -27,9 +28,9 @@ object OuraInstallKeyStore {
      *  file as the key so the two move together when a ring is forgotten. */
     private const val ADOPT_PREFIX = "adopt_intent_"
 
-    /** The exact byte length of an Oura application install key. A stored value of any other length
-     *  is treated as absent so a corrupt entry can never be sent as a malformed proof input. */
-    const val KEY_LENGTH = 16
+    /** The exact byte length of an Oura application install key, owned by the auth codec. A stored
+     *  value of any other length is treated as absent so a corrupt entry can never be sent on. */
+    const val KEY_LENGTH = OuraAuth.keyLength
 
     /** Per-ring preference key. */
     private fun prefKey(deviceId: String) = "$KEY_PREFIX$deviceId"

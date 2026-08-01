@@ -146,7 +146,7 @@ object OuraAuth {
  * returned ciphertext is the same shape.
  */
 fun aes128EcbEncryptNoPad(data: IntArray, key: IntArray): IntArray {
-    if (key.size != 16) throw OuraAuthException(OuraAuthException.Kind.BAD_KEY_LENGTH)
+    if (key.size != OuraAuth.keyLength) throw OuraAuthException(OuraAuthException.Kind.BAD_KEY_LENGTH)
     if (data.size % 16 != 0) throw OuraAuthException(OuraAuthException.Kind.ENCRYPTION_FAILED)
     return try {
         val cipher = Cipher.getInstance("AES/ECB/NoPadding")
