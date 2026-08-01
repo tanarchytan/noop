@@ -195,10 +195,7 @@ object ActivityCostEngine {
 
     // Stats (self-contained).
 
-    internal fun mean(values: List<Double>): Double {
-        if (values.isEmpty()) return 0.0
-        return values.sum() / values.size
-    }
+    internal fun mean(values: List<Double>): Double = RustScores.mean(values)
 
     /** Round half away from zero to an Int, for the non-negative magnitudes used in
      *  [ActivityCost.sentence]. */

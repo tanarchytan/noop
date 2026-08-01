@@ -199,10 +199,7 @@ object RecoveryForecaster {
 
     // Stats (self-contained).
 
-    internal fun mean(values: List<Double>): Double {
-        if (values.isEmpty()) return 0.0
-        return values.sum() / values.size
-    }
+    internal fun mean(values: List<Double>): Double = RustScores.mean(values)
 
     /** Sample standard deviation (ddof = 1); 0 for fewer than 2 values. */
     internal fun sampleSD(values: List<Double>): Double {

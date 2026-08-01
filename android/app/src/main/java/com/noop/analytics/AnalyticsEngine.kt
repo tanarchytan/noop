@@ -848,7 +848,7 @@ object RestScorer {
         groupFragments: Int, groupInBedSeconds: Double,
     ): String {
         fun clamp01(x: Double) = maxOf(0.0, minOf(1.0, x))
-        fun r2(x: Double) = Math.round(x * 100.0) / 100.0
+        fun round2(x: Double) = Math.round(x * 100.0) / 100.0
         val needSeconds = maxOf(needHours, 0.1) * 3600.0
         val durationScore = clamp01(tstSeconds / needSeconds)
         val efficiencyScore = clamp01(efficiency)
@@ -867,11 +867,11 @@ object RestScorer {
             remSeconds = restorativeSeconds - (deepSeconds ?: 0.0),
             sleepNeedHours = needHours, consistency = consistency,
         ) ?: 0.0
-        return "rest composite=${r2(composite)} " +
-            "dur=${r2(durationScore)}*wDur=$wDuration " +
-            "eff=${r2(efficiencyScore)}*wEff=$wEfficiency " +
-            "restor=${r2(restorativeScore)}*wRestor=$wRestorative deepFactor=${r2(deepFactor)} " +
-            "consist=${r2(consistencyScore)}*wConsist=$wConsistency " +
+        return "rest composite=${round2(composite)} " +
+            "dur=${round2(durationScore)}*wDur=$wDuration " +
+            "eff=${round2(efficiencyScore)}*wEff=$wEfficiency " +
+            "restor=${round2(restorativeScore)}*wRestor=$wRestorative deepFactor=${round2(deepFactor)} " +
+            "consist=${round2(consistencyScore)}*wConsist=$wConsistency " +
             "group=$groupFragments groupInBedMin=${(groupInBedSeconds / 60).toInt()}"
     }
 

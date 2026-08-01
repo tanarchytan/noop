@@ -1285,7 +1285,7 @@ internal class StressModel private constructor(
  // MARK: Stress math (pure helpers, ported from StressMath)
 
         private fun mean(xs: List<Double>): Double? =
-            if (xs.isEmpty()) null else xs.sum() / xs.size
+            if (xs.isEmpty()) null else RustScores.mean(xs)
 
         private fun explanation(band: StressBand, rhrDelta: Double?, hrvDelta: Double?): String {
             val rhrUp = (rhrDelta ?: 0.0) > 1.0

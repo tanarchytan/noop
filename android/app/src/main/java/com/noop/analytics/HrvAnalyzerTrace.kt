@@ -8,7 +8,7 @@ package com.noop.analytics
 
 object HrvAnalyzerTrace {
 
-    private fun r2(x: Double): Double = Math.round(x * 100.0) / 100.0
+    private fun round2(x: Double): Double = Math.round(x * 100.0) / 100.0
 
     /**
      * Side-effect-free diagnostic twin of [RustScores.analyzeRaw]: the same result plus a cleaning trace
@@ -39,7 +39,7 @@ object HrvAnalyzerTrace {
 
         lines.add(
             "hrv path=$path nInput=$nInput nClean=$nClean " +
-                "rejectedFraction=${r2(rejectedFraction)}",
+                "rejectedFraction=${round2(rejectedFraction)}",
         )
         lines.add(
             "hrv reject range=$outOfRange " +
@@ -59,8 +59,8 @@ object HrvAnalyzerTrace {
         if (maxRejectedFraction != null && minBeatsCleared) {
             val gatePass = !(rejectedFraction > maxRejectedFraction)
             lines.add(
-                "hrv spotGate maxRejectedFraction=${r2(maxRejectedFraction)} " +
-                    "rejectedFraction=${r2(rejectedFraction)} ${if (gatePass) "PASS" else "FAIL"}",
+                "hrv spotGate maxRejectedFraction=${round2(maxRejectedFraction)} " +
+                    "rejectedFraction=${round2(rejectedFraction)} ${if (gatePass) "PASS" else "FAIL"}",
             )
         }
 
@@ -69,7 +69,7 @@ object HrvAnalyzerTrace {
         val sdnn = result.sdnn
         val mean = result.meanNN
         if (rmssd != null && sdnn != null && mean != null) {
-            lines.add("hrv rmssd=${r2(rmssd)}ms sdnn=${r2(sdnn)}ms meanNN=${r2(mean)}ms")
+            lines.add("hrv rmssd=${round2(rmssd)}ms sdnn=${round2(sdnn)}ms meanNN=${round2(mean)}ms")
         } else {
             lines.add("hrv result=nil (a gate above refused the reading)")
         }

@@ -12,7 +12,7 @@ import kotlin.math.abs
 
 object RecoveryScorerTrace {
 
-    private fun r2(x: Double): Double = Math.round(x * 100.0) / 100.0
+    private fun round2(x: Double): Double = Math.round(x * 100.0) / 100.0
 
     /**
      * Diagnostic twin of [RecoveryScorer.recovery]: returns the SAME score recovery(...) would,
@@ -58,18 +58,18 @@ object RecoveryScorerTrace {
 
         // Per-driver baseline state lines (mean / spread / nValid / status).
         lines.add(
-            "charge baseline hrv mean=${r2(hrvBaseline.baseline)} spread=${r2(hrvBaseline.spread)} " +
+            "charge baseline hrv mean=${round2(hrvBaseline.baseline)} spread=${round2(hrvBaseline.spread)} " +
                 "nValid=${hrvBaseline.nValid} status=${hrvBaseline.status.raw}",
         )
         rhrBaseline?.let { b ->
             lines.add(
-                "charge baseline rhr mean=${r2(b.baseline)} spread=${r2(b.spread)} " +
+                "charge baseline rhr mean=${round2(b.baseline)} spread=${round2(b.spread)} " +
                     "nValid=${b.nValid} status=${b.status.raw}",
             )
         }
         respBaseline?.let { b ->
             lines.add(
-                "charge baseline resp mean=${r2(b.baseline)} spread=${r2(b.spread)} " +
+                "charge baseline resp mean=${round2(b.baseline)} spread=${round2(b.spread)} " +
                     "nValid=${b.nValid} status=${b.status.raw}",
             )
         }
@@ -77,19 +77,19 @@ object RecoveryScorerTrace {
         // Per-term z * weight, built with the EXACT expressions recovery(...) uses, in the SAME append order.
         val terms = ArrayList<Pair<Double, Double>>() // (z, weight)
 
-        // Every WEIGHT / SCALE / centre constant goes through r2() too, not just the z-scores, so a
+        // Every WEIGHT / SCALE / centre constant goes through round2() too, not just the z-scores, so a
         // future non-round weight (e.g. 0.333) still renders consistently and the parity fixture
         // cannot silently desync.
         // HRV term: higher is better. (Always present once usable; the cold-start guard above returned.)
         val hrvZ = RecoveryScorer.zScore(hrv, hrvBaseline.baseline, hrvBaseline.spread)
         terms.add(hrvZ to RecoveryScorer.wHRV)
-        lines.add("charge term hrv z=${r2(hrvZ)} w=${r2(RecoveryScorer.wHRV)} (higher HRV is better)")
+        lines.add("charge term hrv z=${round2(hrvZ)} w=${round2(RecoveryScorer.wHRV)} (higher HRV is better)")
 
         // RHR term: lower is better -> (mu - x) / sigma.
         if (rhrBaseline != null) {
             val z = RecoveryScorer.zScore(rhrBaseline.baseline, rhr, rhrBaseline.spread)
             terms.add(z to RecoveryScorer.wRHR)
-            lines.add("charge term rhr z=${r2(z)} w=${r2(RecoveryScorer.wRHR)} (lower RHR is better)")
+            lines.add("charge term rhr z=${round2(z)} w=${round2(RecoveryScorer.wRHR)} (lower RHR is better)")
         } else {
             nilTerms.add("rhr")
         }
@@ -98,7 +98,7 @@ object RecoveryScorerTrace {
         if (resp != null && respBaseline != null) {
             val z = RecoveryScorer.zScore(respBaseline.baseline, resp, respBaseline.spread)
             terms.add(z to RecoveryScorer.wResp)
-            lines.add("charge term resp z=${r2(z)} w=${r2(RecoveryScorer.wResp)} (lower resp is better)")
+            lines.add("charge term resp z=${round2(z)} w=${round2(RecoveryScorer.wResp)} (lower resp is better)")
         } else {
             nilTerms.add("resp")
         }
@@ -108,8 +108,8 @@ object RecoveryScorerTrace {
             val z = (sleepPerf - RecoveryScorer.sleepPerfCenter) / RecoveryScorer.sleepPerfScale
             terms.add(z to RecoveryScorer.wSleep)
             lines.add(
-                "charge term sleepPerf z=${r2(z)} w=${r2(RecoveryScorer.wSleep)} " +
-                    "(rest=${r2(sleepPerf)} center=${r2(RecoveryScorer.sleepPerfCenter)})",
+                "charge term sleepPerf z=${round2(z)} w=${round2(RecoveryScorer.wSleep)} " +
+                    "(rest=${round2(sleepPerf)} center=${round2(RecoveryScorer.sleepPerfCenter)})",
             )
         } else {
             nilTerms.add("sleepPerf")
@@ -120,8 +120,8 @@ object RecoveryScorerTrace {
             val z = -abs(skinTempDev) / RecoveryScorer.skinTempDevScale
             terms.add(z to RecoveryScorer.wSkinTemp)
             lines.add(
-                "charge term skinTempDev z=${r2(z)} w=${r2(RecoveryScorer.wSkinTemp)} " +
-                    "(dev=${r2(skinTempDev)}C penalty=-|dev|/${r2(RecoveryScorer.skinTempDevScale)})",
+                "charge term skinTempDev z=${round2(z)} w=${round2(RecoveryScorer.wSkinTemp)} " +
+                    "(dev=${round2(skinTempDev)}C penalty=-|dev|/${round2(RecoveryScorer.skinTempDevScale)})",
             )
         } else {
             nilTerms.add("skinTempDev")
@@ -133,8 +133,8 @@ object RecoveryScorerTrace {
             val z = -recoveryIndexSlope / RecoveryScorer.recoveryIndexScaleBpmPerHr
             terms.add(z to RecoveryScorer.wRecoveryIndex)
             lines.add(
-                "charge term recoveryIndex z=${r2(z)} w=${r2(RecoveryScorer.wRecoveryIndex)} " +
-                    "(slope=${r2(recoveryIndexSlope)}bpm/hr, declining is better)",
+                "charge term recoveryIndex z=${round2(z)} w=${round2(RecoveryScorer.wRecoveryIndex)} " +
+                    "(slope=${round2(recoveryIndexSlope)}bpm/hr, declining is better)",
             )
         } else {
             nilTerms.add("recoveryIndex")
@@ -146,8 +146,8 @@ object RecoveryScorerTrace {
             val z = RecoveryScorer.zScore(effortBaseline.baseline, priorDayEffort, effortBaseline.spread)
             terms.add(z to RecoveryScorer.wActivityBalance)
             lines.add(
-                "charge term activityBalance z=${r2(z)} w=${r2(RecoveryScorer.wActivityBalance)} " +
-                    "(priorEffort=${r2(priorDayEffort)} baselineMean=${r2(effortBaseline.baseline)})",
+                "charge term activityBalance z=${round2(z)} w=${round2(RecoveryScorer.wActivityBalance)} " +
+                    "(priorEffort=${round2(priorDayEffort)} baselineMean=${round2(effortBaseline.baseline)})",
             )
         } else {
             nilTerms.add("activityBalance")
@@ -164,15 +164,15 @@ object RecoveryScorerTrace {
         val totalWeight = terms.sumOf { it.second }
         val compositeZ = if (totalWeight > 0.0) terms.sumOf { it.first * it.second } / totalWeight else 0.0
         lines.add(
-            "charge renorm totalWeight=${r2(totalWeight)} compositeZ=${r2(compositeZ)} " +
+            "charge renorm totalWeight=${round2(totalWeight)} compositeZ=${round2(compositeZ)} " +
                 "(z = sum(z*w)/sum(w))",
         )
 
         // Final logistic score + band, read from recovery(...) verbatim.
         if (score != null) {
             lines.add(
-                "charge score=${r2(score)} band=${RecoveryScorer.band(score)} " +
-                    "(logistic k=${r2(RecoveryScorer.logisticK)} z0=${r2(RecoveryScorer.logisticZ0)})",
+                "charge score=${round2(score)} band=${RecoveryScorer.band(score)} " +
+                    "(logistic k=${round2(RecoveryScorer.logisticK)} z0=${round2(RecoveryScorer.logisticZ0)})",
             )
         } else {
             lines.add("charge nilScore reason=noValidTerms (no driver produced a usable term)")

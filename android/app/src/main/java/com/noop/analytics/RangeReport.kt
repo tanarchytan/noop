@@ -320,10 +320,7 @@ object RangeReportEngine {
 
     // Stats (self-contained, deterministic)
 
-    internal fun mean(values: List<Double>): Double {
-        if (values.isEmpty()) return 0.0
-        return values.sum() / values.size
-    }
+    internal fun mean(values: List<Double>): Double = RustScores.mean(values)
 
     /** OLS slope of value vs the 0-based index (per-day trend); 0 for < 2 points. */
     internal fun leastSquaresSlope(values: List<Double>): Double = RustScores.slope(values)

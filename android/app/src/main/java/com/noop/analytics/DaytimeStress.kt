@@ -89,7 +89,7 @@ object DaytimeStress {
     // MARK: - Mean over an hour's samples (mean HR for a bucket)
 
     private fun mean(xs: List<Double>): Double? =
-        if (xs.isEmpty()) null else xs.sum() / xs.size
+        if (xs.isEmpty()) null else RustScores.mean(xs)
 
     // MARK: - Public API
 

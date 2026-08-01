@@ -2,7 +2,6 @@ package com.noop.analytics
 
 import com.noop.data.DailyMetric
 import java.util.Locale
-import kotlin.math.sqrt
 
 /**
  * On-device "Readiness" intelligence.
@@ -362,13 +361,9 @@ object ReadinessEngine {
     // MARK: Stats helpers
 
     fun mean(xs: List<Double>): Double? =
-        if (xs.isEmpty()) null else xs.sum() / xs.size
+        if (xs.isEmpty()) null else RustScores.mean(xs)
 
     /** Sample standard deviation (n-1). null for fewer than 2 points. */
-    fun sampleSD(xs: List<Double>): Double? {
-        if (xs.size < 2) return null
-        val m = mean(xs) ?: return null
-        val ss = xs.fold(0.0) { acc, x -> acc + (x - m) * (x - m) }
-        return sqrt(ss / (xs.size - 1))
-    }
+    fun sampleSD(xs: List<Double>): Double? =
+        if (xs.size < 2) null else RustScores.sampleSD(xs)
 }

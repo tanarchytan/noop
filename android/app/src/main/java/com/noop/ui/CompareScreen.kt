@@ -50,12 +50,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.noop.analytics.RustScores
 import com.noop.data.DailyMetric
 import com.noop.data.MoodStore
 import com.noop.ingest.NutritionCsvImporter
 import java.util.Locale
 import kotlin.math.abs
-import kotlin.math.sqrt
 
 // MARK: - Compare
 //
@@ -341,31 +341,13 @@ private object CorrelationEngine {
         return common.map { mapA[it]!! to mapB[it]!! }
     }
 
-    /** Pearson r over the pairs. Null when <3 pairs or either variable has zero variance. */
+    /** Pearson r over the pairs, computed in whoop-rs. Null under 3 pairs (too few to show) or
+     *  when either variable is flat. */
     fun pearson(xy: List<Pair<Double, Double>>): Correlation? {
-        val n = xy.size
-        if (n < 3) return null
-        val nD = n.toDouble()
-        var sumX = 0.0
-        var sumY = 0.0
-        for (p in xy) { sumX += p.first; sumY += p.second }
-        val meanX = sumX / nD
-        val meanY = sumY / nD
-        var sxx = 0.0
-        var syy = 0.0
-        var sxy = 0.0
-        for (p in xy) {
-            val dx = p.first - meanX
-            val dy = p.second - meanY
-            sxx += dx * dx
-            syy += dy * dy
-            sxy += dx * dy
-        }
-        if (sxx <= 0.0 || syy <= 0.0) return null
-        var r = sxy / (sqrt(sxx) * sqrt(syy))
-        if (r > 1.0) r = 1.0
-        if (r < -1.0) r = -1.0
-        return Correlation(r = r, n = n)
+        if (xy.size < 3) return null
+        val r = RustScores.pearson(xy.map { it.first }, xy.map { it.second })
+            ?.coerceIn(-1.0, 1.0) ?: return null
+        return Correlation(r = r, n = xy.size)
     }
 }
 
