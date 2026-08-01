@@ -1134,7 +1134,7 @@ private fun OuraLocalStateNote() {
     }
 }
 
-private fun lastSeenLine(device: PairedDeviceRow, isLiveConnected: Boolean, bondRefused: Boolean = false): String = when {
+internal fun lastSeenLine(device: PairedDeviceRow, isLiveConnected: Boolean, bondRefused: Boolean = false): String = when {
     device.status == DeviceStatus.archived.name -> "Removed · data kept"
  // No "tap ⋯" pointer here ( review) — the full how-to-fix guidance is already inline on the card
  // just below, so pointing at the menu would send the user looking for help that's already on screen.
