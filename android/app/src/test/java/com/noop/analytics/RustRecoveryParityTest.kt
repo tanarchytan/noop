@@ -23,9 +23,9 @@ import kotlin.math.roundToInt
  *    against the independent numpy reference in that fixture (the stored DailyMetric.recovery is written
  *    straight from it at AnalyticsEngine.kt:506, with NO rounding);
  *  - the auxiliary recovery FFI fns ([RustScores.band], [RustScores.recoveryIndexSlope],
- *    [RustScores.bankedNights]) are still pinned bit-for-bit against their KEPT Kotlin twins
- *    ([RecoveryScorer.band] / [RecoveryScorer.recoveryIndexSlope] / [RecoveryScorer.bankedNights]) on
- *    the same/crafted inputs — a true Kotlin-vs-Rust parity assertion.
+ *    [RustScores.bankedNights]) are pinned bit-for-bit against frozen local restatements of their
+ *    DELETED Kotlin twins ([refBand] / [refSlope] / [refBankedNights]) on crafted inputs — the same
+ *    idiom [refRecovery] uses for the composite, so the pin survives the twin's removal.
  *
  * A drift here is FAIL / BLOCKED, to be reported as a whoop-rs fix request (the 17 traps — term
  * insertion order, logisticK=1.6/z0=-0.20, omit-and-renormalize nulls, baseline fold order, sleep term
@@ -93,8 +93,58 @@ class RustRecoveryParityTest {
         assertTrue("no cases scored", scored > 0)
     }
 
+    /** Frozen restatement of the DELETED `RecoveryScorer.band` if-chain, reading the live cuts. */
+    private fun refBand(score: Double): String = when {
+        score < RecoveryScorer.bandRedMax -> "red"
+        score < RecoveryScorer.bandYellowMax -> "yellow"
+        else -> "green"
+    }
+
+    /**
+     * Frozen restatement of the DELETED `RecoveryScorer.recoveryIndexSlope`: non-overlapping
+     * `restingHrWindowS` bin means against each bin's midpoint hour, least-squares slope in bpm/hour,
+     * null under `recoveryIndexMinBins` bins, 0.0 on a degenerate time spread.
+     */
+    private fun refSlope(hr: List<HrSample>, start: Long, end: Long): Double? {
+        val windowS = RustScores.recoveryCfg.restingHrWindowS.toInt()
+        val minBins = RustScores.recoveryCfg.recoveryIndexMinBins.toInt()
+        val seg = hr.filter { it.ts in start..end }
+        if (seg.isEmpty()) return null
+
+        val points = ArrayList<Pair<Double, Double>>() // (tHours, meanBpm)
+        var t = start
+        while (t < end) {
+            val binEnd = t + windowS
+            val win = seg.filter { it.ts >= t && it.ts < binEnd }
+            if (win.isNotEmpty()) {
+                val mean = win.sumOf { it.bpm }.toDouble() / win.size.toDouble()
+                val midpointS = (t - start).toDouble() + windowS / 2.0
+                points.add((midpointS / 3600.0) to mean)
+            }
+            t += windowS
+        }
+        if (points.size < minBins) return null
+
+        val n = points.size.toDouble()
+        val tBar = points.sumOf { it.first } / n
+        val yBar = points.sumOf { it.second } / n
+        var num = 0.0
+        var den = 0.0
+        for ((tHours, meanBpm) in points) {
+            val dt = tHours - tBar
+            num += dt * (meanBpm - yBar)
+            den += dt * dt
+        }
+        if (den <= 1e-9) return 0.0
+        return num / den
+    }
+
+    /** Frozen restatement of the DELETED `RecoveryScorer.bankedNights` in-range count. */
+    private fun refBankedNights(nightlyHrv: List<Double?>, cfg: MetricCfg = Baselines.hrvCfg): Int =
+        nightlyHrv.count { it != null && it in cfg.minVal..cfg.maxVal }
+
     @Test
-    fun `recovery band matches rust ffi across the color thresholds`() {
+    fun `recovery band matches the deleted Kotlin twin across the color thresholds`() {
         // Feed identical scores into both band fns to isolate the band logic (red<34, yellow<67,
         // green) from the composite — including the exact threshold values and their < boundaries.
         val scores = listOf(
@@ -103,14 +153,14 @@ class RustRecoveryParityTest {
             RecoveryScorer.bandRedMax, RecoveryScorer.bandYellowMax,
         )
         for (s in scores) {
-            assertEquals("band at $s", RecoveryScorer.band(s), RustScores.band(s))
+            assertEquals("band at $s", refBand(s), RustScores.band(s))
         }
     }
 
     @Test
-    fun `recovery index slope matches rust ffi on a crafted declining night`() {
-        // Deterministic in-bed window with a clear HR decline (well over recoveryIndexMinBins of
-        // 5-min bins), so both paths fit the same least-squares slope over identical bin means.
+    fun `recovery index slope matches the deleted Kotlin twin on a crafted declining night`() {
+        // Deterministic in-bed window with a clear HR decline (well over the 5-min bin floor), so
+        // both paths fit the same least-squares slope over identical bin means.
         val dev = "d"
         val start = 1_749_513_600L + 3_600L
         val durS = 40 * 60 // 40 min → 8 five-minute bins > the 6-bin floor
@@ -121,9 +171,7 @@ class RustRecoveryParityTest {
             val bpm = (72.0 - 12.0 * (i.toDouble() / durS.toDouble())).roundToInt()
             hr.add(HrSample(dev, start + i, bpm))
         }
-        val kotlinSlope = RecoveryScorer.recoveryIndexSlope(hr, start, end)
-        val rustSlope = RustScores.recoveryIndexSlope(hr, start, end)
-        assertSameDouble("recovery index slope", kotlinSlope, rustSlope)
+        assertSameDouble("recovery index slope", refSlope(hr, start, end), RustScores.recoveryIndexSlope(hr, start, end))
     }
 
     /**
@@ -262,13 +310,13 @@ class RustRecoveryParityTest {
     }
 
     @Test
-    fun `banked nights matches rust ffi`() {
+    fun `banked nights matches the deleted Kotlin twin`() {
         // Mix of null, clearly-in-range, and clearly-out-of-range nightly HRV so both sides apply
         // the SAME hrv-config validity predicate (in-range count, not just non-null).
         val nightly = listOf(
             45.0, null, 60.0, 2.0 /* implausibly low */, 30.0,
             9_999.0 /* implausibly high */, null, 55.0, 40.0, 50.0,
         )
-        assertEquals("banked nights", RecoveryScorer.bankedNights(nightly), RustScores.bankedNights(nightly))
+        assertEquals("banked nights", refBankedNights(nightly), RustScores.bankedNights(nightly))
     }
 }

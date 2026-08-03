@@ -8,7 +8,7 @@ import org.junit.Test
 /**
  * The live-HR arm/disarm decision. Backgrounding the app does not dispose a composition, so a want held
  * by an on-screen HR page survived it and TOGGLE_REALTIME_HR stayed armed overnight, streaming 1 Hz off
- * the strap and pinning the link at CONNECTION_PRIORITY_HIGH. Three independent layers are pinned here:
+ * the strap. Three independent layers are pinned here:
  * the visibility gate, the screen lease, and the owner-keyed want set. BLE behaviour itself is not
  * testable without a strap; this covers the decision, not the write.
  */

@@ -96,20 +96,41 @@ class SleepCardFixturesTest {
     /** The habitual band needs both learned values; either one missing draws no band. */
     @Test
     fun theHabitualBandNeedsBothItsInputs() {
-        assertNull(optimalSleepBand(null, 480.0))
-        assertNull(optimalSleepBand(3 * 3600L, null))
-        assertNull(optimalSleepBand(3 * 3600L, 0.0))
+        val nights = sleepScheduleNights(listOf(span(1, 23, 10, 6, 50)))
+        val key = nights.single().dayKey
+        assertNull(optimalSleepBand(emptyMap(), nights, 480.0).single())
+        assertNull(optimalSleepBand(mapOf(key to null), nights, 480.0).single())
+        assertNull(optimalSleepBand(mapOf(key to 3 * 3600L), nights, null).single())
+        assertNull(optimalSleepBand(mapOf(key to 3 * 3600L), nights, 0.0).single())
     }
 
     /** A post-midnight midsleep centres the band, and the need sets its height. */
     @Test
     fun theHabitualBandCentresOnTheMidsleep() {
-        val (bed, wake) = optimalSleepBand(3 * 3600L, 480.0)!!   // 03:00 midsleep, 8h need
+        val nights = sleepScheduleNights(listOf(span(1, 23, 10, 6, 50)))
+        val key = nights.single().dayKey
+        val (bed, wake) = optimalSleepBand(mapOf(key to 3 * 3600L), nights, 480.0).single()!!
         assertEquals(-1f, bed, 0.01f)
         assertEquals(7f, wake, 0.01f)
         // An evening midsleep folds the same way the bars do, so the band can't jump the axis.
-        val (lateBed, lateWake) = optimalSleepBand(23 * 3600L, 480.0)!!
+        val (lateBed, lateWake) = optimalSleepBand(mapOf(key to 23 * 3600L), nights, 480.0).single()!!
         assertTrue(lateBed < 0f && lateWake < lateBed + 9f)
+    }
+
+    /**
+     * The band is one entry per night, so a midsleep that walks night to night bends it. A day the
+     * series carries no value for leaves a gap rather than a straight-line guess across it.
+     */
+    @Test
+    fun theHabitualBandBendsPerNightAndGapsWhereItHasNoValue() {
+        val nights = sleepScheduleNights(listOf(span(3, 23, 10, 6, 50), span(2, 22, 40, 7, 5), span(1, 23, 30, 6, 30)))
+        assertEquals("the three nights must key apart", 3, nights.map { it.dayKey }.toSet().size)
+        val series = mapOf(nights[0].dayKey to 2 * 3600L, nights[2].dayKey to 3 * 3600L)
+        val bands = optimalSleepBand(series, nights, 480.0)
+        assertEquals(nights.size, bands.size)
+        assertNull("the night the series skips draws no band", bands[1])
+        assertEquals("an hour of habit is an hour of band", 1f, bands[2]!!.first - bands[0]!!.first, 0.01f)
+        assertEquals(1f, bands[2]!!.second - bands[0]!!.second, 0.01f)
     }
 
     /** The driver strip marks which third of 0-100 a value lands in, top tier inclusive at 100. */

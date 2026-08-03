@@ -14,7 +14,7 @@ import org.junit.Test
  *  - the rolling cap drops the OLDEST sample, so 180 samples at 1 Hz is a strict ~3 minutes.
  *
  * LIFECYCLE CONTRACT (data-honesty, not unit-testable here since it lives in the Compose effect): the
- * sampling loop in HealthScreen runs inside `lifecycleOwner.lifecycle.repeatOnLifecycle(STARTED)`, so it
+ * sampling loop in the Health Monitor's heart-rate hero runs inside `repeatOnLifecycle(STARTED)`, so it
  * only ticks while the UI is at least STARTED. Its inputs (bpm/live) are collected with
  * collectAsStateWithLifecycle, which STOPS at ON_STOP; without the gate the loop would keep banking the
  * frozen last value once a second with real timestamps while backgrounded (the BLE foreground service

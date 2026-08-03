@@ -25,16 +25,15 @@ class MoreUiStructureTest {
         val dir = uiSourceDir()
         assumeTrue("UI sources unavailable", dir != null)
 
-        val source = File(dir, "MoreScreen.kt")
-        assertTrue("missing MoreScreen.kt", source.isFile)
+        val source = File(dir, "whoop/WhoopMoreScreen.kt")
+        assertTrue("missing whoop/WhoopMoreScreen.kt", source.isFile)
         val actualDeclarations = topLevelDeclaration.findAll(source.readText())
             .map { match -> match.groupValues[1].ifEmpty { match.groupValues[2] } }
             .toSet()
         assertEquals(
-            "MoreScreen.kt declaration ownership changed",
+            "WhoopMoreScreen.kt declaration ownership changed",
             setOf(
-                "DrawerGroup", "drawerGroups", "defaultExpandedHeaders", "MoreSectionPrefs",
-                "MoreScreen", "MoreGroupHeader", "MoreRow",
+                "MoreSection", "moreSections", "WhoopMoreScreen", "MoreEntryRow", "MoreVersionNote",
             ),
             actualDeclarations,
         )

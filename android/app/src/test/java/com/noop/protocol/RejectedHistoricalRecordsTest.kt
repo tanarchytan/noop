@@ -35,7 +35,7 @@ class RejectedHistoricalRecordsTest {
      *  trailer so a frame mutated in the test still validates. */
     private fun repairCrc32(frame: ByteArray) {
         val length = (frame[1].toInt() and 0xFF) or ((frame[2].toInt() and 0xFF) shl 8)
-        val crc = Crc.crc32(frame.copyOfRange(4, length))
+        val crc = testCrc32(frame.copyOfRange(4, length))
         frame[length] = (crc and 0xFF).toByte()
         frame[length + 1] = ((crc shr 8) and 0xFF).toByte()
         frame[length + 2] = ((crc shr 16) and 0xFF).toByte()

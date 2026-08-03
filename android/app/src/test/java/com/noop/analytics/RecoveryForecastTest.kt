@@ -20,11 +20,11 @@ class RecoveryForecastTest {
 
     @Test
     fun nilUntilEnoughBaseline() {
-        val few = List(RecoveryForecaster.minBaselineNights - 1) { 60.0 }
+        val few = List(RecoveryForecaster.minChargeNights - 1) { 60.0 }
         assertNull(
             RecoveryForecaster.forecast(recentCharge = few, todayEffort = 50.0, plannedSleepHours = 8.0),
         )
-        val enough = List(RecoveryForecaster.minBaselineNights) { 60.0 }
+        val enough = List(RecoveryForecaster.minChargeNights) { 60.0 }
         assertNotNull(
             RecoveryForecaster.forecast(recentCharge = enough, todayEffort = null, plannedSleepHours = 8.0),
         )

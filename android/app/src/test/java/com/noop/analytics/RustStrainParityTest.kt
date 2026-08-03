@@ -21,8 +21,7 @@ import kotlin.math.roundToInt
  * A score PASSES only on exact equality. The likely divergence points (all in whoop-rs' lane, so a
  * FAIL here is a legitimate fix-request, not something to weaken the assertion around):
  *   • PIN #5   — maxStrain = 100.0 and the log-map denominator D = 7201.0 must be byte-identical.
- *   • trap #2  — [StrainScorer.trimpToStrain] rounds the 2-dp result half-UP via `roundToLong`; the
- *                Rust twin must round the same way (a half-even twin would drift at ties).
+ *   • the log map rounds the 2-dp result half-UP; a half-even twin would drift at ties.
  *   • float accumulation order — Banister sums `duration·x·0.64·e^{b·x}` sample-by-sample; the Rust
  *                loop must accumulate in the identical order or the last ULP diverges.
  *   • trap #17 (numpy-linear percentile) is NOT on this path: `strain()` takes an explicit `maxHR`

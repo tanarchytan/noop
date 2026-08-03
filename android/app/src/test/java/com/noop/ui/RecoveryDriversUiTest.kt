@@ -8,7 +8,7 @@ import org.junit.Test
 
 /**
  * Unit tests for the Today "What shaped it" wiring: [recoveryChargeDrivers] (folds the visible history
- * into baselines, then defers to RecoveryDrivers.chargeDrivers) and [chargeConfidenceTier] (surfaces the
+ * into baselines, then defers to [chargeDriverRows]) and [chargeConfidenceTier] (surfaces the
  * existing ScoreConfidence). Pure JVM, no Robolectric. Mirrors the iOS chargeDrivers wiring tests.
  */
 class RecoveryDriversUiTest {

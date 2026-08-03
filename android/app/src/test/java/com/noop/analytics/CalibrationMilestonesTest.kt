@@ -91,11 +91,11 @@ class CalibrationMilestonesTest {
     @Test
     fun bankedNightsMatchesBaselineValidityPredicate() {
         // The uncapped banked-night predicate the cards feed from (used all the way to 30) excludes
-        // out-of-range nights, so a wild reading can't inflate the countdown. Parity with Swift
-        // RecoveryScorer.bankedNights (CalibrationMilestonesTests.testBankedNightsMatchesBaselineValidityPredicate).
+        // out-of-range nights, so a wild reading can't inflate the countdown. whoop-rs applies the
+        // same hrv-config bounds [Baselines.hrvCfg] carries.
         val cfg = Baselines.hrvCfg
         val good = (cfg.minVal + cfg.maxVal) / 2.0
         val nightly = listOf<Double?>(good, null, cfg.maxVal + 1000, good, good)
-        assertEquals(3, RecoveryScorer.bankedNights(nightly, cfg))
+        assertEquals(3, RustScores.bankedNights(nightly))
     }
 }

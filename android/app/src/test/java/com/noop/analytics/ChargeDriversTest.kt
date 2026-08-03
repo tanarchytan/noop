@@ -1,5 +1,6 @@
 package com.noop.analytics
 
+import com.noop.ui.chargeDriverRows
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -7,12 +8,12 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * Tests for the SHARED-CONTRACT Charge "What shaped it" driver rows (RecoveryDrivers.chargeDrivers).
- * Proves: every present term yields exactly one honest row; a missing input yields NO row (never a
+ * Tests for the SHARED-CONTRACT Charge "What shaped it" driver rows (whoop-rs scores them,
+ * [chargeDriverRows] words them). Proves: every present term yields exactly one honest row; a missing input yields NO row (never a
  * fabricated zero); deltaPoints sign tracks the signal direction; the cold-start gate yields an empty
  * list; and no row carries an em-dash. Pure-JVM, no Robolectric. Mirrors the iOS chargeDrivers tests.
  */
-class RecoveryDriversTest {
+class ChargeDriversTest {
 
     /** A usable baseline with a given mean and Gaussian sigma (spread is internal abs-dev units). */
     private fun baseline(mean: Double, sigma: Double, nValid: Int = 14): BaselineState =
@@ -22,7 +23,7 @@ class RecoveryDriversTest {
         )
 
     @Test fun allTermsPresentYieldOneRowEachInOrder() {
-        val drivers = RecoveryDrivers.chargeDrivers(
+        val drivers = chargeDriverRows(
             hrv = 62.0, rhr = 51.0, resp = 15.0,
             hrvBaseline = baseline(50.0, 6.0),
             rhrBaseline = baseline(55.0, 3.0),
@@ -55,7 +56,7 @@ class RecoveryDriversTest {
 
     @Test fun missingInputYieldsNoRowNotAFakeZero() {
         // No resp value, no resp baseline, no skin-temp -> those rows are absent entirely.
-        val drivers = RecoveryDrivers.chargeDrivers(
+        val drivers = chargeDriverRows(
             hrv = 55.0, rhr = 55.0, resp = null,
             hrvBaseline = baseline(50.0, 6.0),
             rhrBaseline = null, respBaseline = null,
@@ -71,7 +72,7 @@ class RecoveryDriversTest {
 
     @Test fun deltaSignTracksDirection() {
         // HRV well above baseline -> lifts Charge (positive). RHR well above baseline (worse) -> pulls down.
-        val drivers = RecoveryDrivers.chargeDrivers(
+        val drivers = chargeDriverRows(
             hrv = 80.0, rhr = 70.0, resp = null,
             hrvBaseline = baseline(50.0, 6.0),
             rhrBaseline = baseline(55.0, 3.0),
@@ -86,7 +87,7 @@ class RecoveryDriversTest {
     }
 
     @Test fun skinTempIsARelativeDeviationNeverAbsolute() {
-        val drivers = RecoveryDrivers.chargeDrivers(
+        val drivers = chargeDriverRows(
             hrv = 50.0, rhr = 55.0, resp = null,
             hrvBaseline = baseline(50.0, 6.0),
             rhrBaseline = baseline(55.0, 3.0),
@@ -100,7 +101,7 @@ class RecoveryDriversTest {
     }
 
     @Test fun recoveryIndexAndActivityBalanceRowsAppearWhenSupplied() {
-        val drivers = RecoveryDrivers.chargeDrivers(
+        val drivers = chargeDriverRows(
             hrv = 55.0, rhr = 55.0, resp = null,
             hrvBaseline = baseline(50.0, 6.0),
             rhrBaseline = baseline(55.0, 3.0),
@@ -120,7 +121,7 @@ class RecoveryDriversTest {
     @Test fun ouraTermsDropTheirRowsWhenInputMissing() {
         // Slope null -> no Recovery index row; effort value present but its baseline null -> no Activity
         // balance row (needs BOTH), matching recovery(...)'s drop discipline.
-        val drivers = RecoveryDrivers.chargeDrivers(
+        val drivers = chargeDriverRows(
             hrv = 55.0, rhr = 55.0, resp = null,
             hrvBaseline = baseline(50.0, 6.0),
             rhrBaseline = baseline(55.0, 3.0),
@@ -138,7 +139,7 @@ class RecoveryDriversTest {
             baseline = 50.0, spread = 5.0, nValid = 2, nightsSinceUpdate = 0,
             status = BaselineStatus.CALIBRATING,
         )
-        val drivers = RecoveryDrivers.chargeDrivers(
+        val drivers = chargeDriverRows(
             hrv = 60.0, rhr = 50.0, resp = null,
             hrvBaseline = coldHRV, rhrBaseline = null, respBaseline = null,
             sleepPerf = 0.9, skinTempDev = null,
@@ -147,7 +148,7 @@ class RecoveryDriversTest {
     }
 
     @Test fun noRowCarriesAnEmDash() {
-        val drivers = RecoveryDrivers.chargeDrivers(
+        val drivers = chargeDriverRows(
             hrv = 62.0, rhr = 51.0, resp = 15.0,
             hrvBaseline = baseline(50.0, 6.0),
             rhrBaseline = baseline(55.0, 3.0),

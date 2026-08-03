@@ -44,7 +44,7 @@ class ActiveWorkoutIndicatorTest {
     @Test
     fun activeWorkout_carriesSportAndStartForTheCard() {
         // The card reads the sport label + start directly off the active workout; a null workout means the
-        // indicator renders nothing (the `activeWorkout?.let { }` gate in TodayScreen).
+        // indicator renders nothing (the `activeWorkout?.let { }` gate on the home screen).
         val w = workout(startMs = 100_000, sportName = "Cycling")
         assertEquals("Cycling", w.sport.name)
 

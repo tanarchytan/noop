@@ -23,7 +23,7 @@ class ReassemblerTest {
         out[2] = ((length ushr 8) and 0xFF).toByte()
         out[3] = 0 // header CRC8: reassembly is length-based, not CRC-checked, so a placeholder is fine
         inner.copyInto(out, 4)
-        val c = Crc.crc32(inner)
+        val c = testCrc32(inner)
         for (i in 0..3) out[4 + inner.size + i] = ((c ushr (8 * i)) and 0xFFL).toByte()
         return out
     }

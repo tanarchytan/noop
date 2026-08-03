@@ -30,7 +30,7 @@ class TrendsUiStructureTest {
                 "WeeklyDigestNav", "WeekNavBar", "WeekInReviewCard", "PipScoreRow",
             ),
             "TrendsCharts.kt" to setOf(
-                "LIQUID_HERO_FILL", "LIQUID_HERO_RADIUS", "TrendsRange", "ResolvedMetric", "resolveMetric", "windowPoints", "caption",
+                "TrendsRange", "ResolvedMetric", "resolveMetric", "windowPoints", "caption",
                 "ChartCard", "HeadlineVessel", "ChangeChip", "ChartWithAxes", "prettyAxisDate",
                 "MetricTrendCard", "periodChange", "ChartFooter", "RecoveryHistoryCard",
                 "SparsePlaceholder", "EmptyTrends", "EM_DASH", "averageOrNull",

@@ -66,7 +66,7 @@ class SleepUiStructureTest {
                 "SleepStagesFooter", "stageMinutes", "stageRowColor",
             ),
             "SleepPerformanceCard.kt" to setOf(
-                "SLEEP_HERO_FILL", "SLEEP_HERO_RADIUS", "SLEEP_VESSEL_DIAMETER", "DRIVER_TIERS",
+                "SLEEP_VESSEL_DIAMETER", "DRIVER_TIERS",
                 "SleepDriver", "SleepPerformanceCard", "SleepScoreVessel", "SleepDriverRow",
                 "SleepDriverStrip", "driverTierIndex", "driverTierLit", "driverTierColor", "driverTierWord",
                 "SleepDriverLegend",
@@ -79,7 +79,7 @@ class SleepUiStructureTest {
                 "hrTraceRuns", "stageBandsInWindow", "SleepHrChart", "HrBoundLabels",
             ),
             "Charts.kt" to setOf(
-                "LineChart", "LineSeries", "MultiLineChart",
+                "LineChart",
                 "BarChart", "Hypnogram", "SegmentBar",
                 "ClockLabelRow",
                 "TimelinePoint", "TimelineChart",
@@ -90,6 +90,13 @@ class SleepUiStructureTest {
                 "seriesSummary", "hypnogramSummary", "pointsFor", "drawBaseline",
                 "formatLineValue", "nearestIndexForX", "nearestBarIndexForX",
                 "meanBucketDownsample", "drawRoundedTrack", "drawSegment",
+                "WEEK_BAR_SLOT_FRACTION", "WEEK_MARKER_RADIUS", "WEEK_MARKER_STROKE",
+                "WeekLineSeries", "WeekStackSegment", "LegendMark",
+                "ChartLegend", "LegendMarkGlyph", "WeekChartFrame", "WeekDayLabels",
+                "drawCappedBar", "drawRingMarker", "drawRuns", "drawSlotLabel",
+                "weekSummary", "weekPoints",
+                "BandedWeekBarChart", "WeekBarChart", "WeekDualLineChart",
+                "WeekStackedBarChart", "DualAxisTrendChart",
             ),
             "SleepEmptyState.kt" to setOf("SleepEmptyState"),
             "SleepTrendCards.kt" to setOf(
@@ -98,6 +105,7 @@ class SleepUiStructureTest {
                 "SLEEP_STRESS_CHART_HEIGHT", "SLEEP_STRESS_LOW", "SLEEP_STRESS_MEDIUM",
                 "SLEEP_STRESS_HIGH", "SLEEP_STRESS_LEGEND", "SleepStressNight", "SleepStressCard",
                 "SleepStressLegend", "sleepStressDescription",
+                "SleepHoursVsNeededCard", "SleepRestorativeCard", "MINUTES_PER_HOUR", "hoursText",
             ),
             "SleepNeedCard.kt" to setOf(
                 "NEED_BAR_HEIGHT", "DEBT_STRIP_HEIGHT", "LEDGER_SWATCH", "SleepNeedCard", "NeedBar",
@@ -106,11 +114,11 @@ class SleepUiStructureTest {
             "SleepScheduleCard.kt" to setOf(
                 "SCHEDULE_Y_MIN", "SCHEDULE_Y_MAX", "SCHEDULE_HOUR_LINES", "SCHEDULE_CHART_HEIGHT",
                 "SCHEDULE_Y_GUTTER_PX", "SECONDS_PER_HOUR", "SleepScheduleNight", "SleepScheduleCard",
-                "scheduleHourLabel", "optimalSleepBand", "sleepScheduleNights",
+                "scheduleHourLabel", "optimalSleepBand", "sleepScheduleNights", "drawHabitualBand",
             ),
             "SleepMetricDetail.kt" to setOf(
                 "SleepMetricRange", "SleepMetricSpec", "sleepMetricSpec", "buildSleepMetricPoints",
-                "filterSleepMetricPoints", "SleepMetricDetailSheetContent",
+                "SleepMetricDetailSheetContent",
             ),
             "ChartCard.kt" to setOf("ChartCard", "ChartCardFooter", "CardHairline"),
         )

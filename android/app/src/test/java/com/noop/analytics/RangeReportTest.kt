@@ -157,7 +157,7 @@ class RangeReportTest {
         assertEquals(0, report.totalDays)
     }
 
-    // Trend rising / falling / flat thresholds
+    // Trend rising / falling / flat
 
     @Test
     fun trendRising() {
@@ -199,27 +199,30 @@ class RangeReportTest {
     }
 
     @Test
-    fun trendFlatWhenSlopeBelowThreshold() {
-        // recovery threshold is 0.5 pts/day. A +0.1/day drift is noise → flat.
-        val drift = mapOf(
-            "2026-06-01" to 60.0,
-            "2026-06-02" to 60.1,
-            "2026-06-03" to 60.2,
-            "2026-06-04" to 60.3,
+    fun trendFlatWhenScatterSwampsTheClimb() {
+        // +1.05 pts/day — twice the old fixed 0.5/day recovery threshold, which called this
+        // RISING — but the day-to-day scatter is bigger than the climb, so the interval
+        // straddles zero and the verdict is flat.
+        val noisy = mapOf(
+            "2026-06-01" to 60.0, "2026-06-02" to 66.0,
+            "2026-06-03" to 56.0, "2026-06-04" to 70.0,
+            "2026-06-05" to 58.0, "2026-06-06" to 68.0,
+            "2026-06-07" to 62.0, "2026-06-08" to 72.0,
         )
         val s = RangeReportEngine.build(
-            metrics = mapOf(ReportMetric.RECOVERY to drift),
-            start = "2026-06-01", end = "2026-06-04",
+            metrics = mapOf(ReportMetric.RECOVERY to noisy),
+            start = "2026-06-01", end = "2026-06-08",
         ).stat(ReportMetric.RECOVERY)!!
         assertEquals(ReportTrend.FLAT, s.trend)
+        assertTrue(s.trendSignificance < 0.6)
     }
 
-    // Trend uses the metric's OWN threshold
+    // The verdict follows the trend's own interval, not a per-metric constant
 
     @Test
-    fun trendThresholdIsPerMetric() {
-        // A +0.1/day climb is FLAT for recovery (thr 0.5) but RISING for sleepHours
-        // (thr 0.05), proving the threshold is metric-specific.
+    fun trendVerdictIsScatterAwareNotMetricSpecific() {
+        // A clean +0.1/day drift. Under the deleted thresholds this was FLAT for recovery
+        // (0.5) and RISING for sleep (0.05); with no scatter both are now called alike.
         val drift = mapOf(
             "2026-06-01" to 7.0,
             "2026-06-02" to 7.1,
@@ -234,8 +237,35 @@ class RangeReportTest {
             metrics = mapOf(ReportMetric.SLEEP_HOURS to drift),
             start = "2026-06-01", end = "2026-06-04",
         ).stat(ReportMetric.SLEEP_HOURS)!!
-        assertEquals(ReportTrend.FLAT, recov.trend)
-        assertEquals(ReportTrend.RISING, sleep.trend)
+        assertEquals(ReportTrend.RISING, recov.trend)
+        assertEquals(sleep.trend, recov.trend)
+    }
+
+    // The span gate reads real day offsets, not sample positions
+
+    @Test
+    fun trendFlatWhenTheReadingsCoverTooLittleOfTheWindow() {
+        // A perfect ramp, but three readings inside the first week of a 30-day window cover 4
+        // days of a 10-day minimum span. Over the sample index there is no span to test.
+        val huddled = mapOf(
+            "2026-06-01" to 40.0, "2026-06-03" to 55.0, "2026-06-05" to 70.0,
+        )
+        val s = RangeReportEngine.build(
+            metrics = mapOf(ReportMetric.RECOVERY to huddled),
+            start = "2026-06-01", end = "2026-06-30",
+        ).stat(ReportMetric.RECOVERY)!!
+        assertEquals(3, s.n)
+        assertEquals(ReportTrend.FLAT, s.trend)
+        assertEquals(0.0, s.trendSignificance, 1e-12)
+        // Spread the same three readings across the window and the trend is called.
+        val spread = mapOf(
+            "2026-06-01" to 40.0, "2026-06-15" to 55.0, "2026-06-29" to 70.0,
+        )
+        val t = RangeReportEngine.build(
+            metrics = mapOf(ReportMetric.RECOVERY to spread),
+            start = "2026-06-01", end = "2026-06-30",
+        ).stat(ReportMetric.RECOVERY)!!
+        assertEquals(ReportTrend.RISING, t.trend)
     }
 
     // Odd count: second half gets the extra day

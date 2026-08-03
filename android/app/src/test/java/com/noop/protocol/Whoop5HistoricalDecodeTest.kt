@@ -21,7 +21,7 @@ class Whoop5HistoricalDecodeTest {
     private fun mutateAndReCrc(index: Int, value: Int): ByteArray {
         val f = bytes(wornV18); f[index] = value.toByte()
         val end = f.size - 4
-        val crc = Crc.crc32(f.copyOfRange(8, end))
+        val crc = testCrc32(f.copyOfRange(8, end))
         f[end] = (crc and 0xFF).toByte(); f[end + 1] = ((crc shr 8) and 0xFF).toByte()
         f[end + 2] = ((crc shr 16) and 0xFF).toByte(); f[end + 3] = ((crc shr 24) and 0xFF).toByte()
         return f

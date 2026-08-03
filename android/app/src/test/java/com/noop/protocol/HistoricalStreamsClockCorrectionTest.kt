@@ -84,7 +84,7 @@ class HistoricalStreamsClockCorrectionTest {
         val total = declaredLength + 8
         for (i in 0 until 4) f[15 + i] = ((unix shr (8 * i)) and 0xFF).toByte()
         val payload = f.copyOfRange(8, total - 4)
-        val crc = Crc.crc32(payload)
+        val crc = testCrc32(payload)
         for (i in 0 until 4) f[total - 4 + i] = ((crc shr (8 * i)) and 0xFF).toByte()
         return f
     }

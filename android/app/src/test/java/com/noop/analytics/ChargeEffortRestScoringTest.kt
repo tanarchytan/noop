@@ -24,28 +24,6 @@ class ChargeEffortRestScoringTest {
         assertEquals(7201.0, StrainScorer.strainDenominator, 0.0)
     }
 
-    @Test
-    fun effort_trimpToStrainMapsOntoZeroHundred() {
-        // 100 × ln(t+1) / ln(7201), 2 dp.
-        assertEquals(0.0, StrainScorer.trimpToStrain(0.0), 0.0)
-        assertEquals(0.0, StrainScorer.trimpToStrain(-5.0), 0.0) // TRIMP ≤ 0 → 0
-        assertEquals(51.96, StrainScorer.trimpToStrain(100.0), EPS)
-        assertEquals(69.99, StrainScorer.trimpToStrain(500.0), EPS)
-        assertEquals(77.78, StrainScorer.trimpToStrain(1000.0), EPS)
-        assertEquals(92.20, StrainScorer.trimpToStrain(3600.0), EPS)
-        // TRIMP 7200 (Edwards daily ceiling) saturates at the top of the scale.
-        assertEquals(100.0, StrainScorer.trimpToStrain(7200.0), EPS)
-    }
-
-    @Test
-    fun effort_oldGoldensRescaledByHundredOverTwentyOne() {
-        // A 0–21 golden × 100/21 equals the 0–100 value (within 2-dp);
-        // trimp=1000: 16.33 → 77.76 ≈ 77.78.
-        val effort = StrainScorer.trimpToStrain(1000.0)
-        val legacy21 = 21.0 * kotlin.math.ln(1001.0) / kotlin.math.ln(7201.0)
-        assertEquals(legacy21 * (100.0 / 21.0), effort, 0.02)
-    }
-
     /** 600 constant-bpm samples at 1 Hz so Edwards TRIMP = 600·weight·(1/60) = 10·weight. */
     private fun hrConstant(bpm: Int, n: Int = 600): List<HrSample> =
         (0 until n).map { HrSample(deviceId = "t", ts = it.toLong(), bpm = bpm) }

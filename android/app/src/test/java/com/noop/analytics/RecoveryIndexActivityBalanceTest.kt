@@ -55,7 +55,7 @@ class RecoveryIndexActivityBalanceTest {
 
     @Test
     fun recoveryIndexSlopeNullWhenNoSamples() {
-        assertNull(RecoveryScorer.recoveryIndexSlope(emptyList(), 0L, 1000L))
+        assertNull(RustScores.recoveryIndexSlope(emptyList(), 0L, 1000L))
     }
 
     @Test
@@ -66,7 +66,7 @@ class RecoveryIndexActivityBalanceTest {
         val samples = ArrayList<HrSample>()
         for (i in 0 until 300) samples.add(hr(start + i, 60))
         for (i in 0 until 300) samples.add(hr(start + 300 + i, 55))
-        assertNull(RecoveryScorer.recoveryIndexSlope(samples, start, start + 600))
+        assertNull(RustScores.recoveryIndexSlope(samples, start, start + 600))
     }
 
     @Test
@@ -78,10 +78,10 @@ class RecoveryIndexActivityBalanceTest {
         val steep = slopeSeries(startBpm = 68.0, slopePerHour = -4.0, hours = 6)
         val rising = slopeSeries(startBpm = 55.0, slopePerHour = 2.0, hours = 6)
 
-        val flatSlope = RecoveryScorer.recoveryIndexSlope(flat.first, flat.second, flat.third)
-        val mildSlope = RecoveryScorer.recoveryIndexSlope(mild.first, mild.second, mild.third)
-        val steepSlope = RecoveryScorer.recoveryIndexSlope(steep.first, steep.second, steep.third)
-        val risingSlope = RecoveryScorer.recoveryIndexSlope(rising.first, rising.second, rising.third)
+        val flatSlope = RustScores.recoveryIndexSlope(flat.first, flat.second, flat.third)
+        val mildSlope = RustScores.recoveryIndexSlope(mild.first, mild.second, mild.third)
+        val steepSlope = RustScores.recoveryIndexSlope(steep.first, steep.second, steep.third)
+        val risingSlope = RustScores.recoveryIndexSlope(rising.first, rising.second, rising.third)
 
         assertNotNull(flatSlope); assertNotNull(mildSlope)
         assertNotNull(steepSlope); assertNotNull(risingSlope)

@@ -6,7 +6,6 @@ import org.junit.Assert.assertEquals
 import org.junit.Assume.assumeTrue
 import org.junit.Test
 import java.io.File
-import kotlin.math.min
 
 /**
  * Post-cutover regression guard for the **HR-zones** route (analytics cutover, Tier 1). The Kotlin scorer
@@ -19,15 +18,15 @@ import kotlin.math.min
  *
  * The Kotlin twin is gone, so the reference here is restated locally: [refZones] rebuilds the age→zone set
  * through the SURVIVING `HrZones.zones(maxHR, source)` primitive (the frontend display helper the cutover
- * kept), and [refTimeInZone] is a byte-identical copy of the deleted accumulator (hold-until-next duration,
- * tail = median inter-sample gap, per-sample gap capped at that median, below-Zone-1 bucket). Both reuse the
- * surviving [HrZoneSet.zoneNumber], so the reference stays identical to the deleted scorer.
+ * kept), and [refTimeInZone] restates the accumulator (hold-until-next duration, tail = median inter-sample
+ * gap, the position-dependent gap policy of `physio_algo::hr_gap`, below-Zone-1 bucket). Both reuse the
+ * surviving [HrZoneSet.zoneNumber], so the reference stays identical to the scorer.
  *
  * Traps this pins (per the cutover scope): (a) **Tanaka HRmax** `208 − 0.7·age` — a non-integer age is used
  * so `maxHR` and all ten zone edges are irrational-ish doubles, catching any float-formula drift; (b) the
  * **`medianInterval` upper-middle tie-break** (`gaps[size/2]`, NOT averaging the two middles) — the crafted
  * stream has an EVEN gap count with distinct gaps so upper-middle ≠ mean-of-middles, so a Rust that averaged
- * would diverge the tail credit + the gap cap and fail; (c) the per-sample **gap cap at the median** and the
+ * would diverge the tail credit + the gap policy and fail; (c) the **position-dependent gap ceilings** and the
  * below-Zone-1 bucket. `HrZones` applies no rounding to its raw output, so the stored doubles are exact and
  * the tie-break is the live trap. A nonzero delta is a FAIL to report as a whoop-rs fix request, NOT a
  * tolerance to widen.
@@ -67,13 +66,26 @@ class RustHrZonesParityTest {
         return maxOf(gaps[gaps.size / 2], 1.0)
     }
 
-    /** Longest inter-sample gap credited to a zone; matches the Rust `hr_zones::DROPOUT_CAP_SECONDS`. */
-    private val DROPOUT_CAP_S = 1200.0
+    /** Mirrors `physio_algo::hr_gap`: under [MIN_GAP_S] a run is ordinary cadence, over it a gap is billed
+     *  only within its POSITION ceiling. An interior gap has measured HR on both sides and a trailing one
+     *  does not, so the two are trusted for different lengths. */
+    private val MIN_GAP_S = 60.0
+    private val INTERIOR_CEILING_S = 1800.0
+    private val TRAIL_CEILING_S = 300.0
+
+    /** Seconds a gap may contribute: the whole gap within its ceiling, ZERO past it — a refused gap is a
+     *  hole, not time spent in the last-seen zone, so it gets no partial credit. */
+    private fun refCreditable(gap: Double, ceiling: Double): Double = when {
+        gap <= 0.0 -> 0.0
+        gap < MIN_GAP_S -> gap
+        gap <= ceiling -> gap
+        else -> 0.0
+    }
 
     /**
-     * Hold-until-next time-in-zone accumulation. A real inter-sample gap is credited in full up to
-     * [DROPOUT_CAP_S]; past that the strap was not reporting, so the span is a wear gap rather than time
-     * spent in a zone. The tail sample gets the median interval.
+     * Hold-until-next time-in-zone accumulation. Every inter-sample gap is judged Interior; the tail
+     * sample gets the median interval under the tighter Trailing ceiling. Same-second duplicates are
+     * cadence rather than a gap, so they take the median too.
      */
     private fun refTimeInZone(hr: List<HrSample>, zoneSet: HrZoneSet): RefTiz {
         val sorted = hr.sortedBy { it.ts }
@@ -84,9 +96,9 @@ class RustHrZonesParityTest {
         for (i in sorted.indices) {
             val dur: Double = if (i < sorted.size - 1) {
                 val gap = (sorted[i + 1].ts - sorted[i].ts).toDouble()
-                if (gap > 0) min(gap, DROPOUT_CAP_S) else tailDuration
+                refCreditable(if (gap > 0) gap else tailDuration, INTERIOR_CEILING_S)
             } else {
-                tailDuration
+                refCreditable(tailDuration, TRAIL_CEILING_S)
             }
             val z = zoneSet.zoneNumber(sorted[i].bpm.toDouble())
             if (z >= 1) zoneSeconds[z - 1] += dur else below += dur
