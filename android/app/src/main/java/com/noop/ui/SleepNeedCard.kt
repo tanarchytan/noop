@@ -122,12 +122,18 @@ private fun NeedVersusBar(sleptMin: Double, neededMin: Double) {
                 .drawBehind {
                     drawRect(color = trackColor, size = size)
                     drawRect(brush = fillBrush, size = Size(size.width * sleptFrac, size.height))
-                    val x = (size.width * needFrac).coerceIn(0f, size.width - 1f)
+                    // The track is a pill, so its rounded caps clip whatever is drawn under them: a
+                    // need at the scale maximum landed on the right cap and read as a crescent sliver.
+                    // Keep the mark's full stroke in the straight run between the two caps.
+                    val markWidth = Metrics.divider.toPx() * 2f
+                    val capInset = size.height / 2f + markWidth / 2f
+                    val x = (size.width * needFrac)
+                        .coerceIn(capInset, (size.width - capInset).coerceAtLeast(capInset))
                     drawLine(
                         color = markColor,
                         start = Offset(x, 0f),
                         end = Offset(x, size.height),
-                        strokeWidth = Metrics.divider.toPx() * 2f,
+                        strokeWidth = markWidth,
                     )
                 },
         )
@@ -172,14 +178,15 @@ private fun NeedLedgerRow(label: String, value: String, valueColor: Color) {
 
 /**
  * The per-night balance strip: each night a bar from the centre line, up for a surplus and down for a
- * deficit, scaled to the largest magnitude in the window.
+ * deficit, scaled to the largest magnitude in the window. Sign is carried by the same positive/critical
+ * pair [debtBalanceColor] uses above it, which the light scheme separates by hue rather than by shade.
  */
 @Composable
 private fun DebtBalanceStrip(ledger: SleepDebtLedger) {
     val deltas = ledger.nights.map { it.deltaMin }
     val scale = max(deltas.maxOfOrNull { abs(it) } ?: 1.0, 1.0)
-    val surplusColor = Palette.accent
-    val deficitColor = Palette.metricRose
+    val surplusColor = Palette.statusPositive
+    val deficitColor = Palette.statusCritical
     val centreColor = Palette.hairline
     Box(
         modifier = Modifier

@@ -130,13 +130,16 @@ val DarkTokens = PaletteTokens(
 // contrast against the warm canvas. Rest keeps the violet it wears on dark: the chrome accent may be a
 // scheme's own, but a metric's identity colour cannot change under the reader.
 //
+// textTertiary is set by the 4.5:1 floor against the DARKEST light surface (surfaceBase), not by eye:
+// the shade that looked right measured 2.98:1 there, so every secondary read-out sat under AA.
+//
 // surfaceInset is the one token whose RELATION to its surroundings has to hold in both schemes: a shade
 // under the card it sits in. Spelled as a mid sand it came out darker than the page itself, so muted
 // panels, unselected controls and legends all read as filled.
 val LightTokens = PaletteTokens(
     surfaceBase = Color(0xFFEBE1CF), surfaceRaised = Color(0xFFFDF9F1), surfaceOverlay = Color(0xFFFDF9F1),
     surfaceInset = Color(0xFFF4EDE0), hairline = Color(0xFFD8CBB2), hairlineStrong = Color(0xFFC6B597),
-    textPrimary = Color(0xFF2A2018), textSecondary = Color(0xFF5C5245), textTertiary = Color(0xFF8C8072),
+    textPrimary = Color(0xFF2A2018), textSecondary = Color(0xFF5C5245), textTertiary = Color(0xFF6C6255),
     glowAmbient = Color(0xFFF0E0C4),
     // Light chrome accent is terracotta (the warm brand tone for this scheme).
     accent = Color(0xFFB85A3C), accentHover = Color(0xFFA24A2E), accentMuted = Color(0xFFF2E1D6), focusRing = Color(0xFFB85A3C),

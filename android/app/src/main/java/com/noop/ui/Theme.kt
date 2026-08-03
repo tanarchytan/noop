@@ -28,6 +28,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.noop.analytics.RustScores
 import uniffi.whoop_ffi.RecoveryState
+import kotlin.math.abs
 
 // MARK: - Palette — the "Titanium & Gold" re-skin (mirrors StrandDesign/Palette.swift)
 //
@@ -147,9 +148,10 @@ object Palette {
     val chargeGradientStops: List<Pair<Float, Color>> get() = listOf(0.0f to chargeDeep, 1.0f to chargeBright)
     val effortGradientStops: List<Pair<Float, Color>> get() = listOf(0.0f to effortDeep, 1.0f to effortBright)
     val restGradientStops: List<Pair<Float, Color>> get() = listOf(0.0f to restDeep, 1.0f to restBright)
-    // Stress ramp: calm-blue → gold → orange.
+    // Stress ramp: calm → warn → high. Its ends sit on opposite sides of the wheel, so the anchors are
+    // subdivided along the short hue arc ([hueRamp]) and the gradient never blends across the grey axis.
     val stressGradientStops: List<Pair<Float, Color>>
-        get() = listOf(0.0f to stressDeep, 0.5f to stressColor, 1.0f to stressBright)
+        get() = hueRamp(listOf(0.0f to stressDeep, 0.5f to stressColor, 1.0f to stressBright))
 
     // Scenic background.
     val scenicCenter get() = active.scenicCenter
@@ -209,6 +211,92 @@ object Palette {
         val localT = if (span > 0f) (t - lower.first) / span else 0f
         return lerp(lower.second, upper.second, localT)
     }
+
+    /** Segments each leg of a [hueRamp] is cut into. Four keeps the sRGB blend between two neighbours
+     *  short enough that it stays on the hue arc. */
+    private const val HUE_SEGMENTS = 4
+
+    /**
+     * Subdivide a stop list along the SHORT hue arc between each pair of anchors. A gradient brush
+     * blends its stops in sRGB, where two colours from opposite sides of the wheel meet as grey
+     * halfway; the extra stops keep the path saturated without naming a colour the palette does not.
+     */
+    private fun hueRamp(anchors: List<Pair<Float, Color>>): List<Pair<Float, Color>> {
+        if (anchors.size < 2) return anchors
+        val out = ArrayList<Pair<Float, Color>>(anchors.size * HUE_SEGMENTS + 1)
+        for (i in 0 until anchors.size - 1) {
+            val (fromAt, fromColor) = anchors[i]
+            val (toAt, toColor) = anchors[i + 1]
+            for (step in 0 until HUE_SEGMENTS) {
+                val f = step.toFloat() / HUE_SEGMENTS
+                out += (fromAt + (toAt - fromAt) * f) to hueBlend(fromColor, toColor, f)
+            }
+        }
+        out += anchors.last()
+        return out
+    }
+
+    /** Blend two colours in HSV, turning the hue the short way round, so the path between them keeps
+     *  its saturation instead of crossing the grey axis. */
+    private fun hueBlend(a: Color, b: Color, t: Float): Color {
+        val (ha, sa, va) = toHsv(a)
+        val (hb, sb, vb) = toHsv(b)
+        var turn = hb - ha
+        if (turn > 180f) turn -= 360f
+        if (turn < -180f) turn += 360f
+        return fromHsv(
+            hue = ha + turn * t,
+            saturation = sa + (sb - sa) * t,
+            value = va + (vb - va) * t,
+            alpha = a.alpha + (b.alpha - a.alpha) * t,
+        )
+    }
+
+    /** (hue 0..360, saturation 0..1, value 0..1) for a colour. */
+    private fun toHsv(c: Color): Triple<Float, Float, Float> {
+        val high = maxOf(c.red, c.green, c.blue)
+        val low = minOf(c.red, c.green, c.blue)
+        val range = high - low
+        val hue = when {
+            range == 0f -> 0f
+            high == c.red -> 60f * (((c.green - c.blue) / range) % 6f)
+            high == c.green -> 60f * (((c.blue - c.red) / range) + 2f)
+            else -> 60f * (((c.red - c.green) / range) + 4f)
+        }
+        return Triple(if (hue < 0f) hue + 360f else hue, if (high == 0f) 0f else range / high, high)
+    }
+
+    /** The colour for an (hue, saturation, value) triple; [hue] may run outside 0..360. */
+    private fun fromHsv(hue: Float, saturation: Float, value: Float, alpha: Float): Color {
+        val h = ((hue % 360f) + 360f) % 360f
+        val chroma = value * saturation
+        val second = chroma * (1f - abs((h / 60f) % 2f - 1f))
+        val base = value - chroma
+        val (r, g, b) = when ((h / 60f).toInt()) {
+            0 -> Triple(chroma, second, 0f)
+            1 -> Triple(second, chroma, 0f)
+            2 -> Triple(0f, chroma, second)
+            3 -> Triple(0f, second, chroma)
+            4 -> Triple(second, 0f, chroma)
+            else -> Triple(chroma, 0f, second)
+        }
+        return Color(
+            red = (r + base).coerceIn(0f, 1f),
+            green = (g + base).coerceIn(0f, 1f),
+            blue = (b + base).coerceIn(0f, 1f),
+            alpha = alpha.coerceIn(0f, 1f),
+        )
+    }
+
+    /** How far a tint's own label is pulled toward the ink on the light scheme. */
+    private const val WASH_LABEL_INK = 0.45f
+
+    /**
+     * A tint's label colour where it sits on a low-alpha wash of itself. On the dark scheme the tint
+     * reads far above its wash; on the pale light one the two land close and the label falls under the
+     * 4.5:1 floor, so it darkens toward the ink while the chip keeps its colour in the fill.
+     */
+    fun washLabel(tint: Color): Color = if (isLight) lerp(tint, textPrimary, WASH_LABEL_INK) else tint
 
     /** Sample the recovery gradient at a recovery score 0..100. */
     fun recoveryColor(score: Double): Color = sample(recoveryStops, (score / 100.0).toFloat())

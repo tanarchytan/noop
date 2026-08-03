@@ -177,11 +177,10 @@ internal fun driverTierIndex(percent: Double): Int =
 internal fun driverTierLit(percent: Double, higherIsBetter: Boolean): Int =
     driverTierIndex(percent).let { if (higherIsBetter) it else DRIVER_TIERS - 1 - it }
 
-private fun driverTierColor(tier: Int): Color = when (tier) {
-    0 -> Palette.statusWarning
-    1 -> Palette.textSecondary
-    else -> Palette.statusPositive
-}
+/** The tier's colour: the low, middle and high of the app's own 0-100 ramp, so the three swatches read
+ *  as one scale. A text token in the middle drew that swatch in the colour of the word beside it. */
+private fun driverTierColor(tier: Int): Color =
+    Palette.sample(Palette.recoveryStops, tier.toFloat() / (DRIVER_TIERS - 1))
 
 private fun driverTierWord(tier: Int): String = when (tier) {
     0 -> "Poor"

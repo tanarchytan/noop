@@ -410,7 +410,7 @@ fun SourceBadge(text: String, tint: Color = Palette.accent, modifier: Modifier =
         Text(
             text = text.uppercase(),
             style = NoopType.overlineSmall,
-            color = tint,
+            color = Palette.washLabel(tint),
             maxLines = 1,                          // "ON-DEVICE" stays on one line
             overflow = TextOverflow.Ellipsis,
             textAlign = TextAlign.Center,
@@ -441,9 +441,12 @@ fun TrendChip(text: String, color: Color = Palette.textTertiary, modifier: Modif
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(3.dp),
     ) {
-        if (symbol != null) Text(symbol, style = NoopType.glyph, color = color)
+        // The pill's fill is a wash of the same colour, which on the light scheme lands close enough
+        // to it that the label falls under AA; [Palette.washLabel] darkens the label, never the fill.
+        val label = Palette.washLabel(color)
+        if (symbol != null) Text(symbol, style = NoopType.glyph, color = label)
         // Ellipsize rather than overflow if a caller constrains the chip's width.
-        Text(text, style = NoopType.captionNumber, color = color, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Text(text, style = NoopType.captionNumber, color = label, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
 

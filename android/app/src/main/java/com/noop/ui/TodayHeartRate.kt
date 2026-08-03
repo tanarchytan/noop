@@ -685,9 +685,17 @@ private fun OverviewHRChart(
         }
         if (plotW > 0f && plotH > 0f &&
             sleepStartX != null && sleepEndX != null && sleepEndX > sleepStartX) {
+            // Dark lifts its near-black canvas with the deep-sleep violet; the same weight on the
+            // light scheme's warm paper reads as a cold steel slab, so light washes the Rest tint in
+            // thinner instead.
+            val bandAlphaDark = 0.30f
+            val bandAlphaLight = 0.15f
+            val bandColor =
+                if (Palette.isLight) Palette.restColor.copy(alpha = bandAlphaLight)
+                else Palette.sleepDeep.copy(alpha = bandAlphaDark)
             Canvas(modifier = Modifier.fillMaxSize()) {
                 drawRect(
-                    color = Palette.sleepDeep.copy(alpha = 0.30f),
+                    color = bandColor,
                     topLeft = Offset(sleepStartX, 0f),
                     size = Size(sleepEndX - sleepStartX, size.height),
                 )
