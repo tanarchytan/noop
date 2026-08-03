@@ -9,8 +9,9 @@ The rule: a number the user sees is computed in whoop-rs. Kotlin decides *when* 
 and *how to word it* — never *what the number is*. `RustScores.kt` is the single seam; it holds one thin
 adapter per engine and no arithmetic.
 
-**State: every whoop-rs FFI export is called by the app. There is no unwired backlog** — what remains
-below is Kotlin that still carries its own maths, not Rust waiting to be reached.
+**State: five FFI exports have no Kotlin caller** (see *Exported but unreached*, below); the rest are
+called. What remains after that is Kotlin still carrying its own maths. Read the counts off the audit,
+never off this sentence.
 
 ---
 
@@ -82,6 +83,27 @@ Byte decode belongs in Rust, and a hardware-verified twin already exists for eac
 | `protocol/Framing.kt` | 119 | `framing::decode` already does this reassembly |
 | `protocol/Whoop5RawImu.kt` | 96 | `records::gen5::v21_imu` |
 | `protocol/Crc.kt` | 42 | `crc::crc32_zlib`. **Gone from `main/`** — its only callers were fixture builders, which now use `java.util.zip.CRC32` through `test/…/protocol/TestCrc32.kt` |
+
+---
+
+## Exported but unreached — Rust waiting for a caller
+
+The optical-quality surface. The strap flags its own bad optical seconds, the decoder stores that flag as
+`v18Sample.opticalSignalPoor`, and whoop-rs owns the rule for what the flag disqualifies. Nothing in Kotlin
+asks. The rule is already on the Rust side, so wiring these is adapter work and moves no arithmetic.
+
+| Export | What it decides | What reads it today |
+|---|---|---|
+| `rr_beats_trusted` | whether one record's R-R beats may enter an `RrRun` | nothing; `RustScores.groupRuns` folds every beat |
+| `ppg_hr_derate_poor` | drops flagged seconds to zero confidence before any reduction | nothing |
+| `ppg_hr_aggregate` | confidence-weighted downsample, instead of a plain mean | nothing |
+| `ppg_signal_check` | a span's Poor/Fair/Good verdict from its clean-second fraction | nothing |
+| `ppg_check_cfg` | the four trust constants, so a caller cannot hold a stale copy | nothing |
+
+**Do not wire these as a cleanup.** `rr_beats_trusted` changes every HRV figure already on screen by
+dropping beats that currently count, and no measurement exists of how many. Measure the drop rate against
+the stored `v18Sample` rows first, then wire it as instrumentation beside the incumbent, the way any
+derived-signal change lands here.
 
 ---
 

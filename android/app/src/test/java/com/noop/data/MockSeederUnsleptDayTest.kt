@@ -17,7 +17,7 @@ class MockSeederUnsleptDayTest {
     /** A row with every metric column set, so [MockSeeder.withoutSleep] has something to clear. */
     private val full = DailyMetric(
         deviceId = "my-whoop", day = "2026-07-30",
-        totalSleepMin = 430.0, efficiency = 89.0, deepMin = 86.0, remMin = 99.0, lightMin = 245.0,
+        totalSleepMin = 430.0, efficiency = 0.89, deepMin = 86.0, remMin = 99.0, lightMin = 245.0,
         disturbances = 6, restingHr = 56, avgHrv = 78.0, recovery = 61.0, strain = 17.4,
         exerciseCount = 1, spo2Pct = 96.5, skinTempDevC = 0.1, skinTempAbsC = 34.1,
         respRateBpm = 14.6, steps = 8500, activeKcalEst = 2049.8, zone1to3Min = 120.0,

@@ -26,8 +26,11 @@ class MockScenarioTest {
      * when the seeder gained scenarios — only its date and zone became parameters — so this is the
      * dataset every walk and screenshot was taken on. Re-pinning it is a decision about the mock data,
      * never a repair for a failing test.
+     *
+     * Re-pinned once: `efficiency` was seeded as a percent into a column the store defines as a 0-1
+     * fraction ([MockSeederEfficiencyUnitTest]). Same rows, same counts, corrected unit.
      */
-    private val typicalDigest = "1e2abd86228c8c59365abb0a014cc7973fcf1d0948b5d75ad53f26d46196a4a4"
+    private val typicalDigest = "f037db4afba2261117ea47e7804acb93f0369842da76b27ca5ed039e7207722f"
 
     private fun build(s: MockScenario) = MockSeeder.build(s, today, zone)
 

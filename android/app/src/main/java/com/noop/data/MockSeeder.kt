@@ -232,7 +232,7 @@ object MockSeeder {
             val unslept = i == UNSLEPT_DAY_INDEX
             val fullRow = DailyMetric(
                 deviceId = WHOOP, day = day,
-                totalSleepMin = totalSleep, efficiency = round1(efficiency),
+                totalSleepMin = totalSleep, efficiency = effFraction(round1(efficiency)),
                 deepMin = deep, remMin = rem, lightMin = light,
                 disturbances = disturbances, restingHr = rhr, avgHrv = round1(hrv),
                 recovery = round1(recovery), strain = round1(strain), exerciseCount = nWorkouts,
@@ -256,7 +256,7 @@ object MockSeeder {
                 sleeps.add(
                     SleepSession(
                         deviceId = WHOOP, startTs = onset, endTs = onset + inBedSec,
-                        efficiency = effPct, restingHr = rhr, avgHrv = round1(hrv),
+                        efficiency = effFraction(effPct), restingHr = rhr, avgHrv = round1(hrv),
                         stagesJSON = stagesJson(deep, rem, light, onset, onset + inBedSec),
                     )
                 )
@@ -458,6 +458,13 @@ object MockSeeder {
     internal fun inBedSecFor(asleepMin: Double, efficiencyPct: Double): Long =
         if (asleepMin <= 0.0 || efficiencyPct <= 0.0) 0L
         else Math.round(asleepMin / (efficiencyPct / 100.0) * 60.0)
+
+    /**
+     * The `efficiency` column's unit. Nights are drawn as a readable percent, but both `dailyMetric` and
+     * `sleepSession` store a 0-1 fraction, and whoop-rs scores the Rest term as `efficiency * 100`, so a
+     * percent saturates it at the maximum on every night instead of discriminating between them.
+     */
+    internal fun effFraction(efficiencyPct: Double): Double = efficiencyPct / 100.0
 
     /**
      * A plausible light→deep→rem cycle as TIMESTAMPED `{stage,start,end}` segments tiling

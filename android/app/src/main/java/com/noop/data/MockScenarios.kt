@@ -74,7 +74,7 @@ object MockScenarios {
             val span = MockSeeder.inBedSecFor(PARTIAL_ASLEEP_MIN, PARTIAL_EFF_PCT)
             val end = it.startTs + span
             it.copy(
-                endTs = end, efficiency = PARTIAL_EFF_PCT,
+                endTs = end, efficiency = MockSeeder.effFraction(PARTIAL_EFF_PCT),
                 stagesJSON = MockSeeder.stagesJson(
                     PARTIAL_DEEP_MIN, PARTIAL_REM_MIN, PARTIAL_LIGHT_MIN, it.startTs, end,
                 ),
@@ -97,7 +97,7 @@ object MockScenarios {
             when (it.day) {
                 unslept -> MockSeeder.withoutSleep(it)
                 partialDay -> it.copy(
-                    totalSleepMin = PARTIAL_ASLEEP_MIN, efficiency = PARTIAL_EFF_PCT,
+                    totalSleepMin = PARTIAL_ASLEEP_MIN, efficiency = MockSeeder.effFraction(PARTIAL_EFF_PCT),
                     deepMin = PARTIAL_DEEP_MIN, remMin = PARTIAL_REM_MIN, lightMin = PARTIAL_LIGHT_MIN,
                 )
                 else -> it
@@ -317,7 +317,7 @@ object MockScenarios {
             val day = date.toString()
             val full = DailyMetric(
                 deviceId = MockSeeder.WHOOP, day = day,
-                totalSleepMin = r.asleep, efficiency = r.eff,
+                totalSleepMin = r.asleep, efficiency = MockSeeder.effFraction(r.eff),
                 deepMin = r.deep, remMin = r.rem, lightMin = r.light,
                 disturbances = r.disturbances, restingHr = r.rhr, avgHrv = r.hrv,
                 recovery = r.recovery, strain = r.strain, exerciseCount = r.workouts.size,
@@ -332,7 +332,7 @@ object MockScenarios {
                 sleeps.add(
                     SleepSession(
                         deviceId = MockSeeder.WHOOP, startTs = onset, endTs = wake,
-                        efficiency = r.eff, restingHr = r.rhr, avgHrv = r.hrv,
+                        efficiency = MockSeeder.effFraction(r.eff), restingHr = r.rhr, avgHrv = r.hrv,
                         stagesJSON = MockSeeder.stagesJson(r.deep, r.rem, r.light, onset, wake),
                     )
                 )
