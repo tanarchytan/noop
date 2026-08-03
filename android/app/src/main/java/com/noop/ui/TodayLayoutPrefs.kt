@@ -2,12 +2,12 @@ package com.noop.ui
 
 import android.content.Context
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.DirectionsRun
+import androidx.compose.material.icons.automirrored.filled.DirectionsWalk
 import androidx.compose.material.icons.filled.Air
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Bedtime
 import androidx.compose.material.icons.filled.Bolt
-import androidx.compose.material.icons.automirrored.filled.DirectionsRun
-import androidx.compose.material.icons.automirrored.filled.DirectionsWalk
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Hexagon
 import androidx.compose.material.icons.filled.LocalDrink
@@ -17,6 +17,95 @@ import androidx.compose.material.icons.filled.Thermostat
 import androidx.compose.material.icons.filled.WaterDrop
 import androidx.compose.ui.graphics.vector.ImageVector
 import org.json.JSONArray
+
+// MARK: - What the Today screen shows, and in what order
+//
+// Today has two customisable sections and they answer the same question twice: the Key Metrics grid
+// ([KeyMetric] / [KeyMetricPrefs]) and the "Your cards" dashboard ([DashboardCard] /
+// [DashboardCardPrefs]). Adding a value to Today means deciding which of the two registries it joins,
+// so they sit side by side rather than in two files that each described the other. The two stored
+// lists stay INDEPENDENT (separate SharedPreferences keys, separate defaults, separate editors) —
+// sharing a file changes nothing about that.
+//
+// Both are DISPLAY-ONLY. No metric is computed or stored differently here; these decide which of the
+// already-loaded values render and in what sequence. Both raw-id sets are byte-identical to their
+// iOS twins so a backup/restore reads the same layout on either OS.
+
+// MARK: - Editable Key-Metrics layout
+//
+// The Today screen's "Key Metrics" grid was a fixed list of ten tiles in one order. This lets the user
+// choose WHICH tiles show and in WHAT order, with the default being the original order so nothing changes
+// for anyone who never opens the editor. Persistence is display-only — no metric is computed or stored
+// differently; this just decides which of the already-computed tiles render and in what sequence.
+//
+// Stored as a single comma-joined string of metric keys in SharedPreferences ("today.keyMetrics"), the
+// same mechanism every other Android preference uses. Mirrors the macOS KeyMetricPrefs.swift +
+// @AppStorage("today.keyMetrics"). Unknown keys are dropped on read so a removed tile can't crash, and
+// any known key missing from the saved list is treated as disabled (the editor re-lists it).
+
+/**
+ * One of the Today screen's Key-Metric tiles. The [raw] is the stable persisted identifier — keep it
+ * byte-identical to the macOS `KeyMetric` enum so a backup/restore reads the same layout on either OS.
+ */
+enum class KeyMetric(val raw: String, val title: String) {
+    CHARGE("charge", "Charge"),
+    EFFORT("effort", "Effort"),
+    REST("rest", "Rest"),
+    HRV("hrv", "HRV"),
+    RESTING_HR("restingHr", "Resting HR"),
+    BLOOD_OXYGEN("bloodOxygen", "SpO₂"),
+    RESPIRATORY("respiratory", "Respiratory"),
+    STEPS("steps", "Steps"),
+    WEIGHT("weight", "Weight"),
+    CALORIES("calories", "Calories");
+
+    companion object {
+        fun fromRaw(raw: String?): KeyMetric? = entries.firstOrNull { it.raw == raw }
+
+        /** The original, hard-coded grid order — the default when the layout isn't customised. */
+        val defaultOrder: List<KeyMetric> = listOf(
+            CHARGE, EFFORT, REST, HRV, RESTING_HR,
+            BLOOD_OXYGEN, RESPIRATORY, STEPS, WEIGHT, CALORIES,
+        )
+    }
+}
+
+/**
+ * Display-only persistence for the Key-Metrics layout. Holds an ORDERED list of the enabled tiles; a tile
+ * not in the list is hidden. SharedPreferences isn't reactive, so the Today screen reads this once into
+ * remembered state (like the other prefs) and re-reads on the recomposition the editor's write triggers.
+ * Mirrors the macOS KeyMetricPrefs (@AppStorage "today.keyMetrics").
+ */
+object KeyMetricPrefs {
+    private const val KEY_LAYOUT = "today.keyMetrics"
+
+    /** The enabled tiles in display order. An empty/unset string yields the full default order. */
+    fun enabled(context: Context): List<KeyMetric> =
+        decodeEnabled(NoopPrefs.of(context).getString(KEY_LAYOUT, null))
+
+    /** Persist the enabled tiles in order. Disabled tiles are simply omitted from the stored string. */
+    fun setEnabled(context: Context, metrics: List<KeyMetric>) {
+        NoopPrefs.of(context).edit().putString(KEY_LAYOUT, encode(metrics)).apply()
+    }
+
+    /** Encode an ordered list of enabled tiles into the stored comma-joined string. */
+    fun encode(metrics: List<KeyMetric>): String = metrics.joinToString(",") { it.raw }
+
+    /**
+     * Decode the stored string into an ordered list of enabled tiles. An empty/unset string yields the
+     * full default order (so a fresh install shows every tile). Unknown tokens are ignored, duplicates
+     * collapsed; this returns ONLY the enabled tiles in their saved order.
+     */
+    fun decodeEnabled(raw: String?): List<KeyMetric> {
+        val trimmed = raw?.trim().orEmpty()
+        if (trimmed.isEmpty()) return KeyMetric.defaultOrder
+        val seen = LinkedHashSet<KeyMetric>()
+        trimmed.split(",").forEach { token ->
+            KeyMetric.fromRaw(token.trim())?.let { seen.add(it) }
+        }
+        return if (seen.isEmpty()) KeyMetric.defaultOrder else seen.toList()
+    }
+}
 
 // MARK: - "Your cards" customisable dashboard (WHOOP "My Dashboard") — Kotlin twin of DashboardCards.swift
 //
