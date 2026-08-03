@@ -47,11 +47,10 @@ private val LEDGER_SWATCH = 12.dp
 internal fun SleepNeedCard(
     percent: Double?,
     typicalPercent: Double?,
-    sleptMin: Double,
-    neededMin: Double,
+    sleptMin: Double?,
+    neededMin: Double?,
     ledger: SleepDebtLedger,
 ) {
-    val scale = max(max(sleptMin, neededMin), 1.0)
     NoopCard(padding = Metrics.cardPadding, tint = Palette.restColor) {
         Column(verticalArrangement = Arrangement.spacedBy(Metrics.space14)) {
             Column(verticalArrangement = Arrangement.spacedBy(Metrics.space2)) {
@@ -69,18 +68,15 @@ internal fun SleepNeedCard(
                     color = Palette.textSecondary,
                 )
             }
-            NeedBar(
-                label = "HOURS OF SLEEP",
-                value = durationText(sleptMin),
-                fraction = (sleptMin / scale).coerceIn(0.0, 1.0).toFloat(),
-                brush = Brush.horizontalGradient(listOf(Palette.restDeep, Palette.restBright)),
-            )
-            NeedBar(
-                label = "SLEEP NEEDED",
-                value = durationText(neededMin),
-                fraction = (neededMin / scale).coerceIn(0.0, 1.0).toFloat(),
-                brush = Brush.horizontalGradient(listOf(Palette.surfaceOverlay, Palette.textTertiary)),
-            )
+            if (sleptMin != null && neededMin != null) {
+                NeedVersusBar(sleptMin = sleptMin, neededMin = neededMin)
+            } else {
+                Text(
+                    "No night with both an asleep total and a need to set it against yet.",
+                    style = NoopType.footnote,
+                    color = Palette.textTertiary,
+                )
+            }
             CardHairline()
             if (ledger.nightCount == 0) {
                 Text(
@@ -90,7 +86,7 @@ internal fun SleepNeedCard(
                 )
             } else {
                 Column(verticalArrangement = Arrangement.spacedBy(Metrics.space12)) {
-                    NeedLedgerRow("Sleep need", durationText(ledger.needMin), Palette.textTertiary)
+                    NeedLedgerRow("Baseline need", durationText(ledger.needMin), Palette.textTertiary)
                     NeedLedgerRow("Sleep balance", debtSigned(ledger.balanceMin), debtBalanceColor(ledger))
                     Text(debtRead(ledger), style = NoopType.footnote, color = Palette.textSecondary)
                     DebtBalanceStrip(ledger)
@@ -100,28 +96,54 @@ internal fun SleepNeedCard(
     }
 }
 
-/** One comparison bar: its label and read-out over a full-width track filled to [fraction]. */
+/**
+ * The night's asleep total against its need on ONE track: the fill is what was slept, the mark is the
+ * need. Drawn as two bars on a shared maximum, the longer was always full and the other within a pixel
+ * of it, so neither carried the ratio the headline states.
+ */
 @Composable
-private fun NeedBar(label: String, value: String, fraction: Float, brush: Brush) {
+private fun NeedVersusBar(sleptMin: Double, neededMin: Double) {
+    val scale = max(max(sleptMin, neededMin), 1.0)
+    val sleptFrac = (sleptMin / scale).coerceIn(0.0, 1.0).toFloat()
+    val needFrac = (neededMin / scale).coerceIn(0.0, 1.0).toFloat()
+    val fillBrush = Brush.horizontalGradient(listOf(Palette.restDeep, Palette.restBright))
+    val trackColor = Palette.surfaceInset
+    val markColor = Palette.textPrimary
     Column(verticalArrangement = Arrangement.spacedBy(Metrics.space6)) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(label, style = NoopType.overline, color = Palette.textTertiary, modifier = Modifier.weight(1f))
-            Text(value, style = NoopType.captionNumber, color = Palette.textPrimary, maxLines = 1)
-        }
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(NEED_BAR_HEIGHT)
                 .clip(RoundedCornerShape(Metrics.cornerPill))
-                .background(Palette.surfaceInset)
-                .semantics { contentDescription = "$label $value" },
-        ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth(fraction)
-                    .height(NEED_BAR_HEIGHT)
-                    .clip(RoundedCornerShape(Metrics.cornerPill))
-                    .background(brush),
+                .semantics {
+                    contentDescription =
+                        "Asleep ${durationText(sleptMin)} against a need of ${durationText(neededMin)}"
+                }
+                .drawBehind {
+                    drawRect(color = trackColor, size = size)
+                    drawRect(brush = fillBrush, size = Size(size.width * sleptFrac, size.height))
+                    val x = (size.width * needFrac).coerceIn(0f, size.width - 1f)
+                    drawLine(
+                        color = markColor,
+                        start = Offset(x, 0f),
+                        end = Offset(x, size.height),
+                        strokeWidth = Metrics.divider.toPx() * 2f,
+                    )
+                },
+        )
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                "ASLEEP ${durationText(sleptMin)}",
+                style = NoopType.overline,
+                color = Palette.restBright,
+                maxLines = 1,
+                modifier = Modifier.weight(1f),
+            )
+            Text(
+                "NEEDED ${durationText(neededMin)}",
+                style = NoopType.overline,
+                color = Palette.textSecondary,
+                maxLines = 1,
             )
         }
     }

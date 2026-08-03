@@ -93,10 +93,8 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.graphics.vector.ImageVector
-import kotlin.math.cos
 import kotlin.math.min
 import kotlin.math.roundToInt
-import kotlin.math.sin
 
 // MARK: - Locked component system
 //
@@ -696,10 +694,19 @@ fun NoopSlider(
     )
 }
 
-// MARK: - BevelGauge — the layered ring gauge primitive
+// MARK: - BevelGauge — the ring gauge primitive
 //
-// Open gauge with frosted inner disc, track ring, gradient-stroked progress arc, end-cap
-// dot, and centred number. Domain-agnostic — RecoveryRing / StrainGauge delegate here.
+// One open gauge: a full-span track, the progress arc on the same circle, a centred number.
+// Domain-agnostic — RecoveryRing / StrainGauge delegate here.
+
+/** The gauge's geometry, fixed. One start and one span, so an arc's LENGTH means the same thing on
+ *  every screen that draws one; the 120° gap is centred at the bottom. */
+private const val GAUGE_START_DEG = 150f
+private const val GAUGE_SPAN_DEG = 240f
+
+/** A ring track's tint: the text colour at low alpha. A ring is drawn on cards of several fills, and
+ *  an inset surface token sits DARKER than the card on the light scheme. */
+internal const val RING_TRACK_ALPHA = 0.10f
 
 /** Open gauge primitive: track ring, gradient progress arc, centred number. Domain-agnostic. */
 @Composable
@@ -715,8 +722,6 @@ fun BevelGauge(
     diameter: Dp = 200.dp,
     lineWidth: Dp = 16.dp,
     showsLabel: Boolean = true,
-    startDeg: Float = 150f,      // default: lower-left start of the 240° Bevel gauge
-    spanDeg: Float = 240f,       // default: 240° open gauge, gap centered at bottom
     coreDot: Color? = null,      // RecoveryRing brand glyph: a solid core dot at the centre
     wordmark: String? = null,    // RecoveryRing brand glyph: micro ALL-CAPS mark above the number
 ) {
@@ -727,12 +732,14 @@ fun BevelGauge(
         animationSpec = tween(Motion.durationSlow, easing = Motion.drawIn),
         label = "ringFill",
     )
-    // Outer bloom — a faint, static glow so the ring reads flat/Material.
-    // Strength = 0.05 + 0.13·frac.
-    // A sweep gradient always starts at 3 o'clock, so the stops are compressed into the gauge's own
-    // span and the canvas is rotated to the start angle below. The wrap from the last stop back to the
-    // first then lands in the gap the gauge never draws, instead of as a seam across the arc.
-    val sweep = Brush.sweepGradient(*stops.map { (at, color) -> at * (spanDeg / 360f) to color }.toTypedArray())
+    // A sweep gradient always runs 3 o'clock round to 3 o'clock, so its wrap is a hard seam. The stops
+    // are laid over the arc's own span and the canvas turned so that seam sits in the middle of the gap,
+    // where nothing is drawn; the clamp either side of the span then colours the two round caps.
+    val halfGap = (360f - GAUGE_SPAN_DEG) / 2f
+    val sweep = Brush.sweepGradient(
+        *stops.map { (at, color) -> (halfGap + at * GAUGE_SPAN_DEG) / 360f to color }.toTypedArray(),
+    )
+    val trackColor = Palette.textPrimary.copy(alpha = RING_TRACK_ALPHA)
 
     Box(
         modifier = modifier.size(diameter),
@@ -741,37 +748,7 @@ fun BevelGauge(
         Box(
             modifier = Modifier
                 .size(diameter)
-                // PERF: hoist static disc + rim into drawWithCache (rasterise once, replay as texture).
-                .drawWithCache {
-                    val stroke = lineWidth.toPx()
-                    val radius = (min(size.width, size.height) - stroke) / 2f
-                    val center = Offset(size.width / 2f, size.height / 2f)
-                    // The disc stops at the ring band's inner edge, so its rim traces that edge instead of
-                    // reading as a third circle inside the track.
-                    val discRadius = (radius - stroke / 2f).coerceAtLeast(1f)
-                    val discBrush = Brush.radialGradient(
-                        colors = listOf(
-                            Palette.surfaceInset.copy(alpha = 0f),
-                            Palette.surfaceInset.copy(alpha = 0.55f),
-                        ),
-                        center = center,
-                        radius = radius,
-                    )
-                    val rimStroke = Stroke(width = 1.dp.toPx())
-                    onDrawBehind {
-                        // Frosted inner disc behind the arc — a glassy "well".
-                        drawCircle(brush = discBrush, radius = discRadius, center = center)
-                        // Faint hairline rim around the inner disc (alpha 0.5).
-                        drawCircle(
-                            color = Palette.hairline.copy(alpha = 0.5f),
-                            radius = discRadius,
-                            center = center,
-                            style = rimStroke,
-                        )
-                    }
-                }
-                // The per-frame layer: full-span track + fill arc + end cap + core.
-                // Reads animatedFraction so it re-issues per frame.
+                // Track and fill on ONE circle at ONE stroke. Reads animatedFraction, so it re-issues per frame.
                 .drawBehind {
                     val stroke = lineWidth.toPx()
                     val radius = (min(size.width, size.height) - stroke) / 2f
@@ -780,43 +757,33 @@ fun BevelGauge(
                     val arcSize = Size(radius * 2f, radius * 2f)
                     val sweepStroke = Stroke(width = stroke, cap = StrokeCap.Round)
 
-                    // Full-span track — the carved inset "well" the arc sits in.
                     drawArc(
-                        color = Palette.surfaceInset,
-                        startAngle = startDeg,
-                        sweepAngle = spanDeg,
+                        color = trackColor,
+                        startAngle = GAUGE_START_DEG,
+                        sweepAngle = GAUGE_SPAN_DEG,
                         useCenter = false,
                         topLeft = topLeft,
                         size = arcSize,
                         style = sweepStroke,
                     )
 
-                    // Filled gradient arc, drawn with the canvas turned so the gradient's own zero sits at
-                    // [startDeg]; same stroke as the track, so neither overhangs the other.
+                    // The canvas turns by the gradient's own offset, so the fill still begins at
+                    // GAUGE_START_DEG and the first stop lands exactly on its start cap.
                     if (animatedFraction > 0.001f) {
-                        rotate(degrees = startDeg, pivot = center) {
+                        rotate(degrees = GAUGE_START_DEG - halfGap, pivot = center) {
                             drawArc(
                                 brush = sweep,
-                                startAngle = 0f,
-                                sweepAngle = spanDeg * animatedFraction,
+                                startAngle = halfGap,
+                                sweepAngle = GAUGE_SPAN_DEG * animatedFraction,
                                 useCenter = false,
                                 topLeft = topLeft,
                                 size = arcSize,
                                 style = sweepStroke,
                             )
                         }
-
-                        // Clean Material end-cap: a single small tipCore dot with a faint tip-coloured overlay.
-                        val tipAngle = Math.toRadians((startDeg + spanDeg * animatedFraction).toDouble())
-                        val bead = Offset(
-                            center.x + radius * cos(tipAngle).toFloat(),
-                            center.y + radius * sin(tipAngle).toFloat(),
-                        )
-                        drawCircle(color = Palette.tipCore, radius = stroke * 0.35f, center = bead)
-                        drawCircle(color = tipColor.copy(alpha = 0.35f), radius = stroke * 0.35f, center = bead)
                     }
 
-                    // Brand glyph core: gold dot at the centre, suppressed when a number is shown
+                    // Brand glyph core: a dot at the centre, suppressed when a number is shown
                     // (it would muddy the digits).
                     if (coreDot != null && !showsLabel) {
                         drawCircle(color = coreDot, radius = stroke * 0.40f, center = center)
@@ -958,7 +925,7 @@ fun GlowRing(
     }
     val animFraction = fracAnim.value
     val animValue = valueAnim.value
-    val trackColor = Palette.textPrimary.copy(alpha = 0.10f)
+    val trackColor = Palette.textPrimary.copy(alpha = RING_TRACK_ALPHA)
     Box(modifier = modifier.size(diameter), contentAlignment = Alignment.Center) {
         Box(
             modifier = Modifier
@@ -1063,9 +1030,7 @@ fun RecoveryRing(
         diameter = diameter,
         lineWidth = lineWidth,
         showsLabel = showsLabel,
-        // Brand-glyph geometry: open ~80% ring from 12 o'clock, gold core dot + NOOP wordmark.
-        startDeg = -90f,
-        spanDeg = 288f,
+        // Brand glyph: gold core dot + NOOP wordmark. The geometry is the gauge's, never its own.
         coreDot = Palette.gold,
         wordmark = "NOOP",
         modifier = modifier,

@@ -29,6 +29,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.noop.data.JournalEntry
 import java.time.LocalDate
+import java.util.Locale
 
 // MARK: - Native journal logging (pure helpers + the Insights logging card)
 
@@ -383,7 +384,7 @@ private fun JournalNumericField(
 }
 
 private fun formatNumeric(v: Double): String =
-    if (v == Math.floor(v) && !v.isInfinite()) v.toInt().toString() else String.format("%.1f", v)
+    if (v == Math.floor(v) && !v.isInfinite()) v.toInt().toString() else String.format(Locale.US, "%.1f", v)
 
 /** Edit-mode per-item controls: rename, change group, convert type, remove. */
 @Composable

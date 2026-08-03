@@ -957,23 +957,30 @@ private fun ExperimentSetupCard(
     onStart: () -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(Metrics.gap)) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.Top,
-        ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text("Run a clean personal test", style = NoopType.headline, color = Palette.textPrimary)
-                Spacer(Modifier.height(Metrics.space4))
+        // The chip shares the TITLE's line only. Wrapped around the paragraph too, it left the body
+        // running at half the card's width with a tall empty column beside it.
+        Column(verticalArrangement = Arrangement.spacedBy(Metrics.space4)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
                 Text(
-                    "Pick one behaviour you log, one outcome, and a short window. NOOP " +
-                        "compares the days you log the behaviour against your behaviour-free " +
-                        "days before the start.",
-                    style = NoopType.subhead,
-                    color = Palette.textSecondary,
+                    "Run a clean personal test",
+                    style = NoopType.headline,
+                    color = Palette.textPrimary,
+                    modifier = Modifier.weight(1f),
                 )
+                Spacer(Modifier.width(Metrics.space12))
+                StatePill("LOCAL ONLY", tone = StrandTone.Neutral, showsDot = false)
             }
-            Spacer(Modifier.width(Metrics.space12))
-            StatePill("LOCAL ONLY", tone = StrandTone.Neutral, showsDot = false)
+            Text(
+                "Pick one behaviour you log, one outcome, and a short window. NOOP " +
+                    "compares the days you log the behaviour against your behaviour-free " +
+                    "days before the start.",
+                style = NoopType.subhead,
+                color = Palette.textSecondary,
+                modifier = Modifier.fillMaxWidth(),
+            )
         }
 
         if (candidates.isEmpty()) {

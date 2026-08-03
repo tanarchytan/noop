@@ -108,13 +108,14 @@ class SleepUiStructureTest {
                 "SleepHoursVsNeededCard", "SleepRestorativeCard", "MINUTES_PER_HOUR", "hoursText",
             ),
             "SleepNeedCard.kt" to setOf(
-                "NEED_BAR_HEIGHT", "DEBT_STRIP_HEIGHT", "LEDGER_SWATCH", "SleepNeedCard", "NeedBar",
-                "NeedLedgerRow", "DebtBalanceStrip",
+                "NEED_BAR_HEIGHT", "DEBT_STRIP_HEIGHT", "LEDGER_SWATCH", "SleepNeedCard",
+                "NeedVersusBar", "NeedLedgerRow", "DebtBalanceStrip",
             ),
             "SleepScheduleCard.kt" to setOf(
-                "SCHEDULE_Y_MIN", "SCHEDULE_Y_MAX", "SCHEDULE_HOUR_LINES", "SCHEDULE_CHART_HEIGHT",
-                "SCHEDULE_Y_GUTTER_PX", "SECONDS_PER_HOUR", "SleepScheduleNight", "SleepScheduleCard",
-                "scheduleHourLabel", "optimalSleepBand", "sleepScheduleNights", "drawHabitualBand",
+                "SCHEDULE_MIN_HOURS", "SCHEDULE_HOUR_STEP", "scheduleHourSpan", "scheduleHourLines",
+                "SCHEDULE_CHART_HEIGHT", "SCHEDULE_Y_GUTTER_PX", "SECONDS_PER_HOUR", "SleepScheduleNight",
+                "SleepScheduleCard", "scheduleHourLabel", "optimalSleepBand", "sleepScheduleNights",
+                "drawHabitualBand",
             ),
             "SleepMetricDetail.kt" to setOf(
                 "SleepMetricRange", "SleepMetricSpec", "sleepMetricSpec", "buildSleepMetricPoints",

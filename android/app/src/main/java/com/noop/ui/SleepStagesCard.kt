@@ -138,15 +138,30 @@ private fun SleepStageRows(
     val intervals = remember(realSegments, spanSec) {
         nightStageIntervals(realSegments.orEmpty(), spanSec)
     }
+    // Display smoothing folds sub-threshold runs into their neighbours, which erases a stage that only
+    // ever came in brief bursts. That row falls back to its own unsmoothed runs, so a stage with
+    // minutes on its header is never drawn as a night it never happened in.
+    val rawIntervals = remember(realSegments, spanSec) {
+        stageIntervalsFromWeights(realSegments.orEmpty(), spanSec)
+    }
     Column(verticalArrangement = Arrangement.spacedBy(Metrics.space8)) {
         STAGE_ORDER.forEach { label ->
             val minutes = stageMinutes(stages, label)
+            val spans = if (realSegments == null) emptyList() else {
+                stageRowSpans(intervals, label, spanSec)
+                    .ifEmpty { stageRowSpans(rawIntervals, label, spanSec) }
+            }
+            // What the track actually draws, in minutes. The header's figure is the day's stored stage
+            // total; the runs are the session's own timeline, and the two can disagree.
+            val drawnMin = if (realSegments == null) null
+            else spans.sumOf { (_, widthFrac) -> widthFrac.toDouble() * spanSec } / 60.0
             SleepStageRow(
                 label = label,
                 minutes = minutes,
                 total = stages.total,
                 color = stageRowColor(label),
-                spans = if (realSegments == null) emptyList() else stageRowSpans(intervals, label, spanSec),
+                spans = spans,
+                drawnMin = drawnMin,
                 typicalMin = typicalByStage[label],
                 selected = selectedStage == label,
                 dimmed = selectedStage != null && selectedStage != label,
@@ -176,6 +191,7 @@ private fun SleepStageRow(
     total: Double,
     color: Color,
     spans: List<Pair<Float, Float>>,
+    drawnMin: Double?,
     typicalMin: Double?,
     selected: Boolean,
     dimmed: Boolean,
@@ -221,6 +237,15 @@ private fun SleepStageRow(
             )
         }
         SleepStageTrack(spans = spans, color = segColor, typicalFrac = typicalFrac)
+        // An empty-looking track beside a real figure is the two sources disagreeing, so the row says so
+        // rather than reading as a stage the night never had.
+        if (drawnMin != null && drawnMin.roundToInt() < minutes.roundToInt()) {
+            Text(
+                "This night's timeline holds ${durationText(drawnMin)} of it.",
+                style = NoopType.footnote,
+                color = Palette.textTertiary,
+            )
+        }
     }
 }
 
@@ -276,14 +301,18 @@ private fun SleepStageTrack(spans: List<Pair<Float, Float>>, color: Color, typic
             )
         }
 
-        if (typicalFrac != null && typicalFrac.isFinite()) {
-            val x = (w * typicalFrac).coerceIn(1f, w - 1f)
+        // The marker only says something where there is track on both sides of it. Pinned to an end it
+        // reads as an edge of the track rather than as a comparison.
+        val inset = Metrics.space6.toPx()
+        val markX = typicalFrac?.takeIf { it.isFinite() }?.let { w * it }
+        if (markX != null && markX > inset && markX < w - inset) {
+            val dash = Metrics.space4.toPx() / 2f
             drawLine(
                 color = markColor,
-                start = Offset(x, 0f),
-                end = Offset(x, h),
-                strokeWidth = 2f,
-                pathEffect = PathEffect.dashPathEffect(floatArrayOf(4f, 4f), 0f),
+                start = Offset(markX, 0f),
+                end = Offset(markX, h),
+                strokeWidth = Metrics.divider.toPx(),
+                pathEffect = PathEffect.dashPathEffect(floatArrayOf(dash, dash), 0f),
             )
         }
     }

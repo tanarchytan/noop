@@ -24,6 +24,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -54,6 +55,8 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.noop.analytics.RustScores
@@ -750,31 +753,45 @@ private fun OverviewHRChart(
             GlowEndCap(values = bpm, tipColor = Palette.metricRose)
 
             // 3) Marker labels + sport glyphs, positioned composables (crisp text/icons vs Canvas).
-            val topPadDp = 10.dp
-            // Sleep duration pill at the band's leading edge.
-            if (sleepStartX != null && (sleepEndX ?: 0f) > (sleepStartX)) {
-                val durLabel = hrHoursMinutes((sleep.effectiveEndTs - sleep.effectiveStartTs).toInt())
-                ChartMarkerPill(
-                    text = durLabel,
-                    color = Palette.sleepLight,
-                    leadingIcon = Icons.Filled.Bedtime,
-                    modifier = Modifier.markerOffset(sleepStartX, density, topPadDp),
-                )
-            }
-            if (chargeX != null) {
-                ChartMarkerPill(
-                    text = "${recovery.roundToInt()}% Charge",
-                    color = Palette.recoveryColor(recovery),
-                    modifier = Modifier.markerOffset(chargeX, density, topPadDp),
-                )
-            }
-            if (effortX != null) {
-                ChartMarkerPill(
-                    text = "${UnitFormatter.effortDisplay(strain, effortScale)} Effort",
-                    color = Palette.effortTint(strain / StrainScorer.maxStrain),
-                    modifier = Modifier.markerOffset(plotW, density, topPadDp, alignEnd = true),
-                )
-            }
+            // The pills are placed together so two markers that land on the same stretch of the axis
+            // take separate lanes instead of printing over each other.
+            HrMarkerPills(
+                markers = buildList {
+                    if (sleepStartX != null && (sleepEndX ?: 0f) > sleepStartX) {
+                        add(
+                            HrMarker(
+                                key = "sleep",
+                                anchorX = sleepStartX,
+                                text = hrHoursMinutes((sleep.effectiveEndTs - sleep.effectiveStartTs).toInt()),
+                                color = Palette.sleepLight,
+                                icon = Icons.Filled.Bedtime,
+                            ),
+                        )
+                    }
+                    if (chargeX != null) {
+                        add(
+                            HrMarker(
+                                key = "charge",
+                                anchorX = chargeX,
+                                text = "${recovery.roundToInt()}% Charge",
+                                color = Palette.recoveryColor(recovery),
+                            ),
+                        )
+                    }
+                    if (effortX != null) {
+                        add(
+                            HrMarker(
+                                key = "effort",
+                                anchorX = effortX,
+                                alignEnd = true,
+                                text = "${UnitFormatter.effortDisplay(strain, effortScale)} Effort",
+                                color = Palette.effortTint(strain / StrainScorer.maxStrain),
+                            ),
+                        )
+                    }
+                },
+                plotW = plotW,
+            )
             // Sport glyph at each workout's in-window HR peak.
             workouts.forEach { w ->
                 val peak = hrPeakIn(buckets, w.startTs, w.endTs)
@@ -804,21 +821,61 @@ private fun hrHoursMinutes(seconds: Int): String {
 private fun hrPeakIn(buckets: List<HrBucket>, start: Long, end: Long): HrBucket? =
     buckets.filter { it.bucket in start..end }.maxByOrNull { it.avgBpm }
 
-/** Offset a marker pill near plot-x [x] (px). End-aligned markers (Effort) tuck under the right
- *  edge; the rest centre roughly on their anchor. Coerced to ≥ 0 so a pill never starts off-screen. */
-private fun Modifier.markerOffset(
-    x: Float,
-    density: androidx.compose.ui.unit.Density,
-    topPad: androidx.compose.ui.unit.Dp,
-    alignEnd: Boolean = false,
-): Modifier = this.offset(
-    x = with(density) {
-        // Approx pill half-width for edge clamping (footnote ≈ 7px/char + chrome).
-        val xDp = x.toDp()
-        if (alignEnd) (xDp - 70.dp).coerceAtLeast(0.dp) else (xDp - 36.dp).coerceAtLeast(0.dp)
-    },
-    y = topPad,
+/** One marker pill's placement request: the plot-x it points at, and what it says. */
+private data class HrMarker(
+    val key: String,
+    val anchorX: Float,
+    val text: String,
+    val color: Color,
+    val icon: ImageVector? = null,
+    val alignEnd: Boolean = false,
 )
+
+/**
+ * Place the marker pills over the plot. Each is measured, then kept whole inside [plotW] and dropped
+ * to the next lane when its span overlaps one already placed, so two markers at the same minute read
+ * as two lines rather than one over the other.
+ */
+@Composable
+private fun HrMarkerPills(markers: List<HrMarker>, plotW: Float) {
+    if (markers.isEmpty() || plotW <= 0f) return
+    val density = LocalDensity.current
+    val sizes = remember { mutableStateMapOf<String, IntSize>() }
+    val gap = with(density) { Metrics.space4.toPx() }
+    val topPad = with(density) { Metrics.space10.toPx() }
+
+    val left = HashMap<String, Float>(markers.size)
+    val lane = HashMap<String, Int>(markers.size)
+    val laneRight = ArrayList<Float>()
+    markers.sortedBy { it.anchorX }.forEach { m ->
+        val w = (sizes[m.key]?.width ?: 0).toFloat()
+        val want = if (m.alignEnd) m.anchorX - w else m.anchorX - w / 2f
+        val x = want.coerceIn(0f, (plotW - w).coerceAtLeast(0f))
+        var row = 0
+        while (row < laneRight.size && x < laneRight[row] + gap) row++
+        if (row == laneRight.size) laneRight.add(0f)
+        laneRight[row] = x + w
+        left[m.key] = x
+        lane[m.key] = row
+    }
+
+    markers.forEach { m ->
+        ChartMarkerPill(
+            text = m.text,
+            color = m.color,
+            leadingIcon = m.icon,
+            modifier = Modifier
+                .offset {
+                    val h = (sizes[m.key]?.height ?: 0).toFloat()
+                    IntOffset(
+                        (left[m.key] ?: 0f).roundToInt(),
+                        (topPad + (lane[m.key] ?: 0) * (h + gap)).roundToInt(),
+                    )
+                }
+                .onSizeChanged { sizes[m.key] = it },
+        )
+    }
+}
 
 /** Position a 22dp sport glyph centred on a plot point (px), clamped inside the plot. */
 private fun Modifier.glyphOffset(

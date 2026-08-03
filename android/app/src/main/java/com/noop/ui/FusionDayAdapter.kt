@@ -28,7 +28,9 @@ object FusionDayAdapter {
     private val METRICS: List<MetricSpec> = listOf(
         MetricSpec("rhr", "Resting HR"),
         MetricSpec("hrv", "HRV"),
-        MetricSpec("skin_temp", "Skin temperature"),
+        // The stored column is the signed deviation from the wearer's own baseline, not the absolute
+        // reading Health Monitor prints, so it is named for what it is.
+        MetricSpec("skin_temp", "Skin temp vs baseline"),
         MetricSpec("spo2", "Blood O₂"),
         MetricSpec("steps", "Steps"),
         MetricSpec("active_kcal", "Active energy"),

@@ -44,7 +44,8 @@ class SleepCardFixturesTest {
         val night = sleepScheduleNights(listOf(crossMidnight)).single()
         assertTrue("an evening bedtime folds negative", night.bedHour < 0f)
         assertTrue("the bar runs down the axis to the wake", night.bedHour < night.wakeHour)
-        assertTrue("and stays inside the axis", night.bedHour >= SCHEDULE_Y_MIN && night.wakeHour <= SCHEDULE_Y_MAX)
+        val axis = scheduleHourSpan(listOf(night))
+        assertTrue("and the axis it derives contains it", night.bedHour >= axis.start && night.wakeHour <= axis.endInclusive)
     }
 
     /** A usual ~23:10 night folds the same way, so the two shapes sit on one axis. */
@@ -54,7 +55,8 @@ class SleepCardFixturesTest {
         val night = sleepScheduleNights(listOf(usual)).single()
         assertTrue(night.bedHour < 0f)
         assertTrue(night.bedHour < night.wakeHour)
-        assertTrue(night.bedHour >= SCHEDULE_Y_MIN && night.wakeHour <= SCHEDULE_Y_MAX)
+        val axis = scheduleHourSpan(listOf(night))
+        assertTrue(night.bedHour >= axis.start && night.wakeHour <= axis.endInclusive)
     }
 
     /** Each fold keeps its own night's clock times, so the time-in-bed labels can't drift a column. */

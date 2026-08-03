@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -26,7 +27,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.noop.analytics.RecoveryForecast
@@ -398,36 +398,37 @@ private fun DayCard(d: DailyMetric, effortScale: EffortScale) {
                 SourceBadge(src.first, tint = src.second)
             }
 
-            Row(modifier = Modifier.fillMaxWidth()) {
+            // Each column takes the width its own figure needs and the slack is shared out. Split five
+            // even ways, "8h 12m" was the one that lost its minutes.
+            FlowRow(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalArrangement = Arrangement.spacedBy(Metrics.space10),
+            ) {
                 DayStat(
                     "Charge",
-                    d.recovery?.let { "${it.roundToInt()}%" } ?: "—",
+                    d.recovery?.let { "${it.roundToInt()}%" },
                     d.recovery?.let { Palette.recoveryColor(it) } ?: Palette.textSecondary,
-                    Modifier.weight(1f),
                 )
                 DayStat(
                     "Effort",
-                    d.strain?.let { UnitFormatter.effortDisplay(it, effortScale) } ?: "—",
+                    d.strain?.let { UnitFormatter.effortDisplay(it, effortScale) },
                     d.strain?.let { Palette.strainColor(it) } ?: Palette.textSecondary,
-                    Modifier.weight(1f),
                 )
                 DayStat(
                     "Rest",
                     sleepValue(d.totalSleepMin),
                     Palette.restColor,
-                    Modifier.weight(1f),
                 )
                 DayStat(
                     "HRV",
-                    d.avgHrv?.let { "${it.roundToInt()}" } ?: "—",
+                    d.avgHrv?.let { "${it.roundToInt()}" },
                     Palette.metricPurple,
-                    Modifier.weight(1f),
                 )
                 DayStat(
                     "RHR",
-                    d.restingHr?.toString() ?: "—",
+                    d.restingHr?.toString(),
                     Palette.metricRose,
-                    Modifier.weight(1f),
                 )
             }
 
@@ -443,30 +444,27 @@ private fun DayCard(d: DailyMetric, effortScale: EffortScale) {
 }
 
 @Composable
-private fun DayStat(label: String, value: String, color: Color, modifier: Modifier = Modifier) {
+private fun DayStat(label: String, value: String?, color: Color, modifier: Modifier = Modifier) {
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(3.dp)) {
         Text(
             label.uppercase(),
             style = NoopType.footnote,
             color = Palette.textTertiary,
             maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
         )
-        Text(
-            value,
-            style = NoopType.number(19f),
-            color = color,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
+        if (value == null) {
+            // A dash set at figure size draws as a bar, which reads as a redaction rather than a gap.
+            Text("no data", style = NoopType.footnote, color = Palette.textTertiary, maxLines = 1)
+        } else {
+            Text(value, style = NoopType.number(19f), color = color, maxLines = 1)
+        }
     }
 }
 
 // MARK: - Derived helpers
 
-private fun sleepValue(totalMin: Double?): String {
-    val m = totalMin ?: return "—"
-    val total = m.roundToInt()
+private fun sleepValue(totalMin: Double?): String? {
+    val total = (totalMin ?: return null).roundToInt()
     return "${total / 60}h ${total % 60}m"
 }
 

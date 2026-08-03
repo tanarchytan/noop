@@ -1063,13 +1063,13 @@ private fun SessionHeaderRow(selectionMode: Boolean = false) {
     ) {
         // a leading spacer over the per-row selection glyph, so the columns stay aligned in select mode.
         if (selectionMode) Spacer(Modifier.width(30.dp))
-        // Weights mirror SessionRow (: Date widened for the time range, taken from Sport).
-        ColHeader("Date", Modifier.weight(1.7f), TextAlign.Start)
-        ColHeader("Sport", Modifier.weight(1.3f), TextAlign.Start)
+        // Weights mirror SessionRow. Six columns left the sport at one syllable and the source badge
+        // at one letter, so the source moved under the sport it belongs to and its column went to it.
+        ColHeader("Date", Modifier.weight(1.9f), TextAlign.Start)
+        ColHeader("Sport", Modifier.weight(2.3f), TextAlign.Start)
         ColHeader("Dur", Modifier.weight(1f), TextAlign.End)
-        ColHeader("HR", Modifier.weight(1.1f), TextAlign.End)
+        ColHeader("HR", Modifier.weight(1f), TextAlign.End)
         ColHeader("Kcal", Modifier.weight(1f), TextAlign.End)
-        ColHeader("Src", Modifier.weight(1f), TextAlign.End)
         // Trailing spacer column over the per-row overflow menu, so headers line up with the cells.
         Spacer(Modifier.width(32.dp))
     }
@@ -1150,33 +1150,36 @@ private fun SessionRow(
             }
             Spacer(Modifier.width(Metrics.space8))
         }
-        // Date + time range. The 0.3f comes out of Sport: "HH:mm–HH:mm" clips at footnote
-        // size in the old 1.4f, while sport names already ellipsize gracefully.
-        Column(modifier = Modifier.weight(1.7f)) {
+        // Date over the session's own clock span.
+        Column(modifier = Modifier.weight(1.9f)) {
             Text(dateLabel(row.startTs), style = NoopType.subhead, color = Palette.textPrimary, maxLines = 1)
             Text(timeRangeLabel(row.startTs, row.endTs), style = NoopType.footnote, color = Palette.textTertiary, maxLines = 1)
         }
-        // Sport ("detected" reads as "Activity").
-        Row(modifier = Modifier.weight(1.3f), verticalAlignment = Alignment.CenterVertically) {
-            Icon(
-                sportIcon(row.sport),
-                contentDescription = null,
-                tint = Palette.textSecondary,
-                modifier = Modifier.size(14.dp),
-            )
-            Spacer(Modifier.width(7.dp))
-            Text(
-                WorkoutEditing.displaySport(row.sport),
-                style = NoopType.subhead,
-                color = Palette.textPrimary,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
+        // Sport over where the session came from, so both read in full on one column's width.
+        Column(modifier = Modifier.weight(2.3f), verticalArrangement = Arrangement.spacedBy(Metrics.space2)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    sportIcon(row.sport),
+                    contentDescription = null,
+                    tint = Palette.textSecondary,
+                    modifier = Modifier.size(14.dp),
+                )
+                Spacer(Modifier.width(7.dp))
+                Text(
+                    WorkoutEditing.displaySport(row.sport),
+                    style = NoopType.subhead,
+                    color = Palette.textPrimary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+            val (srcLabel, srcTint) = row.sourceBadge
+            SourceBadge(srcLabel, tint = srcTint)
         }
         Cell(durationLabel(row.durationS), Modifier.weight(1f))
         Cell(
             row.avgHr?.toString() ?: "–",
-            Modifier.weight(1.1f),
+            Modifier.weight(1f),
             color = if (row.avgHr != null) Palette.metricRose else null,
         )
         Cell(
@@ -1184,10 +1187,6 @@ private fun SessionRow(
             Modifier.weight(1f),
             color = if (row.energyKcal != null) Palette.metricAmber else null,
         )
-        Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.CenterEnd) {
-            val (srcLabel, srcTint) = row.sourceBadge
-            SourceBadge(srcLabel, tint = srcTint)
-        }
         // hide the per-row ••• menu in selection mode (the toolbar owns the actions there); keep a
         // 32dp spacer so the Src column stays aligned with the header.
         if (selectionMode) Spacer(Modifier.width(32.dp)) else RowActionsMenu(row, onEdit, onRelabel, onDismiss, onDelete)

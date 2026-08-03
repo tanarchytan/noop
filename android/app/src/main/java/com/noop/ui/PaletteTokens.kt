@@ -126,11 +126,16 @@ val DarkTokens = PaletteTokens(
 )
 
 // Light palette — "Terracotta & Sand": the warm-paper sand surfaces stay; chrome + the warm world shift
-// from gold to terracotta; Charge ramps terracotta→ochre→sage (low→high), Effort/Rest a cool denim blue
-// for contrast against the warm canvas.
+// from gold to terracotta; Charge ramps terracotta→ochre→sage (low→high), Effort a cool denim blue for
+// contrast against the warm canvas. Rest keeps the violet it wears on dark: the chrome accent may be a
+// scheme's own, but a metric's identity colour cannot change under the reader.
+//
+// surfaceInset is the one token whose RELATION to its surroundings has to hold in both schemes: a shade
+// under the card it sits in. Spelled as a mid sand it came out darker than the page itself, so muted
+// panels, unselected controls and legends all read as filled.
 val LightTokens = PaletteTokens(
     surfaceBase = Color(0xFFEBE1CF), surfaceRaised = Color(0xFFFDF9F1), surfaceOverlay = Color(0xFFFDF9F1),
-    surfaceInset = Color(0xFFDED2BC), hairline = Color(0xFFD8CBB2), hairlineStrong = Color(0xFFC6B597),
+    surfaceInset = Color(0xFFF4EDE0), hairline = Color(0xFFD8CBB2), hairlineStrong = Color(0xFFC6B597),
     textPrimary = Color(0xFF2A2018), textSecondary = Color(0xFF5C5245), textTertiary = Color(0xFF8C8072),
     glowAmbient = Color(0xFFF0E0C4),
     // Light chrome accent is terracotta (the warm brand tone for this scheme).
@@ -145,7 +150,7 @@ val LightTokens = PaletteTokens(
     metricCyan = Color(0xFF2E8C9E), metricPurple = Color(0xFF7A5AA8), metricAmber = Color(0xFFC2792E), metricRose = Color(0xFFC0402A),
     chargeColor = Color(0xFFB5673A), chargeDeep = Color(0xFF8F4E24), chargeBright = Color(0xFFD89A5E), chargeGlow = Color(0xFFC2743E),
     effortColor = Color(0xFF3F6FA8), effortDeep = Color(0xFF2A5082), effortBright = Color(0xFF6E9BCC), effortGlow = Color(0xFF3F6FA8),
-    restColor = Color(0xFF5A93C0), restDeep = Color(0xFF356A96), restBright = Color(0xFF86B4DA), restGlow = Color(0xFF5A93C0),
+    restColor = Color(0xFF7A5AA8), restDeep = Color(0xFF54397A), restBright = Color(0xFFA98CD0), restGlow = Color(0xFF7A5AA8),
     stressColor = Color(0xFFC2792E), stressDeep = Color(0xFF3F6FA8), stressBright = Color(0xFFC0402A), stressGlow = Color(0xFFC2792E),
     scenicCenter = Color(0xFFFBF6EA), scenicEdge = Color(0xFFEDE4D2), scenicStar = Color(0xFFD8CBB2),
     cardFillTop = Color(0xFFFDF9F1), cardFillBottom = Color(0xFFF6EFE2),

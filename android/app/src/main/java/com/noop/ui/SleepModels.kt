@@ -56,6 +56,10 @@ internal data class SleepModel(
     val efficiency: Metric,
     val consistency: Metric,
     val hoursVsNeeded: Metric,
+    /** The two figures [hoursVsNeeded] was formed from, carried as they are so the card printing the
+     *  percentage draws that same night's asleep total against that same night's need. */
+    val hoursVsNeededSleptMin: Double?,
+    val hoursVsNeededNeedMin: Double?,
     val respiratory: Metric,
     val sleepDebt: Metric,
     val typicalTotalMin: Double?,
@@ -450,6 +454,8 @@ internal fun buildSleepModel(
         val need = imported.needMin[d.day] ?: needMin   // imported need wins per day
         d.totalSleepMin?.takeIf { it > 0.0 && need > 0.0 }?.let { it / need * 100.0 }
     }
+    val hoursVsNeededNeedMin = (imported.needMin[latest.day] ?: needMin).takeIf { it > 0.0 }
+    val hoursVsNeededSleptMin = latest.totalSleepMin?.takeIf { it > 0.0 }
     val respiratory = metricAtDay(days, latest) { it.respRateBpm }
     val sleepDebt = run {
         fun debtOf(d: DailyMetric): Double? =
@@ -494,6 +500,8 @@ internal fun buildSleepModel(
         efficiency = efficiency,
         consistency = consistency,
         hoursVsNeeded = hoursVsNeeded,
+        hoursVsNeededSleptMin = hoursVsNeededSleptMin,
+        hoursVsNeededNeedMin = hoursVsNeededNeedMin,
         respiratory = respiratory,
         sleepDebt = sleepDebt,
         typicalTotalMin = typicalTotalMin,

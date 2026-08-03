@@ -37,6 +37,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.noop.analytics.HrZones
+import java.util.Locale
 import kotlinx.coroutines.delay
 
 /**
@@ -117,7 +118,7 @@ fun LiveWorkoutScreen(vm: AppViewModel, onClose: () -> Unit) {
                     Text(w.sport.name, style = NoopType.title1, color = Palette.textPrimary)
                 }
                 Text(
-                    String.format("%d:%02d", elapsedS / 60, elapsedS % 60),
+                    String.format(Locale.US, "%d:%02d", elapsedS / 60, elapsedS % 60),
                     style = NoopType.number(34f), color = Palette.textPrimary,
                 )
             }

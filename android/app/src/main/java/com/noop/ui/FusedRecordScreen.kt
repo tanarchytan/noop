@@ -40,6 +40,7 @@ import com.noop.analytics.FusedMetricPoint
 import com.noop.analytics.FusionSource
 import com.noop.analytics.MetricArbitrationPolicy
 import java.text.NumberFormat
+import java.util.Locale
 import kotlin.math.roundToInt
 
 // MARK: - FusedRecordScreen — "Your Data, Fused" (v5 — Local Multi-Device Fusion)
@@ -457,12 +458,12 @@ object FusionFormat {
             MetricArbitrationPolicy.MetricKind.HEART_RATE -> "${v.roundToInt()} bpm"
             MetricArbitrationPolicy.MetricKind.HRV -> "${v.roundToInt()} ms"
             MetricArbitrationPolicy.MetricKind.SPO2 -> "${v.roundToInt()}%"
-            MetricArbitrationPolicy.MetricKind.SKIN_TEMP -> String.format("%.1f°C", v)
+            MetricArbitrationPolicy.MetricKind.SKIN_TEMP -> String.format(Locale.US, "%+.1f °C", v)
             MetricArbitrationPolicy.MetricKind.STEPS -> integerGrouped(v)
             MetricArbitrationPolicy.MetricKind.SLEEP -> duration(v)
             MetricArbitrationPolicy.MetricKind.CALORIES -> "${integerGrouped(v)} kcal"
             MetricArbitrationPolicy.MetricKind.OTHER ->
-                if (v == Math.floor(v)) v.toInt().toString() else String.format("%.1f", v)
+                if (v == Math.floor(v)) v.toInt().toString() else String.format(Locale.US, "%.1f", v)
         }
 
     /** "8,420" — grouped integer. */

@@ -479,16 +479,13 @@ fun SleepNightScreen(
                 val m = tilesModel
                 item { Spacer(Modifier.height(Metrics.selectorTopUp)) }
                 item {
-                    // The night's asleep total against the personal need. The hero stages' asleep sum is
-                    // the selected night's; the trend tail is the newest, so prefer the former when the
-                    // selected day built a model.
-                    val sleptMin = model?.stages?.asleep ?: ((m.trendHours.lastOrNull() ?: 0.0) * 60.0)
-                    val neededMin = (m.trendNeedHours.lastOrNull() ?: 0.0) * 60.0
+                    // The percentage and the bar are the SAME pair of figures. Reading the asleep total
+                    // off the hero and the need off the trend tail let the card compare two nights.
                     SleepNeedCard(
                         percent = m.hoursVsNeeded.latest,
                         typicalPercent = m.hoursVsNeeded.typical,
-                        sleptMin = sleptMin,
-                        neededMin = if (neededMin > 0.0) neededMin else m.sleepDebtLedger.needMin,
+                        sleptMin = m.hoursVsNeededSleptMin,
+                        neededMin = m.hoursVsNeededNeedMin,
                         ledger = m.sleepDebtLedger,
                     )
                 }

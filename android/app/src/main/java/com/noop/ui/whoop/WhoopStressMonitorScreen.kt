@@ -142,9 +142,6 @@ private fun StressHeroCard(score: Double?) {
                     tipColor = Palette.sample(Palette.stressGradientStops, fraction.toFloat()),
                     numberText = shown,
                     captionText = "of $ceiling",
-                    // A half-gauge from 9 o'clock over the top to 3 o'clock.
-                    startDeg = 180f,
-                    spanDeg = 180f,
                     modifier = Modifier.semantics {
                         contentDescription = "Stress $shown of $ceiling"
                     },

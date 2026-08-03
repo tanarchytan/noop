@@ -33,12 +33,36 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
+import kotlin.math.ceil
+import kotlin.math.floor
 
-/** The chart's vertical span: 20:00 the evening before through 18:00 the next day. The time-in-bed
- *  card shares it so a bar means the same thing on both. */
-internal const val SCHEDULE_Y_MIN = -4f
-internal const val SCHEDULE_Y_MAX = 18f
-private val SCHEDULE_HOUR_LINES = listOf(-4f, 0f, 4f, 8f, 12f, 16f)
+/** The narrowest window the chart will draw, in hours, so three near-identical nights still get a
+ *  plot with room around them rather than three bars filling it. */
+private const val SCHEDULE_MIN_HOURS = 8f
+
+/** Hours between gridlines, and the hour the labelled lines are aligned to. */
+private const val SCHEDULE_HOUR_STEP = 4f
+
+/**
+ * The chart's vertical span in hours for the nights it draws: a whole hour outside the earliest bed
+ * and the latest wake. A fixed 20:00-to-18:00 axis left the lower half permanently empty. The
+ * time-in-bed card derives it from the same nights, so a bar means the same thing on both.
+ */
+internal fun scheduleHourSpan(nights: List<SleepScheduleNight>): ClosedFloatingPointRange<Float> {
+    val lo = nights.minOfOrNull { minOf(it.bedHour, it.wakeHour) } ?: 0f
+    val hi = nights.maxOfOrNull { maxOf(it.bedHour, it.wakeHour) } ?: SCHEDULE_MIN_HOURS
+    val min = floor(lo) - 1f
+    val max = maxOf(ceil(hi) + 1f, min + SCHEDULE_MIN_HOURS)
+    return min..max
+}
+
+/** The labelled gridlines inside [span], every [SCHEDULE_HOUR_STEP] hours on the step's own multiples. */
+private fun scheduleHourLines(span: ClosedFloatingPointRange<Float>): List<Float> {
+    val first = ceil(span.start / SCHEDULE_HOUR_STEP) * SCHEDULE_HOUR_STEP
+    return generateSequence(first) { it + SCHEDULE_HOUR_STEP }
+        .takeWhile { it <= span.endInclusive }
+        .toList()
+}
 private val SCHEDULE_CHART_HEIGHT = 180.dp
 private const val SCHEDULE_Y_GUTTER_PX = 52f
 private const val SECONDS_PER_HOUR = 3600f
@@ -70,7 +94,10 @@ internal fun SleepScheduleCard(
     needMin: Double?,
 ) {
     if (nights.size < 3) return
-    val range = SCHEDULE_Y_MAX - SCHEDULE_Y_MIN
+    val span = scheduleHourSpan(nights)
+    val yMin = span.start
+    val range = span.endInclusive - span.start
+    val hourLines = scheduleHourLines(span)
     val bands = remember(habitualByDay, nights, needMin) { optimalSleepBand(habitualByDay, nights, needMin) }
 
     val barColor = Palette.restColor
@@ -114,7 +141,7 @@ internal fun SleepScheduleCard(
                     .drawBehind {
                         val chartW = size.width - SCHEDULE_Y_GUTTER_PX
                         val chartH = size.height
-                        fun y(hour: Float) = (chartH * ((hour - SCHEDULE_Y_MIN) / range)).coerceIn(0f, chartH)
+                        fun y(hour: Float) = (chartH * ((hour - yMin) / range)).coerceIn(0f, chartH)
 
                         val cornerPx = Metrics.cornerSm.toPx()
                         val paint = android.graphics.Paint().apply {
@@ -127,7 +154,7 @@ internal fun SleepScheduleCard(
                         // the ceiling's lower bound, so a squeezed chart clamps instead of throwing.
                         val labelTop = cornerPx - fm.ascent
                         val labelBottom = maxOf(chartH - fm.descent, labelTop)
-                        SCHEDULE_HOUR_LINES.forEach { h ->
+                        hourLines.forEach { h ->
                             val ly = y(h)
                             drawLine(gridColor, Offset(SCHEDULE_Y_GUTTER_PX, ly), Offset(size.width, ly), strokeWidth = 1f)
                             val baseline = (ly - (fm.ascent + fm.descent) / 2f)
@@ -260,7 +287,8 @@ internal fun optimalSleepBand(
  * day of the span midpoint, the same key the habitual learner groups a night under.
  */
 internal fun sleepScheduleNights(spans: List<Pair<Long, Long>>): List<SleepScheduleNight> {
-    val dayFmt = SimpleDateFormat("EEE", Locale.US)
+    // Dated, not the weekday alone: a week with a missing night printed two Mondays and no Sunday.
+    val dayFmt = SimpleDateFormat("EEE d", Locale.US)
     return spans.map { (onsetTs, wakeTs) ->
         val bed = Calendar.getInstance().apply { timeInMillis = onsetTs * 1000L }
         val wake = Calendar.getInstance().apply { timeInMillis = wakeTs * 1000L }

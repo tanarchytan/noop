@@ -55,7 +55,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -391,9 +390,9 @@ fun BreatheScreen(viewModel: AppViewModel) {
                             modifier = Modifier.clearAndSetSemantics {},
                         ) {
                             Text(
-                                "—",
-                                style = NoopType.number(40f, weight = FontWeight.Bold),
-                                color = Palette.textPrimary,
+                                "No reading",
+                                style = NoopType.headline,
+                                color = Palette.textTertiary,
                             )
                             Text(
                                 "BPM",

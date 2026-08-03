@@ -39,6 +39,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.noop.analytics.Sport
 import com.noop.analytics.WorkoutSport
+import java.util.Locale
 import kotlinx.coroutines.delay
 
 /**
@@ -204,7 +205,7 @@ fun WorkoutStartSection(vm: AppViewModel) {
                 Text("● ${w.sport.name.uppercase()}", style = NoopType.overline, color = Palette.statusCritical)
                 Spacer(Modifier.width(10.dp))
                 Text(
-                    String.format("%d:%02d", elapsedS / 60, elapsedS % 60),
+                    String.format(Locale.US, "%d:%02d", elapsedS / 60, elapsedS % 60),
                     style = NoopType.title2, color = Palette.textPrimary,
                 )
                 Spacer(Modifier.weight(1f))

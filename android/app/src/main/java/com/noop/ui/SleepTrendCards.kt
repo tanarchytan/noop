@@ -90,19 +90,23 @@ internal fun SleepTimeInBedCard(nights: List<SleepScheduleNight>, spans: List<Pa
             return@SleepTrendShell
         }
         val barColor = Palette.restColor
+        // The consistency chart's own span, off the same nights, so one bar height means one duration
+        // on both cards.
+        val span = scheduleHourSpan(nights)
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(TIME_IN_BED_CHART_HEIGHT)
                 .semantics { contentDescription = "Time in bed over the last ${nights.size} nights" }
                 .drawBehind {
-                    val range = SCHEDULE_Y_MAX - SCHEDULE_Y_MIN
+                    val yMin = span.start
+                    val range = span.endInclusive - span.start
                     val step = size.width / nights.size
                     val barW = (step * 0.34f).coerceAtLeast(4f)
                     nights.forEachIndexed { i, night ->
                         val cx = step * i + step / 2f
-                        val bedY = (size.height * ((night.bedHour - SCHEDULE_Y_MIN) / range)).coerceIn(0f, size.height)
-                        val wakeY = (size.height * ((night.wakeHour - SCHEDULE_Y_MIN) / range)).coerceIn(0f, size.height)
+                        val bedY = (size.height * ((night.bedHour - yMin) / range)).coerceIn(0f, size.height)
+                        val wakeY = (size.height * ((night.wakeHour - yMin) / range)).coerceIn(0f, size.height)
                         val top = minOf(bedY, wakeY)
                         val barH = (maxOf(bedY, wakeY) - top).coerceAtLeast(4f)
                         drawRoundRect(

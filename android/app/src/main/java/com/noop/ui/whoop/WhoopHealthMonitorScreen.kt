@@ -239,31 +239,39 @@ internal fun HeartRateHero(vm: AppViewModel, zoneSet: HrZoneSetInfo) {
                     pulsing = hr != null,
                 )
             }
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .semantics(mergeDescendants = true) {
-                        contentDescription = hr?.let { "Heart rate $it beats per minute" }
-                            ?: "Heart rate, no live reading"
-                    },
-                verticalAlignment = Alignment.Bottom,
-                horizontalArrangement = Arrangement.spacedBy(Metrics.space6),
-            ) {
-                if (hr != null) {
+            if (hr != null) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .semantics(mergeDescendants = true) {
+                            contentDescription = "Heart rate $hr beats per minute"
+                        },
+                    verticalAlignment = Alignment.Bottom,
+                    horizontalArrangement = Arrangement.spacedBy(Metrics.space6),
+                ) {
                     CountUpText(
                         value = hr.toDouble(),
                         format = { it.roundToInt().toString() },
                         style = NoopType.display(56f),
                         color = tint,
                     )
-                } else {
-                    Text(HEALTH_NO_READING, style = NoopType.display(56f), color = Palette.textTertiary)
+                    Text(
+                        "bpm",
+                        style = NoopType.subhead,
+                        color = Palette.textTertiary,
+                        modifier = Modifier.padding(bottom = Metrics.space8),
+                    )
                 }
+            } else {
+                // No reading is said in words. A dash set at display size draws as a solid bar, and a
+                // unit with nothing in front of it claims a measurement that was never taken.
                 Text(
-                    "bpm",
-                    style = NoopType.subhead,
+                    "No reading yet",
+                    style = NoopType.title2,
                     color = Palette.textTertiary,
-                    modifier = Modifier.padding(bottom = Metrics.space8),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .semantics { contentDescription = "Heart rate, no live reading" },
                 )
             }
             Text(
@@ -271,7 +279,8 @@ internal fun HeartRateHero(vm: AppViewModel, zoneSet: HrZoneSetInfo) {
                 style = NoopType.captionNumber,
                 color = Palette.textSecondary,
             )
-            ZonePips(zone ?: 0)
+            // The zone scale only means something once a beat has placed the wearer on it.
+            if (zone != null) ZonePips(zone)
             // The trace only takes its height once beats exist. Reserved empty it left a card-tall blank
             // between the pips and the caption, with skeletons that never resolved.
             if (trace.size >= 2) {

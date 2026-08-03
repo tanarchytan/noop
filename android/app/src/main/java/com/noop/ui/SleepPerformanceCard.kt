@@ -15,6 +15,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -133,24 +136,37 @@ private fun SleepDriverRow(driver: SleepDriver) {
     }
 }
 
-/** Three equal tiers of the 0-100 range; the one the value lands in takes that tier's colour. */
+/**
+ * The driver's own 0-100 as a filled length, in the colour of the tier it lands in, over a track the
+ * tier boundaries are ticked on. Lighting a whole third told the reader only which third: 92, 90 and 72
+ * all lit the same segment and read as three full bars.
+ */
 @Composable
 private fun SleepDriverStrip(percent: Double?, higherIsBetter: Boolean) {
-    val filled = percent?.let { driverTierLit(it, higherIsBetter) }
-    Row(
-        horizontalArrangement = Arrangement.spacedBy(Metrics.space4),
-        modifier = Modifier.width(96.dp),
-    ) {
-        repeat(DRIVER_TIERS) { tier ->
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .height(Metrics.space6)
-                    .clip(RoundedCornerShape(Metrics.space4))
-                    .background(if (tier == filled) driverTierColor(tier) else Palette.surfaceInset),
-            )
-        }
-    }
+    val fill = percent?.let { (it / 100.0).coerceIn(0.0, 1.0).toFloat() }
+    val tint = percent?.let { driverTierColor(driverTierLit(it, higherIsBetter)) } ?: Palette.textTertiary
+    val tickColor = Palette.hairlineStrong
+    Box(
+        modifier = Modifier
+            .width(96.dp)
+            .height(Metrics.space6)
+            .clip(RoundedCornerShape(Metrics.space4))
+            .background(Palette.surfaceInset)
+            .drawBehind {
+                if (fill != null && fill > 0f) {
+                    drawRect(color = tint, size = Size(size.width * fill, size.height))
+                }
+                for (tier in 1 until DRIVER_TIERS) {
+                    val x = size.width * tier / DRIVER_TIERS
+                    drawLine(
+                        color = tickColor,
+                        start = Offset(x, 0f),
+                        end = Offset(x, size.height),
+                        strokeWidth = Metrics.divider.toPx(),
+                    )
+                }
+            },
+    )
 }
 
 /** Which third of 0-100 [percent] falls in, clamped to the top tier at 100. */
