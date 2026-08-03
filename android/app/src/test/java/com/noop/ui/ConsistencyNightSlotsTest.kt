@@ -11,12 +11,12 @@ import java.util.TimeZone
 /**
  * [SleepScheduleCard] once iterated raw sessions directly, so a bridged night-tail fragment (already
  * folded into ONE night by the hero via [mainSleepGroup]/[mainSleepSpan]) still drew as its own low bar,
- * got counted as an extra "night", and skewed the bed/wake SD and consistency score. [consistencyNightSpans]
- * is the fix: group by local wake-day (the same key the browsable day list uses), then resolve each day
- * through the SAME bridged selector the hero uses, so naps and night-tail fragments are handled the same
- * everywhere.
+ * got counted as an extra "night", and skewed the bed/wake SD and consistency score.
+ * [consistencyNightSlots] is the fix: group by local wake-day (the same key the browsable day list uses),
+ * then resolve each day through the SAME bridged selector the hero uses, so naps and night-tail fragments
+ * are handled the same everywhere. It lays the result on the CALENDAR, so a missed night keeps its slot.
  */
-class ConsistencyNightSpansTest {
+class ConsistencyNightSlotsTest {
 
     private val saved: TimeZone = TimeZone.getDefault()
 
@@ -39,10 +39,10 @@ class ConsistencyNightSpansTest {
         val main = SleepSession(deviceId = "my-whoop", startTs = utc(2026, 1, 9, 23, 43), endTs = utc(2026, 1, 10, 7, 58))
         val fragment = SleepSession(deviceId = "my-whoop", startTs = utc(2026, 1, 10, 9, 6), endTs = utc(2026, 1, 10, 10, 9))
 
-        val spans = consistencyNightSpans(listOf(main, fragment))
+        val slots = consistencyNightSlots(listOf(main, fragment))
 
-        assertEquals("the fragment must fold into the main night, not stand as its own bar", 1, spans.size)
-        assertEquals(main.effectiveStartTs to fragment.endTs, spans.single())
+        assertEquals("the fragment must fold into the main night, not stand as its own bar", 1, slots.size)
+        assertEquals(main.effectiveStartTs to fragment.endTs, slots.single().span)
     }
 
     @Test
@@ -52,10 +52,10 @@ class ConsistencyNightSpansTest {
         val main = SleepSession(deviceId = "my-whoop", startTs = utc(2026, 1, 9, 23, 30), endTs = utc(2026, 1, 10, 6, 30))
         val nap = SleepSession(deviceId = "my-whoop", startTs = utc(2026, 1, 10, 14, 0), endTs = utc(2026, 1, 10, 14, 45))
 
-        val spans = consistencyNightSpans(listOf(main, nap))
+        val slots = consistencyNightSlots(listOf(main, nap))
 
-        assertEquals("a genuine nap must not inflate the night count", 1, spans.size)
-        assertEquals(main.effectiveStartTs to main.endTs, spans.single())
+        assertEquals("a genuine nap must not inflate the night count", 1, slots.size)
+        assertEquals(main.effectiveStartTs to main.endTs, slots.single().span)
     }
 
     @Test
@@ -68,10 +68,27 @@ class ConsistencyNightSpansTest {
             )
         }
 
-        val spans = consistencyNightSpans(nights, limit = 14)
+        val slots = consistencyNightSlots(nights, limit = 14)
 
-        assertEquals(14, spans.size)
+        assertEquals(14, slots.size)
         // Ascending by day (oldest first), so the LAST entry must be the most recent night.
-        assertEquals(nights.last().endTs, spans.last().second)
+        assertEquals(nights.last().endTs, slots.last().span!!.second)
+    }
+
+    /** The gap rule: a night that never happened keeps its calendar slot with a null span, so the axis
+     *  spans the days it says it does instead of closing over the missing one. */
+    @Test
+    fun aMissedNightKeepsItsSlotWithNoSpan() {
+        fun night(dayOffset: Long) = SleepSession(
+            deviceId = "my-whoop",
+            startTs = utc(2026, 1, 1, 23, 0) + dayOffset * 86_400L,
+            endTs = utc(2026, 1, 2, 7, 0) + dayOffset * 86_400L,
+        )
+        // Nights waking on the 2nd, the 3rd and the 5th; the 4th was never slept.
+        val slots = consistencyNightSlots(listOf(night(0), night(1), night(3)))
+
+        assertEquals("four calendar days, not three nights squeezed together", 4, slots.size)
+        assertEquals(listOf("2026-01-02", "2026-01-03", "2026-01-04", "2026-01-05"), slots.map { it.day })
+        assertEquals("the missed night draws as a gap", null, slots[2].span)
     }
 }

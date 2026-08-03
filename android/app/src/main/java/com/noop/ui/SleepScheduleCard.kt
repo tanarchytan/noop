@@ -50,8 +50,10 @@ private const val SCHEDULE_HOUR_STEP = 4f
  * a bar means the same thing on both.
  */
 internal fun scheduleHourSpan(nights: List<SleepScheduleNight>): ClosedFloatingPointRange<Float> {
-    val lo = nights.minOfOrNull { minOf(it.bedHour, it.wakeHour) } ?: 0f
-    val hi = nights.maxOfOrNull { maxOf(it.bedHour, it.wakeHour) } ?: SCHEDULE_MIN_HOURS
+    // A gap slot has no hours to bound the axis with, so it neither widens nor narrows it.
+    val hours = nights.mapNotNull { n -> n.bedHour?.let { b -> n.wakeHour?.let { w -> b to w } } }
+    val lo = hours.minOfOrNull { minOf(it.first, it.second) } ?: 0f
+    val hi = hours.maxOfOrNull { maxOf(it.first, it.second) } ?: SCHEDULE_MIN_HOURS
     val pad = SCHEDULE_HOUR_STEP / 8f
     val min = floor((lo - pad) / SCHEDULE_HOUR_STEP) * SCHEDULE_HOUR_STEP
     val max = maxOf(ceil((hi + pad) / SCHEDULE_HOUR_STEP) * SCHEDULE_HOUR_STEP, min + SCHEDULE_MIN_HOURS)
@@ -70,11 +72,12 @@ private const val SCHEDULE_Y_GUTTER_PX = 52f
 private const val SECONDS_PER_HOUR = 3600f
 
 /** One night's bed and wake folded onto the chart's hour axis, with its weekday label and the local
- *  calendar day of its midpoint — the key the habitual series is read by. */
+ *  calendar day of its midpoint — the key the habitual series is read by. A day with no night keeps its
+ *  slot with null hours, so the axis stays the calendar. */
 internal data class SleepScheduleNight(
     val label: String,
-    val bedHour: Float,
-    val wakeHour: Float,
+    val bedHour: Float?,
+    val wakeHour: Float?,
     val dayKey: String,
 )
 
@@ -95,7 +98,8 @@ internal fun SleepScheduleCard(
     habitualByDay: Map<String, Long?>,
     needMin: Double?,
 ) {
-    if (nights.size < 3) return
+    // Three nights that HAPPENED; gap slots hold the axis open but are not nights.
+    if (nights.count { it.bedHour != null } < 3) return
     val span = scheduleHourSpan(nights)
     val yMin = span.start
     val range = span.endInclusive - span.start
@@ -171,9 +175,12 @@ internal fun SleepScheduleCard(
 
                         val barW = (step * 0.6f).coerceAtLeast(4f)
                         nights.forEachIndexed { i, night ->
+                            // A night that never happened draws nothing; its slot stays on the axis.
+                            val bed = night.bedHour ?: return@forEachIndexed
+                            val wake = night.wakeHour ?: return@forEachIndexed
                             val cx = SCHEDULE_Y_GUTTER_PX + step * i + step / 2f
-                            val bedY = y(night.bedHour)
-                            val wakeY = y(night.wakeHour)
+                            val bedY = y(bed)
+                            val wakeY = y(wake)
                             val top = minOf(bedY, wakeY)
                             val barH = (maxOf(bedY, wakeY) - top).coerceAtLeast(4f)
                             drawRoundRect(
@@ -288,10 +295,18 @@ internal fun optimalSleepBand(
  * negative hour so it sorts above the following morning's wake. [SleepScheduleNight.dayKey] is the local
  * day of the span midpoint, the same key the habitual learner groups a night under.
  */
-internal fun sleepScheduleNights(spans: List<Pair<Long, Long>>): List<SleepScheduleNight> {
+internal fun sleepScheduleNights(slots: List<NightSlot>): List<SleepScheduleNight> {
     // Dated, not the weekday alone: a week with a missing night printed two Mondays and no Sunday.
     val dayFmt = SimpleDateFormat("EEE d", Locale.US)
-    return spans.map { (onsetTs, wakeTs) ->
+    val keyFmt = SimpleDateFormat("yyyy-MM-dd", Locale.US)
+    return slots.map { slot ->
+        val span = slot.span
+            // A gap slot still owns its calendar day, so it keeps its own label and place on the axis.
+            ?: return@map SleepScheduleNight(
+                label = runCatching { dayFmt.format(keyFmt.parse(slot.day)!!) }.getOrDefault(slot.day),
+                bedHour = null, wakeHour = null, dayKey = slot.day,
+            )
+        val (onsetTs, wakeTs) = span
         val bed = Calendar.getInstance().apply { timeInMillis = onsetTs * 1000L }
         val wake = Calendar.getInstance().apply { timeInMillis = wakeTs * 1000L }
         val bedHour = bed.get(Calendar.HOUR_OF_DAY) + bed.get(Calendar.MINUTE) / 60f

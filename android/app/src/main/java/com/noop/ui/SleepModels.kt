@@ -66,8 +66,12 @@ internal data class SleepModel(
     val typicalDeepMin: Double?,
     val typicalRemMin: Double?,
     val typicalLightMin: Double?,
-    val trendHours: List<Double>,
+    /** The trend window's asleep hours, need hours, efficiency and day keys — one entry per SLOT of
+     *  [trendDates], null where that night has no reading, so every weekly card shares one axis and a
+     *  gap draws as a gap. */
+    val trendHours: List<Double?>,
     val trendNeedHours: List<Double>,
+    val trendEfficiency: List<Double?>,
     val trendDates: List<String>,
     /** Persisted per-epoch segments as ordered (stage, minutes) weights — the REAL hypnogram (on-device
      *  approximate staging) — or null → synthesized fallback. */
@@ -255,23 +259,34 @@ private const val PRE_ONSET_STUB_MAX_MIN = 240.0
 /** Most asleep minutes a fragment can carry and still count as a (sleepless) pre-onset awake stub. A real
  *  first sleep fragment of a biphasic night carries far more. */
 private const val PRE_ONSET_STUB_ASLEEP_MAX_MIN = 3.0
+/** One slot on the weekly sleep axis: the local calendar day it stands for, and that day's bridged
+ *  bed->wake span, or null when there was no night. A missed night keeps its slot, so every card sharing
+ *  this axis draws the gap in the same place. */
+internal data class NightSlot(val day: String, val span: Pair<Long, Long>?)
+
 /**
- * The trailing [limit] nights' bridged bed->wake spans, one per local calendar day of wake, grouped the
- * same way the browsable day list groups sessions ([localDayString] of the wake ts) and resolved through
- * the same bridged selector [mainSleepSpan] the hero uses, so the Schedule card agrees with the Phase
- * breakdown on what counts as one night. A day whose only blocks are naps (no bridgeable main sleep)
- * drops out via mapNotNull. Ascending by day, oldest first.
+ * The trailing [limit] CALENDAR days as slots, each carrying that day's bridged bed->wake span. Nights
+ * are grouped the same way the browsable day list groups sessions ([localDayString] of the wake ts) and
+ * resolved through the same bridged selector [mainSleepSpan] the hero uses, so the Schedule card agrees
+ * with the Phase breakdown on what counts as one night. A day whose only blocks are naps carries a null
+ * span rather than dropping out. Ascending by day, oldest first.
  */
-internal fun consistencyNightSpans(
+internal fun consistencyNightSlots(
     sleeps: List<SleepSession>,
     habitualMidsleepSec: Long? = null,
     limit: Int = 14,
-): List<Pair<Long, Long>> =
-    sleeps.groupBy { localDayString(it.effectiveEndTs) }
-        .toSortedMap()
-        .values
-        .mapNotNull { blocks -> mainSleepSpan(blocks.sortedBy { it.effectiveStartTs }, habitualMidsleepSec) }
-        .takeLast(limit)
+): List<NightSlot> {
+    val spanByDay = sleeps.groupBy { localDayString(it.effectiveEndTs) }
+        .mapNotNull { (day, blocks) ->
+            mainSleepSpan(blocks.sortedBy { it.effectiveStartTs }, habitualMidsleepSec)?.let { day to it }
+        }
+        .toMap()
+    if (spanByDay.isEmpty()) return emptyList()
+    val days = spanByDay.keys.sorted()
+    return calendarWindow(days.first(), days.last(), limit)
+        .ifEmpty { days.takeLast(limit) }
+        .map { NightSlot(it, spanByDay[it]) }
+}
 
 /** A leading pre-onset fragment that carries SOME sleep is still spurious when it is minor RELATIVE to the
  *  night's main block: its asleep minutes are below this fraction of the largest fragment's. A genuine
@@ -400,16 +415,21 @@ internal fun buildSleepModel(
         // re-stage can't show pre-onset stages that push asleep past time-in-bed. No-op when the session
         // already starts at its onset. Matches the analytics-side clamp.
         ?.let { parseSessionStages(SleepStageTotals.clampStagesToOnset(it.stagesJSON, it.effectiveStartTs)) }
-    val deep = heroStages?.deep ?: sessionStageMins?.deep ?: latest.deepMin ?: 0.0
-    val rem = heroStages?.rem ?: sessionStageMins?.rem ?: latest.remMin ?: 0.0
-    val light = heroStages?.light ?: sessionStageMins?.light ?: latest.lightMin ?: 0.0
+    // ONE stage source for the night, picked as a WHOLE record: the bridged group's summed stages, else
+    // this night's own session, else the day's stored columns. Picking field by field, or reading the
+    // asleep total off a different shape from the stage rows, is what let one card print a night the four
+    // column-reading screens had never heard of.
+    val stageSource = heroStages ?: sessionStageMins
+    val deep = stageSource?.deep ?: latest.deepMin ?: 0.0
+    val rem = stageSource?.rem ?: latest.remMin ?: 0.0
+    val light = stageSource?.light ?: latest.lightMin ?: 0.0
+    val asleep = deep + rem + light
 
-    // Hero awake estimate works off ASLEEP minutes (totalSleepMin), never the in-bed window — a sleep edit
-    // reaches the tiles via the re-score path, not a display-time in-bed swap.
-    val asleep = latest.totalSleepMin ?: (deep + rem + light)
-    // Awake estimate: prefer (time-in-bed − asleep) implied by efficiency; else from disturbances.
+    // AWAKE has ONE definition: the wake the night's own stages recorded. Only a column-only night has no
+    // wake to read, and its estimate is taken against the SAME asleep the card prints, so the header can
+    // never contradict the timeline under it. Efficiency implies in-bed − asleep; else disturbances.
     val effFrac = latest.efficiency?.let { if (it > 1.0) it / 100.0 else it }
-    val awake = when {
+    val awake = stageSource?.awake ?: when {
         effFrac != null && effFrac in 0.01..0.999 -> max(0.0, asleep / effFrac - asleep)
         latest.disturbances != null -> latest.disturbances * 6.0
         else -> 0.0
@@ -467,11 +487,19 @@ internal fun buildSleepModel(
         Metric(debtOf(latest), mean(series), series)
     }
 
-    // Trend set = the most-recent nights with data (asleep totals, full history, not the browsed night).
-    val trendRows = days.filter { (it.totalSleepMin ?: 0.0) > 0.0 }.takeLast(14)
-    val trendHours = trendRows.mapNotNull { it.totalSleepMin?.let { minutes -> minutes / 60.0 } }
-    val trendNeedHours = trendRows.map { row -> ((imported.needMin[row.day] ?: needMin) / 60.0) }
-    val trendDates = trendRows.map { it.day }
+    // ONE trend window for every weekly card, laid on the CALENDAR: a night with no sleep keeps its slot
+    // and its series carry null there, so a gap draws as a gap. Dropping those rows is what made a chart
+    // captioned "Last 7 nights" span eight calendar days with the missing night nowhere on it.
+    val trendDates = trendWindowDays(days, TREND_WINDOW_NIGHTS)
+    val rowByDay = days.associateBy { it.day }
+    val trendHours = trendDates.map { d -> rowByDay[d]?.totalSleepMin?.takeIf { it > 0.0 }?.div(60.0) }
+    // Efficiency only means something on a night that happened, so it carries the same gaps.
+    val trendEfficiency = trendDates.map { d ->
+        rowByDay[d]?.takeIf { (it.totalSleepMin ?: 0.0) > 0.0 }
+            ?.efficiency?.let { if (it <= 1.0) it * 100.0 else it }
+    }
+    // The need line is continuous: a personal need exists on a night that was missed.
+    val trendNeedHours = trendDates.map { d -> ((imported.needMin[d] ?: needMin) / 60.0) }
 
     // Real per-epoch timeline only when the merged session IS this night — UTC OR local-tz end-day match
     // (imported DailyMetric.day is local-tz while dayString is UTC). A non-matching session degrades to
@@ -510,6 +538,7 @@ internal fun buildSleepModel(
         typicalLightMin = typicalLightMin,
         trendHours = trendHours,
         trendNeedHours = trendNeedHours,
+        trendEfficiency = trendEfficiency,
         trendDates = trendDates,
         realSegments = realSegments,
         sleepDebtLedger = sleepDebtLedger,
@@ -530,6 +559,31 @@ internal fun fallbackSleepModel(
     }?.day ?: return null
     return buildSleepModel(days, null, imported, selectedDay = anchorDay)
 }
+
+/** Nights the trend window holds; the weekly cards draw its tail. */
+internal const val TREND_WINDOW_NIGHTS = 14
+
+/**
+ * THE gap rule, in one place for every weekly sleep axis: the trailing [max] CALENDAR days ending at
+ * [lastDay], never starting before [firstDay]. A day with no data is a SLOT, so a missing night draws as
+ * a gap instead of being compressed out of the axis. Empty when the keys are not ISO dates.
+ */
+internal fun calendarWindow(firstDay: String?, lastDay: String?, max: Int): List<String> {
+    fun parse(s: String?): java.time.LocalDate? =
+        s?.let { runCatching { java.time.LocalDate.parse(it) }.getOrNull() }
+    val end = parse(lastDay) ?: return emptyList()
+    val first = parse(firstDay) ?: end
+    val start = maxOf(first, end.minusDays((max - 1).toLong()))
+    return generateSequence(start) { d -> d.plusDays(1).takeIf { !it.isAfter(end) } }
+        .map { it.toString() }
+        .toList()
+}
+
+/** The trend x axis: [calendarWindow] over the stored days, falling back to their own keys when those
+ *  are not ISO dates. */
+private fun trendWindowDays(days: List<DailyMetric>, max: Int): List<String> =
+    calendarWindow(days.firstOrNull()?.day, days.lastOrNull()?.day, max)
+        .ifEmpty { days.map { it.day }.takeLast(max) }
 
 /** A per-night metric whose CURRENT value ([current]) is the SELECTED day's reading — so browsing a past
  *  night re-points these tiles too, not just the hero. `typical`/`series` stay the FULL-HISTORY mean +

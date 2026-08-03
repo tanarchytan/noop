@@ -14,9 +14,12 @@ import org.junit.Test
  */
 class SleepImportedFiguresTest {
 
+    /** A self-consistent night: the stage minutes SUM to the asleep total, the way the store holds one.
+     *  Fixed stages under a varying asleep total is the very disagreement this screen was built on. */
     private fun day(d: String, asleep: Double?) = DailyMetric(
         deviceId = "my-whoop", day = d, totalSleepMin = asleep,
-        deepMin = 80.0, remMin = 90.0, lightMin = 200.0, efficiency = 90.0,
+        deepMin = asleep?.times(0.20), remMin = asleep?.times(0.22), lightMin = asleep?.times(0.58),
+        efficiency = 90.0,
     )
 
     @Test

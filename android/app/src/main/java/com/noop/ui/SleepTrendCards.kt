@@ -83,9 +83,10 @@ internal data class SleepStressNight(
  * starts higher.
  */
 @Composable
-internal fun SleepTimeInBedCard(nights: List<SleepScheduleNight>, spans: List<Pair<Long, Long>>) {
+internal fun SleepTimeInBedCard(nights: List<SleepScheduleNight>, slots: List<NightSlot>) {
     SleepTrendShell(title = "TIME IN BED", onOpen = null) {
-        if (nights.size < 2 || nights.size != spans.size) {
+        // Two nights that HAPPENED; a gap slot holds its place on the axis but is not a night.
+        if (nights.count { it.bedHour != null } < 2 || nights.size != slots.size) {
             InsetChartPlaceholder(message = "Not enough nights yet.")
             return@SleepTrendShell
         }
@@ -104,9 +105,12 @@ internal fun SleepTimeInBedCard(nights: List<SleepScheduleNight>, spans: List<Pa
                     val step = size.width / nights.size
                     val barW = (step * 0.34f).coerceAtLeast(4f)
                     nights.forEachIndexed { i, night ->
+                        // A night that never happened draws nothing; its slot stays on the axis.
+                        val bed = night.bedHour ?: return@forEachIndexed
+                        val wake = night.wakeHour ?: return@forEachIndexed
                         val cx = step * i + step / 2f
-                        val bedY = (size.height * ((night.bedHour - yMin) / range)).coerceIn(0f, size.height)
-                        val wakeY = (size.height * ((night.wakeHour - yMin) / range)).coerceIn(0f, size.height)
+                        val bedY = (size.height * ((bed - yMin) / range)).coerceIn(0f, size.height)
+                        val wakeY = (size.height * ((wake - yMin) / range)).coerceIn(0f, size.height)
                         val top = minOf(bedY, wakeY)
                         val barH = (maxOf(bedY, wakeY) - top).coerceAtLeast(4f)
                         drawRoundRect(
@@ -119,17 +123,20 @@ internal fun SleepTimeInBedCard(nights: List<SleepScheduleNight>, spans: List<Pa
                 },
         ) {}
         Row(modifier = Modifier.fillMaxWidth()) {
-            spans.forEachIndexed { i, (onsetTs, wakeTs) ->
+            slots.forEachIndexed { i, slot ->
                 Column(
                     modifier = Modifier.weight(1f),
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
                     // Bed over wake, one clock time per line: at a seventh of the width the two on one
                     // line are wider than the column, and seven clipped labels ran together into a
-                    // single unreadable string.
-                    listOf(onsetTs, wakeTs).forEach { ts ->
+                    // single unreadable string. A gap slot says so rather than borrowing a neighbour.
+                    val clocks = slot.span?.let { (onsetTs, wakeTs) ->
+                        listOf(clockTimeLabel(onsetTs), clockTimeLabel(wakeTs))
+                    } ?: listOf("—", "")
+                    clocks.forEach { label ->
                         Text(
-                            clockTimeLabel(ts),
+                            label,
                             style = NoopType.footnote,
                             color = Palette.textTertiary,
                             textAlign = TextAlign.Center,
@@ -152,13 +159,14 @@ internal fun SleepTimeInBedCard(nights: List<SleepScheduleNight>, spans: List<Pa
 
 /**
  * SLEEP EFFICIENCY — the trailing week as a line, with the chevron opening the metric's own
- * full-history sheet.
+ * full-history sheet. A night with no reading arrives as a null and keeps its slot on the axis.
  */
 @Composable
-internal fun SleepEfficiencyTrendCard(series: List<Double>, dates: List<String>, onOpenDetail: () -> Unit) {
+internal fun SleepEfficiencyTrendCard(series: List<Double?>, dates: List<String>, onOpenDetail: () -> Unit) {
     val week = series.takeLast(SLEEP_TREND_NIGHTS)
+    val read = week.filterNotNull()
     SleepTrendShell(title = "SLEEP EFFICIENCY", onOpen = onOpenDetail) {
-        if (week.size < 2) {
+        if (read.size < 2) {
             InsetChartPlaceholder(message = "Not enough nights yet.")
             return@SleepTrendShell
         }
@@ -170,11 +178,12 @@ internal fun SleepEfficiencyTrendCard(series: List<Double>, dates: List<String>,
             format = { pctValue(it) },
             height = Metrics.compactChartHeight,
         )
+        // The footer describes the nights that HAPPENED, so a gap neither averages in nor wins "Latest".
         ChartCardFooter(
             listOf(
-                "Latest" to pctValue(week.lastOrNull()),
-                "Week avg" to pctValue(RustScores.mean(week)),
-                "Best" to pctValue(week.maxOrNull()),
+                "Latest" to pctValue(read.lastOrNull()),
+                "Week avg" to pctValue(RustScores.mean(read)),
+                "Best" to pctValue(read.maxOrNull()),
             ),
         )
     }
@@ -182,14 +191,15 @@ internal fun SleepEfficiencyTrendCard(series: List<Double>, dates: List<String>,
 
 /**
  * HOURS VS. NEEDED — the week's asleep hours against the personal need, every point labelled. Both
- * series arrive already computed; this card pairs them and names them.
+ * series arrive already computed; this card pairs them and names them. A missed night arrives as a null
+ * and breaks the hours line at its own slot; the need line stays continuous.
  */
 @Composable
-internal fun SleepHoursVsNeededCard(hours: List<Double>, needHours: List<Double>, dates: List<String>) {
+internal fun SleepHoursVsNeededCard(hours: List<Double?>, needHours: List<Double>, dates: List<String>) {
     val week = hours.takeLast(SLEEP_TREND_NIGHTS)
     val need = needHours.takeLast(SLEEP_TREND_NIGHTS)
     SleepTrendShell(title = "HOURS VS. NEEDED", onOpen = null) {
-        if (week.size < 2) {
+        if (week.count { it != null } < 2) {
             InsetChartPlaceholder(message = "Not enough nights yet.")
             return@SleepTrendShell
         }

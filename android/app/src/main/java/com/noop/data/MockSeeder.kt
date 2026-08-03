@@ -120,11 +120,17 @@ object MockSeeder {
             val nWorkouts = if (!trains) 0 else if (rng.nextDouble() < 0.22) 2 else 1
 
             // --- sleep architecture ---
-            val totalSleep = gauss(rng, 430.0, 35.0).coerceIn(300.0, 540.0)
+            // ONE night, ONE set of figures. The rounded stage minutes below are the night's definition:
+            // the daily columns and the session's per-epoch segments are both written from them, so the
+            // hero card, the tiles, the weekly charts and the fused record decode the same night.
+            val drawnSleep = gauss(rng, 430.0, 35.0).coerceIn(300.0, 540.0)
             val efficiency = gauss(rng, 89.0, 4.0).coerceIn(72.0, 98.0)
-            val deep = (totalSleep * gauss(rng, 0.20, 0.03)).coerceIn(35.0, 130.0)
-            val rem = (totalSleep * gauss(rng, 0.23, 0.03)).coerceIn(45.0, 150.0)
-            val light = (totalSleep - deep - rem).coerceAtLeast(60.0)
+            val deep = round1((drawnSleep * gauss(rng, 0.20, 0.03)).coerceIn(35.0, 130.0))
+            val rem = round1((drawnSleep * gauss(rng, 0.23, 0.03)).coerceIn(45.0, 150.0))
+            val light = round1((drawnSleep - deep - rem).coerceAtLeast(60.0))
+            // Asleep is the SUM of the stages, never the draw: the light floor can lift the sum above it,
+            // and a totalSleepMin that disagreed with deep+rem+light is the same defect one level up.
+            val totalSleep = round1(deep + rem + light)
             val disturbances = gauss(rng, 6.0, 3.0).coerceIn(0.0, 18.0).toInt()
 
             // --- autonomic markers ---
@@ -152,8 +158,8 @@ object MockSeeder {
             val unslept = i == UNSLEPT_DAY_INDEX
             val fullRow = DailyMetric(
                 deviceId = WHOOP, day = day,
-                totalSleepMin = round1(totalSleep), efficiency = round1(efficiency),
-                deepMin = round1(deep), remMin = round1(rem), lightMin = round1(light),
+                totalSleepMin = totalSleep, efficiency = round1(efficiency),
+                deepMin = deep, remMin = rem, lightMin = light,
                 disturbances = disturbances, restingHr = rhr, avgHrv = round1(hrv),
                 recovery = round1(recovery), strain = round1(strain), exerciseCount = nWorkouts,
                 spo2Pct = round1(spo2), skinTempDevC = round2(skinTempDev),
@@ -170,13 +176,14 @@ object MockSeeder {
             val bedMinute = if (i == UNSLEPT_DAY_INDEX + 1) CRASH_OUT_MINUTE else 10
             val onset = date.minusDays(1).atTime(bedHour, bedMinute).atZone(zone).toEpochSecond() +
                 rng.nextInt(-1800, 1800)
-            val inBedSec = ((totalSleep + totalSleep * (100 - efficiency) / 100) * 60).toLong()
+            val effPct = round1(efficiency)
+            val inBedSec = inBedSecFor(totalSleep, effPct)
             if (!unslept) {
                 sleeps.add(
                     SleepSession(
                         deviceId = WHOOP, startTs = onset, endTs = onset + inBedSec,
-                        efficiency = round1(efficiency), restingHr = rhr, avgHrv = round1(hrv),
-                        stagesJSON = stagesJson(deep, rem, light, disturbances, onset, onset + inBedSec),
+                        efficiency = effPct, restingHr = rhr, avgHrv = round1(hrv),
+                        stagesJSON = stagesJson(deep, rem, light, onset, onset + inBedSec),
                     )
                 )
             }
@@ -373,24 +380,42 @@ object MockSeeder {
     }
 
     /**
+     * The session span (seconds) for a night of [asleepMin] at [efficiencyPct]: in-bed is asleep over
+     * efficiency, so the awake [stagesJson] fills the remainder with is the awake that efficiency claims.
+     */
+    internal fun inBedSecFor(asleepMin: Double, efficiencyPct: Double): Long =
+        if (asleepMin <= 0.0 || efficiencyPct <= 0.0) 0L
+        else Math.round(asleepMin / (efficiencyPct / 100.0) * 60.0)
+
+    /**
      * A plausible light→deep→rem cycle as TIMESTAMPED `{stage,start,end}` segments tiling
      * `[startTs, endTs]` — the shape the sleep timeline reads. Stage names match whoop-rs (`wake`).
+     *
+     * Each stage is laid at ITS OWN minutes, so decoding the result returns [deep] / [rem] / [light]
+     * back; the span's remainder becomes the wake runs. Nothing is rescaled — stretching the cycle onto
+     * the span is what made the hero card disagree with every column-reading screen.
      */
-    internal fun stagesJson(deep: Double, rem: Double, light: Double, awakeMin: Int, startTs: Long, endTs: Long): String {
+    internal fun stagesJson(deep: Double, rem: Double, light: Double, startTs: Long, endTs: Long): String {
+        val asleepMin = deep + rem + light
+        if (asleepMin <= 0.0 || endTs <= startTs) return "[]"
+        // Whatever the span has left over the asleep minutes IS the night's awake time — the quantity the
+        // efficiency column implies — laid as a sleep latency plus brief wakes rather than estimated at
+        // display time. A span no longer than the stages leaves none.
+        val wake = ((endTs - startTs) / 60.0 - asleepMin).coerceAtLeast(0.0) / 4.0
         val cycle = listOf(
-            "light" to light * 0.35, "deep" to deep * 0.6, "light" to light * 0.30,
-            "rem" to rem * 0.6, "deep" to deep * 0.4, "light" to light * 0.35,
-            "rem" to rem * 0.4, "wake" to awakeMin.toDouble(),
+            "wake" to wake, "light" to light * 0.35, "deep" to deep * 0.6, "light" to light * 0.30,
+            "wake" to wake, "rem" to rem * 0.6, "deep" to deep * 0.4, "light" to light * 0.35,
+            "wake" to wake, "rem" to rem * 0.4, "wake" to wake,
         ).filter { it.second > 0.0 }
-        val totalMin = cycle.sumOf { it.second }
-        if (totalMin <= 0.0 || endTs <= startTs) return "[]"
-        // Scale the cycle onto the real span so the segments tile it exactly, leaving no gap the
-        // timeline would render as missing and no overhang past the wake time.
-        val perMin = (endTs - startTs).toDouble() / totalMin
         val arr = JSONArray()
+        // Boundaries are CUMULATIVE minutes rounded once to the second, so per-segment rounding cannot
+        // accumulate and the totals the readers decode are the totals that were asked for.
+        var cumMin = 0.0
         var t = startTs
         cycle.forEachIndexed { i, (stage, min) ->
-            val end = if (i == cycle.lastIndex) endTs else t + (min * perMin).toLong()
+            cumMin += min
+            val end = if (i == cycle.lastIndex) endTs
+            else (startTs + Math.round(cumMin * 60.0)).coerceIn(t, endTs)
             if (end > t) arr.put(JSONObject().put("stage", stage).put("start", t).put("end", end))
             t = end
         }

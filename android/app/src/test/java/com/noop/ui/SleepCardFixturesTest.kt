@@ -27,6 +27,10 @@ class SleepCardFixturesTest {
     private fun session(span: Pair<Long, Long>) =
         SleepSession(deviceId = "my-whoop", startTs = span.first, endTs = span.second)
 
+    /** Spans as the calendar slots the cards read, each keyed by the day its night woke on. */
+    private fun slots(vararg spans: Pair<Long, Long>): List<NightSlot> =
+        spans.map { NightSlot(localDayString(it.second), it) }
+
     // MARK: - The cross-midnight night
 
     /**
@@ -41,29 +45,32 @@ class SleepCardFixturesTest {
             localDayString(crossMidnight.first),
             localDayString(crossMidnight.second),
         )
-        val night = sleepScheduleNights(listOf(crossMidnight)).single()
-        assertTrue("an evening bedtime folds negative", night.bedHour < 0f)
-        assertTrue("the bar runs down the axis to the wake", night.bedHour < night.wakeHour)
+        val night = sleepScheduleNights(slots(crossMidnight)).single()
+        assertTrue("an evening bedtime folds negative", night.bedHour!! < 0f)
+        assertTrue("the bar runs down the axis to the wake", night.bedHour!! < night.wakeHour!!)
         val axis = scheduleHourSpan(listOf(night))
-        assertTrue("and the axis it derives contains it", night.bedHour >= axis.start && night.wakeHour <= axis.endInclusive)
+        assertTrue(
+            "and the axis it derives contains it",
+            night.bedHour!! >= axis.start && night.wakeHour!! <= axis.endInclusive,
+        )
     }
 
     /** A usual ~23:10 night folds the same way, so the two shapes sit on one axis. */
     @Test
     fun aUsualNightFoldsOntoTheSameAxis() {
         val usual = span(1, 23, 10, 6, 50)
-        val night = sleepScheduleNights(listOf(usual)).single()
-        assertTrue(night.bedHour < 0f)
-        assertTrue(night.bedHour < night.wakeHour)
+        val night = sleepScheduleNights(slots(usual)).single()
+        assertTrue(night.bedHour!! < 0f)
+        assertTrue(night.bedHour!! < night.wakeHour!!)
         val axis = scheduleHourSpan(listOf(night))
-        assertTrue(night.bedHour >= axis.start && night.wakeHour <= axis.endInclusive)
+        assertTrue(night.bedHour!! >= axis.start && night.wakeHour!! <= axis.endInclusive)
     }
 
     /** Each fold keeps its own night's clock times, so the time-in-bed labels can't drift a column. */
     @Test
     fun everyNightKeepsItsOwnLabelAndOrder() {
         val spans = listOf(span(3, 23, 10, 6, 50), span(2, 22, 40, 7, 5), span(1, MockSeeder.CRASH_OUT_HOUR, MockSeeder.CRASH_OUT_MINUTE, 5, 12))
-        val nights = sleepScheduleNights(spans)
+        val nights = sleepScheduleNights(slots(*spans.toTypedArray()))
         assertEquals(spans.size, nights.size)
         assertEquals("20:41", clockTimeLabel(spans.last().first))
         assertEquals("05:12", clockTimeLabel(spans.last().second))
@@ -72,19 +79,27 @@ class SleepCardFixturesTest {
     // MARK: - The unslept day
 
     /**
-     * A day with no session yields no span, so it takes no column rather than a zero-height bar at
-     * midnight. The nights either side of the gap still fold, and the cards read the same list.
+     * A day with no session keeps its calendar column and draws NOTHING in it — never a zero-height bar
+     * at midnight, and never closed over so a week silently spans an extra day. The nights either side of
+     * the gap still fold, and the cards read the same list.
      */
     @Test
-    fun aDayWithNoSessionTakesNoColumn() {
+    fun aDayWithNoSessionKeepsItsColumnAndDrawsNothingInIt() {
         assertEquals("the fixture is the day before the last", MockSeeder.DAYS - 2, MockSeeder.UNSLEPT_DAY_INDEX)
         val before = span(3, 23, 10, 6, 50)
         val after = span(1, MockSeeder.CRASH_OUT_HOUR, MockSeeder.CRASH_OUT_MINUTE, 5, 12)
         // Day 2 back has no block at all, which is what the seeder writes.
         val sleeps = listOf(session(before), session(after))
-        val spans = consistencyNightSpans(sleeps, habitualMidsleepSec = null, limit = SLEEP_TREND_NIGHTS)
-        assertEquals("the unslept day contributes nothing", 2, spans.size)
-        assertEquals(2, sleepScheduleNights(spans).size)
+        val got = consistencyNightSlots(sleeps, habitualMidsleepSec = null, limit = SLEEP_TREND_NIGHTS)
+        assertEquals("the unslept day keeps its slot", 3, got.size)
+        assertNull("and carries no night", got[1].span)
+        val nights = sleepScheduleNights(got)
+        assertEquals(3, nights.size)
+        assertNull("no zero-height bar at midnight", nights[1].bedHour)
+        assertNull(nights[1].wakeHour)
+        // The axis is bounded by the nights that happened, so the gap neither stretches nor flattens it.
+        val axis = scheduleHourSpan(nights)
+        assertTrue(nights[0].bedHour!! >= axis.start && nights[2].wakeHour!! <= axis.endInclusive)
     }
 
     /** With no nights at all the cards get an empty list, never a fabricated one. */
@@ -98,7 +113,7 @@ class SleepCardFixturesTest {
     /** The habitual band needs both learned values; either one missing draws no band. */
     @Test
     fun theHabitualBandNeedsBothItsInputs() {
-        val nights = sleepScheduleNights(listOf(span(1, 23, 10, 6, 50)))
+        val nights = sleepScheduleNights(slots(span(1, 23, 10, 6, 50)))
         val key = nights.single().dayKey
         assertNull(optimalSleepBand(emptyMap(), nights, 480.0).single())
         assertNull(optimalSleepBand(mapOf(key to null), nights, 480.0).single())
@@ -109,7 +124,7 @@ class SleepCardFixturesTest {
     /** A post-midnight midsleep centres the band, and the need sets its height. */
     @Test
     fun theHabitualBandCentresOnTheMidsleep() {
-        val nights = sleepScheduleNights(listOf(span(1, 23, 10, 6, 50)))
+        val nights = sleepScheduleNights(slots(span(1, 23, 10, 6, 50)))
         val key = nights.single().dayKey
         val (bed, wake) = optimalSleepBand(mapOf(key to 3 * 3600L), nights, 480.0).single()!!
         assertEquals(-1f, bed, 0.01f)
@@ -125,7 +140,7 @@ class SleepCardFixturesTest {
      */
     @Test
     fun theHabitualBandBendsPerNightAndGapsWhereItHasNoValue() {
-        val nights = sleepScheduleNights(listOf(span(3, 23, 10, 6, 50), span(2, 22, 40, 7, 5), span(1, 23, 30, 6, 30)))
+        val nights = sleepScheduleNights(slots(span(3, 23, 10, 6, 50), span(2, 22, 40, 7, 5), span(1, 23, 30, 6, 30)))
         assertEquals("the three nights must key apart", 3, nights.map { it.dayKey }.toSet().size)
         val series = mapOf(nights[0].dayKey to 2 * 3600L, nights[2].dayKey to 3 * 3600L)
         val bands = optimalSleepBand(series, nights, 480.0)

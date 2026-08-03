@@ -248,17 +248,18 @@ fun SleepNightScreen(
     // the newest stage-bearing day when the selected day's model fails. Null only when NO day has stages.
     val tilesModel = remember(model, days, imported) { model ?: fallbackSleepModel(days, imported) }
 
-    // The trailing week's bridged bed→wake spans, the one derivation the schedule and time-in-bed cards
-    // share so they can't disagree on what counts as one night.
-    val weekSpans = remember(sleeps, habitualMidsleep) {
-        consistencyNightSpans(sleeps, habitualMidsleep, limit = SLEEP_TREND_NIGHTS)
+    // The trailing week as CALENDAR slots carrying their bridged bed→wake spans: the one derivation the
+    // schedule, time-in-bed and stress cards share, so they agree on what counts as one night AND on
+    // where a missed night sits.
+    val weekSlots = remember(sleeps, habitualMidsleep) {
+        consistencyNightSlots(sleeps, habitualMidsleep, limit = SLEEP_TREND_NIGHTS)
     }
 
     // The same week's sleep stress, one whoop-rs `sleep_stress` read per night. Oldest first, so the
     // last entry is the freshest night and owns the performance card's fourth driver.
     var weekStress by remember { mutableStateOf<List<SleepStressNight>>(emptyList()) }
-    LaunchedEffect(weekSpans) {
-        weekStress = runCatching { loadSleepStress(vm, weekSpans) }.getOrDefault(emptyList())
+    LaunchedEffect(weekSlots) {
+        weekStress = runCatching { loadSleepStress(vm, weekSlots) }.getOrDefault(emptyList())
     }
 
     // Jump to a night by its (local) wake-day. navDays is newest-day-first, so the day's index IS its offset.
@@ -494,7 +495,7 @@ fun SleepNightScreen(
                     SleepScheduleCard(
                         score = m.consistency.latest,
                         typicalScore = m.consistency.typical,
-                        nights = weekSpans.let(::sleepScheduleNights),
+                        nights = weekSlots.let(::sleepScheduleNights),
                         habitualByDay = habitualByDay,
                         needMin = m.sleepDebtLedger.needMin,
                     )
@@ -502,11 +503,13 @@ fun SleepNightScreen(
                 item { Spacer(Modifier.height(Metrics.selectorTopUp)) }
                 item { SectionHeader("Weekly trends", overline = "Sleep", trailing = "Last 7 nights") }
                 item { Spacer(Modifier.height(Metrics.selectorTopUp)) }
-                item { SleepTimeInBedCard(nights = weekSpans.let(::sleepScheduleNights), spans = weekSpans) }
+                item { SleepTimeInBedCard(nights = weekSlots.let(::sleepScheduleNights), slots = weekSlots) }
                 item { Spacer(Modifier.height(Metrics.selectorTopUp)) }
                 item {
                     SleepEfficiencyTrendCard(
-                        series = m.efficiency.series,
+                        // The shared gap-preserving trend window, not the tile's compressed series, so
+                        // this chart's points line up with the day labels the cards beside it use.
+                        series = m.trendEfficiency,
                         dates = m.trendDates,
                         onOpenDetail = { detailMetricKey = "efficiency" },
                     )
@@ -556,21 +559,24 @@ private const val SLEEP_STRESS_ROW_LIMIT = 60_000
 /**
  * One whoop-rs `sleep_stress` read per night in [spans]: that night's HR + R-R over the registry read
  * scope, bucketed by the same aggregator the Stress screen's day path uses and scored with no
- * hour-of-day filter. A night that scored no bucket is dropped rather than drawn as a zero.
+ * hour-of-day filter. A night that scored no bucket keeps its slot with no minutes, so this card's axis
+ * is the same calendar week the cards above it draw.
  */
 internal suspend fun loadSleepStress(
     vm: AppViewModel,
-    spans: List<Pair<Long, Long>>,
+    slots: List<NightSlot>,
 ): List<SleepStressNight> {
-    val labels = sleepScheduleNights(spans)
-    return spans.mapIndexedNotNull { i, (onsetTs, wakeTs) ->
-        if (wakeTs <= onsetTs) return@mapIndexedNotNull null
+    val labels = sleepScheduleNights(slots)
+    fun empty(i: Int) = SleepStressNight(labels[i].label, 0L, 0L, 0L, null)
+    return slots.mapIndexed { i, slot ->
+        val (onsetTs, wakeTs) = slot.span ?: return@mapIndexed empty(i)
+        if (wakeTs <= onsetTs) return@mapIndexed empty(i)
         val tzOffsetSec = (java.util.TimeZone.getDefault().getOffset(onsetTs * 1000L) / 1000).toLong()
         val hr = vm.repo.hrSamplesUnion(onsetTs, wakeTs, SLEEP_STRESS_ROW_LIMIT)
         val rr = vm.repo.rrIntervalsUnion(onsetTs, wakeTs, SLEEP_STRESS_ROW_LIMIT)
         val info = DaytimeStress.analyzeNight(hr, rr, tzOffsetSec)
         if (info.hours.isEmpty()) {
-            null
+            empty(i)
         } else {
             SleepStressNight(
                 label = labels[i].label,

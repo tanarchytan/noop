@@ -26,6 +26,13 @@ Rust. Two exports were **added** so the move lost nothing — `WorkoutSession.hr
 `activity_series` + `smoothed_intensity` so the sedentary and nap reads share the workout detector's
 motion spine.
 
+**One thing `SleepStageTotals` did NOT take across:** `minutes()` and `dailyAggregate()` still SUM the
+stored `stagesJSON` in Kotlin. That sum is the definition of a night's asleep/deep/REM totals, so it is a
+decode and belongs in Rust; the audit still lists the file as a candidate for that reason. Until it moves,
+the invariant it encodes is the store's: **the per-epoch segment array is the primitive and the
+`DailyMetric` sleep columns are its aggregate.** A producer that writes the two from different arithmetic
+puts two nights in the store under one date, and the screens split five to one over which is the night.
+
 ## Correctly Kotlin — no maths to move
 
 `BatteryEstimator` · `CyclePhaseEngine` · `DoseResponseEngine` · `IllnessSignalEngine` ·
