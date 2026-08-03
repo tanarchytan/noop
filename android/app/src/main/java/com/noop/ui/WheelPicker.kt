@@ -62,7 +62,7 @@ fun WheelPickerField(
     var open by remember { mutableStateOf(false) }
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        horizontalArrangement = Arrangement.spacedBy(Metrics.space8),
         modifier = Modifier
             .clip(RoundedCornerShape(8.dp))
             .clickable(enabled = options.isNotEmpty()) { open = true }
@@ -106,7 +106,7 @@ fun BirthdayPickerField(
     }
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        horizontalArrangement = Arrangement.spacedBy(Metrics.space8),
         modifier = Modifier
             .clip(RoundedCornerShape(8.dp))
             .clickable { open = true }

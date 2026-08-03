@@ -51,13 +51,13 @@ enum class DashboardCard(
     STRESS("stress", "Stress", "Autonomic load", "", Icons.Filled.Bolt),
     FITNESS_AGE("fitnessAge", "Fitness Age", "Updated weekly", "yrs", Icons.AutoMirrored.Filled.DirectionsRun),
     VITALITY("vitality", "Vitality", "Wellness score", "", Icons.Filled.AutoAwesome),
-    BLOOD_OXYGEN("bloodOxygen", "Blood Oxygen", "Blood oxygen", "", Icons.Filled.WaterDrop),
+    BLOOD_OXYGEN("bloodOxygen", "SpO₂", "Blood oxygen saturation", "", Icons.Filled.WaterDrop),
     SKIN_TEMP("skinTemp", "Skin Temp", "Skin temperature", "", Icons.Filled.Thermostat),
     SLEEP("sleep", "Sleep", "Last night", "", Icons.Filled.Bedtime),
     CALORIES("calories", "Calories", "Active energy", "kcal", Icons.Filled.LocalFireDepartment),
     HYDRATION("hydration", "Hydration", "Today's fluid", "", Icons.Filled.LocalDrink),
 
-    // Optional, default-OFF (task #43): a tap-through to the Coupled view (the WHOOP-style day read). Unlike
+    // Optional, default-OFF: a tap-through to the Coupled view (the WHOOP-style day read). Unlike
     // every other card it carries NO metric value of its own, it is a navigation row that opens the full
     // CoupledScreen. It is NOT in [defaultSelection], so a fresh install never shows it until the user adds
     // it via CUSTOMISE. Mirrors iOS DashboardCard.coupled (raw "coupled", byte-identical across OS).

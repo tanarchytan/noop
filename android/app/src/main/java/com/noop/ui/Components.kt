@@ -1,7 +1,9 @@
 package com.noop.ui
 
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
@@ -42,6 +44,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoGraph
+import androidx.compose.material.icons.filled.ChevronLeft
+import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
@@ -51,6 +55,7 @@ import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -73,6 +78,8 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.painter.Painter
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -84,6 +91,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.graphics.vector.ImageVector
 import kotlin.math.cos
 import kotlin.math.min
+import kotlin.math.roundToInt
 import kotlin.math.sin
 
 // MARK: - Locked component system
@@ -187,7 +195,7 @@ fun NoopCard(
 fun DataPendingNote(title: String, body: String, modifier: Modifier = Modifier) {
     NoopCard(modifier = modifier, padding = 18.dp) {
         Row(
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(Metrics.space12),
             verticalAlignment = Alignment.Top,
         ) {
             Icon(
@@ -196,7 +204,7 @@ fun DataPendingNote(title: String, body: String, modifier: Modifier = Modifier) 
                 tint = Palette.accent,
                 modifier = Modifier.size(20.dp),
             )
-            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(Metrics.space6)) {
                 Text(title, style = NoopType.headline, color = Palette.textPrimary)
                 Text(body, style = NoopType.subhead, color = Palette.textSecondary)
             }
@@ -214,7 +222,7 @@ fun SyncingHistoryNote(chunks: Int, modifier: Modifier = Modifier) {
     Row(
         modifier = modifier,
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        horizontalArrangement = Arrangement.spacedBy(Metrics.space10),
     ) {
         StatePill("Syncing strap history…", tone = StrandTone.Accent, pulsing = true)
         if (chunks > 0) {
@@ -347,7 +355,10 @@ private fun DrawScope.drawCircleScaled(
 // The status chip behind SOLID / BUILDING / CALIBRATING / LIVE. The tone owns the hue.
 // Fill .12 / border .32 / text full-strength.
 
-/** Rounded status pill with optional leading dot. Used for SOLID/BUILDING/LIVE states. */
+/**
+ * Rounded status pill with optional leading dot. Used for SOLID/BUILDING/LIVE states.
+ * [icon] replaces the dot when set; [fillsWidth] stretches it into a full-width banner row.
+ */
 @Composable
 fun StatePill(
     title: String,
@@ -355,19 +366,26 @@ fun StatePill(
     showsDot: Boolean = true,
     pulsing: Boolean = false,
     modifier: Modifier = Modifier,
+    icon: ImageVector? = null,
+    fillsWidth: Boolean = false,
 ) {
     val shape = RoundedCornerShape(50)
     Row(
         modifier = modifier
+            .then(if (fillsWidth) Modifier.fillMaxWidth() else Modifier)
             .clip(shape)
             .background(tone.color.copy(alpha = 0.12f))
             .border(1.dp, tone.color.copy(alpha = 0.32f), shape)
             .padding(horizontal = 10.dp, vertical = 5.dp)
             .semantics { contentDescription = title },
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        horizontalArrangement = Arrangement.spacedBy(Metrics.space6),
     ) {
-        if (showsDot) ConnectionDot(tone = tone, pulsing = pulsing, size = 7.dp)
+        if (icon != null) {
+            Icon(icon, contentDescription = null, tint = tone.color, modifier = Modifier.size(Metrics.iconSmall))
+        } else if (showsDot) {
+            ConnectionDot(tone = tone, pulsing = pulsing, size = 7.dp)
+        }
         Text(title, style = NoopType.overline.copy(letterSpacing = 0.4.sp), color = tone.color)
     }
 }
@@ -393,7 +411,7 @@ fun SourceBadge(text: String, tint: Color = Palette.accent, modifier: Modifier =
     ) {
         Text(
             text = text.uppercase(),
-            style = NoopType.overline.copy(fontSize = 10.sp, letterSpacing = 0.5.sp),
+            style = NoopType.overlineSmall,
             color = tint,
             maxLines = 1,                          // "ON-DEVICE" stays on one line
             overflow = TextOverflow.Ellipsis,
@@ -425,7 +443,7 @@ fun TrendChip(text: String, color: Color = Palette.textTertiary, modifier: Modif
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(3.dp),
     ) {
-        if (symbol != null) Text(symbol, style = NoopType.captionNumber.copy(fontSize = 8.sp, fontWeight = FontWeight.Bold), color = color)
+        if (symbol != null) Text(symbol, style = NoopType.glyph, color = color)
         // Ellipsize rather than overflow if a caller constrains the chip's width.
         Text(text, style = NoopType.captionNumber, color = color, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
@@ -530,7 +548,7 @@ fun InsightCard(
     tint: Color? = null,
 ) {
     NoopCard(modifier = modifier, padding = 18.dp, tint = tint ?: statusColor) {
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(Metrics.space8)) {
             Overline(category)
             Text(status, style = NoopType.title1, color = statusColor)
             Text(detail, style = NoopType.subhead, color = Palette.textSecondary)
@@ -560,7 +578,7 @@ fun <T> SegmentedPillControl(
             .background(Palette.surfaceInset)
             .border(1.dp, Palette.hairline, outerShape)
             .padding(4.dp),
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        horizontalArrangement = Arrangement.spacedBy(Metrics.space4),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         items.forEach { item ->
@@ -805,11 +823,36 @@ fun BevelGauge(
 //
 // Solid arc over full-circle track with centred number. Arc springs from 12 o'clock.
 
+/** A ring's stroke as a fraction of its diameter — the one width every screen draws a ring at. */
+internal const val RING_STROKE_FRACTION = 0.10f
+
+/** The centre number's size as a fraction of the ring diameter. */
+private const val GLOW_RING_NUMBER_FRACTION = 0.36f
+
+/** The unit mark's size, as a fraction of the number beside it. */
+private const val GLOW_RING_UNIT_FRACTION = 0.42f
+
+/** The caption's size as a fraction of the ring diameter. */
+private const val GLOW_RING_CAPTION_FRACTION = 0.10f
+
 /** Centre-number text style at `diameter * 0.36`. Bold numeral. */
 fun glowRingCenterTextStyle(diameter: Dp, color: Color = Palette.textPrimary): TextStyle =
-    TextStyle(fontWeight = FontWeight.Bold, fontSize = (diameter.value * 0.36f).sp, color = color)
+    TextStyle(
+        fontWeight = FontWeight.Bold,
+        fontSize = (diameter.value * GLOW_RING_NUMBER_FRACTION).sp,
+        color = color,
+    )
 
-/** Crisp score ring: solid arc over full-circle track with centred number. */
+/** The arc's settle: firm, no bounce. */
+private val RING_FILL_SPEC = spring<Float>(dampingRatio = 0.86f, stiffness = Spring.StiffnessMediumLow)
+
+/** The centre number's count-up, paced to land with the arc. */
+private val RING_VALUE_SPEC = tween<Float>(durationMillis = 850, easing = FastOutSlowInEasing)
+
+/**
+ * Crisp score ring: solid arc over full-circle track with centred number. [fillKey] names this ring in
+ * [LocalRingFillMemory], the hoisted frame that keeps a scroll from replaying the fill.
+ */
 @Composable
 fun GlowRing(
     fraction: Float,
@@ -817,23 +860,34 @@ fun GlowRing(
     color: Color,
     diameter: Dp,
     lineWidth: Dp,
+    fillKey: String,
     modifier: Modifier = Modifier,
     showsLabel: Boolean = true,
-    format: (Double) -> String = { it.toInt().toString() },
+    format: (Double) -> String = { it.roundToInt().toString() },
+    unit: String? = null,
+    caption: String? = null,
 ) {
     val target = fraction.coerceIn(0f, 1f)
-    var started by remember { mutableStateOf(false) }
-    LaunchedEffect(Unit) { started = true }
-    val animFraction by animateFloatAsState(
-        targetValue = if (started) target else 0f,
-        animationSpec = spring(dampingRatio = 0.86f, stiffness = Spring.StiffnessMediumLow),
-        label = "glowring-fraction",
-    )
-    val animValue by animateFloatAsState(
-        targetValue = if (started) value.toFloat() else 0f,
-        animationSpec = tween(durationMillis = 850, easing = FastOutSlowInEasing),
-        label = "glowring-value",
-    )
+    val targetValue = value.toFloat()
+    // The fill starts where this ring last stood, never at zero, so a ring the scroll destroyed and
+    // rebuilt comes back filled and only a genuinely new number animates — from the old one.
+    val memory = LocalRingFillMemory.current
+    val fracAnim = remember(fillKey) { Animatable(memory.startFor(fillKey).fraction) }
+    val valueAnim = remember(fillKey) { Animatable(memory.startFor(fillKey).value) }
+    LaunchedEffect(fillKey, target) {
+        fracAnim.animateTo(target, RING_FILL_SPEC)
+        memory.record(fillKey, fracAnim.value, valueAnim.value)
+    }
+    LaunchedEffect(fillKey, targetValue) {
+        valueAnim.animateTo(targetValue, RING_VALUE_SPEC)
+        memory.record(fillKey, fracAnim.value, valueAnim.value)
+    }
+    // Leaving mid-fill banks the frame it reached, so coming back resumes instead of restarting.
+    DisposableEffect(fillKey) {
+        onDispose { memory.record(fillKey, fracAnim.value, valueAnim.value) }
+    }
+    val animFraction = fracAnim.value
+    val animValue = valueAnim.value
     val trackColor = Palette.textPrimary.copy(alpha = 0.10f)
     Box(modifier = modifier.size(diameter), contentAlignment = Alignment.Center) {
         Box(
@@ -885,11 +939,38 @@ fun GlowRing(
                 },
         )
         if (showsLabel) {
-            Text(
-                text = format(animValue.toDouble()),
-                style = glowRingCenterTextStyle(diameter),
-                maxLines = 1,
-            )
+            // Number, a smaller trailing unit mark, and a caption beneath. Both extra slots scale off the
+            // diameter like the number does, so one ring component reads at every size it is drawn at.
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Row(verticalAlignment = Alignment.Bottom) {
+                    Text(
+                        text = format(animValue.toDouble()),
+                        style = glowRingCenterTextStyle(diameter),
+                        maxLines = 1,
+                    )
+                    if (unit != null) {
+                        Text(
+                            text = unit,
+                            style = glowRingCenterTextStyle(diameter).copy(
+                                fontSize = (
+                                    diameter.value * GLOW_RING_NUMBER_FRACTION * GLOW_RING_UNIT_FRACTION
+                                    ).sp,
+                            ),
+                            maxLines = 1,
+                        )
+                    }
+                }
+                if (caption != null) {
+                    Text(
+                        text = caption,
+                        style = NoopType.footnote.copy(
+                            fontSize = (diameter.value * GLOW_RING_CAPTION_FRACTION).sp,
+                        ),
+                        color = Palette.textTertiary,
+                        maxLines = 1,
+                    )
+                }
+            }
         }
     }
 }
@@ -909,7 +990,9 @@ fun RecoveryRing(
         fraction = score / 100.0,
         stops = Palette.recoveryStops,
         tipColor = Palette.recoveryColor(score),
-        numberText = valueFormat?.invoke(score) ?: score.toInt().toString(),
+        // ROUND, never truncate: the home hero ring rounds the same value, so truncating here showed
+        // one Charge as 62 on Home and 61 on this screen for a stored 61.8.
+        numberText = valueFormat?.invoke(score) ?: score.roundToInt().toString(),
         stateText = Palette.recoveryState(score),
         supporting = supporting,
         diameter = diameter,
@@ -1076,7 +1159,7 @@ fun ScreenScaffold(
                     }
                     Column(
                         modifier = Modifier.weight(1f),
-                        verticalArrangement = Arrangement.spacedBy(2.dp),
+                        verticalArrangement = Arrangement.spacedBy(Metrics.space2),
                     ) {
                         if (title != null) {
                             Text(title, style = NoopType.title1, color = Palette.textPrimary)
@@ -1148,7 +1231,7 @@ fun LazyScreenScaffold(
                     }
                     Column(
                         modifier = Modifier.weight(1f),
-                        verticalArrangement = Arrangement.spacedBy(2.dp),
+                        verticalArrangement = Arrangement.spacedBy(Metrics.space2),
                     ) {
                         if (title != null) {
                             Text(title, style = NoopType.title1, color = Palette.textPrimary)
@@ -1226,7 +1309,7 @@ fun StepperField(
 ) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        horizontalArrangement = Arrangement.spacedBy(Metrics.space8),
         modifier = Modifier.semantics { contentDescription = accessibility },
     ) {
         Text(
@@ -1284,11 +1367,11 @@ fun NoopSettingsSection(
     content: @Composable ColumnScope.() -> Unit,
 ) {
     NoopCard(padding = 20.dp, tint = Palette.accent, modifier = modifier) {
-        Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(Metrics.space16)) {
             if (overline.isNotEmpty()) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    horizontalArrangement = Arrangement.spacedBy(Metrics.space6),
                 ) {
                     Overline(overline)
                     if (active) Overline("ON", color = Palette.accent)
@@ -1323,7 +1406,7 @@ fun NoopToggleRow(
     Row(
         modifier = modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(16.dp),
+        horizontalArrangement = Arrangement.spacedBy(Metrics.space16),
     ) {
         Column(modifier = Modifier.weight(1f)) {
             Text(title, style = NoopType.subhead, color = Palette.textPrimary)
@@ -1396,4 +1479,312 @@ fun RowDivider() {
             .padding(vertical = 4.dp)
             .background(Palette.hairline),
     )
+}
+
+// MARK: - MetricRow — icon, label, right-aligned value, direction chip, comparison
+//
+// The densest reusable line: outline icon + [Overline] label left, bold value with a [TrendChip]
+// direction glyph right, and the comparison figure beneath it.
+
+/**
+ * One metric line. [trend] must carry its own sign ("+1,240" / "−12%") — [TrendChip] derives the
+ * ▲/▼ from that sign — and [trendColor] carries better/worse, which the caller decides. A null
+ * [value] input has no honest rendering here, so pass the caller's own placeholder string.
+ */
+@Composable
+fun MetricRow(
+    icon: ImageVector?,
+    label: String,
+    value: String,
+    modifier: Modifier = Modifier,
+    trend: String? = null,
+    trendColor: Color = Palette.textTertiary,
+    comparison: String? = null,
+    iconTint: Color = Palette.textSecondary,
+    valueColor: Color = Palette.textPrimary,
+    onClick: (() -> Unit)? = null,
+) {
+    val spoken = listOfNotNull(label, value, trend, comparison).joinToString(", ")
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .then(if (onClick != null) Modifier.clickable(onClickLabel = label, onClick = onClick) else Modifier)
+            .semantics(mergeDescendants = true) { contentDescription = spoken },
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(Metrics.space10),
+    ) {
+        if (icon != null) {
+            Icon(icon, contentDescription = null, tint = iconTint, modifier = Modifier.size(Metrics.iconSmall))
+        }
+        Overline(label, modifier = Modifier.weight(1f), color = Palette.textPrimary)
+        Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(Metrics.space2)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(Metrics.space6),
+            ) {
+                Text(
+                    value,
+                    style = NoopType.number(20f, FontWeight.Bold),
+                    color = valueColor,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                if (trend != null) TrendChip(text = trend, color = trendColor)
+            }
+            if (comparison != null) {
+                Text(
+                    comparison,
+                    style = NoopType.footnote,
+                    color = Palette.textTertiary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+        }
+    }
+}
+
+// MARK: - NoopCardHeader — UPPERCASE title with a trailing chevron when tappable
+
+/** A card's title row: [Overline] title, an optional [trailing] slot, and a chevron when [onClick] is set. */
+@Composable
+fun NoopCardHeader(
+    title: String,
+    modifier: Modifier = Modifier,
+    onClick: (() -> Unit)? = null,
+    openLabel: String = "Open $title",
+    color: Color = Palette.textPrimary,
+    trailing: (@Composable () -> Unit)? = null,
+) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(Metrics.cornerSm))
+            .then(if (onClick != null) Modifier.clickable(onClickLabel = openLabel, onClick = onClick) else Modifier),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(Metrics.space8),
+    ) {
+        Overline(title, modifier = Modifier.weight(1f), color = color)
+        if (trailing != null) trailing()
+        if (onClick != null) {
+            Icon(
+                Icons.Filled.ChevronRight,
+                contentDescription = null,
+                tint = Palette.textTertiary,
+                modifier = Modifier.size(Metrics.iconSmall),
+            )
+        }
+    }
+}
+
+// MARK: - DayPagerBar — ‹ label › one-step-at-a-time pager
+//
+// The prev/next stepper around a centred day label. Chevrons dim at the ends of the range.
+
+/** Prev/next day pager: chevrons around [label], with an optional [overline] caption beneath it. */
+@Composable
+fun DayPagerBar(
+    label: String,
+    onPrevious: () -> Unit,
+    onNext: () -> Unit,
+    modifier: Modifier = Modifier,
+    canGoPrevious: Boolean = true,
+    canGoNext: Boolean = true,
+    overline: String? = null,
+    previousLabel: String = "Previous day",
+    nextLabel: String = "Next day",
+    onLabelClick: (() -> Unit)? = null,
+) {
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        IconButton(onClick = onPrevious, enabled = canGoPrevious, modifier = Modifier.size(Metrics.iconButton)) {
+            Icon(
+                Icons.Filled.ChevronLeft,
+                contentDescription = previousLabel,
+                tint = if (canGoPrevious) Palette.accent else Palette.textTertiary,
+            )
+        }
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .clip(RoundedCornerShape(Metrics.cornerSm))
+                .then(
+                    if (onLabelClick != null) {
+                        Modifier.clickable(onClickLabel = "Pick a day", onClick = onLabelClick)
+                    } else {
+                        Modifier
+                    },
+                )
+                .padding(vertical = Metrics.space4),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(Metrics.space2),
+        ) {
+            Text(
+                label,
+                style = NoopType.headline,
+                color = Palette.textPrimary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            if (overline != null) Overline(overline, color = Palette.textSecondary)
+        }
+        IconButton(onClick = onNext, enabled = canGoNext, modifier = Modifier.size(Metrics.iconButton)) {
+            Icon(
+                Icons.Filled.ChevronRight,
+                contentDescription = nextLabel,
+                tint = if (canGoNext) Palette.accent else Palette.textTertiary,
+            )
+        }
+    }
+}
+
+// MARK: - GalleryCard — photo-backed tile for a 2-up row
+//
+// Full-bleed image with a bottom scrim, a small icon overlay and a 2-line UPPERCASE title.
+// With no [image] it falls back to the flat [frostedCardSurface] every other card uses.
+
+/** A 2-up gallery tile: optional [image] behind an [icon], a 2-line UPPERCASE [title] and [subtitle]. */
+@Composable
+fun GalleryCard(
+    title: String,
+    modifier: Modifier = Modifier,
+    subtitle: String? = null,
+    icon: ImageVector? = null,
+    image: Painter? = null,
+    tint: Color = Palette.accent,
+    height: Dp = Metrics.tileHeight + Metrics.sectionGap,
+    onClick: (() -> Unit)? = null,
+) {
+    val shape = RoundedCornerShape(Metrics.cardRadius)
+    val spoken = listOfNotNull(title, subtitle).joinToString(", ")
+    Box(
+        modifier = modifier
+            .height(height)
+            .clip(shape)
+            .then(if (image == null) Modifier.frostedCardSurface(tint = tint) else Modifier)
+            .then(if (onClick != null) Modifier.clickable(onClickLabel = title, onClick = onClick) else Modifier)
+            .semantics(mergeDescendants = true) { contentDescription = spoken },
+    ) {
+        if (image != null) {
+            Image(
+                painter = image,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.matchParentSize(),
+            )
+            // Bottom scrim so the title stays legible over any photo.
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .background(
+                        Brush.verticalGradient(
+                            listOf(Color.Transparent, Palette.scenicEdge.copy(alpha = 0.85f)),
+                        ),
+                    ),
+            )
+        }
+        Column(
+            modifier = Modifier.fillMaxSize().padding(Metrics.cardPadding),
+            verticalArrangement = Arrangement.SpaceBetween,
+        ) {
+            if (icon != null) {
+                Icon(
+                    icon,
+                    contentDescription = null,
+                    tint = if (image != null) Palette.textPrimary else tint,
+                    modifier = Modifier.size(Metrics.iconSmall),
+                )
+            } else {
+                Spacer(Modifier.height(Metrics.space2))
+            }
+            Column(verticalArrangement = Arrangement.spacedBy(Metrics.space2)) {
+                Text(
+                    title.uppercase(),
+                    style = NoopType.overline,
+                    color = Palette.textPrimary,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                if (subtitle != null) {
+                    Text(
+                        subtitle,
+                        style = NoopType.footnote,
+                        color = Palette.textSecondary,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+            }
+        }
+    }
+}
+
+// MARK: - NoopStatRow — icon badge, label, bold value + small unit
+//
+// The notable-stats list row. Pair consecutive rows with [RowDivider].
+
+/** One stat line: tinted [icon] badge, [label] left, bold [value] with a small [unit] right. */
+@Composable
+fun NoopStatRow(
+    icon: ImageVector?,
+    label: String,
+    value: String,
+    modifier: Modifier = Modifier,
+    unit: String? = null,
+    iconTint: Color = Palette.accent,
+    valueColor: Color = Palette.textPrimary,
+    onClick: (() -> Unit)? = null,
+) {
+    val spoken = listOfNotNull(label, value, unit).joinToString(" ")
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .then(if (onClick != null) Modifier.clickable(onClickLabel = label, onClick = onClick) else Modifier)
+            .padding(vertical = Metrics.space8)
+            .semantics(mergeDescendants = true) { contentDescription = spoken },
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(Metrics.space12),
+    ) {
+        if (icon != null) StatIconBadge(icon = icon, tint = iconTint)
+        Text(
+            label,
+            style = NoopType.subhead,
+            color = Palette.textPrimary,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f),
+        )
+        Row(
+            verticalAlignment = Alignment.Bottom,
+            horizontalArrangement = Arrangement.spacedBy(Metrics.space4),
+        ) {
+            Text(
+                value,
+                style = NoopType.number(18f, FontWeight.Bold),
+                color = valueColor,
+                maxLines = 1,
+            )
+            if (unit != null) {
+                Text(unit, style = NoopType.footnote, color = Palette.textTertiary, maxLines = 1)
+            }
+        }
+    }
+}
+
+/** The rounded tinted square behind a [NoopStatRow] icon. */
+@Composable
+private fun StatIconBadge(icon: ImageVector, tint: Color) {
+    val shape = RoundedCornerShape(Metrics.cornerSm)
+    Box(
+        modifier = Modifier
+            .size(Metrics.iconButton)
+            .clip(shape)
+            .background(tint.copy(alpha = 0.13f))
+            .border(Metrics.divider, tint.copy(alpha = 0.22f), shape),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(Metrics.iconSmall))
+    }
 }

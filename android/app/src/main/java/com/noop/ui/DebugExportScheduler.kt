@@ -9,7 +9,7 @@ import com.noop.analytics.CalendarDay
 import java.util.Calendar
 
 /**
- * The DAILY scheduled debug export (#510, maddognik).
+ * The DAILY scheduled debug export (maddognik).
  *
  * At the user's chosen time-of-day this writes the 24h rolling strap-log buffer ([StrapLogBuffer], via
  * [LogExport.writeScheduledExport]) — plus the raw 5/MG capture alongside — to the app-private export dir
@@ -17,7 +17,7 @@ import java.util.Calendar
  * intermittent fault (maddognik's use case: a strap that misbehaves overnight) gets a dated log waiting
  * each morning instead of having to remember to hit "Share strap log" at the right moment.
  *
- * SCHEDULING — WorkManager, not AlarmManager. The smart ALARM (#207) uses `AlarmManager.setAlarmClock`
+ * SCHEDULING — WorkManager, not AlarmManager. The smart ALARM uses `AlarmManager.setAlarmClock`
  * because waking the user is safety-critical and must beat Doze to the exact second. A debug export is
  * the opposite: it's fine for it to slide a few minutes into a maintenance window, and it must survive
  * reboot/app-kill and never need the exact-alarm permission. That's exactly WorkManager's contract, so we
@@ -98,7 +98,7 @@ class DebugExportWorker(
 }
 
 /**
- * Persisted, opt-in settings for the daily debug export (#510). Mirrors the [com.noop.alarm.SmartAlarmStore]
+ * Persisted, opt-in settings for the daily debug export. Mirrors the [com.noop.alarm.SmartAlarmStore]
  * SharedPreferences shape: enable flag (default OFF — every NOOP automation is opt-in) + a time-of-day in
  * minutes since local midnight. The maintainer wires a toggle + time picker in Settings to these and calls
  * [DebugExportScheduler.applyTimeChange] / [DebugExportScheduler.reschedule] on change. Single-user, on-device.

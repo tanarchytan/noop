@@ -2,7 +2,7 @@ package com.noop.ui
 
 /**
  * Coarse relative-time label for the "History synced N ago" sync-status line. Pure + unit-tested
- * (RelativeAgoTest); [nowSec] is injectable for determinism. Buckets to just-now / min / h / d. (PR #85)
+ * (RelativeAgoTest); [nowSec] is injectable for determinism. Buckets to just-now / min / h / d.
  * Used by DevicesScreen and UpdatesInboxScreen. (Lived in the old LiveScreen.kt until the Live/Health
  * fold; split out here as a standalone helper since it has nothing to do with live physiology.)
  */

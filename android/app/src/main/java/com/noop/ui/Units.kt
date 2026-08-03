@@ -40,7 +40,7 @@ enum class TemperatureUnit(val raw: String) {
 }
 
 /**
- * How the Effort score is displayed (#268). NOOP stores Effort 0–100 (StrainScorer.maxStrain = 100);
+ * How the Effort score is displayed. NOOP stores Effort 0–100 (StrainScorer.maxStrain = 100);
  * people coming from WHOOP often think in its 0–21 Day Strain axis, so this purely cosmetic toggle lets
  * the SAME stored value be shown on either scale. Default is NOOP's own 0–100 — the data never changes.
  * Mirrors the macOS [EffortScale].
@@ -99,7 +99,7 @@ object UnitPrefs {
     fun resolveTemperature(system: UnitSystem, override: String?): TemperatureUnit =
         TemperatureUnit.fromRaw(override) ?: system.temperatureMatching
 
-    /** SharedPreferences key for the Effort display scale (#268). Mirrors macOS @AppStorage("effort.scale"). */
+    /** SharedPreferences key for the Effort display scale. Mirrors macOS @AppStorage("effort.scale"). */
     const val KEY_EFFORT_SCALE = "effort.scale"
 
     /** The Effort display scale (default 0–100). Read once into Compose state like the other prefs. */
@@ -243,13 +243,13 @@ object UnitFormatter {
     fun temperatureUnit(unit: TemperatureUnit): String =
         if (unit == TemperatureUnit.FAHRENHEIT) "°F" else "°C"
 
-    // MARK: Effort scale (stored 0–100 — #268)
+    // MARK: Effort scale (stored 0–100)
 
     /**
      * NOOP stores Effort 0–100 (StrainScorer.maxStrain = 100). WHOOP's Day Strain axis is 0–21, and the
      * import boundary rescales by 100/21 (WhoopCsvImporter / WhoopExportImporter.dayStrainToEffortScale),
-     * so the exact inverse for a display-only 0–100 → 0–21 conversion is ×21/100. Kept byte-identical to
-     * that factor and to the macOS `UnitFormatter.effortScaleFactor`.
+     * so the exact inverse for a display-only 0–100 → 0–21 conversion is ×21/100, kept byte-identical to
+     * that import factor.
      */
     const val EFFORT_SCALE_FACTOR = 21.0 / 100.0
 
@@ -276,3 +276,16 @@ object UnitFormatter {
     private fun decimalString(v: Double, decimals: Int): String =
         if (decimals == 0) "${v.roundToInt()}" else String.format(Locale.US, "%.${decimals}f", v)
 }
+
+// MARK: - Calendar vocabulary
+
+/**
+ * The one abbreviated month roster every date label reads, indexed 0 = January. Presentation only —
+ * a wording or locale change lands here rather than in each screen that draws a date.
+ */
+internal val MONTH_ABBREVIATIONS: List<String> = listOf(
+    "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+)
+
+/** The abbreviated month name for a 1-12 month number, or null when the number is out of range. */
+internal fun monthAbbreviation(month: Int): String? = MONTH_ABBREVIATIONS.getOrNull(month - 1)

@@ -4,7 +4,7 @@ import android.content.Context
 import org.json.JSONArray
 import org.json.JSONObject
 
-// MARK: - Journal catalog v2 (#322 / task #53): rename + numeric type + group + order
+// MARK: - Journal catalog v2: rename + numeric type + group + order
 //
 // A journal item can now be renamed (display-only, the stored key stays put so imported WHOOP
 // history still lines up), typed as numeric (a value + unit, not just yes/no), grouped, and
@@ -124,7 +124,7 @@ fun migrateLegacyJournalCatalog(custom: List<String>, hidden: List<String>): Lis
 
 /**
  * Resolve the merged catalog into full v2 items, grouped and ordered for display. Imported + starter
- * + custom questions fold onto one canonical key (norm dedupe, #224); each carries the user's saved
+ * + custom questions fold onto one canonical key (norm dedupe); each carries the user's saved
  * displayName / kind / group / sortIndex (a starter with no saved item gets its default group and
  * Bool). Hidden items are dropped unless [includeHidden]. Mirrors macOS `resolvedItems`.
  */

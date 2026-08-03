@@ -40,7 +40,7 @@ import com.noop.analytics.HrZones
 import kotlinx.coroutines.delay
 
 /**
- * Live workout mode (#238) — the in-exercise screen: a big live heart rate, the current HR zone,
+ * Live workout mode — the in-exercise screen: a big live heart rate, the current HR zone,
  * elapsed time, and live effort building, all from the SAME live feed and scorers the rest of the
  * app uses (no invented numbers). Shown full-screen while a manual workout is active, entered from
  * the Start-workout control. End stops the workout and dismisses.
@@ -54,7 +54,7 @@ import kotlinx.coroutines.delay
 fun LiveWorkoutScreen(vm: AppViewModel, onClose: () -> Unit) {
     val context = LocalContext.current
     val profile = remember { ProfileStore.from(context.applicationContext) }
-    // Effort display scale (#268) — routes the live Effort read-out so it matches every other surface.
+    // Effort display scale — routes the live Effort read-out so it matches every other surface.
     val effortScale = UnitPrefs.effortScale(context)
     val bpm by vm.bpm.collectAsStateWithLifecycle()
     val activeWorkout by vm.activeWorkout.collectAsStateWithLifecycle()
@@ -66,7 +66,7 @@ fun LiveWorkoutScreen(vm: AppViewModel, onClose: () -> Unit) {
         onDispose { vm.releaseRealtimeHr(RealtimeHrOwner.LIVE_WORKOUT) }
     }
 
-    // Keep the screen awake while recording (#703). Opt-in, default off; the toggle lives in Settings.
+    // Keep the screen awake while recording. Opt-in, default off; the toggle lives in Settings.
     // Read the same pref key the iOS @AppStorage uses ("workoutKeepScreenOn") and flag the view's window
     // only while this screen is up, clearing it on the way out so normal screen-timeout resumes. Mirrors
     // iOS calling ScreenIdle.keepAwake(true) on appear and false on disappear.
@@ -95,7 +95,7 @@ fun LiveWorkoutScreen(vm: AppViewModel, onClose: () -> Unit) {
     // an Effort-world hero, not a flat panel.
     Box(modifier = Modifier.fillMaxSize().background(Palette.surfaceBase)) {
         ScenicHeroBackground(modifier = Modifier.matchParentSize(), domain = DomainTheme.Effort)
-        // #845: the in-exercise content is fixed-height (HR hero + effort gauge + zone rail + stat row +
+        // the in-exercise content is fixed-height (HR hero + effort gauge + zone rail + stat row +
         // End button). On a tall, content-dense screen it ran PAST the available height: the old layout was a
         // plain fillMaxSize Column with a weighted Spacer pushing End down, so when content overflowed the
         // Spacer collapsed to nothing and the bottom Avg/Peak/Effort stat row got squeezed against the edge
@@ -142,7 +142,7 @@ fun LiveWorkoutScreen(vm: AppViewModel, onClose: () -> Unit) {
                     accent = Palette.strainColor(w.liveStrain))
             }
 
-            // #845: a fixed gap before End instead of a weighted Spacer. A weight needs a bounded height to
+            // a fixed gap before End instead of a weighted Spacer. A weight needs a bounded height to
             // share out, but the column is now scrollable (unbounded), so a weighted Spacer can't size and
             // the End button would no longer be separated from the stats. A constant gap keeps the spacing
             // and the button stays reachable by scrolling when the content overflows.

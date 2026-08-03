@@ -201,7 +201,7 @@ private fun InboxSection(
 
 // MARK: - Swipe-to-mark-read
 //
-// Idea credit: contributor "A" (PR #65) — swipe an inbox card to mark it read. Reimplemented under
+// Idea credit: contributor "A" — swipe an inbox card to mark it read. Reimplemented under
 // the project: the original PR referenced a non-existent UpdateKind and gated its wash on the fragile
 // `state.progress` (anchor-relative in material3 1.2.1, ~1.0 at rest), so this is a from-scratch take.
 //

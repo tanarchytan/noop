@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -30,20 +29,18 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.noop.analytics.Baselines
 import com.noop.analytics.ReadinessEngine
+import com.noop.analytics.RecoveryScorer
 import com.noop.analytics.RestScorer
+import com.noop.analytics.RustScores
 import com.noop.data.DailyMetric
 import com.noop.data.SleepSession
 import java.text.SimpleDateFormat
@@ -51,13 +48,13 @@ import java.util.Date
 import java.util.Locale
 import kotlin.math.roundToInt
 
-// MARK: - Coupled view (task #43) — Kotlin twin of CoupledView.swift
+// MARK: - Coupled view — Kotlin twin of CoupledView.swift
 //
 // An optional, default-OFF day view that reads like the classic coupled home: one screen, three numbers,
 // Recovery % / Day Strain on 0-21 / Sleep, for users who came across from another band and want the old
 // glance back. NOOP's Today stays the default and is untouched.
 //
-// DISPLAY-ONLY, like the #268 Effort-scale toggle. It reads the SAME values Today already computes (recovery
+// DISPLAY-ONLY, like the Effort-scale toggle. It reads the SAME values Today already computes (recovery
 // / Rest composite / Effort strain / readiness) and re-presents them in the coupled layout. The only new
 // mapping is the OPTIMAL strain band, a pure display-only read of today's recovery to a suggested strain
 // range (never fed back into scoring) that is byte-identical to the Swift [CoupledView.optimalStrainRange].
@@ -65,20 +62,20 @@ import kotlin.math.roundToInt
 // Every colour routes through the [Palette] ramps, so the Classic / Titanium appearance carries automatically.
 // The brand word never appears in a shipped UI string (legal posture); the screen is called "Coupled view".
 
-/** The 0-21 Day-Strain axis the coupled read always uses, regardless of the user's #268 display toggle. */
+/** The 0-21 Day-Strain axis the coupled read always uses, regardless of the user's display toggle. */
 private const val COUPLED_STRAIN_OUT_OF = 21.0
 
-/** The missing-value placeholder, matching the app's shipped "No Data" token (TodayScreen.COUPLED_NO_DATA is
- *  file-private, so the coupled screen carries its own copy of the same string). */
+/** The missing-value placeholder, matching the app's shipped "No Data" token. */
 private const val COUPLED_NO_DATA = "No Data"
 
-// The liquid hero-card wrapper values, byte-identical to the liquid Today pilot (TodayScreen's
-// LIQUID_HERO_FILL / LIQUID_HERO_RADIUS are file-private, so the coupled screen carries its own copy):
-// a translucent near-black that floats over the day-of-sky so the vessel + white count-up numbers stay
-// crisp — the card does the contrast work, not a muted sky. heroFill = rgba(13,14,20,.80), stroke
-// white@0.11, radius 26. Mirrors the iOS LiquidTodayView heroCard.
-private val LIQUID_HERO_FILL: Color = Color(red = 13f / 255f, green = 14f / 255f, blue = 20f / 255f, alpha = 0.80f)
-private val LIQUID_HERO_RADIUS: Dp = 26.dp
+/** The Charge hero ring. */
+private val HERO_RING_DIAMETER: Dp = 232.dp
+
+/** The Effort gauge beside the coupled stat stack. */
+private val EFFORT_RING_DIAMETER: Dp = 148.dp
+
+/** The sleep-performance ring on the Sleep row. */
+private val SLEEP_RING_DIAMETER: Dp = 96.dp
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -103,7 +100,7 @@ fun CoupledScreen(
     }
 
     // The learned habitual midsleep the Sleep tab hero threads into its main-night pick, so the bed-wake
-    // span below resolves the IDENTICAL block (#294) instead of a screen-local heuristic.
+    // span below resolves the IDENTICAL block instead of a screen-local heuristic.
     var habitualMidsleepSec by remember { mutableStateOf<Long?>(null) }
     LaunchedEffect(days) {
         habitualMidsleepSec = runCatching { vm.repo.habitualMidsleepSec() }.getOrNull()
@@ -147,7 +144,7 @@ fun CoupledScreen(
 
     // On-device readiness, computed EXACTLY as Today does, so the one-word pill matches the home screen.
     // The carried anchor is gated on isCarrying (Today's !todayScored gate): on a normal scored day today's
-    // own key wins, so Coupled's pill can't diverge from Today's onto yesterday (#787).
+    // own key wins, so Coupled's pill can't diverge from Today's onto yesterday.
     val readinessLevel = remember(days, carriedRecoveryDay, todayRow, isCarrying) {
         val anchor = (if (isCarrying) carriedRecoveryDay?.day else todayRow?.day) ?: logicalKey
         ReadinessEngine.evaluate(days, anchor).level
@@ -163,20 +160,14 @@ fun CoupledScreen(
     }
 
     // The Charge breakdown (the hero's tap target, the EXISTING Today sheet), built only when shown
-    // (#819 lazy). Not persisted, so a return visit reopens closed.
+    // (lazy). Not persisted, so a return visit reopens closed.
     var showChargeBreakdown by remember { mutableStateOf(false) }
 
+    // No topBackground: the scaffold takes its opaque path and paints Palette.surfaceBase, so the canvas
+    // follows the theme in both light and dark.
     ScreenScaffold(
         title = "Day",
         subtitle = subtitleToday(),
-        // LIQUID SKY BACKDROP (the pilot pattern — LiquidScreenSky.kt): the reusable time-of-day liquid sky
-        // sits behind the top region, full-bleed up behind the status bar via the scaffold's topBackground
-        // plumbing, top-aligned, settling into the flat canvas over its lower half so the cards float OVER it.
-        // The Android equivalent of the iOS `ScreenScaffold(topBackground: liquidScaffoldSky())`; it replaces
-        // the classic flat-canvas backdrop with the liquid day-of-sky (LiquidSkyStatic — no per-frame cost on
-        // this scrolling column). The other liquid screens drop in the SAME LiquidScreenSky() slot verbatim.
-        // Coupled has no per-screen day-cycle toggle of its own, so the sky is unconditional here.
-        topBackground = { LiquidScreenSky() },
     ) {
         HeroCard(
             recovery = recovery,
@@ -249,23 +240,14 @@ private fun HeroCard(
             "Recovery calibrating, $calibrationNights of ${Baselines.minNightsSeed} nights"
         else -> "Recovery, no data yet"
     }
-    // The vessel runs LIVE (per-frame slosh + tilt) once there's a real value to show; an empty/calibrating
-    // hero poses it static so a brand-new user's launch churn isn't fighting a live canvas (the Today
-    // `dataLoaded` gate on HeroScoreVessel). A carried Charge counts as data (its dimmed vessel should slosh).
-    val animated = recovery != null
-    // The whole hero is the breakdown's tap target, mirroring Today's Charge-vessel tap (A1). The SAME
-    // interactionSource drives the clickable + the liquidPress so the card settles inward on press.
+    // The whole hero is the breakdown's tap target. The SAME interactionSource drives the clickable and
+    // the press, so the card settles inward on press.
     val interaction = remember { MutableInteractionSource() }
-    // The liquid hero CARD: a translucent near-black that floats over the day-of-sky so the vessel + white
-    // count-up number stay crisp — the card does the contrast work, not a muted sky. A rounded 26 corner + a
-    // faint white hairline give it the frosted-glass edge of the iOS liquid heroCard. Mirrors the pilot.
-    Box(
+    NoopCard(
+        padding = Metrics.screenRowSpacing,
+        tint = Palette.chargeColor,
         modifier = Modifier
-            .fillMaxWidth()
             .liquidPress(interaction)
-            .clip(RoundedCornerShape(LIQUID_HERO_RADIUS))
-            .background(LIQUID_HERO_FILL.copy(alpha = LIQUID_HERO_FILL.alpha * CardAppearance.opacity))
-            .border(Metrics.divider, Color.White.copy(alpha = 0.11f * CardAppearance.opacity), RoundedCornerShape(LIQUID_HERO_RADIUS))
             .clickable(
                 interactionSource = interaction,
                 indication = null,
@@ -274,72 +256,54 @@ private fun HeroCard(
             )
             .semantics { contentDescription = a11y },
     ) {
-        Box(modifier = Modifier.fillMaxWidth().padding(Metrics.screenRowSpacing)) {
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(Metrics.space12),
-            ) {
-                Box(modifier = Modifier.size(232.dp), contentAlignment = Alignment.Center) {
-                    // The recovery ring becomes a liquid VESSEL filled to the recovery fraction in the sampled
-                    // recovery colour, with the number counting up over it (the Today HeroScoreVessel idiom).
-                    // A carried (not-yet-rescored) morning reads dimmed, the Today #802 idiom. Empty (no score)
-                    // draws an empty vessel and the centre stack shows the "No Data" token instead of a number.
-                    LiquidVessel(
-                        value = ((recovery ?: 0.0) / 100.0).coerceIn(0.0, 1.0),
-                        tint = if (recovery != null) Palette.recoveryColor(recovery) else Palette.chargeColor,
-                        animated = animated,
-                        modifier = Modifier
-                            .size(232.dp)
-                            .alpha(if (isCarrying) 0.8f else 1f),
-                    )
-                    HeroCentre(recovery = recovery, readinessLevel = readinessLevel)
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(Metrics.space12),
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                // The same score on the shared Charge gauge. A carried (not-yet-rescored) morning reads
+                // dimmed; no score draws the empty track with the "No Data" token where the number sits.
+                RecoveryRing(
+                    score = recovery ?: 0.0,
+                    diameter = HERO_RING_DIAMETER,
+                    showsLabel = recovery != null,
+                    valueFormat = { "${it.roundToInt()}%" },
+                    modifier = Modifier.alpha(if (isCarrying) 0.8f else 1f),
+                )
+                if (recovery == null) {
+                    Text(COUPLED_NO_DATA, style = NoopType.headline, color = Palette.textSecondary)
                 }
-                // The honest state line under the ring: the "Last night · <date>" stamp when carrying a
-                // prior score (#543/#779, the SAME caption Today uses), or the calibrating progress while
-                // the baseline seeds. Nothing when today's own score is showing.
-                if (isCarrying && carriedDay != null) {
-                    Text(
-                        carriedCaption(carriedDay.day, today = todayKey),
-                        style = NoopType.footnote,
-                        color = Palette.textTertiary,
-                    )
-                } else if (recovery == null && calibrationNights != null) {
-                    Text(
-                        "Calibrating, $calibrationNights of ${Baselines.minNightsSeed} nights",
-                        style = NoopType.footnote,
-                        color = Palette.textTertiary,
-                    )
-                }
+            }
+            HeroLabels(recovery = recovery, readinessLevel = readinessLevel)
+            // The honest state line under the ring: the "Last night · <date>" stamp when carrying a
+            // prior score (the SAME caption Today uses), or the calibrating progress while
+            // the baseline seeds. Nothing when today's own score is showing.
+            if (isCarrying && carriedDay != null) {
+                Text(
+                    carriedCaption(carriedDay.day, today = todayKey),
+                    style = NoopType.footnote,
+                    color = Palette.textTertiary,
+                )
+            } else if (recovery == null && calibrationNights != null) {
+                Text(
+                    "Calibrating, $calibrationNights of ${Baselines.minNightsSeed} nights",
+                    style = NoopType.footnote,
+                    color = Palette.textTertiary,
+                )
             }
         }
     }
 }
 
+/** The label stack under the ring: the metric's name in its sampled colour, then the readiness word. */
 @Composable
-private fun HeroCentre(recovery: Double?, readinessLevel: ReadinessEngine.Level) {
+private fun HeroLabels(recovery: Double?, readinessLevel: ReadinessEngine.Level) {
     val sampled = recovery?.let { Palette.recoveryColor(it) } ?: Palette.textTertiary
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(Metrics.space4),
     ) {
-        if (recovery != null) {
-            // Count-up number over the vessel — white, tabular, a soft shadow for legibility, hit-transparent
-            // (clearAndSetSemantics + no clickable) so the tap reaches the vessel (splash) and the enclosing
-            // hero card. The Today HeroScoreVessel idiom, sized to this larger 232dp coupled hero.
-            CountUpText(
-                value = recovery,
-                format = { "${it.roundToInt()}%" },
-                style = NoopType.number(56f, weight = FontWeight.Bold)
-                    .copy(shadow = Shadow(color = Color.Black.copy(alpha = 0.5f), offset = Offset(0f, 1f), blurRadius = 6f)),
-                color = Color.White,
-                modifier = Modifier.clearAndSetSemantics {},
-            )
-        } else {
-            // The honest empty read at the ring-label size (never the 56sp numeral, "No Data" would
-            // overflow the ring interior), matching the Today hero rings' RingNoData idiom.
-            Text(COUPLED_NO_DATA, style = NoopType.headline, color = Palette.textSecondary)
-        }
         Text("RECOVERY", style = NoopType.overline, color = sampled)
         val word = readinessWord(readinessLevel)
         if (word != null) ReadinessPill(word = word, level = readinessLevel)
@@ -348,7 +312,7 @@ private fun HeroCentre(recovery: Double?, readinessLevel: ReadinessEngine.Level)
 
 @Composable
 private fun ReadinessPill(word: String, level: ReadinessEngine.Level) {
-    val tint = readinessTint(level)
+    val tint = readinessColor(level)
     Text(
         word.uppercase(),
         style = NoopType.overline,
@@ -362,15 +326,6 @@ private fun ReadinessPill(word: String, level: ReadinessEngine.Level) {
     )
 }
 
-/** Level -> tint, the SAME mapping TodayScreen.readinessColor uses (that one is private, so mirror it). */
-private fun readinessTint(level: ReadinessEngine.Level): Color = when (level) {
-    ReadinessEngine.Level.PRIMED -> Palette.accent
-    ReadinessEngine.Level.BALANCED -> Palette.statusPositive
-    ReadinessEngine.Level.STRAINED -> Palette.statusWarning
-    ReadinessEngine.Level.RUNDOWN -> Palette.metricRose
-    ReadinessEngine.Level.INSUFFICIENT -> Palette.textTertiary
-}
-
 // MARK: 2. STRAIN ROW — the effort gauge + coupled stat stack
 
 @Composable
@@ -380,44 +335,35 @@ private fun StrainCard(dayStrain21: Double?, recovery: Double?, calories: Double
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(Metrics.space16),
         ) {
-            // Left: the effort gauge on the 0-21 axis as a liquid VESSEL (the Today HeroScoreVessel idiom),
-            // with the band word as an overline above it (the Swift StrainGauge's LIGHT/MODERATE/STRENUOUS/
-            // HIGH overline). Same fraction (strain / 21) and effort tint as the Today hero effort vessel.
+            // Left: the effort gauge on the 0-21 axis, under the band word. Same fraction (strain / 21) and
+            // the same effortTint sample the shared gauge applies; its own "of 21" caption states the axis.
             Column(
                 modifier = Modifier.size(168.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center,
             ) {
                 if (dayStrain21 != null) {
-                    val strainFrac = (dayStrain21 / COUPLED_STRAIN_OUT_OF).coerceIn(0.0, 1.0)
-                    Text(strainBandWord(dayStrain21 / COUPLED_STRAIN_OUT_OF), style = NoopType.overline, color = Palette.effortColor)
-                    Spacer(Modifier.size(4.dp))
-                    Box(modifier = Modifier.size(148.dp), contentAlignment = Alignment.Center) {
-                        LiquidVessel(
-                            value = strainFrac,
-                            tint = Palette.effortTint(strainFrac),
-                            animated = true,
-                            modifier = Modifier.size(148.dp),
-                        )
-                        CountUpText(
-                            value = dayStrain21,
-                            format = { String.format(Locale.US, "%.1f", it) },
-                            style = NoopType.number(30f, weight = FontWeight.Bold)
-                                .copy(shadow = Shadow(color = Color.Black.copy(alpha = 0.5f), offset = Offset(0f, 1f), blurRadius = 6f)),
-                            color = Color.White,
-                            modifier = Modifier.clearAndSetSemantics {},
-                        )
-                    }
-                } else {
-                    // No scored effort yet: an empty (posed) vessel so the card never reads as broken, with
-                    // the honest caption below it, mirroring the empty-hero treatment on Today.
-                    LiquidVessel(
-                        value = 0.0,
-                        tint = Palette.effortColor,
-                        animated = false,
-                        modifier = Modifier.size(148.dp),
+                    Text(
+                        strainBandWord(dayStrain21 / COUPLED_STRAIN_OUT_OF),
+                        style = NoopType.overline,
+                        color = Palette.effortColor,
+                        modifier = Modifier.padding(bottom = Metrics.space4),
                     )
-                    Text("No effort yet", style = NoopType.footnote, color = Palette.textTertiary, modifier = Modifier.padding(top = 6.dp))
+                    StrainGauge(
+                        strain = dayStrain21,
+                        outOf = COUPLED_STRAIN_OUT_OF,
+                        valueText = String.format(Locale.US, "%.1f", dayStrain21),
+                        diameter = EFFORT_RING_DIAMETER,
+                    )
+                } else {
+                    // No scored effort yet: the empty track, never a zero, with the honest caption below it.
+                    StrainGauge(
+                        strain = 0.0,
+                        outOf = COUPLED_STRAIN_OUT_OF,
+                        diameter = EFFORT_RING_DIAMETER,
+                        showsLabel = false,
+                    )
+                    Text("No effort yet", style = NoopType.footnote, color = Palette.textTertiary, modifier = Modifier.padding(top = Metrics.space6))
                 }
             }
 
@@ -457,8 +403,8 @@ private fun SleepCard(
     bedWakeSpan: String?,
     onOpenSleep: () -> Unit,
 ) {
-    // liquidPress on the whole tappable card (the SAME interactionSource drives the clickable + the press),
-    // so it settles inward on press, mirroring the Today liquid cards.
+    // The whole card is the tap target; the SAME interactionSource drives the clickable and the press,
+    // so it settles inward on press.
     val interaction = remember { MutableInteractionSource() }
     NoopCard(
         padding = 20.dp,
@@ -476,27 +422,17 @@ private fun SleepCard(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(Metrics.space16),
         ) {
-            Box(modifier = Modifier.size(96.dp), contentAlignment = Alignment.Center) {
-                // The sleep-performance ring becomes a liquid VESSEL filled to the performance fraction in the
-                // rest tint, with the number counting up over it (the Today HeroScoreVessel idiom). Empty draws
-                // a posed empty vessel, no number.
-                LiquidVessel(
-                    value = ((sleepPerformance ?: 0.0) / 100.0).coerceIn(0.0, 1.0),
-                    tint = Palette.restColor,
-                    animated = sleepPerformance != null,
-                    modifier = Modifier.size(96.dp),
-                )
-                if (sleepPerformance != null) {
-                    CountUpText(
-                        value = sleepPerformance,
-                        format = { it.roundToInt().toString() },
-                        style = NoopType.number(26f, weight = FontWeight.Bold)
-                            .copy(shadow = Shadow(color = Color.Black.copy(alpha = 0.5f), offset = Offset(0f, 1f), blurRadius = 6f)),
-                        color = Color.White,
-                        modifier = Modifier.clearAndSetSemantics {},
-                    )
-                }
-            }
+            // The same performance score in the rest tint. No score draws the empty track and no number;
+            // the fill key keeps a scroll that recycles the ring from replaying the fill.
+            GlowRing(
+                fraction = ((sleepPerformance ?: 0.0) / 100.0).coerceIn(0.0, 1.0).toFloat(),
+                value = sleepPerformance ?: 0.0,
+                color = Palette.restColor,
+                diameter = SLEEP_RING_DIAMETER,
+                lineWidth = SLEEP_RING_DIAMETER * RING_STROKE_FRACTION,
+                fillKey = "coupled.sleepPerformance",
+                showsLabel = sleepPerformance != null,
+            )
 
             Column(
                 modifier = Modifier.weight(1f),
@@ -550,14 +486,12 @@ internal fun strainBandWord(fraction: Double): String = when {
 }
 
 /**
- * The night's need (minutes): the imported per-day figure when the export carried one, else the shared
- * >= 7.5h personal-mean floor (matches SleepNightScreen needMin / SleepView.sleepNeedMin).
+ * The night's need (minutes): the imported per-day figure when the export carried one, else the
+ * personal need whoop-rs derives from banked asleep minutes.
  */
 private fun sleepNeedForDay(day: DailyMetric?, days: List<DailyMetric>, importedNeed: Map<String, Double>): Double {
     day?.day?.let { key -> importedNeed[key]?.takeIf { it > 0 }?.let { return it } }
-    val banked = days.mapNotNull { it.totalSleepMin }.filter { it > 0 }
-    val mean = if (banked.isEmpty()) null else banked.sum() / banked.size
-    return maxOf(450.0, mean ?: 450.0) // 450 min = 7.5h
+    return RustScores.personalSleepNeedMinutes(days.mapNotNull { it.totalSleepMin })
 }
 
 /**
@@ -565,7 +499,7 @@ private fun sleepNeedForDay(day: DailyMetric?, days: List<DailyMetric>, imported
  * resolver the Sleep tab hero and the daily total use), only when that night actually touches the last
  * 36h (a days-old import is not "last night"). Was previously this screen's own "freshest-ending
  * session" pick, which could name a different block -- and so a different span -- than the Sleep tab and
- * Today's HR graph for a night stored as more than one block (#294).
+ * Today's HR graph for a night stored as more than one block.
  */
 private fun bedWakeSpan(sleeps: List<SleepSession>, habitualMidsleepSec: Long?): String? {
     val windowStart = System.currentTimeMillis() / 1000L - 36 * 3600L // within the last 36h counts as last night
@@ -575,16 +509,9 @@ private fun bedWakeSpan(sleeps: List<SleepSession>, habitualMidsleepSec: Long?):
     return "${fmt.format(Date(span.first * 1000L))} - ${fmt.format(Date(span.second * 1000L))}"
 }
 
-// MARK: - OPTIMAL strain range (task #43) — pure display-only recovery->strain mapping
-//
-// The classic coupled read suggests a Day-Strain target BAND from today's recovery: a green day earns a
-// higher optimal band, a red day a lower one. PRESENTATION ONLY, never fed back into any score. These are
-// the APPROVED bands and MUST stay byte-identical to the Swift CoupledView.optimalStrainRange:
-//   recovery >= 67 (green)        -> 14-18 of 21
-//   34 <= recovery <= 66 (yellow) -> 10-14
-//   recovery < 34 (red)           -> 4-10
-// null recovery (calibrating / unscored day) -> null, the caller renders the no-data token, never a
-// guessed band.
+// The coupled read suggests a Day-Strain target BAND from today's recovery: green earns a higher band,
+// red a lower one. PRESENTATION ONLY, never fed back into any score. The recovery cut points are the
+// whoop-rs band edges ([RecoveryScorer.bandRedMax] / [RecoveryScorer.bandYellowMax]), never a copy.
 
 internal data class OptimalStrainRange(val low: Int, val high: Int)
 
@@ -592,13 +519,13 @@ internal data class OptimalStrainRange(val low: Int, val high: Int)
 internal fun optimalStrainRange(recovery: Double?): OptimalStrainRange? {
     val r = recovery ?: return null
     return when {
-        r >= 67 -> OptimalStrainRange(14, 18)
-        r >= 34 -> OptimalStrainRange(10, 14)
+        r >= RecoveryScorer.bandYellowMax -> OptimalStrainRange(14, 18)
+        r >= RecoveryScorer.bandRedMax -> OptimalStrainRange(10, 14)
         else -> OptimalStrainRange(4, 10)
     }
 }
 
-/** The optimal band as display text ("14 to 18" / the no-data token). Byte-identical to the Swift twin. */
+/** The optimal band as display text ("14 to 18" / the no-data token). */
 internal fun optimalStrainRangeText(recovery: Double?): String {
     val band = optimalStrainRange(recovery) ?: return COUPLED_NO_DATA
     return "${band.low} to ${band.high}"

@@ -16,6 +16,8 @@
     <string name="nav_sleep">Sleep</string>
     <string name="nav_breathe">Breathe</string>
     <string name="nav_stress">Stress</string>
+    <string name="nav_recovery">Recovery</string>
+    <string name="nav_strain">Strain</string>
     <string name="nav_workouts">Workouts</string>
     <string name="nav_trends">Trends</string>
     <string name="nav_coach">Coach</string>
@@ -57,7 +59,6 @@
 
     <!-- Today screen: header of the workouts feed. Renamed from "Last Workouts" ("Last" read as
          "final", #34/#53 follow-up); wording mirrored on iOS in Localizable.xcstrings. -->
-    <string name="today_latest_workouts">Latest Workouts</string>
 
     <!-- Trends / Explore / Deep Timeline (#448 follow-up): these three screens were built with
          hardcoded English literals throughout, never wired to stringResource() at all. This is a

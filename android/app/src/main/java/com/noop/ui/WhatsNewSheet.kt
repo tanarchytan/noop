@@ -85,11 +85,11 @@ private fun Header(onClose: () -> Unit) {
             .fillMaxWidth()
             .padding(20.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        horizontalArrangement = Arrangement.spacedBy(Metrics.space12),
     ) {
         Column(
             modifier = Modifier.weight(1f),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
+            verticalArrangement = Arrangement.spacedBy(Metrics.space4),
         ) {
             Overline("What's new", color = Palette.textTertiary)
             Text("NOOP ${AppChangelog.CURRENT_VERSION}", style = NoopType.display(26f), color = Palette.textPrimary)
@@ -104,12 +104,12 @@ private fun Header(onClose: () -> Unit) {
 @Composable
 private fun ExpectationsCard() {
     NoopCard(padding = 20.dp, tint = Palette.accent) {
-        Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(Metrics.space14)) {
             Overline("What to expect")
             AppChangelog.expectations.forEach { e ->
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(Metrics.space12),
                     verticalAlignment = Alignment.Top,
                 ) {
                     Icon(
@@ -138,11 +138,11 @@ private fun ExpectationsCard() {
 @Composable
 private fun ReleaseCard(release: AppChangelog.Release, isLatest: Boolean = false) {
     NoopCard(padding = 20.dp, tint = if (isLatest) Palette.accent else null) {
-        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(Metrics.space10)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                horizontalArrangement = Arrangement.spacedBy(Metrics.space8),
             ) {
                 SourceBadge("v${release.version}")
                 Text(
@@ -156,7 +156,7 @@ private fun ReleaseCard(release: AppChangelog.Release, isLatest: Boolean = false
             release.items.forEach { item ->
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(Metrics.space8),
                     verticalAlignment = Alignment.Top,
                 ) {
                     Box(

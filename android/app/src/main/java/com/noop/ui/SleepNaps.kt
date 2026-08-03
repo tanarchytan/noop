@@ -22,7 +22,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.unit.dp
 import com.noop.analytics.SleepStageTotals
 import com.noop.data.SleepSession
 
@@ -45,7 +44,7 @@ internal fun SleepUndoBanner(session: SleepSession, onUndo: () -> Unit) {
         Row(
             modifier = Modifier.fillMaxWidth().semantics { contentDescription = message },
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalArrangement = Arrangement.spacedBy(Metrics.space8),
         ) {
             Text(message, style = NoopType.footnote, color = Palette.textSecondary, modifier = Modifier.weight(1f))
             TextButton(
@@ -111,7 +110,7 @@ internal fun NapRow(nap: SleepSession, onEditNap: (SleepSession) -> Unit) {
                 },
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Icon(Icons.Filled.Bedtime, contentDescription = null, tint = Palette.restColor, modifier = Modifier.size(18.dp))
+            Icon(Icons.Filled.Bedtime, contentDescription = null, tint = Palette.restColor, modifier = Modifier.size(Metrics.iconSmall))
             Spacer(Modifier.width(Metrics.space10))
             Column {
                 Text(window, style = NoopType.body, color = Palette.textPrimary)
@@ -123,7 +122,7 @@ internal fun NapRow(nap: SleepSession, onEditNap: (SleepSession) -> Unit) {
                 Icons.Filled.Edit,
                 contentDescription = if (nap.userEdited) "Edit nap times (edited)" else "Edit nap times",
                 tint = Palette.restColor,
-                modifier = Modifier.size(18.dp),
+                modifier = Modifier.size(Metrics.iconSmall),
             )
         }
     }

@@ -28,6 +28,8 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.noop.analytics.RustScores
+import com.noop.data.DailyMetric
 import java.util.Locale
 
 private val TIME_IN_BED_CHART_HEIGHT = 150.dp
@@ -163,12 +165,71 @@ internal fun SleepEfficiencyTrendCard(series: List<Double>, dates: List<String>,
         ChartCardFooter(
             listOf(
                 "Latest" to pctValue(week.lastOrNull()),
-                "Week avg" to pctValue(week.average()),
+                "Week avg" to pctValue(RustScores.mean(week)),
                 "Best" to pctValue(week.maxOrNull()),
             ),
         )
     }
 }
+
+/**
+ * HOURS VS. NEEDED — the week's asleep hours against the personal need, every point labelled. Both
+ * series arrive already computed; this card pairs them and names them.
+ */
+@Composable
+internal fun SleepHoursVsNeededCard(hours: List<Double>, needHours: List<Double>, dates: List<String>) {
+    val week = hours.takeLast(SLEEP_TREND_NIGHTS)
+    val need = needHours.takeLast(SLEEP_TREND_NIGHTS)
+    SleepTrendShell(title = "HOURS VS. NEEDED", onOpen = null) {
+        if (week.size < 2) {
+            InsetChartPlaceholder(message = "Not enough nights yet.")
+            return@SleepTrendShell
+        }
+        WeekDualLineChart(
+            primary = WeekLineSeries("Hours of sleep", week, Palette.textSecondary),
+            secondary = WeekLineSeries("Sleep needed", need, Palette.restColor, labelAbove = false),
+            dayLabels = dates.takeLast(week.size).map(::trendDayLabel),
+            format = { hoursText(it) },
+            height = Metrics.compactChartHeight,
+        )
+    }
+}
+
+/**
+ * RESTORATIVE SLEEP — each night's REM over its deep sleep, with the total above the bar. Both are the
+ * night's stored stage minutes; only the minutes-to-hours conversion happens here.
+ */
+@Composable
+internal fun SleepRestorativeCard(rows: List<DailyMetric>, dates: List<String>) {
+    val week = dates.takeLast(SLEEP_TREND_NIGHTS)
+    val byDay = rows.associateBy { it.day }
+    val stacks = week.map { day ->
+        val row = byDay[day]
+        listOf((row?.remMin ?: 0.0) / MINUTES_PER_HOUR, (row?.deepMin ?: 0.0) / MINUTES_PER_HOUR)
+    }
+    SleepTrendShell(title = "RESTORATIVE SLEEP", onOpen = null) {
+        if (stacks.none { stack -> stack.any { it > 0.0 } }) {
+            InsetChartPlaceholder(message = "No staged nights yet.")
+            return@SleepTrendShell
+        }
+        WeekStackedBarChart(
+            segments = listOf(
+                WeekStackSegment("REM", stageColor("rem")),
+                WeekStackSegment("Deep", stageColor("deep")),
+            ),
+            dayValues = stacks,
+            dayLabels = week.map(::trendDayLabel),
+            format = { hoursText(it) },
+            height = Metrics.compactChartHeight,
+        )
+    }
+}
+
+/** Minutes to hours, the only conversion the two weekly hour charts apply. */
+private const val MINUTES_PER_HOUR = 60.0
+
+/** "7.4" — an hours figure to one decimal, the label both weekly hour charts print. */
+private fun hoursText(hours: Double): String = String.format(Locale.US, "%.1f", hours)
 
 /**
  * SLEEP STRESS — one stacked bar per night, LOW at the base then MEDIUM then HIGH, with that night's
@@ -287,7 +348,7 @@ private fun SleepTrendShell(title: String, onOpen: (() -> Unit)?, body: @Composa
                         Icons.Filled.ChevronRight,
                         contentDescription = "Open the full history",
                         tint = Palette.textTertiary,
-                        modifier = Modifier.size(18.dp),
+                        modifier = Modifier.size(Metrics.iconSmall),
                     )
                 }
             }

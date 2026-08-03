@@ -47,7 +47,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.noop.analytics.CalibrationMilestones
-import com.noop.analytics.RecoveryScorer
+import com.noop.analytics.RustScores
 
 // MARK: - Profile menu (the top-left avatar destination)
 //
@@ -286,7 +286,7 @@ fun ProfileMenuScreen(vm: AppViewModel) {
                     }
                 }
                 RowDivider()
-                // Step calibration (#139/#132): daily steps = @57 counter ticks ÷ this divisor.
+                // Step calibration: daily steps = @57 counter ticks ÷ this divisor.
                 // 1.0 = raw pass-through until the true 5/MG tick rate is known. The divisor goes
                 // up to 30 because a 5/MG motion counter can overcount by ~24×; the stepper uses a
                 // variable increment (fine near 1.0, coarse up top) so high values stay reachable.
@@ -396,7 +396,7 @@ fun ProfileMenuScreen(vm: AppViewModel) {
                     )
                 }
                 RowDivider()
-                // Effort scale (#268) — NOOP's native 0–100 Effort or WHOOP's 0–21 Day Strain axis.
+                // Effort scale — NOOP's native 0–100 Effort or WHOOP's 0–21 Day Strain axis.
                 // Display-only; the stored value never changes, so a flip just re-labels every read-out.
                 FormRow(label = "Effort scale") {
                     SegmentedPillControl(
@@ -415,7 +415,7 @@ fun ProfileMenuScreen(vm: AppViewModel) {
         // --- Calibration milestones ---
         val allDays by vm.recentDays.collectAsStateWithLifecycle()
         val bankedNights = remember(allDays) {
-            RecoveryScorer.bankedNights(allDays.map { it.avgHrv })
+            RustScores.bankedNights(allDays.map { it.avgHrv })
         }
         if (CalibrationMilestones.isCalibrating(bankedNights)) {
             CalibrationMilestonesCard(progress = CalibrationMilestones.progress(bankedNights))

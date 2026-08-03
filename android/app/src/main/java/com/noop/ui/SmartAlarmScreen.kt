@@ -38,7 +38,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.noop.ble.PuffinExperiment
 
 /**
- * Smart alarm (#207) — Android phone-based wake, with a guaranteed hard-deadline fallback.
+ * Smart alarm — Android phone-based wake, with a guaranteed hard-deadline fallback.
  *
  * The user picks the EARLIEST acceptable wake time and a window length. NOOP watches the overnight
  * strap stream and, if it spots a lighter sleep phase inside the window, wakes you then — but a
@@ -47,7 +47,7 @@ import com.noop.ble.PuffinExperiment
  * EARLIER; it can never cancel or skip the fallback. So you're woken by the window's end no matter
  * what. This screen is explicit about that safety guarantee.
  *
- * This is the ONE alarm surface (#766). It hosts the phone-based Wake Window above, the strap's own
+ * This is the ONE alarm surface. It hosts the phone-based Wake Window above, the strap's own
  * standalone firmware wake-alarm (moved here from Automations), and the cross-platform WIND-DOWN nudge,
  * so every wake/alarm control lives together instead of being split across two screens.
  */
@@ -58,11 +58,10 @@ fun SmartAlarmScreen(vm: AppViewModel) {
     val targetMinutes by vm.phoneAlarmTargetMinutes.collectAsStateWithLifecycle()
     val windowMinutes by vm.phoneAlarmWindowMinutes.collectAsStateWithLifecycle()
     val buzzWhoop4 by vm.buzzWhoop4Enabled.collectAsStateWithLifecycle()
-    // #536: the hint adapts to bond state — the strap can only be armed when a WHOOP 4.0 is connected.
+    // the hint adapts to bond state — the strap can only be armed when a WHOOP 4.0 is connected.
     val liveState = vm.live.collectAsStateWithLifecycle().value
     val bonded = liveState.bonded
-    // #821: the strap-buzz row was hardcoded to "WHOOP 4", which reads wrong on a connected 5/MG (issue
-    // #730 follow-up). Name the actual strap generation instead: a detected 5/MG says "WHOOP 5/MG", anything
+    // A hardcoded "WHOOP 4" reads wrong on a connected 5/MG, so name the actual strap generation: a detected 5/MG says "WHOOP 5/MG", anything
     // else (a 4.0, or nothing connected yet) keeps "WHOOP 4.0", so the label never claims the wrong device.
     val strapName = if (liveState.whoop5Detected) "WHOOP 5/MG" else "WHOOP 4.0"
 
@@ -70,11 +69,11 @@ fun SmartAlarmScreen(vm: AppViewModel) {
     // it in Settings and come back — there's no result callback for this special-access permission.
     var canSchedule by remember { mutableStateOf(vm.canScheduleExactAlarms()) }
 
-    // PERF (#707): lazy scaffold — each of the four cards is one `item { }` (all unconditional). Order +
+    // PERF: lazy scaffold — each of the four cards is one `item { }` (all unconditional). Order +
     // spacing unchanged (LazyColumn reproduces the eager `spacedBy(20.dp)`); only on-screen cards compose +
     // are accessibility-walked.
     LazyScreenScaffold(
-        // #766: "Alarms" because this screen now holds the phone Wake Window, the strap's firmware
+        // "Alarms" because this screen now holds the phone Wake Window, the strap's firmware
         // wake-alarm (moved here from Automations), and the wind-down reminder, so the broader title fits.
         title = "Alarms",
         subtitle = "Your wake window, the strap wake-alarm, and the evening wind-down reminder, in one place.",
@@ -150,9 +149,9 @@ fun SmartAlarmScreen(vm: AppViewModel) {
                 }
             }
 
-            // #536: companion strap-buzz, always visible so it's discoverable. Arms the strap's own firmware
+            // companion strap-buzz, always visible so it's discoverable. Arms the strap's own firmware
             // alarm at the earliest wake time, so the strap buzzes first and the OS alarm backs it up.
-            // #821: label + copy name the CONNECTED strap generation (strapName), not a hardcoded "WHOOP 4".
+            // label + copy name the CONNECTED strap generation (strapName), not a hardcoded "WHOOP 4".
             RowDividerLocal()
             ToggleRowLocal(
                 label = "Buzz $strapName",
@@ -166,7 +165,7 @@ fun SmartAlarmScreen(vm: AppViewModel) {
         }
         }
 
-        // #766: the strap's own firmware wake-alarm (its own time + weekdays + per-day overrides). Moved
+        // the strap's own firmware wake-alarm (its own time + weekdays + per-day overrides). Moved
         // here from Automations so every wake/alarm control sits on the one Alarms screen instead of being
         // conflated with the wind-down reminder. Distinct from "Buzz WHOOP 4" above, which arms the strap
         // at the PHONE alarm's time; this card is the strap's standalone schedule.
@@ -175,7 +174,7 @@ fun SmartAlarmScreen(vm: AppViewModel) {
         // The cross-platform wind-down nudge lives here too.
         item { WindDownCard(vm) }
 
-        // #821: the "how the smart wake works" explainer sat in the MIDDLE of the page (between the wake-alarm
+        // the "how the smart wake works" explainer sat in the MIDDLE of the page (between the wake-alarm
         // settings and the strap alarm), which read as an interruption. It's reference detail, not a control,
         // so it belongs at the BOTTOM after every alarm/reminder control, moved here.
         item { ExplanationCard() }
@@ -183,7 +182,7 @@ fun SmartAlarmScreen(vm: AppViewModel) {
 }
 
 /**
- * The strap's standalone silent wake-alarm (#766, moved from AutomationsScreen). Arms the strap's own
+ * The strap's standalone silent wake-alarm (moved from AutomationsScreen). Arms the strap's own
  * firmware alarm at the chosen time/weekdays over BLE, so it buzzes even if NOOP is closed. Reuses the
  * shared [AlarmWeekdayPicker] / [AlarmDayOverridePicker] from AutomationsScreen (same behaviour, just a
  * new home). Functions are untouched: it drives the same `viewModel.setSmartAlarm*` calls as before.
@@ -197,7 +196,7 @@ private fun StrapAlarmCard(vm: AppViewModel) {
     val alarmDayOverrides by vm.smartAlarmDayOverrides.collectAsStateWithLifecycle()
     val live = vm.live.collectAsStateWithLifecycle().value
     // The firmware alarm is EXPERIMENTAL on a WHOOP 5/MG: it only arms when Experimental probes are on,
-    // otherwise enabling it silently arms nothing (#111), so the UI says so instead of promising a wake.
+    // otherwise enabling it silently arms nothing, so the UI says so instead of promising a wake.
     val experimentalOn = PuffinExperiment.from(context).isEnabled
 
     NoopCard(padding = 20.dp, tint = if (smartAlarm) Palette.accent else null) {
@@ -210,12 +209,12 @@ private fun StrapAlarmCard(vm: AppViewModel) {
                     Text("Strap wake-alarm", style = NoopType.title2, color = Palette.textPrimary)
                 }
             }
-            // Truth-sync (#535): the WHOOP 4.0 alarm payload was captured from the official app and
+            // Truth-sync: the WHOOP 4.0 alarm payload was captured from the official app and
             // confirmed buzzing on a real 4.0 by the capture author, so the copy no longer calls the
             // 4.0 path experimental. The 5/MG Experimental-gate branch below is deliberately untouched.
             ToggleRowLocal(
                 label = "Wake me with a strap buzz",
-                help = "Arms the strap to buzz at your wake time, even if NOOP is closed. Sends the exact alarm command the official app sends, confirmed buzzing on a real WHOOP 4.0 (community wire capture + on-device test, #535). Keep a backup alarm for anything you truly can't miss.",
+                help = "Arms the strap to buzz at your wake time, even if NOOP is closed. Sends the exact alarm command the official app sends, confirmed buzzing on a real WHOOP 4.0. Keep a backup alarm for anything you truly can't miss.",
                 checked = smartAlarm,
                 onChange = { vm.setSmartAlarmEnabled(it) },
             )
@@ -236,7 +235,7 @@ private fun StrapAlarmCard(vm: AppViewModel) {
                     onToggle = { dow -> vm.setSmartAlarmWeekdays(toggledSmartAlarmWeekday(dow, alarmWeekdays)) },
                 )
                 RowDividerLocal()
-                // Per-weekday wake-time OVERRIDES (#554): a different time for any day the alarm fires on.
+                // Per-weekday wake-time OVERRIDES: a different time for any day the alarm fires on.
                 AlarmDayOverridePicker(
                     defaultMinutes = alarmMinutes,
                     enabledDays = alarmWeekdays,
@@ -253,7 +252,7 @@ private fun StrapAlarmCard(vm: AppViewModel) {
                 } else if (live.whoop5Detected) {
                     // 5/MG with Experimental ON: the strap IS armed (experimental rev-4 payload) but a
                     // strap-driven wake has NEVER been captured on 5/MG, so the "confirmed on 4.0" copy must
-                    // NOT show here (#864 honesty). Byte-identical wording to the Swift SmartAlarmView twin.
+                    // NOT show here (honesty). Byte-identical wording to the Swift SmartAlarmView twin.
                     Text(
                         if (live.bonded)
                             "Armed on the strap itself with the experimental 5/MG command. A strap-driven wake is still unconfirmed on 5/MG on our side (confirmed only on WHOOP 4.0), so keep a backup alarm for anything you truly can't miss."
@@ -264,9 +263,9 @@ private fun StrapAlarmCard(vm: AppViewModel) {
                 } else {
                     Text(
                         if (live.bonded)
-                            // Truth-sync (#535): confirmed buzzing on a real WHOOP 4.0; byte-identical
+                            // Truth-sync: confirmed buzzing on a real WHOOP 4.0; byte-identical
                             // wording to the Swift SmartAlarmView.
-                            "Armed on the strap itself, so it can buzz at your wake time even if your phone is asleep or NOOP is closed. Sends the exact alarm command the official app sends, confirmed buzzing on a real WHOOP 4.0 (community wire capture + on-device test, #535). Keep a backup alarm for anything you truly can't miss."
+                            "Armed on the strap itself, so it can buzz at your wake time even if your phone is asleep or NOOP is closed. Sends the exact alarm command the official app sends, confirmed buzzing on a real WHOOP 4.0. Keep a backup alarm for anything you truly can't miss."
                         else
                             "Connect your strap to arm this; it's set on the strap's own firmware alarm. Confirmed working on WHOOP 4.0; still experimental on 5.0 and MG. Keep a backup alarm for anything you truly can't miss.",
                         style = NoopType.footnote, color = Palette.textTertiary,

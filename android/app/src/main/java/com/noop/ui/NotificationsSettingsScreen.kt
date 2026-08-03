@@ -147,7 +147,7 @@ internal object NotifPrefs {
     private const val FILE = "noop_notif_prefs"
     const val MASTER = "notif.masterEnabled"
     /** Catch-all: buzz for any app NOT in the curated catalog (Android can't enumerate installed
-     *  apps, so this is how a user covers BeReal/etc. that aren't listed). Opt-in, default OFF. (#168) */
+     *  apps, so this is how a user covers BeReal/etc. that aren't listed). Opt-in, default OFF. */
     const val ALL_OTHER = "notif.allOtherApps"
     const val WORN = "notif.onlyWhenWorn"
     const val QUIET = "notif.quietHoursEnabled"
@@ -233,7 +233,7 @@ fun NotificationsSettingsScreen(vm: AppViewModel) {
     var phoneCallsEnabled by remember { mutableStateOf(NotifPrefs.getBool(context, NotifPrefs.CALLS_PHONE, false)) }
     var voipCallsEnabled by remember { mutableStateOf(NotifPrefs.getBool(context, NotifPrefs.CALLS_VOIP, false)) }
     var callsPattern by remember { mutableStateOf(NotifPrefs.callPattern(context)) }
-    // Scheduled report notifications (#517) — opt-in, default OFF. SharedPreferences isn't reactive, so
+    // Scheduled report notifications — opt-in, default OFF. SharedPreferences isn't reactive, so
     // each Switch mirrors into local state and writes straight through to NoopPrefs.
     var morningReport by remember { mutableStateOf(NoopPrefs.morningReportEnabled(context)) }
     var postWorkoutReport by remember { mutableStateOf(NoopPrefs.postWorkoutReportEnabled(context)) }
@@ -439,7 +439,7 @@ fun NotificationsSettingsScreen(vm: AppViewModel) {
             }
         }
 
-        // MARK: Daily reports (#517) — phone notifications, not wrist buzzes. Opt-in, default OFF, no AI.
+        // MARK: Daily reports — phone notifications, not wrist buzzes. Opt-in, default OFF, no AI.
         AlertSection(
             icon = Icons.Filled.NotificationsActive,
             title = "Daily reports",

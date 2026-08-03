@@ -9,9 +9,9 @@ import kotlinx.coroutines.delay
 
 // MARK: - RealtimeHr — who wants the strap's live HR stream, and for how long
 //
-// Arming TOGGLE_REALTIME_HR streams 1 Hz off the strap's own battery and pins the GATT link at
-// CONNECTION_PRIORITY_HIGH, so the decision is split into two inputs neither of which can override the
-// other: the INTENT (which screen or session asked — [RealtimeHrArbiter.request]) and the REACHABILITY
+// Arming TOGGLE_REALTIME_HR streams 1 Hz off the strap's own battery, so the decision is split into
+// two inputs neither of which can override the other: the INTENT (which screen or session asked —
+// [RealtimeHrArbiter.request]) and the REACHABILITY
 // (is the app's UI on screen — [RealtimeHrArbiter.setVisible]). A SCREEN want additionally carries a
 // lease that a started composition renews, so a want nobody releases expires on its own.
 // [AppViewModel] owns the single arbiter and mirrors [RealtimeHrArbiter.armed] onto [com.noop.ble.WhoopBleClient].

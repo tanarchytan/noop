@@ -69,7 +69,7 @@ object FusionDayAdapter {
         val devices = runCatching { repo.pairedDevices() }.getOrDefault(emptyList())
         // One row per source for the requested day (or null when that source has nothing that day).
         //
-        // #799: a source contributes ONLY the day it ACTUALLY covers. `firstOrNull { it.day == day }`
+        // a source contributes ONLY the day it ACTUALLY covers. `firstOrNull { it.day == day }`
         // matches the source's OWN row keyed to this exact day (each daily row is keyed by its own local
         // day at write time), so a single imported sleep row can never supply a value for a day it doesn't
         // cover (the "fused 8h57m every day" symptom). `repo.days(id)` is bounded per source and a missing

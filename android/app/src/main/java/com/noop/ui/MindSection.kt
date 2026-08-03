@@ -28,7 +28,6 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.noop.analytics.RustScores
 import com.noop.data.DailyMetric
 import com.noop.data.MoodStore
 import kotlinx.coroutines.launch
@@ -41,8 +40,7 @@ import kotlin.math.abs
 // MoodStore under the shared cross-platform contract (source id "noop-mood", key "mood",
 // value 1.0–5.0, overwrite on edit). Once ≥7 days are checked in, up to three Pearson
 // correlation lines appear — mood vs HRV / recovery / sleep duration — computed over the
-// cached DailyMetric rows with the same CorrelationEngine math as the Compare screen
-// (the StrandAnalytics/CorrelationEngine.swift port). Deliberately NEUTRAL palette:
+// cached DailyMetric rows through the shared [CorrelationEngine]. Deliberately NEUTRAL palette:
 // mood is self-knowledge, not a score, so nothing here is tinted good/bad.
 
 /** One face on the check-in scale. `value` is the stored 1.0–5.0 contract value. */
@@ -234,13 +232,13 @@ private fun MoodChip(label: String, onClick: () -> Unit) {
 @Composable
 private fun MindCorrelationRow(line: MindLine) {
     val dir = if (line.r > 0) "positive" else if (line.r < 0) "negative" else "flat"
-    val sentence = "${mindStrengthWord(line.r)} $dir relationship (n = ${line.n})."
+    val sentence = "${CorrelationEngine.strengthPhrase(line.r)} $dir relationship (n = ${line.n})."
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 6.dp)
             .semantics { contentDescription = "${line.title}: $sentence" },
-        verticalArrangement = Arrangement.spacedBy(4.dp),
+        verticalArrangement = Arrangement.spacedBy(Metrics.space4),
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -277,7 +275,7 @@ private fun buildMindCorrelations(
     mood: List<Pair<String, Double>>,
 ): List<MindLine> {
     fun line(title: String, series: List<Pair<String, Double>>): MindLine? {
-        val c = MindCorrelationEngine.pearson(MindCorrelationEngine.alignByDay(mood, series))
+        val c = CorrelationEngine.pearson(CorrelationEngine.alignByDay(mood, series))
             ?: return null
         return MindLine(title, c.r, c.n)
     }
@@ -286,44 +284,4 @@ private fun buildMindCorrelations(
         line("Mood ↔ Recovery", days.mapNotNull { d -> d.recovery?.let { d.day to it } }),
         line("Mood ↔ Sleep duration", days.mapNotNull { d -> d.totalSleepMin?.let { d.day to it } }),
     )
-}
-
-private fun mindStrengthWord(r: Double): String {
-    val m = abs(r)
-    return when {
-        m < 0.1 -> "No"
-        m < 0.3 -> "A weak"
-        m < 0.5 -> "A moderate"
-        m < 0.7 -> "A strong"
-        else -> "A very strong"
-    }
-}
-
-private data class MindCorrelation(val r: Double, val n: Int)
-
-/** Same math as the Compare screen's engine — both are value-for-value ports of
- *  StrandAnalytics/CorrelationEngine.swift (kept private per file; there is no shared
- *  com.noop.analytics CorrelationEngine to import yet). */
-private object MindCorrelationEngine {
-    /** Inner-join two day-keyed series on the day key → (x, y) pairs sorted by day. */
-    fun alignByDay(
-        a: List<Pair<String, Double>>,
-        b: List<Pair<String, Double>>,
-    ): List<Pair<Double, Double>> {
-        val mapA = HashMap<String, Double>()
-        for ((day, v) in a) mapA[day] = v
-        val mapB = HashMap<String, Double>()
-        for ((day, v) in b) mapB[day] = v
-        val common = mapA.keys.filter { mapB.containsKey(it) }.sorted()
-        return common.map { mapA[it]!! to mapB[it]!! }
-    }
-
-    /** Pearson r over the pairs, computed in whoop-rs. Null under 3 pairs (too few to show) or
-     *  when either variable is flat. */
-    fun pearson(xy: List<Pair<Double, Double>>): MindCorrelation? {
-        if (xy.size < 3) return null
-        val r = RustScores.pearson(xy.map { it.first }, xy.map { it.second })
-            ?.coerceIn(-1.0, 1.0) ?: return null
-        return MindCorrelation(r = r, n = xy.size)
-    }
 }

@@ -18,7 +18,6 @@ import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 import androidx.compose.ui.graphics.Color
@@ -27,6 +26,8 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.noop.analytics.RustScores
+import uniffi.whoop_ffi.RecoveryState
 
 // MARK: - Palette — the "Titanium & Gold" re-skin (mirrors StrandDesign/Palette.swift)
 //
@@ -67,10 +68,6 @@ object Palette {
     val textSecondary get() = active.textSecondary
     val textTertiary get() = active.textTertiary
 
-    // Secondary text on the liquid hero. The hero card is now theme-aware (dark in dark, cream in light),
-    // so this follows it: a light grey on the dark hero, the warm secondary ink on the cream one.
-    val onDarkSecondary get() = if (isLight) textSecondary else Color(0xFFC8CFD8)
-
     // Glow.
     val glowAmbient get() = active.glowAmbient
 
@@ -79,6 +76,9 @@ object Palette {
     val accentHover get() = active.accentHover
     val accentMuted get() = active.accentMuted
     val focusRing get() = active.focusRing
+    val actionBlue get() = active.actionBlue
+    /** The label/icon that sits ON a saturated fill (action blue, critical red). */
+    val onFill get() = active.onFill
     const val disabledOpacity = 0.45f
 
     // Recovery / Charge gradient.
@@ -183,10 +183,6 @@ object Palette {
     val titaniumLow get() = active.titaniumLow
     val titaniumDeep get() = active.titaniumDeep
 
-    /** Titanium gradient stops (top → mid → low → deep) — tiles / avatars / icon (150°). */
-    val titaniumGradient: List<Pair<Float, Color>>
-        get() = listOf(0.0f to titaniumTop, 0.40f to titaniumMid, 0.75f to titaniumLow, 1.0f to titaniumDeep)
-
     /** Gauge-tip / sparkline-head core — white on dark, deep ink on light. */
     val tipCore get() = active.tipCore
 
@@ -235,25 +231,17 @@ object Palette {
      */
     fun effortTint(fraction: Double): Color = sample(strainStops, fraction.coerceIn(0.0, 1.0).toFloat())
 
-    /** The state word for a recovery score, per spec §9.3. */
-    fun recoveryState(score: Double): String = when {
-        score < 25 -> "DEPLETED"
-        score < 50 -> "LOW"
-        score < 70 -> "MODERATE"
-        score < 88 -> "PRIMED"
-        else -> "PEAK"
+    /** The state word for a recovery score. whoop-rs picks the band; only the word is chosen here. */
+    fun recoveryState(score: Double): String = when (RustScores.state(score)) {
+        RecoveryState.DEPLETED -> "DEPLETED"
+        RecoveryState.LOW -> "LOW"
+        RecoveryState.MODERATE -> "MODERATE"
+        RecoveryState.PRIMED -> "PRIMED"
+        RecoveryState.PEAK -> "PEAK"
     }
 
     /** HR-zone color for a 1..5 zone index (clamped). */
     fun hrZoneColor(zone: Int): Color = hrZones[zone.coerceIn(1, 5)]
-
-    /** The signature recovery gradient as a horizontal sweep brush (for bars). */
-    fun recoveryBrush(): Brush =
-        Brush.horizontalGradient(*recoveryStops.toTypedArray())
-
-    /** The strain ramp as a horizontal sweep brush. */
-    fun strainBrush(): Brush =
-        Brush.horizontalGradient(*strainStops.toTypedArray())
 }
 
 // MARK: - DomainTheme (NEW — Titanium & Gold per-domain colour worlds)
@@ -306,34 +294,16 @@ enum class DomainTheme {
             Stress -> Palette.stressGlow
         }
 
-    /** Deep → bright gradient stops for gauge strokes and the diagonal card wash. */
-    val gradientStops: List<Pair<Float, Color>>
-        get() = when (this) {
-            Charge -> Palette.chargeGradientStops
-            Effort -> Palette.effortGradientStops
-            Rest -> Palette.restGradientStops
-            Stress -> Palette.stressGradientStops
-        }
-
-    /** The data gradient the world samples values along (Charge/Rest/Stress = recovery
-     *  scale, Effort = strain ramp), used by sparklines and value-tinted strokes. */
-    val dataStops: List<Pair<Float, Color>>
-        get() = when (this) {
-            Effort -> Palette.strainStops
-            else -> Palette.recoveryStops
-        }
-
     /** A short upper-case label for the world (CHARGE / STRAIN / REST / STRESS). */
     val label: String get() = if (this == Effort) "Strain" else name
 }
 
-// MARK: - Motion (ported from StrandDesign/Motion.swift §9.6)
+// MARK: - Motion
 //
 // Physiological motion — breathe / pulse / flow, no cartoon bounce.
 
 object Motion {
     // Durations (ms)
-    const val durationFast = 180       // hover/press feedback
     const val durationStandard = 300   // card appear, fades
     const val durationSlow = 900       // ring arc, waveform ignite
     const val breathPeriodMs = 3200    // one breath cycle for ambient pulsing
@@ -358,7 +328,6 @@ object StrandAlpha {
     const val chartLabel = 0.95f
     const val unselectedBar = 0.88f
     const val warningFill = 0.12f
-    const val warningBorder = 0.40f
 }
 
 // MARK: - Metrics (ported from StrandDesign/Components.swift NoopMetrics)
@@ -376,14 +345,14 @@ object Metrics {
     val space24 = 24.dp
     val sourceBadgeHeight = 18.dp
     val cardRadius = 18.dp   // Bevel continuous radius (18–22dp)
+    val heroRadius = 26.dp   // the liquid hero card's frosted-glass rounding
     val cornerXs = 2.dp
     val cornerSm = 12.dp
-    val cornerBadge = 6.dp
     val cornerPill = 50.dp
     val cardPadding = 16.dp
     val gap = 12.dp           // gap between cards
     val sectionGap = 28.dp    // gap between sections
-    // #765: the ONE inter-card vertical spacing for a screen's top-level scroll rows. Both ScreenScaffold
+    // the ONE inter-card vertical spacing for a screen's top-level scroll rows. Both ScreenScaffold
     // and LazyScreenScaffold use this for `spacedBy(...)`, so every Today/Explore card sits on the same
     // rhythm instead of a bare `20.dp` literal repeated per scaffold (and Today no longer injects ad-hoc
     // Spacer rows that broke that rhythm). One token = uniform, consistent gaps across the screens.
@@ -398,11 +367,8 @@ object Metrics {
     val iconSmall = 18.dp
     val selectorPadding = 10.dp
     val selectorSpacing = 8.dp
-    val sparkWidthWide = 48.dp   // inline trend beside a tile value — kept compact so the value (which
-                                 // shrinks to fit, #332) keeps enough room to stay legible at full size
-    val sparkWidth = 58.dp
-    val motionStripHeight = 40.dp   // #407 — the subordinate movement/restlessness trace under the hypnogram
-    // iOS #988 port — WHOOP-style per-stage sleep timeline rows (design 2026-07-10).
+    val motionStripHeight = 40.dp   // the movement/restlessness trace under the hypnogram
+    // iOS port — WHOOP-style per-stage sleep timeline rows (design 2026-07-10).
     val stageRowTrackHeight = 20.dp  // hatched night track + solid stage segments
     val stageRowCorner = 10.dp       // row background rounding
     val stageRowPadH = 10.dp         // row inner horizontal padding — the movement strip and axis share it so epochs align
@@ -420,7 +386,7 @@ object Metrics {
     val progressHeight = 10.dp
 }
 
-// MARK: - Typography (ported from StrandDesign/Typography.swift §9.2)
+// MARK: - Typography
 //
 // Helvetica Neue on Apple; on Android we use a Helvetica-Neue FontFamily where one
 // is bundled in res/font, else FontFamily.SansSerif as the documented substitute
@@ -460,6 +426,23 @@ object NoopType {
         letterSpacing = 1.4.sp,
     )
 
+    /** Overline 10 / Bold, +0.5 tracking — the dense variant for a pill that has to hold a word like
+     *  ON-DEVICE on one line. The only sanctioned step below [overline]. */
+    val overlineSmall = TextStyle(
+        fontFamily = sans, fontWeight = FontWeight.Bold, fontSize = 10.sp,
+        letterSpacing = 0.5.sp,
+    )
+
+    /** Tab-bar item label 10 / Medium — the bottom nav's caption, below [footnote] so five fit a row.
+     *  A call site may `.copy(fontWeight = …)` to mark the selected tab. */
+    val tabLabel = TextStyle(fontFamily = sans, fontWeight = FontWeight.Medium, fontSize = 10.sp)
+
+    /** A small pictographic mark (▲ ▼) sized to ride beside caption text rather than to be read. */
+    val glyph = TextStyle(
+        fontFamily = sans, fontWeight = FontWeight.Bold, fontSize = 8.sp,
+        fontFeatureSettings = "tnum",
+    )
+
     /** Mono 13 — raw / log views. */
     val mono = TextStyle(fontFamily = monoFamily, fontWeight = FontWeight.Normal, fontSize = 13.sp)
 
@@ -475,10 +458,8 @@ object NoopType {
 
     val bodyNumber = TextStyle(fontFamily = sans, fontWeight = FontWeight.Medium, fontSize = 15.sp, fontFeatureSettings = "tnum")
     val captionNumber = TextStyle(fontFamily = sans, fontWeight = FontWeight.Medium, fontSize = 12.sp, fontFeatureSettings = "tnum")
-    val metricInline = number(15f)
     val chartValue = number(18f)
     val chartValueLarge = number(22f)
-    val tileValue = number(24f)
     val tileValueLarge = number(26f)
 
     const val overlineTracking = 1.4f

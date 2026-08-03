@@ -3,7 +3,7 @@ package com.noop.ui
 import android.content.Context
 import android.content.SharedPreferences
 
-// MARK: - Recently selected workout types (#297)
+// MARK: - Recently selected workout types
 //
 // Picking a workout type meant scanning/searching the full catalogue every time, even though most
 // people cycle through the same 2-3 activities. Both sport pickers (the manual add/edit field and the
@@ -11,7 +11,7 @@ import android.content.SharedPreferences
 //
 // Stored as a single comma-joined string of sport names in SharedPreferences, most-recent-first,
 // capped at three, deduplicated case-insensitively — the same mechanism as the other display prefs
-// (KeyMetricPrefs / MoreSectionPrefs). Mirrors the macOS/iOS RecentSportsPrefs.swift (UserDefaults
+// (KeyMetricPrefs). Mirrors the macOS/iOS RecentSportsPrefs.swift (UserDefaults
 // "workout.recentSports"). Display-only: no WorkoutRow, analytics value or migration changes, so like
 // the other layout prefs it stays OUT of the .noopbak settings whitelist.
 

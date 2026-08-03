@@ -72,17 +72,12 @@ fun CoachScreen(vm: CoachViewModel = viewModel()) {
     val customConnected by vm.customConnected.collectAsStateWithLifecycle()
     // Re-evaluate the gate whenever the stored key, provider, or custom-connect state changes.
     val configured = remember(keyVersion, provider, customConnected) { vm.isConfigured(context) }
-    // Same day-cycle gate as the liquid Today: the time-of-day sky settles behind the top content when the
-    // user hasn't opted out; otherwise the scaffold paints the plain dark canvas.
-    val showDayCycleBackground = remember { NoopPrefs.showDayCycleBackground(context) }
 
+    // No topBackground: the scaffold paints Palette.surfaceBase, the one canvas every screen shares. The
+    // decorated backdrop it used to carry painted fixed dark-mode colours in both themes.
     ScreenScaffold(
         title = "Coach",
         subtitle = "Ask about your recovery, strain, sleep and HRV, grounded in your own numbers.",
-        // LIQUID SKY BACKDROP (the pilot pattern — LiquidScreenSky.kt): the liquid sky sits behind the
-        // header and the cards float over the flat canvas below. Reuses the shared LiquidScreenSky() slot
-        // verbatim; when the day-cycle background is off, the scaffold paints the plain surface instead.
-        topBackground = if (showDayCycleBackground) { { LiquidScreenSky() } } else null,
     ) {
         if (!configured) {
             CoachSetup(vm = vm)
@@ -440,7 +435,7 @@ private fun ChatBubble(msg: ChatMsg) {
                 if (isUser) {
                     Text(msg.text, style = NoopType.body, color = Palette.textPrimary)
                 } else {
-                    // Render the Coach's Markdown (bold/lists/headings) instead of raw symbols (#149).
+                    // Render the Coach's Markdown (bold/lists/headings) instead of raw symbols.
                     CoachMarkdown(msg.text, color = Palette.textPrimary)
                 }
             }

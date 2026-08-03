@@ -2,7 +2,6 @@ package com.noop.ui
 
 import android.widget.Toast
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.lazy.items
@@ -39,6 +38,7 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
@@ -54,12 +54,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.noop.ble.LiveState
@@ -84,54 +83,42 @@ import kotlinx.coroutines.launch
 // The registry's reads are one-shot suspend (not a Flow), so the screen keeps the list in a remembered
 // state and reloads it after every mutation via [reload].
 
-// MARK: - Liquid hero tokens (the liquid Devices restyle)
-//
-// The ACTIVE device card is the screen's hero: it floats over the day-of-sky as a translucent near-black
-// frosted card so the strap name + the live battery tube stay crisp on it. Same tokens as the liquid Today
-// hero (heroFill = rgba(13,14,20,.80), radius 26, white@0.11 hairline). Those Today constants are private to
-// TodayScreen, so the identical values are declared here. Mirrors the iOS liquid heroCard.
-private val LIQUID_HERO_FILL: Color = Color(red = 13f / 255f, green = 14f / 255f, blue = 20f / 255f, alpha = 0.80f)
-private val LIQUID_HERO_RADIUS: Dp = 26.dp
-
 @Composable
 fun DevicesScreen(
     viewModel: AppViewModel,
     /** Routes to the non-destructive file-import lane (Data Sources). The Oura adopt wizard's "Keep the
- * Oura app instead (import a file)" link and every honest Oura failure offer this. Defaults to a no-op
- * so existing call sites keep compiling; AppRoot wires it to navigate to Data Sources. */
+     * Oura app instead (import a file)" link and every honest Oura failure offer this. Defaults to a no-op
+     * so existing call sites keep compiling; AppRoot wires it to navigate to Data Sources. */
     onUseFileImport: () -> Unit = {},
 ) {
     val scope = rememberCoroutineScope()
     val live by viewModel.live.collectAsStateWithLifecycle()
 
- // Liquid sky backdrop gate — the SAME "Day-cycle background" preference the liquid Today honours (,
- // default ON). Off falls back to the flat dark canvas, so the setting governs every liquid screen alike.
     val context = LocalContext.current
-    val showDayCycleBackground = remember { NoopPrefs.showDayCycleBackground(context) }
 
- // The current device list, reloaded after each registry op. Null while the first read is in flight.
+    // The current device list, reloaded after each registry op. Null while the first read is in flight.
     var devices by remember { mutableStateOf<List<PairedDeviceRow>?>(null) }
     fun reload() {
         scope.launch { devices = viewModel.pairedDevices() }
     }
     LaunchedEffect(Unit) { devices = viewModel.pairedDevices() }
 
- // Sheets / dialogs (mirror the Swift @State targets).
+    // Sheets / dialogs (mirror the Swift @State targets).
     var showAddWizard by remember { mutableStateOf(false) }
     var switchTarget by remember { mutableStateOf<PairedDeviceRow?>(null) }
     var renameTarget by remember { mutableStateOf<PairedDeviceRow?>(null) }
     var removeTarget by remember { mutableStateOf<PairedDeviceRow?>(null) }
-    var deleteDataTarget by remember { mutableStateOf<PairedDeviceRow?>(null) }
+    var deleteDeviceTarget by remember { mutableStateOf<PairedDeviceRow?>(null) }
     var rebootTarget by remember { mutableStateOf<PairedDeviceRow?>(null) }
- // The device whose wrist picker is open.
+    // The device whose wrist picker is open.
     var wristTarget by remember { mutableStateOf<PairedDeviceRow?>(null) }
- // WHOOP 4.0 reboot probe (Test Centre → Connection, 4.0 only) — the device whose probe sheet is open.
+    // WHOOP 4.0 reboot probe (Test Centre → Connection, 4.0 only) — the device whose probe sheet is open.
     var probeTarget by remember { mutableStateOf<PairedDeviceRow?>(null) }
- // After removing the ACTIVE device with other devices still paired, prompt to pick a new active one.
+    // After removing the ACTIVE device with other devices still paired, prompt to pick a new active one.
     var pickNewActive by remember { mutableStateOf(false) }
 
- // BLE only. The registry already drops what is not hardware (the WHOOP import sink included), so this
- // screen lists straps and never a dataset — that lives in Data Sources.
+    // BLE only. The registry already drops what is not hardware (the WHOOP import sink included), so this
+    // screen lists straps and never a dataset — that lives in Data Sources.
     val all = devices.orEmpty()
     val activeDevices = com.noop.data.connectableDevices(all)
     val removedDevices = all.filter { it.status == DeviceStatus.archived.name }
@@ -139,21 +126,18 @@ fun DevicesScreen(
         all.firstOrNull { it.status == DeviceStatus.active.name }?.let { displayName(it) }
             ?: "Your current strap"
 
- // PERF : lazy scaffold — each device card is virtualized via `items(...)` (each was a direct
- // child of the eager `spacedBy(20.dp)` column, so the LazyColumn's matching spacing is identical) and
- // the static button/footer are single items. Only on-screen cards compose + are accessibility-walked.
- // Conditional rows use `if (cond) { item/items }` so a hidden section adds no row.
+    // PERF : lazy scaffold — each device card is virtualized via `items(...)` (each was a direct
+    // child of the eager `spacedBy(20.dp)` column, so the LazyColumn's matching spacing is identical) and
+    // the static button/footer are single items. Only on-screen cards compose + are accessibility-walked.
+    // Conditional rows use `if (cond) { item/items }` so a hidden section adds no row.
+    // No topBackground: the scaffold paints the theme canvas (Palette.surfaceBase) so the device cards
+    // read the same in both schemes.
     LazyScreenScaffold(
         title = "Devices",
         subtitle = "Pair and manage the bands NOOP reads from.",
- // LIQUID SKY BACKDROP (the pilot pattern — LiquidScreenSky.kt): the time-of-day liquid sky settles
- // into the flat canvas behind the top of the screen so the frosted device cards float over it. The
- // static sky (LiquidSkyStatic inside the helper) carries no per-frame cost on this scrolling list.
- // Gated on the same "Day-cycle background" setting as Today; off passes null for the plain canvas.
-        topBackground = if (showDayCycleBackground) { { LiquidScreenSky() } } else null,
     ) {
         if (devices == null) {
- // The registry resolves a beat after launch. Show a calm pending note in that brief window.
+            // The registry resolves a beat after launch. Show a calm pending note in that brief window.
             item {
             DataPendingNote(
                 title = "Getting your devices ready",
@@ -163,7 +147,7 @@ fun DevicesScreen(
             return@LazyScreenScaffold
         }
 
- // Sync now — the strap-history sync control (moved out of Health; it belongs with the devices).
+        // Sync now — the strap-history sync control (moved out of Health; it belongs with the devices).
         item { SyncStatusSection(vm = viewModel, onSyncNow = { viewModel.syncNow() }) }
 
         items(activeDevices) { device ->
@@ -171,60 +155,60 @@ fun DevicesScreen(
                 device = device,
                 isActive = device.status == DeviceStatus.active.name,
                 isLiveConnected = device.status == DeviceStatus.active.name && live.connected,
- // : a WHOOP 5/MG can be BLE-connected yet have its ENCRYPTED bond refused (the WHOOP
- // app, or a stale pairing, holds the single-app bond) — no HR/biometric data flows even
- // though the link is up, so "Active · Live" overstates it. pairingHint is set only once
- // that refusal is genuinely detected , never during a normal connect, so this can't
- // false-alarm a working 4.0 (its pairingHint stays null) or a fresh 5/MG connect.
+                // a WHOOP 5/MG can be BLE-connected yet have its ENCRYPTED bond refused (the WHOOP
+                // app, or a stale pairing, holds the single-app bond) — no HR/biometric data flows even
+                // though the link is up, so "Active · Live" overstates it. pairingHint is set only once
+                // that refusal is genuinely detected , never during a normal connect, so this can't
+                // false-alarm a working 4.0 (its pairingHint stays null) or a fresh 5/MG connect.
                 bondRefused = device.status == DeviceStatus.active.name && live.connected && live.pairingHint != null,
- // The full how-to-fix guidance, surfaced on the card itself when bondRefused so the
- // fix is self-service instead of buried in the strap log.
+                // The full how-to-fix guidance, surfaced on the card itself when bondRefused so the
+                // fix is self-service instead of buried in the strap log.
                 pairingHint = if (device.status == DeviceStatus.active.name) live.pairingHint else null,
- // Reboot in flight + link currently down → "Reconnecting…".
+                // Reboot in flight + link currently down → "Reconnecting…".
                 isReconnecting = device.status == DeviceStatus.active.name && live.rebootInProgress && !live.connected,
- // The live battery belongs to whichever device is ACTIVE + connected (WHOOP, a generic
- // strap, or an FTMS machine all funnel into live.batteryPct). null otherwise.
+                // The live battery belongs to whichever device is ACTIVE + connected (WHOOP, a generic
+                // strap, or an FTMS machine all funnel into live.batteryPct). null otherwise.
                 liveBatteryPct = if (device.status == DeviceStatus.active.name && live.connected)
                     live.batteryPct?.let { Math.round(it).toInt() } else null,
- // Firmware version from the connect handshake: only for the active, connected strap.
+                // Firmware version from the connect handshake: only for the active, connected strap.
                 liveFirmware = if (device.status == DeviceStatus.active.name && live.connected)
                     live.strapFirmware else null,
- // Historical record layout from the current backfill, distinct from strap firmware.
+                // Historical record layout from the current backfill, distinct from strap firmware.
                 liveHistoryLayout = if (device.status == DeviceStatus.active.name && live.connected)
                     live.historyLayoutVersion else null,
                 onMakeActive = { switchTarget = device },
                 onRename = { renameTarget = device },
                 onRemove = { removeTarget = device },
- // Manual connect and disconnect for the WHOOP. A short toast confirms the tap, since the link
- // state only changes a few seconds later.
+                // Manual connect and disconnect for the WHOOP. A short toast confirms the tap, since the link
+                // state only changes a few seconds later.
                 onConnect = if (device.brand.equals("WHOOP", ignoreCase = true)) {
                     { Toast.makeText(context, "Reconnecting…", Toast.LENGTH_SHORT).show(); viewModel.connect() }
                 } else null,
                 onDisconnect = if (device.brand.equals("WHOOP", ignoreCase = true)) {
                     { Toast.makeText(context, "Disconnecting", Toast.LENGTH_SHORT).show(); viewModel.disconnect() }
                 } else null,
- // Restart is offered only for a live-connected WHOOP that is NOT a 4.0: the strap-log
- // analysis on showed no safe frame reboots a 4.0 (empty bodies are ignored; any
- // non-empty body just wedges the BLE link for ~7s, sensor stays on), so a 4.0 Restart
- // button could never work. 5.0/MG reboot on the production frame. null otherwise.
+                // Restart is offered only for a live-connected WHOOP that is NOT a 4.0: the strap-log
+                // analysis on showed no safe frame reboots a 4.0 (empty bodies are ignored; any
+                // non-empty body just wedges the BLE link for ~7s, sensor stays on), so a 4.0 Restart
+                // button could never work. 5.0/MG reboot on the production frame. null otherwise.
                 onReboot = if (device.status == DeviceStatus.active.name && live.connected &&
                     SourceCoordinator.isWhoop(device) && live.whoop5Detected
                 ) { { rebootTarget = device } } else null,
- // 4.0 reboot probe: only offered when Test Centre → Connection is on AND the live strap is
- // a WHOOP 4.0 (a 5.0 already reboots on the production frame). null otherwise.
+                // 4.0 reboot probe: only offered when Test Centre → Connection is on AND the live strap is
+                // a WHOOP 4.0 (a 5.0 already reboots on the production frame). null otherwise.
                 onRebootProbe = if (device.status == DeviceStatus.active.name && live.connected &&
                     SourceCoordinator.isWhoop(device) && !live.whoop5Detected &&
                     TestCentre.from(context).active(TestDomain.CONNECTION)
                 ) { { probeTarget = device } } else null,
- // Wrist select: same gate as Restart (live-connected 5/MG). The 4.0 has no confirmed SELECT_WRIST
- // framing, so it is not offered there.
+                // Wrist select: same gate as Restart (live-connected 5/MG). The 4.0 has no confirmed SELECT_WRIST
+                // framing, so it is not offered there.
                 onSetWrist = if (device.status == DeviceStatus.active.name && live.connected &&
                     SourceCoordinator.isWhoop(device) && live.whoop5Detected
                 ) { { wristTarget = device } } else null,
             )
         }
 
- // Prominent "+ Add a device" button.
+        // Prominent "+ Add a device" button.
         item { AddDeviceButton(onClick = { showAddWizard = true }) }
 
         if (removedDevices.isNotEmpty()) {
@@ -239,26 +223,25 @@ fun DevicesScreen(
                     onRename = { renameTarget = device },
                     onRemove = null,
                     onReAdd = { switchTarget = device },
-                    onDeleteData = { deleteDataTarget = device },
+                    onDeleteDevice = { deleteDeviceTarget = device },
                 )
             }
         }
 
-        item { WhoopFirstFooter() }
     }
 
- // --- Add a device (guided, branching wizard: WHOOP family · HR strap · coming-soon rows) ---
+    // --- Add a device (guided, branching wizard: WHOOP family · HR strap · coming-soon rows) ---
     if (showAddWizard) {
         AddDeviceWizard(
             viewModel = viewModel,
             onClose = { showAddWizard = false; reload() },
- // The Oura gate's file-import links close the wizard and route to Data Sources, so the
- // non-destructive lane is always one tap away (it is never the only door).
+            // The Oura gate's file-import links close the wizard and route to Data Sources, so the
+            // non-destructive lane is always one tap away (it is never the only door).
             onUseFileImport = { showAddWizard = false; reload(); onUseFileImport() },
         )
     }
 
- // --- Switch confirm ---
+    // --- Switch confirm ---
     switchTarget?.let { device ->
         NoopConfirmDialog(
             title = "Make this your active strap?",
@@ -273,12 +256,11 @@ fun DevicesScreen(
         )
     }
 
- // --- Rename. One name: the registry row and, for a live-connected 4.0, the strap's Bluetooth name.
- // The outcome is shown rather than assumed — a 5/MG cannot take the name over the wire.
+    // --- Rename. One name: the registry row and, for a live-connected 4.0, the strap's Bluetooth name.
+    // The outcome is shown rather than assumed — a 5/MG cannot take the name over the wire.
     renameTarget?.let { device ->
         RenameDialog(
             device = device,
-            isWhoop = SourceCoordinator.isWhoop(device),
             onSave = { name ->
                 scope.launch {
                     val wrote = viewModel.renamePairedDevice(device.id, name)
@@ -291,7 +273,7 @@ fun DevicesScreen(
         )
     }
 
- // --- Remove confirm ---
+    // --- Remove confirm ---
     removeTarget?.let { device ->
         NoopConfirmDialog(
             title = "Remove this device?",
@@ -304,8 +286,8 @@ fun DevicesScreen(
                 scope.launch {
                     viewModel.archivePairedDevice(device.id)
                     devices = viewModel.pairedDevices()
- // If the removed device was active and another reachable strap remains, prompt to pick a
- // new active one (the registry's reload demotes the active row to paired).
+                    // If the removed device was active and another reachable strap remains, prompt to pick a
+                    // new active one (the registry's reload demotes the active row to paired).
                     if (wasActive && com.noop.data.connectableDevices(devices.orEmpty()).isNotEmpty()) {
                         pickNewActive = true
                     }
@@ -316,7 +298,7 @@ fun DevicesScreen(
         )
     }
 
- // --- Restart strap confirm ---
+    // --- Restart strap confirm ---
     rebootTarget?.let { device ->
         NoopConfirmDialog(
             title = "Restart this strap?",
@@ -329,7 +311,7 @@ fun DevicesScreen(
         )
     }
 
- // --- Wrist picker (5/MG, live-connected). Writes SELECT_WRIST; the ack lands in the strap log. ---
+    // --- Wrist picker (5/MG, live-connected). Writes SELECT_WRIST; the ack lands in the strap log. ---
     wristTarget?.let {
         WristDialog(
             current = NoopPrefs.strapWristRight(context),
@@ -342,8 +324,8 @@ fun DevicesScreen(
         )
     }
 
- // --- WHOOP 4.0 reboot probe : only reachable with Test Centre → Connection on + a 4.0 connected.
- // Tries each candidate frame one at a time so the strap log shows which one actually reboots. ---
+    // --- WHOOP 4.0 reboot probe : only reachable with Test Centre → Connection on + a 4.0 connected.
+    // Tries each candidate frame one at a time so the strap log shows which one actually reboots. ---
     probeTarget?.let {
         RebootProbeDialog(
             onSend = { variant -> viewModel.rebootProbe(variant); probeTarget = null },
@@ -351,8 +333,8 @@ fun DevicesScreen(
         )
     }
 
- // --- Second, strongly-worded delete-data confirm (from the Removed card's secondary control) ---
-    deleteDataTarget?.let { device ->
+    // --- Second, strongly-worded delete-device confirm (from the Removed card's secondary control) ---
+    deleteDeviceTarget?.let { device ->
         NoopConfirmDialog(
             title = "Delete this device?",
             text = "This permanently removes ${displayName(device)} and all of its recorded data. This " +
@@ -361,13 +343,13 @@ fun DevicesScreen(
             destructive = true,
             onConfirm = {
                 scope.launch { viewModel.deletePairedDevice(device.id); reload() }
-                deleteDataTarget = null
+                deleteDeviceTarget = null
             },
-            onDismiss = { deleteDataTarget = null },
+            onDismiss = { deleteDeviceTarget = null },
         )
     }
 
- // --- After removing the active device, offer to pick a new active one (if any remain) ---
+    // --- After removing the active device, offer to pick a new active one (if any remain) ---
     if (pickNewActive) {
         PickActiveDialog(
             devices = activeDevices,
@@ -382,31 +364,30 @@ fun DevicesScreen(
 
 // MARK: - Device card
 
-/** One paired device as a [NoopCard]: name, brand·model, a capabilities line, a state pill, last-seen,
- * and a per-device actions menu. The active device is tinted with the accent (WHOOP blue) and carries
- * an "Active" pill. */
+/** One paired device as a [NoopCard]: name, brand·model, a state pill, last-seen, and a per-device
+ * actions menu. The active device is tinted with the accent (WHOOP blue) and carries an "Active" pill. */
 @Composable
 private fun DeviceCard(
     device: PairedDeviceRow,
     isActive: Boolean,
     isLiveConnected: Boolean,
-    /** : the active+connected strap is BLE-linked but its encrypted bond was refused ( state) — no
- * HR/biometric data flows despite the link being up. Drives the "Connected · not paired" pill (which
- * takes priority over "Active · Live") and the honest subtitle. False for every non-WHOOP source and
- * for a normal connect. */
+    /** the active+connected strap is BLE-linked but its encrypted bond was refused — no
+     * HR/biometric data flows despite the link being up. Drives the "Connected · not paired" pill (which
+     * takes priority over "Active · Live") and the honest subtitle. False for every non-WHOOP source and
+     * for a normal connect. */
     bondRefused: Boolean = false,
-    /** : the full  pairing-refusal guidance (bonded-elsewhere / pairing-mode / forget-device
- * steps), shown on the card when [bondRefused] so the fix is self-service. null otherwise. */
+    /** the full pairing-refusal guidance (bonded-elsewhere / pairing-mode / forget-device
+     * steps), shown on the card when [bondRefused] so the fix is self-service. null otherwise. */
     pairingHint: String? = null,
-    /** The active strap's link dropped for a user-initiated reboot and NOOP is auto-reconnecting .
- * Drives the transient "Reconnecting…" pill; false for every non-reboot state. */
+    /** The active strap's link dropped for a user-initiated reboot and NOOP is auto-reconnecting.
+     * Drives the transient "Reconnecting…" pill; false for every non-reboot state. */
     isReconnecting: Boolean = false,
     dimmed: Boolean = false,
     /** The active+connected device's live battery percent (0–100) — surfaced the same way for WHOOP, a
- * generic strap, or an FTMS machine. null when not active/connected or no battery was reported. */
+     * generic strap, or an FTMS machine. null when not active/connected or no battery was reported. */
     liveBatteryPct: Int? = null,
     /** The active+connected strap's firmware version (from the connect handshake). null when not
- * active/connected, or for a source that reports no firmware (e.g. a non-WHOOP strap). */
+     * active/connected, or for a source that reports no firmware (e.g. a non-WHOOP strap). */
     liveFirmware: String? = null,
     /** The active+connected strap's observed banked-history record layout (`hist_version`). */
     liveHistoryLayout: Int? = null,
@@ -414,24 +395,22 @@ private fun DeviceCard(
     onRename: () -> Unit,
     onRemove: (() -> Unit)?,
     onReAdd: (() -> Unit)? = null,
-    onDeleteData: (() -> Unit)? = null,
+    onDeleteDevice: (() -> Unit)? = null,
     onConnect: (() -> Unit)? = null,
     onDisconnect: (() -> Unit)? = null,
     onReboot: (() -> Unit)? = null,
- // WHOOP 4.0 reboot probe (Test Centre → Connection, 4.0 only). Non-null only when the parent has
- // decided the probe applies (live-connected WHOOP 4.0 + Connection test mode on); null otherwise.
+    // WHOOP 4.0 reboot probe (Test Centre → Connection, 4.0 only). Non-null only when the parent has
+    // decided the probe applies (live-connected WHOOP 4.0 + Connection test mode on); null otherwise.
     onRebootProbe: (() -> Unit)? = null,
- // Wrist select (5/MG only, live-connected). Non-null only when the parent decided it applies.
+    // Wrist select (5/MG only, live-connected). Non-null only when the parent decided it applies.
     onSetWrist: (() -> Unit)? = null,
 ) {
-    val profile = deviceProfile(device)
- // The per-device actions menu's open state is hoisted here so the WHOLE card is a tap target that opens
- // the same menu the trailing ⋮ button does — additive, non-destructive (the menu still gates every
- // action + confirm), and it gives the card a real `clickable` to drive `liquidPress`.
+    // The per-device actions menu's open state is hoisted here so the WHOLE card is a tap target that opens
+    // the same menu the trailing ⋮ button does — additive, non-destructive (the menu still gates every
+    // action + confirm), and it gives the card a real `clickable` to drive `liquidPress`.
     var menuOpen by remember { mutableStateOf(false) }
- // liquidPress: the SAME interactionSource feeds the card's clickable and the press modifier, so the
- // whole card settles inward on press (the iOS LiquidPressStyle feel). Applied on the OUTER card so the
- // frosted surface + content scale/dim as one, matching the liquid Today cards.
+    // The SAME interactionSource feeds the card's clickable and the press modifier, applied on the OUTER
+    // card so the frosted surface and its content scale and dim as one.
     val interaction = remember { MutableInteractionSource() }
     val cardModifier = Modifier
         .alpha(if (dimmed) 0.6f else 1f)
@@ -442,9 +421,8 @@ private fun DeviceCard(
             onClickLabel = "Device actions for ${displayName(device)}",
         ) { menuOpen = true }
 
- // The ACTIVE device is the hero: the liquid translucent-black frosted card (rgba(13,14,20,.80), radius
- // 26, white@0.11 hairline) so it floats over the day-of-sky, matching the liquid Today hero. Every other
- // card (paired / removed) keeps the crisp neutral NoopCard frosted surface.
+    // The ACTIVE device is the hero: the shared frosted surface at the wider hero radius with an accent
+    // wash. Every other card (paired / removed) keeps the neutral NoopCard surface.
     val body: @Composable () -> Unit = {
         Column(verticalArrangement = Arrangement.spacedBy(Metrics.space12)) {
             Row(
@@ -462,9 +440,9 @@ private fun DeviceCard(
                     verticalArrangement = Arrangement.spacedBy(3.dp),
                 ) {
                     Text(displayName(device), style = NoopType.headline, color = Palette.textPrimary)
-                    Text(profile.displayModel, style = NoopType.subhead, color = Palette.textSecondary)
+                    Text(deviceModelLabel(device), style = NoopType.subhead, color = Palette.textSecondary)
                 }
- // Locally-adopted Oura is Beta: a non-dot Beta chip sits beside the usual state pill.
+                // Locally-adopted Oura is Beta: a non-dot Beta chip sits beside the usual state pill.
                 if (device.sourceKind == SourceKind.oura.name) {
                     StatePill("Beta", tone = StrandTone.Warning, showsDot = false)
                     Spacer(Modifier.width(Metrics.space6))
@@ -472,39 +450,27 @@ private fun DeviceCard(
                 StatePill(device, isActive, isLiveConnected, bondRefused, isReconnecting)
             }
 
- // Honest local-takeover state row for an adopted Oura ring that is paired but not the
- // active+connected source right now. States the single-owner reality plainly (if the ring was
- // reset again or re-claimed in the Oura app, NOOP no longer owns it) without faking a live
- // reading. Suppressed for the active+connected ring and for removed rings. Mirrors the macOS
- // ouraLocalStateNote.
+            // Honest local-takeover state row for an adopted Oura ring that is paired but not the
+            // active+connected source right now. States the single-owner reality plainly (if the ring was
+            // reset again or re-claimed in the Oura app, NOOP no longer owns it) without faking a live
+            // reading. Suppressed for the active+connected ring and for removed rings. Mirrors the macOS
+            // ouraLocalStateNote.
             if (device.sourceKind == SourceKind.oura.name && !isLiveConnected &&
                 device.status == DeviceStatus.paired.name
             ) {
                 OuraLocalStateNote()
             }
 
- // What this device CAPTURES — honest, per-model (not the generic stored set, which would
- // mislabel e.g. a "Blood oxygen" chip when no SpO₂ % ever comes off the strap).
-            CapabilityInfoRow(Icons.Filled.FavoriteBorder, profile.captures)
- // What NOOP USES it for — the scores / screens this device drives.
-            CapabilityInfoRow(Icons.Filled.Bolt, profile.powers)
- // Honest footnote: the "*" estimates + the SpO₂/steps caveats.
-            if (profile.footnote.isNotEmpty()) {
-                Text(profile.footnote, style = NoopType.footnote, color = Palette.textTertiary)
-            }
-
- // : the full pairing-refusal guidance, self-service right on the card instead of
- // buried in the strap log — only when the bond was genuinely refused.
+            // the full pairing-refusal guidance, self-service right on the card instead of
+            // buried in the strap log — only when the bond was genuinely refused.
             if (bondRefused && pairingHint != null) {
                 Text(pairingHint, style = NoopType.footnote, color = Palette.statusWarning)
             }
 
- // Live battery as a small liquid TUBE — the active+connected device's reported % (WHOOP, a
- // generic strap or an FTMS machine all funnel into live.batteryPct). A genuine single-value
- // progress bar, so a static (posed) LiquidTube is exactly right; it replaces the "· Battery x%"
- // that used to sit in the text line below. The SAME `liveBatteryPct` binding drives it.
+            // Live battery — the active+connected device's reported % (WHOOP, a generic strap or an FTMS
+            // machine all funnel into live.batteryPct).
             if (liveBatteryPct != null) {
-                BatteryTube(pct = liveBatteryPct)
+                BatteryBar(pct = liveBatteryPct)
             }
 
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -526,7 +492,7 @@ private fun DeviceCard(
                     onRename = onRename,
                     onRemove = onRemove,
                     onReAdd = onReAdd,
-                    onDeleteData = onDeleteData,
+                    onDeleteDevice = onDeleteDevice,
                     onConnect = onConnect,
                     onDisconnect = onDisconnect,
                     onReboot = onReboot,
@@ -541,9 +507,8 @@ private fun DeviceCard(
         Box(
             modifier = cardModifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(LIQUID_HERO_RADIUS))
-                .background(LIQUID_HERO_FILL.copy(alpha = LIQUID_HERO_FILL.alpha * CardAppearance.opacity))
-                .border(Metrics.divider, Color.White.copy(alpha = 0.11f * CardAppearance.opacity), RoundedCornerShape(LIQUID_HERO_RADIUS))
+                .clip(RoundedCornerShape(Metrics.heroRadius))
+                .frostedCardSurface(tint = Palette.accent, cornerRadius = Metrics.heroRadius)
                 .padding(Metrics.space18),
         ) {
             body()
@@ -551,7 +516,7 @@ private fun DeviceCard(
     } else {
         NoopCard(
             modifier = cardModifier,
-            padding = 18.dp,
+            padding = Metrics.space18,
         ) {
             body()
         }
@@ -559,12 +524,11 @@ private fun DeviceCard(
 }
 
 /**
- * The active+connected device's live battery as a small liquid tube. A posed (static) [LiquidTube] fills to
- * the reported percent in the accent, with a leading "Battery" label + the trailing %, so the same figure
- * that used to read as "· Battery x%" in the meta line now reads as the liquid vessel the design calls for.
+ * The active+connected device's live battery: a leading "Battery" label, a progress bar filled to the
+ * reported percent in the accent, and the trailing %.
  */
 @Composable
-private fun BatteryTube(pct: Int) {
+private fun BatteryBar(pct: Int) {
     val clamped = pct.coerceIn(0, 100)
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -572,11 +536,16 @@ private fun BatteryTube(pct: Int) {
         modifier = Modifier.semantics { contentDescription = "Battery $clamped%" },
     ) {
         Text("Battery", style = NoopType.footnote, color = Palette.textTertiary)
-        LiquidTube(
-            frac = clamped / 100.0,
-            tint = Palette.accent,
-            animated = false,
-            modifier = Modifier.weight(1f),
+        LinearProgressIndicator(
+            progress = { clamped / 100f },
+            color = Palette.accent,
+            trackColor = Palette.surfaceInset,
+            strokeCap = StrokeCap.Round,
+            gapSize = 0.dp,
+            drawStopIndicator = {},
+            modifier = Modifier
+                .weight(1f)
+                .height(Metrics.progressHeight),
         )
         Text("$clamped%", style = NoopType.footnote, color = Palette.textSecondary)
     }
@@ -605,11 +574,11 @@ internal fun devicePillState(
 ): DevicePillState = when {
     isArchived -> DevicePillState("Removed", StrandTone.Neutral, showsDot = false)
     !isActive -> DevicePillState("Paired", StrandTone.Neutral)
- // Reboot window : the user's Restart dropped the link and NOOP is auto-reconnecting. Show it
- // as intentional rather than a silent drop to "Active"; clears to "Active · Live" once the link is back.
+    // Reboot window : the user's Restart dropped the link and NOOP is auto-reconnecting. Show it
+    // as intentional rather than a silent drop to "Active"; clears to "Active · Live" once the link is back.
     isReconnecting -> DevicePillState("Reconnecting…", StrandTone.Warning, pulsing = true)
- // : BLE-connected but the encrypted bond was refused — no data flows, so this must not read
- // as "Active · Live".
+    // BLE-connected but the encrypted bond was refused — no data flows, so this must not read
+    // as "Active · Live".
     bondRefused -> DevicePillState("Connected · not paired", StrandTone.Warning)
     isLiveConnected -> DevicePillState("Active · Live", StrandTone.Positive, pulsing = true)
     else -> DevicePillState("Active", StrandTone.Positive)
@@ -638,14 +607,14 @@ private fun DeviceActionsMenu(
     device: PairedDeviceRow,
     isActive: Boolean,
     isLiveConnected: Boolean,
- // Open state is hoisted to the DeviceCard so the whole card (not just this ⋮ button) can open the menu.
+    // Open state is hoisted to the DeviceCard so the whole card (not just this ⋮ button) can open the menu.
     open: Boolean,
     onOpenChange: (Boolean) -> Unit,
     onMakeActive: () -> Unit,
     onRename: () -> Unit,
     onRemove: (() -> Unit)?,
     onReAdd: (() -> Unit)?,
-    onDeleteData: (() -> Unit)?,
+    onDeleteDevice: (() -> Unit)?,
     onConnect: (() -> Unit)? = null,
     onDisconnect: (() -> Unit)? = null,
     onReboot: (() -> Unit)? = null,
@@ -667,16 +636,16 @@ private fun DeviceActionsMenu(
                     MenuItem("Make active", Icons.Filled.Bolt) { onOpenChange(false); onReAdd() }
                 }
                 MenuItem("Rename", Icons.Filled.Edit) { onOpenChange(false); onRename() }
-                if (onDeleteData != null) {
+                if (onDeleteDevice != null) {
                     HorizontalDivider(color = Palette.hairline)
                     MenuItem("Delete device…", Icons.Filled.Delete, destructive = true) {
-                        onOpenChange(false); onDeleteData()
+                        onOpenChange(false); onDeleteDevice()
                     }
                 }
             } else {
- // Manual connect and disconnect (WHOOP only; onConnect is null for other sources). Connect
- // runs the same direct path as the initial connect, so it recovers a link the automatic
- // reconnect left stuck. Shown first as the obvious recovery action.
+                // Manual connect and disconnect (WHOOP only; onConnect is null for other sources). Connect
+                // runs the same direct path as the initial connect, so it recovers a link the automatic
+                // reconnect left stuck. Shown first as the obvious recovery action.
                 if (onConnect != null) {
                     if (isLiveConnected) {
                         MenuItem("Disconnect", Icons.Filled.Close) { onOpenChange(false); onDisconnect?.invoke() }
@@ -689,18 +658,18 @@ private fun DeviceActionsMenu(
                     MenuItem("Make active", Icons.Filled.Bolt) { onOpenChange(false); onMakeActive() }
                 }
                 MenuItem("Rename", Icons.Filled.Edit) { onOpenChange(false); onRename() }
- // Restart the strap — only for the live-connected WHOOP (the reboot travels over the active
- // BLE link). Confirmation-gated by the parent.
+                // Restart the strap — only for the live-connected WHOOP (the reboot travels over the active
+                // BLE link). Confirmation-gated by the parent.
                 if (isLiveConnected && SourceCoordinator.isWhoop(device) && onReboot != null) {
                     MenuItem("Restart strap…", Icons.Filled.Refresh) { onOpenChange(false); onReboot() }
                 }
- // 4.0 reboot probe (RE): only present when the parent passed a closure (Test Centre →
- // Connection on + a live WHOOP 4.0). Finds the real reboot frame the 4.0 accepts.
+                // 4.0 reboot probe (RE): only present when the parent passed a closure (Test Centre →
+                // Connection on + a live WHOOP 4.0). Finds the real reboot frame the 4.0 accepts.
                 if (onRebootProbe != null) {
                     MenuItem("Reboot probe (4.0 RE)…", Icons.Filled.BugReport) { onOpenChange(false); onRebootProbe() }
                 }
- // Which wrist the strap is worn on — a persistent strap-config write, so it is offered only for the
- // live-connected 5/MG and picked in a dialog by the parent.
+                // Which wrist the strap is worn on — a persistent strap-config write, so it is offered only for the
+                // live-connected 5/MG and picked in a dialog by the parent.
                 if (onSetWrist != null) {
                     MenuItem("Wrist…", Icons.Filled.SwapHoriz) { onOpenChange(false); onSetWrist() }
                 }
@@ -732,9 +701,9 @@ private fun MenuItem(
 
 @Composable
 private fun AddDeviceButton(onClick: () -> Unit) {
- // Routed through the unified NoopButton (Design Reset) so the add affordance is the crisp
- // filled-accent-blue / white-label primary the iOS DevicesView uses (`NoopButton(... kind:.primary,
- // fullWidth: true)`) — no hand-rolled gold-text fill, no glow.
+    // Routed through the unified NoopButton (Design Reset) so the add affordance is the crisp
+    // filled-accent-blue / white-label primary the iOS DevicesView uses (`NoopButton(... kind:.primary,
+    // fullWidth: true)`) — no hand-rolled gold-text fill, no glow.
     NoopButton(
         text = "Add a device",
         leadingIcon = Icons.Filled.Add,
@@ -745,29 +714,6 @@ private fun AddDeviceButton(onClick: () -> Unit) {
             .semantics { contentDescription = "Add a device" },
         onClick = onClick,
     )
-}
-
-@Composable
-private fun WhoopFirstFooter() {
-    Row(
-        modifier = Modifier.padding(top = 8.dp),
-        horizontalArrangement = Arrangement.spacedBy(Metrics.space10),
-        verticalAlignment = Alignment.Top,
-    ) {
-        Icon(
-            Icons.Filled.FavoriteBorder,
-            contentDescription = null,
-            tint = Palette.textTertiary,
-            modifier = Modifier.size(16.dp),
-        )
-        Text(
-            "WHOOP is NOOP's primary, fully-supported band. Other heart-rate straps are an early, " +
-                "in-development addition: they stream live heart rate and HRV, but not WHOOP's deeper " +
-                "sleep and recovery data.",
-            style = NoopType.footnote,
-            color = Palette.textTertiary,
-        )
-    }
 }
 
 // MARK: - Shared dialogs
@@ -786,13 +732,6 @@ private fun WristDialog(
         title = { Text("Which wrist?", style = NoopType.title2, color = Palette.textPrimary) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(Metrics.space12)) {
-                Text(
-                    "Tells the strap which wrist it's on. The strap uses this for its own sensor " +
-                        "handling; NOOP's metrics are unaffected. Watch the strap log for the ack — the " +
-                        "payload shape isn't confirmed yet, so a strap may answer UNSUPPORTED.",
-                    style = NoopType.subhead,
-                    color = Palette.textSecondary,
-                )
                 listOf(false to "Left", true to "Right").forEach { (right, label) ->
                     TextButton(onClick = { onPick(right) }, modifier = Modifier.fillMaxWidth()) {
                         Text(
@@ -827,17 +766,6 @@ private fun RebootProbeDialog(
         title = { Text("WHOOP 4.0 reboot probe", style = NoopType.title2, color = Palette.textPrimary) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(Metrics.space12)) {
-                Text(
-                    "The WHOOP 4.0 reboot frame isn't confirmed — a normal Restart is ignored (#235). " +
-                        "Send each candidate and watch BOTH the strap log and the strap itself. " +
-                        "“no disconnect within 12s” means the strap ignored the frame. A “link dropped” line " +
-                        "means the frame reached the strap — but a dropped link alone isn't a reboot: a real " +
-                        "reboot also switches the strap's sensor light off for a few seconds, so if the light " +
-                        "stayed on it was just a dropped connection, not a reboot. Non-destructive — your data " +
-                        "is kept. Please share the log so we can pin the real frame.",
-                    style = NoopType.subhead,
-                    color = Palette.textSecondary,
-                )
                 RebootProbeVariant.entries.forEach { variant ->
                     TextButton(onClick = { onSend(variant) }, modifier = Modifier.fillMaxWidth()) {
                         Text(
@@ -862,7 +790,6 @@ private fun RebootProbeDialog(
 @Composable
 private fun RenameDialog(
     device: PairedDeviceRow,
-    isWhoop: Boolean,
     onSave: (String) -> Unit,
     onDismiss: () -> Unit,
 ) {
@@ -872,26 +799,14 @@ private fun RenameDialog(
         containerColor = Palette.surfaceOverlay,
         title = { Text("Rename device", style = NoopType.title2, color = Palette.textPrimary) },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(Metrics.space12)) {
-                Text(
-                    if (isWhoop) {
-                        "Give ${device.brand} ${device.model} a name you'll recognise. A WHOOP 4.0 takes " +
-                            "the same name over Bluetooth, so the two always match."
-                    } else {
-                        "Give ${device.brand} ${device.model} a name you'll recognise."
-                    },
-                    style = NoopType.subhead,
-                    color = Palette.textSecondary,
-                )
-                OutlinedTextField(
-                    value = draft,
-                    onValueChange = { draft = it },
-                    singleLine = true,
-                    placeholder = { Text("Name", style = NoopType.body, color = Palette.textTertiary) },
-                    colors = devicesFieldColors(),
-                    modifier = Modifier.fillMaxWidth().semantics { contentDescription = "Device name" },
-                )
-            }
+            OutlinedTextField(
+                value = draft,
+                onValueChange = { draft = it },
+                singleLine = true,
+                placeholder = { Text("Name", style = NoopType.body, color = Palette.textTertiary) },
+                colors = devicesFieldColors(),
+                modifier = Modifier.fillMaxWidth().semantics { contentDescription = "Device name" },
+            )
         },
         confirmButton = {
             TextButton(onClick = { onSave(draft) }) {
@@ -1018,98 +933,19 @@ private fun deviceIcon(device: PairedDeviceRow): ImageVector = when {
 }
 
 /**
- * Honest, per-model capability + function summary for a device card — mirrors the Swift
- * `DeviceCapabilityProfile`. Derived from brand/model, NOT the generic stored capability set (which
- * would render an identical line for a 4.0 and a 5/MG and mislabel "Blood oxygen" when no SpO₂ % ever
- * comes off any WHOOP strap — raw red/IR only; a real % is import-only). "*" in a label = an on-device
- * estimate, not a raw sensor. Source-verified against the decode + scoring paths (capability audit).
+ * The card subtitle: the strap model in one clean label, so a card never reads "WHOOP · WHOOP".
+ * Derived from brand/model, the same spellings [com.noop.protocol.DeviceFamily.forRegistryModel] reads.
  */
-private data class DeviceCapabilityProfile(
-    val displayModel: String,  // clean card subtitle (replaces the redundant "WHOOP · WHOOP")
-    val captures: String,      // "·"-joined honest capture labels for THIS model
-    val powers: String,        // the NOOP scores / screens this device drives
-    val footnote: String,      // one short honest caveat line ("*" estimates + the SpO₂/steps notes)
-)
-
-private fun deviceProfile(device: PairedDeviceRow): DeviceCapabilityProfile {
- // EXPERIMENTAL locally-adopted Oura ring (gen 3/4/5). The gen is carried on `model` ("Oura Ring
- // 3/4/5") and recovered with OuraRingGen.from(model). NOOP reads the ring's OWN raw signals + open
- // HRV/sleep-phase tags and computes its own Charge/Effort/Rest; it NEVER reads Oura's encrypted
- // Readiness/Sleep scores, and claims NO absolute SpO₂ %. Estimates carry "*"; a signal it can't read
- // stays "-". Per-gen copy + the canonical Beta caveat (spec
- // docs/superpowers/specs/2026-06-29-oura-onboarding-ux.md s3/s4). Mirrors the macOS Oura branch.
+private fun deviceModelLabel(device: PairedDeviceRow): String {
     if (device.sourceKind == SourceKind.oura.name) {
-        val gen = com.noop.oura.OuraRingGen.from(device.model)
- // gen3/4 are verified-shape; gen5 ("newer") carries the least-proven caveat.
-        val newer = gen == com.noop.oura.OuraRingGen.GEN5
-        val captures = if (newer)
-            "Heart rate* · HRV* · Sleep* · Resting HR* · Skin temp* · Battery*"
-        else
-            "Heart rate · HRV* · Sleep · Resting HR · Skin temp* · Battery"
-        val powers = if (newer)
-            "Powers Effort now; Charge and Rest once enough nights and decode are confirmed"
-        else
-            "Powers Charge, Effort, Rest and Sleep"
-        return DeviceCapabilityProfile(
-            displayModel = "${gen.displayName} (Beta)",
-            captures = captures,
-            powers = powers,
-            footnote = "Beta. * is an on-device estimate. Skin temp is a trend versus your own baseline, " +
-                "and HRV needs you to be still. No Oura Readiness or SpO₂ " +
-                "percentage comes off the ring (import an Oura file for those).",
-        )
+        return "${com.noop.oura.OuraRingGen.from(device.model).displayName} (Beta)"
     }
- // A non-WHOOP, non-Oura source (an imported data source). It contributes whatever the import carried;
- // it has no live BLE stream of its own.
-    if (!SourceCoordinator.isWhoop(device)) {
-        return DeviceCapabilityProfile(
-            displayModel = device.model.ifBlank { device.brand },
-            captures = "Imported data",
-            powers = "Contributes imported history. No live stream.",
-            footnote = "Imported source · sleep, recovery, HR and steps wherever the import carried them.",
-        )
-    }
-    val whoopPowers = "Powers Charge, Effort, Rest, Sleep + Health Monitor"
+    if (!SourceCoordinator.isWhoop(device)) return device.model.ifBlank { device.brand }
     val model = device.model.lowercase()
- // WHOOP 5.0 / MG — adds a (raw) step count the 4.0 can't read over BLE.
-    if (model.contains("5") || model.contains("mg")) {
-        return DeviceCapabilityProfile(
-            displayModel = "WHOOP 5.0 / MG",
-            captures = "Heart rate · HRV · Skin temp* · Resp rate* · Steps* · Sleep · Strain · Battery",
-            powers = whoopPowers,
-            footnote = "* on-device estimate: skin temp is a nightly ±°C deviation, steps are a raw " +
-                "motion count (#78). No SpO₂ % off the strap; import a WHOOP CSV for a real %.",
-        )
-    }
- // WHOOP 4.0 — NOOP's primary band; no steps over BLE.
-    if (model.contains("4")) {
-        return DeviceCapabilityProfile(
-            displayModel = "WHOOP 4.0",
-            captures = "Heart rate · HRV · Skin temp* · Resp rate* · Sleep · Strain · Battery",
-            powers = whoopPowers,
-            footnote = "* on-device estimate: skin temp is a nightly ±°C deviation (firmware-dependent); " +
-                "no steps over BLE on a 4.0. No SpO₂ % off the strap; import a WHOOP CSV for a real %.",
-        )
-    }
- // Legacy / unknown WHOOP (the seeded device, model just "WHOOP") — show only the common-to-all set.
-    return DeviceCapabilityProfile(
-        displayModel = "WHOOP",
-        captures = "Heart rate · HRV · Skin temp* · Resp rate* · Sleep · Strain · Battery",
-        powers = whoopPowers,
-        footnote = "Exact model unknown. Shows what every WHOOP can do. * on-device estimate · " +
-            "no SpO₂ % off the strap (import a WHOOP CSV for that).",
-    )
-}
-
-/** One icon-prefixed info row (captures / powers) for a device card, matching the caption style. */
-@Composable
-private fun CapabilityInfoRow(icon: androidx.compose.ui.graphics.vector.ImageVector, text: String) {
-    Row(
-        horizontalArrangement = Arrangement.spacedBy(Metrics.space6),
-        verticalAlignment = Alignment.Top,
-    ) {
-        Icon(icon, contentDescription = null, tint = Palette.textTertiary, modifier = Modifier.size(14.dp))
-        Text(text, style = NoopType.caption, color = Palette.textSecondary)
+    return when {
+        model.contains("5") || model.contains("mg") -> "WHOOP 5.0 / MG"
+        model.contains("4") -> "WHOOP 4.0"
+        else -> "WHOOP"
     }
 }
 
@@ -1136,8 +972,8 @@ private fun OuraLocalStateNote() {
 
 internal fun lastSeenLine(device: PairedDeviceRow, isLiveConnected: Boolean, bondRefused: Boolean = false): String = when {
     device.status == DeviceStatus.archived.name -> "Removed · data kept"
- // No "tap ⋯" pointer here ( review) — the full how-to-fix guidance is already inline on the card
- // just below, so pointing at the menu would send the user looking for help that's already on screen.
+    // No "tap ⋯" pointer here — the full how-to-fix guidance is already inline on the card
+    // just below, so pointing at the menu would send the user looking for help that's already on screen.
     bondRefused -> "Connected, but not paired"
     isLiveConnected -> "Connected now"
     else -> "Last seen ${relativeAgo(device.lastSeenAt)}"
@@ -1154,7 +990,7 @@ internal fun historyLayoutLine(version: Int?): String? =
 @Composable
 private fun SyncStatusSection(vm: AppViewModel, onSyncNow: () -> Unit) {
     val live by vm.live.collectAsStateWithLifecycle()
- // The strap link is usable for a manual offload kick (matches WhoopBleClient.syncNow's own gate).
+    // The strap link is usable for a manual offload kick (matches WhoopBleClient.syncNow's own gate).
     val canSync = live.connected && live.bonded && !live.backfilling
     Column(verticalArrangement = Arrangement.spacedBy(Metrics.gap)) {
         SectionHeader(

@@ -18,6 +18,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import com.noop.analytics.RustScores
 import com.noop.data.AppleDaily
 import com.noop.data.MetricSeriesRow
 import java.util.Locale
@@ -156,7 +157,7 @@ fun AppleHealthScreen(vm: AppViewModel) {
 
     val subtitle = spanSubtitle(loaded, data, range)
 
-    // PERF (#707): lazy scaffold — in the populated `else` branch each chart section is its own `item { }`,
+    // PERF: lazy scaffold — in the populated `else` branch each chart section is its own `item { }`,
     // so only on-screen sections compose + are accessibility-walked on scroll (this data view is the long,
     // chart-heavy one). The loading/empty branches stay single items. Order + spacing are unchanged
     // (LazyColumn reproduces the eager `spacedBy(20.dp)` between the six sections).
@@ -256,7 +257,7 @@ private enum class Aggregate { Latest, Mean }
 
 @Composable
 private fun TileGrid(data: AppleData, range: AppleRange) {
-    // Imperial/Metric display preference (D#103). Weight + lean mass (stored kg) re-label to lb; every
+    // Imperial/Metric display preference. Weight + lean mass (stored kg) re-label to lb; every
     // other Apple Health metric is unit-agnostic. Display-only.
     val unitSystem = UnitPrefs.system(LocalContext.current)
     // Two columns of equal-width fixed-height tiles, mirroring the macOS adaptive grid.
@@ -332,7 +333,7 @@ private fun MetricTile(
             caption = rows.lastOrNull()?.let { "as of ${it.day}" }
         }
         else -> {
-            val m = values.average()
+            val m = RustScores.mean(values)
             value = withUnit(fmt(m), unit)
             caption = "avg · ${values.size}d"
         }
@@ -358,7 +359,7 @@ private fun HeartSection(data: AppleData, range: AppleRange) {
         MetricChartCard(data, range, "hrv", "Heart rate variability", Palette.metricPurple) {
             "${it.roundToInt()} ms"
         }
-        MetricChartCard(data, range, "spo2", "Blood oxygen", Palette.metricCyan) {
+        MetricChartCard(data, range, "spo2", "SpO₂", Palette.metricCyan) {
             String.format(Locale.US, "%.1f%%", it)
         }
         MetricChartCard(data, range, "resp_rate", "Respiratory rate", Palette.accent) {
@@ -436,7 +437,7 @@ private fun MetricChartCard(
     val rows = resolved.rows
     val values = rows.map { it.value }
     val n = values.size
-    val mean = if (n > 0) values.average() else null
+    val mean = if (n > 0) RustScores.mean(values) else null
     val trailing = mean?.let { fmt(it) } ?: "—"
 
     val subtitle = run {
@@ -473,7 +474,7 @@ private fun MetricChartCard(
             ChartFooterRow(
                 items = if (n > 0) {
                     listOf(
-                        "Avg" to fmt(values.average()),
+                        "Avg" to fmt(RustScores.mean(values)),
                         "Min" to fmt(values.min()),
                         "Max" to fmt(values.max()),
                         "Points" to "$n",

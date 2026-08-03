@@ -198,7 +198,7 @@ fun IntervalsScreen(vm: AppViewModel) {
         }
     }
 
-    // PERF (#707): lazy scaffold — each of the four cards is one `item { }`. The running timer ticks
+    // PERF: lazy scaffold — each of the four cards is one `item { }`. The running timer ticks
     // `remaining` once a second at body scope; in a LazyColumn that tick only recomposes the VISIBLE items
     // (the heavy per-second BevelGauge hero) and off-screen cards (config) don't recompose or get
     // semantics-walked. Order/spacing unchanged (LazyColumn reproduces the eager `spacedBy(20.dp)`).

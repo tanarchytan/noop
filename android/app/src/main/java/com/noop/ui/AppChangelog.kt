@@ -7,11 +7,10 @@ import androidx.compose.material.icons.outlined.Shield
 import androidx.compose.material.icons.outlined.VerifiedUser
 import androidx.compose.ui.graphics.vector.ImageVector
 
-// MARK: - AppChangelog (ported byte-for-byte from Strand/System/AppChangelog.swift)
+// MARK: - AppChangelog
 //
 // Single source of truth for the in-app "What's New" sheet and the expectation-setting
-// copy used in onboarding. Mirrored from the macOS `AppChangelog` enum so every surface
-// — from docs/releases/<tag>.md, via Tools/appchangelog-gen.py at release time.
+// copy used in onboarding. Generated at release time from the release notes.
 //
 // Icon mapping (SF Symbol → Material, all verified to resolve in material-icons-extended):
 //   flask           → Icons.Outlined.Science        (independent / experimental)

@@ -25,7 +25,7 @@ fun blePermissions(): Array<String> =
  * the BLE permissions, fine location is NOT implicitly granted on Android 12+ — BLE uses the granular
  * Bluetooth permissions there — so a GPS workout must request it explicitly before starting, or
  * `requestLocationUpdates` throws SecurityException and crashes the app. Mirrors [rememberRequestScan];
- * the launcher must live in the Compose layer so it can raise the system dialog. (#101)
+ * the launcher must live in the Compose layer so it can raise the system dialog.
  */
 @Composable
 fun rememberRequestLocation(onResult: (granted: Boolean) -> Unit): () -> Unit {

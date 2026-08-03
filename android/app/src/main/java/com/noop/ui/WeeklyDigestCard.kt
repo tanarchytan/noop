@@ -38,7 +38,7 @@ import com.noop.data.DailyMetric
 import kotlin.math.abs
 import kotlin.math.roundToInt
 
-// MARK: - Weekly Digest (#208)
+// MARK: - Weekly Digest
 //
 // A deterministic, offline "week in review". Kotlin parity for the macOS/iOS
 // WeeklyDigestView. Reads the merged daily history from the view model, pulls each
@@ -54,7 +54,7 @@ import kotlin.math.roundToInt
 // (non-clinical), consistent with the app disclaimer.
 
 /**
- * The engine's Effort display factor for the user's scale (#268/#463): moverSentence's
+ * The engine's Effort display factor for the user's scale: moverSentence's
  * "(avg X vs Y)" prints stored 0-100 Effort means, so the 0-21 toggle rescales them for
  * display only. 1.0 leaves every sentence byte-identical to the pre-toggle output.
  */
@@ -100,10 +100,6 @@ fun buildWeeklyDigest(
 
 // MARK: - Shared content
 
-private val MONTHS = arrayOf(
-    "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
-)
-
 private val DISPLAY_ORDER = listOf(
     WeeklyMetric.CHARGE, WeeklyMetric.EFFORT, WeeklyMetric.REST, WeeklyMetric.HRV, WeeklyMetric.RHR,
 )
@@ -114,17 +110,17 @@ private val DISPLAY_ORDER = listOf(
  */
 @Composable
 fun WeeklyDigestContent(digest: WeeklyDigest, compact: Boolean = false) {
-    // #268/#463: the Effort row follows the Effort display-scale toggle like every other Effort
+    // the Effort row follows the Effort display-scale toggle like every other Effort
     // read-out in the app (Swift's DigestScoreCard already does). Read once here, threaded to the
     // rows, so a 0-21 user can't see "Effort 22" beside a Trends chart reading 4.6.
     val effortScale = UnitPrefs.effortScale(LocalContext.current)
-    Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(Metrics.space14)) {
         // Header.
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.Top,
         ) {
-            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(Metrics.space2)) {
                 Overline("Week in review")
                 Text(weekRangeLabel(digest), style = NoopType.title2, color = Palette.textPrimary)
             }
@@ -140,7 +136,7 @@ fun WeeklyDigestContent(digest: WeeklyDigest, compact: Boolean = false) {
 
         // Focal points — the plain-English read, most salient first.
         if (digest.focalPoints.isNotEmpty()) {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(Metrics.space8)) {
                 digest.focalPoints.forEach { FocalRow(it) }
             }
         }
@@ -150,13 +146,13 @@ fun WeeklyDigestContent(digest: WeeklyDigest, compact: Boolean = false) {
         // Per-metric rows.
         val rows = (if (compact) listOf(WeeklyMetric.CHARGE, WeeklyMetric.EFFORT, WeeklyMetric.REST)
         else DISPLAY_ORDER).mapNotNull { digest.summary(it) }
-        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(Metrics.space10)) {
             rows.forEach { MetricRow(it, effortScale) }
         }
 
         if (!compact) {
             HorizontalDivider(color = Palette.hairline)
-            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(Metrics.space6)) {
                 digest.restScoreSD?.let { sd ->
                     Text(
                         "Sleep steadiness: Rest varied ±${fmt1(sd)} pts night to night.",
@@ -178,7 +174,7 @@ fun WeeklyDigestContent(digest: WeeklyDigest, compact: Boolean = false) {
 @Composable
 private fun FocalRow(line: String) {
     Row(
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        horizontalArrangement = Arrangement.spacedBy(Metrics.space8),
         verticalAlignment = Alignment.Top,
         modifier = Modifier.semantics(mergeDescendants = true) { contentDescription = line },
     ) {
@@ -199,7 +195,7 @@ private fun MetricRow(s: WeeklyMetricSummary, effortScale: EffortScale) {
             .fillMaxWidth()
             .semantics(mergeDescendants = true) { contentDescription = rowAccessibility(s, effortScale) },
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        horizontalArrangement = Arrangement.spacedBy(Metrics.space12),
     ) {
         Text(
             s.metric.label,
@@ -248,13 +244,13 @@ private fun weekRangeLabel(digest: WeeklyDigest): String =
 /** "Jun 8" from "2026-06-08", via the engine's own pure parse (no Calendar). */
 private fun shortDate(ymd: String): String {
     val p = WeeklyDigestEngine.parseYMD(ymd) ?: return ymd
-    val name = if (p[1] in 1..12) MONTHS[p[1] - 1] else p[1].toString()
+    val name = monthAbbreviation(p[1]) ?: p[1].toString()
     return "$name ${p[2]}"
 }
 
 internal fun meanText(s: WeeklyMetricSummary, effortScale: EffortScale): String {
     if (s.thisWeek.n == 0) return "—"
-    // #463: Effort is STORED 0-100; render it on the user's chosen display scale WITH the denominator
+    // Effort is STORED 0-100; render it on the user's chosen display scale WITH the denominator
     // ("4.6 / 21", "21.6 / 100") so the card can't read as a different number than the Trends chart.
     if (s.metric == WeeklyMetric.EFFORT) {
         return "${UnitFormatter.effortDisplay(s.thisWeek.mean, effortScale)} / " +
@@ -275,8 +271,8 @@ internal fun deltaText(s: WeeklyMetricSummary): String {
 /**
  * Tone: good moves green, bad moves rose, flat/uncomparable grey — folding in each
  * metric's higherIsBetter (so a Resting-HR rise reads as a warning). A ROUGH comparison
- * (either side thin, engine's [WeeklyMetricSummary.isRoughComparison], the deferred half of
- * the 4.2.10 fix for #463) keeps its arrow + % but stays grey regardless of direction.
+ * (either side thin, engine's [WeeklyMetricSummary.isRoughComparison]) keeps its arrow + % but
+ * stays grey regardless of direction.
  */
 private fun chipTone(s: WeeklyMetricSummary): Color = when {
     s.isRoughComparison -> Palette.textTertiary

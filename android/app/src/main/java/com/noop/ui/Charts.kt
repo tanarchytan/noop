@@ -1,25 +1,39 @@
 package com.noop.ui
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectTransformGestures
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
@@ -32,6 +46,10 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.text.TextMeasurer
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.drawText
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -296,56 +314,6 @@ fun LineChart(
     }
 }
 
-data class LineSeries(
-    val values: List<Double>,
-    val color: Color,
-)
-
-@Composable
-fun MultiLineChart(
-    series: List<LineSeries>,
-    modifier: Modifier,
-) {
-    val cleanSeries = remember(series) {
-        series.map { it.copy(values = it.values.filter { value -> value.isFinite() }) }
-            .filter { it.values.size >= 2 }
-    }
-
-    val axSummary = run {
-        val all = cleanSeries.flatMap { it.values }
-        if (all.isEmpty()) "Trends, no data"
-        else "Trends, ${cleanSeries.size} series, low ${formatLineValue(all.min())}, high ${formatLineValue(all.max())}"
-    }
-
-    Canvas(modifier = modifier.fillMaxWidth().clearAndSetSemantics { contentDescription = axSummary }) {
-        if (cleanSeries.isEmpty()) {
-            drawBaseline()
-            return@Canvas
-        }
-
-        val allValues = cleanSeries.flatMap { it.values }
-        val minV = allValues.minOrNull() ?: return@Canvas
-        val maxV = allValues.maxOrNull() ?: return@Canvas
-        val strokePx = 2.5f
-        val topPad = strokePx + 4f
-        val bottomPad = strokePx + 4f
-
-        cleanSeries.forEach { line ->
-            val pts = pointsFor(line.values, size.width, size.height, topPad, bottomPad, minV, maxV)
-            if (pts.isEmpty()) return@forEach
-            val path = Path().apply {
-                moveTo(pts.first().x, pts.first().y)
-                for (i in 1 until pts.size) lineTo(pts[i].x, pts[i].y)
-            }
-            drawPath(
-                path = path,
-                color = line.color,
-                style = Stroke(width = strokePx, cap = StrokeCap.Round, join = StrokeJoin.Round),
-            )
-        }
-    }
-}
-
 private fun nearestIndexForX(count: Int, width: Float, x: Float): Int {
     if (count <= 1 || width <= 0f) return 0
     val step = width / (count - 1)
@@ -366,7 +334,7 @@ internal fun lineChartSelectionLabel(
     return "$time · $base"
 }
 
-private fun formatLineValue(value: Double): String {
+internal fun formatLineValue(value: Double): String {
     if (!value.isFinite()) return "-"
     val rounded = value.roundToInt().toDouble()
     return if (abs(value - rounded) < 0.05) {
@@ -448,7 +416,6 @@ fun BarChart(
                     val usableH = (h - topPad).coerceAtLeast(1f)
                     val slot = w / clean.size
                     val barWidth = (slot * 0.64f).coerceAtLeast(1f)
-                    val capRadius = (barWidth / 2f)
                     data class BarSeg(val cx: Float, val top: Float)
                     val bars = ArrayList<BarSeg>(clean.size)
                     clean.forEachIndexed { i, v ->
@@ -461,12 +428,12 @@ fun BarChart(
                     }
                     onDrawBehind {
                         bars.forEachIndexed { i, seg ->
-                            drawLine(
+                            drawCappedBar(
                                 color = if (selectionEnabled && i == selectedIndex) color else unselectedColor,
-                                start = Offset(seg.cx, h),
-                                end = Offset(seg.cx, (seg.top + capRadius).coerceAtMost(h)),
-                                strokeWidth = barWidth,
-                                cap = StrokeCap.Round,
+                                centerX = seg.cx,
+                                top = seg.top,
+                                baseline = h,
+                                width = barWidth,
                             )
                         }
                         if (selectionEnabled && selectedIndex in clean.indices) {
@@ -895,5 +862,630 @@ fun TileSparkline(values: List<Double>, color: Color, modifier: Modifier = Modif
         drawCircle(color = color.copy(alpha = 0.30f), radius = 6f, center = end)
         drawCircle(color = color.copy(alpha = 0.65f), radius = 3.5f, center = end)
         drawCircle(color = Palette.tipCore, radius = 1.6f, center = end)
+    }
+}
+
+// MARK: - Week charts (fixed slots, always-on value labels)
+//
+// One slot per day label, a highlighted column behind the slot the caller names, and every plotted value
+// printed where it is drawn. Nothing here derives a figure: values, axis maxima, formats and the
+// colour-by-value lookup all arrive from the caller, so a threshold never lives in this file.
+
+/** Bar width as a fraction of its slot — the slim weekly column the sleep cards already draw. */
+private const val WEEK_BAR_SLOT_FRACTION = 0.34f
+
+/** Hollow point marker geometry for the week line charts. */
+private const val WEEK_MARKER_RADIUS = 6f
+private const val WEEK_MARKER_STROKE = 2.5f
+
+/** One overlaid series of a week line chart: its legend name, its points, and which side its labels sit. */
+data class WeekLineSeries(
+    val name: String,
+    val values: List<Double?>,
+    val color: Color,
+    val labelAbove: Boolean = true,
+)
+
+/** One band of a stacked week bar: the legend word and the colour the band is drawn in. */
+data class WeekStackSegment(
+    val name: String,
+    val color: Color,
+)
+
+/** How a legend entry marks its series: a filled chip, a hollow ring, or a line stub. */
+enum class LegendMark { Swatch, Ring, Line }
+
+// MARK: - ChartLegend
+
+/**
+ * A chart's legend: one mark plus its name per series, centred over the plot. The one legend row for the
+ * charts in this file; screens still holding their own private legend should fold into it.
+ */
+@Composable
+fun ChartLegend(
+    items: List<Pair<String, Color>>,
+    modifier: Modifier = Modifier,
+    mark: LegendMark = LegendMark.Swatch,
+) {
+    if (items.isEmpty()) return
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        items.forEach { (name, color) ->
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(Metrics.space6),
+                modifier = Modifier.padding(horizontal = Metrics.space10),
+            ) {
+                LegendMarkGlyph(mark, color)
+                Text(name, style = NoopType.footnote, color = Palette.textSecondary, maxLines = 1)
+            }
+        }
+    }
+}
+
+@Composable
+private fun LegendMarkGlyph(mark: LegendMark, color: Color) {
+    when (mark) {
+        LegendMark.Swatch -> Box(
+            modifier = Modifier
+                .size(Metrics.legendSwatch)
+                .clip(RoundedCornerShape(Metrics.cornerXs))
+                .background(color),
+        )
+        LegendMark.Ring -> Box(
+            modifier = Modifier
+                .size(Metrics.legendSwatch)
+                .clip(CircleShape)
+                .border(Metrics.divider, color, CircleShape),
+        )
+        LegendMark.Line -> Box(
+            modifier = Modifier
+                .width(Metrics.legendLineWidth)
+                .height(Metrics.legendLineHeight)
+                .clip(RoundedCornerShape(Metrics.cornerXs))
+                .background(color),
+        )
+    }
+}
+
+// MARK: - Shared week-chart frame
+
+/**
+ * The frame every week chart sits in: an optional legend, the plot, the day labels, and the highlight
+ * column behind [highlightIndex] spanning both. Gutters keep that column and the labels aligned with a
+ * plot that reserves room for axis labels; null means no gutter on that side.
+ */
+@Composable
+private fun WeekChartFrame(
+    dayLabels: List<String>,
+    highlightIndex: Int,
+    description: String,
+    modifier: Modifier = Modifier,
+    leftGutter: Dp? = null,
+    rightGutter: Dp? = null,
+    legend: (@Composable () -> Unit)? = null,
+    plot: @Composable () -> Unit,
+) {
+    val slots = dayLabels.size
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .clearAndSetSemantics { contentDescription = description },
+        verticalArrangement = Arrangement.spacedBy(Metrics.space8),
+    ) {
+        legend?.invoke()
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .drawBehind {
+                    if (slots <= 0 || highlightIndex !in 0 until slots) return@drawBehind
+                    val left = leftGutter?.toPx() ?: 0f
+                    val right = rightGutter?.toPx() ?: 0f
+                    val plotW = (size.width - left - right)
+                    if (plotW <= 0f) return@drawBehind
+                    val slot = plotW / slots
+                    drawRoundRect(
+                        color = Palette.surfaceOverlay.copy(alpha = StrandAlpha.selectedFill),
+                        topLeft = Offset(left + slot * highlightIndex, 0f),
+                        size = Size(slot, size.height),
+                        cornerRadius = CornerRadius(Metrics.cornerSm.toPx()),
+                    )
+                },
+            verticalArrangement = Arrangement.spacedBy(Metrics.space6),
+        ) {
+            plot()
+            WeekDayLabels(dayLabels, highlightIndex, leftGutter, rightGutter)
+        }
+    }
+}
+
+/** The day label under each slot; the highlighted one takes the primary ink. Two lines fit "Sat\n11". */
+@Composable
+private fun WeekDayLabels(
+    labels: List<String>,
+    highlightIndex: Int,
+    leftGutter: Dp?,
+    rightGutter: Dp?,
+) {
+    if (labels.isEmpty()) return
+    var rowModifier: Modifier = Modifier.fillMaxWidth()
+    if (leftGutter != null) rowModifier = rowModifier.padding(start = leftGutter)
+    if (rightGutter != null) rowModifier = rowModifier.padding(end = rightGutter)
+    Row(modifier = rowModifier) {
+        labels.forEachIndexed { i, label ->
+            Text(
+                label,
+                style = NoopType.footnote,
+                color = if (i == highlightIndex) Palette.textPrimary else Palette.textTertiary,
+                textAlign = TextAlign.Center,
+                maxLines = 2,
+                overflow = TextOverflow.Clip,
+                modifier = Modifier.weight(1f),
+            )
+        }
+    }
+}
+
+// MARK: - Shared week-chart draw helpers
+
+/** One bar: a round-capped vertical line from [baseline] up to [top]. The bar idiom of every chart here. */
+private fun DrawScope.drawCappedBar(
+    color: Color,
+    centerX: Float,
+    top: Float,
+    baseline: Float,
+    width: Float,
+) {
+    val capRadius = width / 2f
+    drawLine(
+        color = color,
+        start = Offset(centerX, baseline),
+        end = Offset(centerX, (top + capRadius).coerceAtMost(baseline)),
+        strokeWidth = width,
+        cap = StrokeCap.Round,
+    )
+}
+
+/** The hollow marker drawn on every plotted week point. */
+private fun DrawScope.drawRingMarker(color: Color, center: Offset) {
+    drawCircle(color = Palette.surfaceRaised, radius = WEEK_MARKER_RADIUS, center = center)
+    drawCircle(
+        color = color,
+        radius = WEEK_MARKER_RADIUS,
+        center = center,
+        style = Stroke(width = WEEK_MARKER_STROKE),
+    )
+}
+
+/** Stroke [points] as one path per unbroken run, so a missing day is a gap and not a straight line. */
+private fun DrawScope.drawRuns(points: List<Offset?>, color: Color) {
+    val runs = ArrayList<List<Offset>>()
+    var run = ArrayList<Offset>()
+    points.forEach { p ->
+        if (p == null) {
+            if (run.size >= 2) runs.add(run)
+            run = ArrayList()
+        } else {
+            run.add(p)
+        }
+    }
+    if (run.size >= 2) runs.add(run)
+    runs.forEach { r ->
+        val path = Path().apply {
+            moveTo(r.first().x, r.first().y)
+            for (k in 1 until r.size) lineTo(r[k].x, r[k].y)
+        }
+        drawPath(
+            path = path,
+            color = color,
+            style = Stroke(width = WEEK_MARKER_STROKE, cap = StrokeCap.Round, join = StrokeJoin.Round),
+        )
+    }
+}
+
+/** [text] centred on [centerX] with its top at [top], held inside the canvas so a label never clips out. */
+internal fun DrawScope.drawSlotLabel(
+    measurer: TextMeasurer,
+    text: String,
+    style: TextStyle,
+    color: Color,
+    centerX: Float,
+    top: Float,
+) {
+    val layout = measurer.measure(text, style)
+    val maxX = (size.width - layout.size.width).coerceAtLeast(0f)
+    val maxY = (size.height - layout.size.height).coerceAtLeast(0f)
+    drawText(
+        textLayoutResult = layout,
+        color = color,
+        topLeft = Offset(
+            (centerX - layout.size.width / 2f).coerceIn(0f, maxX),
+            top.coerceIn(0f, maxY),
+        ),
+    )
+}
+
+/** The whole week as one sentence, so a chart is never silent to a screen reader. */
+private fun weekSummary(noun: String, labels: List<String>, valueAt: (Int) -> String?): String {
+    val parts = labels.indices.mapNotNull { i ->
+        valueAt(i)?.let { "${labels[i].replace('\n', ' ')} $it" }
+    }
+    return if (parts.isEmpty()) "$noun, no data" else "$noun, " + parts.joinToString(", ")
+}
+
+/** The slot's plotted values, padded/trimmed to the label count so a short series can't shift the axis. */
+private fun weekPoints(values: List<Double?>, slots: Int): List<Double?> =
+    List(slots) { i -> values.getOrNull(i)?.takeIf { it.isFinite() } }
+
+// MARK: - BandedWeekBarChart
+
+/**
+ * A week of bars, each tinted by its own value through [colorFor], with that value printed above it and
+ * the slot at [highlightIndex] backed by a highlight column. [axisMax] pins the scale; null scales to the
+ * week's own peak. [colorFor] is a Palette ramp lookup — this chart holds no band boundary of its own.
+ */
+@Composable
+fun BandedWeekBarChart(
+    values: List<Double?>,
+    dayLabels: List<String>,
+    colorFor: (Double) -> Color,
+    modifier: Modifier = Modifier,
+    format: (Double) -> String = { formatLineValue(it) },
+    axisMax: Double? = null,
+    highlightIndex: Int = -1,
+    height: Dp = Metrics.chartHeight,
+) {
+    val measurer = rememberTextMeasurer()
+    val labelStyle = NoopType.captionNumber
+    val slots = dayLabels.size
+    val points = remember(values, slots) { weekPoints(values, slots) }
+    val peak = remember(points, axisMax) { axisMax ?: points.filterNotNull().maxOrNull() }
+    val summary = remember(points, dayLabels) {
+        weekSummary("Weekly bars", dayLabels) { i -> points[i]?.let(format) }
+    }
+    WeekChartFrame(
+        dayLabels = dayLabels,
+        highlightIndex = highlightIndex,
+        description = summary,
+        modifier = modifier,
+    ) {
+        Canvas(modifier = Modifier.fillMaxWidth().height(height)) {
+            if (slots == 0 || peak == null || peak <= 0.0 || size.width <= 0f || size.height <= 0f) {
+                drawBaseline()
+                return@Canvas
+            }
+            val gap = Metrics.space4.toPx()
+            val labelH = measurer.measure("0", labelStyle).size.height.toFloat()
+            val usableH = (size.height - labelH - gap).coerceAtLeast(1f)
+            val slotW = size.width / slots
+            val barW = (slotW * WEEK_BAR_SLOT_FRACTION).coerceAtLeast(1f)
+            points.forEachIndexed { i, v ->
+                if (v == null) return@forEachIndexed
+                val norm = (v / peak).toFloat().coerceIn(0f, 1f)
+                val barH = (norm * usableH).coerceAtLeast(if (v > 0.0) 1f else 0f)
+                val cx = slotW * i + slotW / 2f
+                val top = size.height - barH
+                val tint = colorFor(v)
+                if (barH > 0f) drawCappedBar(tint, cx, top, size.height, barW)
+                drawSlotLabel(measurer, format(v), labelStyle, tint, cx, top - gap - labelH)
+            }
+        }
+    }
+}
+
+// MARK: - WeekBarChart
+
+/**
+ * A week of bars in one colour with every value printed above its bar — the single-tint case of
+ * [BandedWeekBarChart], which owns the drawing.
+ */
+@Composable
+fun WeekBarChart(
+    values: List<Double?>,
+    dayLabels: List<String>,
+    modifier: Modifier = Modifier,
+    color: Color = Palette.accent,
+    format: (Double) -> String = { formatLineValue(it) },
+    axisMax: Double? = null,
+    highlightIndex: Int = -1,
+    height: Dp = Metrics.chartHeight,
+) {
+    BandedWeekBarChart(
+        values = values,
+        dayLabels = dayLabels,
+        colorFor = { color },
+        modifier = modifier,
+        format = format,
+        axisMax = axisMax,
+        highlightIndex = highlightIndex,
+        height = height,
+    )
+}
+
+// MARK: - WeekDualLineChart
+
+/**
+ * Two overlaid week series on one shared scale, every point marked and labelled, named in a legend row.
+ * Each series says whether its labels sit above or below its points, so the two runs never collide.
+ */
+@Composable
+fun WeekDualLineChart(
+    primary: WeekLineSeries,
+    secondary: WeekLineSeries,
+    dayLabels: List<String>,
+    modifier: Modifier = Modifier,
+    format: (Double) -> String = { formatLineValue(it) },
+    highlightIndex: Int = -1,
+    height: Dp = Metrics.chartHeight,
+) {
+    val measurer = rememberTextMeasurer()
+    val labelStyle = NoopType.captionNumber
+    val slots = dayLabels.size
+    val series = remember(primary, secondary, slots) {
+        listOf(primary, secondary).map { s -> s.copy(values = weekPoints(s.values, slots)) }
+    }
+    val domain = remember(series) {
+        val all = series.flatMap { it.values }.filterNotNull()
+        if (all.isEmpty()) null else all.min() to all.max()
+    }
+    val summary = remember(series, dayLabels) {
+        series.joinToString(". ") { s -> weekSummary(s.name, dayLabels) { i -> s.values[i]?.let(format) } }
+    }
+    WeekChartFrame(
+        dayLabels = dayLabels,
+        highlightIndex = highlightIndex,
+        description = summary,
+        modifier = modifier,
+        legend = { ChartLegend(series.map { it.name to it.color }, mark = LegendMark.Ring) },
+    ) {
+        Canvas(modifier = Modifier.fillMaxWidth().height(height)) {
+            if (slots == 0 || domain == null || size.width <= 0f || size.height <= 0f) {
+                drawBaseline()
+                return@Canvas
+            }
+            val gap = Metrics.space4.toPx()
+            val labelH = measurer.measure("0", labelStyle).size.height.toFloat()
+            val band = labelH + gap + WEEK_MARKER_RADIUS
+            val usableH = (size.height - band * 2f).coerceAtLeast(1f)
+            val (lo, hi) = domain
+            val span = (hi - lo).takeIf { it > 0.0 } ?: 1.0
+            val slotW = size.width / slots
+
+            series.forEach { s ->
+                val offsets = s.values.mapIndexed { i, v ->
+                    v?.let {
+                        Offset(
+                            slotW * i + slotW / 2f,
+                            band + (1f - ((it - lo) / span).toFloat()) * usableH,
+                        )
+                    }
+                }
+                drawRuns(offsets, s.color.copy(alpha = StrandAlpha.unselectedBar))
+                offsets.forEachIndexed { i, p ->
+                    val v = s.values[i]
+                    if (p == null || v == null) return@forEachIndexed
+                    drawRingMarker(s.color, p)
+                    val top = if (s.labelAbove) {
+                        p.y - WEEK_MARKER_RADIUS - gap - labelH
+                    } else {
+                        p.y + WEEK_MARKER_RADIUS + gap
+                    }
+                    drawSlotLabel(measurer, format(v), labelStyle, s.color, p.x, top)
+                }
+            }
+        }
+    }
+}
+
+// MARK: - WeekStackedBarChart
+
+/**
+ * A week of stacked bars: [dayValues] holds one entry per [segments] band per day, stacked bottom-up in
+ * segment order, with the stack's own total printed above it. The total is the sum of what is drawn, so
+ * the label always describes the bar; the legend prints top-of-stack first.
+ */
+@Composable
+fun WeekStackedBarChart(
+    segments: List<WeekStackSegment>,
+    dayValues: List<List<Double>>,
+    dayLabels: List<String>,
+    modifier: Modifier = Modifier,
+    format: (Double) -> String = { formatLineValue(it) },
+    totalColor: Color = Palette.textPrimary,
+    highlightIndex: Int = -1,
+    height: Dp = Metrics.chartHeight,
+) {
+    val measurer = rememberTextMeasurer()
+    val labelStyle = NoopType.captionNumber
+    val slots = dayLabels.size
+    val stacks = remember(dayValues, segments, slots) {
+        List(slots) { i ->
+            val row = dayValues.getOrNull(i).orEmpty()
+            segments.indices.map { s -> row.getOrNull(s)?.takeIf { it.isFinite() && it > 0.0 } ?: 0.0 }
+        }
+    }
+    val totals = remember(stacks) { stacks.map { it.sum() } }
+    val peak = remember(totals) { totals.maxOrNull() ?: 0.0 }
+    val summary = remember(totals, dayLabels) {
+        weekSummary("Weekly totals", dayLabels) { i -> totals[i].takeIf { it > 0.0 }?.let(format) }
+    }
+    WeekChartFrame(
+        dayLabels = dayLabels,
+        highlightIndex = highlightIndex,
+        description = summary,
+        modifier = modifier,
+        legend = { ChartLegend(segments.reversed().map { it.name to it.color }) },
+    ) {
+        Canvas(modifier = Modifier.fillMaxWidth().height(height)) {
+            if (slots == 0 || peak <= 0.0 || size.width <= 0f || size.height <= 0f) {
+                drawBaseline()
+                return@Canvas
+            }
+            val gap = Metrics.space4.toPx()
+            val labelH = measurer.measure("0", labelStyle).size.height.toFloat()
+            val usableH = (size.height - labelH - gap).coerceAtLeast(1f)
+            val slotW = size.width / slots
+            val barW = (slotW * WEEK_BAR_SLOT_FRACTION).coerceAtLeast(1f)
+            for ((i, stack) in stacks.withIndex()) {
+                val total = totals[i]
+                if (total <= 0.0) continue
+                val cx = slotW * i + slotW / 2f
+                var base = size.height
+                for ((s, v) in stack.withIndex()) {
+                    if (v <= 0.0) continue
+                    val segH = ((v / peak).toFloat() * usableH).coerceAtLeast(1f)
+                    drawRect(
+                        color = segments[s].color,
+                        topLeft = Offset(cx - barW / 2f, base - segH),
+                        size = Size(barW, segH),
+                    )
+                    base -= segH
+                }
+                drawSlotLabel(measurer, format(total), labelStyle, totalColor, cx, base - gap - labelH)
+            }
+        }
+    }
+}
+
+// MARK: - DualAxisTrendChart
+
+/**
+ * The week on two scales: [leftValues] as a line over 0..[leftMax], [rightValues] as a connected run of
+ * points each tinted by [rightColorFor] over 0..[rightMax]. Ticks, maxima, formats and colours are the
+ * caller's; the chart maps a value to a pixel and prints what it is handed.
+ */
+@Composable
+fun DualAxisTrendChart(
+    dayLabels: List<String>,
+    leftName: String,
+    leftValues: List<Double?>,
+    leftMax: Double,
+    rightName: String,
+    rightValues: List<Double?>,
+    rightMax: Double,
+    modifier: Modifier = Modifier,
+    leftColor: Color = Palette.effortColor,
+    rightColorFor: (Double) -> Color = { Palette.recoveryColor(it) },
+    leftFormat: (Double) -> String = { formatLineValue(it) },
+    rightFormat: (Double) -> String = { formatLineValue(it) },
+    leftTicks: List<Double> = emptyList(),
+    rightTicks: List<Double> = emptyList(),
+    axisGutter: Dp = Metrics.hrChartGutter + Metrics.space12,
+    highlightIndex: Int = -1,
+    height: Dp = Metrics.chartHeight,
+) {
+    val measurer = rememberTextMeasurer()
+    val labelStyle = NoopType.captionNumber
+    val axisStyle = NoopType.footnote
+    val slots = dayLabels.size
+    val left = remember(leftValues, slots) { weekPoints(leftValues, slots) }
+    val right = remember(rightValues, slots) { weekPoints(rightValues, slots) }
+    val summary = remember(left, right, dayLabels) {
+        weekSummary(leftName, dayLabels) { i -> left[i]?.let(leftFormat) } + ". " +
+            weekSummary(rightName, dayLabels) { i -> right[i]?.let(rightFormat) }
+    }
+    WeekChartFrame(
+        dayLabels = dayLabels,
+        highlightIndex = highlightIndex,
+        description = summary,
+        modifier = modifier,
+        leftGutter = if (leftTicks.isEmpty()) null else axisGutter,
+        rightGutter = if (rightTicks.isEmpty()) null else axisGutter,
+    ) {
+        Canvas(modifier = Modifier.fillMaxWidth().height(height)) {
+            val gutterL = if (leftTicks.isEmpty()) 0f else axisGutter.toPx()
+            val gutterR = if (rightTicks.isEmpty()) 0f else axisGutter.toPx()
+            val plotW = size.width - gutterL - gutterR
+            if (slots == 0 || plotW <= 0f || size.height <= 0f || leftMax <= 0.0 || rightMax <= 0.0) {
+                drawBaseline()
+                return@Canvas
+            }
+            val gap = Metrics.space4.toPx()
+            val labelH = measurer.measure("0", labelStyle).size.height.toFloat()
+            val band = labelH + gap + WEEK_MARKER_RADIUS
+            val usableH = (size.height - band * 2f).coerceAtLeast(1f)
+            val slotW = plotW / slots
+            fun yFor(v: Double, max: Double): Float =
+                band + (1f - (v / max).toFloat().coerceIn(0f, 1f)) * usableH
+            fun offsetsFor(values: List<Double?>, max: Double): List<Offset?> =
+                values.mapIndexed { i, v -> v?.let { Offset(gutterL + slotW * i + slotW / 2f, yFor(it, max)) } }
+
+            // One gridline set only — the two axes are ticked at the same fractions, so ruling both doubles up.
+            val gridFractions = if (leftTicks.isNotEmpty()) {
+                leftTicks.map { it / leftMax }
+            } else {
+                rightTicks.map { it / rightMax }
+            }
+            gridFractions.forEach { frac ->
+                val y = band + (1f - frac.toFloat().coerceIn(0f, 1f)) * usableH
+                drawLine(
+                    color = Palette.hairline.copy(alpha = StrandAlpha.subtleLine),
+                    start = Offset(gutterL, y),
+                    end = Offset(gutterL + plotW, y),
+                    strokeWidth = 1f,
+                )
+            }
+            leftTicks.forEach { t ->
+                val layout = measurer.measure(leftFormat(t), axisStyle)
+                val maxY = (size.height - layout.size.height).coerceAtLeast(0f)
+                drawText(
+                    textLayoutResult = layout,
+                    color = leftColor,
+                    topLeft = Offset(
+                        (gutterL - layout.size.width - gap).coerceAtLeast(0f),
+                        (yFor(t, leftMax) - layout.size.height / 2f).coerceIn(0f, maxY),
+                    ),
+                )
+            }
+            rightTicks.forEach { t ->
+                val layout = measurer.measure(rightFormat(t), axisStyle)
+                val maxY = (size.height - layout.size.height).coerceAtLeast(0f)
+                drawText(
+                    textLayoutResult = layout,
+                    color = rightColorFor(t),
+                    topLeft = Offset(
+                        gutterL + plotW + gap,
+                        (yFor(t, rightMax) - layout.size.height / 2f).coerceIn(0f, maxY),
+                    ),
+                )
+            }
+
+            // Right axis: a neutral connector so the per-point band colours carry the reading.
+            val rightOffsets = offsetsFor(right, rightMax)
+            drawRuns(rightOffsets, Palette.textSecondary)
+            rightOffsets.forEachIndexed { i, p ->
+                val v = right[i]
+                if (p == null || v == null) return@forEachIndexed
+                val tint = rightColorFor(v)
+                drawRingMarker(tint, p)
+                drawSlotLabel(
+                    measurer,
+                    rightFormat(v),
+                    labelStyle,
+                    tint,
+                    p.x,
+                    p.y - WEEK_MARKER_RADIUS - gap - labelH,
+                )
+            }
+
+            val leftOffsets = offsetsFor(left, leftMax)
+            drawRuns(leftOffsets, leftColor)
+            leftOffsets.forEachIndexed { i, p ->
+                val v = left[i]
+                if (p == null || v == null) return@forEachIndexed
+                drawRingMarker(leftColor, p)
+                drawSlotLabel(
+                    measurer,
+                    leftFormat(v),
+                    labelStyle,
+                    leftColor,
+                    p.x,
+                    p.y + WEEK_MARKER_RADIUS + gap,
+                )
+            }
+        }
     }
 }

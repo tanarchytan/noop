@@ -1,7 +1,6 @@
 package com.noop.ui
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -9,7 +8,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
@@ -17,22 +15,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Shadow
-import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import kotlin.math.roundToInt
 
-// The card the sleep-performance vessel floats on: a translucent near-black fill so it reads OVER the
-// day-of-sky with the vessel and the white count-up number crisp; radius 26 plus a white hairline give
-// the frosted edge.
-private val SLEEP_HERO_FILL: Color = Color(red = 13f / 255f, green = 14f / 255f, blue = 20f / 255f, alpha = 0.80f)
-private val SLEEP_HERO_RADIUS: Dp = 26.dp
 private val SLEEP_VESSEL_DIAMETER: Dp = 184.dp
 
 /** How many tiers the driver strip splits 0-100 into, and the width of one tier. */
@@ -50,28 +38,18 @@ internal data class SleepDriver(
 )
 
 /**
- * SLEEP PERFORMANCE — the night's score in a liquid vessel, the drivers behind it as labelled strips,
- * and the tier legend those strips are read against. A [SourceBadge] states whether the score is
- * WHOOP's imported figure or NOOP's own.
+ * SLEEP PERFORMANCE — the night's score in a ring, the drivers behind it as labelled strips, and the
+ * tier legend those strips are read against. A [SourceBadge] states whether the score is WHOOP's
+ * imported figure or NOOP's own.
  *
  * The strip marks which THIRD of 0-100 a driver falls in; the thirds and their words are a reading
  * scale, not a threshold, so nothing here decides a number.
  */
 @Composable
 internal fun SleepPerformanceCard(score: Double?, asleepMin: Double?, drivers: List<SleepDriver>, source: String) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(SLEEP_HERO_RADIUS))
-            .background(SLEEP_HERO_FILL.copy(alpha = SLEEP_HERO_FILL.alpha * CardAppearance.opacity))
-            .border(
-                1.dp,
-                Color.White.copy(alpha = 0.11f * CardAppearance.opacity),
-                RoundedCornerShape(SLEEP_HERO_RADIUS),
-            ),
-    ) {
+    NoopCard(padding = Metrics.space24, tint = Palette.restColor) {
         Column(
-            modifier = Modifier.fillMaxWidth().padding(Metrics.space24),
+            modifier = Modifier.fillMaxWidth(),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(Metrics.space16),
         ) {
@@ -111,26 +89,18 @@ internal fun SleepPerformanceCard(score: Double?, asleepMin: Double?, drivers: L
     }
 }
 
-/** The score as a liquid vessel with the value counting up over it. The number is hit-transparent so a
- *  tap falls through to the vessel, which owns its own splash and haptic. */
+/** The score as a ring in the rest tint. The ring owns the count-up; the fill key keeps a scroll that
+ *  recycles it from replaying the fill. */
 @Composable
 private fun SleepScoreVessel(score: Double) {
-    Box(modifier = Modifier.size(SLEEP_VESSEL_DIAMETER), contentAlignment = Alignment.Center) {
-        LiquidVessel(
-            value = (score / 100.0).coerceIn(0.0, 1.0),
-            tint = Palette.restColor,
-            animated = true,
-            modifier = Modifier.size(SLEEP_VESSEL_DIAMETER),
-        )
-        CountUpText(
-            value = score,
-            format = { it.roundToInt().toString() },
-            style = NoopType.number(50f, weight = FontWeight.Bold)
-                .copy(shadow = Shadow(color = Color.Black.copy(alpha = 0.5f), offset = Offset(0f, 1f), blurRadius = 6f)),
-            color = Color.White,
-            modifier = Modifier.clearAndSetSemantics {},
-        )
-    }
+    GlowRing(
+        fraction = (score / 100.0).coerceIn(0.0, 1.0).toFloat(),
+        value = score,
+        color = Palette.restColor,
+        diameter = SLEEP_VESSEL_DIAMETER,
+        lineWidth = SLEEP_VESSEL_DIAMETER * RING_STROKE_FRACTION,
+        fillKey = "sleep.performance",
+    )
 }
 
 /** One driver: uppercase label, the tier strip, and the value right-aligned. */

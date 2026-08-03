@@ -8,8 +8,6 @@ import com.noop.analytics.SleepDebtLedger
 import com.noop.analytics.SleepStageTotals
 import com.noop.data.DailyMetric
 import com.noop.data.SleepSession
-import org.json.JSONArray
-import org.json.JSONObject
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -58,7 +56,6 @@ internal data class SleepModel(
     val efficiency: Metric,
     val consistency: Metric,
     val hoursVsNeeded: Metric,
-    val restorative: Metric,
     val respiratory: Metric,
     val sleepDebt: Metric,
     val typicalTotalMin: Double?,
@@ -67,7 +64,6 @@ internal data class SleepModel(
     val typicalLightMin: Double?,
     val trendHours: List<Double>,
     val trendNeedHours: List<Double>,
-    val trendDebtHours: List<Double>,
     val trendDates: List<String>,
     /** Persisted per-epoch segments as ordered (stage, minutes) weights — the REAL hypnogram (on-device
      *  approximate staging) — or null → synthesized fallback. */
@@ -360,46 +356,12 @@ internal fun stagesFromSegments(segments: List<Pair<String, Float>>): Stages? {
 internal data class StageMins(val awake: Double, val light: Double, val deep: Double, val rem: Double)
 
 /**
- * Extract stage minute counts from a session's stagesJSON, handling both formats:
- *  • Minute dict  {"awake":…,"light":…,"deep":…,"rem":…}  — imported nights
- *  • Segment array [{start,end,stage}]                     — on-device computed nights
- * Returns null when the JSON is absent or unparseable, so callers fall back to DailyMetric columns.
+ * Stage minute counts for a session's stagesJSON, decoded by the canonical [SleepStageTotals.minutes]
+ * (segment-array, `{stage,min}` and minute-dict shapes alike). Null when the JSON is absent or
+ * unparseable, so callers fall back to DailyMetric columns.
  */
-private fun parseSessionStages(stagesJSON: String?): StageMins? {
-    stagesJSON ?: return null
-    return runCatching {
-        val trimmed = stagesJSON.trim()
-        when {
-            trimmed.startsWith("{") -> {
-                val obj = JSONObject(trimmed)
-                val aw = obj.optDouble("awake", 0.0)
-                val li = obj.optDouble("light", 0.0)
-                val dp = obj.optDouble("deep", 0.0)
-                val rm = obj.optDouble("rem", 0.0)
-                if (aw + li + dp + rm > 0.0) StageMins(aw, li, dp, rm) else null
-            }
-            trimmed.startsWith("[") -> {
-                val arr = JSONArray(trimmed)
-                var aw = 0.0; var li = 0.0; var dp = 0.0; var rm = 0.0
-                for (i in 0 until arr.length()) {
-                    val seg = arr.optJSONObject(i) ?: continue
-                    val start = seg.optLong("start", -1)
-                    val end = seg.optLong("end", -1)
-                    if (end <= start) continue
-                    val durMin = (end - start) / 60.0
-                    when (seg.optString("stage")) {
-                        "wake"  -> aw += durMin
-                        "light" -> li += durMin
-                        "deep"  -> dp += durMin
-                        "rem"   -> rm += durMin
-                    }
-                }
-                if (aw + li + dp + rm > 0.0) StageMins(aw, li, dp, rm) else null
-            }
-            else -> null
-        }
-    }.getOrNull()
-}
+private fun parseSessionStages(stagesJSON: String?): StageMins? =
+    SleepStageTotals.minutes(stagesJSON)?.let { StageMins(it.awake, it.light, it.deep, it.rem) }
 
 /**
  * Build the whole model from the cached daily metrics + the selected sleep session + the export-verbatim
@@ -457,8 +419,8 @@ internal fun buildSleepModel(
     val typicalRemMin = mean(days.mapNotNull { it.remMin }.filter { it > 0.0 })
     val typicalLightMin = mean(days.mapNotNull { it.lightMin }.filter { it > 0.0 })
 
-    // Personal sleep need (minutes): mean asleep, floored at 7.5h (450 min).
-    val needMin = max(450.0, typicalTotalMin ?: 450.0)
+    // Personal sleep need (minutes) — mean asleep with the healthy floor, both owned by whoop-rs.
+    val needMin = RustScores.personalSleepNeedMinutes(days.mapNotNull { it.totalSleepMin })
 
     // Per-tile metrics — each a full pass over the FULL day history (asleep totals). Where the WHOOP export
     // carried the figure verbatim (metricSeries), it wins per day; the on-device recomputation fills the rest.
@@ -488,10 +450,6 @@ internal fun buildSleepModel(
         val need = imported.needMin[d.day] ?: needMin   // imported need wins per day
         d.totalSleepMin?.takeIf { it > 0.0 && need > 0.0 }?.let { it / need * 100.0 }
     }
-    val restorative = metricAtDay(days, latest) { d ->
-        val dp = d.deepMin; val rm = d.remMin; val sl = d.totalSleepMin
-        if (dp != null && rm != null && sl != null && sl > 0.0) (dp + rm) / sl * 100.0 else null
-    }
     val respiratory = metricAtDay(days, latest) { it.respRateBpm }
     val sleepDebt = run {
         fun debtOf(d: DailyMetric): Double? =
@@ -507,11 +465,6 @@ internal fun buildSleepModel(
     val trendRows = days.filter { (it.totalSleepMin ?: 0.0) > 0.0 }.takeLast(14)
     val trendHours = trendRows.mapNotNull { it.totalSleepMin?.let { minutes -> minutes / 60.0 } }
     val trendNeedHours = trendRows.map { row -> ((imported.needMin[row.day] ?: needMin) / 60.0) }
-    val trendDebtHours = trendRows.map { row ->
-        val sleptMin = row.totalSleepMin ?: 0.0
-        val neededMin = imported.needMin[row.day] ?: needMin
-        ((imported.debtMin[row.day] ?: max(0.0, neededMin - sleptMin)) / 60.0)
-    }
     val trendDates = trendRows.map { it.day }
 
     // Real per-epoch timeline only when the merged session IS this night — UTC OR local-tz end-day match
@@ -541,7 +494,6 @@ internal fun buildSleepModel(
         efficiency = efficiency,
         consistency = consistency,
         hoursVsNeeded = hoursVsNeeded,
-        restorative = restorative,
         respiratory = respiratory,
         sleepDebt = sleepDebt,
         typicalTotalMin = typicalTotalMin,
@@ -550,7 +502,6 @@ internal fun buildSleepModel(
         typicalLightMin = typicalLightMin,
         trendHours = trendHours,
         trendNeedHours = trendNeedHours,
-        trendDebtHours = trendDebtHours,
         trendDates = trendDates,
         realSegments = realSegments,
         sleepDebtLedger = sleepDebtLedger,
@@ -655,7 +606,7 @@ internal fun durationText(minutes: Double): String {
 }
 
 internal fun List<Double>.sleepAverageOrNull(): Double? =
-    if (isEmpty()) null else sum() / size
+    if (isEmpty()) null else RustScores.mean(this)
 
 internal fun clockLabel(latest: DailyMetric, session: SleepSession?): String {
     if (session != null) return sessionClockLabel(session)

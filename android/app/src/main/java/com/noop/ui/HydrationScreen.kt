@@ -2,7 +2,6 @@ package com.noop.ui
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -25,6 +24,7 @@ import androidx.compose.material.icons.filled.LocalDrink
 import androidx.compose.material.icons.filled.WaterDrop
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
@@ -42,10 +42,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -61,29 +59,18 @@ import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
-// MARK: - Hydration detail (MVP, opt-in, local-only) — LIQUID restyle
+// MARK: - Hydration detail (MVP, opt-in, local-only)
 //
-// Liquid finish (matching the liquid Today pilot — TodayScreen.kt / LiquidScreenSky.kt / LiquidPrimitives.kt):
-// the day-of-sky settles behind the header (LiquidScreenSky, gated on the same showDayCycleBackground pref),
-// the headline fill becomes a LiquidVessel (water in a vessel — the literal fit) with the litre figure
-// counting up over it, the daily goal reads as a LiquidTube, and the quick-log controls are liquid-press
-// tiles. Everything below stays crisp: the 7-day mini bars are a multi-bar chart (not a single value, so no
-// tube), the flat cards keep the frosted surface. All data bindings, the pure HydrationGoal engine, and the
-// local-only HydrationStore reads/writes are UNCHANGED — this is a restyle only. Mirrors the iOS HydrationView.
+// Standard surfaces throughout: the scaffold paints Palette.surfaceBase, the headline fill is a GlowRing
+// (the same ring Home draws) inside a NoopCard, and the daily goal reads as a LinearProgressIndicator over
+// Palette.surfaceInset. All data bindings, the pure HydrationGoal engine, and the local-only HydrationStore
+// reads/writes are UNCHANGED — this is a presentation change only.
 
-/** The reset accent blue (matches NoopButton's pinned iOS `StrandPalette.accent`: #234F9E / #60A0E0). */
-private val hydrationAccent: Color
-    @Composable get() = if (Palette.isLight) Color(0xFF234F9E) else Color(0xFF60A0E0)
+/** The goal ring's diameter, and its stroke as a fraction of that diameter (the Home hero ratio). */
+private val HYDRATION_RING_DIAMETER = 184.dp
+private const val HYDRATION_RING_STROKE_FRACTION = 0.10f
 
-// MARK: - Liquid hero tokens (shared with the liquid Today hero card)
-//
-// The frosted translucent near-black the hydration vessel floats on (mock rgba(13,14,20,.80)), so the vessel
-// + the white count-up litre figure read crisp over the day-of-sky. Radius 26 + a white@0.11 hairline give
-// the frosted-glass edge. Same numbers as the liquid Today heroCard (TodayScreen.kt LIQUID_HERO_*).
-private val LIQUID_HERO_FILL: Color = Color(red = 13f / 255f, green = 14f / 255f, blue = 20f / 255f, alpha = 0.80f)
-private val LIQUID_HERO_RADIUS = 26.dp
-
-/** Upper bound (ml) for a single custom hydration log (#798) - a sane cap so a stray digit can't bank an
+/** Upper bound (ml) for a single custom hydration log - a sane cap so a stray digit can't bank an
  *  absurd 50-litre day. A 3-litre container covers any realistic bottle/jug. Mirrors the iOS clamp. */
 private const val MAX_CUSTOM_ML: Int = 3000
 
@@ -112,10 +99,6 @@ fun HydrationScreen(viewModel: AppViewModel) {
     val sex = remember { ProfileStore.from(context).sex }
     val goalMl = remember(sex, strain) { HydrationGoal.dailyGoalMl(sex, strain) }
 
-    // The liquid sky backdrop honours the SAME opt-out pref as the liquid Today (a user who turned the
-    // day-cycle sky off gets the flat canvas here too). Mirrors iOS `showDayCycleBackground ? ... : nil`.
-    val showDayCycleBackground = remember { NoopPrefs.showDayCycleBackground(context) }
-
     // Today's running total + the per-day history, loaded off the gesture path and refreshed after a log.
     var totalMl by remember { mutableStateOf(0.0) }
     var history by remember { mutableStateOf<List<Pair<String, Double>>>(emptyList()) }
@@ -126,7 +109,7 @@ fun HydrationScreen(viewModel: AppViewModel) {
         history = runCatching { HydrationStore.history(viewModel.repo, days = 7) }.getOrDefault(emptyList())
     }
 
-    // #798 - the LAST amount logged this session, so the detail can offer a one-tap "Undo" that removes
+    // the LAST amount logged this session, so the detail can offer a one-tap "Undo" that removes
     // exactly that container from the day total. The single-total schema can't address an individual log,
     // so undo subtracts the last known amount (clamped at 0 by the store). Reset to null after an undo so
     // the affordance only appears when there's something to take back. Not persisted - a relaunch shows
@@ -142,7 +125,7 @@ fun HydrationScreen(viewModel: AppViewModel) {
             reloadTick += 1
         }
     }
-    // Remove [amount] ml from the day total (the undo / delete-a-log path, #798). Clears the pending undo.
+    // Remove [amount] ml from the day total (the undo / delete-a-log path). Clears the pending undo.
     val remove: (Int) -> Unit = { amount ->
         scope.launch {
             runCatching { HydrationStore.remove(viewModel.repo, amount) }
@@ -152,9 +135,9 @@ fun HydrationScreen(viewModel: AppViewModel) {
     }
 
     val fraction = if (goalMl > 0) (totalMl / goalMl).toFloat() else 0f
-    val accent = hydrationAccent
+    val accent = Palette.actionBlue
 
-    // #798 - the custom-amount entry. Logs any whole-ml amount the Sip/Cup/Bottle quick buttons don't
+    // the custom-amount entry. Logs any whole-ml amount the Sip/Cup/Bottle quick buttons don't
     // cover (a bespoke container), clamped to a sane 1..MAX_CUSTOM_ML, then routed through the SAME
     // additive `log` path so it accumulates into the day total and refreshes the vessel + history.
     if (showCustom) {
@@ -168,81 +151,48 @@ fun HydrationScreen(viewModel: AppViewModel) {
         )
     }
 
-    // PERF (#707): lazy scaffold — each top-level section is one `item { }`. Order + spacing unchanged
+    // PERF: lazy scaffold — each top-level section is one `item { }`. Order + spacing unchanged
     // (LazyColumn reproduces the eager `spacedBy(20.dp)`); only on-screen cards compose + are
     // accessibility-walked. All children are unconditional, so every wrap is a bare `item { }`.
     //
-    // LIQUID: the day-of-sky sits behind the header via the scaffold's topBackground slot (the pilot
-    // pattern — LiquidScreenSky.kt), replacing the classic flat canvas. Gated on the day-cycle pref, so an
-    // opted-out user still gets the plain surface. Mirrors the liquid Today scaffold.
+    // No topBackground: the scaffold paints Palette.surfaceBase, the one canvas every screen shares. The
+    // decorated backdrop it used to carry painted fixed dark-mode colours in both themes.
     LazyScreenScaffold(
         title = "Hydration",
         subtitle = "Your fluid intake today, on this phone only.",
-        topBackground = if (showDayCycleBackground) { { LiquidScreenSky() } } else null,
     ) {
-        // HERO — the day's intake as a LiquidVessel (water in a vessel: the literal fit), with the litre
-        // figure counting up over it, floating on the frosted translucent-black liquid hero card so it reads
-        // crisp on the day-of-sky. The daily goal is a LiquidTube beneath. Same fraction math + accent +
-        // litre values as the GlowRing this replaced. Mirrors the iOS liquid hero idiom (HeroScoreVessel).
+        // HERO — the day's intake as the standard GlowRing on a NoopCard: the arc is the goal fraction in
+        // the hydration accent, the litre figure counts up in the centre and the goal reads as the caption
+        // under it. The daily goal repeats as a progress bar beneath. Same fraction, accent and litre
+        // values as before.
         item {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(LIQUID_HERO_RADIUS))
-                    .background(LIQUID_HERO_FILL.copy(alpha = LIQUID_HERO_FILL.alpha * CardAppearance.opacity))
-                    .border(Metrics.divider, Color.White.copy(alpha = 0.11f * CardAppearance.opacity), RoundedCornerShape(LIQUID_HERO_RADIUS))
-                    .padding(Metrics.screenRowSpacing),
-            ) {
+            NoopCard(padding = Metrics.screenRowSpacing) {
                 Column(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(Metrics.space14),
                 ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        // The vessel fills to the goal fraction in the hydration accent. It runs LIVE (per-frame
-                        // slosh + tilt) once anything is logged today; a fresh empty day poses it static so the
-                        // launch isn't fighting a live canvas. Honours Reduce Motion internally.
-                        LiquidVessel(
-                            value = fraction.toDouble().coerceIn(0.0, 1.0),
-                            tint = accent,
-                            animated = totalMl > 0.0,
-                            modifier = Modifier.size(184.dp),
-                        )
-                        // The litre count-up over the vessel — white, tabular, a soft shadow for legibility,
-                        // hit-transparent (clearAndSetSemantics + no clickable) so a tap falls THROUGH to the
-                        // vessel (LiquidVessel owns its own tap→splash+haptic). Mirrors the iOS HeroScoreCell.
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            modifier = Modifier.clearAndSetSemantics {},
-                        ) {
-                            CountUpText(
-                                value = totalMl / 1000.0,
-                                format = { String.format(Locale.US, "%.1f", it) },
-                                style = NoopType.number(40f, weight = FontWeight.Bold).copy(
-                                    shadow = Shadow(
-                                        color = Color.Black.copy(alpha = 0.5f),
-                                        offset = Offset(0f, 1f),
-                                        blurRadius = 6f,
-                                    ),
-                                ),
-                                color = Color.White,
-                            )
-                            Text(
-                                String.format(Locale.US, "of %.1f L", goalMl / 1000.0),
-                                style = NoopType.subhead,
-                                color = Color.White.copy(alpha = 0.72f),
-                            )
-                        }
-                    }
-                    // DAILY GOAL — a genuine single-value progress bar, so it reads as a LiquidTube (static:
-                    // it sits in a detail hero, not a live surface). Same goal fraction as the vessel.
-                    LiquidTube(
-                        frac = fraction.toDouble().coerceIn(0.0, 1.0),
-                        tint = accent,
-                        height = Metrics.progressHeight,
-                        animated = false,
+                    GlowRing(
+                        fraction = fraction.coerceIn(0f, 1f),
+                        value = totalMl / 1000.0,
+                        color = accent,
+                        diameter = HYDRATION_RING_DIAMETER,
+                        lineWidth = HYDRATION_RING_DIAMETER * HYDRATION_RING_STROKE_FRACTION,
+                        fillKey = "hydration.today",
+                        format = { String.format(Locale.US, "%.1f", it) },
+                        unit = " L",
+                        caption = String.format(Locale.US, "of %.1f L", goalMl / 1000.0),
+                    )
+                    // DAILY GOAL — the same goal fraction again as a horizontal bar, on the theme's inset
+                    // track so it reads in both schemes.
+                    LinearProgressIndicator(
+                        progress = { fraction.coerceIn(0f, 1f) },
+                        color = accent,
+                        trackColor = Palette.surfaceInset,
                         modifier = Modifier
                             .fillMaxWidth()
+                            .height(Metrics.progressHeight)
+                            .clip(RoundedCornerShape(Metrics.progressHeight / 2))
                             .semantics {
                                 contentDescription =
                                     "${kotlin.math.min(100, (fraction * 100).toInt())} percent of today's goal"
@@ -251,30 +201,29 @@ fun HydrationScreen(viewModel: AppViewModel) {
                     Text(
                         "${kotlin.math.min(100, (fraction * 100).toInt())}% of today's goal",
                         style = NoopType.footnote,
-                        color = Color.White.copy(alpha = 0.6f),
+                        color = Palette.textTertiary,
                     )
                 }
             }
         }
 
-        // LOG TILES — Sip / Cup / Bottle, as liquid-press tiles (the log controls). Each owns its own
-        // interactionSource wired to BOTH its clickable and liquidPress, so the whole tile settles inward on
-        // press (the iOS LiquidPressStyle feel), routing the SAME `log(...)` amounts as before.
+        // LOG TILES — Sip / Cup / Bottle. Each owns its own interactionSource wired to BOTH its clickable
+        // and liquidPress, so the whole tile settles inward on press, routing the SAME `log(...)` amounts.
         item {
             Row(horizontalArrangement = Arrangement.spacedBy(Metrics.space10), modifier = Modifier.fillMaxWidth()) {
-                LiquidLogTile(
+                QuickLogTile(
                     label = "Sip",
                     icon = Icons.Filled.WaterDrop,
                     accent = accent,
                     modifier = Modifier.weight(1f),
                 ) { log(HydrationGoal.SIP_ML) }
-                LiquidLogTile(
+                QuickLogTile(
                     label = "Cup",
                     icon = Icons.Filled.LocalDrink,
                     accent = accent,
                     modifier = Modifier.weight(1f),
                 ) { log(HydrationGoal.CUP_ML) }
-                LiquidLogTile(
+                QuickLogTile(
                     label = "Bottle",
                     icon = Icons.Filled.LocalDrink,
                     accent = accent,
@@ -282,7 +231,7 @@ fun HydrationScreen(viewModel: AppViewModel) {
                 ) { log(HydrationGoal.BOTTLE_ML) }
             }
         }
-        // #798 - "Custom" (a bespoke container size). Full-width secondary button under the quick-add tiles;
+        // "Custom" (a bespoke container size). Full-width secondary button under the quick-add tiles;
         // opens the custom-amount dialog so any ml the presets don't cover can be logged. (Kept as a
         // NoopButton — it carries its own press feedback and this is a secondary affordance, not a quick-log.)
         item {
@@ -348,7 +297,7 @@ fun HydrationScreen(viewModel: AppViewModel) {
                                 color = Palette.textPrimary,
                             )
                         }
-                        // #798 - undo / correct affordances. "Undo last" appears once something has been logged
+                        // undo / correct affordances. "Undo last" appears once something has been logged
                         // this session and removes exactly that container from the day total. "Clear today" zeroes
                         // the day's total outright (the delete-everything correction). Both route through the
                         // store's clamped remove/set, so the total never goes negative.
@@ -385,14 +334,12 @@ fun HydrationScreen(viewModel: AppViewModel) {
 }
 
 /**
- * One quick-log tile (Sip / Cup / Bottle) as a liquid-press control. The tile owns a single
- * [MutableInteractionSource] wired to BOTH its `clickable` and `Modifier.liquidPress`, so the whole tile
- * settles inward (0.975 scale / 0.86 alpha) on press — the iOS LiquidPressStyle feel — then fires [onLog].
- * A frosted card surface + an accent-tinted icon tile keep it on the liquid palette. Mirrors the iOS
- * hydration quick-add button.
+ * One quick-log tile (Sip / Cup / Bottle). The tile owns a single [MutableInteractionSource] wired to BOTH
+ * its `clickable` and `Modifier.liquidPress`, so the whole tile settles inward on press, then fires [onLog].
+ * Frosted card surface, accent-tinted icon tile.
  */
 @Composable
-private fun LiquidLogTile(
+private fun QuickLogTile(
     label: String,
     icon: ImageVector,
     accent: Color,
@@ -511,7 +458,7 @@ private fun weekdayInitial(dayKey: String): String =
     }.getOrDefault("·")
 
 /**
- * #798 - the custom-amount dialog. A single numeric ml field (the "custom container size") with a clamped
+ * the custom-amount dialog. A single numeric ml field (the "custom container size") with a clamped
  * confirm: the Log button is disabled until the text parses to a positive whole-ml value (1..MAX_CUSTOM_ML
  * via [parseCustomHydrationMl]), and confirming hands the parsed amount back to the caller's additive log.
  * Tokens-only on the hydration-blue field; mirrors the iOS custom-amount sheet.

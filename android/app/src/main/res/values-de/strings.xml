@@ -14,6 +14,8 @@
     <string name="nav_sleep">Schlaf</string>
     <string name="nav_breathe">Atmen</string>
     <string name="nav_stress">Stress</string>
+    <string name="nav_recovery">Erholung</string>
+    <string name="nav_strain">Belastung</string>
     <string name="nav_workouts">Workouts</string>
     <string name="nav_trends">Trends</string>
     <string name="nav_coach">Coach</string>
@@ -51,7 +53,6 @@
     <string name="action_breathe">Atmen</string>
 
     <!-- Today screen: workouts feed header. Matches the iOS German entry for "Latest Workouts". -->
-    <string name="today_latest_workouts">Neueste Workouts</string>
 
     <!-- Trends / Explore / Deep Timeline , see the English values/strings.xml comment for scope.
          Wording matches the existing iOS/macOS German catalog entries where one exists. -->

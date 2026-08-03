@@ -37,24 +37,24 @@ import kotlinx.coroutines.withContext
 import java.util.Calendar
 import java.util.Locale
 
-// MARK: - Deep Timeline (Android twin of FullDayChartView) — #575
+// MARK: - Deep Timeline (Android twin of FullDayChartView) —
 //
 // A full-day, full-resolution metric viewer reached from the Explore tab. The hard problem — never
 // drawing ~86k points for a worn 24h — is solved by reading adaptively: day scale → coarse Room HR
-// buckets (WhoopDao.hrBuckets, which already COALESCEs measured + v26 PPG #156), zoomed-in → raw
+// buckets (WhoopDao.hrBuckets, which already COALESCEs measured + v26 PPG), zoomed-in → raw
 // per-second rows (WhoopDao.hrSamples, same COALESCE). The chart's pinch/pan reports the new window and
 // we re-read at the new resolution. Mirrors macOS FullDayChartView + OverviewHRChart's zoom binding.
 
 private enum class TimelineMetric(val title: String) {
     Hr("Heart Rate"),
-    // #803: this trace is a rolling rMSSD over the RR series, NOT the raw RR interval it used to plot.
+    // this trace is a rolling rMSSD over the RR series, NOT the raw RR interval it used to plot.
     // The honest title says exactly what the curve is (windowed rMSSD), not a bare "HRV".
     Hrv("rMSSD (5 min)"),
     Spo2("SpO₂"),
     SkinTemp("Skin Temp"),
     Respiration("Respiration"),
     Motion("Motion"),
-    // #175: the strap's OWN band sleep_state track (0 wake/1 still/2 asleep/3 up), shown as a distinct
+    // the strap's OWN band sleep_state track (0 wake/1 still/2 asleep/3 up), shown as a distinct
     // stepped track alongside the derived hypnogram. This is the band's REPORTED state, NOT a stage NOOP
     // trusts as truth — the pill names it "Band Sleep State" so it can't be mistaken for the derived stages.
     BandSleepState("Band Sleep State"),
@@ -63,7 +63,7 @@ private enum class TimelineMetric(val title: String) {
 @Composable
 fun FullDayChartScreen(vm: AppViewModel, onBack: () -> Unit) {
     BackHandler(onBack = onBack)
-    // #908: the deep timeline follows the ACTIVE strap id, not a hardcoded "my-whoop". A strap re-added
+    // the deep timeline follows the ACTIVE strap id, not a hardcoded "my-whoop". A strap re-added
     // through the device manager banks its raw under its own fresh id, so a pinned "my-whoop" read left
     // the timeline empty. HR additionally reads the active ∪ canonical union (see [readTimeline]) so the
     // re-added strap's live curve AND the canonical import history both surface. Single-WHOOP install
@@ -80,11 +80,11 @@ fun FullDayChartScreen(vm: AppViewModel, onBack: () -> Unit) {
         cal.timeInMillis / 1000
     }
     // The day being shown … +24h. Mutable so the user can step back to days that actually have data
-    // instead of a possibly-empty today (#597 — was today-only with no way back).
+    // instead of a possibly-empty today (was today-only with no way back).
     var dayStartSec by remember { mutableStateOf(todayStart) }
     var didLand by remember { mutableStateOf(false) }
     val dayBounds = dayStartSec..(dayStartSec + 86_400)
-    // #986: a continuous left-drag can scroll back to the shown day plus the two before it (a rolling 3-day
+    // a continuous left-drag can scroll back to the shown day plus the two before it (a rolling 3-day
     // window), so older HR is reachable by dragging, not only the day-stepper. Deliberately bounded so one
     // drag can't fling through weeks; the reload keys on the visible window so panned-to days load, and a day
     // with no data falls to the empty state (parity with iOS FullDayChartView.panBounds).
@@ -96,11 +96,11 @@ fun FullDayChartScreen(vm: AppViewModel, onBack: () -> Unit) {
     var window by remember { mutableStateOf<LongRange?>(null) }
     val visible = window ?: dayBounds
 
-    // #597 / #863 , one-shot: open on the most recent day that has DATA, so a just-synced-history user
+    // one-shot: open on the most recent day that has DATA, so a just-synced-history user
     // (and a calibrating 4.0 that has banked raw HR but no scored DailyMetric yet) lands on real data
     // instead of an empty today. The latest SCORED day (DailyMetric) is the first choice; when there is
     // none yet, we fall back to the most recent day that has raw HR (max hrSample.ts for the strap), so a
-    // calibrating 4.0 still opens on the day its banked HR lives rather than a blank today (#863). Mirrors
+    // calibrating 4.0 still opens on the day its banked HR lives rather than a blank today. Mirrors
     // iOS landOnLatestDayIfNeeded, which already keys on the raw-HR union via repo.latestDataDayStart.
     LaunchedEffect(recentDays) {
         if (!didLand) {
@@ -130,13 +130,13 @@ fun FullDayChartScreen(vm: AppViewModel, onBack: () -> Unit) {
     var bucketSeconds by remember { mutableStateOf(0L) }
     var loading by remember { mutableStateOf(true) }
 
-    // Imperial/Metric temperature preference (#101) — skin temp is stored/read in °C, so when the user
+    // Imperial/Metric temperature preference — skin temp is stored/read in °C, so when the user
     // has °F selected the chart line, y-axis, stats AND readout need the converted number, not just a
     // relabelled suffix. Mirrors CompareScreen (read once per composition, like the app's other unit reads).
     val context = LocalContext.current
     val tempUnit = UnitPrefs.temperature(context)
 
-    // `points` in the DISPLAYED unit (#101). For every metric but skin temp this is just the raw points;
+    // `points` in the DISPLAYED unit. For every metric but skin temp this is just the raw points;
     // skin temp is the ABSOLUTE per-timestamp °C (skinTempCelsius), so when °F is selected convert with the
     // absolute ×9/5+32 (not a deviation rescale) so the chart line, y-axis AND stats read in °F — the
     // suffix relabel alone would leave the plotted numbers in Celsius. Mirrors the Swift FullDayChartView.
@@ -182,7 +182,7 @@ fun FullDayChartScreen(vm: AppViewModel, onBack: () -> Unit) {
             )
         }
 
-        // SOURCE PILL — the owned strap, with the #574 owned/all scope toggle.
+        // SOURCE PILL — the owned strap, with the owned/all scope toggle.
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(stringResource(R.string.timeline_my_whoop), style = NoopType.footnote, color = Palette.textSecondary)
             Spacer(Modifier.weight(1f))
@@ -196,7 +196,7 @@ fun FullDayChartScreen(vm: AppViewModel, onBack: () -> Unit) {
             )
         }
 
-        // DAY STEPPER — move the whole timeline back/forward a day (#597). Forward clamps at today.
+        // DAY STEPPER — move the whole timeline back/forward a day. Forward clamps at today.
         Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.fillMaxWidth().padding(horizontal = Metrics.space4),
@@ -242,7 +242,7 @@ fun FullDayChartScreen(vm: AppViewModel, onBack: () -> Unit) {
                             points = displayPoints,
                             windowStart = visible.first,
                             windowEnd = visible.last,
-                            bounds = panBounds,   // #986: pan clamp is the rolling 3-day window, not one day
+                            bounds = panBounds,   // pan clamp is the rolling 3-day window, not one day
                             color = metricColor(metric),
                             modifier = Modifier.fillMaxWidth().height(280.dp),
                             onWindowChange = { window = it },
@@ -254,7 +254,7 @@ fun FullDayChartScreen(vm: AppViewModel, onBack: () -> Unit) {
                     val vals = displayPoints.map { it.value }
                     Row(modifier = Modifier.fillMaxWidth()) {
                         TimelineStat(stringResource(R.string.timeline_min), formatValue(metric, vals.minOrNull() ?: 0.0), Modifier.weight(1f))
-                        TimelineStat(stringResource(R.string.timeline_avg), formatValue(metric, vals.average()), Modifier.weight(1f))
+                        TimelineStat(stringResource(R.string.timeline_avg), formatValue(metric, RustScores.mean(vals)), Modifier.weight(1f))
                         TimelineStat(stringResource(R.string.timeline_max), formatValue(metric, vals.maxOrNull() ?: 0.0), Modifier.weight(1f))
                     }
                 }
@@ -324,7 +324,7 @@ private suspend fun readTimeline(
     // CPU work moves off the UI thread. Output is unchanged.
     val repo = vm.repo
     if (metric == TimelineMetric.Hr) {
-        // #908: HR rides the active strap ∪ canonical "my-whoop" union so a re-added strap's live curve and
+        // HR rides the active strap ∪ canonical "my-whoop" union so a re-added strap's live curve and
         // the canonical import history both render (matches Swift Repository.timelineSeries). [deviceId] is
         // already the active strap id; a single-WHOOP install resolves to "my-whoop" ⇒ one id ⇒ same read.
         return@withContext if (bucket <= 1L) {
@@ -351,8 +351,8 @@ private suspend fun readTimeline(
             runCatching { repo.spo2SamplesUnion(from, to, 200_000) }.getOrDefault(emptyList())
                 .mapNotNull { if (it.ir > 0) TimelinePoint(it.ts, it.red.toDouble() / it.ir) else null }
         TimelineMetric.SkinTemp -> {
-            // #938: family-aware raw→°C — 5/MG centidegrees (raw/100, #156), a WHOOP 4.0 v24 raw ADC map.
-            // The registry-model-label → family mapping lives in DeviceFamily.forRegistryModel (#171).
+            // family-aware raw→°C — 5/MG centidegrees (raw/100), a WHOOP 4.0 v24 raw ADC map.
+            // The registry-model-label → family mapping lives in DeviceFamily.forRegistryModel.
             // Mirrors Swift Repository.timelineRawMetric.
             val model = runCatching { vm.pairedDevices() }.getOrDefault(emptyList())
                 .firstOrNull { it.id == deviceId }?.model
@@ -367,7 +367,7 @@ private suspend fun readTimeline(
             runCatching { repo.gravitySamplesUnion(from, to, 200_000) }.getOrDefault(emptyList())
                 .map { TimelinePoint(it.ts, kotlin.math.sqrt(it.x * it.x + it.y * it.y + it.z * it.z)) }
         TimelineMetric.BandSleepState ->
-            // #175: the strap's OWN band sleep_state (0 wake/1 still/2 asleep/3 up) as a stepped track. Read
+            // the strap's OWN band sleep_state (0 wake/1 still/2 asleep/3 up) as a stepped track. Read
             // the raw per-record stream (far sparser than 1 Hz HR, safe to load a day) and plot the 0-3 code
             // VERBATIM. Empty when the strap never reported it (a WHOOP 4.0, or a not-yet-offloaded window),
             // which the view renders as its honest "nothing here" state — never a fabricated flat line.
@@ -409,13 +409,13 @@ private fun metricColor(metric: TimelineMetric): Color = when (metric) {
     TimelineMetric.SkinTemp -> Palette.strain033
     TimelineMetric.Hrv, TimelineMetric.Spo2 -> Palette.sleepLight
     TimelineMetric.Respiration, TimelineMetric.Motion -> Palette.textSecondary
-    // #175: the band-state track uses the deep-sleep hue so it reads as a distinct sleep track.
+    // the band-state track uses the deep-sleep hue so it reads as a distinct sleep track.
     TimelineMetric.BandSleepState -> Palette.sleepDeep
 }
 
 private fun unitSuffix(metric: TimelineMetric, tempUnit: TemperatureUnit): String = when (metric) {
     TimelineMetric.Hr -> " bpm"
-    TimelineMetric.SkinTemp -> UnitFormatter.temperatureUnit(tempUnit)   // #101: °C / °F per preference
+    TimelineMetric.SkinTemp -> UnitFormatter.temperatureUnit(tempUnit)   // °C / °F per preference
     TimelineMetric.Hrv -> " ms"
     else -> ""
 }
@@ -423,10 +423,10 @@ private fun unitSuffix(metric: TimelineMetric, tempUnit: TemperatureUnit): Strin
 private fun formatValue(metric: TimelineMetric, v: Double): String = when (metric) {
     TimelineMetric.Hr, TimelineMetric.Respiration, TimelineMetric.Hrv -> v.toInt().toString()
     // `v` already arrives in the displayed unit — callers read from `displayPoints`, which converts skin
-    // temp to °F upfront so the chart's axis (plotted from the same points) agrees with this readout (#101).
+    // temp to °F upfront so the chart's axis (plotted from the same points) agrees with this readout.
     TimelineMetric.SkinTemp -> String.format(Locale.US, "%.1f", v)
     TimelineMetric.Spo2, TimelineMetric.Motion -> String.format(Locale.US, "%.2f", v)
-    // #175: name the band's own state at the nearest code so the readout reads "asleep", not "2.0". A
+    // name the band's own state at the nearest code so the readout reads "asleep", not "2.0". A
     // bucket-averaged fractional value (when zoomed out) rounds to the nearest code — honest for a readout
     // label; the track itself plots the numeric code. Names the BAND's reported state, never a derived stage.
     TimelineMetric.BandSleepState -> when (Math.round(v).toInt()) {
@@ -438,7 +438,7 @@ private fun formatValue(metric: TimelineMetric, v: Double): String = when (metri
     }
 }
 
-/** Parse a yyyy-MM-dd day key to its LOCAL midnight epoch-seconds, or null if unparseable (#597). */
+/** Parse a yyyy-MM-dd day key to its LOCAL midnight epoch-seconds, or null if unparseable. */
 private fun dayKeyToEpochSec(day: String): Long? = runCatching {
     val sdf = java.text.SimpleDateFormat("yyyy-MM-dd", Locale.US)
     sdf.timeZone = java.util.TimeZone.getDefault()
@@ -446,7 +446,7 @@ private fun dayKeyToEpochSec(day: String): Long? = runCatching {
 }.getOrNull()
 
 /** An arbitrary epoch-second to its LOCAL midnight epoch-seconds (the same clamp `todayStart` uses), so a
- *  raw hrSample.ts can be mapped to the day it belongs to for the #863 raw-HR land fallback. */
+ *  raw hrSample.ts can be mapped to the day it belongs to for the raw-HR land fallback. */
 private fun epochSecToLocalDayStart(ts: Long): Long {
     val cal = Calendar.getInstance().apply {
         timeInMillis = ts * 1000
@@ -457,13 +457,13 @@ private fun epochSecToLocalDayStart(ts: Long): Long {
 }
 
 /**
- * PURE land-on-day decision for the Deep Timeline's one-shot open (#597 / #863). Given the day currently
+ * PURE land-on-day decision for the Deep Timeline's one-shot open. Given the day currently
  * shown, the latest SCORED day key (DailyMetric, yyyy-MM-dd) and the latest RAW HR sample timestamp, return
  * the day-start to land on, or null to stay put.
  *
- * Preference order: a scored day wins (the historical #597 behaviour); when there is no scored day yet, fall
+ * Preference order: a scored day wins (the historical behaviour); when there is no scored day yet, fall
  * back to the day that holds the most recent raw HR (the calibrating-4.0 case , banked HR, no DailyMetric
- * yet, #863). Only jumps to a day STRICTLY EARLIER than where we already are, so it can't fight a forward
+ * yet). Only jumps to a day STRICTLY EARLIER than where we already are, so it can't fight a forward
  * step or land us "ahead" of today. [dayStartOf] maps an epoch-second to its local midnight (injected so the
  * decision is testable without a Calendar/zone).
  */
@@ -478,7 +478,7 @@ internal fun landTargetDayStart(
     return if (target != null && target < currentDayStart) target else null
 }
 
-/** "Today" / "Yesterday" / "Wed 18 Jun" label for the Deep Timeline day stepper (#597). */
+/** "Today" / "Yesterday" / "Wed 18 Jun" label for the Deep Timeline day stepper. */
 private fun dayLabel(dayStartSec: Long, todayStart: Long): String = when (dayStartSec) {
     todayStart -> "Today"
     todayStart - 86_400 -> "Yesterday"

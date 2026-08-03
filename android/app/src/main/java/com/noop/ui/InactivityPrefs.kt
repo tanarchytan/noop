@@ -6,7 +6,7 @@ import com.noop.analytics.SedentaryDetector
 import com.noop.analytics.SedentaryState
 
 /**
- * InactivityPrefs — settings + persisted de-dup state for the inactivity reminder (#419).
+ * InactivityPrefs — settings + persisted de-dup state for the inactivity reminder.
  *
  * Mirrors the [NotifPrefs] idiom (flat SharedPreferences keys, getBool/getInt/getLong helpers) and
  * deliberately REUSES NotifPrefs for the global gates (master switch, quiet hours, only-when-worn)
@@ -39,7 +39,7 @@ object InactivityPrefs {
     const val LAST_BUZZED_BOUT_END = "inactivity.lastBuzzedBoutEnd"
     const val LAST_PROCESSED_GRAVITY_TS = "inactivity.lastProcessedGravityTs"
 
-    // Defaults (match SedentaryDetector / the PR #419 numbers).
+    // Defaults (match SedentaryDetector).
     const val DEFAULT_THRESHOLD_MIN = SedentaryDetector.DEFAULT_THRESHOLD_MINUTES   // 45
     const val DEFAULT_RENUDGE_MIN = SedentaryDetector.DEFAULT_RENUDGE_MINUTES        // 30
     const val DEFAULT_BUZZ_LOOPS = SedentaryDetector.DEFAULT_BUZZ_LOOPS              // 2

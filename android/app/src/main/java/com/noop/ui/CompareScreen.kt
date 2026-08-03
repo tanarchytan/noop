@@ -45,12 +45,10 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.semantics.clearAndSetSemantics
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.noop.analytics.RustScores
 import com.noop.data.DailyMetric
 import com.noop.data.MoodStore
 import com.noop.ingest.NutritionCsvImporter
@@ -102,18 +100,11 @@ data class CompareMetric(
         return if (unit.isEmpty()) n else "$n $unit"
     }
 
-    /** Unit-aware format (D#103): weight/lean_mass (kg) and skin_temp (°C) convert + relabel via
+    /** Unit-aware format: weight/lean_mass (kg) and skin_temp (°C) convert + relabel via
      *  [UnitFormatter]; everything else (%, bpm, ms, min, …) is unit-agnostic and falls through. */
     fun format(v: Double, system: UnitSystem, temperature: TemperatureUnit): String = when (unit) {
         "kg" -> UnitFormatter.massFromKilograms(v, system)
         "°C" -> UnitFormatter.temperatureFromCelsius(v, temperature, decimals)
-        else -> format(v)
-    }
-
-    /** Like [format] but for a DIFFERENCE: a temperature delta omits the +32 offset. */
-    fun formatDelta(v: Double, system: UnitSystem, temperature: TemperatureUnit): String = when (unit) {
-        "kg" -> UnitFormatter.massFromKilograms(v, system)
-        "°C" -> UnitFormatter.temperatureDeltaFromCelsius(v, temperature, decimals)
         else -> format(v)
     }
 
@@ -148,7 +139,7 @@ private object CompareCatalog {
         CompareMetric("hrv", "Heart Rate Variability", "Charge", "ms", "my-whoop", 0),
         CompareMetric("rhr", "Resting Heart Rate", "Charge", "bpm", "my-whoop", 0),
         CompareMetric("resp_rate", "Respiratory Rate", "Charge", "rpm", "my-whoop", 1),
-        CompareMetric("spo2", "Blood Oxygen", "Charge", "%", "my-whoop", 0),
+        CompareMetric("spo2", "SpO₂", "Charge", "%", "my-whoop", 0),
         CompareMetric("skin_temp", "Skin Temperature", "Charge", "°C", "my-whoop", 1),
         // Rest (was Sleep)
         CompareMetric("sleep_performance", "Rest", "Rest", "%", "my-whoop", 0),
@@ -323,34 +314,6 @@ private fun dayOrdinal(day: String): Long? {
     return era.toLong() * 146097L + doe - 719468L
 }
 
-// MARK: - Correlation engine (ported from StrandAnalytics/CorrelationEngine.swift)
-
-private data class Correlation(val r: Double, val n: Int)
-
-private object CorrelationEngine {
-    /** Inner-join two day-keyed series on the day key → (x, y) pairs sorted by day. */
-    fun alignByDay(
-        a: List<Pair<String, Double>>,
-        b: List<Pair<String, Double>>,
-    ): List<Pair<Double, Double>> {
-        val mapA = HashMap<String, Double>()
-        for ((day, v) in a) mapA[day] = v
-        val mapB = HashMap<String, Double>()
-        for ((day, v) in b) mapB[day] = v
-        val common = mapA.keys.filter { mapB.containsKey(it) }.sorted()
-        return common.map { mapA[it]!! to mapB[it]!! }
-    }
-
-    /** Pearson r over the pairs, computed in whoop-rs. Null under 3 pairs (too few to show) or
-     *  when either variable is flat. */
-    fun pearson(xy: List<Pair<Double, Double>>): Correlation? {
-        if (xy.size < 3) return null
-        val r = RustScores.pearson(xy.map { it.first }, xy.map { it.second })
-            ?.coerceIn(-1.0, 1.0) ?: return null
-        return Correlation(r = r, n = xy.size)
-    }
-}
-
 // MARK: - Root
 
 /**
@@ -361,10 +324,7 @@ private object CorrelationEngine {
 fun CompareScreen(vm: AppViewModel) {
     val days by vm.recentDays.collectAsStateWithLifecycle()
 
-    // Liquid finish (pilot pattern): the time-of-day sky settles behind the top of the screen, gated on the
-    // same day-cycle-background preference the liquid Today honours. Off = the flat dark canvas path.
     val context = LocalContext.current
-    val showDayCycleBackground = remember { NoopPrefs.showDayCycleBackground(context) }
 
     val maxSelection = 4
     val minSelection = 2
@@ -440,12 +400,11 @@ fun CompareScreen(vm: AppViewModel) {
         if (anyWidened) "$base · sparse widened" else base
     }
 
+    // No topBackground: the scaffold takes its opaque path and paints Palette.surfaceBase, so the canvas
+    // follows the theme in both light and dark.
     LazyScreenScaffold(
         title = "Compare",
         subtitle = "Overlay signals, draw conclusions.",
-        // Liquid sky backdrop (LiquidScreenSky.kt) in the scaffold's topBackground slot, gated on the
-        // day-cycle preference — the same pilot plumbing the liquid Today uses.
-        topBackground = if (showDayCycleBackground) { { LiquidScreenSky() } } else null,
     ) {
 
         // ── Metric picker section (chips + range control)
@@ -543,7 +502,7 @@ fun CompareScreen(vm: AppViewModel) {
 
 /**
  * Load the full history for [metric] (ascending by day). Mirrors macOS
- * repo.resolvedSeries(key, source) (PR#196): resolves across compatible sources freshest-wins —
+ * repo.resolvedSeries(key, source): resolves across compatible sources freshest-wins —
  * imported WHOOP > NOOP-computed > declared-compatible Apple Health — and gap-fills from the
  * DailyMetric columns for the days the long-format metricSeries doesn't carry, so the screen shows
  * real on-device data even when only the daily cache (not the generic importer) has populated.
@@ -907,7 +866,7 @@ private data class OverlayPrepared(
 
 @Composable
 private fun Legend(series: List<CompareSeries>) {
-    // Imperial/Metric display preference (D#103). Only weight/lean mass (kg) and skin temp (°C) in the
+    // Imperial/Metric display preference. Only weight/lean mass (kg) and skin temp (°C) in the
     // catalog carry a convertible unit; the min–max labels re-label under the toggle. Display-only.
     val context = LocalContext.current
     val unitSystem = UnitPrefs.system(context)
@@ -967,7 +926,6 @@ private fun computePairResults(series: List<CompareSeries>): List<PairResult> {
     for (i in 0 until s.size - 1) {
         for (j in i + 1 until s.size) {
             val pairs = CorrelationEngine.alignByDay(s[i].rows, s[j].rows)
-            if (pairs.size < 3) continue
             val c = CorrelationEngine.pearson(pairs) ?: continue
             out.add(PairResult(a = s[i], b = s[j], r = c.r, n = c.n))
         }
@@ -1006,6 +964,9 @@ private fun CorrelationSection(series: List<CompareSeries>, range: CompareRange)
     }
 }
 
+/** The correlation ring on a pair card. */
+private val PAIR_RING_DIAMETER: Dp = 38.dp
+
 @Composable
 private fun PairCard(p: PairResult) {
     val tint = correlationColor(p.r)
@@ -1030,27 +991,18 @@ private fun PairCard(p: PairResult) {
                     modifier = Modifier.weight(1f),
                 )
                 TrendChip(text = signedR(p.r), color = tint)
-                // Small liquid vessel accent for the headline single value: |r| fills the vessel in the
-                // relationship's own tint, with the signed r rolled up over it (white, tabular, hit-
-                // transparent so a tap falls through). Same r, same tint, same signedR formatting the plain
-                // "r = …" readout used — just visualised as a headline vessel. STATIC (animated = false):
-                // up to six of these render in a scrolling list, so they pose once (the pilot's small-gauge
-                // static-raster rule) rather than each running a live clock.
-                Box(modifier = Modifier.size(38.dp), contentAlignment = Alignment.Center) {
-                    LiquidVessel(
-                        value = abs(p.r).coerceIn(0.0, 1.0),
-                        tint = tint,
-                        animated = false,
-                        modifier = Modifier.size(38.dp),
-                    )
-                    CountUpText(
-                        value = p.r,
-                        format = { signedR(it) },
-                        style = NoopType.number(12f, weight = FontWeight.Bold),
-                        color = Color.White,
-                        modifier = Modifier.clearAndSetSemantics {},
-                    )
-                }
+                // The headline single value as a small ring: |r| fills it in the relationship's own tint,
+                // with the signed r over it. Same r, same tint, same signedR formatting. The fill key is
+                // the pair, so a scroll that recycles the row brings the ring back already filled.
+                GlowRing(
+                    fraction = abs(p.r).coerceIn(0.0, 1.0).toFloat(),
+                    value = p.r,
+                    color = tint,
+                    diameter = PAIR_RING_DIAMETER,
+                    lineWidth = PAIR_RING_DIAMETER * RING_STROKE_FRACTION,
+                    fillKey = "compare.${p.a.metric}.${p.b.metric}",
+                    format = { signedR(it) },
+                )
             }
 
             Text(insightSentence(p), style = NoopType.subhead, color = Palette.textSecondary)
@@ -1085,15 +1037,12 @@ private fun signedR(r: Double): String {
     return sign + java.lang.String.format(Locale.US, "%.2f", abs(r))
 }
 
-private fun strengthWord(r: Double): String {
-    val a = abs(r)
-    return when {
-        a < 0.1 -> "negligible"
-        a < 0.3 -> "weak"
-        a < 0.5 -> "moderate"
-        a < 0.7 -> "strong"
-        else -> "very strong"
-    }
+private fun strengthWord(r: Double): String = when (CorrelationEngine.strength(r)) {
+    CorrelationStrength.NEGLIGIBLE -> "negligible"
+    CorrelationStrength.WEAK -> "weak"
+    CorrelationStrength.MODERATE -> "moderate"
+    CorrelationStrength.STRONG -> "strong"
+    CorrelationStrength.VERY_STRONG -> "very strong"
 }
 
 private fun directionWord(r: Double): String {

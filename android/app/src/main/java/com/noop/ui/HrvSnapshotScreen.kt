@@ -66,7 +66,7 @@ import java.util.Locale
 import java.util.TimeZone
 
 /**
- * Manual HRV snapshot — "Take an HRV reading" (#127). Kotlin parity twin of
+ * Manual HRV snapshot — "Take an HRV reading". Kotlin parity twin of
  * Strand/Screens/HRVSnapshotView.swift.
  *
  * A short, deliberate seated capture: the user sits still and breathes normally while the strap's
@@ -148,7 +148,7 @@ fun HrvSnapshotScreen(
         phase = HrvPhase.Done
     }
 
-    // PERF (#707): lazy scaffold — each section is one `item { }`; the capture dial ticks `secondsRemaining`
+    // PERF: lazy scaffold — each section is one `item { }`; the capture dial ticks `secondsRemaining`
     // each second during a capture, and a LazyColumn confines that tick's recomposition to the visible
     // items. Conditional sections use `if (cond) { item {} }` so a hidden result/hint adds no row. Order +
     // spacing identical (LazyColumn reproduces the eager `spacedBy(20.dp)`).

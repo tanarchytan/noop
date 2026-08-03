@@ -59,7 +59,7 @@ import kotlinx.coroutines.withContext
  * format ([DataBackup]). Point the folder at a Google Drive / Dropbox sync app for off-device backup
  * with no in-app cloud account.
  *
- * Must-fixes baked in here:
+ * The rules this screen holds to:
  *  1. Restore lists the snapshots in the CHOSEN folder (newest-first) and lets the user pick one,
  *     rather than re-prompting with an unrelated document picker. A tightened file fallback exists
  *     only for folders we can't enumerate / legacy files.
@@ -138,12 +138,12 @@ fun BackupSyncScreen(repo: WhoopRepository) {
             busy = false
             when (r) {
                 is DataBackup.ImportResult.NeedsRestart -> {
-                    // #57: the restore CLOSED and swapped the database file. The long-lived WhoopRepository +
+                    // the restore CLOSED and swapped the database file. The long-lived WhoopRepository +
                     // BLE client still hold a DAO on the OLD (now-closed) connection, so any strap sync would
                     // fail with "connection pool has been closed" — and, worse, empty/metadata history ENDs
                     // would still ack and trim the strap PAST records we can't store, discarding real history.
                     // Relaunching the process re-opens Room against the restored file. Do it automatically
-                    // rather than trust the user to read a toast (which is exactly how #57 happened).
+                    // rather than trust the user to read a toast.
                     Toast.makeText(context, "Backup restored — restarting NOOP…", Toast.LENGTH_LONG).show()
                     // NonCancellable: this coroutine runs in the screen's scope, which is cancelled the
                     // instant the user navigates away. The restart is a data-safety guarantee (the DB is
@@ -166,7 +166,7 @@ fun BackupSyncScreen(repo: WhoopRepository) {
         }
     }
 
-    // Must-fix #1 + #3: the FILE fallback is tightened to the backup MIME types (was `*/*`). Used only
+    // The FILE fallback is tightened to the backup MIME types. Used only
     // when the chosen folder holds no snapshots, or to restore a one-off file from elsewhere. The chosen
     // file still passes through importFrom's full validation (magic + Room/GRDB-origin) and the same
     // confirm dialog before it overwrites anything.
@@ -395,7 +395,7 @@ fun BackupSyncScreen(repo: WhoopRepository) {
             }
         }
 
-        // 3 · Restore (must-fix #1: from the chosen folder, newest-first)
+        // 3 · Restore (from the chosen folder, newest-first)
         item {
             NoopCard(padding = 20.dp) {
                 Column(verticalArrangement = Arrangement.spacedBy(Metrics.space10)) {
@@ -471,7 +471,7 @@ fun BackupSyncScreen(repo: WhoopRepository) {
         }
     }
 
-    // Must-fix #1: the snapshot picker - the folder's backups, newest-first.
+    // The snapshot picker - the folder's backups, newest-first.
     if (showSnapshotPicker) {
         AlertDialog(
             onDismissRequest = { showSnapshotPicker = false },
@@ -522,7 +522,7 @@ fun BackupSyncScreen(repo: WhoopRepository) {
         )
     }
 
-    // Must-fix #2: explicit in-app confirm BEFORE any destructive restore call, on every restore path.
+    // Explicit in-app confirm BEFORE any destructive restore call, on every restore path.
     pendingRestore?.let { (label, uri) ->
         NoopConfirmDialog(
             title = "Replace all current data?",
@@ -565,12 +565,6 @@ fun BackupSyncScreen(repo: WhoopRepository) {
     }
 }
 
-/**
- * Must-fix #3: the restore file fallback is tightened off the all-files wildcard to the backup
- * container MIME types: the .noopbak ZIP (octet-stream / zip) and a legacy plain SQLite. Anything that
- * slips through still meets importFrom's magic-byte + Room/GRDB-origin validation before it can touch
- * the live DB.
- */
 /** Retention choices for the "Keep last snapshots" menu. Each snapshot is a dated .noopbak; the daily
  *  job keeps this many and prunes the oldest. Kept modest — a few days of rollback without hoarding. */
 private val KEEP_OPTIONS = listOf(1, 3, 5, 7, 10, 14)

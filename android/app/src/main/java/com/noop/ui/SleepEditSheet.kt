@@ -253,7 +253,7 @@ private fun SleepEditAction(label: String, filled: Boolean, onClick: () -> Unit)
                 if (filled) {
                     Modifier.background(Palette.textPrimary)
                 } else {
-                    Modifier.border(1.dp, Palette.hairlineStrong, shape)
+                    Modifier.border(Metrics.divider, Palette.hairlineStrong, shape)
                 },
             )
             .clickable(onClick = onClick)

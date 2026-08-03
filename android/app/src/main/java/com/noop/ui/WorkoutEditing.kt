@@ -41,7 +41,7 @@ object WorkoutEditing {
      * Sport-cell text. "detected" reads as a neutral "Activity". WHOOP sport names arrive as
      * concatenated camelCase (e.g. "TraditionalStrengthTraining"), which reads as one long
      * unbreakable word and truncates badly — split it into words on the lower→Upper boundary so it
-     * renders "Traditional Strength Training". Already-spaced labels (manual/edited) pass through. (#175)
+     * renders "Traditional Strength Training". Already-spaced labels (manual/edited) pass through.
      */
     fun displaySport(sport: String): String {
         if (sport == "detected") return "Activity"
@@ -64,7 +64,7 @@ object WorkoutEditing {
      * [startTs, endTs] span. Span-overlap (not an exact-key match) survives the small startTs drift a
      * bout's boundary can take as more HR arrives, matching the macOS dismissed-span semantics exactly.
      * Imported / manual rows are never auto-hidden (the user deletes those outright). Half-open overlap
-     * test: `row.start < span.end && span.start < row.end`. (#107)
+     * test: `row.start < span.end && span.start < row.end`.
      */
     fun isDismissed(row: WorkoutRow, markers: List<DismissedWorkout>): Boolean =
         classify(row.source) == WorkoutSource.DETECTED &&
@@ -83,7 +83,7 @@ object WorkoutEditing {
         return rows.filter { !isDismissed(it, markers) }
     }
 
-    // MARK: - Cross-source dedup (#687)
+    // MARK: - Cross-source dedup
     //
     // The SAME activity can land twice: once live, Bluetooth-tracked under the strap (rich — real HR
     // trace, strain, zones, route), and once imported from Health Connect / Apple Health for the same
@@ -175,7 +175,7 @@ object WorkoutEditing {
         return a
     }
 
-    // MARK: - Detected-vs-real overlap collapse (#975)
+    // MARK: - Detected-vs-real overlap collapse
     //
     // The engine derives a "detected" bout from raw HR and DROPS it when it overlaps a real logged session,
     // but only on the next analyze pass. Between a live/manual session ending and that pass, BOTH the manual
@@ -196,7 +196,7 @@ object WorkoutEditing {
     }
 
     /**
-     * Drop every DETECTED row whose window shadows a REAL (non-detected) session in the same list (#975), so
+     * Drop every DETECTED row whose window shadows a REAL (non-detected) session in the same list, so
      * the live/manual session and its detected twin never both show. Order-stable; a list with no detected row
      * (or no real row) passes through unchanged. Runs before [dedupCrossSource]. Mirrors Swift.
      */
@@ -213,7 +213,7 @@ object WorkoutEditing {
      * Collapse cross-source duplicates of the same activity, keeping the richer row of each pair.
      * Order-stable: walks the input once, and a row that duplicates one already kept is dropped (with
      * the kept row swapped for the richer of the two). Single-source lists pass through unchanged.
-     * #975: a DETECTED bout that shadows a real logged session is dropped FIRST so the transient
+     * a DETECTED bout that shadows a real logged session is dropped FIRST so the transient
      * live+detected duplicate never shows and can't pollute the Effort/HR read-out.
      */
     fun dedupCrossSource(rows: List<WorkoutRow>): List<WorkoutRow> =
@@ -272,7 +272,7 @@ object WorkoutEditing {
      */
     fun dedupCrossSourceTrace(rows: List<WorkoutRow>): Pair<List<WorkoutRow>, List<String>> {
         val lines = ArrayList<String>()
-        // #975: detected-shadow drop first (byte-identical to dedupCrossSource's dropDetectedShadows), tracing
+        // detected-shadow drop first (byte-identical to dedupCrossSource's dropDetectedShadows), tracing
         // each drop with a `detectedBout verdict=droppedShadow` line naming the real row it collided with.
         val reals = rows.filter { classify(it.source) != WorkoutSource.DETECTED }
         val input = ArrayList<WorkoutRow>(rows.size)
@@ -329,7 +329,7 @@ object WorkoutEditing {
     }
 
     /**
-     * #18: true when an edit changes the Avg HR on a row that carries CAPTURED strain or zones. Those
+     * true when an edit changes the Avg HR on a row that carries CAPTURED strain or zones. Those
      * captured signals are preserved verbatim by [preservingCaptured], so the saved row shows a typed
      * average while the HR graph, zones and Effort stay from the recorded session. That mismatch is
      * silent, so the edit sheet surfaces a one-line note. We do NOT re-score from a single number (that
@@ -390,7 +390,7 @@ object WorkoutEditing {
     )
 }
 
-// MARK: - Filter predicate (#64)
+// MARK: - Filter predicate
 //
 // The Workouts list filters beyond the time range: a SPORT filter (a specific displayed sport, or all),
 // a SOURCE filter (Whoop / Apple / Detected / Manual / Lifting / File, or all), and a free-text SEARCH
@@ -430,7 +430,7 @@ data class WorkoutFilter(
     fun apply(rows: List<WorkoutRow>): List<WorkoutRow> = if (!isActive) rows else rows.filter { matches(it) }
 }
 
-// MARK: - Merge (#64)
+// MARK: - Merge
 //
 // Merge two or more overlapping / adjacent MANUAL or DETECTED sessions into one, keeping the richer
 // captured signals. Imported history (whoop / apple / lifting / activityFile) is read-only and is NEVER
@@ -466,10 +466,10 @@ object WorkoutMerge {
      * (used when the inputs are all detected and the user picked one); when null the resolved sport is used,
      * falling back to "Activity" only if there is genuinely no label. Returns null for fewer than two rows.
      *
-     * Math (per the #64 brief): startTs = min, endTs = max (the honest span); durationS = SUM of the
+     * Math (per the brief): startTs = min, endTs = max (the honest span); durationS = SUM of the
      * per-session durations (honest active time, NOT the span); energyKcal = SUM; avgHr = duration-weighted
      * mean of the sessions that carry one; maxHr = max; distanceM = SUM; strain = null (the repo rescores it
-     * from strap HR via analyzeRecent, the #598 pattern); zonesJSON = null; routePolyline = null (re-keyed by
+     * from strap HR via analyzeRecent, the pattern); zonesJSON = null; routePolyline = null (re-keyed by
      * the repo); notes = joined. Mirrors macOS WorkoutMerge.merge value-for-value.
      */
     fun merge(rows: List<WorkoutRow>, sport: String? = null, strapDeviceId: String = "my-whoop"): WorkoutRow? {

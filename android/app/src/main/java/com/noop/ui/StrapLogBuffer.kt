@@ -1,8 +1,7 @@
 package com.noop.ui
 
 /**
- * A process-wide, time-bounded ring buffer of strap-log lines for the SCHEDULED debug export (#510,
- * maddognik).
+ * A process-wide, time-bounded ring buffer of strap-log lines for the SCHEDULED debug export.
  *
  * WHY this is separate from [com.noop.ble.WhoopBleClient]'s own `logBuffer`: that one lives on the live
  * BLE client instance, which is owned by the ViewModel / foreground service and is NOT reachable from a
@@ -17,7 +16,7 @@ package com.noop.ui
  *
  * Each entry carries the wall-clock epoch it was appended so the time window can be enforced without
  * parsing the line text. Lines are stored already-redacted (LogExport appends the client's
- * `exportLogText()`, which is PII-scrubbed at source — #445), so nothing un-redacted ever lands here.
+ * `exportLogText()`, which is PII-scrubbed at source), so nothing un-redacted ever lands here.
  *
  * All access is synchronized: appends arrive from the UI thread (LogExport) and reads from a WorkManager
  * background thread (the scheduler). Pure JVM logic — no Android types — so it unit-tests directly.

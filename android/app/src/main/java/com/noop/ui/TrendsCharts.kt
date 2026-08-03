@@ -1,7 +1,6 @@
 package com.noop.ui
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -11,7 +10,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Text
@@ -20,27 +18,20 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.clearAndSetSemantics
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.noop.R
+import com.noop.analytics.RustScores
 import com.noop.data.DailyMetric
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 import kotlin.math.roundToInt
-
-// The Charge hero card's liquid translucent near-black fill and radius.
-private val LIQUID_HERO_FILL: Color = Color(red = 13f / 255f, green = 14f / 255f, blue = 20f / 255f, alpha = 0.80f)
-private val LIQUID_HERO_RADIUS: Dp = 26.dp
 
 // MARK: - Range control model (ported from TrendsView.Range)
 
@@ -120,7 +111,7 @@ private fun windowPoints(
     val sliced = when (val n = range.days) {
         null -> days
         // Trailing N CALENDAR days ending today , anchored to the phone's date, NOT the last N rows
-        // (which on a stale import made months-old data fill the W/M/3M windows, looking current , #23).
+        // (which on a stale import made months-old data fill the W/M/3M windows, looking current).
         // ISO yyyy-MM-dd sorts chronologically. Empty short windows auto-widen via resolveMetric, so old
         // imports surface under a wider range / All history rather than masquerading as recent.
         else -> {
@@ -166,20 +157,16 @@ internal fun ChartCard(
     changeFmt: (Double) -> String = { "${it.roundToInt()}" },
     // Fraction of the plot height left empty above the peak , the Android stand-in for the iOS
     // hero's `valueRange: 0...106` padded ceiling, so the peak + now-cap halo clear the top
-    // gridline. 0 keeps the curve filling the full height (the small multiples). (#458/parity)
+    // gridline. 0 keeps the curve filling the full height (the small multiples). (parity)
     chartHeadroom: Float = 0f,
-    // LIQUID: the hero card only. When true the card carries the liquid translucent-black frosted wrapper
-    // (rgba(13,14,20,.80), radius 26, white@0.11 hairline) instead of the classic NoopCard surface, and the
-    // trailing readout becomes a small count-up Charge vessel filled to [headlineValue] (0..100). Every
-    // small-multiple card leaves this false → identical classic NoopCard + plain text readout as before.
+    // The hero card only: its trailing readout becomes a small ring filled to [headlineValue] (0..100)
+    // instead of the plain text figure. Every small-multiple card leaves this false.
     liquidHero: Boolean = false,
     headlineValue: Double? = null,
 ) {
-    // The card body — one composable reused by both the classic and the liquid-hero container so the
-    // header / chart / footer layout is byte-identical between them; only the surface + the header readout
-    // treatment differ.
+    // The card body — the header / chart / footer layout, wrapped by the one card surface.
     val body: @Composable () -> Unit = {
-        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(Metrics.space12)) {
             // Header.
             Row(verticalAlignment = Alignment.Top) {
                 Column(modifier = Modifier.weight(1f)) {
@@ -189,9 +176,8 @@ internal fun ChartCard(
                     }
                 }
                 if (liquidHero && headlineValue != null) {
-                    // The one liquid accent on this screen: a small Charge vessel filled to the window
-                    // average, the value counting up over it (white, tabular, soft shadow, hit-transparent).
-                    // Same value + charge tint as the plain readout it replaces — the chart stays crisp.
+                    // The headline readout as a small ring filled to the window average — same value and
+                    // same sampled charge tint as the plain figure it replaces.
                     HeadlineVessel(value = headlineValue, tint = Palette.recoveryColor(headlineValue))
                 } else if (trailing != null) {
                     // Neutral 15pt readout (matches iOS TrendsView) , not the 22sp tinted figure.
@@ -223,51 +209,24 @@ internal fun ChartCard(
         }
     }
 
-    if (liquidHero) {
-        // The liquid hero surface: a translucent near-black that floats over the day-of-sky so the crisp
-        // chart + the vessel accent read clean — the card does the contrast work, not a muted sky. Radius 26
-        // + a faint white hairline give the frosted-glass edge of the iOS liquid heroCard. Mirrors Today.
-        Box(
-            modifier = modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(LIQUID_HERO_RADIUS))
-                .background(LIQUID_HERO_FILL.copy(alpha = LIQUID_HERO_FILL.alpha * CardAppearance.opacity))
-                .border(1.dp, Color.White.copy(alpha = 0.11f * CardAppearance.opacity), RoundedCornerShape(LIQUID_HERO_RADIUS))
-                .padding(Metrics.cardPadding),
-        ) {
-            body()
-        }
-    } else {
-        NoopCard(modifier = modifier, padding = Metrics.cardPadding, tint = tint) { body() }
-    }
+    NoopCard(modifier = modifier, padding = Metrics.cardPadding, tint = tint) { body() }
 }
 
 /**
- * The screen's single liquid accent: a small [LiquidVessel] filled to [value] (0..100 → 0..1) in the
- * charge [tint], the number rolling up over it via [CountUpText] (white, tabular, a soft shadow so it reads
- * on the vessel, hit-transparent so a tap falls through to the vessel's own splash). The Trends echo of the
- * liquid Today `HeroScoreVessel`, sized down to a header readout so it accents the headline value without
- * competing with the crisp chart below.
+ * The header readout as a small ring filled to [value] (0..100 → 0..1) in the charge [tint]. The ring owns
+ * its own count-up; the Trends hero is one per screen, so it holds one fill-memory key.
  */
 @Composable
 private fun HeadlineVessel(value: Double, tint: Color) {
     val diameter = 44.dp
-    Box(modifier = Modifier.size(diameter), contentAlignment = Alignment.Center) {
-        LiquidVessel(
-            value = (value / 100.0).coerceIn(0.0, 1.0),
-            tint = tint,
-            animated = true,
-            modifier = Modifier.size(diameter),
-        )
-        CountUpText(
-            value = value,
-            format = { "${it.roundToInt()}" },
-            style = NoopType.number(17f, weight = FontWeight.Bold)
-                .copy(shadow = Shadow(color = Color.Black.copy(alpha = 0.5f), offset = Offset(0f, 1f), blurRadius = 6f)),
-            color = Color.White,
-            modifier = Modifier.clearAndSetSemantics {},
-        )
-    }
+    GlowRing(
+        fraction = (value / 100.0).coerceIn(0.0, 1.0).toFloat(),
+        value = value,
+        color = tint,
+        diameter = diameter,
+        lineWidth = diameter * RING_STROKE_FRACTION,
+        fillKey = "trends.headline",
+    )
 }
 
 /** A TrendChip for a window's period change , green/rose by whether the move is good for THIS metric. */
@@ -299,16 +258,16 @@ private fun ChartWithAxes(
     headroom: Float = 0f,
 ) {
     val maxV = values.max()
-    val avgV = values.average()
+    val avgV = RustScores.mean(values)
     val minV = values.min()
     // Trend chart style (line vs bar). Read here at the single chart choke point (every trend card routes
     // through ChartWithAxes); SharedPreferences isn't reactive, but returning from Settings recomposes the
     // Trends screen, which re-reads it — the same read-on-recompose the Effort scale toggle relies on.
     val chartStyle = UnitPrefs.trendChartStyle(LocalContext.current)
-    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(Metrics.space4)) {
         Row(
             modifier = Modifier.height(IntrinsicSize.Min),
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
+            horizontalArrangement = Arrangement.spacedBy(Metrics.space4),
         ) {
             Column(
                 modifier = Modifier.height(Metrics.chartHeight),
@@ -352,7 +311,7 @@ private fun ChartWithAxes(
                             color = color,
                             fill = true,
                             selectionEnabled = true,
-                            // #463: the pinpoint label goes through the SAME formatter as the axis column,
+                            // the pinpoint label goes through the SAME formatter as the axis column,
                             // so a tapped Effort day can't print the stored 0-100 value beside a 0-21 axis.
                             formatValue = formatY,
                         )
@@ -422,17 +381,10 @@ internal fun MetricTrendCard(
 }
 
 /**
- * The window's trend as a signed mean-of-recent-half minus mean-of-earlier-half , drives the card's
- * TrendChip so a glance reads the direction, like Today's deltas. null for a window too short to split.
+ * The window's signed recent-half minus earlier-half change from whoop-rs, driving the card's
+ * TrendChip so a glance reads the direction. null for a window too short to split.
  */
-internal fun periodChange(values: List<Double>): Double? {
-    if (values.size < 4) return null
-    val mid = values.size / 2
-    val earlier = values.take(mid)
-    val recent = values.drop(mid)
-    if (earlier.isEmpty() || recent.isEmpty()) return null
-    return recent.average() - earlier.average()
-}
+internal fun periodChange(values: List<Double>): Double? = RustScores.halfChange(values)
 
 /** Evenly-spaced labelled stats under a chart, separated by a hairline rule. */
 @Composable
@@ -478,7 +430,7 @@ internal fun RecoveryHistoryCard(days: List<DailyMetric>, range: TrendsRange) {
     }
 
     NoopCard(tint = Palette.chargeColor) {
-        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(Metrics.space12)) {
             SectionHeader(title, overline = stringResource(R.string.trends_calendar), trailing = "${recovery.size} days")
             if (recovery.size >= 2) {
                 BarChart(
@@ -535,4 +487,4 @@ internal fun EmptyTrends() {
 internal const val EM_DASH = ","
 
 internal fun List<Double>.averageOrNull(): Double? =
-    if (isEmpty()) null else sum() / size
+    if (isEmpty()) null else RustScores.mean(this)

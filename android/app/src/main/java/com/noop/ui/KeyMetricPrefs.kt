@@ -2,7 +2,7 @@ package com.noop.ui
 
 import android.content.Context
 
-// MARK: - Editable Key-Metrics layout (#251)
+// MARK: - Editable Key-Metrics layout
 //
 // The Today screen's "Key Metrics" grid was a fixed list of ten tiles in one order. This lets the user
 // choose WHICH tiles show and in WHAT order, with the default being the original order so nothing changes
@@ -24,7 +24,7 @@ enum class KeyMetric(val raw: String, val title: String) {
     REST("rest", "Rest"),
     HRV("hrv", "HRV"),
     RESTING_HR("restingHr", "Resting HR"),
-    BLOOD_OXYGEN("bloodOxygen", "Blood Oxygen"),
+    BLOOD_OXYGEN("bloodOxygen", "SpO₂"),
     RESPIRATORY("respiratory", "Respiratory"),
     STEPS("steps", "Steps"),
     WEIGHT("weight", "Weight"),

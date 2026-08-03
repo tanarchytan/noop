@@ -5,7 +5,7 @@ import android.content.SharedPreferences
 import com.noop.data.HrSample
 
 /**
- * Durable persistence for an in-flight MANUALLY-STARTED workout that is NOT GPS-tracked (#529).
+ * Durable persistence for an in-flight MANUALLY-STARTED workout that is NOT GPS-tracked.
  *
  * The GPS path already survives the screen turning off because the route lives in the process-level
  * [com.noop.location.GpsSession] fed by the foreground service, and the ViewModel rebuilds the active

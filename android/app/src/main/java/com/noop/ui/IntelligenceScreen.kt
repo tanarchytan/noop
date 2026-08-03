@@ -65,7 +65,7 @@ fun IntelligenceScreen(vm: AppViewModel) {
         }
     }
 
-    // Effort display scale (#268) — routes every Effort value/label on this screen. Display-only.
+    // Effort display scale — routes every Effort value/label on this screen. Display-only.
     val effortScale = UnitPrefs.effortScale(LocalContext.current)
 
     // Newest first for the per-day list (macOS ForEach renders most-recent at top).
@@ -90,7 +90,7 @@ fun IntelligenceScreen(vm: AppViewModel) {
 
     // Range + filtered day list are hoisted ABOVE the lazy scaffold: these are @Composable
     // state hooks (remember), which can't run inside the LazyListScope content lambda. The
-    // filtering is a cheap in-memory predicate; the freeze (#345) was the eager BUILDING of
+    // filtering is a cheap in-memory predicate; the freeze was the eager BUILDING of
     // 800+ day cards, which the LazyColumn below now defers to what's on screen.
     var range by remember { mutableStateOf(IntelRange.Month) }
     val filtered = remember(ordered, range) {
@@ -109,7 +109,7 @@ fun IntelligenceScreen(vm: AppViewModel) {
 
         if (ordered.isEmpty()) {
             item {
-                // While the strap is mid-offload, say so — an empty list reads as final otherwise (#77).
+                // While the strap is mid-offload, say so — an empty list reads as final otherwise.
                 if (backfillNote != null) SyncingHistoryNote(chunks = backfillNote!!)
                 EmptyNote()
             }
@@ -191,6 +191,7 @@ private fun ForecastCard(f: RecoveryForecast) {
                         color = Palette.recoveryColor(f.charge),
                         diameter = 168.dp,
                         lineWidth = 168.dp * 0.10f,
+                        fillKey = "intelligence.forecast",
                     )
                     Text(
                         "± $band",
@@ -392,7 +393,7 @@ private fun DayCard(d: DailyMetric, effortScale: EffortScale) {
                 // The merged DailyMetric carries the WINNING row's deviceId (mergeDaily: an import wins
                 // over the computed "-noop" row), so a strap-scored night reads "On-device" while a day an
                 // import covers reads "Whoop" / "Apple Health". Computed rows keep the charge tint; imports
-                // use the accent tint to stand out. Mirrors macOS IntelligenceEngine.DaySource. (Sleep §2.6.)
+                // use the accent tint to stand out.
                 val src = daySourceBadge(d.deviceId)
                 SourceBadge(src.first, tint = src.second)
             }
@@ -502,10 +503,7 @@ private fun prettyDay(day: String): String {
         val dow = arrayOf("Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat")[
             cal.get(Calendar.DAY_OF_WEEK) - 1,
         ]
-        val month = arrayOf(
-            "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-            "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
-        )[mo - 1]
+        val month = MONTH_ABBREVIATIONS[mo - 1]
         "$dow $da $month"
     } catch (_: Exception) {
         day

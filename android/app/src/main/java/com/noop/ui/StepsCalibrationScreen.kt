@@ -56,13 +56,14 @@ import kotlin.math.roundToInt
 /** Shared formatters for the steps-estimate calibration UI — kept apart so the Profile summary row and
  *  this screen agree on the confidence wording. Mirrors the macOS `StepsCalibrationFormat`. */
 object StepsCalibrationFormat {
-    /** A 0–1 confidence as Low / Medium / High. Thirds: < 0.34 Low, < 0.67 Medium, else High. A manual
-     *  coefficient is confidence 1.0 → "High". */
-    fun confidenceLabel(confidence: Double): String = when {
-        confidence < 0.34 -> "Low"
-        confidence < 0.67 -> "Medium"
-        else -> "High"
-    }
+    /** A 0–1 confidence worded for this screen, banded by [StepsEstimateEngine.ConfidenceTier]. A
+     *  manual coefficient is confidence 1.0 → "High". */
+    fun confidenceLabel(confidence: Double): String =
+        when (StepsEstimateEngine.ConfidenceTier.from(confidence)) {
+            StepsEstimateEngine.ConfidenceTier.LOW -> "Low"
+            StepsEstimateEngine.ConfidenceTier.MEDIUM -> "Medium"
+            StepsEstimateEngine.ConfidenceTier.HIGH -> "High"
+        }
 }
 
 /** One recent day's estimated-vs-phone steps comparison row for the accuracy table. */
@@ -84,7 +85,7 @@ fun StepsCalibrationScreen(
     var comparison by remember { mutableStateOf<List<StepsComparisonRow>>(emptyList()) }
     // A representative recent motion volume (median of the days we measured), seeding the live preview.
     var sampleMotion by remember { mutableStateOf<Double?>(null) }
-    // Flips true once the load pass has run, so the "no motion synced" note (#37) doesn't flash on first frame.
+    // Flips true once the load pass has run, so the "no motion synced" note doesn't flash on first frame.
     var loaded by remember { mutableStateOf(false) }
 
     // The stepper's ceiling anchors to whatever's in force with generous headroom, so a nudge either way
@@ -106,7 +107,7 @@ fun StepsCalibrationScreen(
         }
         if (coeff <= 0) return@LaunchedEffect
 
-        // Phone step counts come from apple-health AND, for HC-only users, Health Connect (#37). Both are
+        // Phone step counts come from apple-health AND, for HC-only users, Health Connect. Both are
         // stored in appleDaily under their own source; union them with apple-health winning per day.
         val stepsByDay = LinkedHashMap<String, Int>()
         for (row in vm.repo.appleDaily(WhoopRepository.APPLE_HEALTH_SOURCE, "0000-01-01", "9999-12-31")) {
@@ -156,7 +157,7 @@ fun StepsCalibrationScreen(
             ) {
                 ExplainerCard()
                 if (loaded && sampleMotion == null) NoMotionNote()
-                // #589: the matched-day count (phone-counted days we could pair with strap motion — the
+                // the matched-day count (phone-counted days we could pair with strap motion — the
                 // engine's "usable overlapping days") drives the "Need N more days…" countdown. In the
                 // not-calibrated state the comparison build early-returns on coeff <= 0, so this is 0 and
                 // the headline reads the full MIN_CALIBRATION_DAYS — exactly the Swift behaviour.
@@ -244,7 +245,7 @@ private fun ExplainerCard() {
 }
 
 /** Shown when the strap has banked NO motion yet (sampleMotion == null) — the real reason a fresh
- *  WHOOP 4.0 reads zero steps (#37 bringiton321). Steps come from the strap's synced motion history,
+ *  WHOOP 4.0 reads zero steps (bringiton321). Steps come from the strap's synced motion history,
  *  so without a backfill there's nothing to estimate from — calibration can't help until it syncs. */
 @Composable
 private fun NoMotionNote() {
@@ -302,7 +303,7 @@ private fun CurrentFitCard(profile: ProfileStore, matchedDays: Int) {
                 }
             } else {
                 Text("Not calibrated yet", style = NoopType.bodyNumber, color = Palette.textPrimary)
-                // #589: a concrete countdown instead of a vague "a few days". Headline comes straight from
+                // a concrete countdown instead of a vague "a few days". Headline comes straight from
                 // the engine's NeedsMoreDays state so the wording matches the Today steps tile + the Swift card.
                 Text(
                     StepsEstimateEngine.CalibrationStatus

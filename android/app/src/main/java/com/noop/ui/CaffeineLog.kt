@@ -43,7 +43,7 @@ import java.util.Calendar
 import java.util.UUID
 import kotlin.math.roundToInt
 
-// MARK: - Caffeine window (#526) — pure persistence helpers + the Insights logging card.
+// MARK: - Caffeine window — pure persistence helpers + the Insights logging card.
 //
 // Faithful Kotlin twin of Strand/Screens/CaffeineLogCard.swift + the CaffeineLogStore persistence.
 // OPT-IN, manual-first: the user logs a caffeine intake (time + OPTIONAL mg) and NOOP shows a rough,
@@ -112,7 +112,7 @@ internal fun removeCaffeineIntake(context: Context, id: String): List<CaffeineIn
     return next
 }
 
-// MARK: - Cutoff window (PR#566, mvanhorn) — local-time helpers over the pure CaffeineDecay math.
+// MARK: - Cutoff window — local-time helpers over the pure CaffeineDecay math.
 
 /** Minutes since local midnight for an epoch-seconds timestamp — so an intake's clock time can be
  *  compared against the cutoff. Pure given a fixed clock; uses the device timezone. */
@@ -144,7 +144,7 @@ fun CaffeineLogCard() {
     val nowSec = System.currentTimeMillis() / 1000L
     val estimate = CaffeineActiveEstimate.compute(intakes, nowSec)
 
-    // Cutoff nudge (PR#566, mvanhorn) — opt-in, default OFF. SharedPreferences isn't reactive, so the
+    // Cutoff nudge — opt-in, default OFF. SharedPreferences isn't reactive, so the
     // toggle + bedtime mirror into local state and write straight through. The cutoff time is derived
     // purely from the bedtime via CaffeineDecay; no notification — a quiet inline hint only.
     var cutoffEnabled by remember { mutableStateOf(NoopPrefs.caffeineCutoffEnabled(context)) }
@@ -159,7 +159,7 @@ fun CaffeineLogCard() {
             }
         }
         NoopCard {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(Metrics.space10)) {
                 Text(
                     "Log a coffee, tea, or energy drink and NOOP shows a rough estimate of how much may " +
                         "still be active. It's a guide based on a typical 5 to 6 hour half-life, not a measurement.",
@@ -171,7 +171,7 @@ fun CaffeineLogCard() {
 
                 CaffeineDivider()
 
-                // Cutoff nudge (PR#566, mvanhorn): the latest you can have caffeine and still clear most of
+                // Cutoff nudge: the latest you can have caffeine and still clear most of
                 // it by bed. Opt-in. When on, shows the cutoff time (derived from your bedtime) and flags a
                 // late intake below. A guide from the same half-life model, not a rule.
                 Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -291,7 +291,7 @@ fun CaffeineLogCard() {
 @Composable
 private fun CaffeineActiveHint(estimate: CaffeineActiveEstimate, hasAnyLog: Boolean) {
     if (estimate.hasActive) {
-        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(Metrics.space4)) {
             Text(
                 estimate.totalRemainingMg?.let { "About ${it.roundToInt()} mg may still be active" }
                     ?: "Caffeine may still be active",

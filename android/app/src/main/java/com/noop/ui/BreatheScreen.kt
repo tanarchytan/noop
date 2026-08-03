@@ -30,6 +30,7 @@ import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
@@ -47,9 +48,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
@@ -76,6 +75,10 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import kotlin.math.roundToInt
+
+/** The pacer ring's geometry: the hero's diameter and the stroke the breath arc sweeps in. */
+private val BREATHE_RING_DIAMETER = 280.dp
+private val BREATHE_RING_STROKE = 20.dp
 
 // MARK: - Pace presets (ported from BreathingView.Pace)
 
@@ -119,15 +122,6 @@ private enum class Pace(val label: String) {
 }
 
 private enum class Phase { Inhale, Exhale }
-
-// MARK: - Liquid hero tokens (the liquid Breathe restyle)
-//
-// The frosted hero panel the breathe vessel floats on, matching the liquid Today heroCard. `heroFill` is a
-// translucent near-black (mock rgba(13,14,20,.80)) so it floats over the day-of-sky and the vessel + white
-// count-up read crisp on it; radius 26 + a white@0.11 hairline give the frosted-glass edge. Declared here
-// (not shared from Today) because the Today copies are file-private — same values, kept in lockstep.
-private val LIQUID_HERO_FILL: Color = Color(red = 13f / 255f, green = 14f / 255f, blue = 20f / 255f, alpha = 0.80f)
-private val LIQUID_HERO_RADIUS = 26.dp
 
 /** The three biofeedback layers as a mode switch (mirrors BreathingView.Mode). */
 private enum class BreatheMode(val label: String) {
@@ -269,7 +263,7 @@ fun BreatheScreen(viewModel: AppViewModel) {
             // Leaving mid-session still banks the outcome (mirrors macOS onDisappear → stop()).
             if (running) {
                 endSession()
-                // #769: also tell the strap to stop haptics on the way out so a leftover pattern can't
+                // also tell the strap to stop haptics on the way out so a leftover pattern can't
                 // wedge the strap if the link drops after we navigate away. Best-effort (guarded send).
                 viewModel.stopHaptics()
             }
@@ -277,7 +271,7 @@ fun BreatheScreen(viewModel: AppViewModel) {
         }
     }
 
-    // #769: if the strap drops WHILE a session is live, end the session AND fire the stop-haptics clear.
+    // if the strap drops WHILE a session is live, end the session AND fire the stop-haptics clear.
     // The breath-engine LaunchedEffect already stops scheduling pulses once `running` flips false; this
     // adds the strap-side clear (best-effort) and banks the outcome, mirroring the macOS
     // BiofeedbackController bond watch.
@@ -289,14 +283,11 @@ fun BreatheScreen(viewModel: AppViewModel) {
         }
     }
 
+    // No topBackground: the scaffold paints Palette.surfaceBase, the one canvas every screen shares. The
+    // decorated backdrop it used to carry painted fixed dark-mode colours in both themes.
     ScreenScaffold(
         title = "Breathe",
         subtitle = "Haptic-paced breathing · find your pace · calm down",
-        // LIQUID SKY BACKDROP (the pilot pattern — LiquidScreenSky.kt): the time-of-day liquid sky settles
-        // into the theme canvas behind the header + top card and bleeds full-width up behind the status bar
-        // via the scaffold's topBackground plumbing. The Android equivalent of the iOS
-        // `ScreenScaffold(topBackground: liquidScaffoldSky())`; the cards float OVER it on the flat canvas.
-        topBackground = { LiquidScreenSky() },
     ) {
         // Mode switch — Breathe / Resonance / Calm me.
         SegmentedPillControl(
@@ -356,17 +347,8 @@ fun BreatheScreen(viewModel: AppViewModel) {
             Text("$breathCount breaths", style = NoopType.captionNumber, color = Palette.textSecondary)
         }
 
-        // The liquid hero CARD: a translucent near-black frosted panel (mock rgba(13,14,20,.80), radius 26,
-        // white@0.11 hairline) that floats over the day-of-sky so the breathe vessel + white count-up stay
-        // crisp — the card does the contrast work, not a muted sky. Mirrors the iOS liquid heroCard.
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(LIQUID_HERO_RADIUS))
-                .background(LIQUID_HERO_FILL.copy(alpha = LIQUID_HERO_FILL.alpha * CardAppearance.opacity))
-                .border(Metrics.divider, Color.White.copy(alpha = 0.11f * CardAppearance.opacity), RoundedCornerShape(LIQUID_HERO_RADIUS))
-                .padding(Metrics.space24),
-        ) {
+        // The hero card, on the one shared card surface so it reads in both schemes.
+        NoopCard(padding = Metrics.space24) {
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(Metrics.space18),
@@ -380,35 +362,43 @@ fun BreatheScreen(viewModel: AppViewModel) {
                     )
                 }
 
-                // The breathe pacer is now a liquid VESSEL: it FILLS on the inhale and EMPTIES on the exhale,
-                // driven by the SAME eased `orbProgress` the orb used (0..1, from the phase-duration tween), so
-                // the breath timing is untouched — the fluid just replaces the scaling orb. Only animates while
-                // a session is live (posed/static otherwise, so the still hero costs nothing). The live BPM
-                // counts up over it (white, tabular, soft shadow, hit-transparent so a tap falls to the vessel,
-                // which owns its own splash+haptic). Rest-tinted (restBright), matching the iOS breathe hero.
+                // The breathe pacer: the ring's arc sweeps out on the inhale and retracts on the exhale,
+                // driven by the SAME eased `orbProgress` the vessel used (0..1, from the phase-duration
+                // tween), so the breath timing is untouched. The live BPM sits in the centre; no BPM yet
+                // leaves the ring unlabelled and the honest dash takes its place.
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(280.dp),
+                        .height(BREATHE_RING_DIAMETER),
                     contentAlignment = Alignment.Center,
                 ) {
-                    LiquidVessel(
-                        value = orbProgress.toDouble(),
-                        tint = Palette.restBright,
-                        animated = running,
-                        modifier = Modifier.height(280.dp),
+                    GlowRing(
+                        fraction = orbProgress,
+                        value = bpm?.toDouble() ?: 0.0,
+                        color = Palette.restBright,
+                        diameter = BREATHE_RING_DIAMETER,
+                        lineWidth = BREATHE_RING_STROKE,
+                        fillKey = "breathe.pacer",
+                        showsLabel = bpm != null,
+                        format = { it.roundToInt().toString() },
+                        caption = "BPM",
                     )
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        modifier = Modifier.clearAndSetSemantics {},
-                    ) {
-                        Text(
-                            bpm?.toString() ?: "—",
-                            style = NoopType.number(40f, weight = FontWeight.Bold)
-                                .copy(shadow = Shadow(color = Color.Black.copy(alpha = 0.5f), offset = Offset(0f, 1f), blurRadius = 6f)),
-                            color = Color.White,
-                        )
-                        Text("BPM", style = NoopType.footnote.copy(letterSpacing = 0.8.sp), color = Palette.textTertiary)
+                    if (bpm == null) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier.clearAndSetSemantics {},
+                        ) {
+                            Text(
+                                "—",
+                                style = NoopType.number(40f, weight = FontWeight.Bold),
+                                color = Palette.textPrimary,
+                            )
+                            Text(
+                                "BPM",
+                                style = NoopType.footnote.copy(letterSpacing = 0.8.sp),
+                                color = Palette.textTertiary,
+                            )
+                        }
                     }
                 }
 
@@ -450,7 +440,7 @@ fun BreatheScreen(viewModel: AppViewModel) {
                     if (running) {
                         running = false
                         endSession()
-                        // #769: clear any pattern the strap is mid-way through so a drop right after stop
+                        // clear any pattern the strap is mid-way through so a drop right after stop
                         // can't wedge its haptic manager. Best-effort (no-op when unbonded / on a 5/MG).
                         viewModel.stopHaptics()
                     } else {
@@ -638,13 +628,12 @@ private fun CoherenceCard(rmssd: Double?) {
                 Spacer(Modifier.weight(1f))
                 StatePill(label, tone = tone)
             }
-            // Normalized bar — RMSSD 0..120ms → 0..1 — as a liquid tube (a genuine single-value fill).
-            // Static (animated = false): it settles to the level, no per-frame clock, matching the pilot's
-            // tube usage on non-live contributor bars.
-            LiquidTube(
-                frac = frac.toDouble(),
-                tint = Palette.restBright,
-                animated = false,
+            // Normalized bar — RMSSD 0..120ms → 0..1 — on the theme's inset track so it reads in both
+            // schemes. Same fraction as before.
+            LinearProgressIndicator(
+                progress = { frac },
+                color = Palette.restBright,
+                trackColor = Palette.surfaceInset,
                 modifier = Modifier.fillMaxWidth(),
             )
             Text(
@@ -1222,12 +1211,11 @@ private fun calmDidNotFall(
 
 @Composable
 private fun ProgressBar(frac: Float) {
-    // The sweep progress as a liquid tube — a single-value fill. Static (animated = false): it settles to
-    // the current sweep fraction with no per-frame clock, matching the pilot's tube usage.
-    LiquidTube(
-        frac = frac.toDouble(),
-        tint = Palette.restBright,
-        animated = false,
+    // The sweep progress on the theme's inset track, so it reads in both schemes.
+    LinearProgressIndicator(
+        progress = { frac },
+        color = Palette.restBright,
+        trackColor = Palette.surfaceInset,
         modifier = Modifier.fillMaxWidth(),
     )
 }

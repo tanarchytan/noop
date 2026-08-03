@@ -16,16 +16,15 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.History
-import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.LockOpen
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.filled.Warning
-import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -35,14 +34,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.noop.analytics.BaselineState
 import com.noop.analytics.Baselines
 import com.noop.analytics.CalibrationMilestones
-import com.noop.analytics.ChargeDriver
-import com.noop.analytics.RecoveryDrivers
 import com.noop.analytics.RestScorer
 import com.noop.analytics.ScoreConfidence
 import com.noop.data.DailyMetric
@@ -57,9 +55,9 @@ import kotlin.math.roundToInt
  * A1/S4: the Charge breakdown sheet opened by tapping the hero Charge ring. A full-screen surface with a
  * titled top bar (Close) and a scrollable body hosting the existing What-shaped-it breakdown, the
  * Contributors bars and (S4) the folded Readiness card. Built only when shown (the caller gates on
- * showChargeBreakdown), so the heavy rows materialise on tap (#819). Nothing is recomputed here, it reuses
+ * showChargeBreakdown), so the heavy rows materialise on tap. Nothing is recomputed here, it reuses
  * the existing sections, which read the SAME carried/today row the ring shows. Mirrors iOS chargeBreakdownSheet.
- * `internal` (not private) so the Coupled view's hero ring (task #43) opens THIS same sheet, one breakdown,
+ * `internal` (not private) so the Coupled view's hero ring opens THIS same sheet, one breakdown,
  * never a duplicate.
  */
 @Composable
@@ -112,8 +110,8 @@ internal fun ChargeBreakdownSheet(
 //
 // The SHARED-CONTRACT driver rows under the Charge ring: one row per REAL term the recovery scorer used,
 // each carrying its signed point contribution (deltaPoints), the night's value, the personal baseline it
-// was scored against, and a short plain-English verdict. Computed by RecoveryDrivers.chargeDrivers from
-// the SAME inputs the Charge ring reads, so a row can never describe a term the score did not use; a
+// was scored against, and a short plain-English verdict. Scored by whoop-rs from the SAME inputs the
+// Charge ring reads, so a row can never describe a term the score did not use; a
 // missing input yields NO row (never a faked zero). The confidence dot + tier tag SURFACE the existing
 // ScoreConfidence.forCharge: they are read, not recomputed. Hidden entirely when the day can't score
 // (cold-start / no drivers). Byte-aligned with the iOS "What shaped it" section. No em-dashes.
@@ -125,7 +123,7 @@ internal fun RecoveryDriversSection(
     carriedDay: DailyMetric? = null,
 ) {
     // Read the row the Charge ring itself reads: today's own when scored, else the carried last-scored
-    // day (#543) so the breakdown matches the carried ring instead of vanishing at the rollover.
+    // day so the breakdown matches the carried ring instead of vanishing at the rollover.
     val readDay = carriedDay ?: displayDay
     val drivers = remember(days, readDay) { recoveryChargeDrivers(days, readDay) }
     if (drivers.isEmpty()) return
@@ -181,7 +179,7 @@ private fun DriverRow(driver: ChargeDriver) {
     val signed = if (driver.deltaPoints > 0) "+${driver.deltaPoints}" else "${driver.deltaPoints}"
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        horizontalArrangement = Arrangement.spacedBy(Metrics.space12),
         modifier = Modifier.semantics {
             contentDescription =
                 "${driver.label}, ${driver.valueText}, ${driver.baselineText}, " +
@@ -191,7 +189,7 @@ private fun DriverRow(driver: ChargeDriver) {
         // Signed-point delta chip with a direction glyph.
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(2.dp),
+            horizontalArrangement = Arrangement.spacedBy(Metrics.space2),
             modifier = Modifier
                 .clip(RoundedCornerShape(Metrics.cornerPill))
                 .background(tone.copy(alpha = 0.12f))
@@ -207,18 +205,18 @@ private fun DriverRow(driver: ChargeDriver) {
             }
             Text("$signed pts", style = NoopType.captionNumber, color = tone)
         }
-        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(Metrics.space2)) {
             Text(driver.label, style = NoopType.headline, color = Palette.textPrimary)
             Text(driver.verdict, style = NoopType.footnote, color = Palette.textSecondary)
         }
-        Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(Metrics.space2)) {
             Text(driver.valueText, style = NoopType.captionNumber, color = Palette.textPrimary)
             Text(driver.baselineText, style = NoopType.footnote, color = Palette.textTertiary)
         }
     }
 }
 
-// MARK: - Recovery contributors (README screen #5), labelled progress bars
+// MARK: - Recovery contributors, labelled progress bars
 //
 // "CONTRIBUTORS", what drove today's Charge, each as a labelled progress bar in the shared stage/zone
 // bar style (inset track, round-capped metric-hue fill, right-aligned read-out). Design-Reset tokens
@@ -230,7 +228,7 @@ private fun DriverRow(driver: ChargeDriver) {
 @Composable
 internal fun RecoveryContributorsSection(day: DailyMetric?, carriedDay: DailyMetric? = null) {
     // The row the contributors read from: today's own when it carries recovery, else the carried last
-    // scored day (#543) so the bars don't all read "No Data" at the rollover while live HR ticks. The
+    // scored day so the bars don't all read "No Data" at the rollover while live HR ticks. The
     // overline stamps "Last night · <date>" when carrying so the prior read isn't passed off as today's.
     val cd = carriedDay ?: day
     val hrv = cd?.avgHrv
@@ -282,11 +280,8 @@ internal fun RecoveryContributorsSection(day: DailyMetric?, carriedDay: DailyMet
     }
 }
 
-/** One labelled contributor bar: a label + right-aligned read-out over a liquid TUBE filled to [fraction].
- *  These ARE genuine single-value progress bars (each signal against a typical adult span), so the liquid
- *  finish reads well here (matching how the iOS liquid Today draws its single-value goal/strain bars as
- *  tubes). Static (not per-frame) — they sit in the tapped-open Charge breakdown, not a live surface, so
- *  `animated = false` keeps the sheet cheap. A null fraction renders an empty tube. */
+/** One labelled contributor bar: a label + right-aligned read-out over a progress bar filled to
+ *  [fraction] (each signal against a typical adult span). A null fraction renders an empty bar. */
 @Composable
 private fun ContributorBar(label: String, readout: String, fraction: Double?, color: Color) {
     val fillFrac = fraction?.coerceIn(0.0, 1.0) ?: 0.0
@@ -295,13 +290,16 @@ private fun ContributorBar(label: String, readout: String, fraction: Double?, co
             Overline(label, modifier = Modifier.weight(1f))
             Text(readout, style = NoopType.captionNumber, color = Palette.textPrimary)
         }
-        LiquidTube(
-            frac = fillFrac,
-            tint = color,
-            height = Metrics.progressHeight,
-            animated = false,
+        LinearProgressIndicator(
+            progress = { fillFrac.toFloat() },
+            color = color,
+            trackColor = Palette.surfaceInset,
+            strokeCap = StrokeCap.Round,
+            gapSize = 0.dp,
+            drawStopIndicator = {},
             modifier = Modifier
                 .fillMaxWidth()
+                .height(Metrics.progressHeight)
                 .semantics { contentDescription = "$label $readout" },
         )
     }
@@ -321,7 +319,6 @@ private fun ContributorBar(label: String, readout: String, fraction: Double?, co
  * was still seeding. `nValid` is the exact count the baseline engine gates
  * CALIBRATING on, so N now tracks the baseline the Charge ring rides and can never over-state it.
  * [days] is oldest→newest (same order the engine folds). Pure + unit-tested (RecoveryCalibrationTest).
- * (PR #85)
  */
 internal fun recoveryCalibrationNights(
     days: List<DailyMetric>,
@@ -334,7 +331,7 @@ internal fun recoveryCalibrationNights(
         days.map { it.avgHrv }, days.map { it.day }, Baselines.hrvCfg, hrvBaselineEpoch,
     ).nValid
     // Include 0: a brand-new user (no banked nights) reads "Calibrating, 0 of N" on Charge, not a
-    // bare "No data" that looks broken (#335). Caller gates past days to null; >= seed → null.
+    // bare "No data" that looks broken. Caller gates past days to null; >= seed → null.
     return n.takeIf { it in 0 until seed }
 }
 
@@ -344,8 +341,8 @@ internal fun recoveryCalibrationNights(
  * the merge), so no engine round-trip is needed and the bars match the Charge ring's own inputs. Folds
  * the whole history (oldest first) into the four-plus-one personal baselines with [Baselines.foldHistory]
  * (byte-identical to the engine's whole-history fold when no manual Recalibrate epoch is set, the common
- * case), then defers to [RecoveryDrivers.chargeDrivers], which scores each row against the SAME inputs
- * [RecoveryScorer.recovery] reads. Empty when the displayed day can't score (cold-start / missing input),
+ * case), then defers to [chargeDriverRows], which scores each row in whoop-rs against the SAME inputs
+ * the Charge score reads. Empty when the displayed day can't score (cold-start / missing input),
  * so the section hides rather than faking rows. Mirrors the iOS chargeDrivers wiring.
  */
 internal fun recoveryChargeDrivers(
@@ -371,7 +368,7 @@ internal fun recoveryChargeDrivers(
     // recomputeRecovery uses, so the Sleep driver scores against the headline's own input.
     val sleepPerf = RestScorer.restFromDaily(day)?.let { it / 100.0 } ?: day.efficiency
 
-    return RecoveryDrivers.chargeDrivers(
+    return chargeDriverRows(
         hrv = hrv,
         rhr = rhr,
         resp = day.respRateBpm,
@@ -403,7 +400,7 @@ internal fun chargeConfidenceTier(
 
 /**
  * The most recent fully-SCORED recovery day to carry over on TODAY while tonight's recovery hasn't been
- * scored yet (#543), the ONE prior row every recovery-derived read-out (Charge ring, HRV / resting-HR /
+ * scored yet, the ONE prior row every recovery-derived read-out (Charge ring, HRV / resting-HR /
  * respiratory / SpO₂ tiles, Synthesis, Contributors, Readiness) carries over from at the rollover. Pure +
  * unit-tested (TodayMetricTilesTest). [days] is oldest→newest; the chosen row is the last with a non-null
  * recovery that isn't today's (still-null) [selectedDayKey]. Returns null unless it's today, today itself
@@ -416,8 +413,8 @@ internal fun lastScoredRecoveryDay(
     isToday: Boolean,
     todayScored: Boolean,
     isCalibrating: Boolean,
-    // #547 carry-over guard: the local "today" key ("yyyy-MM-dd"). A stray FUTURE-dated row (a bad strap
-    // clock wrote a day past today) must NEVER be picked as "last night", that's how #547's Today header
+    // carry-over guard: the local "today" key ("yyyy-MM-dd"). A stray FUTURE-dated row (a bad strap
+    // clock wrote a day past today) must NEVER be picked as "last night" — that is how the Today header
     // read "12 Jul". Cheap belt-and-suspenders alongside the ingest gate + heal: filter candidates to
     // day <= today so even a future row that slipped through can't surface here. ISO date keys sort
     // chronologically, so a plain string compare is correct. Defaulted to MAX so an un-updated call site
@@ -429,21 +426,21 @@ internal fun lastScoredRecoveryDay(
 }
 
 /** A prior day's Charge carried over on TODAY (value + "Last night · <date>" caption) while tonight's
- *  recovery hasn't been scored yet (#543). Mirrors the iOS lastScoredCharge tuple. */
+ *  recovery hasn't been scored yet. Mirrors the iOS lastScoredCharge tuple. */
 internal data class LastCharge(val value: Double, val caption: String)
 
-/** "d MMM" for a stored `yyyy-MM-dd` day key, used by the carried-over Charge caption (#543). Parses
+/** "d MMM" for a stored `yyyy-MM-dd` day key, used by the carried-over Charge caption. Parses
  *  the key and falls back to the raw key so the caption is never empty. Mirrors iOS lastChargeDateFmt. */
 internal fun lastChargeDateLabel(dayKey: String): String =
     runCatching {
         LocalDate.parse(dayKey).format(DateTimeFormatter.ofPattern("d MMM", Locale.US))
     }.getOrDefault(dayKey)
 
-/** Carry-over recency cap (#779): the "Last night" framing only holds when the carried scored day is
+/** Carry-over recency cap: the "Last night" framing only holds when the carried scored day is
  *  within this many days of today. Mirrors iOS TodayView.carryFreshnessDays. */
 internal const val CARRY_FRESHNESS_DAYS = 2L
 
-/** True when the carried scored day is OLDER than the freshness cap (#779), which drives the "Latest
+/** True when the carried scored day is OLDER than the freshness cap, which drives the "Latest
  *  sleep" relabel. Pure + unit-testable. Both keys are "yyyy-MM-dd"; an unparseable key (or non-positive gap)
  *  reads as fresh so we never over-claim staleness. [today] is today's key (carry-over is today-only),
  *  defaulted to the device's current date for the composable call sites. Mirrors iOS isCarryStale. */
@@ -452,7 +449,7 @@ internal fun isCarryStale(priorDayKey: String, today: String = LocalDate.now().t
         ChronoUnit.DAYS.between(LocalDate.parse(priorDayKey), LocalDate.parse(today)) > CARRY_FRESHNESS_DAYS
     }.getOrDefault(false)
 
-/** #977 — HONEST Rest resolution for the selected day. Today's own scored Rest wins; otherwise, ONLY on
+/** HONEST Rest resolution for the selected day. Today's own scored Rest wins; otherwise, ONLY on
  *  today, tail-fall-back to the last scored night — but ONLY when that night is within the carry-freshness
  *  window ([isCarryStale] == false). A live 5.0 whose sleep never scores (no overnight gravity ⇒ no
  *  `sleep_performance` point ever written) used to pin Rest to a weeks-old scored night while Charge kept
@@ -469,7 +466,7 @@ internal fun freshRestScore(
 }
 
 /** The carried recovery caption stamp, keyed on that scored day's own date and its recency. Within the
- *  freshness cap it reads "Last night · <date>"; once the carried day is older than the cap (#779) it reads
+ *  freshness cap it reads "Last night · <date>"; once the carried day is older than the cap it reads
  *  "Latest sleep · <date>" so a weeks-old import is never surfaced as "Last night". Shared by every carried
  *  recovery read-out so the prior-day provenance reads identically. Mirrors iOS carriedCaption. */
 internal fun carriedCaption(priorDayKey: String, today: String = LocalDate.now().toString()): String {
@@ -491,7 +488,7 @@ internal fun carriedCaption(priorDayKey: String, today: String = LocalDate.now()
 
 /**
  * The honest state of one score/tile on Today, one state per score, never a bare blank. Derived from
- * baseline readiness + data presence + the #543 carry-over, so a tile that has no own value for the day
+ * baseline readiness + data presence + the carry-over, so a tile that has no own value for the day
  * still says WHY and WHAT to do, and shows no fabricated number. Mirrors Swift `ScoreState` 1:1 (same
  * three cases, same [title] / [detail] copy). [Scored] carries the real value the tile renders normally;
  * the other three are the no-own-number states this layer explains.
@@ -504,9 +501,9 @@ sealed class ScoreState {
      *  Shows NO number (calibrating never fakes a value). */
     data class Calibrating(val nightsRemaining: Int) : ScoreState()
 
-    /** A prior scored day shown before tonight is scored (#543 carry-over), stamped with [dateLabel]
+    /** A prior scored day shown before tonight is scored (carry-over), stamped with [dateLabel]
      *  ("d MMM") so the prior read is never passed off as today's. [stale] is true when that day is older
-     *  than the freshness cap (#779): the carry is still shown so the recovery side isn't a bare blank, but
+     *  than the freshness cap: the carry is still shown so the recovery side isn't a bare blank, but
      *  it's relabelled "Latest sleep" so a weeks-old import is never passed off as "Last night". */
     data class CarriedLastNight(val dateLabel: String, val stale: Boolean = false) : ScoreState()
 
@@ -533,7 +530,7 @@ sealed class ScoreState {
             }
             is CarriedLastNight ->
                 // A fresh post-rollover carry tells you tonight's score is on its way; a stale carry (an
-                // older import, #779) instead explains the number is from that earlier session, not today.
+                // older import) instead explains the number is from that earlier session, not today.
                 if (stale) "This is your last scored session. Wear the strap overnight for a fresh score."
                 else "Tonight's lands after you sleep with the strap on."
             NeedsStrap -> "No data for today. Was your strap worn and connected overnight?"
@@ -546,7 +543,7 @@ sealed class ScoreState {
  * precedence mirrors the tile waterfall:
  *   1. [todayRecovery] present                → [ScoreState.Scored] (the tile shows its real number);
  *   2. mid-calibration ([calibratingNights])  → [ScoreState.Calibrating] (N more nights, no number);
- *   3. a prior scored day to carry (#543)     → [ScoreState.CarriedLastNight] (stamped with its date);
+ *   3. a prior scored day to carry     → [ScoreState.CarriedLastNight] (stamped with its date);
  *   4. otherwise                              → [ScoreState.NeedsStrap] (no data, no number).
  * Mirrors Swift `scoreStateForToday`.
  */
@@ -561,7 +558,7 @@ internal fun scoreStateForToday(
     // "About N more nights" = the seed gate minus the nights banked so far, floored at 1 (zero would read
     // as "ready" when it isn't). Calibrating never fakes a value.
     calibratingNights != null -> ScoreState.Calibrating((seed - calibratingNights).coerceAtLeast(1))
-    // #779: a carry older than the freshness cap is still shown (not a bare blank) but relabelled to
+    // a carry older than the freshness cap is still shown (not a bare blank) but relabelled to
     // "Latest sleep" so a weeks-old import is never passed off as "Last night".
     carriedDay != null -> ScoreState.CarriedLastNight(lastChargeDateLabel(carriedDay.day), isCarryStale(carriedDay.day, today))
     else -> ScoreState.NeedsStrap
@@ -570,10 +567,9 @@ internal fun scoreStateForToday(
 /**
  * The gamified calibration-milestone countdown stack (WHOOP-style "Calibration Timeline"). Renders one
  * row per milestone: DONE milestones read as a compact "Unlocked" check, the single ACTIVE milestone is
- * the live countdown with an accent liquid progress bar + "N nights to go" + what it unlocks, and LOCKED
+ * the live countdown with an accent progress bar + "N nights to go" + what it unlocks, and LOCKED
  * milestones sit muted below with their own dimmed bar. [progress] is the pure, unit-tested
- * [CalibrationMilestones.progress] output; this composable is presentation only. Design-system tokens
- * only (Palette / Metrics / NoopType). Mirrors the iOS CalibrationMilestonesCard.
+ * [CalibrationMilestones.progress] output; this composable is presentation only.
  */
 @Composable
 internal fun CalibrationMilestonesCard(progress: List<CalibrationMilestones.Progress>) {
@@ -651,13 +647,16 @@ private fun CalibrationMilestoneRow(p: CalibrationMilestones.Progress) {
                 Text(m.title, style = NoopType.headline, color = Palette.textPrimary, modifier = Modifier.weight(1f))
                 Text("${p.remaining} $nightsWord to go", style = NoopType.footnote, color = Palette.accent)
             }
-            // Status bar, not a hero surface — posed (animated=false) so it costs nothing per scroll frame.
-            LiquidTube(
-                frac = p.fraction,
-                tint = Palette.accent,
-                height = Metrics.progressHeight,
-                animated = false,
-                modifier = Modifier.fillMaxWidth(),
+            LinearProgressIndicator(
+                progress = { p.fraction.toFloat() },
+                color = Palette.accent,
+                trackColor = Palette.surfaceInset,
+                strokeCap = StrokeCap.Round,
+                gapSize = 0.dp,
+                drawStopIndicator = {},
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(Metrics.progressHeight),
             )
             Text("$banked/${m.nights} nights · ${m.unlocks}", style = NoopType.footnote, color = Palette.textSecondary)
         }
@@ -684,65 +683,20 @@ private fun CalibrationMilestoneRow(p: CalibrationMilestones.Progress) {
                 Text(m.title, style = NoopType.subhead, color = Palette.textSecondary, modifier = Modifier.weight(1f))
                 Text("${p.remaining} $nightsWord to go", style = NoopType.footnote, color = Palette.textTertiary)
             }
-            LiquidTube(
-                frac = p.fraction,
-                tint = Palette.textTertiary,
-                height = Metrics.progressHeight,
-                animated = false,
-                modifier = Modifier.fillMaxWidth(),
-            )
-        }
-    }
-}
-
-/** The honest score-state note shown in the Today flow when there is no own number to render, the
- *  state title + one what-to-do line, no fabricated value. [ScoreState.Scored] renders nothing (the
- *  tiles carry the real number). The whole card is the spec's "never a bare blank". Mirrors the iOS
- *  ScoreStateNote. */
-@Composable
-internal fun ScoreStateNote(state: ScoreState) {
-    if (state is ScoreState.Scored) return
-    val icon = when (state) {
-        is ScoreState.Calibrating -> Icons.Filled.Tune
-        is ScoreState.CarriedLastNight -> Icons.Filled.History
-        ScoreState.NeedsStrap -> Icons.Filled.Warning
-        is ScoreState.Scored -> Icons.Filled.Info
-    }
-    val tint = when (state) {
-        ScoreState.NeedsStrap -> Palette.statusWarning
-        else -> Palette.textTertiary
-    }
-    NoopCard {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .semantics { contentDescription = "${state.title}. ${state.detail}" },
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-            verticalAlignment = Alignment.Top,
-        ) {
-            Icon(
-                icon,
-                contentDescription = null,
-                tint = tint,
+            LinearProgressIndicator(
+                progress = { p.fraction.toFloat() },
+                color = Palette.textTertiary,
+                trackColor = Palette.surfaceInset,
+                strokeCap = StrokeCap.Round,
+                gapSize = 0.dp,
+                drawStopIndicator = {},
                 modifier = Modifier
-                    .padding(top = 1.dp)
-                    .size(Metrics.iconSmall),
+                    .fillMaxWidth()
+                    .height(Metrics.progressHeight),
             )
-            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(state.title, style = NoopType.headline, color = Palette.textPrimary)
-                Text(state.detail, style = NoopType.subhead, color = Palette.textSecondary)
-            }
         }
     }
 }
-
-// ── COMPONENT 3, recording status ───────────────────────────────────────────────────────────────────
-
-/**
- * The honest live-recording state of the strap, for the Today/Live chip. Derived from the BLE connection
- * + last-sync timestamp so people always know it's working, or know it isn't and why. Mirrors Swift
- * `RecordingState` 1:1 (same three cases, same [title] / [detail] copy, same [tone]).
- */
 sealed class RecordingState {
     /** The strap is connected and saving data live. */
     object Recording : RecordingState()
@@ -753,7 +707,7 @@ sealed class RecordingState {
     /** No connection and nothing recent to fall back on. */
     object NotRecording : RecordingState()
 
-    /** #580, a connected WHOOP 5/MG streaming live HR fine, but its firmware hands over no history
+    /** a connected WHOOP 5/MG streaming live HR fine, but its firmware hands over no history
      *  offload yet. NOT the WHOOP-4 "not recording" failure: the link is live, history sync is just
      *  experimental on 5.0. Surfaced from `LiveState.historySyncExperimental`, overriding the resolver. */
     object HistoryExperimental : RecordingState()
@@ -879,9 +833,8 @@ internal fun todayProvenanceChipLabel(
 }
 
 /**
- * One compact source label for the liquid score hero. Raw winners arrive in Charge / Effort / Rest order;
+ * One compact source label for the score hero. Raw winners arrive in Charge / Effort / Rest order;
  * identical display names collapse and mixed winners are capped at two so the badge stays readable.
- * Mirrors LiquidTodayView.heroSourceLabel value-for-value.
  */
 internal fun heroSourceLabel(
     rawSources: List<String>,
@@ -897,9 +850,9 @@ internal fun heroSourceLabel(
 
 /**
  * Source label for the three visible hero scores. Today can show a carried Charge from the previous
- * scored night while today's recovery is still absent (#543); in that state the selected-day
+ * scored night while today's recovery is still absent; in that state the selected-day
  * "recovery" provenance is also absent, so use the carried night's resolved recovery source instead of
- * letting the card badge omit or misrepresent the visible Charge (#390).
+ * letting the card badge omit or misrepresent the visible Charge.
  */
 internal fun scoreHeroSourceLabel(
     provenanceByMetric: Map<String, String>,

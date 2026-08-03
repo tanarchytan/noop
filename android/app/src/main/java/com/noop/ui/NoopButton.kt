@@ -33,19 +33,14 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.clickable
 
-// MARK: - NoopButton — the unified button system (Design Reset, 2026-06-22)
+// MARK: - NoopButton — the unified button system
 //
-// Compose port of StrandDesign/NoopButton.swift. One button, four kinds, no glow. Beauty comes
-// from a crisp filled accent, honest surface fills, restrained spacing and a subtle press —
-// never neon, bloom or a halo. Labels are sentence-case (never ALL CAPS), single line, with the
-// optional leading icon as one unit, and degrade gracefully under Reduce Motion (the press scale
-// drops; only the dim remains).
+// One button, four kinds, no glow. Beauty comes from a crisp filled action colour, honest surface
+// fills, restrained spacing and a subtle press — never neon, bloom or a halo. Labels are
+// sentence-case (never ALL CAPS), single line, with the optional leading icon as one unit, and
+// degrade gracefully under Reduce Motion (the press scale drops; only the dim remains).
 //
-// NOTE ON COLOUR (Design Reset): the accent here is the WHOOP link/action BLUE, matching the
-// iOS reset (`StrandPalette.accent` = #60A0E0 dark / #234F9E light, "gold killed 2026-06-22").
-// The Android `Palette.accent` token still carries the pre-reset GOLD, so this file pins the
-// reset blue locally rather than reading the stale token — keeping the hard "no gold" rule and
-// the iOS values exactly. Label-on-fill is crisp white (iOS `goldDeepText` is #FFFFFF post-reset).
+// The fill is [Palette.actionBlue], the link/action blue, NOT the scheme-tinted `Palette.accent`.
 
 /** The four button roles. Colour + emphasis differ; geometry is identical across all four. */
 enum class NoopButtonKind {
@@ -80,15 +75,6 @@ private object NoopButtonMetrics {
     const val disabledOpacity = 0.4f
 }
 
-// MARK: - Design-reset accent (WHOOP blue) — pinned to the iOS values, never gold
-
-/** The reset accent blue (iOS `StrandPalette.accent`: #234F9E light / #60A0E0 dark). */
-private val noopAccentBlue: Color
-    @Composable get() = if (Palette.isLight) Color(0xFF234F9E) else Color(0xFF60A0E0)
-
-/** Crisp white label/icon on accent + critical fills (iOS `goldDeepText` = #FFFFFF post-reset). */
-private val noopOnFill: Color = Color(0xFFFFFFFF)
-
 /** Resolves a [NoopButtonKind] to its concrete fill / label / border tokens. */
 private data class NoopButtonAppearance(
     val fill: Color?,     // null = no fill (tertiary)
@@ -99,16 +85,16 @@ private data class NoopButtonAppearance(
 @Composable
 private fun appearanceFor(kind: NoopButtonKind): NoopButtonAppearance = when (kind) {
     NoopButtonKind.Primary -> NoopButtonAppearance(
-        fill = noopAccentBlue, label = noopOnFill, border = null,
+        fill = Palette.actionBlue, label = Palette.onFill, border = null,
     )
     NoopButtonKind.Secondary -> NoopButtonAppearance(
         fill = Palette.surfaceRaised, label = Palette.textPrimary, border = Palette.hairline,
     )
     NoopButtonKind.Tertiary -> NoopButtonAppearance(
-        fill = null, label = noopAccentBlue, border = null,
+        fill = null, label = Palette.actionBlue, border = null,
     )
     NoopButtonKind.Destructive -> NoopButtonAppearance(
-        fill = Palette.statusCritical, label = noopOnFill, border = null,
+        fill = Palette.statusCritical, label = Palette.onFill, border = null,
     )
 }
 

@@ -21,7 +21,6 @@ import androidx.compose.material.icons.filled.CheckBox
 import androidx.compose.material.icons.filled.CheckBoxOutlineBlank
 import androidx.compose.material.icons.filled.Circle
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.FileDownload
 import androidx.compose.material.icons.filled.PhonelinkErase
 import androidx.compose.material.icons.filled.Science
@@ -98,15 +97,6 @@ private enum class DeviceType {
     /** True for the EXPERIMENTAL tier (shown under a clearly-labelled "Experimental" heading). */
     val isExperimental: Boolean get() = this == Oura
 
-    /** The experimental-tier brand this type registers as, or null for the non-experimental types
-     *  (WHOOP). Bridges the type picker to the [com.noop.data.DeviceBrandCatalog] facts (stored brand
-     *  string, sourceKind, id prefix) so those are no longer hardcoded per branch. */
-    val experimentalBrand: ExperimentalBrand?
-        get() = when (this) {
-            Oura -> ExperimentalBrand.OURA
-            else -> null
-        }
-
     val title: String
         get() = when (this) {
             Whoop -> "WHOOP"
@@ -142,8 +132,8 @@ fun AddDeviceWizard(
     var step by remember { mutableStateOf(WizardStep.Type) }
     var type by remember { mutableStateOf<DeviceType?>(null) }
 
-    // --- Oura factory-reset-and-adopt sub-flow (the Oura type drives its own step machine; section 2 of
-    // docs/superpowers/specs/2026-06-29-oura-onboarding-ux.md). Inert for every other device type. ---
+    // --- Oura factory-reset-and-adopt sub-flow: the Oura type drives its own step machine, and this is
+    // inert for every other device type. ---
     var ouraStep by remember { mutableStateOf(OuraStep.Gate) }
     /** The honest, irreversible "this disconnects the ring from Oura" box must be ticked to continue. */
     var ouraConsent by remember { mutableStateOf(false) }
@@ -282,7 +272,7 @@ fun AddDeviceWizard(
         stopAllScans()
         val ring = pickedOura ?: run { onClose(); return }
         val now = System.currentTimeMillis() / 1000
-        // Brand string, id prefix, and the "oura" routing come from the catalog via the type->brand bridge.
+        // Brand string, id prefix and the "oura" routing are catalog facts, never spelled here.
         val oura = ExperimentalBrand.OURA
         val deviceId = "${oura.idPrefix}-${ring.address}"
         // Advanced (B-Alt): persist the pasted key BEFORE registering so the active source authenticates
@@ -346,7 +336,7 @@ fun AddDeviceWizard(
                     }
                     Spacer(Modifier.width(6.dp))
                 }
-                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(Metrics.space2)) {
                     Text(hTitle, style = NoopType.title2, color = Palette.textPrimary)
                     hSub?.let {
                         Text(it, style = NoopType.caption, color = Palette.textTertiary)
@@ -359,7 +349,7 @@ fun AddDeviceWizard(
         },
         text = {
             // Make the wizard body scrollable so no step is ever cut off under large font scaling or on
-            // large/short displays (#897: the device-type list was taller than the dialog and the lower rows,
+            // large/short displays (the device-type list was taller than the dialog and the lower rows,
             // e.g. Oura, were unreachable). The AlertDialog text slot does not scroll its content on its own,
             // so we own the scroll here. Every step renders unchanged inside this scroll container.
             Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
@@ -535,7 +525,7 @@ private fun ouraHeaderSubtitle(step: OuraStep, advanced: Boolean): String? = whe
 
 @Composable
 private fun TypeStep(onPick: (DeviceType) -> Unit) {
-    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(Metrics.space10)) {
         TypeRow(Icons.Filled.Watch, DeviceType.Whoop.title, "4.0, 5.0 or MG. NOOP works out which it is") {
             onPick(DeviceType.Whoop)
         }
@@ -547,8 +537,6 @@ private fun TypeStep(onPick: (DeviceType) -> Unit) {
         TypeRow(Icons.Filled.Circle, DeviceType.Oura.title, "Take over your ring locally. Beta. This replaces the Oura app.") {
             onPick(DeviceType.Oura)
         }
-
-        WhoopFirstNote()
     }
 }
 
@@ -562,7 +550,7 @@ private fun ExperimentalTierNote() {
             .clip(RoundedCornerShape(12.dp))
             .background(Palette.statusWarning.copy(alpha = 0.10f))
             .padding(12.dp),
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        horizontalArrangement = Arrangement.spacedBy(Metrics.space10),
         verticalAlignment = Alignment.Top,
     ) {
         Icon(Icons.Filled.Science, contentDescription = null, tint = Palette.statusWarning, modifier = Modifier.size(18.dp))
@@ -585,7 +573,7 @@ private fun TypeRow(icon: ImageVector, title: String, subtitle: String, onClick:
             .clickable(onClick = onClick)
             .semantics { contentDescription = "$title. $subtitle" }
             .padding(16.dp),
-        horizontalArrangement = Arrangement.spacedBy(14.dp),
+        horizontalArrangement = Arrangement.spacedBy(Metrics.space14),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(icon, contentDescription = null, tint = Palette.accent, modifier = Modifier.size(28.dp))
@@ -598,23 +586,6 @@ private fun TypeRow(icon: ImageVector, title: String, subtitle: String, onClick:
             contentDescription = null,
             tint = Palette.textTertiary,
             modifier = Modifier.size(20.dp),
-        )
-    }
-}
-
-@Composable
-private fun WhoopFirstNote() {
-    Row(
-        modifier = Modifier.padding(top = 8.dp),
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
-        verticalAlignment = Alignment.Top,
-    ) {
-        Icon(Icons.Filled.FavoriteBorder, contentDescription = null, tint = Palette.textTertiary, modifier = Modifier.size(16.dp))
-        Text(
-            "WHOOP is NOOP's primary, fully-supported band. Other heart-rate straps stream live heart rate " +
-                "and HRV, but not WHOOP's deeper sleep and recovery data.",
-            style = NoopType.footnote,
-            color = Palette.textTertiary,
         )
     }
 }
@@ -633,7 +604,7 @@ private fun OnePhoneWarningCard() {
             .clip(RoundedCornerShape(12.dp))
             .background(Palette.statusWarning.copy(alpha = 0.10f))
             .padding(12.dp),
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        horizontalArrangement = Arrangement.spacedBy(Metrics.space10),
         verticalAlignment = Alignment.Top,
     ) {
         Icon(
@@ -642,7 +613,7 @@ private fun OnePhoneWarningCard() {
             tint = Palette.statusWarning,
             modifier = Modifier.size(18.dp),
         )
-        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(Metrics.space4)) {
             Text(
                 "One phone at a time",
                 style = NoopType.headline,
@@ -663,8 +634,8 @@ private fun OnePhoneWarningCard() {
 
 @Composable
 private fun PrepStep(type: DeviceType, onScan: () -> Unit) {
-    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        Row(horizontalArrangement = Arrangement.spacedBy(14.dp), verticalAlignment = Alignment.CenterVertically) {
+    Column(verticalArrangement = Arrangement.spacedBy(Metrics.space16)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(Metrics.space14), verticalAlignment = Alignment.CenterVertically) {
             Icon(
                 // PrepStep is only ever reached by a WHOOP type (Oura runs its own flow); the band glyph
                 // applies. Oura is kept for completeness of the branch.
@@ -683,7 +654,7 @@ private fun PrepStep(type: DeviceType, onScan: () -> Unit) {
                     .clip(RoundedCornerShape(12.dp))
                     .background(Palette.statusWarning.copy(alpha = 0.10f))
                     .padding(12.dp),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                horizontalArrangement = Arrangement.spacedBy(Metrics.space10),
                 verticalAlignment = Alignment.Top,
             ) {
                 Icon(Icons.Filled.Science, contentDescription = null, tint = Palette.statusWarning, modifier = Modifier.size(18.dp))
@@ -710,10 +681,10 @@ private fun PrepStep(type: DeviceType, onScan: () -> Unit) {
                 .clip(RoundedCornerShape(14.dp))
                 .frostedCardSurface(cornerRadius = 14.dp)
                 .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+            verticalArrangement = Arrangement.spacedBy(Metrics.space12),
         ) {
             prepInstructions(type).forEach { line ->
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.Top) {
+                Row(horizontalArrangement = Arrangement.spacedBy(Metrics.space10), verticalAlignment = Alignment.Top) {
                     Text("•", style = NoopType.body, color = Palette.accent)
                     Text(line, style = NoopType.body, color = Palette.textSecondary)
                 }
@@ -786,8 +757,7 @@ internal fun WhoopPickStep(
 // Faithful Compose port of the macOS Oura adopt flow. The Oura type runs its OWN step machine
 // (gate -> prep -> pick -> confirm -> adopting) plus the Advanced (B-Alt) key path. Every screen is
 // honest: the destructive consent gate, the single-owner warning, the per-gen capability checklist (dash
-// for not-available, * for an on-device estimate), and the honest progress sub-states. No em-dashes; the
-// copy matches docs/superpowers/specs/2026-06-29-oura-onboarding-ux.md exactly.
+// for not-available, * for an on-device estimate), and the honest progress sub-states. No em-dashes.
 
 @Composable
 private fun OuraFlow(
@@ -832,7 +802,7 @@ private fun OuraGateStep(
     onUseFileImport: () -> Unit,
     onAdvanced: () -> Unit,
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(Metrics.space16)) {
         // Beta banner (amber heads-up pattern).
         OuraAmberPanel(
             "Beta. Read this first.",
@@ -848,7 +818,7 @@ private fun OuraGateStep(
                 .clip(RoundedCornerShape(14.dp))
                 .frostedCardSurface(cornerRadius = 14.dp)
                 .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp),
+            verticalArrangement = Arrangement.spacedBy(Metrics.space14),
         ) {
             Overline("What you get")
             OuraBulletList(
@@ -885,7 +855,7 @@ private fun OuraGateStep(
                         "I understand this disconnects the ring from Oura and that NOOP cannot undo it for me."
                 }
                 .padding(12.dp),
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            horizontalArrangement = Arrangement.spacedBy(Metrics.space10),
             verticalAlignment = Alignment.Top,
         ) {
             Icon(
@@ -939,7 +909,7 @@ private fun OuraAdvancedKeyStep(
 ) {
     val parsed = parseHexKey(keyDraft)
     val showError = keyDraft.isNotBlank() && parsed == null
-    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(Metrics.space16)) {
         OuraAmberPanel(
             "For power users.",
             "If you extracted your ring's 16-byte key from a previous Oura setup, NOOP can talk to the " +
@@ -991,17 +961,17 @@ private fun OuraAdvancedKeyStep(
 
 @Composable
 private fun OuraPrepStep(advanced: Boolean, onScan: () -> Unit) {
-    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(Metrics.space16)) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(14.dp))
                 .frostedCardSurface(cornerRadius = 14.dp)
                 .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+            verticalArrangement = Arrangement.spacedBy(Metrics.space12),
         ) {
             ouraPrepInstructions.forEach { line ->
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.Top) {
+                Row(horizontalArrangement = Arrangement.spacedBy(Metrics.space10), verticalAlignment = Alignment.Top) {
                     Icon(Icons.Filled.Check, contentDescription = null, tint = Palette.accent, modifier = Modifier.size(18.dp))
                     Text(line, style = NoopType.body, color = Palette.textSecondary)
                 }
@@ -1058,7 +1028,7 @@ private fun OuraPickStep(
                     .clip(RoundedCornerShape(14.dp))
                     .frostedCardSurface(cornerRadius = 14.dp)
                     .padding(20.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
+                verticalArrangement = Arrangement.spacedBy(Metrics.space10),
             ) {
                 CircularProgressIndicator(color = Palette.accent, modifier = Modifier.size(22.dp))
                 Text("Searching…", style = NoopType.body, color = Palette.textPrimary)
@@ -1095,7 +1065,7 @@ private fun OuraConfirmStep(
     onName: (String) -> Unit,
     onAdopt: () -> Unit,
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(Metrics.space16)) {
         // The identified ring: gen name + per-gen capability checklist + a Beta pill.
         Column(
             modifier = Modifier
@@ -1103,24 +1073,22 @@ private fun OuraConfirmStep(
                 .clip(RoundedCornerShape(14.dp))
                 .frostedCardSurface(cornerRadius = 14.dp)
                 .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+            verticalArrangement = Arrangement.spacedBy(Metrics.space12),
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Metrics.space10)) {
                 Icon(Icons.Filled.Circle, contentDescription = null, tint = Palette.accent, modifier = Modifier.size(24.dp))
                 Text(gen.displayName, style = NoopType.headline, color = Palette.textPrimary, modifier = Modifier.weight(1f))
                 StatePill("Beta", tone = StrandTone.Warning, showsDot = false)
             }
             // Per-gen capability checklist: tick for supported, dash for not-available, * for an estimate.
             ouraCapabilityRows(gen).forEach { (mark, label) ->
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.Top) {
+                Row(horizontalArrangement = Arrangement.spacedBy(Metrics.space8), verticalAlignment = Alignment.Top) {
                     Text(mark, style = NoopType.caption, color = Palette.textTertiary, modifier = Modifier.width(14.dp))
                     Text(label, style = NoopType.caption, color = Palette.textSecondary)
                 }
             }
             Text(
-                "Beta. * is an on-device estimate. Skin temp is a trend versus your own baseline, steps " +
-                    "are a raw motion count, and HRV needs you to be still. No Oura Readiness or SpO2 " +
-                    "percentage comes off the ring (import an Oura file for those).",
+                "Beta. * is an on-device estimate.",
                 style = NoopType.footnote,
                 color = Palette.textTertiary,
             )
@@ -1180,9 +1148,9 @@ private fun OuraAdoptingStep() {
             .clip(RoundedCornerShape(14.dp))
             .frostedCardSurface(cornerRadius = 14.dp)
             .padding(20.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        verticalArrangement = Arrangement.spacedBy(Metrics.space12),
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Metrics.space12)) {
             CircularProgressIndicator(color = Palette.accent, modifier = Modifier.size(22.dp))
             Text("Taking over your ring", style = NoopType.headline, color = Palette.textPrimary)
         }
@@ -1205,7 +1173,7 @@ private fun OuraFailedStep(reason: String?, onTryAgain: () -> Unit, onUseFileImp
             .clip(RoundedCornerShape(14.dp))
             .frostedCardSurface(cornerRadius = 14.dp)
             .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        verticalArrangement = Arrangement.spacedBy(Metrics.space12),
     ) {
         Text("We could not take over this ring.", style = NoopType.headline, color = Palette.textPrimary)
         // Surface the live adopt-failure reason when the source reported one; otherwise the static help.
@@ -1224,7 +1192,7 @@ private fun OuraFailedStep(reason: String?, onTryAgain: () -> Unit, onUseFileImp
             style = NoopType.subhead,
             color = Palette.textSecondary,
         )
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(Metrics.space10)) {
             TextButton(
                 onClick = onTryAgain,
                 modifier = Modifier
@@ -1259,9 +1227,9 @@ private fun OuraAmberPanel(title: String, body: String) {
             .clip(RoundedCornerShape(12.dp))
             .background(Palette.statusWarning.copy(alpha = 0.10f))
             .padding(12.dp),
-        verticalArrangement = Arrangement.spacedBy(4.dp),
+        verticalArrangement = Arrangement.spacedBy(Metrics.space4),
     ) {
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(horizontalArrangement = Arrangement.spacedBy(Metrics.space8), verticalAlignment = Alignment.CenterVertically) {
             Icon(Icons.Filled.Warning, contentDescription = null, tint = Palette.statusWarning, modifier = Modifier.size(16.dp))
             Text(title, style = NoopType.subhead, color = Palette.statusWarning)
         }
@@ -1272,9 +1240,9 @@ private fun OuraAmberPanel(title: String, body: String) {
 /** A simple bulleted list used in the gate's "what you get / lose" sections. */
 @Composable
 private fun OuraBulletList(lines: List<String>) {
-    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(Metrics.space6)) {
         lines.forEach { line ->
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.Top) {
+            Row(horizontalArrangement = Arrangement.spacedBy(Metrics.space8), verticalAlignment = Alignment.Top) {
                 Text("•", style = NoopType.body, color = Palette.accent)
                 Text(line, style = NoopType.subhead, color = Palette.textSecondary)
             }
@@ -1300,7 +1268,7 @@ private fun ouraCapabilityRows(gen: OuraRingGen): List<Pair<String, String>> {
         "*" to "Skin-temperature trend",
         "*" to "Steps / motion",
         firm to "Battery",
-        "-" to "Blood oxygen (SpO2 %)",
+        "-" to "SpO₂ (blood oxygen %)",
         "-" to "Oura Readiness / Sleep score",
     )
 }
@@ -1346,7 +1314,7 @@ private fun PickList(
                     .clip(RoundedCornerShape(14.dp))
                     .frostedCardSurface(cornerRadius = 14.dp)
                     .padding(20.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
+                verticalArrangement = Arrangement.spacedBy(Metrics.space10),
             ) {
                 CircularProgressIndicator(color = Palette.accent, modifier = Modifier.size(22.dp))
                 Text("Searching…", style = NoopType.body, color = Palette.textPrimary)
@@ -1372,11 +1340,11 @@ private fun DiscoveredRow(name: String, subtitle: String, rssi: Int, onTap: () -
             .clickable(onClick = onTap)
             .semantics { contentDescription = "$name, signal ${SignalBars.level(rssi)} of 4" }
             .padding(14.dp),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        horizontalArrangement = Arrangement.spacedBy(Metrics.space12),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         SignalBars(rssi)
-        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(Metrics.space2)) {
             Text(name, style = NoopType.body, color = Palette.textPrimary)
             Text(subtitle, style = NoopType.caption, color = Palette.textTertiary)
         }
@@ -1400,18 +1368,18 @@ private fun ConfirmStep(
     onName: (String) -> Unit,
     onAdd: () -> Unit,
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(Metrics.space16)) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(12.dp))
                 .frostedCardSurface(cornerRadius = 12.dp)
                 .padding(14.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(Metrics.space12),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             SignalBars(rssi)
-            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(Metrics.space2)) {
                 Text(advertisedName, style = NoopType.headline, color = Palette.textPrimary)
                 Text(brand, style = NoopType.caption, color = Palette.textTertiary)
             }

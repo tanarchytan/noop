@@ -43,10 +43,10 @@ import kotlinx.coroutines.delay
 
 /**
  * The shared "Start a workout" picker — sport search + GPS toggle, then [AppViewModel.startWorkout].
- * Lives in one place so both the Live screen and the Workouts screen open the SAME sheet (#115).
+ * Lives in one place so both the Live screen and the Workouts screen open the SAME sheet.
  *
  * GPS needs ACCESS_FINE_LOCATION, which the BLE flow does NOT grant on Android 12+, so a GPS start
- * requests it first and falls back to a route-less workout if denied (#101). Calls [onDismiss] once
+ * requests it first and falls back to a route-less workout if denied. Calls [onDismiss] once
  * the workout has started (or the user cancels).
  */
 @Composable
@@ -56,7 +56,7 @@ fun StartWorkoutSheet(vm: AppViewModel, onDismiss: () -> Unit) {
     var selected by remember { mutableStateOf<Sport>(WorkoutSport.default) }
     var gpsOn by remember(selected) { mutableStateOf(selected.isDistanceSport) }
     val filtered = WorkoutSport.all.filter { it.name.contains(query, ignoreCase = true) }
-    // #297: the user's last selections, one tap away above the full catalogue. Only catalogue-resolvable
+    // the user's last selections, one tap away above the full catalogue. Only catalogue-resolvable
     // recents show here — a live start selects a typed [Sport], and the shared store can hold free-typed
     // names from the manual add/edit picker. Hidden once the user starts searching.
     val recents = if (query.isBlank()) {
@@ -66,7 +66,7 @@ fun StartWorkoutSheet(vm: AppViewModel, onDismiss: () -> Unit) {
         emptyList()
     }
     val sportScroll = rememberScrollState()
-    // Live workout mode (#238): once a workout begins, the sheet transitions IN PLACE into the full
+    // Live workout mode: once a workout begins, the sheet transitions IN PLACE into the full
     // in-exercise screen — staying mounted so its state survives — and only tells the parent to close
     // (onDismiss) when the live workout itself is closed. Hosted HERE so BOTH entry points (Live +
     // Workouts) that use this sheet get the live workout without each screen wiring it.
@@ -128,11 +128,11 @@ fun StartWorkoutSheet(vm: AppViewModel, onDismiss: () -> Unit) {
         },
         confirmButton = {
             Button(onClick = {
-                // #297: a confirmed start is a real selection — fold it into the recents (recorded even
-                // if the GPS permission is then denied; the workout still starts route-less, #101).
+                // a confirmed start is a real selection — fold it into the recents (recorded even
+                // if the GPS permission is then denied; the workout still starts route-less).
                 RecentSportsPrefs.record(context, selected.name)
                 if (gpsOn) {
-                    startWithGps() // requests location, then starts + opens live workout in the callback (#101)
+                    startWithGps() // requests location, then starts + opens live workout in the callback
                 } else {
                     vm.startWorkout(selected, gpsEnabled = false)
                     showLiveWorkout = true
@@ -147,7 +147,7 @@ fun StartWorkoutSheet(vm: AppViewModel, onDismiss: () -> Unit) {
     )
 }
 
-/** One tappable sport row — shared by the #297 Recent block and the full catalogue list. */
+/** One tappable sport row — shared by the Recent block and the full catalogue list. */
 @Composable
 private fun StartSportRow(sp: Sport, isSelected: Boolean, onPick: () -> Unit) {
     Row(
@@ -168,7 +168,7 @@ private fun StartSportRow(sp: Sport, isSelected: Boolean, onPick: () -> Unit) {
 }
 
 /**
- * Start-a-workout entry for the Workouts screen (#115) — mirrors the Live screen's control so a user
+ * Start-a-workout entry for the Workouts screen — mirrors the Live screen's control so a user
  * can begin a session from either place. Shows a compact "running" banner while a workout is active
  * (the rich live card stays on Live), the "Start workout" button when a strap is bonded, or nothing
  * when there's no strap to stream from (matching Live, which only offers the start when bonded).
@@ -178,7 +178,7 @@ fun WorkoutStartSection(vm: AppViewModel) {
     val live by vm.live.collectAsStateWithLifecycle()
     val activeWorkout by vm.activeWorkout.collectAsStateWithLifecycle()
     var showSportPicker by remember { mutableStateOf(false) }
-    // Live workout mode (#238): the full-screen in-exercise view. StartWorkoutSheet opens it the
+    // Live workout mode: the full-screen in-exercise view. StartWorkoutSheet opens it the
     // moment a workout begins; this re-entry lets the user re-open it from the compact banner after
     // dismissing. Closing just hides the overlay — the workout keeps recording in the background.
     var showLiveWorkout by remember { mutableStateOf(false) }
@@ -239,7 +239,7 @@ fun WorkoutStartSection(vm: AppViewModel) {
         StartWorkoutSheet(vm = vm, onDismiss = { showSportPicker = false })
     }
 
-    // The full-screen live workout overlay (#238). A plain full-screen Dialog so it floats over
+    // The full-screen live workout overlay. A plain full-screen Dialog so it floats over
     // whichever screen launched it. Dismiss just hides it; End (inside) stops the workout.
     if (showLiveWorkout && activeWorkout != null) {
         Dialog(

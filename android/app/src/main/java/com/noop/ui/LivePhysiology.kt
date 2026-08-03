@@ -23,17 +23,15 @@ import kotlin.math.sqrt
 import com.noop.ble.LiveState
 
 /**
- * Live-HR physiology composables folded into the Health screen by the Live/Health merge (stages 3-4):
- * [MaxHrZoneCard] and [PhysiologyStack] (with its R-R liquid thread, rolling RMSSD and R-R / Event proof
- * tiles). Exposed `internal` so HealthScreen composes them directly beneath the merged heart-rate hero.
- * Split out of the old LiveScreen.kt when the standalone Live screen was removed (the unrelated
- * `relativeAgo` helper moved to RelativeAgo.kt).
+ * Live-HR physiology composables for the Health screen: [MaxHrZoneCard] and [PhysiologyStack] (its R-R
+ * trace, rolling RMSSD and R-R / Event proof tiles). Exposed `internal` so the Health Monitor composes
+ * them beneath its heart-rate hero.
  */
 
 /**
  * Read-only Max-HR + top-zone card. Max HR is the age-based value from Settings; the Zone 5 entry
  * (≥ 90% of max) is where HR-zone coaching buzzes. Managing coaching lives in Automations.
- * Reimplemented from @cbarrado's PR #350. Folded into Health (Live/Health merge).
+ * Folded into Health (Live/Health merge).
  */
 @Composable
 internal fun MaxHrZoneCard(hrMax: Int, zone5Bpm: Int, coachingOn: Boolean) {
@@ -66,17 +64,17 @@ internal fun MaxHrZoneCard(hrMax: Int, zone5Bpm: Int, coachingOn: Boolean) {
     }
 }
 
-// MARK: - Live physiology (R-R thread + rolling RMSSD + proof tiles)
+// MARK: - Live physiology (R-R trace + rolling RMSSD + proof tiles)
 
 /**
- * The live R-R physiology block folded into Health: the connection-mode detail line, a rolling RMSSD
- * read-out, the beat-by-beat R-R liquid thread, and R-R / Event proof tiles. Exposed `internal` so the
- * Health screen composes it directly beneath the merged heart-rate hero.
+ * The live R-R physiology block: the connection-mode detail line, a rolling RMSSD read-out, the
+ * beat-by-beat R-R trace, and R-R / Event proof tiles. Exposed `internal` so the Health screen composes
+ * it directly beneath the heart-rate hero.
  */
 @Composable
 internal fun PhysiologyStack(live: LiveState, activeConnection: Boolean) {
     val rmssd = rollingRMSSD(live.rrRecent)
-    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(Metrics.space16)) {
         Row(verticalAlignment = Alignment.Top, modifier = Modifier.fillMaxWidth()) {
             Column(modifier = Modifier.weight(1f)) {
                 Overline("Live Physiology")
@@ -108,30 +106,29 @@ internal fun PhysiologyStack(live: LiveState, activeConnection: Boolean) {
     }
 }
 
-/** The recent R-R buffer as a live liquid THREAD — the beat-by-beat trace with a travelling glint +
- *  endpoint pulse (a single HR number can look frozen; a flowing thread can't). R-R intervals ARE the
- *  time between heartbeats, so the buffer is a genuine beat-by-beat series; the thread auto-normalises its
- *  own min/max, so the raw ms values feed it directly. Empty state shows a muted flat thread + the
- *  "Waiting…" caption. Same data binding (live.rrRecent) as the bar strip this replaced. */
+/** Height of the R-R trace and of the flat hairline that stands in for it below two samples. */
+private val RR_TRACE_HEIGHT = 58.dp
+
+/** The recent R-R buffer as a beat-by-beat sparkline. R-R intervals ARE the time between heartbeats, so
+ *  the buffer is a genuine series and the trace normalises to its own min/max. Below two samples a muted
+ *  flat hairline holds the same height, so the card does not jump when the first pair lands. */
 @Composable
 private fun RRStrip(rrRecent: List<Int>) {
     val values = rrRecent.takeLast(18)
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(Metrics.space8)) {
         if (values.size >= 2) {
-            // Live thread — flows (glint + pulse) as new intervals land. Heart-pink (LiquidThread default).
-            LiquidThread(
-                bpm = values.map { it.toDouble() },
-                animated = true,
-                height = 58.dp,
-                modifier = Modifier.fillMaxWidth(),
+            TileSparkline(
+                values = values.map { it.toDouble() },
+                color = Palette.metricRose,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(RR_TRACE_HEIGHT),
             )
         } else {
-            // Empty / single-sample state: a muted flat hairline placeholder at the same height, so the
-            // card doesn't jump when the first pair of intervals arrives and the thread takes over.
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(58.dp),
+                    .height(RR_TRACE_HEIGHT),
                 contentAlignment = Alignment.Center,
             ) {
                 Box(
@@ -166,7 +163,7 @@ private fun LiveProofMetric(modifier: Modifier, label: String, value: String, ti
             .background(Palette.surfaceInset)
             .border(1.dp, Palette.hairline, shape)
             .padding(10.dp),
-        verticalArrangement = Arrangement.spacedBy(4.dp),
+        verticalArrangement = Arrangement.spacedBy(Metrics.space4),
     ) {
         Text(label.uppercase(), style = NoopType.footnote, color = Palette.textTertiary)
         Text(
@@ -181,7 +178,7 @@ private fun LiveProofMetric(modifier: Modifier, label: String, value: String, ti
 
 // MARK: - Pure helpers
 
-/** #56: a non-WHOOP live source (the Oura ring, and on Android any external HR source that drives
+/** A non-WHOOP live source (the Oura ring, and on Android any external HR source that drives
  *  [LiveState.streamingLiveHR]) that is connected and actively streaming live HR. It streams without a
  *  WHOOP encrypted bond, so `bonded`/`activeConnection` never trip. Twin of the iOS LiveView.ringStreaming. */
 private fun ringStreaming(live: LiveState): Boolean = live.connected && live.streamingLiveHR

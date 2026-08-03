@@ -109,7 +109,7 @@ internal fun lastVitalsRow(days: List<DailyMetric>, todayKey: String): DailyMetr
  * PER-FIELD twin of [lastVitalsRow] for SpO₂: the freshest strictly-prior row with a non-null [DailyMetric.spo2Pct].
  * [lastVitalsRow]'s predicate only checks HRV/resting-HR/respiratory, so it can select a row whose spo2Pct is
  * null (the on-device engine writes spo2Pct = null; only imported rows carry it) while an OLDER imported row
- * has a real reading. Resolving SpO₂ per field keeps the Blood Oxygen card honest instead of "No Data".
+ * has a real reading. Resolving SpO₂ per field keeps the SpO₂ card honest instead of "No Data".
  * Same `it.day < todayKey` future-clock guard. Mirrors Swift `DailyMetric.lastSpo2Day` / `lastSkinTempDay`.
  */
 internal fun lastSpo2Row(days: List<DailyMetric>, todayKey: String): DailyMetric? =

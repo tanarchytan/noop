@@ -32,6 +32,13 @@ data class PaletteTokens(
     val accentHover: Color,
     val accentMuted: Color,
     val focusRing: Color,
+    // The primary-action blue: the fill behind a primary button and the label on a tertiary one.
+    // Deliberately NOT the chrome `accent`, which is scheme-tinted (violet dark / terracotta light).
+    val actionBlue: Color,
+    // The label/icon on a saturated fill (the action blue, the critical red). Both fills stay dark
+    // enough in either scheme to carry white, so the two token sets agree — it is a token so the
+    // call site never spells a colour, and so one scheme can move without the other.
+    val onFill: Color,
     val recovery000: Color,
     val recovery030: Color,
     val recovery055: Color,
@@ -101,6 +108,7 @@ val DarkTokens = PaletteTokens(
     textPrimary = Color(0xFFF3F1FB), textSecondary = Color(0xFFC9C1E6), textTertiary = Color(0xFF8F86B4),
     glowAmbient = Color(0xFF2A1A55),
     accent = Color(0xFF9D6BFF), accentHover = Color(0xFFBA96FF), accentMuted = Color(0xFF241B45), focusRing = Color(0xFF9D6BFF),
+    actionBlue = Color(0xFF60A0E0), onFill = Color(0xFFFFFFFF),
     recovery000 = Color(0xFFE0463C), recovery030 = Color(0xFFE8743C), recovery055 = Color(0xFFF9DF4A),
     recovery078 = Color(0xFF8FD86A), recovery100 = Color(0xFF2EF29A),
     strain000 = Color(0xFF3A5FD0), strain033 = Color(0xFF4C7BE8), strain066 = Color(0xFF5B8DF5), strain100 = Color(0xFF8FB4FF),
@@ -130,6 +138,7 @@ val LightTokens = PaletteTokens(
     glowAmbient = Color(0xFFF0E0C4),
     // Light chrome accent is terracotta (the warm brand tone for this scheme).
     accent = Color(0xFFB85A3C), accentHover = Color(0xFFA24A2E), accentMuted = Color(0xFFF2E1D6), focusRing = Color(0xFFB85A3C),
+    actionBlue = Color(0xFF234F9E), onFill = Color(0xFFFFFFFF),
     recovery000 = Color(0xFFB0402A), recovery030 = Color(0xFFC06A34), recovery055 = Color(0xFFC79A3E),
     recovery078 = Color(0xFF8A9A44), recovery100 = Color(0xFF5E8F4E),
     strain000 = Color(0xFF2A5082), strain033 = Color(0xFF3F6FA8), strain066 = Color(0xFF5A8AC0), strain100 = Color(0xFF7EA8D8),

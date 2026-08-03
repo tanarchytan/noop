@@ -23,7 +23,7 @@ object LogExport {
             .format(System.currentTimeMillis())
 
     /**
-     * A full `YYYYMMDD-HHMMSS` wall-clock stamp for the SCHEDULED daily auto-export (#510, maddognik), so
+     * A full `YYYYMMDD-HHMMSS` wall-clock stamp for the SCHEDULED daily auto-export (maddognik), so
      * a day-after-day run drops sortable, second-precise, non-colliding files:
      * `noop-straplog-20260617-070000.txt` (and the raw `.bin` alongside). Distinct from [timestamp]
      * (minute-precision, for interactive shares) because the scheduler can fire twice in the same minute
@@ -112,7 +112,7 @@ object LogExport {
         }.getOrNull()
 
     /**
-     * Mirror the latest strap-log tail into the durable [StrapLogBuffer] (#510). Called from the same UI
+     * Mirror the latest strap-log tail into the durable [StrapLogBuffer]. Called from the same UI
      * actions that ship a log interactively, AND on demand by [DebugExportScheduler] before a scheduled
      * write, so the 24h rolling buffer that the background worker reads is kept current even though the
      * worker can't reach the live BLE client. REPLACE semantics: `logText` is the client's authoritative
@@ -123,7 +123,7 @@ object LogExport {
     }
 
     /**
-     * The SCHEDULED daily debug export (#510): write the rolling-buffer strap log — plus the raw 5/MG
+     * The SCHEDULED daily debug export: write the rolling-buffer strap log — plus the raw 5/MG
      * capture alongside as a `.bin`, if one exists — into the app-private export dir under a timestamped
      * name, returning the files written (log first). Unlike the interactive share paths this fires no
      * chooser: it runs from a [androidx.work.Worker] with no UI, leaving a dated pair on disk the user can
@@ -204,7 +204,7 @@ object LogExport {
         val body = logText.ifBlank { "(strap log is empty; connect to your strap, reproduce the issue, then share again)" }
 
         // Append the last captured crash (if any) so a device-specific crash like the Insights
-        // tab (#224/#267) arrives with its real stack trace instead of being unreachable.
+        // tab arrives with its real stack trace instead of being unreachable.
         val crash = com.noop.CrashCapture.lastCrash(context)
         val crashSection = if (crash != null) "\n\n${"─".repeat(40)}\nLast crash:\n$crash" else ""
 

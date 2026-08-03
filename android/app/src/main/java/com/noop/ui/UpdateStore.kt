@@ -107,31 +107,6 @@ object TodayCardDismissal {
     }
 }
 
-// MARK: - New-data watermark (shared, #521)
-//
-// The persisted NEWEST day-key (max yyyy-MM-dd in the merged history) the Today inbox has already
-// announced as "New data added". TodayScreen compares the live newest key against this watermark and
-// only posts when it moves STRICTLY forward — so a background recompute's delete-then-reinsert churn
-// (which dips/recovers the row COUNT but not the newest key) never re-announces, and a relaunch over
-// the same history stays silent. Persisted (not Compose `remember`) so it survives process death,
-// mirroring the Swift `@AppStorage("today.lastAnnouncedDayKey")`.
-object NewDataWatermark {
-    private const val FILE = "noop_today_newdata"
-    private const val KEY_NEWEST = "today.lastAnnouncedDayKey"
-
-    private fun prefs(ctx: Context): SharedPreferences =
-        ctx.applicationContext.getSharedPreferences(FILE, Context.MODE_PRIVATE)
-
-    /** The last newest day-key announced, or "" when no baseline exists yet (first ever load). */
-    fun lastAnnouncedKey(ctx: Context): String =
-        prefs(ctx).getString(KEY_NEWEST, "").orEmpty()
-
-    /** Record [key] as the newest day-key seen, so only a strictly-greater key fires a future announce. */
-    fun setLastAnnouncedKey(ctx: Context, key: String) {
-        prefs(ctx).edit().putString(KEY_NEWEST, key).apply()
-    }
-}
-
 // MARK: - UpdateStore
 //
 // The bell's backing store: a single-user, on-device inbox of [UpdateItem]s persisted as a JSON array
@@ -152,9 +127,9 @@ class UpdateStore private constructor(private val prefs: SharedPreferences) {
      *  mutation. Newest-first ordering is derived at read time ([sortedItems]). */
     val items: androidx.compose.runtime.snapshots.SnapshotStateList<UpdateItem> = mutableStateListOf()
 
-    /** A restore signal TodayScreen observes: set to a card id when "Restore to Today" is tapped, so
-     *  the Today screen (which holds the dismissed flags in local state) can flip the matching flag
-     *  back. Cleared by the observer once handled. Mirrors the Swift `restoreRequest`. */
+    /** A restore signal: set to a card id by the inbox's "Restore to Today" action ([AppRoot]) for a
+     *  screen holding its dismissed flags in local state to flip the matching flag back. The observer
+     *  clears it once handled. */
     var restoreRequest: String? by mutableStateOf(null)
 
     init {
@@ -172,7 +147,7 @@ class UpdateStore private constructor(private val prefs: SharedPreferences) {
     // MARK: Mutations
 
     /** Add a new item (unread). Informational rows ([UpdateKind.READING]/[UpdateKind.WHATS_NEW]) are
-     *  deduped and capped (#521): an identical informational post (same kind + deepLink) within
+     *  deduped and capped: an identical informational post (same kind + deepLink) within
      *  [DEDUP_WINDOW_MS] of an existing one just refreshes that row's date (and re-arms its unread badge)
      *  instead of appending a duplicate, and the informational backlog is trimmed to [MAX_ITEMS] newest.
      *  Actionable rows ([UpdateKind.DISMISSED_CARD]/[UpdateKind.STRAP_ALERT]) always append and are never
@@ -296,7 +271,7 @@ class UpdateStore private constructor(private val prefs: SharedPreferences) {
         private const val KEY_ITEMS = "updates.items"
         private const val KEY_LAST_SEEDED = "updates.lastSeededWhatsNewVersion"
 
-        /** Inbox guard-rails (#521). Cap the informational ([UpdateKind.READING]/[WHATS_NEW]) backlog and
+        /** Inbox guard-rails. Cap the informational ([UpdateKind.READING]/[WHATS_NEW]) backlog and
          *  collapse an identical informational post landing within this window into the existing row, so
          *  background recompute ticks can't grow the inbox unbounded or re-post the same row on a loop. */
         private const val MAX_ITEMS = 50

@@ -53,8 +53,8 @@ import kotlin.math.roundToInt
 //                            preference). Awareness only — NOT contraception, NOT a fertility/
 //                            ovulation predictor, NOT a diagnosis. Phase + cycle-day RANGE +
 //                            probabilistic next-period WINDOW (never a hard date).
-//   • BodyClockCard        — CircadianEngine.PhaseEstimate (+ optional JetLagPlan). LIGHT +
-//                            SLEEP TIMING only, never a supplement/drug.
+//   • BodyClockCard        — CircadianEngine.PhaseEstimate. LIGHT + SLEEP TIMING only, never a
+//                            supplement/drug.
 //   • HeadsUpCard          — IllnessSignalEngine.Result. Confounder-suppressed illness
 //                            "heads-up". On-device estimate — not a diagnosis.
 //
@@ -112,7 +112,7 @@ fun CycleAwarenessCard(
     result: CyclePhaseEngine.Result,
     onLogPeriod: (() -> Unit)? = null,
     onOpenDetail: (() -> Unit)? = null,
-    // #801: symmetric off-control. When supplied, the card shows a "Turn off" action so the user can
+    // symmetric off-control. When supplied, the card shows a "Turn off" action so the user can
     // disable cycle awareness from the SAME place they enabled it (Health), not only from Automations.
     onTurnOff: (() -> Unit)? = null,
 ) {
@@ -173,7 +173,7 @@ fun CycleAwarenessCard(
                             colors = ButtonDefaults.outlinedButtonColors(contentColor = Palette.accent),
                         ) { Text("View detail") }
                     }
-                    // #801: symmetric off-control (turn cycle awareness off where it was turned on).
+                    // symmetric off-control (turn cycle awareness off where it was turned on).
                     if (onTurnOff != null) {
                         OutlinedButton(onClick = onTurnOff) { Text("Turn off") }
                     }
@@ -217,15 +217,11 @@ fun CycleAwarenessOptInCard(onEnable: () -> Unit) {
 // MARK: - 2. Body Clock card
 
 /**
- * Estimated body-clock phase + an optional jet-lag / shift plan. LIGHT + SLEEP TIMING only —
- * never a supplement. Behavioural awareness, approximate.
+ * Estimated body-clock phase. LIGHT + SLEEP TIMING only — never a supplement. Behavioural
+ * awareness, approximate.
  */
 @Composable
-fun BodyClockCard(
-    estimate: CircadianEngine.PhaseEstimate,
-    plan: CircadianEngine.JetLagPlan? = null,
-    onOpenPlanner: (() -> Unit)? = null,
-) {
+fun BodyClockCard(estimate: CircadianEngine.PhaseEstimate) {
     val hue = Palette.restColor
     NoopCard(tint = hue) {
         Column(verticalArrangement = Arrangement.spacedBy(Metrics.gap)) {
@@ -248,29 +244,6 @@ fun BodyClockCard(
                     style = NoopType.footnote,
                     color = Palette.textTertiary,
                 )
-            }
-
-            val firstDay = plan?.days?.firstOrNull()
-            if (plan != null && plan.direction != CircadianEngine.ShiftDirection.NONE && firstDay != null) {
-                HorizontalDivider(color = Palette.hairline)
-                Column(verticalArrangement = Arrangement.spacedBy(Metrics.space6)) {
-                    Overline("Plan · ${plan.estimatedDays}-day shift")
-                    Text(
-                        "Day 1: bright light ${clockString(firstDay.brightLightStartHour)} - " +
-                            "${clockString(firstDay.brightLightEndHour)}, lights-out around " +
-                            "${clockString(firstDay.targetSleepHour)}.",
-                        style = NoopType.subhead,
-                        color = Palette.textSecondary,
-                    )
-                    Text(plan.note, style = NoopType.footnote, color = Palette.textTertiary)
-                }
-            }
-
-            if (onOpenPlanner != null) {
-                OutlinedButton(
-                    onClick = onOpenPlanner,
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = Palette.accent),
-                ) { Text(if (plan == null) "Plan a trip or shift" else "View the full plan") }
             }
         }
     }
@@ -468,7 +441,6 @@ private fun prettyDay(key: String): String {
     if (parts.size != 3) return key
     val m = parts[1].toIntOrNull() ?: return key
     val d = parts[2].toIntOrNull() ?: return key
-    if (m !in 1..12) return key
-    val months = listOf("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
-    return "$d ${months[m - 1]}"
+    val month = monthAbbreviation(m) ?: return key
+    return "$d $month"
 }

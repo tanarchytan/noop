@@ -93,7 +93,7 @@ fun InsightsHubScreen(vm: AppViewModel) {
     var outcome by remember { mutableStateOf(InsightsOutcome.Recovery) }
     val ranked = remember(state, outcome) { hub.rankFor(state, outcome) }
 
-    // PERF (#707): lazy scaffold — each section (and its standalone Spacer, a real child of the eager
+    // PERF: lazy scaffold — each section (and its standalone Spacer, a real child of the eager
     // `spacedBy(20.dp)` Column) becomes one `item { }`, so the LazyColumn's matching `spacedBy(20.dp)`
     // reproduces identical spacing and only on-screen sections compose + are semantics-walked.
     LazyScreenScaffold(title = "Insights", subtitle = "Patterns in your own data: association, not cause.") {
@@ -490,7 +490,11 @@ internal enum class InsightsOutcome(
 ) {
     Recovery("Charge", "Charge", "recovery", true, DomainTheme.Charge, { it.recovery }, { "${it.roundToInt()}%" }),
     Hrv("HRV", "HRV", "hrv", true, DomainTheme.Rest, { it.avgHrv }, { "${it.roundToInt()} ms" }),
-    Sleep("Rest", "Rest", "sleep_performance", true, DomainTheme.Rest, { it.efficiency }, { "${it.roundToInt()}%" }),
+    // Efficiency is stored as a 0..1 fraction; lift it to the 0..100 scale the other outcomes use.
+    Sleep(
+        "Rest", "Rest", "sleep_performance", true, DomainTheme.Rest,
+        { row -> row.efficiency?.let { if (it <= 1.0) it * 100.0 else it } }, { "${it.roundToInt()}%" },
+    ),
     Rhr("RHR", "Resting HR", "rhr", false, DomainTheme.Stress, { it.restingHr?.toDouble() }, { "${it.roundToInt()} bpm" }),
 }
 

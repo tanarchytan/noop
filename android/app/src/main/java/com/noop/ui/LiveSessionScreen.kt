@@ -53,6 +53,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
 import com.noop.analytics.LiveSessionEngine
+import com.noop.analytics.RecoveryScorer
 import kotlinx.coroutines.delay
 import java.time.Instant
 import java.time.LocalDate
@@ -496,8 +497,8 @@ internal fun liveSessionChargeSentence(charge: Double?): String {
     if (charge == null) return "No Charge yet today — guarding a middle-of-the-road band."
     val pct = charge.roundToInt()
     return when {
-        pct < 34 -> "Today's ceiling is lower — Charge is $pct%."
-        pct < 67 -> "A middling day — Charge is $pct%, so the band sits mid-range."
+        pct < RecoveryScorer.bandRedMax -> "Today's ceiling is lower — Charge is $pct%."
+        pct < RecoveryScorer.bandYellowMax -> "A middling day — Charge is $pct%, so the band sits mid-range."
         else -> "Plenty in the tank — Charge is $pct%, so today's ceiling is higher."
     }
 }

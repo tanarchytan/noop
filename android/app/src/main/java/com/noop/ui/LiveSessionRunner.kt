@@ -20,13 +20,12 @@ import java.time.LocalDate
 // wall-clock + the most-recent live bpm, publishes the engine's Output (plus elapsed/cue/accrual state)
 // for the session screen, walks a cue's [LiveSessionHaptics] pulse list out through the EXISTING strap
 // buzz, and upserts the session's [LiveSessionRow] at start (endTs null) and again at end (totals).
-// Design contract: docs/superpowers/specs/2026-07-04-live-sessions-design.md.
 //
-// Every side effect comes in as a closure (read-bpm / buzz / persist / realtime-HR arming), the same
-// dependency style StandardHrSource uses (liveSink/persist), so the runner is constructible in a JVM
-// test with fakes and no Android framework. The engine stays the single source of coaching truth —
-// the runner never invents a cue, never re-times one, and drops (never queues) a cue whose predecessor
-// is still buzzing out, so the wrist can never receive a stale or stacked signal.
+// Every side effect comes in as a closure (read-bpm / buzz / persist / realtime-HR arming), so the
+// runner is constructible in a JVM test with fakes and no Android framework. The engine stays the
+// single source of coaching truth — the runner never invents a cue, never re-times one, and drops
+// (never queues) a cue whose predecessor is still buzzing out, so the wrist can never receive a
+// stale or stacked signal.
 //
 // LIFETIME: one runner per session, held process-visible in [LiveSessionRunner.active] so dismissing
 // the session dialog does NOT end the session (wrist-first: the guardian keeps coaching; Today's entry

@@ -42,6 +42,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.noop.R
+import com.noop.analytics.RustScores
 import com.noop.data.DailyMetric
 import com.noop.data.MoodStore
 import com.noop.data.WhoopRepository
@@ -86,7 +87,7 @@ private enum class ExploreRange(val days: Int?, val label: String, val windowNam
 
     /** True when this range can reach PAST the bounded dashboard cap (WhoopRepository.RECENT_DAYS_CAP),
      *  so the built-in series must come from the UNCAPPED full history rather than the bounded `recentDays`
-     *  flow to avoid silently truncating a deep import (#797 Explore-'All' follow-up). Only the open-ended
+     *  flow to avoid silently truncating a deep import (Explore-'All' follow-up). Only the open-ended
      *  'All' range ([days] == null) does; every fixed range is ≤ the cap, so it keeps using the cheap flow. */
     val reachesDeep: Boolean get() = days == null || days > WhoopRepository.RECENT_DAYS_CAP
 }
@@ -116,7 +117,7 @@ private data class MetricSpec(
      *  three headline scores , Charge / Effort / Rest , carry one today; everything else is null.
      *  Mirrors macOS `MetricDescriptor.description`. */
     val description: String? = null,
-    /** Effort display scale (#268) , only meaningful for the "strain" column, where it converts the
+    /** Effort display scale , only meaningful for the "strain" column, where it converts the
      *  stored 0–100 value + unit onto WHOOP's 0–21 axis. Default 0–100 leaves every other column alone. */
     val effortScale: EffortScale = EffortScale.HUNDRED,
 ) {
@@ -128,7 +129,7 @@ private data class MetricSpec(
 
     fun format(v: Double): String {
         if (!v.isFinite()) return ","
-        // Effort (#268): the stored value is 0–100; convert to 0–21 for display when that scale is picked.
+        // Effort: the stored value is 0–100; convert to 0–21 for display when that scale is picked.
         val shown = if (whoopEffort) UnitFormatter.effortValue(v, EffortScale.WHOOP) else v
         val n = if (decimals == 0) "${shown.roundToInt()}" else String.format(Locale.US, "%.${decimals}f", shown)
         return if (displayUnit.isEmpty()) n else "$n $displayUnit"
@@ -173,7 +174,7 @@ private val builtInMetrics: List<MetricSpec> = listOf(
         dailyPick = { it.efficiency },
     ),
     MetricSpec(
-        key = "spo2", title = "Blood Oxygen", unit = "%", category = "Health",
+        key = "spo2", title = "SpO₂", unit = "%", category = "Health",
         accent = Palette.metricCyan, higherIsBetter = true, decimals = 0,
         dailyPick = { it.spo2Pct },
     ),
@@ -188,7 +189,7 @@ private val builtInMetrics: List<MetricSpec> = listOf(
  *  check-in , matching the macOS MetricCatalog entries exactly (v2.2.0 parity). seriesKey/
  *  seriesSource are filled in at discovery time. */
 private val knownSeriesMetrics: Map<String, MetricSpec> = mapOf(
-    // #605/#608: imported avg/max HR is written to metricSeries (Apple Health / WHOOP CSV / Xiaomi) and
+    // imported avg/max HR is written to metricSeries (Apple Health / WHOOP CSV / Xiaomi) and
     // the Compare screen exposes it, but Explore's picker didn't , iOS MetricCatalog has had both. Series-
     // backed (no DailyMetric column), "Heart" category, parity. (Strap-only per-second HR lives in the
     // Deep Timeline; this surfaces the per-day avg/max for imported sources.)
@@ -236,7 +237,7 @@ private fun statOf(values: List<Double>): Stat {
 
 @Composable
 fun TrendsExploreScreen(vm: AppViewModel) {
-    // The Deep Timeline (#575) is presented INLINE from Explore , no NavHost route needed, so this stays
+    // The Deep Timeline is presented INLINE from Explore , no NavHost route needed, so this stays
     // self-contained in the Explore entry-point file. System back / the in-screen reset returns here.
     var showDeepTimeline by remember { mutableStateOf(false) }
     if (showDeepTimeline) {
@@ -244,19 +245,19 @@ fun TrendsExploreScreen(vm: AppViewModel) {
         return
     }
 
-    // The registry's ACTIVE strap id (SPINE / #814): the daysMerged / metricKeys reads resolve the
+    // The registry's ACTIVE strap id (SPINE): the daysMerged / metricKeys reads resolve the
     // active-id ∪ canonical "my-whoop" union, so a re-added strap's data and the canonical import both
     // surface. A single-WHOOP install resolves this to "my-whoop", so the reads are byte-identical there.
     val deviceId = vm.activeStrapId
     val recentDays by vm.recentDays.collectAsStateWithLifecycle()
 
-    // #797 follow-up (Explore 'All' truncation): `recentDays` is the BOUNDED dashboard flow (capped at
+    // follow-up (Explore 'All' truncation): `recentDays` is the BOUNDED dashboard flow (capped at
     // WhoopRepository.RECENT_DAYS_CAP), so a 3000+ day import would silently show only the most-recent ~800
     // days under the 'All' / 1Y ranges, which have no other full-history escape hatch. Mirror the uncapped
     // full-history path TrendsScreen already uses: load the merged daily history ONCE, and back the built-in
     // series off it whenever the effective range reaches into the deep past. Until it lands we fall back to
     // `recentDays` so the screen is populated on the first frame; the default (shallow-range) refresh keeps
-    // using the cheap bounded flow, so the cap is NOT raised (#797 stays fixed). Same merge as the dashboard.
+    // using the cheap bounded flow, so the cap is NOT raised (stays fixed). Same merge as the dashboard.
     var fullHistory by remember { mutableStateOf<List<DailyMetric>?>(null) }
     LaunchedEffect(deviceId) {
         fullHistory = runCatching { vm.repo.daysMerged() }.getOrNull()
@@ -305,7 +306,7 @@ fun TrendsExploreScreen(vm: AppViewModel) {
         builtInMetrics + extras
     }
 
-    // Effort display scale (#268) , carried on the selected spec so the Effort column's value + unit
+    // Effort display scale , carried on the selected spec so the Effort column's value + unit
     // follow the toggle through every read-out (hero, footer stats, Y-axis). Display-only.
     val effortScale = UnitPrefs.effortScale(LocalContext.current)
 
@@ -317,7 +318,7 @@ fun TrendsExploreScreen(vm: AppViewModel) {
     // Build the full ascending series for the selected metric. Built-ins come off the daily history;
     // metricSeries-backed metrics are loaded on demand.
     //
-    // #797 Explore-'All' fix: for a deep range ([ExploreRange.reachesDeep]) back the built-in series off the
+    // Explore-'All' fix: for a deep range ([ExploreRange.reachesDeep]) back the built-in series off the
     // UNCAPPED `fullHistory` once it has loaded, so 'All' shows the WHOLE import instead of the most-recent
     // ~RECENT_DAYS_CAP days; until it lands (and for every shallow range) use the cheap bounded `recentDays`
     // flow, so the default dashboard refresh path is unchanged and the cap is not raised.
@@ -334,7 +335,7 @@ fun TrendsExploreScreen(vm: AppViewModel) {
         } else if (selected.seriesKey != null) {
             // Series-backed metrics live under their own source id when imported/checked-in (nutrition-csv,
             // noop-mood): read from that source. A STRAP series (seriesSource == null) is read across the
-            // active-id ∪ canonical "my-whoop" union (SPINE / #814), deduped per day with the active id
+            // active-id ∪ canonical "my-whoop" union (SPINE), deduped per day with the active id
             // winning, so a re-added strap still shows the canonically-stored series; a single-WHOOP install
             // reads just "my-whoop" (v2.2.0 parity).
             val explicitSource = selected.seriesSource
@@ -370,13 +371,13 @@ fun TrendsExploreScreen(vm: AppViewModel) {
     val windowed = remember(series, effectiveRange) { series.windowFor(effectiveRange) }
     val fellBack = effectiveRange != range
 
-    // PERF (#707): lazy scaffold so only the on-screen rows (the hero chart card especially) compose +
+    // PERF: lazy scaffold so only the on-screen rows (the hero chart card especially) compose +
     // are accessibility-walked on scroll. Each top-level child is one `item { }` in the same order; the
     // conditional empty-state note uses `if (cond) { item {} }` so it adds no row when hidden. No standalone
     // Spacers here , the LazyColumn's `spacedBy(20.dp)` reproduces the eager column's row spacing exactly.
     LazyScreenScaffold(title = stringResource(R.string.nav_explore), subtitle = stringResource(R.string.explore_subtitle)) {
 
-        // The headline tap-through (#575): a full-day, full-resolution, zoomable timeline. Sits above the
+        // The headline tap-through: a full-day, full-resolution, zoomable timeline. Sits above the
         // per-metric catalog because it's a different kind of view , every second of one day, not one
         // number per day. Mirrors the macOS MetricExplorerView "Deep Timeline" hero row.
         item { DeepTimelineEntry(onClick = { showDeepTimeline = true }) }
@@ -459,7 +460,7 @@ fun TrendsExploreScreen(vm: AppViewModel) {
     }
 }
 
-// MARK: - Deep Timeline entry (#575)
+// MARK: - Deep Timeline entry
 
 /** The hero entry that opens the Deep Timeline , a full-bleed card above the per-metric catalog. */
 @Composable
@@ -638,7 +639,7 @@ private fun HeroChartCard(
                 // narrow left gutter compact.
                 val values = windowed.map { it.value }
                 val maxV = values.max()
-                val avgV = values.average()
+                val avgV = RustScores.mean(values)
                 val minV = values.min()
                 val fmtY: (Double) -> String = { v -> metric.format(v).substringBefore(' ').take(7) }
                 Column(verticalArrangement = Arrangement.spacedBy(Metrics.space4)) {
@@ -789,7 +790,7 @@ private fun StatRow(
         }
         // Two-up (not three-up + a pad cell): the prev-window comparison tile carries a value, a
         // delta chip AND a "vs prev <window>" caption, which all clipped at a third of the width ,
-        // "vs prev 6 months" truncated to "vs prev 6 m…" and the delta chip ran off the tile (#443).
+        // "vs prev 6 months" truncated to "vs prev 6 m…" and the delta chip ran off the tile.
         // Half-width gives every part room; mirrors the 2-up tile rows used on Sleep/Compare.
         Row(horizontalArrangement = Arrangement.spacedBy(Metrics.gap)) {
             StatTile(

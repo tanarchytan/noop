@@ -44,8 +44,7 @@ import kotlin.math.roundToInt
 
 // MARK: - FusedRecordScreen — "Your Data, Fused" (v5 — Local Multi-Device Fusion)
 //
-// Value-for-value Compose twin of Strand/Screens/FusedRecordView.swift
-// (docs/superpowers/specs/2026-06-19-v5-local-multi-device-fusion-design.md §UX). For each core metric
+// The fused per-metric record. For each core metric
 // it shows the BEST-sourced value, a provenance badge naming the source, the plain published reason
 // from MetricArbitrationPolicy ("counts directly" / "best stager"), and the inline agreement state
 // from FusionResolver (agree / minor delta / conflict). On a conflict it opens a compare detail
@@ -196,7 +195,7 @@ private fun PrivacyNote(deviceNoun: String) {
     }
 }
 
-/** The pillar's standing non-clinical line (umbrella §4.1). Plain, wellness only. */
+/** The pillar's standing non-clinical line. Plain, wellness only. */
 @Composable
 private fun DisclaimerNote() {
     Text(

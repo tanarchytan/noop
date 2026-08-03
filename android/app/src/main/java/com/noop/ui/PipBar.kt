@@ -91,6 +91,9 @@ fun PipBar(
     // Gap scales with height so the bar reads consistently at any size; pips stay rounded (rx ~2.5).
     val gap: Dp = maxOf(2.dp, height * 0.28f)
     val track = Palette.surfaceInset
+    // What the lead-edge pip blends TOWARDS to stand out. Away from the canvas, not always towards
+    // white: on the light scheme a lift towards white sinks the pip into the page instead of lifting it.
+    val lead = if (Palette.isLight) Palette.textPrimary else Palette.onFill
     val corner = RoundedCornerShape(2.5.dp)
 
     val axValue = run {
@@ -114,6 +117,7 @@ fun PipBar(
                 targetFraction = targetFraction,
                 track = track,
                 tint = tint,
+                lead = lead,
             )
             Box(
                 modifier = Modifier
@@ -142,6 +146,7 @@ private fun pipColor(
     targetFraction: Float,
     track: Color,
     tint: Color,
+    lead: Color,
 ): Color {
     val segStart = index / n
     val segEnd = (index + 1) / n
@@ -158,12 +163,13 @@ private fun pipColor(
     // Lit pips use the tint; the segment holding the live lead edge is nudged a touch brighter for
     // a crisp leading highlight. Flat — no glow.
     val isLeadEdge = targetFraction > segStart && targetFraction <= segEnd
-    val base = if (isLeadEdge) brighten(tint) else tint
+    val base = if (isLeadEdge) emphasise(tint, lead) else tint
 
     // Partially-covered pip (the moving front of the cascade): blend track → fill by coverage so
     // the sweep edge is smooth, not stepped. Fully covered pips are the solid fill.
     return if (local >= 1f) base else lerp(track, base, local)
 }
 
-/** A small, glow-free brightness lift for the lead-edge segment — blend the tint toward white. */
-private fun brighten(color: Color): Color = lerp(color, Color.White, 0.22f)
+/** A small, glow-free lift for the lead-edge segment — blend the tint towards [lead], the end of the
+ *  range furthest from the canvas. */
+private fun emphasise(color: Color, lead: Color): Color = lerp(color, lead, 0.22f)

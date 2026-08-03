@@ -31,6 +31,7 @@ import com.noop.analytics.RangeReportEngine
 import com.noop.analytics.ReportMetric
 import com.noop.analytics.ReportTrend
 import com.noop.data.DailyMetric
+import com.noop.data.WhoopRepository
 import java.io.File
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -38,7 +39,7 @@ import java.util.Locale
 import kotlin.math.abs
 import kotlin.math.roundToInt
 
-// MARK: - Trends Report (#436)
+// MARK: - Trends Report
 //
 // Kotlin parity for the macOS/iOS shareable offline trends report. Builds the five
 // metric day→value maps from the merged DailyMetric history, calls the pure, unit-tested
@@ -68,7 +69,7 @@ object TrendsReportData {
      * The nine day→value maps the engine consumes, keyed by ReportMetric.
      *
      * [stressByDay] is the persisted daily stress series ("yyyy-MM-dd" → 0–3), the same
-     * stored series the Stress screen prioritises (#457). It isn't carried on DailyMetric, so
+     * stored series the Stress screen prioritises. It isn't carried on DailyMetric, so
      * the caller loads it (via metricSeries) and passes it in; absent days stay out.
      */
     fun metricMaps(
@@ -84,7 +85,7 @@ object TrendsReportData {
         val respRate = HashMap<String, Double>()
         val skinTempDev = HashMap<String, Double>()
         for (d in days) {
-            // Workouts logged that day (#457). Present on a recorded day (0 on a rest day), so
+            // Workouts logged that day. Present on a recorded day (0 on a rest day), so
             // the row reflects the full window's activity cadence.
             d.exerciseCount?.let { workouts[d.day] = it.toDouble() }
             d.recovery?.let { recovery[d.day] = it }
@@ -98,7 +99,7 @@ object TrendsReportData {
             d.respRateBpm?.let { respRate[d.day] = it }
             d.skinTempDevC?.let { skinTempDev[d.day] = it }
         }
-        // Daily stress score (#457), clamped to its 0–3 scale. Stored-only — the report never
+        // Daily stress score, clamped to its 0–3 scale. Stored-only — the report never
         // re-derives a stress value (unlike the live Stress screen).
         val stress = stressByDay.mapValues { it.value.coerceIn(0.0, 3.0) }
         return mapOf(
@@ -126,7 +127,7 @@ object TrendsReportData {
         return Pair(start, today)
     }
 
-    /** Build the full report for a range from a DailyMetric history (+ stored stress — #457). */
+    /** Build the full report for a range from a DailyMetric history, plus stored stress. */
     fun report(
         range: ReportRange,
         days: List<DailyMetric>,
@@ -174,7 +175,8 @@ object TrendsReportRenderer {
     private const val PAGE_H = 850
     private const val MARGIN = 28f
 
-    // Palette (raw ARGB — the same hex tokens as Theme.kt's Palette / StrandPalette dark, WHOOP-reset).
+    // The print palette: raw ARGB, fixed dark, independent of the live [Palette] on purpose — an
+    // exported PDF must not change appearance with the in-app theme.
     private const val SURFACE_BASE = 0xFF121518.toInt()
     private const val CARD_TOP = 0xFF15243C.toInt()
     private const val CARD_BOTTOM = 0xFF0B1424.toInt()
@@ -182,8 +184,8 @@ object TrendsReportRenderer {
     private const val TEXT_PRIMARY = 0xFFF4F6F8.toInt()
     private const val TEXT_SECONDARY = 0xFFC8CFD8.toInt()
     private const val TEXT_TERTIARY = 0xFF8A94A4.toInt()
-    private const val ACCENT = 0xFF60A0E0.toInt()     // WHOOP blue accent (gold killed 2026-06-22)
-    private const val POSITIVE = 0xFF03E095.toInt()   // WHOOP green (matches statusPositive)
+    private const val ACCENT = 0xFF60A0E0.toInt()
+    private const val POSITIVE = 0xFF03E095.toInt()
     private const val NEGATIVE = 0xFFE0662F.toInt()
 
     private val sans = Typeface.create("sans-serif", Typeface.NORMAL)
@@ -391,7 +393,7 @@ object TrendsReportRenderer {
 
     private fun drawFooter(canvas: Canvas, generatedOn: String) {
         val y = PAGE_H - MARGIN - 12f
-        // Provenance legend (#457): make clear which numbers are measured vs. NOOP's own derived scores,
+        // Provenance legend: make clear which numbers are measured vs. NOOP's own derived scores,
         // so a clinician reading the PDF isn't misled into treating Recovery/Strain as clinical measures.
         // Sits above the hairline; wraps to the page width (~4 lines at this size).
         val legend = "How to read this: HRV, Resting HR, Sleep duration, Respiratory rate and Skin " +
@@ -545,8 +547,7 @@ object TrendsReportRenderer {
     /** "Jun 15" from "2026-06-15" via the engine's pure parse (no Calendar/locale). */
     private fun prettyDate(ymd: String): String {
         val p = RangeReportEngine.parseYMD(ymd) ?: return ymd
-        val months = arrayOf("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
-        val name = if (p.second in 1..12) months[p.second - 1] else "${p.second}"
+        val name = monthAbbreviation(p.second) ?: "${p.second}"
         return "$name ${p.third}"
     }
 }
@@ -605,18 +606,17 @@ fun TrendsReportExportSection(vm: AppViewModel, modifier: Modifier = Modifier) {
     val days by vm.recentDays.collectAsStateWithLifecycle()
     var range by remember { mutableStateOf(ReportRange.Days90) }
 
-    // Stored daily stress series ("yyyy-MM-dd" → 0–3) for the Stress row (#457). Loaded once
-    // from the same "my-whoop" series the Stress screen reads; empty until it arrives.
+    // Stored daily stress series ("yyyy-MM-dd" → 0–3) for the Stress row, resolved over the same
+    // read scope the Stress screen uses; empty until it arrives.
     var stressByDay by remember { mutableStateOf<Map<String, Double>>(emptyMap()) }
     androidx.compose.runtime.LaunchedEffect(Unit) {
-        val rows = runCatching {
-            vm.repo.metricSeries("my-whoop", "stress", "0000-01-01", "9999-12-31")
-        }.getOrDefault(emptyList())
-        stressByDay = rows.associate { it.day to it.value }
+        stressByDay = runCatching {
+            vm.repo.resolvedSeries("stress", WhoopRepository.WHOOP_SOURCE, "0000-01-01", "9999-12-31").values
+        }.getOrDefault(emptyList()).toMap()
     }
 
     NoopCard(modifier = modifier, tint = Palette.accent) {
-        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(Metrics.space12)) {
             Overline("Export")
             Text("Trends report (PDF)", style = NoopType.title2, color = Palette.textPrimary)
             Text(

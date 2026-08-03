@@ -21,6 +21,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.noop.analytics.RustScores
 import com.noop.data.DailyMetric
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -54,8 +55,8 @@ private fun sleepMetricSpec(key: String): SleepMetricSpec = when (key) {
 }
 
 private fun buildSleepMetricPoints(days: List<DailyMetric>, key: String): List<Pair<String, Double>> {
-    val needMin = max(450.0, days.mapNotNull { it.totalSleepMin?.takeIf { m -> m > 0.0 } }.average().let { if (it.isNaN()) 480.0 else it })
-    return days.mapNotNull { d ->
+    val needMin = RustScores.personalSleepNeedMinutes(days.mapNotNull { it.totalSleepMin })
+    return days.mapIndexedNotNull { idx, d ->
         val v: Double? = when (key) {
             // The Rest detail graph reads the REAL resolved Rest composite per day (RestScorer.restFromDaily,
             // the same source the Today Rest score uses), not a local hours-vs-need approximation, so the graph
@@ -63,7 +64,6 @@ private fun buildSleepMetricPoints(days: List<DailyMetric>, key: String): List<P
             "performance" -> com.noop.analytics.RestScorer.restFromDaily(d)?.takeIf { it in 0.0..100.0 }
             "efficiency"  -> d.efficiency?.let { if (it <= 1.0) it * 100.0 else it }
             "consistency" -> {
-                val idx = days.indexOf(d)
                 val lo = max(0, idx - 13)
                 val window = days.subList(lo, idx + 1).mapNotNull { it.totalSleepMin?.takeIf { m -> m > 0.0 } }
                 if (window.size < 3) null else {
@@ -74,9 +74,9 @@ private fun buildSleepMetricPoints(days: List<DailyMetric>, key: String): List<P
             }
             "hours_vs_needed" -> d.totalSleepMin?.takeIf { it > 0.0 }?.let { minOf(100.0, it / needMin * 100.0) }
             "restorative" -> {
-                val dp = d.deepMin ?: return@mapNotNull null
-                val rm = d.remMin ?: return@mapNotNull null
-                val sl = d.totalSleepMin ?: return@mapNotNull null
+                val dp = d.deepMin ?: return@mapIndexedNotNull null
+                val rm = d.remMin ?: return@mapIndexedNotNull null
+                val sl = d.totalSleepMin ?: return@mapIndexedNotNull null
                 if (sl > 0.0) (dp + rm) / sl * 100.0 else null
             }
             "respiratory" -> d.respRateBpm
@@ -87,27 +87,13 @@ private fun buildSleepMetricPoints(days: List<DailyMetric>, key: String): List<P
     }
 }
 
-private fun filterSleepMetricPoints(
-    points: List<Pair<String, Double>>,
-    range: SleepMetricRange,
-): List<Pair<String, Double>> {
-    val windowDays = range.days ?: return points
-    val latestDate = points.lastOrNull()?.first?.let { runCatching { LocalDate.parse(it) }.getOrNull() }
-        ?: return points.takeLast(windowDays.toInt())
-    val cutoff = latestDate.minusDays(windowDays - 1)
-    val filtered = points.filter { (day, _) ->
-        runCatching { LocalDate.parse(day) }.getOrNull()?.let { !it.isBefore(cutoff) } ?: false
-    }
-    return filtered.ifEmpty { points.takeLast(windowDays.toInt()) }
-}
-
 @Composable
 internal fun SleepMetricDetailSheetContent(vm: AppViewModel, key: String) {
     val days by vm.recentDays.collectAsStateWithLifecycle()
     var range by remember { mutableStateOf(SleepMetricRange.MONTH) }
     val spec = remember(key) { sleepMetricSpec(key) }
     val allPoints = remember(days, key) { buildSleepMetricPoints(days, key) }
-    val filteredPoints = remember(allPoints, range) { filterSleepMetricPoints(allPoints, range) }
+    val filteredPoints = remember(allPoints, range) { filterPointsToWindow(allPoints, range.days) }
 
     Column(
         modifier = Modifier.fillMaxWidth().padding(horizontal = Metrics.space24, vertical = Metrics.space8),
@@ -141,7 +127,7 @@ internal fun SleepMetricDetailSheetContent(vm: AppViewModel, key: String) {
             val latest = filteredPoints.last()
             val minV = values.minOrNull() ?: 0.0
             val maxV = values.maxOrNull() ?: 0.0
-            val avgV = values.average()
+            val avgV = RustScores.mean(values)
 
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(modifier = Modifier.weight(1f)) {

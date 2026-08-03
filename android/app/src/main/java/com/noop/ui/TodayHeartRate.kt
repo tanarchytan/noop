@@ -56,6 +56,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.noop.analytics.RustScores
 import com.noop.analytics.StrainScorer
 import com.noop.data.DailyMetric
 import com.noop.data.HrBucket
@@ -76,12 +77,12 @@ import kotlin.math.roundToInt
 // Mirrors the macOS TodayView.heartRateTrendSection. LineChart spaces points by index (no time axis),
 // so the buckets, being uniform 5-min means in time order, read as an even left-to-right day curve.
 
-/** The Today heart-rate card's visible window (the UX from PR #985, reimplemented). [TODAY] = the full
+/** The Today heart-rate card's visible window. [TODAY] = the full
  *  loaded day since the logical midnight — the unchanged default. The rest are rolling "last N hours"
- *  ending now. VIEW-ONLY, the #829 zoom rule: a window only narrows which of the already-loaded 5-minute
- *  buckets render — it never re-queries the DB and never changes the bucket resolution. (PR #985 proposed
- *  re-reading shorter windows at finer buckets; that adds a DB round-trip per tap and a second read path
- *  for detail that already has a home — the Deep Timeline re-reads down to raw seconds as you zoom.)
+ *  ending now. VIEW-ONLY, the zoom rule: a window only narrows which of the already-loaded 5-minute
+ *  buckets render — it never re-queries the DB and never changes the bucket resolution. Re-reading a
+ *  shorter window at finer buckets would add a DB round-trip per tap and a second read path for detail
+ *  that already has a home — the Deep Timeline re-reads down to raw seconds as you zoom.
  *  Because the loaded extent starts at midnight, a window clips to the day: early in the morning the wider
  *  windows coincide with Today, which reads fine — both mean "everything so far". Only offered on the
  *  CURRENT day: a past day has no "now", so it always shows the full calendar day, exactly as before. */
@@ -128,28 +129,28 @@ internal fun HeartRateTrendCard(
 ) {
     // "Today" here is the LOGICAL day (rolls at 04:00 local), so in the small hours after midnight the
     // trend keeps the evening's curve, window start at the logical day's own midnight, "since midnight"
-    // subtitle, "Today" label, rather than blanking to an empty new-calendar-day axis (#144).
+    // subtitle, "Today" label, rather than blanking to an empty new-calendar-day axis.
     var buckets by remember { mutableStateOf<List<HrBucket>>(emptyList()) }
     // The night's sleep session overlapping the HR window + the day's workouts, the Overview-HR
     // marker layers (sleep band, Charge at wake, sport glyphs at HR peaks). Loaded off the main
-    // thread alongside the buckets; each marker self-hides when its data is absent. (PR #285)
+    // thread alongside the buckets; each marker self-hides when its data is absent.
     var sleepToday by remember { mutableStateOf<SleepSession?>(null) }
     var workoutsToday by remember { mutableStateOf<List<WorkoutRow>>(emptyList()) }
-    // #985: the selected HR window. rememberSaveable ordinal so the choice survives rotation / process
+    // the selected HR window. rememberSaveable ordinal so the choice survives rotation / process
     // death and feels sticky like a preference; 0 = TODAY, the unchanged full-day default. Forced to
     // TODAY on a past day (no "now" to anchor a rolling window — the pills don't render there either).
     // VIEW-ONLY (see HrWindow): it narrows the rendered buckets below; the LaunchedEffect read is untouched.
     var hrWindowOrdinal by rememberSaveable { mutableIntStateOf(0) }
     val hrWindow = if (selectedDay == today) HrWindow.entries[hrWindowOrdinal] else HrWindow.TODAY
-    // #829 Android parity - the Today HR pinch/drag zoom window (unix seconds), null = the full loaded
+    // Android parity - the Today HR pinch/drag zoom window (unix seconds), null = the full loaded
     // day. Mirrors iOS TodayView.hrZoomDomain: VIEW-ONLY (it narrows which of the already-loaded buckets
     // render, never re-queries the DB), keyed on the selected day so stepping days always opens at full
     // scale, while a same-day live reload keeps the window (fresh buckets only ever extend the loaded
     // extent, so an existing window stays valid). Reset by double-tap on the chart or the Reset link.
-    // Also keyed on the #985 window: changing the window re-frames the chart, so a pinch-zoom made
+    // Also keyed on the window: changing the window re-frames the chart, so a pinch-zoom made
     // inside the old frame resets with it rather than surviving as a stale sub-range.
     var hrZoom by remember(selectedDay, hrWindowOrdinal) { mutableStateOf<LongRange?>(null) }
-    // #605: a WHOOP-4.0 offload banks raw HR samples straight into the hr-sample store WITHOUT touching
+    // a WHOOP-4.0 offload banks raw HR samples straight into the hr-sample store WITHOUT touching
     // any DailyMetric row, so a sync that only adds today's HR curve never changes `days`, and keying the
     // reload on `days` alone left this chart frozen on the pre-sync window until something unrelated
     // recomposed it. Re-key on the live sync tokens too: `lastSyncAt` ticks the moment an offload reaches
@@ -166,7 +167,7 @@ internal fun HeartRateTrendCard(
         val nextStart = selectedDay.plusDays(1).atStartOfDay(zone).toEpochSecond()
         val now = System.currentTimeMillis() / 1000
         val end = if (selectedDay == today) now else (nextStart - 1)
-        // #908: the Today HR curve reads the active strap ∪ canonical "my-whoop" union, NOT a hardcoded
+        // the Today HR curve reads the active strap ∪ canonical "my-whoop" union, NOT a hardcoded
         // "my-whoop". A strap re-added via the device manager banks live HR under its own fresh id, so a
         // pinned read showed the "no heart rate banked yet today" empty state. Single-WHOOP ⇒ one id ⇒ same.
         buckets = viewModel.repo.hrBucketsUnion(start, end, 300L)
@@ -175,7 +176,7 @@ internal fun HeartRateTrendCard(
         // Resolves the day's bridged MAIN-night span via `mainSleepSpan` (the SAME resolver the Sleep
         // tab hero and AnalyticsEngine's daily total use), not an ad hoc "freshest-ending block" pick --
         // that could disagree with the Sleep tab and the Coupled view's bed-wake read for a night stored
-        // as more than one block (#294).
+        // as more than one block.
         sleepToday = runCatching {
             val overlapping = viewModel.repo.sleepSessions("my-whoop", start - 18 * 3600L, end)
                 .filter { it.startTs <= end && it.effectiveEndTs >= start }   // overlaps the window
@@ -187,20 +188,20 @@ internal fun HeartRateTrendCard(
         // Workouts overlapping the window, each gets a sport glyph at its in-window HR peak.
         // Union every source (not just "my-whoop"): Health-Connect-imported sessions are stored
         // under their own device id, so a strap-only query left them glyph-less here while the
-        // "Last Workouts" feed below showed them (#34/#53). The glyph self-hides when no strap HR
+        // "Last Workouts" feed below showed them. The glyph self-hides when no strap HR
         // overlaps, so an import with no matching strap curve simply draws nothing.
         workoutsToday = runCatching {
             viewModel.repo.workoutsAllSources(viewModel.deviceId, start - 6 * 3600L, end)
                 .filter { it.startTs <= end && it.endTs >= start }
         }.getOrDefault(emptyList())
     }
-    val selectedLabel = when (selectedDay) {
-        today -> "Today"
-        today.minusDays(1) -> "Yesterday"
-        else -> selectedDay.format(DateTimeFormatter.ofPattern("d MMM", Locale.US))
-    }
+    val selectedLabel = relativeDayLabel(
+        selectedDay, today = "Today", yesterday = "Yesterday",
+        other = selectedDay.format(DateTimeFormatter.ofPattern("d MMM", Locale.US)),
+        now = today,
+    )
 
-    // #985 view-only narrowing (the #829 rule): the selected window filters the loaded 5-minute buckets,
+    // view-only narrowing (the rule): the selected window filters the loaded 5-minute buckets,
     // anchored at the wall clock when the inputs change. A live reload refreshes `buckets`, so the anchor
     // tracks the sync cadence — plenty for a card whose buckets are 5 minutes wide.
     val winBuckets = remember(buckets, hrWindow) {
@@ -208,18 +209,18 @@ internal fun HeartRateTrendCard(
         if (hrWindow == HrWindow.TODAY) buckets else buckets.filter { hrWindowKeeps(it.bucket, hrWindow, now) }
     }
 
-    // #863: a sparse/empty selected day used to `return` here and render NOTHING, which read as "the graph
+    // a sparse/empty selected day used to `return` here and render NOTHING, which read as "the graph
     // froze". Show an explicit calibrating/empty card instead so the user knows the curve is still filling in
     // (a calibrating 4.0 banks HR slowly) rather than that the screen broke. We intentionally do NOT silently
-    // swap in a different day's curve here (that day-swap reload behaviour was rejected in #605, see above);
+    // swap in a different day's curve here (that day-swap reload behaviour was rejected, see above);
     // the honest empty state is the parity-matched fix. Mirrors the iOS Today HR card's empty branch.
-    // #985: the check reads the WINDOWED subset, and the pills stay visible in the empty state, so a
+    // the check reads the WINDOWED subset, and the pills stay visible in the empty state, so a
     // too-narrow rolling window (say 1h with no recent offload) is never a dead end — the user widens it
     // or steps back to Today, and the message says which window came up empty.
     if (winBuckets.size < 2) {
         SectionHeader("Heart Rate", overline = selectedLabel)
         NoopCard {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(Metrics.space10)) {
                 Overline("Beats per minute")
                 if (selectedDay == today) {
                     HrWindowPills(hrWindow) { hrWindowOrdinal = it.ordinal }
@@ -241,18 +242,18 @@ internal fun HeartRateTrendCard(
         return
     }
 
-    // #985: everything below (read-outs, zoom bounds, chart, footer) renders the WINDOWED subset — for
+    // everything below (read-outs, zoom bounds, chart, footer) renders the WINDOWED subset — for
     // TODAY that is the identical full-buckets list, so the default path is byte-for-byte the old one.
     val bpm = remember(winBuckets) { winBuckets.map { it.avgBpm } }
     val latest = bpm.last().roundToInt()
     val min = bpm.min().roundToInt()
     val max = bpm.max().roundToInt()
-    val avg = bpm.average().roundToInt()
+    val avg = RustScores.mean(bpm).roundToInt()
 
-    // #829 - the RENDERED subset: the zoom window narrows which of the loaded buckets draw (the gesture
+    // the RENDERED subset: the zoom window narrows which of the loaded buckets draw (the gesture
     // handler only commits windows keeping >= 2 buckets, and the full-buckets fallback covers a same-day
     // reload reshaping the data underneath an open window, so the curve always stays drawable). Bounds =
-    // the SELECTED window's bucket extent (#985) — the same full view the un-zoomed chart renders — so a
+    // the SELECTED window's bucket extent — the same full view the un-zoomed chart renders — so a
     // pinch-zoom pans within the chosen window, not out into buckets the window has hidden.
     val zoomBounds = winBuckets.first().bucket..winBuckets.last().bucket
     val visBuckets = remember(winBuckets, hrZoom) {
@@ -262,10 +263,10 @@ internal fun HeartRateTrendCard(
     val visBpm = remember(visBuckets) { visBuckets.map { it.avgBpm } }
     // The left y-rail tracks the RENDERED window (LineChart normalises to what it draws, the Deep
     // Timeline idiom), so a zoomed curve keeps honest max/avg/min beside it; the footer Min/Avg/Max row
-    // below reads the whole SELECTED window (#985) — the full day for Today, or the rolling last-N-hours
+    // below reads the whole SELECTED window — the full day for Today, or the rolling last-N-hours
     // span — so it matches the subtitle and stays stable while you pinch around within that window.
     val visMax = visBpm.max().roundToInt()
-    val visAvg = visBpm.average().roundToInt()
+    val visAvg = RustScores.mean(visBpm).roundToInt()
     val visMin = visBpm.min().roundToInt()
 
     // Round wall-clock ticks for the RENDERED extent, shared by the gridlines (drawn inside
@@ -277,12 +278,12 @@ internal fun HeartRateTrendCard(
 
     SectionHeader("Heart Rate", overline = selectedLabel)
     NoopCard {
-        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(Metrics.space12)) {
             // Header, mirrors the macOS ChartCard (title + subtitle, trailing read-out).
             Row(verticalAlignment = Alignment.Top) {
                 Column(modifier = Modifier.weight(1f)) {
                     Overline("Beats per minute")
-                    // #985: the buckets stay the same 5-minute means whatever the window (view-only
+                    // the buckets stay the same 5-minute means whatever the window (view-only
                     // narrowing, no re-read), so the resolution half of the label never changes — only
                     // the span half tells the truth about what's on screen.
                     val subtitle = when {
@@ -298,17 +299,17 @@ internal fun HeartRateTrendCard(
                 }
                 Text("$latest bpm", style = NoopType.chartValueLarge, color = Palette.metricRose)
             }
-            // #985: the window selector, current day only — Today (since midnight, the default) or a
+            // the window selector, current day only — Today (since midnight, the default) or a
             // rolling last-N-hours cut of the same loaded buckets. A past day has no "now" → no selector.
             if (selectedDay == today) {
                 HrWindowPills(hrWindow) { hrWindowOrdinal = it.ordinal }
             }
             // Chart with a max/avg/min Y-axis label column on the left and an HH:mm X-axis row below.
             // The line spaces points by index, but the X labels read each bucket's REAL timestamp in
-            // local time (see below) so the axis reads true wall-clock even when the day has gaps (#544).
+            // local time (see below) so the axis reads true wall-clock even when the day has gaps.
             Row(
                 modifier = Modifier.height(IntrinsicSize.Min),
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                horizontalArrangement = Arrangement.spacedBy(Metrics.space4),
             ) {
                 Column(
                     modifier = Modifier.height(Metrics.chartHeight),
@@ -320,16 +321,16 @@ internal fun HeartRateTrendCard(
                 }
                 // The HR line, with the Overview marker layers (sleep band · Charge · Effort · sport
                 // glyphs) overlaid on top, markers are positioned by mapping each event's wall-clock
-                // time onto the line's index spacing, so they sit on the same curve. (PR #285)
-                // #829 - renders the zoom window's subset, with the pinch/pan/double-tap transform
-                // detector attached (keyed on the #985-windowed buckets so its captured bounds track
+                // time onto the line's index spacing, so they sit on the same curve.
+                // renders the zoom window's subset, with the pinch/pan/double-tap transform
+                // detector attached (keyed on the windowed buckets so its captured bounds track
                 // both a reload and a window change — the pinch operates INSIDE the selected window).
                 // The chart and its axis-label strip share this Column so both span exactly the
                 // plot width (not the card width, which includes the y-rail) — a label centred at
                 // a tick fraction lands under its gridline.
                 Column(
                     modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                    verticalArrangement = Arrangement.spacedBy(Metrics.space4),
                 ) {
                     OverviewHRChart(
                         buckets = visBuckets,
@@ -353,9 +354,9 @@ internal fun HeartRateTrendCard(
                             },
                     )
                     // X-axis: labels use the SAME timestamp interpolation as the line and markers,
-                    // so the axis agrees with the curve even when the day has gaps (#544). "Now"
+                    // so the axis agrees with the curve even when the day has gaps. "Now"
                     // only on the un-zoomed live day — a zoomed window's right edge is wherever
-                    // the user panned it (#829).
+                    // the user panned it.
                     HrTimeAxisLabels(
                         ticks = timeTicks,
                         timestamps = visTimestamps,
@@ -377,7 +378,7 @@ internal fun HeartRateTrendCard(
                     }
                 }
             }
-            // #829 - the pinch/drag affordance + Reset, mirroring the iOS hrZoomHint row: teaches the
+            // the pinch/drag affordance + Reset, mirroring the iOS hrZoomHint row: teaches the
             // gesture, and once zoomed shows a Reset link that mirrors the chart's own double-tap reset.
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -449,7 +450,7 @@ private fun HrTimeAxisLabels(
     }
 }
 
-// #829 Android parity - the Today HR chart's transform detector. The Deep Timeline's own
+// Android parity - the Today HR chart's transform detector. The Deep Timeline's own
 // detectTransformGestures claims EVERY drag on the chart, fine on its dedicated screen but here it would
 // eat the Today feed's vertical scroll AND the LineChart's scrub-to-inspect. This detector reuses the
 // Deep Timeline's pure window math (zoomedWindow / pannedWindow, Charts.kt) but watches the INITIAL
@@ -550,13 +551,13 @@ private suspend fun PointerInputScope.hrChartTransformGestures(
 //       drawn under the marker chrome so labels stay legible),
 //   (b) a dashed Charge rule + label at wake time (sleep end), hidden while recovery calibrates,
 //   (c) a dashed Effort rule + label at "now" (the latest sample), routed through the SAME
-//       UnitFormatter.effortDisplay the Effort tile uses so it honours the 0–100 / 0–21 toggle (#268),
+//       UnitFormatter.effortDisplay the Effort tile uses so it honours the 0–100 / 0–21 toggle,
 //   (d) a small sport glyph at each workout's in-window HR peak.
 //
 // LineChart plots points by LIST INDEX (evenly spaced, no time axis), so each marker's wall-clock
 // time is mapped to a fractional list index by interpolating against the buckets' own timestamps, // markers then sit exactly on the rendered curve even when the strap history has gaps. Every layer
 // self-hides when its data is absent (no sleep, calibrating Charge, no workouts). Mirrors the macOS
-// OverviewHRChart (Packages/StrandDesign) in NOOP's own colour language. (PR #285)
+// OverviewHRChart (Packages/StrandDesign) in NOOP's own colour language.
 
 @Composable
 private fun OverviewHRChart(
@@ -628,7 +629,7 @@ private fun OverviewHRChart(
 
     // ── derived marker model (self-hiding) ──
     // Sleep band span clamped to the window; only drawn when it overlaps a visible stretch. Uses the
-    // EFFECTIVE onset so a hand-edited bedtime moves the band. (PR #395)
+    // EFFECTIVE onset so a hand-edited bedtime moves the band.
     val sleepStartX = sleep?.let { xFor(it.effectiveStartTs) }
     val sleepEndX = sleep?.let { xFor(it.effectiveEndTs) }
     // Charge marker sits at wake (sleep end), else the window start; hidden while recovery is null.
@@ -654,7 +655,7 @@ private fun OverviewHRChart(
             .onSizeChanged { plotW = it.width.toFloat(); plotH = it.height.toFloat() }
             .semantics { contentDescription = markerDescription },
     ) {
-        // #765 (z-order / background layering): the sleep band must sit BEHIND the HR curve, matching the
+        // Z-order: the sleep band must sit BEHIND the HR curve, matching the
         // iOS OverviewHRChart whose RectangleMark is "drawn first so the HR line/area sit on top". Android
         // previously drew the band in the SAME Canvas as the dashed rules, AFTER the LineChart, so the
         // translucent indigo region washed OVER the HR line + its value markers (the reported "text behind
@@ -698,8 +699,8 @@ private fun OverviewHRChart(
             color = Palette.metricRose,
             fill = true,
             selectionEnabled = true,
-            // Scrub read-out: the timestamps prefix the sample's local clock time and the #463
-            // formatter carries the unit — "14:32 · 87 bpm" instead of a bare "87".
+            // Scrub read-out: the timestamps prefix the sample's local clock time and the formatter
+            // carries the unit — "14:32 · 87 bpm" instead of a bare "87".
             formatValue = { "${it.roundToInt()} bpm" },
             timestamps = bucketTimestamps,
         )
@@ -845,7 +846,7 @@ private fun ChartMarkerPill(
             .background(Palette.surfaceOverlay.copy(alpha = 0.92f))
             .padding(horizontal = 6.dp, vertical = 3.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        horizontalArrangement = Arrangement.spacedBy(Metrics.space4),
     ) {
         if (leadingIcon != null) {
             Icon(leadingIcon, contentDescription = null, tint = color, modifier = Modifier.size(10.dp))

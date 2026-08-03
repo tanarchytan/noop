@@ -59,7 +59,7 @@ val STARTER_JOURNAL_QUESTIONS: List<String> = listOf(
  *  runs collapse to a single space, then lowercases. A WHOOP export commonly leaves a trailing
  *  newline or non-breaking space on a journal cell; folding it here is what keeps an imported
  *  "Did you take magnesium?\n" from sitting beside the starter "Did you take magnesium?" as two
- *  separate rows (#224). The DISPLAYED string stays verbatim, only the match key is normalised, 
+ *  separate rows. The DISPLAYED string stays verbatim, only the match key is normalised,
  *  so the stored behaviour key the effects engine joins on is untouched.
  *  Kept value-for-value in step with macOS `JournalCatalogStore.norm` (JournalCatalog.swift). */
 internal fun normJournalKey(s: String): String =
@@ -67,7 +67,7 @@ internal fun normJournalKey(s: String): String =
     // `Char.isWhitespace()` (Unicode-aware, it includes non-breaking space U+00A0 etc.) rather than
     // a regex: the previous `Regex("(?U)\\s+")` compiled on the desktop JVM but THREW
     // PatternSyntaxException on Android's ICU engine (the `(?U)` inline flag is unsupported there),
-    // crashing the Insights screen for anyone with journal entries to merge (#224/#267). Matches the
+    // crashing the Insights screen for anyone with journal entries to merge. Matches the
     // Swift `.whitespacesAndNewlines` normalisation value-for-value.
     buildString {
         var prevSpace = true // suppress leading whitespace
@@ -96,7 +96,7 @@ internal fun mergeJournalCatalog(
     val seen = HashSet<String>()
     for (q in imported + starter + custom) {
         // Display text trims surrounding whitespace; the dedup key normalises ALL whitespace (see
-        // normJournalKey) so an imported "…magnesium?\n" folds onto the starter (#224).
+        // normJournalKey) so an imported "…magnesium?\n" folds onto the starter.
         val t = q.trim()
         val key = normJournalKey(q)
         if (t.isNotEmpty() && key !in hiddenSet && seen.add(key)) out.add(t)
@@ -203,7 +203,7 @@ fun JournalLogCard(
             } else {
                 JournalChip("Edit", selected = false) { editing = true }
                 Spacer(Modifier.width(6.dp))
-                // Chronological left→right: Yesterday · Today · Tomorrow (#443).
+                // Chronological left→right: Yesterday · Today · Tomorrow.
                 JournalChip("Yesterday", selected = dayOffset == 1L) { onDayOffset(1L) }
                 Spacer(Modifier.width(6.dp))
                 JournalChip("Today", selected = dayOffset == 0L) { onDayOffset(0L) }
@@ -212,7 +212,7 @@ fun JournalLogCard(
             }
         }
         NoopCard {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(Metrics.space10)) {
                 Text(
                     when {
                         editing ->
@@ -286,7 +286,7 @@ private fun JournalGroupBlock(
     onRestoreQuestion: (String) -> Unit,
 ) {
     var collapsed by remember(group) { mutableStateOf(false) }
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(Metrics.space8)) {
         Row(
             modifier = Modifier.fillMaxWidth().clickable { collapsed = !collapsed },
             verticalAlignment = Alignment.CenterVertically,
@@ -438,7 +438,7 @@ private fun JournalRenameDialog(
         onDismissRequest = onDismiss,
         title = { Text("Rename item") },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(Metrics.space8)) {
                 OutlinedTextField(
                     value = draft,
                     onValueChange = { draft = it },
@@ -465,7 +465,7 @@ private fun JournalAddRow(onAddCustom: (String, JournalKind, JournalGroup) -> Un
     var numeric by remember { mutableStateOf(false) }
     var group by remember { mutableStateOf(JournalGroup.Other) }
     var groupMenu by remember { mutableStateOf(false) }
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(Metrics.space8)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             OutlinedTextField(
                 value = draft,

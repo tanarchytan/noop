@@ -147,7 +147,7 @@ internal fun SleepNightHeader(
                         Icons.Filled.Add,
                         contentDescription = "Add a nap",
                         tint = Palette.textTertiary,
-                        modifier = Modifier.size(18.dp),
+                        modifier = Modifier.size(Metrics.iconSmall),
                     )
                 }
             }

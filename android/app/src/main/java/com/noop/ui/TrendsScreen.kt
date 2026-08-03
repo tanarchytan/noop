@@ -63,24 +63,18 @@ fun TrendsScreen(vm: AppViewModel) {
     var fullHistory by remember { mutableStateOf<List<DailyMetric>?>(null) }
     LaunchedEffect(Unit) {
         // Merged: imported WHOOP days win; on-device computed days gap-fill the trends. Reads the registry's
-        // ACTIVE strap id so daysMerged resolves the active-id ∪ canonical "my-whoop" union (SPINE / #814) ,
+        // ACTIVE strap id so daysMerged resolves the active-id ∪ canonical "my-whoop" union, so
         // a re-added strap's data and the canonical import both surface; a single-WHOOP install is unchanged.
         fullHistory = vm.repo.daysMerged()
     }
     val days = fullHistory ?: reactiveDays
 
-    // Effort display scale (#268) , routes the Effort small-multiple's numbers + unit. Display-only.
+    // Effort display scale , routes the Effort small-multiple's numbers + unit. Display-only.
     val effortScale = UnitPrefs.effortScale(LocalContext.current)
-
-    // Day-cycle sky backdrop (#698). Default ON. When off, Trends drops the liquid sky and the scaffold
-    // paints the plain dark surface canvas instead. SharedPreferences isn't reactive, so this is read once
-    // into local state (mirrors Today's showDayCycleBackground gate).
-    val trendsCtx = LocalContext.current
-    val showDayCycleBackground = remember { NoopPrefs.showDayCycleBackground(trendsCtx) }
 
     var range by remember { mutableStateOf(TrendsRange.Quarter) }
 
-    // #710 , browse previous weeks in the Week-in-review digest. 0 = the week containing today; each step
+    // browse previous weeks in the Week-in-review digest. 0 = the week containing today; each step
     // back is one Mon–Sun week earlier, clamped so it never runs past the earliest day we hold. The Trends
     // RANGE control above scopes the long charts; this only moves the weekly digest at the top.
     var weekOffset by remember { mutableStateOf(0) }
@@ -99,11 +93,11 @@ fun TrendsScreen(vm: AppViewModel) {
     val rhr = remember(days, range) { resolveMetric(days, range) { it.restingHr?.toDouble() } }
     val strain = remember(days, range) { resolveMetric(days, range) { it.strain } }
     // Rest = the sleep_performance COMPOSITE (0–100) , the SAME metric the Today Rest score/tile and the
-    // Sleep Rest-detail plot (#614 follow-up), NOT raw efficiency, which is a different number under the
-    // same "Rest" label and made the Trends Rest graph disagree with the Today Rest score (#732).
+    // Sleep Rest-detail plot (follow-up), NOT raw efficiency, which is a different number under the
+    // same "Rest" label and made the Trends Rest graph disagree with the Today Rest score.
     // sleep_performance is a metricSeries (imported-wins resolved), not a DailyMetric column, so fetch the
-    // resolved series and key it by day for the existing windowing/widening below. Mirrors the source
-    // TodayScreen's restScore reads, so the two screens now plot the same number.
+    // resolved series and key it by day for the existing windowing/widening below. Mirrors the Home
+    // Rest score's reads, so the two screens plot the same number.
     var sleepPerfByDay by remember { mutableStateOf<Map<String, Double>>(emptyMap()) }
     LaunchedEffect(days) {
         sleepPerfByDay = runCatching {
@@ -116,14 +110,11 @@ fun TrendsScreen(vm: AppViewModel) {
     }
     val recAvg = recovery.values.averageOrNull()
 
+    // No topBackground: the scaffold paints Palette.surfaceBase, the one canvas every screen shares. The
+    // decorated backdrop it used to carry painted fixed dark-mode colours in both themes.
     LazyScreenScaffold(
         title = stringResource(R.string.nav_trends),
         subtitle = stringResource(R.string.trends_subtitle),
-        // LIQUID SKY BACKDROP (the pilot pattern — LiquidScreenSky.kt): the time-of-day liquid sky settles
-        // into the theme canvas behind the header + top rows, full-bleed via the scaffold's topBackground
-        // plumbing. Static (LiquidSkyStatic, inside the helper) — never an animated sky behind a scrolling
-        // list. Gated on the same day-cycle pref as Today; when off, the scaffold paints the flat canvas.
-        topBackground = if (showDayCycleBackground) { { LiquidScreenSky() } } else null,
     ) {
         if (days.isEmpty()) {
             item { EmptyTrends() }
@@ -133,7 +124,7 @@ fun TrendsScreen(vm: AppViewModel) {
         // The main card list ripples in once on appear (Reduce-Motion safe), mirroring the iOS
         // staggeredAppear sequence , each top-level section is one staggered child.
 
-        // --- Week-in-review digest (#208) with prev/next week browsing (#710). Past weeks render in the
+        // --- Week-in-review digest with prev/next week browsing. Past weeks render in the
         // same format; the chevrons stay visible on an empty PAST week so the user can step on. ---
         item {
             Column(modifier = Modifier.staggeredAppear(index = 0)) {
@@ -249,7 +240,7 @@ fun TrendsScreen(vm: AppViewModel) {
                 )
                 MetricTrendCard(
                     // Plotted values stay on the stored 0–100 scale (line shape unchanged); only the displayed
-                    // numbers + unit follow the Effort-scale toggle, converted inside `fmt`. (#268)
+                    // numbers + unit follow the Effort-scale toggle, converted inside `fmt`.
                     title = stringResource(R.string.trends_effort), unit = "/ ${UnitFormatter.effortScaleMax(effortScale)}",
                     // WHOOP: Effort/Strain is always BLUE , a deep→bright blue line, not the amber ramp.
                     color = Palette.effortColor,
@@ -269,7 +260,7 @@ fun TrendsScreen(vm: AppViewModel) {
             }
         }
 
-        // --- Export trends report (#436) , the shareable offline PDF exporter. Mirrors the iOS
+        // --- Export trends report , the shareable offline PDF exporter. Mirrors the iOS
         // TrendsView.exportReportRow footer; the same composable Settings hosts, so both surfaces
         // offer it. Routed through NoopButton like every other CTA (no gold). ---
         item {
@@ -280,7 +271,7 @@ fun TrendsScreen(vm: AppViewModel) {
     }
 }
 
-// MARK: - Week-in-review digest with prev/next week browsing (#710)
+// MARK: - Week-in-review digest with prev/next week browsing
 
 /**
  * The most-negative weekOffset allowed: the number of whole Mon–Sun weeks between the earliest day we
@@ -321,7 +312,7 @@ private fun WeeklyDigestNav(
     val anchorDay = remember(weekOffset) {
         WeeklyDigestEngine.addDays(logicalDayKeyNow(), weekOffset * 7)
     }
-    // #268/#463: past weeks quote Effort on the user's display scale too, same as the live card.
+    // past weeks quote Effort on the user's display scale too, same as the live card.
     val factor = effortDisplayFactor(UnitPrefs.effortScale(LocalContext.current))
     val digest = remember(days, anchorDay, factor) {
         buildWeeklyDigest(days, anchorDay, effortDisplayFactor = factor)
@@ -342,7 +333,7 @@ private fun WeeklyDigestNav(
 
 /**
  * Prev/next week stepper. Back is clamped at the earliest week we hold; forward at this week (no future
- * weeks). Flat accent chevrons, mirroring the iOS FullDayChart day stepper (#597).
+ * weeks). Flat accent chevrons, mirroring the iOS FullDayChart day stepper.
  */
 @Composable
 private fun WeekNavBar(weekOffset: Int, minWeekOffset: Int, onStep: (Int) -> Unit) {

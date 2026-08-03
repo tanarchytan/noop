@@ -481,8 +481,8 @@ private fun ConnectStep(viewModel: AppViewModel) {
             )
 
             // WHOOP is NOOP's primary band, so onboarding leads with it — but it isn't required. Make that
-            // obvious so a user without a WHOOP doesn't feel stuck on this step (#415-adjacent): they can
-            // continue now and add a device or import history afterwards.
+            // obvious so a user without a WHOOP doesn't feel stuck on this step: they can continue
+            // now and add a device or import history afterwards.
             if (!live.bonded) {
                 Text(
                     "No WHOOP? You can still continue. Add your WHOOP (or the experimental Oura ring) later " +
@@ -542,9 +542,9 @@ private fun BondedStep(viewModel: AppViewModel) {
 private fun ProfileStep() {
     val context = LocalContext.current
     val profile = remember { ProfileStore.from(context.applicationContext) }
-    // Imperial/Metric display preference (D#103). The stored profile is always SI; the steppers keep
+    // Imperial/Metric display preference. The stored profile is always SI; the steppers keep
     // operating in SI and only the DISPLAYED value re-labels to lb / ft-in. Held in remembered state
-    // (#781) so the Units control below can flip it live. SharedPreferences isn't reactive, so the
+    // so the Units control below can flip it live. SharedPreferences isn't reactive, so the
     // picker writes through to NoopPrefs AND updates this state to re-render the Weight/Height labels.
     var unitSystem by remember { mutableStateOf(UnitPrefs.system(context)) }
     var rev by remember { mutableIntStateOf(0) }
@@ -587,7 +587,7 @@ private fun ProfileStep() {
                     )
                 }
                 ThinDivider()
-                // Units control (#781). Onboarding read `unitSystem` for the Weight/Height display but
+                // Units control. Onboarding read `unitSystem` for the Weight/Height display but
                 // had no way to set it, so US users were locked to kg/cm until they found Settings →
                 // Units. Mirror the Sex picker idiom; the stored profile stays SI either way, only the
                 // displayed labels re-format (lb / ft-in). Same key Settings → Units writes.

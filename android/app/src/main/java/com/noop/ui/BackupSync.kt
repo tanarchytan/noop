@@ -48,9 +48,6 @@ object BackupSync {
     /** Width of the "yyyyMMdd-HHmmss" stamp, so a variant marker ahead of it can be skipped. */
     private const val STAMP_LENGTH = 15
 
-    /** Generic binary MIME for the SAF createDocument call (the bytes are a ZIP container). */
-    const val MIME = "application/octet-stream"
-
     /** Default snapshots kept by prune: 7, i.e. a week of daily rollback points. (The Apple twin still
      *  defaults to 10; this fork lowered it — parity dropdown on iOS is a follow-up.) */
     const val DEFAULT_KEEP = 7
@@ -109,7 +106,7 @@ object BackupSync {
 
     /**
      * Any `.noopbak` file, whatever it's named. The RESTORE list uses this (not [isSnapshot]) so a
-     * hand-named backup like `noop-backup-2026-06-30.noopbak` still shows (#852). Case-insensitive on
+     * hand-named backup like `noop-backup-2026-06-30.noopbak` still shows. Case-insensitive on
      * the extension. Prune/latest stay strict on [isSnapshot], so a non-canonical name is listed for
      * restore but never auto-deleted.
      */
@@ -141,7 +138,7 @@ object BackupSync {
     data class Restorable(val name: String, val timeMs: Long)
 
     /**
-     * ALL `.noopbak` files (any name) ordered newest-first for the restore picker (#852). Canonical
+     * ALL `.noopbak` files (any name) ordered newest-first for the restore picker. Canonical
      * names use their embedded UTC stamp; the rest fall back to the file date [fileDateMs] gives for
      * that name (0 when unknown). Non-`.noopbak` files are dropped. Pure, so it's unit-tested; the I/O
      * layer supplies [fileDateMs] from the SAF cursor's last-modified column.
@@ -155,11 +152,11 @@ object BackupSync {
             .sortedWith(compareByDescending<Restorable> { it.timeMs }.thenBy { it.name })
 
     /**
-     * Newest-first ordering of raw docs, PRESERVING DUPLICATES (#852). Unlike [restorablesNewestFirst]
+     * Newest-first ordering of raw docs, PRESERVING DUPLICATES. Unlike [restorablesNewestFirst]
      * (which keys off a bare name list), this keeps every distinct document even when two share a display
      * name - Drive duplicates, or a sync client / second device dropping `noop-backup-2026-06-30.noopbak`
      * twice - so no real backup silently vanishes. Date-only names are the most collision-prone, and they
-     * are exactly the files #852 rescues. Non-`.noopbak` docs are dropped. Canonical names order by their
+     * are exactly the ones this rescues. Non-`.noopbak` docs are dropped. Canonical names order by their
      * embedded stamp; the rest by the provider's last-modified ms.
      *
      * Generic over the doc type via [name]/[modifiedMs] accessors so the pure ordering is unit-testable
@@ -243,7 +240,7 @@ object BackupSync {
 
     /**
      * Every `.noopbak` in [backupDir], newest-first, as [SnapshotFile] rows — drives restore-from-folder.
-     * Lists ANY `.noopbak` (#852): a hand-named backup like `noop-backup-2026-06-30.noopbak` still shows.
+     * Lists ANY `.noopbak`: a hand-named backup like `noop-backup-2026-06-30.noopbak` still shows.
      * Canonical names order + label by their embedded UTC stamp; the rest by the file's last-modified date.
      * Content is validated on restore, so a bad file here is caught then.
      */
@@ -287,7 +284,7 @@ object BackupSync {
     }
 
     /**
-     * On-launch CATCH-UP backup. Must-fix #4: deferred off the launch-critical path and run fully off
+     * On-launch CATCH-UP backup, deferred off the launch-critical path and run fully off
      * the main thread by the CALLER (MainActivity launches this on Dispatchers.IO after the critical
      * startup work). Gated on the toggle being ON, a folder being set, and it being at least a day since
      * the last backup. Cheap to call when off (two SharedPreferences reads, no I/O). Returns true if it

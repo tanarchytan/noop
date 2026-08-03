@@ -80,18 +80,17 @@ private val autoNudgeDateFmt: DateTimeFormatter =
 
 private fun hhmm(epochSec: Long): String = autoNudgeTimeFmt.format(Instant.ofEpochSecond(epochSec))
 
-/** A relative LOCAL-day prefix for the prompt (#719): "" when the bout started today, "yesterday " when
- *  it was yesterday, else "on <date> ". The card showed HH:mm only, so a late-night bout could read as
- *  today; this anchors it to the local day instead of UTC. Mirrors iOS `AutoWorkoutCard.dayLabel`. */
+/** A relative LOCAL-day prefix for the prompt: "" when the bout started today, "yesterday " when it
+ *  was yesterday, else "on <date> ". The card shows HH:mm only, so a late-night bout would otherwise
+ *  read as today. */
 private fun dayLabel(epochSec: Long): String {
     val zone = ZoneId.systemDefault()
-    val day = Instant.ofEpochSecond(epochSec).atZone(zone).toLocalDate()
-    val today = LocalDate.now(zone)
-    return when (day) {
-        today -> ""
-        today.minusDays(1) -> "yesterday "
-        else -> "on ${autoNudgeDateFmt.format(Instant.ofEpochSecond(epochSec))} "
-    }
+    return relativeDayLabel(
+        Instant.ofEpochSecond(epochSec).atZone(zone).toLocalDate(),
+        today = "", yesterday = "yesterday ",
+        other = "on ${autoNudgeDateFmt.format(Instant.ofEpochSecond(epochSec))} ",
+        now = LocalDate.now(zone),
+    )
 }
 
 /** "Looks like a workout [yesterday ]around 14:05–14:32 (avg HR 148, 27 min). Save it?" Mirrors iOS. */
@@ -127,7 +126,7 @@ fun AutoWorkoutNudgeCard(
     if (handledThisSession || w == null) return
 
     NoopCard(tint = Palette.accent) {
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(Metrics.space8)) {
             Box(modifier = Modifier.fillMaxWidth()) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
@@ -166,7 +165,7 @@ fun AutoWorkoutNudgeCard(
             )
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                horizontalArrangement = Arrangement.spacedBy(Metrics.space12),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Button(
@@ -175,7 +174,7 @@ fun AutoWorkoutNudgeCard(
                         // saved via the SAME manual path the Workouts screen uses. buildManualRow is pure.
                         val durMin = ((w.endSec - w.startSec) / 60L).toInt().coerceAtLeast(1)
                         val row = WorkoutEditing.buildManualRow(
-                            // Save under the ACTIVE strap id (what the Workouts union reads, #200/#814),
+                            // Save under the ACTIVE strap id (what the Workouts union reads),
                             // mirroring iOS `saveDetectedWorkout`. Not the visibility fix (workoutsUnion
                             // reads "my-whoop" too) but keeps the id consistent with the list + exclusion.
                             deviceId = viewModel.deviceId,
@@ -185,7 +184,7 @@ fun AutoWorkoutNudgeCard(
                             avgHr = w.avgBpm,
                             energyKcal = null,
                         )
-                        // #214 ROOT CAUSE: save on the ViewModel's scope, NOT the card's. Setting
+                        // ROOT CAUSE: save on the ViewModel's scope, NOT the card's. Setting
                         // handledThisSession=true removes this card from composition immediately (see the
                         // `return` gate above), which CANCELS its rememberCoroutineScope — so the old
                         // `scope.launch { saveManualWorkout }` was killed before the suspend DB write
@@ -238,7 +237,7 @@ private suspend fun autoDetectCandidate(
     val computed = repo.computedDeviceId(AUTO_DETECT_DEVICE)
     val saved = (
         repo.workouts(AUTO_DETECT_DEVICE, fromSec, nowSec) +
-            // #214: also exclude workouts under the ACTIVE strap id — the id we now SAVE under. Without
+            // also exclude workouts under the ACTIVE strap id — the id we now SAVE under. Without
             // this the just-saved workout wouldn't be seen by the overlap exclusion and the card would
             // re-prompt for the same window. (Equals "my-whoop" for a legacy install, a harmless dup.)
             repo.workouts(viewModel.deviceId, fromSec, nowSec) +
