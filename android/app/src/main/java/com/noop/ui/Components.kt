@@ -69,7 +69,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
 import androidx.compose.ui.draw.clip
-import android.content.Context
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.draw.shadow
@@ -111,34 +110,23 @@ import kotlin.math.roundToInt
  * Paint the frosted-card surface (navy fill + diagonal accent wash + hairline border)
  * behind content. [tint] colours the wash + border bias; null uses neutral gold wash.
  */
-/** App-wide card-surface opacity. Only the card surface fades — content stays readable. */
-object CardAppearance {
-    var opacity by mutableStateOf(1f)
-    fun init(context: Context) {
-        opacity = (NoopPrefs.cardOpacityPercent(context) / 100f).coerceIn(0f, 1f)
-    }
-}
-
 fun Modifier.frostedCardSurface(
     tint: Color? = null,
     cornerRadius: Dp = Metrics.cardRadius,
     washStrength: Float = 1f,
 ): Modifier = composed {
-    // Scale the glass surface (fill + border + wash) by the user's opacity setting so cards
-    // fade toward the background. Content drawn above is unaffected.
-    val op = CardAppearance.opacity
     this
         // Dark theme: flat. Light theme: white card raised off canvas with a soft drop shadow.
         .then(
             if (Palette.isLight)
-                Modifier.shadow(elevation = (6f * op).dp, shape = RoundedCornerShape(cornerRadius), clip = false)
+                Modifier.shadow(elevation = 6.dp, shape = RoundedCornerShape(cornerRadius), clip = false)
             else Modifier
         )
         .drawBehind {
             val radiusPx = cornerRadius.toPx()
             val corner = androidx.compose.ui.geometry.CornerRadius(radiusPx, radiusPx)
-            val fill = Palette.surfaceRaised.copy(alpha = Palette.surfaceRaised.alpha * op)
-            val border = Palette.hairline.copy(alpha = Palette.hairline.alpha * op)
+            val fill = Palette.surfaceRaised
+            val border = Palette.hairline
 
             if (tint == null) {
                 // NEUTRAL card: flat raised surface with no accent wash or bias.
@@ -151,8 +139,8 @@ fun Modifier.frostedCardSurface(
                 drawRoundRect(
                     brush = Brush.linearGradient(
                         colorStops = arrayOf(
-                            0.0f to tint.copy(alpha = 0.05f * washStrength * op),
-                            0.5f to tint.copy(alpha = 0.015f * washStrength * op),
+                            0.0f to tint.copy(alpha = 0.05f * washStrength),
+                            0.5f to tint.copy(alpha = 0.015f * washStrength),
                             1.0f to Color.Transparent,
                         ),
                         start = Offset(0f, 0f),

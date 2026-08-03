@@ -414,15 +414,6 @@ fun SettingsScreen(
 
     // Theme (System / Light / Dark) — drives NoopTheme; AppearancePrefs mirrors it in snapshot state.
     var themeMode by remember { mutableStateOf(AppearancePrefs.mode) }
-    // Chart colours (Titanium / Classic) — re-colours gauges + charts; ChartStylePrefs mirrors it live.
-    var chartStyle by remember { mutableStateOf(ChartStylePrefs.style) }
-    // Trend charts (Line / Bar) — flips the Trends tab between the gradient line and value-ramp bars.
-    // Display-only; SharedPreferences isn't reactive, so mirror into local state and persist on select.
-    var trendChartStyle by remember { mutableStateOf(UnitPrefs.trendChartStyle(context)) }
-    // Card-surface opacity (0f = clear, 1f = solid), for the "Card transparency" slider. Live-previews via
-    // CardAppearance; saved on release.
-    var cardOpacity by remember { mutableStateOf(NoopPrefs.cardOpacityPercent(context) / 100f) }
-
     // Power saving: battery-adaptive strap-sync cadence + optional HRV-capture pause. Local mirrors.
     var powerSaving by remember { mutableStateOf(NoopPrefs.powerSaving(context)) }
     var powerSavingBatteryPct by remember { mutableStateOf(NoopPrefs.powerSavingBatteryPct(context)) }
@@ -450,74 +441,6 @@ fun SettingsScreen(
                 )
             }
             RowDivider()   // the hairline every other section has between FormRows
-            FormRow(label = "Chart colours") {
-                // Titanium = brand gold/amber/blue ramps; Classic = throwback red→green readiness scale
-                // (cool→hot zones, green→red stress). Re-colours every gauge/chart, in both schemes.
-                SegmentedPillControl(
-                    items = listOf(ChartStyle.TITANIUM, ChartStyle.CLASSIC),
-                    selection = chartStyle,
-                    label = { it.label },
-                    onSelect = { style ->
-                        chartStyle = style
-                        ChartStylePrefs.set(context, style)
-                    },
-                )
-            }
-            RowDivider()
-            // Trend chart style (line vs bar). Display-only: flips the Trends tab's charts between the
-            // gradient line and value-ramp bars. The plotted data is identical either way.
-            FormRow(label = "Trend charts") {
-                SegmentedPillControl(
-                    items = listOf(TrendChartStyle.LINE, TrendChartStyle.BAR),
-                    selection = trendChartStyle,
-                    label = { if (it == TrendChartStyle.BAR) "Bars" else "Line" },
-                    onSelect = { style ->
-                        trendChartStyle = style
-                        UnitPrefs.setTrendChartStyle(context, style)
-                    },
-                )
-            }
-
-            // Card transparency: scale every frosted card's glass toward the background. Live-preview (the
-            // cards on THIS screen update as you drag) via CardAppearance; saved on release. Default solid.
-            Column(verticalArrangement = Arrangement.spacedBy(Metrics.space2)) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(Metrics.space16),
-                ) {
-                    Text(
-                        "Card transparency",
-                        style = NoopType.subhead,
-                        color = Palette.textPrimary,
-                        modifier = Modifier.weight(1f),
-                    )
-                    Text(
-                        "${((1f - cardOpacity) * 100).toInt()}%",
-                        style = NoopType.number(15f),
-                        color = Palette.accent,
-                    )
-                }
-                Text(
-                    "How see-through the cards (Heart Rate, Key Metrics, Recovery Vitals, …) are. Left = solid, right = clear.",
-                    style = NoopType.footnote,
-                    color = Palette.textTertiary,
-                )
-                NoopSlider(
-                    // The slider shows TRANSPARENCY (0 = solid, 1 = fully clear); we store the OPACITY.
-                    value = 1f - cardOpacity,
-                    onValueChange = { t ->
-                        cardOpacity = 1f - t
-                        CardAppearance.opacity = cardOpacity   // live preview on every card on-screen
-                    },
-                    onValueChangeFinished = {
-                        NoopPrefs.setCardOpacityPercent(context, (cardOpacity * 100).toInt())
-                    },
-                    valueRange = 0f..1f,
-                )
-            }
-
-            RowDivider()
             // App icon (v3 "Titanium & Gold"): two staged launcher icons — machined titanium (default)
             // and blued/dark-blue titanium. The swap enables exactly one <activity-alias>
             // (.IconDefault /.IconNavy) at runtime; the launcher may take a beat (or briefly

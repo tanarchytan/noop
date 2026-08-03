@@ -19,7 +19,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -260,10 +259,6 @@ private fun ChartWithAxes(
     val maxV = values.max()
     val avgV = RustScores.mean(values)
     val minV = values.min()
-    // Trend chart style (line vs bar). Read here at the single chart choke point (every trend card routes
-    // through ChartWithAxes); SharedPreferences isn't reactive, but returning from Settings recomposes the
-    // Trends screen, which re-reads it — the same read-on-recompose the Effort scale toggle relies on.
-    val chartStyle = UnitPrefs.trendChartStyle(LocalContext.current)
     Column(verticalArrangement = Arrangement.spacedBy(Metrics.space4)) {
         Row(
             modifier = Modifier.height(IntrinsicSize.Min),
@@ -293,30 +288,17 @@ private fun ChartWithAxes(
                 contentAlignment = Alignment.BottomCenter,
             ) {
                 Box(modifier = Modifier.fillMaxWidth().height(plotHeight)) {
-                    if (chartStyle == TrendChartStyle.BAR) {
-                        // Bar mode: value-ramp bars from the baseline. No GlowEndCap (the "now" halo is a
-                        // line idiom). selectionEnabled is OFF so BarChart mean-bins a dense window (the
-                        // multi-year "ALL" span) down to the pixel width — a clean silhouette instead of a
-                        // 1000-bar sub-pixel smear. The max/avg/min axis column + footer carry the numbers.
-                        BarChart(
-                            values = values,
-                            modifier = Modifier.fillMaxSize(),
-                            color = color,
-                            selectionEnabled = false,
-                        )
-                    } else {
-                        LineChart(
-                            values = values,
-                            modifier = Modifier.fillMaxSize(),
-                            color = color,
-                            fill = true,
-                            selectionEnabled = true,
-                            // the pinpoint label goes through the SAME formatter as the axis column,
-                            // so a tapped Effort day can't print the stored 0-100 value beside a 0-21 axis.
-                            formatValue = formatY,
-                        )
-                        GlowEndCap(values = values, tipColor = tipColor)
-                    }
+                    LineChart(
+                        values = values,
+                        modifier = Modifier.fillMaxSize(),
+                        color = color,
+                        fill = true,
+                        selectionEnabled = true,
+                        // the pinpoint label goes through the SAME formatter as the axis column,
+                        // so a tapped Effort day can't print the stored 0-100 value beside a 0-21 axis.
+                        formatValue = formatY,
+                    )
+                    GlowEndCap(values = values, tipColor = tipColor)
                 }
             }
         }

@@ -49,8 +49,6 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         WindowCompat.setDecorFitsSystemWindows(window, false)
-        // Load the saved "Card transparency" so every frosted card renders at the chosen opacity from launch.
-        CardAppearance.init(this)
 
         // Mock build only: preload a full synthetic dataset so every screen is populated
         // out of the box (no strap, no import). No-op once seeded; never runs on the full app.
@@ -93,10 +91,9 @@ class MainActivity : ComponentActivity() {
             runCatching { BackupSync.catchUpIfDue(applicationContext) }
         }
 
-        // Load the Light/Dark/System + chart-colour preferences before first composition so the theme
-        // and chart ramps are correct from the very first frame (no flash).
+        // Load the Light/Dark/System preference before first composition so the theme is correct from
+        // the very first frame (no flash).
         AppearancePrefs.load(this)
-        ChartStylePrefs.load(this)
         // Decode the optional on-device profile photo (if set) before first composition so the Today
         // header + Settings avatars show it from the first frame. No-op when no photo is set.
         ProfileAvatarStore.load(this)
@@ -459,18 +456,6 @@ object NoopPrefs {
 
     fun setHydrationTracking(context: Context, enabled: Boolean) {
         of(context).edit().putBoolean(KEY_HYDRATION_TRACKING, enabled).apply()
-    }
-
-    /** Card-surface opacity as a PERCENT (0 = fully see-through, 100 = solid; default 100). Drives the
-     *  "Card transparency" setting — every frosted card (Heart Rate, Key Metrics, Recovery Vitals, …)
-     *  reads it via [CardAppearance]. Only the glass surface fades; the card content stays readable. */
-    const val KEY_CARD_OPACITY = "noop.cardOpacityPercent"
-
-    fun cardOpacityPercent(context: Context): Int =
-        of(context).getInt(KEY_CARD_OPACITY, 100).coerceIn(0, 100)
-
-    fun setCardOpacityPercent(context: Context, percent: Int) {
-        of(context).edit().putInt(KEY_CARD_OPACITY, percent.coerceIn(0, 100)).apply()
     }
 
     /** Coach on-device signals (v5): when ON, the opt-in BYO-key Coach's grounding context may include a

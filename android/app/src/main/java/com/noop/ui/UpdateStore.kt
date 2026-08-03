@@ -116,7 +116,7 @@ object TodayCardDismissal {
 // inbox the UI observes.
 //
 // The item list is a Compose `mutableStateListOf`, so reads in a composable recompose automatically
-// on every mutation — the same snapshot-state idiom `AppearancePrefs`/`ChartStylePrefs` use for a
+// on every mutation — the same snapshot-state idiom `AppearancePrefs` uses for a
 // scalar, here over a list.
 //
 // First-run seeding: posts the current What's New (AppChangelog.releases.first) once, tracking

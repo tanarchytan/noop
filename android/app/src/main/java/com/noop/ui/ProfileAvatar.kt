@@ -40,7 +40,7 @@ import java.io.File
 // file in the app-private filesDir; only the file path + an "is set" flag live in SharedPreferences.
 //
 // macOS/iOS parity note: the iOS side keeps the avatar in its ProfileStore as Data on disk. Compose
-// has no OS-reactive store, so — exactly like `AppearancePrefs` / `ChartStylePrefs` in PaletteTokens.kt
+// has no OS-reactive store, so — exactly like `AppearancePrefs` in PaletteTokens.kt
 // — the decoded [ImageBitmap] is held in SNAPSHOT state. Every `ProfileAvatarStore.bitmap` read (the
 // Today header avatar, the Settings avatar) recomposes the moment the photo is set or cleared.
 
