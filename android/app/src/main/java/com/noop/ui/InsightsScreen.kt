@@ -719,23 +719,18 @@ private fun BehaviourSection(
     ranked: List<BehaviorEffect>,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(Metrics.gap)) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Box(modifier = Modifier.weight(1f)) {
-                SectionHeader(
-                    "Behaviour Effects",
-                    overline = "What moves your ${outcome.outcomeName.lowercase(Locale.US)}",
-                )
-            }
-            SegmentedPillControl(
-                items = Outcome.entries.toList(),
-                selection = outcome,
-                label = { it.label },
-                onSelect = onOutcome,
-            )
-        }
+        // Four segments need the full row, so the heading sits above the control rather than in the
+        // sliver a shared row leaves it.
+        SectionHeader(
+            "Behaviour Effects",
+            overline = "What moves your ${outcome.outcomeName.lowercase(Locale.US)}",
+        )
+        SegmentedPillControl(
+            items = Outcome.entries.toList(),
+            selection = outcome,
+            label = { it.label },
+            onSelect = onOutcome,
+        )
 
         if (ranked.isEmpty()) {
             NoopCard {

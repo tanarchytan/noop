@@ -38,16 +38,20 @@ internal fun MaxHrZoneCard(hrMax: Int, zone5Bpm: Int, coachingOn: Boolean) {
     NoopCard {
         Column(verticalArrangement = Arrangement.spacedBy(Metrics.gap), modifier = Modifier.fillMaxWidth()) {
             Row(horizontalArrangement = Arrangement.spacedBy(Metrics.gap)) {
+                // The unit sits in the caption on both tiles rather than inside the value: carrying it
+                // inline, "≥ 168 bpm" was the one figure too wide for its half and truncated mid-word.
                 StatTile(
                     modifier = Modifier.weight(1f),
                     label = "Max HR",
-                    value = "$hrMax bpm",
+                    value = "$hrMax",
+                    caption = "bpm",
                     accent = Palette.textPrimary,
                 )
                 StatTile(
                     modifier = Modifier.weight(1f),
                     label = "Top zone",
-                    value = "≥ $zone5Bpm bpm",
+                    value = "≥ $zone5Bpm",
+                    caption = "bpm",
                     accent = if (coachingOn) Palette.accent else Palette.textTertiary,
                 )
             }
@@ -106,7 +110,7 @@ internal fun PhysiologyStack(live: LiveState, activeConnection: Boolean) {
     }
 }
 
-/** Height of the R-R trace and of the flat hairline that stands in for it below two samples. */
+/** Height of the R-R trace and of the flat hairline that stands in for it on a single sample. */
 private val RR_TRACE_HEIGHT = 58.dp
 
 /** The recent R-R buffer as a beat-by-beat sparkline. R-R intervals ARE the time between heartbeats, so
@@ -124,7 +128,10 @@ private fun RRStrip(rrRecent: List<Int>) {
                     .fillMaxWidth()
                     .height(RR_TRACE_HEIGHT),
             )
-        } else {
+        } else if (values.isNotEmpty()) {
+            // A stream that has landed one beat holds the trace's height, so the card does not jump when
+            // the pair completes. Nothing at all draws nothing: the reserved band and its hairline read as
+            // an empty gap under a rule floating outside any card.
             Box(
                 modifier = Modifier
                     .fillMaxWidth()

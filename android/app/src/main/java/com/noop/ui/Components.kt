@@ -29,7 +29,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
-import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -48,8 +48,11 @@ import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
@@ -78,6 +81,7 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.semantics.contentDescription
@@ -274,12 +278,19 @@ fun SectionHeader(
 
 // MARK: - StrandTone
 
-enum class StrandTone(val color: Color) {
-    Neutral(Palette.textSecondary),
-    Accent(Palette.accent),
-    Positive(Palette.statusPositive),
-    Warning(Palette.statusWarning),
-    Critical(Palette.statusCritical),
+enum class StrandTone {
+    Neutral, Accent, Positive, Warning, Critical;
+
+    /** Resolved on every read, never captured: an enum entry is built once, so a stored colour would
+     *  hold whichever scheme was active at class load and survive a theme flip. */
+    val color: Color
+        @Composable get() = when (this) {
+            Neutral -> Palette.textSecondary
+            Accent -> Palette.accent
+            Positive -> Palette.statusPositive
+            Warning -> Palette.statusWarning
+            Critical -> Palette.statusCritical
+        }
 }
 
 // MARK: - ConnectionDot — status dot with optional breathing pulse halo
@@ -333,11 +344,12 @@ private fun PulsingDotHalo(tone: StrandTone, size: Dp) {
         ),
         label = "dotHalo",
     )
+    val halo = tone.color
     Box(
         modifier = Modifier
             .size(size)
             .drawBehind {
-                drawCircleScaled(tone.color, scale, haloAlpha)
+                drawCircleScaled(halo, scale, haloAlpha)
             },
     )
 }
@@ -558,6 +570,15 @@ fun InsightCard(
 
 // MARK: - SegmentedPillControl — the ONE segmented control
 
+/** The track's one-row height. */
+private val SEGMENTED_TRACK_HEIGHT = 36.dp
+
+/** The inset between the track edge and a segment. */
+private val SEGMENTED_TRACK_INSET = 4.dp
+
+/** Corner radius as a percentage, so the track stays a pill at either height. */
+private const val SEGMENTED_CORNER_PERCENT = 50
+
 @Composable
 fun <T> SegmentedPillControl(
     items: List<T>,
@@ -569,17 +590,18 @@ fun <T> SegmentedPillControl(
     // before it is usable.
     enabled: (T) -> Boolean = { true },
 ) {
-    val outerShape = RoundedCornerShape(50)
-    // Track is a fixed-height pill; the selected pill fills that height so its inset is equal on every side.
-    Row(
+    val outerShape = RoundedCornerShape(SEGMENTED_CORNER_PERCENT)
+    // The track holds one row of segments and grows to a second when the labels do not fit, so a set of
+    // long words wraps instead of running past the track and being cut square on one edge.
+    FlowRow(
         modifier = modifier
-            .height(36.dp)
+            .heightIn(min = SEGMENTED_TRACK_HEIGHT)
             .clip(outerShape)
             .background(Palette.surfaceInset)
             .border(1.dp, Palette.hairline, outerShape)
-            .padding(4.dp),
+            .padding(SEGMENTED_TRACK_INSET),
         horizontalArrangement = Arrangement.spacedBy(Metrics.space4),
-        verticalAlignment = Alignment.CenterVertically,
+        verticalArrangement = Arrangement.spacedBy(Metrics.space4),
     ) {
         items.forEach { item ->
             val selected = item == selection
@@ -596,8 +618,9 @@ fun <T> SegmentedPillControl(
             }
             Box(
                 modifier = Modifier
-                    // Fill the track height so the pill's inset is equal top/bottom/left/right.
-                    .fillMaxHeight()
+                    // A fixed segment height, so the pill's inset is equal top/bottom/left/right on the
+                    // one row and stays equal on a second.
+                    .height(SEGMENTED_TRACK_HEIGHT - SEGMENTED_TRACK_INSET * 2)
                     .clip(pillShape)
                     .then(pillBg)
                     .then(if (itemEnabled) Modifier.clickableNoRipple { onSelect(item) } else Modifier)
@@ -617,6 +640,60 @@ fun <T> SegmentedPillControl(
             }
         }
     }
+}
+
+// MARK: - NoopSlider — the one slider shape
+
+/** The thumb's diameter, sized to sit on the track rather than beside it. */
+private val SLIDER_THUMB_DIAMETER = 20.dp
+
+/**
+ * The app's slider. Material's own draws a narrow upright bar set off the track and a stop dot at the
+ * far end, which read as a text caret and a stray pixel; this puts a round thumb on the line and drops
+ * the dot. Same value contract as [Slider].
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun NoopSlider(
+    value: Float,
+    onValueChange: (Float) -> Unit,
+    modifier: Modifier = Modifier,
+    valueRange: ClosedFloatingPointRange<Float> = 0f..1f,
+    steps: Int = 0,
+    onValueChangeFinished: (() -> Unit)? = null,
+) {
+    val colors = SliderDefaults.colors(
+        thumbColor = Palette.accent,
+        activeTrackColor = Palette.accent,
+        inactiveTrackColor = Palette.surfaceInset,
+        activeTickColor = Palette.surfaceInset,
+        inactiveTickColor = Palette.hairlineStrong,
+    )
+    Slider(
+        value = value,
+        onValueChange = onValueChange,
+        onValueChangeFinished = onValueChangeFinished,
+        valueRange = valueRange,
+        steps = steps,
+        colors = colors,
+        modifier = modifier,
+        thumb = {
+            Box(
+                modifier = Modifier
+                    .size(SLIDER_THUMB_DIAMETER)
+                    .clip(CircleShape)
+                    .background(Palette.accent),
+            )
+        },
+        track = { state ->
+            SliderDefaults.Track(
+                sliderState = state,
+                colors = colors,
+                drawStopIndicator = {},
+                thumbTrackGapSize = 0.dp,
+            )
+        },
+    )
 }
 
 // MARK: - BevelGauge — the layered ring gauge primitive
@@ -652,8 +729,10 @@ fun BevelGauge(
     )
     // Outer bloom — a faint, static glow so the ring reads flat/Material.
     // Strength = 0.05 + 0.13·frac.
-    val bloomOpacity = 0.05f + 0.13f * frac
-    val sweep = Brush.sweepGradient(*stops.toTypedArray())
+    // A sweep gradient always starts at 3 o'clock, so the stops are compressed into the gauge's own
+    // span and the canvas is rotated to the start angle below. The wrap from the last stop back to the
+    // first then lands in the gap the gauge never draws, instead of as a seam across the arc.
+    val sweep = Brush.sweepGradient(*stops.map { (at, color) -> at * (spanDeg / 360f) to color }.toTypedArray())
 
     Box(
         modifier = modifier.size(diameter),
@@ -667,7 +746,9 @@ fun BevelGauge(
                     val stroke = lineWidth.toPx()
                     val radius = (min(size.width, size.height) - stroke) / 2f
                     val center = Offset(size.width / 2f, size.height / 2f)
-                    val discRadius = (radius - stroke * 0.4f).coerceAtLeast(1f)
+                    // The disc stops at the ring band's inner edge, so its rim traces that edge instead of
+                    // reading as a third circle inside the track.
+                    val discRadius = (radius - stroke / 2f).coerceAtLeast(1f)
                     val discBrush = Brush.radialGradient(
                         colors = listOf(
                             Palette.surfaceInset.copy(alpha = 0f),
@@ -689,7 +770,7 @@ fun BevelGauge(
                         )
                     }
                 }
-                // The per-frame layer: bloom + full-span track + fill arc + end cap + core.
+                // The per-frame layer: full-span track + fill arc + end cap + core.
                 // Reads animatedFraction so it re-issues per frame.
                 .drawBehind {
                     val stroke = lineWidth.toPx()
@@ -698,20 +779,6 @@ fun BevelGauge(
                     val topLeft = Offset(center.x - radius, center.y - radius)
                     val arcSize = Size(radius * 2f, radius * 2f)
                     val sweepStroke = Stroke(width = stroke, cap = StrokeCap.Round)
-
-                    // Outer bloom — soft wide arc under the track. Suppressed on light canvas.
-                    if (animatedFraction > 0.001f && !Palette.isLight) {
-                        drawArc(
-                            brush = sweep,
-                            startAngle = startDeg,
-                            sweepAngle = spanDeg * animatedFraction,
-                            useCenter = false,
-                            topLeft = topLeft,
-                            size = arcSize,
-                            style = Stroke(width = stroke * 1.15f, cap = StrokeCap.Round),
-                            alpha = bloomOpacity,
-                        )
-                    }
 
                     // Full-span track — the carved inset "well" the arc sits in.
                     drawArc(
@@ -724,17 +791,20 @@ fun BevelGauge(
                         style = sweepStroke,
                     )
 
-                    // Filled gradient arc.
+                    // Filled gradient arc, drawn with the canvas turned so the gradient's own zero sits at
+                    // [startDeg]; same stroke as the track, so neither overhangs the other.
                     if (animatedFraction > 0.001f) {
-                        drawArc(
-                            brush = sweep,
-                            startAngle = startDeg,
-                            sweepAngle = spanDeg * animatedFraction,
-                            useCenter = false,
-                            topLeft = topLeft,
-                            size = arcSize,
-                            style = sweepStroke,
-                        )
+                        rotate(degrees = startDeg, pivot = center) {
+                            drawArc(
+                                brush = sweep,
+                                startAngle = 0f,
+                                sweepAngle = spanDeg * animatedFraction,
+                                useCenter = false,
+                                topLeft = topLeft,
+                                size = arcSize,
+                                style = sweepStroke,
+                            )
+                        }
 
                         // Clean Material end-cap: a single small tipCore dot with a faint tip-coloured overlay.
                         val tipAngle = Math.toRadians((startDeg + spanDeg * animatedFraction).toDouble())
@@ -922,15 +992,10 @@ fun GlowRing(
                     // Only draw the arc (+ its glow) when there's actual progress. A near-zero round-capped
                     // arc renders as a visible dot at 12 o'clock on Android's Canvas.
                     if (animFraction > 0.001f) {
-                        // Tight glow — a wider, low-alpha arc under the crisp one. Gated on the dark canvas only;
-                        // on the light field the crisp arc carries the ring on its own.
-                        if (!Palette.isLight) {
-                            drawArc(
-                                color = color.copy(alpha = 0.45f), startAngle = -90f, sweepAngle = sweep, useCenter = false,
-                                topLeft = tl, size = arcSize, style = Stroke(width = stroke * 1.5f, cap = StrokeCap.Round),
-                            )
-                        }
-                        // The crisp, solid arc — from 12 o'clock clockwise.
+                        // One crisp, solid arc — from 12 o'clock clockwise. No wider halo under it: at 1.5x
+                        // the stroke it read as an outline hanging outside the track, and at a full ring its
+                        // two round caps met in a notch.
+
                         drawArc(
                             color = color, startAngle = -90f, sweepAngle = sweep, useCenter = false,
                             topLeft = tl, size = arcSize, style = Stroke(width = stroke, cap = StrokeCap.Round),

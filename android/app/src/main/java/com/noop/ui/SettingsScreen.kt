@@ -25,8 +25,6 @@ import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Science
 import androidx.compose.material3.Icon
-import androidx.compose.material3.Slider
-import androidx.compose.material3.SliderDefaults
 import androidx.compose.material.icons.filled.BatteryStd
 import androidx.compose.ui.res.stringResource
 import com.noop.R
@@ -505,7 +503,7 @@ fun SettingsScreen(
                     style = NoopType.footnote,
                     color = Palette.textTertiary,
                 )
-                Slider(
+                NoopSlider(
                     // The slider shows TRANSPARENCY (0 = solid, 1 = fully clear); we store the OPACITY.
                     value = 1f - cardOpacity,
                     onValueChange = { t ->
@@ -516,11 +514,6 @@ fun SettingsScreen(
                         NoopPrefs.setCardOpacityPercent(context, (cardOpacity * 100).toInt())
                     },
                     valueRange = 0f..1f,
-                    colors = SliderDefaults.colors(
-                        thumbColor = Palette.accent,
-                        activeTrackColor = Palette.accent,
-                        inactiveTrackColor = Palette.surfaceInset,
-                    ),
                 )
             }
 
@@ -726,18 +719,13 @@ fun SettingsScreen(
                         Text(stringResource(R.string.power_saving_kick_in), style = NoopType.subhead, color = Palette.textPrimary)
                         Text(stringResource(R.string.power_saving_pct, powerSavingBatteryPct), style = NoopType.subhead, color = Palette.accent)
                     }
-                    Slider(
+                    NoopSlider(
                         value = powerSavingBatteryPct.toFloat(),
                         // 10–30% snapping to 5% steps (10/15/20/25/30). steps = the 3 stops BETWEEN ends.
                         onValueChange = { powerSavingBatteryPct = it.roundToInt() },
                         onValueChangeFinished = { vm.setPowerSavingBatteryPct(powerSavingBatteryPct) },
                         valueRange = 10f..30f,
                         steps = 3,
-                        colors = SliderDefaults.colors(
-                            thumbColor = Palette.accent,
-                            activeTrackColor = Palette.accent,
-                            inactiveTrackColor = Palette.surfaceInset,
-                        ),
                     )
                 }
             }

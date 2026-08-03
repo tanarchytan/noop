@@ -39,17 +39,19 @@ private val SLEEP_STRESS_CHART_HEIGHT = 150.dp
 internal const val SLEEP_TREND_NIGHTS = 7
 
 // The three stress bands wear the same three tokens the Stress screen's ramp does, so one band means
-// one colour across the app. The band boundaries themselves live in whoop-rs.
-private val SLEEP_STRESS_LOW: Color = Palette.accent
-private val SLEEP_STRESS_MEDIUM: Color = Palette.statusPositive
-private val SLEEP_STRESS_HIGH: Color = Palette.statusWarning
+// one colour across the app. The band boundaries themselves live in whoop-rs. Getters, not stored
+// values: a top-level val is built once and would hold whichever scheme was active at class load.
+private val sleepStressLow: Color get() = Palette.accent
+private val sleepStressMedium: Color get() = Palette.statusPositive
+private val sleepStressHigh: Color get() = Palette.statusWarning
 
 /** The legend, highest band first, as the reference prints it. */
-private val SLEEP_STRESS_LEGEND: List<Pair<String, Color>> = listOf(
-    "HIGH" to SLEEP_STRESS_HIGH,
-    "MEDIUM" to SLEEP_STRESS_MEDIUM,
-    "LOW" to SLEEP_STRESS_LOW,
-)
+private val sleepStressLegend: List<Pair<String, Color>>
+    get() = listOf(
+        "HIGH" to sleepStressHigh,
+        "MEDIUM" to sleepStressMedium,
+        "LOW" to sleepStressLow,
+    )
 
 /**
  * One night's stress bar: the label it sits under and the whoop-rs band minutes it stacks. Nothing is
@@ -66,9 +68,9 @@ internal data class SleepStressNight(
     /** Bottom-up stacking order, each band with the colour it is drawn in. */
     val stack: List<Pair<Long, Color>>
         get() = listOf(
-            lowMinutes to SLEEP_STRESS_LOW,
-            mediumMinutes to SLEEP_STRESS_MEDIUM,
-            highMinutes to SLEEP_STRESS_HIGH,
+            lowMinutes to sleepStressLow,
+            mediumMinutes to sleepStressMedium,
+            highMinutes to sleepStressHigh,
         )
 
     /** Total scored minutes — the bar's own height before the shared scale is applied. */
@@ -118,14 +120,19 @@ internal fun SleepTimeInBedCard(nights: List<SleepScheduleNight>, spans: List<Pa
                     modifier = Modifier.weight(1f),
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
-                    Text(
-                        "${clockTimeLabel(onsetTs)}-${clockTimeLabel(wakeTs)}",
-                        style = NoopType.footnote,
-                        color = Palette.textTertiary,
-                        textAlign = TextAlign.Center,
-                        maxLines = 1,
-                        overflow = TextOverflow.Clip,
-                    )
+                    // Bed over wake, one clock time per line: at a seventh of the width the two on one
+                    // line are wider than the column, and seven clipped labels ran together into a
+                    // single unreadable string.
+                    listOf(onsetTs, wakeTs).forEach { ts ->
+                        Text(
+                            clockTimeLabel(ts),
+                            style = NoopType.footnote,
+                            color = Palette.textTertiary,
+                            textAlign = TextAlign.Center,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
                     Text(
                         nights[i].label,
                         style = NoopType.footnote,
@@ -187,7 +194,7 @@ internal fun SleepHoursVsNeededCard(hours: List<Double>, needHours: List<Double>
         }
         WeekDualLineChart(
             primary = WeekLineSeries("Hours of sleep", week, Palette.textSecondary),
-            secondary = WeekLineSeries("Sleep needed", need, Palette.restColor, labelAbove = false),
+            secondary = WeekLineSeries("Sleep needed", need, Palette.restColor),
             dayLabels = dates.takeLast(week.size).map(::trendDayLabel),
             format = { hoursText(it) },
             height = Metrics.compactChartHeight,
@@ -252,7 +259,7 @@ internal fun SleepStressCard(nights: List<SleepStressNight>) {
                 Text(
                     durationText(night.highMinutes.toDouble()),
                     style = NoopType.footnote,
-                    color = if (night.highMinutes > 0L) SLEEP_STRESS_HIGH else Palette.textTertiary,
+                    color = if (night.highMinutes > 0L) sleepStressHigh else Palette.textTertiary,
                     textAlign = TextAlign.Center,
                     maxLines = 1,
                     overflow = TextOverflow.Clip,
@@ -308,7 +315,7 @@ private fun SleepStressLegend() {
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        SLEEP_STRESS_LEGEND.forEach { (word, color) ->
+        sleepStressLegend.forEach { (word, color) ->
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(Metrics.space6),

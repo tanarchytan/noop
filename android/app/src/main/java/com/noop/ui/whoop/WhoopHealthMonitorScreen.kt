@@ -1,5 +1,6 @@
 package com.noop.ui.whoop
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -41,6 +42,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -270,14 +272,19 @@ internal fun HeartRateHero(vm: AppViewModel, zoneSet: HrZoneSetInfo) {
                 color = Palette.textSecondary,
             )
             ZonePips(zone ?: 0)
-            LineChart(
-                values = trace.map { it.bpm },
-                modifier = Modifier.height(Metrics.compactChartHeight),
-                color = tint,
-                fill = true,
-            )
+            // The trace only takes its height once beats exist. Reserved empty it left a card-tall blank
+            // between the pips and the caption, with skeletons that never resolved.
+            if (trace.size >= 2) {
+                LineChart(
+                    values = trace.map { it.bpm },
+                    modifier = Modifier.height(Metrics.compactChartHeight),
+                    color = tint,
+                    fill = true,
+                )
+            }
             Text(
-                "The trace holds the last few minutes of streamed beats and resets when you leave.",
+                if (trace.size >= 2) "The trace holds the last few minutes of streamed beats and resets when you leave."
+                else "The trace draws once the strap is streaming, and resets when you leave.",
                 style = NoopType.footnote,
                 color = Palette.textTertiary,
             )
@@ -474,7 +481,13 @@ private fun HrvSnapshotButton(enabled: Boolean, onClick: () -> Unit) {
         modifier = Modifier.fillMaxWidth(),
         enabled = enabled,
         contentPadding = PaddingValues(horizontal = Metrics.space10, vertical = Metrics.space8),
-        colors = ButtonDefaults.outlinedButtonColors(contentColor = Palette.restBright),
+        // Named disabled tokens: Material's default washes the label out against the card and leaves the
+        // outline almost invisible, so a dimmed button reads as a broken one.
+        colors = ButtonDefaults.outlinedButtonColors(
+            contentColor = Palette.restBright,
+            disabledContentColor = Palette.textTertiary,
+        ),
+        border = BorderStroke(1.dp, if (enabled) Palette.restBright else Palette.hairlineStrong),
     ) {
         Icon(
             Icons.Filled.MonitorHeart,
@@ -497,18 +510,18 @@ private fun SkinTempSuite(
     onEnableCycle: () -> Unit,
     onTurnOffCycle: () -> Unit,
 ) {
+    val heads = signals?.illness?.takeIf { it.level != IllnessSignalEngine.Level.QUIET }
+    val cycle = if (cycleEnabled) signals?.cycle else null
+    val offersOptIn = !cycleEnabled && optInApplies
+    val bodyClock = signals?.bodyClock
+    // The header only exists while a card does. Emitted unconditionally it ended the scroll on a
+    // section title with nothing under it.
+    if (heads == null && cycle == null && !offersOptIn && bodyClock == null) return
     Column(verticalArrangement = Arrangement.spacedBy(Metrics.gap)) {
         NoopCardHeader("Skin temperature", color = Palette.textSecondary)
-        signals?.illness?.let { illness ->
-            if (illness.level != IllnessSignalEngine.Level.QUIET) {
-                HeadsUpCard(result = illness, distance = signals.illnessDistance)
-            }
-        }
-        if (cycleEnabled) {
-            signals?.cycle?.let { CycleAwarenessCard(result = it, onTurnOff = onTurnOffCycle) }
-        } else if (optInApplies) {
-            CycleAwarenessOptInCard(onEnable = onEnableCycle)
-        }
-        signals?.bodyClock?.let { BodyClockCard(estimate = it) }
+        heads?.let { HeadsUpCard(result = it, distance = signals.illnessDistance) }
+        cycle?.let { CycleAwarenessCard(result = it, onTurnOff = onTurnOffCycle) }
+        if (offersOptIn) CycleAwarenessOptInCard(onEnable = onEnableCycle)
+        bodyClock?.let { BodyClockCard(estimate = it) }
     }
 }

@@ -49,6 +49,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
@@ -467,7 +469,10 @@ fun BreatheScreen(viewModel: AppViewModel) {
                     contentDescription = null,
                     modifier = Modifier.padding(end = 6.dp),
                 )
-                Text(if (running) "Stop session" else "Start session", style = NoopType.headline)
+                Text(
+                    if (running) "Stop session" else "Start session",
+                    style = NoopType.headline, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                )
             }
 
             OutlinedButton(
@@ -476,7 +481,7 @@ fun BreatheScreen(viewModel: AppViewModel) {
                 colors = ButtonDefaults.outlinedButtonColors(contentColor = Palette.accent),
             ) {
                 Icon(Icons.Filled.GraphicEq, contentDescription = null, modifier = Modifier.padding(end = 6.dp))
-                Text("Test buzz", style = NoopType.body)
+                Text("Test buzz", style = NoopType.body, maxLines = 1, softWrap = false)
             }
         }
 
@@ -565,11 +570,14 @@ private fun AudioCueToggle(checked: Boolean, onChange: (Boolean) -> Unit) {
             tint = if (checked) Palette.restBright else Palette.textTertiary,
             modifier = Modifier.size(16.dp).padding(end = 10.dp),
         )
-        Column(modifier = Modifier.weight(1f)) {
+        // The sentence is longer than the width the switch leaves it, so it wraps rather than being cut
+        // mid-word, and the row keeps a gap so the last glyph never touches the switch.
+        Column(modifier = Modifier.weight(1f).padding(end = Metrics.space10)) {
             Text("Audio cues", style = NoopType.footnote, color = Palette.textSecondary)
             Text(
                 "Soft tone on each phase · honours silent mode",
-                style = NoopType.caption, color = Palette.textTertiary, maxLines = 1,
+                style = NoopType.caption, color = Palette.textTertiary,
+                maxLines = 2, overflow = TextOverflow.Ellipsis,
             )
         }
         Switch(
@@ -602,10 +610,15 @@ private fun ReadoutTile(
         Column {
             Overline(label)
             Spacer(Modifier.weight(1f))
+            // The unit never breaks: "br/min" carries a slash, which Android treats as a break
+            // opportunity, so a tight tile split it across two lines.
             Row(verticalAlignment = Alignment.Bottom) {
                 Text(value, style = NoopType.number(26f), color = accent, maxLines = 1)
                 Spacer(Modifier.width(Metrics.space4))
-                Text(unit, style = NoopType.caption, color = Palette.textTertiary)
+                Text(
+                    unit, style = NoopType.caption, color = Palette.textTertiary,
+                    maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis,
+                )
             }
             Text(
                 caption, style = NoopType.footnote, color = Palette.textTertiary,
@@ -634,6 +647,9 @@ private fun CoherenceCard(rmssd: Double?) {
                 progress = { frac },
                 color = Palette.restBright,
                 trackColor = Palette.surfaceInset,
+                strokeCap = StrokeCap.Round,
+                gapSize = 0.dp,
+                drawStopIndicator = {},
                 modifier = Modifier.fillMaxWidth(),
             )
             Text(
@@ -1211,11 +1227,15 @@ private fun calmDidNotFall(
 
 @Composable
 private fun ProgressBar(frac: Float) {
-    // The sweep progress on the theme's inset track, so it reads in both schemes.
+    // The sweep progress on the theme's inset track, so it reads in both schemes. No end marker: with
+    // nothing filled it reads as a stray pixel rather than the end of the bar.
     LinearProgressIndicator(
         progress = { frac },
         color = Palette.restBright,
         trackColor = Palette.surfaceInset,
+        strokeCap = StrokeCap.Round,
+        gapSize = 0.dp,
+        drawStopIndicator = {},
         modifier = Modifier.fillMaxWidth(),
     )
 }

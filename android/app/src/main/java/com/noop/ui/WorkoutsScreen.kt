@@ -7,6 +7,7 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -641,9 +642,15 @@ private fun EffortHero(
                     style = NoopType.headline,
                     color = Palette.textPrimary,
                 )
-                Row(horizontalArrangement = Arrangement.spacedBy(Metrics.gap), modifier = Modifier.fillMaxWidth()) {
-                    HeroStat("Sessions", "${rows.size}", Palette.effortColor, Modifier.weight(1f))
-                    HeroStat("Active", oneDecimal(totalTimeH) + "h", Palette.textPrimary, Modifier.weight(1f))
+                // Each stat keeps its own width and drops to the next line when both do not fit: split
+                // evenly beside the gauge, "SESSIONS" was wider than its half and broke after "SESSION".
+                FlowRow(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(Metrics.space18),
+                    verticalArrangement = Arrangement.spacedBy(Metrics.space6),
+                ) {
+                    HeroStat("Sessions", "${rows.size}", Palette.effortColor)
+                    HeroStat("Active", oneDecimal(totalTimeH) + "h", Palette.textPrimary)
                 }
                 Text(
                     if (modal != null) "Mostly ${WorkoutEditing.displaySport(modal.sport)} (${effectiveRange.caption})."

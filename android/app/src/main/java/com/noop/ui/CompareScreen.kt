@@ -266,9 +266,13 @@ private object ComparePrefs {
 
 // MARK: - Per-series model
 
-/** Distinct, high-legibility categorical series colors (avoid the recovery/strain ramps). */
-private val seriesPalette: List<Color> =
-    listOf(Palette.accent, Palette.metricCyan, Palette.metricPurple, Palette.metricAmber)
+/**
+ * Distinct, high-legibility categorical series colours (avoid the recovery/strain ramps). Four metric
+ * tokens, not the chrome accent, which the dark scheme spells the same as [Palette.metricPurple] and so
+ * gave the first and third series one dot. A getter, so a theme flip re-resolves it.
+ */
+private val seriesPalette: List<Color>
+    get() = listOf(Palette.metricCyan, Palette.metricPurple, Palette.metricAmber, Palette.metricRose)
 
 /**
  * One selected metric, resolved over the active window: its descriptor, the windowed
@@ -497,6 +501,17 @@ fun CompareScreen(vm: AppViewModel) {
                 }
             } else {
                 item { OverlaySection(nonEmpty, range, anyWidened) }
+                // A picked metric with no reading in the window draws nothing, so it is named rather than
+                // left as a chip with no line.
+                val silent = activeSeries.filter { it.rows.isEmpty() }
+                if (silent.isNotEmpty()) {
+                    item {
+                        EmptyNote(
+                            "No readings for ${silent.joinToString(" and ") { it.metric.title }} in this " +
+                                "window, so ${if (silent.size == 1) "it is" else "they are"} not drawn.",
+                        )
+                    }
+                }
                 item { CorrelationSection(activeSeries, range) }
             }
         }

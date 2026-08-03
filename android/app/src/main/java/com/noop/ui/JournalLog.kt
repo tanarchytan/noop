@@ -185,29 +185,33 @@ fun JournalLogCard(
     var renaming by remember { mutableStateOf<JournalCatalogItem?>(null) }
 
     Column(verticalArrangement = Arrangement.spacedBy(Metrics.gap)) {
-        // Header: title/overline on the left, the Tomorrow/Today/Yesterday toggle (or Edit/Done) on the right.
-        Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Column(modifier = Modifier.weight(1f)) {
-                Overline("Log")
-                Text(
-                    "Journal",
-                    style = NoopType.title2,
-                    color = Palette.textPrimary,
-                    maxLines = 1,
-                    softWrap = false,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
+        // Header: title/overline over the Tomorrow/Today/Yesterday toggle (or Edit/Done). Four chips need
+        // the full row: sharing one with the heading they took the width first and squeezed "Journal" down
+        // to an ellipsis on its own line.
+        Column(modifier = Modifier.fillMaxWidth()) {
+            Overline("Log")
+            Text(
+                "Journal",
+                style = NoopType.title2,
+                color = Palette.textPrimary,
+                maxLines = 1,
+                softWrap = false,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(Metrics.space6),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
             if (editing) {
                 JournalChip("Done", selected = true) { editing = false }
             } else {
                 JournalChip("Edit", selected = false) { editing = true }
-                Spacer(Modifier.width(6.dp))
+                Spacer(Modifier.weight(1f))
                 // Chronological left→right: Yesterday · Today · Tomorrow.
                 JournalChip("Yesterday", selected = dayOffset == 1L) { onDayOffset(1L) }
-                Spacer(Modifier.width(6.dp))
                 JournalChip("Today", selected = dayOffset == 0L) { onDayOffset(0L) }
-                Spacer(Modifier.width(6.dp))
                 JournalChip("Tomorrow", selected = dayOffset == -1L) { onDayOffset(-1L) }
             }
         }

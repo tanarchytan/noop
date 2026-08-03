@@ -76,7 +76,6 @@ object Palette {
     val accentHover get() = active.accentHover
     val accentMuted get() = active.accentMuted
     val focusRing get() = active.focusRing
-    val actionBlue get() = active.actionBlue
     /** The label/icon that sits ON a saturated fill (action blue, critical red). */
     val onFill get() = active.onFill
     const val disabledOpacity = 0.45f

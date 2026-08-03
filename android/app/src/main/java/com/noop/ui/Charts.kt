@@ -707,6 +707,15 @@ fun TimelineChart(
     val vis = remember(points, windowStart, windowEnd) {
         points.filter { it.ts in windowStart..windowEnd && it.value.isFinite() }
     }
+    // The window's own round-hour ticks. Without them the plot said nothing about WHEN, so a day whose
+    // readings stop early read as a broken chart rather than a morning of data.
+    val ticks = remember(windowStart, windowEnd) {
+        chartTimeTicks(windowStart, windowEnd, ZoneId.systemDefault())
+    }
+    val measurer = rememberTextMeasurer()
+    val axisStyle = NoopType.footnote
+    val axisColor = Palette.textTertiary
+    val gridColor = Palette.hairline.copy(alpha = StrandAlpha.subtleLine)
 
     val axSummary = seriesSummary(vis.map { it.value }, "Timeline")
     Box(
@@ -735,6 +744,29 @@ fun TimelineChart(
             val strokePx = 2.5f
             val topPad = strokePx + 4f
             val bottomPad = strokePx + 4f
+            val gap = Metrics.space4.toPx()
+            val labelH = measurer.measure("0", axisStyle).size.height.toFloat()
+            val plotBottom = (size.height - labelH - gap).coerceAtLeast(1f)
+
+            fun px(ts: Long): Float = ((ts - windowStart).toFloat() / span) * size.width
+
+            ticks.forEach { (ts, text) ->
+                val x = px(ts)
+                drawLine(
+                    color = gridColor,
+                    start = Offset(x, 0f),
+                    end = Offset(x, plotBottom),
+                    strokeWidth = 1f,
+                )
+                val layout = measurer.measure(text, axisStyle)
+                val maxX = (size.width - layout.size.width).coerceAtLeast(0f)
+                drawText(
+                    textLayoutResult = layout,
+                    color = axisColor,
+                    topLeft = Offset((x - layout.size.width / 2f).coerceIn(0f, maxX), plotBottom + gap),
+                )
+            }
+
             if (vis.size < 2 || size.width <= 0f || size.height <= 0f) {
                 drawBaseline()
                 return@Canvas
@@ -742,9 +774,8 @@ fun TimelineChart(
             val minV = vis.minOf { it.value }
             val maxV = vis.maxOf { it.value }
             val range = (maxV - minV).takeIf { it > 0.0 } ?: 1.0
-            val usable = (size.height - topPad - bottomPad).coerceAtLeast(1f)
+            val usable = (plotBottom - topPad - bottomPad).coerceAtLeast(1f)
 
-            fun px(ts: Long): Float = ((ts - windowStart).toFloat() / span) * size.width
             fun py(v: Double): Float = topPad + ((maxV - v) / range).toFloat() * usable
 
             val linePath = Path().apply {
@@ -752,10 +783,10 @@ fun TimelineChart(
                 for (i in 1 until vis.size) lineTo(px(vis[i].ts), py(vis[i].value))
             }
             val fillPath = Path().apply {
-                moveTo(px(vis.first().ts), size.height)
+                moveTo(px(vis.first().ts), plotBottom)
                 lineTo(px(vis.first().ts), py(vis.first().value))
                 for (i in 1 until vis.size) lineTo(px(vis[i].ts), py(vis[i].value))
-                lineTo(px(vis.last().ts), size.height)
+                lineTo(px(vis.last().ts), plotBottom)
                 close()
             }
             drawPath(
@@ -767,7 +798,7 @@ fun TimelineChart(
                         Color.Transparent,
                     ),
                     startY = 0f,
-                    endY = size.height,
+                    endY = plotBottom,
                 ),
             )
             drawPath(
@@ -878,13 +909,28 @@ private const val WEEK_BAR_SLOT_FRACTION = 0.34f
 private const val WEEK_MARKER_RADIUS = 6f
 private const val WEEK_MARKER_STROKE = 2.5f
 
-/** One overlaid series of a week line chart: its legend name, its points, and which side its labels sit. */
+/** One overlaid series of a week line chart: its legend name, its points and its colour. Which side a
+ *  point's label sits is decided per slot by [labelTopFor], never per series. */
 data class WeekLineSeries(
     val name: String,
     val values: List<Double?>,
     val color: Color,
-    val labelAbove: Boolean = true,
 )
+
+/** The y a point's label is drawn at, above the marker or under it. */
+internal fun labelTop(p: Offset, below: Boolean, gap: Float, labelH: Float): Float =
+    if (below) p.y + WEEK_MARKER_RADIUS + gap else p.y - WEEK_MARKER_RADIUS - gap - labelH
+
+/**
+ * Which side each of two points printed at the same slot labels on, as (a below, b below): the lower
+ * point takes the underside so the two never print over each other, ties send [b] down, and a slot
+ * only one series reaches labels above.
+ */
+internal fun labelSides(a: Offset?, b: Offset?): Pair<Boolean, Boolean> = when {
+    a == null || b == null -> false to false
+    a.y > b.y -> true to false
+    else -> false to true
+}
 
 /** One band of a stacked week bar: the legend word and the colour the band is drawn in. */
 data class WeekStackSegment(
@@ -1209,7 +1255,8 @@ fun WeekBarChart(
 
 /**
  * Two overlaid week series on one shared scale, every point marked and labelled, named in a legend row.
- * Each series says whether its labels sit above or below its points, so the two runs never collide.
+ * At a slot both series reach, the higher point labels above and the lower below, so the two never
+ * print over each other.
  */
 @Composable
 fun WeekDualLineChart(
@@ -1254,26 +1301,28 @@ fun WeekDualLineChart(
             val span = (hi - lo).takeIf { it > 0.0 } ?: 1.0
             val slotW = size.width / slots
 
-            series.forEach { s ->
-                val offsets = s.values.mapIndexed { i, v ->
-                    v?.let {
-                        Offset(
-                            slotW * i + slotW / 2f,
-                            band + (1f - ((it - lo) / span).toFloat()) * usableH,
-                        )
-                    }
+            fun offsetsFor(values: List<Double?>): List<Offset?> = values.mapIndexed { i, v ->
+                v?.let {
+                    Offset(
+                        slotW * i + slotW / 2f,
+                        band + (1f - ((it - lo) / span).toFloat()) * usableH,
+                    )
                 }
+            }
+            val plotted = series.map { offsetsFor(it.values) }
+            series.forEachIndexed { si, s ->
+                val offsets = plotted[si]
+                val other = plotted[1 - si]
                 drawRuns(offsets, s.color.copy(alpha = StrandAlpha.unselectedBar))
                 offsets.forEachIndexed { i, p ->
                     val v = s.values[i]
                     if (p == null || v == null) return@forEachIndexed
+                    val (first, second) = labelSides(plotted[0][i], plotted[1][i])
                     drawRingMarker(s.color, p)
-                    val top = if (s.labelAbove) {
-                        p.y - WEEK_MARKER_RADIUS - gap - labelH
-                    } else {
-                        p.y + WEEK_MARKER_RADIUS + gap
-                    }
-                    drawSlotLabel(measurer, format(v), labelStyle, s.color, p.x, top)
+                    drawSlotLabel(
+                        measurer, format(v), labelStyle, s.color, p.x,
+                        labelTop(p, if (si == 0) first else second, gap, labelH),
+                    )
                 }
             }
         }
@@ -1453,8 +1502,10 @@ fun DualAxisTrendChart(
                 )
             }
 
-            // Right axis: a neutral connector so the per-point band colours carry the reading.
+            // Right axis: a neutral connector so the per-point band colours carry the reading. Each label
+            // takes the free side of its own slot, so the two axes' figures never print over each other.
             val rightOffsets = offsetsFor(right, rightMax)
+            val leftOffsets = offsetsFor(left, leftMax)
             drawRuns(rightOffsets, Palette.textSecondary)
             rightOffsets.forEachIndexed { i, p ->
                 val v = right[i]
@@ -1462,28 +1513,19 @@ fun DualAxisTrendChart(
                 val tint = rightColorFor(v)
                 drawRingMarker(tint, p)
                 drawSlotLabel(
-                    measurer,
-                    rightFormat(v),
-                    labelStyle,
-                    tint,
-                    p.x,
-                    p.y - WEEK_MARKER_RADIUS - gap - labelH,
+                    measurer, rightFormat(v), labelStyle, tint, p.x,
+                    labelTop(p, labelSides(p, leftOffsets[i]).first, gap, labelH),
                 )
             }
 
-            val leftOffsets = offsetsFor(left, leftMax)
             drawRuns(leftOffsets, leftColor)
             leftOffsets.forEachIndexed { i, p ->
                 val v = left[i]
                 if (p == null || v == null) return@forEachIndexed
                 drawRingMarker(leftColor, p)
                 drawSlotLabel(
-                    measurer,
-                    leftFormat(v),
-                    labelStyle,
-                    leftColor,
-                    p.x,
-                    p.y + WEEK_MARKER_RADIUS + gap,
+                    measurer, leftFormat(v), labelStyle, leftColor, p.x,
+                    labelTop(p, labelSides(rightOffsets[i], p).second, gap, labelH),
                 )
             }
         }

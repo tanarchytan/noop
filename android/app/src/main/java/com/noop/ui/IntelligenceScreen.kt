@@ -115,14 +115,14 @@ fun IntelligenceScreen(vm: AppViewModel) {
             }
         } else {
             item {
-                // Header row: section label left, range control right. Lets you narrow the
-                // per-day list to a recent window (lexicographic YYYY-MM-DD compare == chronological).
-                Row(
+                // Section label over the range control. Lets you narrow the per-day list to a recent
+                // window (lexicographic YYYY-MM-DD compare == chronological). Six segments need the full
+                // row, so the heading takes its own line rather than wrapping beside them.
+                Column(
                     modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(Metrics.gap),
+                    verticalArrangement = Arrangement.spacedBy(Metrics.space12),
                 ) {
-                    Column(modifier = Modifier.weight(1f)) {
+                    Column(modifier = Modifier.fillMaxWidth()) {
                         Overline("Recent")
                         Text("By Day", style = NoopType.title2, color = Palette.textPrimary)
                     }

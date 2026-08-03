@@ -696,7 +696,9 @@ private fun CoachKeyField(
 @Composable
 private fun CoachPrimaryButton(label: String, enabled: Boolean, onClick: () -> Unit) {
     val shape = RoundedCornerShape(14.dp)
-    val bg = if (enabled) Palette.accent else Palette.accent.copy(alpha = Palette.disabledOpacity)
+    // Disabled swaps both tokens: the accent at a low alpha kept a strong fill under a label that lost
+    // far more contrast than it did, so the button read as pressable with an unreadable word on it.
+    val bg = if (enabled) Palette.accent else Palette.surfaceInset
     val interaction = remember { MutableInteractionSource() }
     Box(
         modifier = Modifier
@@ -714,7 +716,11 @@ private fun CoachPrimaryButton(label: String, enabled: Boolean, onClick: () -> U
             .semantics { contentDescription = label },
         contentAlignment = Alignment.Center,
     ) {
-        Text(label, style = NoopType.headline, color = Palette.surfaceBase)
+        Text(
+            label,
+            style = NoopType.headline,
+            color = if (enabled) Palette.onFill else Palette.textTertiary,
+        )
     }
 }
 

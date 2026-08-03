@@ -622,13 +622,18 @@ internal fun clockLabel(latest: DailyMetric, session: SleepSession?): String {
 private fun sessionClockLabel(session: SleepSession): String =
     clockLabelFor(session.effectiveStartTs, session.effectiveEndTs) // EFFECTIVE bounds so an edit shows
 
-/** Same date · onset–wake line from explicit unix-second bounds (the group-aligned bedtime). */
+/**
+ * Same date · onset–wake line from explicit unix-second bounds (the group-aligned bedtime). The DATE is
+ * the morning the night ended, the day every other reader keys a night under: the day picker, the day
+ * cursor and the weekly cards. Naming it by the evening it began made the header disagree with the
+ * charts beside it on the same screen.
+ */
 private fun clockLabelFor(onsetTs: Long, wakeTs: Long): String {
     val timeFmt = SimpleDateFormat("HH:mm", Locale.US)
     val dateFmt = SimpleDateFormat("EEE d MMM", Locale.US)
     val onset = Date(onsetTs * 1000L)
     val wake = Date(wakeTs * 1000L)
-    return "${dateFmt.format(onset)} · ${timeFmt.format(onset)} - ${timeFmt.format(wake)}"
+    return "${dateFmt.format(wake)} · ${timeFmt.format(onset)} - ${timeFmt.format(wake)}"
 }
 
 /** Unix seconds → "YYYY-MM-DD" in the DEVICE timezone (vs AnalyticsEngine.dayString = UTC). */

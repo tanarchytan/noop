@@ -42,6 +42,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.contentDescription
@@ -135,7 +136,9 @@ fun HydrationScreen(viewModel: AppViewModel) {
     }
 
     val fraction = if (goalMl > 0) (totalMl / goalMl).toFloat() else 0f
-    val accent = Palette.actionBlue
+    // Water reads as the cyan data token, which the light scheme turns to teal; the old fill was the
+    // one royal blue on the page and sat outside both schemes.
+    val accent = Palette.metricCyan
 
     // the custom-amount entry. Logs any whole-ml amount the Sip/Cup/Bottle quick buttons don't
     // cover (a bespoke container), clamped to a sane 1..MAX_CUSTOM_ML, then routed through the SAME
@@ -189,6 +192,9 @@ fun HydrationScreen(viewModel: AppViewModel) {
                         progress = { fraction.coerceIn(0f, 1f) },
                         color = accent,
                         trackColor = Palette.surfaceInset,
+                        strokeCap = StrokeCap.Round,
+                        gapSize = 0.dp,
+                        drawStopIndicator = {},
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(Metrics.progressHeight)

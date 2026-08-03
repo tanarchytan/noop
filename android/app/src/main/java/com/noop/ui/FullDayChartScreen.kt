@@ -3,6 +3,7 @@ package com.noop.ui
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -22,6 +23,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -36,6 +38,9 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import java.util.Calendar
 import java.util.Locale
+
+/** The metric strip's corner radius as a percentage, so its viewport matches the pill inside it. */
+private const val TIMELINE_PILL_CORNER_PERCENT = 50
 
 // MARK: - Deep Timeline (Android twin of FullDayChartView) —
 //
@@ -172,8 +177,13 @@ fun FullDayChartScreen(vm: AppViewModel, onBack: () -> Unit) {
         title = stringResource(R.string.deep_timeline_title),
         subtitle = stringResource(R.string.timeline_subtitle),
     ) {
-        // METRIC PILLS — horizontally scrollable so all six fit on a phone.
-        Row(modifier = Modifier.horizontalScroll(rememberScrollState())) {
+        // METRIC PILLS — horizontally scrollable so all six fit on a phone. The viewport carries the
+        // pill shape: clipped square it cut the track's own rounded end off mid-segment.
+        Row(
+            modifier = Modifier
+                .clip(RoundedCornerShape(TIMELINE_PILL_CORNER_PERCENT))
+                .horizontalScroll(rememberScrollState()),
+        ) {
             SegmentedPillControl(
                 items = TimelineMetric.entries.toList(),
                 selection = metric,

@@ -40,11 +40,12 @@ import androidx.compose.foundation.clickable
 // sentence-case (never ALL CAPS), single line, with the optional leading icon as one unit, and
 // degrade gracefully under Reduce Motion (the press scale drops; only the dim remains).
 //
-// The fill is [Palette.actionBlue], the link/action blue, NOT the scheme-tinted `Palette.accent`.
+// The fill is [Palette.accent], the scheme's own tone, so a primary action reads as part of the theme
+// rather than as a third brand colour beside it.
 
 /** The four button roles. Colour + emphasis differ; geometry is identical across all four. */
 enum class NoopButtonKind {
-    /** Filled accent (blue), white label — the one primary action on a screen. */
+    /** Filled scheme accent, white label — the one primary action on a screen. */
     Primary,
     /** Raised-surface fill, primary-text label, hairline edge — secondary actions. */
     Secondary,
@@ -71,7 +72,7 @@ private object NoopButtonMetrics {
     const val pressedScale = 0.97f
     /** Pressed dim — a slight opacity drop, applied in BOTH motion modes. */
     const val pressedOpacity = 0.82f
-    /** Disabled dim. */
+    /** Disabled dim — applied to a tertiary/unfilled button, which has no fill to swap. */
     const val disabledOpacity = 0.4f
 }
 
@@ -83,19 +84,29 @@ private data class NoopButtonAppearance(
 )
 
 @Composable
-private fun appearanceFor(kind: NoopButtonKind): NoopButtonAppearance = when (kind) {
-    NoopButtonKind.Primary -> NoopButtonAppearance(
-        fill = Palette.actionBlue, label = Palette.onFill, border = null,
-    )
-    NoopButtonKind.Secondary -> NoopButtonAppearance(
-        fill = Palette.surfaceRaised, label = Palette.textPrimary, border = Palette.hairline,
-    )
-    NoopButtonKind.Tertiary -> NoopButtonAppearance(
-        fill = null, label = Palette.actionBlue, border = null,
-    )
-    NoopButtonKind.Destructive -> NoopButtonAppearance(
-        fill = Palette.statusCritical, label = Palette.onFill, border = null,
-    )
+private fun appearanceFor(kind: NoopButtonKind, enabled: Boolean): NoopButtonAppearance {
+    // Disabled swaps the tokens rather than dimming the whole button: one alpha over a saturated fill
+    // and its white label costs the label far more contrast than the fill, which is what left "Sync now"
+    // and "Back up now" looking pressable with an unreadable word on them.
+    if (!enabled && kind != NoopButtonKind.Tertiary) {
+        return NoopButtonAppearance(
+            fill = Palette.surfaceInset, label = Palette.textTertiary, border = Palette.hairline,
+        )
+    }
+    return when (kind) {
+        NoopButtonKind.Primary -> NoopButtonAppearance(
+            fill = Palette.accent, label = Palette.onFill, border = null,
+        )
+        NoopButtonKind.Secondary -> NoopButtonAppearance(
+            fill = Palette.surfaceRaised, label = Palette.textPrimary, border = Palette.hairline,
+        )
+        NoopButtonKind.Tertiary -> NoopButtonAppearance(
+            fill = null, label = Palette.accent, border = null,
+        )
+        NoopButtonKind.Destructive -> NoopButtonAppearance(
+            fill = Palette.statusCritical, label = Palette.onFill, border = null,
+        )
+    }
 }
 
 // MARK: - NoopButton (the convenience view)
@@ -129,7 +140,7 @@ fun NoopButton(
     onClick: () -> Unit,
 ) {
     val reduced = rememberReduceMotion()
-    val appearance = appearanceFor(kind)
+    val appearance = appearanceFor(kind, enabled)
 
     val interaction = remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
@@ -142,7 +153,7 @@ fun NoopButton(
         label = "NoopButton.scale",
     )
     val opacity = when {
-        !enabled -> NoopButtonMetrics.disabledOpacity
+        !enabled && kind == NoopButtonKind.Tertiary -> NoopButtonMetrics.disabledOpacity
         pressed -> NoopButtonMetrics.pressedOpacity
         else -> 1f
     }
