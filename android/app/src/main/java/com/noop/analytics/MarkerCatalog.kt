@@ -4,9 +4,8 @@ package com.noop.analytics
  * Small dictionary of common, non-diagnostic marker definitions for the Health Records
  * "Lab Book" pillar.
  *
- * Ships no reference-range tables — `referenceTextHint` is a neutral placeholder prompting
- * the user to copy the range from their own report; NOOP never defines, computes, or asserts
- * a normal range. `higherIsBetter` is always null: NOOP makes no value judgement about a
+ * Ships no reference-range tables: NOOP never defines, computes, or asserts a normal range.
+ * `higherIsBetter` is always null: NOOP makes no value judgement about a
  * marker's direction. The catalog is not a gate — a user can always add a custom marker.
  *
  * Pure data — no DB, no Android deps.
@@ -39,9 +38,6 @@ data class MarkerDefinition(
     val canonicalUnit: String,
     /** How many decimals to show for this marker's values. */
     val decimals: Int,
-    /** Neutral placeholder prompting the user to copy the range from their own report.
-     *  NOT a shipped reference range. null where a range makes no sense. */
-    val referenceTextHint: String? = null,
     /** Direction hint — ALWAYS null (NOOP makes no value judgement). */
     val higherIsBetter: Boolean? = null,
 )
@@ -50,47 +46,44 @@ data class MarkerDefinition(
  *  separately, not here. */
 object MarkerCatalog {
 
-    /** Neutral hint shown in the range field — the user copies their own report's range; NOOP ships none. */
-    private const val FROM_REPORT = "From your own report (optional)"
-
     /** ~30 common markers across the categories. Order is the suggested picker order. */
     val builtIn: List<MarkerDefinition> = listOf(
         // Lipids (blood panel)
-        MarkerDefinition("total_cholesterol", "Total cholesterol", LabMarkerCategory.BLOOD_PANEL, "mmol/L", 2, FROM_REPORT),
-        MarkerDefinition("ldl", "LDL cholesterol", LabMarkerCategory.BLOOD_PANEL, "mmol/L", 2, FROM_REPORT),
-        MarkerDefinition("hdl", "HDL cholesterol", LabMarkerCategory.BLOOD_PANEL, "mmol/L", 2, FROM_REPORT),
-        MarkerDefinition("triglycerides", "Triglycerides", LabMarkerCategory.BLOOD_PANEL, "mmol/L", 2, FROM_REPORT),
+        MarkerDefinition("total_cholesterol", "Total cholesterol", LabMarkerCategory.BLOOD_PANEL, "mmol/L", 2),
+        MarkerDefinition("ldl", "LDL cholesterol", LabMarkerCategory.BLOOD_PANEL, "mmol/L", 2),
+        MarkerDefinition("hdl", "HDL cholesterol", LabMarkerCategory.BLOOD_PANEL, "mmol/L", 2),
+        MarkerDefinition("triglycerides", "Triglycerides", LabMarkerCategory.BLOOD_PANEL, "mmol/L", 2),
         // Glucose
-        MarkerDefinition("fasting_glucose", "Fasting glucose", LabMarkerCategory.BLOOD_PANEL, "mmol/L", 1, FROM_REPORT),
-        MarkerDefinition("hba1c", "HbA1c", LabMarkerCategory.BLOOD_PANEL, "mmol/mol", 0, FROM_REPORT),
+        MarkerDefinition("fasting_glucose", "Fasting glucose", LabMarkerCategory.BLOOD_PANEL, "mmol/L", 1),
+        MarkerDefinition("hba1c", "HbA1c", LabMarkerCategory.BLOOD_PANEL, "mmol/mol", 0),
         // Iron studies
-        MarkerDefinition("ferritin", "Ferritin", LabMarkerCategory.BLOOD_PANEL, "µg/L", 0, FROM_REPORT),
-        MarkerDefinition("iron", "Serum iron", LabMarkerCategory.BLOOD_PANEL, "µmol/L", 1, FROM_REPORT),
-        MarkerDefinition("transferrin_saturation", "Transferrin saturation", LabMarkerCategory.BLOOD_PANEL, "%", 0, FROM_REPORT),
-        MarkerDefinition("haemoglobin", "Haemoglobin", LabMarkerCategory.BLOOD_PANEL, "g/L", 0, FROM_REPORT),
+        MarkerDefinition("ferritin", "Ferritin", LabMarkerCategory.BLOOD_PANEL, "µg/L", 0),
+        MarkerDefinition("iron", "Serum iron", LabMarkerCategory.BLOOD_PANEL, "µmol/L", 1),
+        MarkerDefinition("transferrin_saturation", "Transferrin saturation", LabMarkerCategory.BLOOD_PANEL, "%", 0),
+        MarkerDefinition("haemoglobin", "Haemoglobin", LabMarkerCategory.BLOOD_PANEL, "g/L", 0),
         // Vitamins
-        MarkerDefinition("vitamin_d", "Vitamin D", LabMarkerCategory.BLOOD_PANEL, "nmol/L", 0, FROM_REPORT),
-        MarkerDefinition("vitamin_b12", "Vitamin B12", LabMarkerCategory.BLOOD_PANEL, "ng/L", 0, FROM_REPORT),
-        MarkerDefinition("folate", "Folate", LabMarkerCategory.BLOOD_PANEL, "µg/L", 1, FROM_REPORT),
+        MarkerDefinition("vitamin_d", "Vitamin D", LabMarkerCategory.BLOOD_PANEL, "nmol/L", 0),
+        MarkerDefinition("vitamin_b12", "Vitamin B12", LabMarkerCategory.BLOOD_PANEL, "ng/L", 0),
+        MarkerDefinition("folate", "Folate", LabMarkerCategory.BLOOD_PANEL, "µg/L", 1),
         // Thyroid
-        MarkerDefinition("tsh", "TSH", LabMarkerCategory.BLOOD_PANEL, "mIU/L", 2, FROM_REPORT),
-        MarkerDefinition("free_t4", "Free T4", LabMarkerCategory.BLOOD_PANEL, "pmol/L", 1, FROM_REPORT),
+        MarkerDefinition("tsh", "TSH", LabMarkerCategory.BLOOD_PANEL, "mIU/L", 2),
+        MarkerDefinition("free_t4", "Free T4", LabMarkerCategory.BLOOD_PANEL, "pmol/L", 1),
         // Inflammation
-        MarkerDefinition("crp", "C-reactive protein (CRP)", LabMarkerCategory.BLOOD_PANEL, "mg/L", 1, FROM_REPORT),
+        MarkerDefinition("crp", "C-reactive protein (CRP)", LabMarkerCategory.BLOOD_PANEL, "mg/L", 1),
         // Kidney
-        MarkerDefinition("egfr", "eGFR", LabMarkerCategory.BLOOD_PANEL, "mL/min/1.73m²", 0, FROM_REPORT),
-        MarkerDefinition("creatinine", "Creatinine", LabMarkerCategory.BLOOD_PANEL, "µmol/L", 0, FROM_REPORT),
+        MarkerDefinition("egfr", "eGFR", LabMarkerCategory.BLOOD_PANEL, "mL/min/1.73m²", 0),
+        MarkerDefinition("creatinine", "Creatinine", LabMarkerCategory.BLOOD_PANEL, "µmol/L", 0),
         // Liver
-        MarkerDefinition("alt", "ALT", LabMarkerCategory.BLOOD_PANEL, "U/L", 0, FROM_REPORT),
-        MarkerDefinition("ast", "AST", LabMarkerCategory.BLOOD_PANEL, "U/L", 0, FROM_REPORT),
-        MarkerDefinition("ggt", "GGT", LabMarkerCategory.BLOOD_PANEL, "U/L", 0, FROM_REPORT),
+        MarkerDefinition("alt", "ALT", LabMarkerCategory.BLOOD_PANEL, "U/L", 0),
+        MarkerDefinition("ast", "AST", LabMarkerCategory.BLOOD_PANEL, "U/L", 0),
+        MarkerDefinition("ggt", "GGT", LabMarkerCategory.BLOOD_PANEL, "U/L", 0),
         // Electrolytes
-        MarkerDefinition("sodium", "Sodium", LabMarkerCategory.BLOOD_PANEL, "mmol/L", 0, FROM_REPORT),
-        MarkerDefinition("potassium", "Potassium", LabMarkerCategory.BLOOD_PANEL, "mmol/L", 1, FROM_REPORT),
+        MarkerDefinition("sodium", "Sodium", LabMarkerCategory.BLOOD_PANEL, "mmol/L", 0),
+        MarkerDefinition("potassium", "Potassium", LabMarkerCategory.BLOOD_PANEL, "mmol/L", 1),
         // Blood pressure (the paired marker — see LabBookProjection.BP_SYSTOLIC_KEY / BP_DIASTOLIC_KEY)
-        MarkerDefinition("bp_systolic", "Blood pressure (systolic)", LabMarkerCategory.BLOOD_PRESSURE, "mmHg", 0, FROM_REPORT),
-        MarkerDefinition("bp_diastolic", "Blood pressure (diastolic)", LabMarkerCategory.BLOOD_PRESSURE, "mmHg", 0, FROM_REPORT),
-        MarkerDefinition("resting_pulse", "Resting pulse", LabMarkerCategory.BLOOD_PRESSURE, "bpm", 0, FROM_REPORT),
+        MarkerDefinition("bp_systolic", "Blood pressure (systolic)", LabMarkerCategory.BLOOD_PRESSURE, "mmHg", 0),
+        MarkerDefinition("bp_diastolic", "Blood pressure (diastolic)", LabMarkerCategory.BLOOD_PRESSURE, "mmHg", 0),
+        MarkerDefinition("resting_pulse", "Resting pulse", LabMarkerCategory.BLOOD_PRESSURE, "bpm", 0),
         // Body measurements
         MarkerDefinition("weight", "Weight", LabMarkerCategory.BODY_MEASUREMENT, "kg", 1),
         MarkerDefinition("body_fat", "Body fat", LabMarkerCategory.BODY_MEASUREMENT, "%", 1),

@@ -238,8 +238,9 @@ class SourceCoordinator(
         return id
     }
 
-    /** The registry `model` label for a freshly-adopted strap. Slashed for the 5 series because
-     *  nothing on the wire tells a 5.0 from an MG, matching what the Add wizard writes. */
+    /** The registry `model` label for a freshly-adopted strap. Slashed for the 5 series because this
+     *  path never reads the GATT hardware-revision string whoop-rs classifies the variant from,
+     *  matching what the Add wizard writes. */
     private fun whoopModelLabel(): String =
         if (whoopFamily() == WhoopModel.WHOOP4) "4.0" else "5.0 / MG"
 

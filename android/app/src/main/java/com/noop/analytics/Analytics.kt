@@ -44,17 +44,20 @@ object Zones {
     }
 
     /**
-     * Tanaka maximum-heart-rate estimate: round(208 - 0.7 * age).
+     * Age-predicted maximum heart rate, rounded for display. The estimate itself comes from
+     * whoop-rs via [RustScores.hrZonesForAge] with no manual override.
      */
-    fun hrMaxTanaka(age: Int): Int = (208.0 - 0.7 * age).roundToInt()
+    fun hrMaxTanaka(age: Int): Int =
+        RustScores.hrZonesForAge(age.toDouble()).maxHr.roundToInt()
 }
 
 /**
  * Illness / strain early-warning.
  *
- * Compares the last ~2 days against a ~28-day baseline ending 3 days ago across resting
- * HR, HRV, skin-temperature deviation and respiration. Two or more anomalies surface a
- * banner; the classic early-illness signature is RHR up + HRV down + skin-temp up.
+ * Compares the last ~2 days against the trailing baseline whoop-rs defines (a window ending
+ * a few nights back, so a developing strain stays out of it) across resting HR, HRV,
+ * skin-temperature deviation and respiration. Two or more anomalies surface a banner; the
+ * classic early-illness signature is RHR up + HRV down + skin-temp up.
  *
  * Gating on a user toggle is a UI concern this pure function omits; callers decide
  * whether to run it.
@@ -64,14 +67,14 @@ object IllnessWatch {
      * Evaluate the [days] history (oldest -> newest). Returns a human-readable banner
      * message when 2+ anomaly flags fire, otherwise null.
      *
-     * Requires at least 14 days of history.
+     * Needs at least the baseline policy's minimum nights of history.
      */
     fun evaluate(days: List<DailyMetric>): String? {
-        if (days.size < 14) return null
+        val cfg = RustScores.illnessBaselineCfg
+        if (days.size < cfg.minNights.toInt()) return null
 
         val recent = days.takeLast(2)
-        // ~28 days ending 3 days ago: take the last 31, drop the most recent 3.
-        val base = days.takeLast(31).dropLast(3)
+        val base = days.takeLast((cfg.windowNights + cfg.gapNights).toInt()).dropLast(cfg.gapNights.toInt())
 
         fun mean(vals: List<Double>): Double? =
             if (vals.isEmpty()) null else RustScores.mean(vals)

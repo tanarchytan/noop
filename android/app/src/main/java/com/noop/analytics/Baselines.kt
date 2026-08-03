@@ -2,7 +2,6 @@ package com.noop.analytics
 
 import com.noop.protocol.DeviceFamily
 import kotlin.math.abs
-import kotlin.math.max
 
 /*
  * Baselines.kt — personal rolling baselines per nightly metric.
@@ -201,12 +200,10 @@ object Baselines {
 
     /**
      * Compute z / delta / ratio / in-normal-range for a value vs a baseline.
-     * z uses (value − baseline) / (1.253 × spread); 1.253 converts EWMA-abs-dev
-     * to an approximate Gaussian σ (E[|X−μ|] = σ·√(2/π) ≈ σ/1.253).
+     * The robust z comes from whoop-rs via [RustScores.zScore]; Kotlin holds no copy of its scale.
      */
     fun deviation(value: Double, state: BaselineState): Deviation {
-        val sigma = max(1.253 * state.spread, 1e-9)
-        val z = (value - state.baseline) / sigma
+        val z = RustScores.zScore(value, state.baseline, state.spread)
         val delta = value - state.baseline
         val ratio = if (state.baseline != 0.0) (value / state.baseline - 1.0) else 0.0
         return Deviation(z = z, delta = delta, ratio = ratio, inNormalRange = abs(z) <= 1.0)

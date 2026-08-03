@@ -299,7 +299,8 @@ object WhoopCsvImporter {
                 }
             }
         } catch (_: Exception) {
-            // ignore — fall through
+            // A provider that refuses or mis-reports OpenableColumns costs a nicer name, not the
+            // import: the last path segment below still names the file.
         }
         return uri.lastPathSegment
     }
@@ -644,9 +645,11 @@ object WhoopCsvImporter {
         respRateBpm = base.respRateBpm ?: fill.respRateBpm,
     )
 
-    // MARK: - JSON encoders (match MockSeeder shapes)
+    // MARK: - JSON encoders
 
-    /** Stage-segments array `[{stage, min}]` (minutes), null if no stage data present. */
+    /** Stage-segments array `[{stage, min}]` (minutes), null if no stage data present. The shape
+     *  carries no timestamps, so `parsePersistedSegments` cannot read it back as a timeline — only
+     *  the per-stage totals survive an import. */
     private fun stagesJson(lightMin: Double?, deepMin: Double?, remMin: Double?, awakeMin: Double?): String? {
         if (lightMin == null && deepMin == null && remMin == null && awakeMin == null) return null
         val arr = JSONArray()

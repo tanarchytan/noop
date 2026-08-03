@@ -69,7 +69,6 @@ import com.noop.ui.StressNudgeCenter
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -253,9 +252,6 @@ interface GattOps {
     fun requestMtuCompat(mtu: Int): Boolean
     fun readRemoteRssiCompat(): Boolean
     fun discoverServicesCompat(): Boolean
-    /** Request a GATT connection priority (battery). Mirrors `BluetoothGatt`'s boolean contract;
-     *  the stack no-ops a request equal to the current interval. */
-    fun requestConnectionPriorityCompat(priority: Int): Boolean
 }
 
 /**
@@ -306,7 +302,6 @@ class RealGattOps(private val gatt: BluetoothGatt) : GattOps {
     override fun requestMtuCompat(mtu: Int): Boolean = gatt.requestMtu(mtu)
     override fun readRemoteRssiCompat(): Boolean = gatt.readRemoteRssi()
     override fun discoverServicesCompat(): Boolean = gatt.discoverServices()
-    override fun requestConnectionPriorityCompat(priority: Int): Boolean = gatt.requestConnectionPriority(priority)
 }
 
 /**
@@ -432,23 +427,9 @@ class WhoopBleClient(
         fun passiveReconnectDecision(failedAttempts: Int, aclHeld: Boolean, threshold: Int = 3): Boolean =
             failedAttempts >= threshold && !aclHeld
 
-        /** GATT connection-priority decision. SAFE half (always on): escalate to HIGH during an
-         *  offload burst or live-HR session — HIGH is a shorter interval than BALANCED so it can't
-         *  cause a supervision-timeout drop. RISKY half ([idleThrottleEnabled], default OFF): drop idle
-         *  to LOW_POWER for the real all-day saving; opt-in since a too-long interval can drop the link. */
-        fun connectionPriorityFor(
-            offloadActive: Boolean,
-            liveHrActive: Boolean,
-            idleThrottleEnabled: Boolean,
-        ): Int = when {
-            offloadActive || liveHrActive -> BluetoothGatt.CONNECTION_PRIORITY_HIGH
-            idleThrottleEnabled -> BluetoothGatt.CONNECTION_PRIORITY_LOW_POWER
-            else -> BluetoothGatt.CONNECTION_PRIORITY_BALANCED
-        }
-
-        /** RISKY idle LOW_POWER throttle gate. Armed by [thresholdPct] > 0 (0 disables it — safe half
-         *  only, not even Battery Saver can force it). Once armed, engages while DISCHARGING at/below
-         *  [thresholdPct] or when OS Battery Saver ([powerSave]) is on; charging never throttles. */
+        /** Low-battery throttle gate. Armed by [thresholdPct] > 0 (0 disables it — not even Battery
+         *  Saver can force it). Once armed, engages while DISCHARGING at/below [thresholdPct] or when
+         *  OS Battery Saver ([powerSave]) is on; charging never throttles. */
         fun idleThrottleActive(batteryPct: Int, charging: Boolean, thresholdPct: Int, powerSave: Boolean): Boolean =
             thresholdPct > 0 && !charging && (batteryPct <= thresholdPct || powerSave)
 
@@ -965,26 +946,9 @@ class WhoopBleClient(
      *  (re)assigned in [connectToDevice], cleared in the teardown path alongside `gatt = null`. */
     private var gattOps: GattOps? = null
 
-    /** Gates GATT connection-priority management. DEFAULT OFF: [refreshConnectionPriority] early-returns
-     *  and issues zero new BLE ops, leaving the link at the stack default (BALANCED). Enables the SAFE
-     *  half (HIGH during offload/live-HR); the RISKY half (LOW_POWER when idle) is battery-adaptive,
-     *  engaging only when discharging at/below [idleThrottleBatteryPct] (0 = never). Set via [setConnectionPriorityManagement]. */
-    @Volatile private var connectionPriorityEnabled: Boolean = false
-    /** Battery-% at/below which the LOW_POWER idle throttle engages while discharging; 0 = never (safe
-     *  half only). The Settings picker offers 10/15/20/25/30. */
-    @Volatile private var idleThrottleBatteryPct: Int = 0
-
-    /** Opt into connection-priority management. No-op by default; see the fields above.
-     *  [idleThrottleBatteryPct] 0 disables the risky idle throttle (safe half only). */
-    fun setConnectionPriorityManagement(enabled: Boolean, idleThrottleBatteryPct: Int) {
-        connectionPriorityEnabled = enabled
-        this.idleThrottleBatteryPct = if (enabled) idleThrottleBatteryPct else 0
-        handler.post { refreshConnectionPriority() }
-    }
-
     /** Battery-% at/below which the periodic offload cadence stretches to
      *  [LOW_BATTERY_BACKFILL_INTERVAL_MS] while discharging; 0 = never (normal 15-min cadence). DEFAULT
-     *  OFF (dormant). Settings picker offers 10/15/20/25/30. */
+     *  OFF (dormant); set by [setLowBatteryOffloadThrottle]. */
     @Volatile private var lowBatteryOffloadPct: Int = 0
 
     /** Opt into the low-battery offload-cadence stretch. Applies on the NEXT re-arm; a live sync
@@ -1025,33 +989,6 @@ class WhoopBleClient(
         return pct to charging
     }
 
-    /** (Re)apply the GATT connection priority for the current link state. Idempotent + cheap: OFF
-     *  or disconnected -> no BLE op. Called on connect-established and whenever offload / live-HR toggles. */
-    private fun refreshConnectionPriority() {
-        if (!connectionPriorityEnabled) return
-        val ops = gattOps ?: return
-        // Only read the battery when the RISKY idle throttle is actually armed (threshold > 0); the SAFE
-        // HIGH-escalation half doesn't need it, so safe-half-only mode issues no battery read.
-        val idleThrottle = idleThrottleBatteryPct > 0 && run {
-            val (batteryPct, charging) = batteryPctAndCharging()
-            idleThrottleActive(batteryPct, charging, idleThrottleBatteryPct, powerSaveActive())
-        }
-        // Read the authoritative INTERNAL flags (both set synchronously on this looper), not the
-        // published LiveState mirror, which `exitBackfilling` may update a beat later.
-        val priority = connectionPriorityFor(
-            offloadActive = backfilling,
-            liveHrActive = realtimeArmed,
-            idleThrottleEnabled = idleThrottle,
-        )
-        // Deliberately NOT via safeGatt: a battery HINT must never tear the link down. safeGatt's policy
-        // is "any throw ⇒ teardown", right for load-bearing writes/subscriptions but wrong here — a dead
-        // binder is handled by the next real op, and skipping a priority request costs nothing. Swallow.
-        try {
-            ops.requestConnectionPriorityCompat(priority)
-        } catch (t: Throwable) {
-            log("connection-priority request failed (${t.javaClass.simpleName}); skipped")
-        }
-    }
     /** @Volatile: set on the GATT binder thread at service discovery, but read in send() on the main
      *  thread (user actions) - the barrier makes a main-thread send see the current characteristic. */
     @Volatile private var cmdCharacteristic: BluetoothGattCharacteristic? = null
@@ -1606,7 +1543,7 @@ class WhoopBleClient(
         // are never allowed.
         val scanMode = scanModeForReconnectAttempts(failedReconnectAttempts)
         if (scanMode != ScanSettings.SCAN_MODE_LOW_LATENCY) {
-            log("Scan: backing off to lower-power mode after $failedReconnectAttempts involuntary reconnects (PR #588)")
+            log("Scan: backing off to lower-power mode after $failedReconnectAttempts involuntary reconnects")
         }
         val settings = ScanSettings.Builder()
             .setScanMode(scanMode)
@@ -1683,7 +1620,7 @@ class WhoopBleClient(
                 log("Bluetooth radio off — already disconnected")
                 return@post
             }
-            log("Bluetooth radio turned off — tearing down the orphaned link (#314)")
+            log("Bluetooth radio turned off — tearing down the orphaned link")
             teardownAfterGattFailure()
             // teardownAfterGattFailure → handleDisconnect already publishes connected=false; make the
             // "off" reason explicit for the UI so it reads "Bluetooth is off" rather than "Reconnecting…".
@@ -1760,7 +1697,7 @@ class WhoopBleClient(
      */
     fun prepareForPresentScan(model: WhoopModel) {
         if (shouldKeepLiveConnectionForPresentScan(_state.value.connected, selectedModel, model)) {
-            log("Add-a-WHOOP scan: keeping the live ${selectedModel.displayName} connection (#74) - presenting nearby straps without dropping it")
+            log("Add-a-WHOOP scan: keeping the live ${selectedModel.displayName} connection - presenting nearby straps without dropping it")
             return
         }
         prepareForModelSwitch()
@@ -1800,7 +1737,7 @@ class WhoopBleClient(
             }
             _state.update { releasedLiveState(it) }
             log("Device removed — released the strap: stopped auto-reconnect, dropped the link, cleared " +
-                "targeting. Put it in pairing mode (blue LEDs) to re-pair if you want it back. (#520)")
+                "targeting. Put it in pairing mode (blue LEDs) to re-pair if you want it back.")
         }
     }
 
@@ -2391,7 +2328,7 @@ class WhoopBleClient(
         val framing = if (family == DeviceFamily.WHOOP5) "puffin-crc16 (verified on 5.0 fw 50.40.1.0)" else "harvard-crc8 (UNVERIFIED on 4.0)"
         val fw = _state.value.strapFirmware ?: "unknown"
         val payloadDesc = if (payload.isEmpty()) "empty" else payload.joinToString("") { "%02x".format(it.toInt() and 0xFF) }
-        if (probe != null) log("reboot: PROBE ${probe.logTag} — trying an unconfirmed WHOOP 4.0 reboot frame (#235)")
+        if (probe != null) log("reboot: PROBE ${probe.logTag} — trying an unconfirmed WHOOP 4.0 reboot frame")
         log("reboot: request family=$family fw=$fw connected=true bonded=true")
         log("reboot: sent opcode=$opcode framing=$framing payload=$payloadDesc writeType=withResponse")
         // withResponse so the ATT write is acked before the strap drops the link.
@@ -2408,7 +2345,7 @@ class WhoopBleClient(
         val work = Runnable {
             if (rebootRequestedAtMs != null && _state.value.connected) {
                 log("reboot: no disconnect within 12s — strap may have ignored the command" +
-                    if (connectedFamily == DeviceFamily.WHOOP5) " (5/MG reboot is verified on 5.0 fw 50.40.1.0; if your firmware differs, please share this log on #166)" else " (the WHOOP 4.0 reboot frame is NOT confirmed yet — please share this log on #235)")
+                    if (connectedFamily == DeviceFamily.WHOOP5) " (5/MG reboot is verified on 5.0 fw 50.40.1.0; your firmware may differ)" else " (the WHOOP 4.0 reboot frame is NOT confirmed yet)")
                 clearRebootState()
             }
         }
@@ -2711,15 +2648,13 @@ class WhoopBleClient(
     private var staleDirectFailures = 0
 
     /** Consecutive involuntary reconnect attempts, feeding the capped-exponential [ReconnectBackoff]
-     *  (3, 6, 12, 24, 48, 60s…). Replaces the old fixed [RECONNECT_DELAY_MS] rescan loop so a strap
-     *  that's genuinely out of range stops hammering BLE. Bumped per scheduled reconnect; reset to 0 on
-     *  STATE_CONNECTED and on an explicit user Connect. @Volatile because the GATT callbacks (where it's
-     *  read/reset) land on binder-pool threads on API 26/27. */
+     *  so a strap that's genuinely out of range stops hammering BLE. Bumped per scheduled reconnect;
+     *  reset to 0 on STATE_CONNECTED and on an explicit user Connect. @Volatile because the GATT
+     *  callbacks (where it's read/reset) land on binder-pool threads on API 26/27. */
     @Volatile
     private var failedReconnectAttempts = 0
 
-    /** Bump the attempt counter and return the next backoff delay. Called from the disconnect path
-     *  in place of the fixed [RECONNECT_DELAY_MS]. */
+    /** Bump the attempt counter and return the next backoff delay. Called from the disconnect path. */
     private fun nextReconnectDelayMs(): Long {
         failedReconnectAttempts++
         return ReconnectBackoff.nextDelayMs(failedReconnectAttempts)
@@ -2808,7 +2743,7 @@ class WhoopBleClient(
         val gaveUp = bondWatchdogBackoff.recordBounce()
         intentionalDisconnect = false
         if (gaveUp) {
-            log("Bond handshake never completed after ${bondWatchdogBackoff.consecutiveBounces} escalating tries — pausing auto-reconnect and surfacing the re-pair guide (#971)")
+            log("Bond handshake never completed after ${bondWatchdogBackoff.consecutiveBounces} escalating tries — pausing auto-reconnect and surfacing the re-pair guide")
             autoReconnectPausedForBondLoop = true
             bondLoopPausedAtMs = System.currentTimeMillis()   // the salvage probe covers this pause too
             if (_state.value.reconnectGuide == null) {
@@ -2824,7 +2759,7 @@ class WhoopBleClient(
                 ) }
             }
         } else {
-            log("Bond handshake stuck for ${bondWatchdogBackoff.currentWindowMs() / 1000}s — bouncing link to retry (attempt ${bondWatchdogBackoff.consecutiveBounces}, #50/#971)")
+            log("Bond handshake stuck for ${bondWatchdogBackoff.currentWindowMs() / 1000}s — bouncing link to retry (attempt ${bondWatchdogBackoff.consecutiveBounces})")
         }
         // Drop the link either way: even on give-up we tear down the wedged GATT so it stops holding the
         // radio. gatt.disconnect() throwing on a dead binder must not crash from a timer — fall through
@@ -2974,7 +2909,7 @@ class WhoopBleClient(
             // STATE_CONNECTED clears statusNote on each reconnect, so a once-only set would leave the Live
             // status blank after a reconnect — re-asserting keeps the already-rendered surface in sync.
             if (_state.value.pairingHint == null) {
-                log("WHOOP 5/MG: encrypted bond refused $bondRefusalStreak times — surfacing pairing guidance (#78)")
+                log("WHOOP 5/MG: encrypted bond refused $bondRefusalStreak times — surfacing pairing guidance")
             }
             _state.update { it.copy(pairingHint = PAIRING_HINT_TEXT, statusNote = PAIRING_HINT_TEXT) }
         }
@@ -3237,7 +3172,7 @@ class WhoopBleClient(
             // first CCCD write races it and comes back BUSY, wedging every subscribe and the bond. Give
             // it a short beat (~450ms, inside the bond watchdog) before the first write.
             if (Build.MANUFACTURER.equals("OnePlus", ignoreCase = true)) {
-                log("OnePlus detected — settling ${ONEPLUS_CCCD_SETTLE_MS}ms before first CCCD write (#50)")
+                log("OnePlus detected — settling ${ONEPLUS_CCCD_SETTLE_MS}ms before first CCCD write")
                 handler.postDelayed({ gatt?.let { drainCccdQueue(it) } }, ONEPLUS_CCCD_SETTLE_MS)
             } else {
                 drainCccdQueue(g)
@@ -3442,7 +3377,7 @@ class WhoopBleClient(
                         // null) so a stale/wrong-epoch "newest" can be told apart from a frame-alignment
                         // bug in dataRangeNewestUnix, straight from a normal strap-log export.
                         val hex = frame.joinToString("") { "%02x".format(it) }
-                        log("Get Data Range raw frame (#451 — for offset analysis): $hex")
+                        log("Get Data Range raw frame (for offset analysis): $hex")
                         dataRangeNewestUnix(frame)?.let {
                             strapNewestTs = it
                             // Persist the strap's newest banked record so the debug export can flag a reset clock.
@@ -3451,7 +3386,7 @@ class WhoopBleClient(
                             // lands, so a Test Centre export shows WHY auto-continue refused the range.
                             val wallNowForSkew = System.currentTimeMillis() / 1000L
                             if (it > wallNowForSkew + AUTO_CONTINUE_FUTURE_SKEW_SECONDS) {
-                                log("Strap newest banked record reads ${(it - wallNowForSkew) / 3600L}h AHEAD of the wall clock (implausible; strap clock set in the future, #928). Auto-continue will not trust this range.")
+                                log("Strap newest banked record reads ${(it - wallNowForSkew) / 3600L}h AHEAD of the wall clock (implausible; strap clock set in the future). Auto-continue will not trust this range.")
                             }
                             // Publish the strap's banked-record window to the Backfiller so the historical
                             // ingest gate can reject a record dated months outside THIS strap's own
@@ -3466,7 +3401,7 @@ class WhoopBleClient(
                             // a deep oldest-first drain must cover before recent nights land.
                             val oldestUnix = dataRangeOldestUnix(frame)
                             if (oldestUnix != null && oldestUnix < it) {
-                                backfiller.sessionOldestUnix = oldestUnix   // #547: closes the session window
+                                backfiller.sessionOldestUnix = oldestUnix   // closes the session window
                                 val spanDays = (it - oldestUnix) / 86_400L
                                 log("Strap banked history span: ${fmt.format(java.util.Date(oldestUnix * 1000L))} → newest " +
                                     "(~$spanDays day${if (spanDays == 1L) "" else "s"} of backlog, drained oldest-first)")
@@ -3565,7 +3500,7 @@ class WhoopBleClient(
             // as a diagnostic, but don't claim a live-stream "unlock".
             val n = _state.value.deepPacketsThisSession + 1
             _state.update { it.copy(deepPacketsThisSession = n) }
-            if (n == 1) log("Deep-data: type-0x2F received outside our offload — this is historical-offload data (another BLE client pulling the strap's history, or a trailing flush), not a live R22 stream (#494).")
+            if (n == 1) log("Deep-data: type-0x2F received outside our offload — this is historical-offload data (another BLE client pulling the strap's history, or a trailing flush), not a live R22 stream.")
             else if (n % 50 == 0) log("Deep-data: $n type-0x2F historical-offload frames seen outside our session.")
         }
     }
@@ -4049,7 +3984,6 @@ class WhoopBleClient(
         // Both families arm/disarm via TOGGLE_REALTIME_HR; send() frames it correctly per family (puffin
         // for 5/MG). A screen re-entry blanks its own smoothing window in the view-model, not here.
         send(CommandNumber.TOGGLE_REALTIME_HR, byteArrayOf(if (want) 1.toByte() else 0.toByte()))
-        refreshConnectionPriority()   // live-HR on → HIGH, off → back to idle. No-op unless enabled.
     }
 
     
@@ -4081,7 +4015,7 @@ class WhoopBleClient(
             }, 80L * i)
         }
         handler.postDelayed({
-            log("Deep-data: sequence sent. Keep the strap on, let it sync, then share your strap log — we're looking for new deep records (type-0x2F) to start arriving. (#174)")
+            log("Deep-data: sequence sent. Keep the strap on, let it sync, then share your strap log — we're looking for new deep records (type-0x2F) to start arriving.")
         }, 80L * flags.size + 200L)
     }
 
@@ -4162,7 +4096,7 @@ class WhoopBleClient(
                 // the OPPOSITE so the next keep-alive tick sees the edge and re-sends the CURRENT want.
                 if (shouldReArmRealtimeAfterDrop(item.cmd)) {
                     realtimeArmed = !realtimeArmed
-                    log("realtime toggle dropped — reconciling on the next keep-alive tick (#312)")
+                    log("realtime toggle dropped — reconciling on the next keep-alive tick")
                 }
                 writeRetries = 0
                 drainWriteQueue()
@@ -4452,7 +4386,6 @@ class WhoopBleClient(
         offloadFramesThisSession = 0
         historicalKickSent = false
         _state.update { it.copy(backfilling = true, syncChunksThisSession = 0) }
-        refreshConnectionPriority()   // escalate to HIGH for the offload burst (faster sync); no-op unless enabled.
         // Opt-in raw capture (research aid): pref read fresh per session, like the probes gate.
         if (PuffinExperiment.from(context).isCaptureEnabled) {
             startBackfillCapture()
@@ -4614,7 +4547,6 @@ class WhoopBleClient(
     private fun exitBackfilling(reason: String) {
         if (!backfilling) return
         backfilling = false
-        refreshConnectionPriority()   // offload done - drop back to idle priority; no-op unless enabled.
         // A backfill just ended. Start (or extend) the deep-packet cooldown from this instant so any
         // type-0x2F records the strap flushes in the seconds after aren't miscounted as the live R22
         // stream - they're the offload's tail.
@@ -4660,7 +4592,7 @@ class WhoopBleClient(
         val futureClockBanner = futureDatedStrapBanner(strapNewestTs, nowSec)
         if (futureClockBanner != null) {
             val aheadH = ((strapNewestTs ?: 0L) - nowSec) / 3600
-            log("Backfill: the strap's newest banked record is ${aheadH}h AHEAD of the wall clock (#324/#928) - clock set in the future; showing the future-clock banner and importing nothing from this range.")
+            log("Backfill: the strap's newest banked record is ${aheadH}h AHEAD of the wall clock - clock set in the future; showing the future-clock banner and importing nothing from this range.")
         }
         // Persist the HISTORY_COMPLETE instant so "Last synced N ago" survives a BLE-client recreation /
         // process restart and stops reverting to "Never".
@@ -4837,9 +4769,9 @@ class WhoopBleClient(
                 ) {
                     val aheadH = ((newest ?: wallNow) - wallNow) / 3600L
                     log(
-                        "Backfill: not auto-continuing (#1012) - the strap-reported newest banked record " +
+                        "Backfill: not auto-continuing - the strap-reported newest banked record " +
                             "reads ${aheadH}h AHEAD of the wall clock, so the range is future-dated and " +
-                            "the strap clock is likely wrong (#928). Stopping after one pass instead of " +
+                            "the strap clock is likely wrong. Stopping after one pass instead of " +
                             "chasing future-dated ranges; the periodic sync keeps draining across connects.",
                     )
                 }
@@ -4860,7 +4792,7 @@ class WhoopBleClient(
                 if (backfilling) return@post
                 consecutiveAutoContinues += 1
                 log(
-                    "Backfill: auto-continuing (#364/#451) — the trim advanced and the strap is still " +
+                    "Backfill: auto-continuing — the trim advanced and the strap is still " +
                         "handing over real records (frontier ${frontier ?: "?"}, strap-reported newest " +
                         "${newest ?: "?"}); re-kicking offload $consecutiveAutoContinues/$MAX_AUTO_CONTINUES " +
                         "without waiting the 15-min floor.",
@@ -4986,7 +4918,7 @@ class WhoopBleClient(
                 timedOut = connTimedOut,
             )
         ) {
-            log("Bond-loop (#617): ${postBondLoop.consecutiveBondTimeouts} bond-then-timeout cycles — surfacing the re-pair guide and pausing auto-reconnect")
+            log("Bond-loop: ${postBondLoop.consecutiveBondTimeouts} bond-then-timeout cycles — surfacing the re-pair guide and pausing auto-reconnect")
             // The loop is bond -> drop -> rescan -> bond -> drop, forever, draining the battery. Surfacing
             // the guide alone left the involuntary-drop rescan running - pause auto-reconnect too (a user
             // Connect or a genuine bond re-arms it). Does NOT touch the bond/parse path; the stale OS
@@ -5022,7 +4954,7 @@ class WhoopBleClient(
                 alreadyPausedForBondLoop = autoReconnectPausedForBondLoop,
             ) && bondWatchdogBackoff.recordBounce()
         ) {
-            log("Strap connects and subscribes but never finishes pairing, then self-drops before the bond watchdog fires (${bondWatchdogBackoff.consecutiveBounces} cycles) — pausing auto-reconnect and surfacing the re-pair guide (#982/#971)")
+            log("Strap connects and subscribes but never finishes pairing, then self-drops before the bond watchdog fires (${bondWatchdogBackoff.consecutiveBounces} cycles) — pausing auto-reconnect and surfacing the re-pair guide")
             autoReconnectPausedForBondLoop = true
             bondLoopPausedAtMs = System.currentTimeMillis()   // the hole-4 salvage probe covers this pause too
             if (_state.value.reconnectGuide == null) {
@@ -5226,14 +5158,6 @@ class WhoopBleClient(
         // wedging the live stream after a reconnect, so the keep-alive's link-bounce actually recovers
         // a frozen stream.
         reassembler.reset()
-    }
-
-    /**
-     * Permanently release this client's background scope. Call from the owner's teardown
-     * (e.g. AppViewModel.onCleared) AFTER [disconnect]. Idempotent.
-     */
-    fun shutdown() {
-        ioScope.cancel()
     }
 
     // ====================================================================================
@@ -5440,8 +5364,8 @@ class WhoopBleClient(
 
     /**
      * Write a line into the SAME in-app strap-log ring buffer the user exports via [exportLogText],
-     * from an ISOLATED BLE source (e.g. [StandardHrSource]) that must never import or share state with
-     * this client. The coordinator injects this as a closure so generic-HR lifecycle lines land in the
+     * from an ISOLATED BLE source that must never import or share state with this client.
+     * The coordinator injects this as a closure so generic-HR lifecycle lines land in the
      * one log the user copies for a bug report.
      */
     fun externalLog(s: String, domain: com.noop.testcentre.TestDomain? = null) { log(s, domain) }

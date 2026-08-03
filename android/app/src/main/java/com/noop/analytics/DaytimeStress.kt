@@ -3,6 +3,7 @@ package com.noop.analytics
 import com.noop.data.HrSample
 import com.noop.data.RrInterval
 import uniffi.whoop_ffi.HourPointInfo
+import uniffi.whoop_ffi.SleepSpanMsInfo
 import uniffi.whoop_ffi.WindowedStressInfo
 
 /*
@@ -141,16 +142,48 @@ object DaytimeStress {
      * fourth sleep-performance driver read the band minutes and share it returns.
      */
     fun analyzeNight(hr: List<HrSample>, rr: List<RrInterval>, tzOffsetSeconds: Long = 0L): WindowedStressInfo =
-        RustScores.sleepStress(toHourPoints(bucketize(hr, rr, tzOffsetSeconds)))
+        RustScores.sleepStress(toHourPoints(bucketize(hr, rr, tzOffsetSeconds), tzOffsetSeconds))
 
-    /** One hour bucket's aggregates as the border's own record, keyed on the LOCAL hour-of-day. */
-    private fun toHourPoints(aggs: List<HourAgg>): List<HourPointInfo> =
-        aggs.map { HourPointInfo(hourOfDay(it.bucket), it.meanHr, it.rmssd) }
+    /** One hour bucket's aggregates as the border's own record: the LOCAL hour-of-day for labelling and
+     *  the bucket's WALL-CLOCK start in ms, which is the space whoop-rs tests the spans in. [motionG] is
+     *  null until a per-bucket dynamic-accel channel is bucketed here, so the motion gate suppresses
+     *  nothing today. */
+    private fun toHourPoints(aggs: List<HourAgg>, tzOffsetSeconds: Long): List<HourPointInfo> =
+        aggs.map {
+            HourPointInfo(
+                hour = hourOfDay(it.bucket),
+                meanHr = it.meanHr,
+                rmssd = it.rmssd,
+                startMs = (it.bucket - tzOffsetSeconds) * 1_000L,
+                motionG = null,
+            )
+        }
+
+    /**
+     * The spans of each covered LOCAL day that the timeline does not score — midnight to
+     * [wakingStartHour] and [wakingEndHour] to midnight — as wall-clock `[start, end)` ms. whoop-rs no
+     * longer carries an hour-of-day filter, so the caller says which window to ask for; this reproduces
+     * the shipped 06:00-22:00 selection exactly. INTERIM: real sleep + nap spans belong here, and until
+     * they are wired a late night still anchors its own calm reference.
+     */
+    private fun nonWakingSpans(aggs: List<HourAgg>, tzOffsetSeconds: Long): List<SleepSpanMsInfo> =
+        aggs.map { floorDiv(it.bucket, CalendarDay.SECONDS_PER_DAY) }.distinct().sorted().flatMap { day ->
+            val midnight = (day * CalendarDay.SECONDS_PER_DAY - tzOffsetSeconds) * 1_000L
+            listOf(
+                SleepSpanMsInfo(midnight, midnight + wakingStartHour * bucketSeconds * 1_000L),
+                SleepSpanMsInfo(
+                    midnight + wakingEndHour * bucketSeconds * 1_000L,
+                    midnight + CalendarDay.SECONDS_PER_DAY * 1_000L,
+                ),
+            )
+        }
 
     /** Score the hourly aggregates in whoop-rs (daytime_stress), then reassemble the full
      *  timeline (unscored hours kept for the UI). Adopts the whoop-rs peak on a tie (last hour). */
     internal fun scoreRust(aggs: List<HourAgg>, tzOffsetSeconds: Long): Result {
-        val info = RustScores.daytimeStress(toHourPoints(aggs))
+        val info = RustScores.daytimeStress(
+            toHourPoints(aggs, tzOffsetSeconds), nonWakingSpans(aggs, tzOffsetSeconds),
+        )
         val scoredByHour = info.hours.associateBy { it.hour }
 
         val points = ArrayList<HourPoint>(aggs.size)

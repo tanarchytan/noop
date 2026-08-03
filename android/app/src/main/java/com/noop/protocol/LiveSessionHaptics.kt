@@ -9,8 +9,7 @@ package com.noop.protocol
 //   • PUSH     — two LIGHT taps  → "give a bit more"
 //   • EASE_OFF — three HEAVY taps → "ease off, today can't pay for this"
 //
-// The two pulse lists are pinned identical to the Swift twin by matching unit tests. Design contract:
-// docs/superpowers/specs/2026-07-04-live-sessions-design.md.
+// The two pulse lists are pinned identical to the Swift twin by matching unit tests.
 object LiveSessionHaptics {
 
     /** The coach's entire signalling vocabulary. Silence is the third, most common state — it is never sent. */

@@ -186,8 +186,8 @@ object DataBackup {
         //     the migrate path below; an unrecognized file that holds data is refused.
         val backupTables = sqliteTableNames(tempSqlite)
         var importWarnings: List<String> = emptyList()
- // True only when the own/older backup migrated cleanly (not a foreign row-copy, nor the migrate→reconcile
- // fallback) — the one case where the restored my-whoop peripheralId is the user's real local strap.
+        // True only when the own/older backup migrated cleanly (not a foreign row-copy, nor the migrate→reconcile
+        // fallback) — the one case where the restored my-whoop peripheralId is the user's real local strap.
         var migratedOwnData = false
         val reconciled: Boolean
         when (foreignBackupKind(backupTables)) {
@@ -316,10 +316,10 @@ object DataBackup {
             tempSettings.delete()
         }
 
- // An own-data (migrate) restore carries the user's real strap identity in the migrated
- // my-whoop row, but SharedPreferences don't survive a fresh install, so rehydrate the
- // reconnect target from the DB instead — the strap then reconnects and shows in Devices.
- // Foreign row-copies are excluded, so a foreign backup's my-whoop can't masquerade as a local band.
+        // An own-data (migrate) restore carries the user's real strap identity in the migrated
+        // my-whoop row, but SharedPreferences don't survive a fresh install, so rehydrate the
+        // reconnect target from the DB instead — the strap then reconnects and shows in Devices.
+        // Foreign row-copies are excluded, so a foreign backup's my-whoop can't masquerade as a local band.
         if (migratedOwnData) {
             rehydrateLastDeviceFromOwnBackup(appContext, pending)
         }

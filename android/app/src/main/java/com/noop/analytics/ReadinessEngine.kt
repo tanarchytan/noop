@@ -61,8 +61,8 @@ object ReadinessEngine {
 
     // MARK: Tunables (named so the thresholds are auditable)
 
-    private const val baselineWindow = 30   // days for HRV / RHR / RR baselines
-    private const val minBaseline = 7       // need at least this many baseline nights
+    private const val vitalsBaselineDays = 30   // days for HRV / RHR / RR baselines
+    private const val minVitalsNights = 7       // need at least this many baseline nights
     private const val acuteWindow = 7
     private const val chronicWindow = 28
     private const val minChronic = 14       // need at least this much strain history for ACWR
@@ -154,7 +154,7 @@ object ReadinessEngine {
         // HRV readiness ------------------------------------------------------
         val hrvSignal = zSignal(
             value = latest.avgHrv,
-            baseline = history.takeLast(baselineWindow).mapNotNull { it.avgHrv },
+            baseline = history.takeLast(vitalsBaselineDays).mapNotNull { it.avgHrv },
             key = "hrv", label = "HRV",
             unit = "ms", decimals = 0,
             higherIsBetter = true,
@@ -168,7 +168,7 @@ object ReadinessEngine {
         // Resting-HR drift ---------------------------------------------------
         val rhrSignal = zSignal(
             value = latest.restingHr?.toDouble(),
-            baseline = history.takeLast(baselineWindow).mapNotNull { it.restingHr?.toDouble() },
+            baseline = history.takeLast(vitalsBaselineDays).mapNotNull { it.restingHr?.toDouble() },
             key = "rhr", label = "Resting HR",
             unit = "bpm", decimals = 0,
             higherIsBetter = false,
@@ -181,14 +181,14 @@ object ReadinessEngine {
 
         // Respiratory-rate drift (illness early signal) ----------------------
         // respRateBpm may be clean cloud data or a higher-variance on-device RSA estimate (no source
-        // flag), so gate conservatively: minBaseline + sd>0, a plausible sleeping-RR band (~8-25 bpm),
+        // flag), so gate conservatively: minVitalsNights + sd>0, a plausible sleeping-RR band (~8-25 bpm),
         // and wider z thresholds (WATCH 1.5 / BAD 2.0) so one noisy night can't trigger BAD/recoveryDown.
         val rr = latest.respRateBpm
         if (rr != null && rr in respPlausibleRange) {
-            val base = history.takeLast(baselineWindow).mapNotNull { it.respRateBpm }
+            val base = history.takeLast(vitalsBaselineDays).mapNotNull { it.respRateBpm }
             val m = mean(base)
             val sd = sampleSD(base)
-            if (base.size >= minBaseline && m != null && m in respPlausibleRange && sd != null && sd > 0) {
+            if (base.size >= minVitalsNights && m != null && m in respPlausibleRange && sd != null && sd > 0) {
                 val z = (rr - m) / sd
                 val respEvidence = "${fmt(rr, 1)} vs ${fmt(m, 1)} rpm"
                 if (z >= respZBad) {
@@ -261,7 +261,7 @@ object ReadinessEngine {
         goodText: String, neutralText: String,
         watchText: String, badText: String,
     ): Signal? {
-        if (value == null || baseline.size < minBaseline) return null
+        if (value == null || baseline.size < minVitalsNights) return null
         val m = mean(baseline) ?: return null
         val sd = sampleSD(baseline) ?: return null
         if (sd <= 0) return null

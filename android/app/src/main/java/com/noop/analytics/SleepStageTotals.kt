@@ -7,6 +7,7 @@ import uniffi.whoop_ffi.MainNightScoredBlock
 import uniffi.whoop_ffi.SleepHistoryBlock
 import uniffi.whoop_ffi.bridgedNightGroups as ffiBridgedNightGroups
 import uniffi.whoop_ffi.habitualMidsleepSec as ffiHabitualMidsleepSec
+import uniffi.whoop_ffi.habitualMidsleepSeries as ffiHabitualMidsleepSeries
 import uniffi.whoop_ffi.mainNightGroupIndices as ffiMainNightGroupIndices
 import uniffi.whoop_ffi.mainNightGroupIndicesScored as ffiMainNightGroupIndicesScored
 import uniffi.whoop_ffi.mainNightIndex as ffiMainNightIndex
@@ -436,4 +437,23 @@ object SleepStageTotals {
     ): Long? = ffiHabitualMidsleepSec(
         history.map { SleepHistoryBlock(it.start, it.end, it.dayKey) }, offsetSec, minDays.toUInt(),
     )
+
+    /** Trailing calendar span the per-day habitual series averages over. Wider than [HABITUAL_MIN_DAYS], so
+     *  a few unworn nights leave the series alive instead of blanking it. ~3 weeks. */
+    val HABITUAL_WINDOW_DAYS: Int = RustScores.sleepWindowCfg.habitualWindowDays.toInt()
+
+    /** The habitual midsleep PER LOCAL DAY (local time-of-day seconds), each the circular mean over the
+     *  trailing [windowDays] days ending on that day. A day whose window holds fewer than [minDays] days
+     *  carries null. Feeds the sleep-consistency band, which bends with it. */
+    fun habitualMidsleepSeries(
+        history: List<HistoryBlock>,
+        offsetSec: Long,
+        minDays: Int = HABITUAL_MIN_DAYS,
+        windowDays: Int = HABITUAL_WINDOW_DAYS,
+    ): Map<String, Long?> = ffiHabitualMidsleepSeries(
+        history.map { SleepHistoryBlock(it.start, it.end, it.dayKey) },
+        offsetSec,
+        minDays.toUInt(),
+        windowDays.toUInt(),
+    ).associate { it.day to it.midsleepSec }
 }

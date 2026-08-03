@@ -13,6 +13,8 @@ import com.noop.protocol.RawImuSample
 import uniffi.whoop_ffi.WorkoutGravitySample
 import uniffi.whoop_ffi.DebtNightInput
 import uniffi.whoop_ffi.DriverBaselineInfo
+import uniffi.whoop_ffi.DriverRow
+import uniffi.whoop_ffi.RecoveryState
 import uniffi.whoop_ffi.FitnessAgeInfo
 import uniffi.whoop_ffi.HourPointInfo
 import uniffi.whoop_ffi.HrRecoveryInfo
@@ -22,6 +24,7 @@ import uniffi.whoop_ffi.RecoveryDrivers
 import uniffi.whoop_ffi.RrBeat
 import uniffi.whoop_ffi.RrRun
 import uniffi.whoop_ffi.SleepSegment
+import uniffi.whoop_ffi.SleepSpanMsInfo
 import uniffi.whoop_ffi.SleepStepSample
 import uniffi.whoop_ffi.Spo2RawSample
 import uniffi.whoop_ffi.Spo2Span
@@ -130,6 +133,45 @@ internal object RustScores {
     )
 
     fun band(score: Double): String = uniffi.whoop_ffi.recoveryBand(score)
+
+    /** The five-way Charge state a score falls in. Only the cut points are read here; the word and
+     *  the colour belong to the UI. Finer than [band], which carries the three colour bands. */
+    fun state(score: Double): RecoveryState = uniffi.whoop_ffi.recoveryState(score)
+
+    /**
+     * The per-driver breakdown behind [recovery], scored from the SAME record: one row per term the
+     * score actually used, each carrying its marginal whole-point swing and how it read against the
+     * personal baseline, biggest mover first. Empty exactly where [recovery] returns null. The label,
+     * value text and wording for each row are the caller's.
+     */
+    fun chargeDriverRows(
+        hrv: Double,
+        rhr: Double,
+        resp: Double?,
+        hrvBaseline: BaselineState,
+        rhrBaseline: BaselineState?,
+        respBaseline: BaselineState?,
+        sleepPerf: Double?,
+        skinTempDev: Double? = null,
+        recoveryIndexSlope: Double? = null,
+        effortBaseline: BaselineState? = null,
+        priorDayEffort: Double? = null,
+    ): List<DriverRow> = uniffi.whoop_ffi.recoveryDriverRows(
+        RecoveryDrivers(
+            hrv = hrv,
+            rhr = rhr,
+            resp = resp,
+            hrvBaseline = baseline(RecoveryScorer.DriverBaseline(hrvBaseline)),
+            rhrBaseline = rhrBaseline?.let { baseline(RecoveryScorer.DriverBaseline(it)) },
+            respBaseline = respBaseline?.let { baseline(RecoveryScorer.DriverBaseline(it)) },
+            sleepPerf = sleepPerf,
+            skinTempDev = skinTempDev,
+            hrvBaselineUsable = hrvBaseline.usable,
+            recoveryIndexSlope = recoveryIndexSlope,
+            effortBaseline = effortBaseline?.let { baseline(RecoveryScorer.DriverBaseline(it)) },
+            priorDayEffort = priorDayEffort,
+        ),
+    )
 
     fun recoveryIndexSlope(hr: List<HrSample>, start: Long, end: Long): Double? =
         uniffi.whoop_ffi.recoveryIndexSlope(hrTicks(hr), start, end)
@@ -417,10 +459,12 @@ internal object RustScores {
     // ── Windowed autonomic stress (per-hour activation, day + night) ─────────
 
     /** Score waking-hour aggregates for autonomic activation. Returns the whoop-rs `WindowedStressInfo`
-     *  (scored hours + mean + peak hour + trailing high run + band minutes); the caller reassembles its
-     *  timeline. Hour-of-day 06:00-22:00 is selected in whoop-rs. */
-    fun daytimeStress(hours: List<HourPointInfo>): WindowedStressInfo =
-        uniffi.whoop_ffi.daytimeStress(hours)
+     *  (scored hours + mean + peak hour + trailing high run + band minutes + the buckets held out and
+     *  why); the caller reassembles its timeline. Buckets overlapping `sleepSpans` (wall-clock `[start,
+     *  end)` ms) and buckets over the motion gate are dropped BEFORE the day's calm reference is built,
+     *  so the caller says which window to ask for and whoop-rs owns the gate. */
+    fun daytimeStress(hours: List<HourPointInfo>, sleepSpans: List<SleepSpanMsInfo>): WindowedStressInfo =
+        uniffi.whoop_ffi.daytimeStress(hours, sleepSpans)
 
     /** Score one night's hourly aggregates on the same formula and bands — twin of [daytimeStress] with
      *  no hour-of-day filter, so the caller passes ONLY the buckets inside the sleep span. Feeds the
@@ -494,6 +538,10 @@ internal object RustScores {
     /** Personal sleep need (hours) = mean of recent nightly asleep hours, floored at 7.5. For the Rest score. */
     fun personalSleepNeedHours(recentAsleepHours: List<Double>): Double =
         uniffi.whoop_ffi.personalSleepNeedHours(recentAsleepHours)
+
+    /** [personalSleepNeedHours] in MINUTES, the unit the sleep tiles, debt ledger and trends carry. */
+    fun personalSleepNeedMinutes(recentAsleepMinutes: List<Double>): Double =
+        personalSleepNeedHours(recentAsleepMinutes.map { it / 60.0 }) * 60.0
 
     /** HRV readiness over a nightly RMSSD series (oldest first): the log-domain 7-night baseline against
      *  the personal normal band. Null while calibrating (under 3 valid nights). */
@@ -687,6 +735,22 @@ internal object RustScores {
     fun zScore(value: Double, mean: Double, spread: Double): Double =
         uniffi.whoop_ffi.zScore(value, mean, spread)
 
+    /**
+     * Weighted trendline of [values] over [days] (day offsets, not sample index) across a
+     * [windowDays]-wide request. Carries its own 80% interval, so nothing here picks a slope
+     * threshold. null under three points, under the window's minimum span, or with no x-spread.
+     */
+    fun trendline(
+        days: List<Double>,
+        values: List<Double>,
+        weights: List<Double> = emptyList(),
+        windowDays: Double,
+    ): uniffi.whoop_ffi.TrendlineInfo? =
+        uniffi.whoop_ffi.seriesTrendline(days, values, weights, windowDays)
+
+    /** Second-half mean minus first-half mean of a series; null under four points. */
+    fun halfChange(values: List<Double>): Double? = uniffi.whoop_ffi.seriesHalfChange(values)
+
     // ── Tuning tables (whoop-rs owns every value; read, never copied) ─────────
 
     /** Charge weights, logistic shape, band cuts and window gates. */
@@ -727,4 +791,11 @@ internal object RustScores {
         minVal = cfg.minVal, maxVal = cfg.maxVal, floorSpread = cfg.floorSpread,
         halfLifeB = cfg.halfLifeB, halfLifeS = cfg.halfLifeS,
     )
+
+    /** Illness baseline policy: the recent-night gap, the window and the trust gate, all owned by whoop-rs. */
+    val illnessBaselineCfg: uniffi.whoop_ffi.IllnessBaselineCfgInfo by lazy { uniffi.whoop_ffi.illnessBaselineCfg() }
+
+    /** Per-night z of a chronological (oldest first) daily signal against its own trailing baseline. */
+    fun illnessBaselineZ(values: List<Double?>): List<Double?> =
+        uniffi.whoop_ffi.illnessBaselineZSeries(values)
 }

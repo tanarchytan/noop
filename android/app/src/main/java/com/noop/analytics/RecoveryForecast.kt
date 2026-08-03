@@ -20,7 +20,7 @@ import kotlin.math.roundToInt
  *
  * Model (all adjustments are signed points ADDED to the baseline mean Charge):
  *
- *   center = mean(recent Charge over the last ~baselineWindow days)
+ *   center = mean(recent Charge over the last ~chargeBaselineNights nights)
  *
  *   1. Strain debt  — today's Effort vs the recent average Effort. A harder-than-usual
  *      day suppresses tomorrow's Charge; an easier day lifts it a little.
@@ -40,7 +40,7 @@ import kotlin.math.roundToInt
  * Error band: the recent day-to-day SD of Charge, floored at minBandPoints and
  * inflated when the baseline is thin (few nights).
  *
- * Gating: returns null unless there are at least minBaselineNights of recent Charge,
+ * Gating: returns null unless there are at least minChargeNights of recent Charge,
  * so a cold-start user never sees a fabricated number. The UI shows the card only when
  * this is non-null.
  */
@@ -74,10 +74,10 @@ object RecoveryForecaster {
     // Tunables (documented, deterministic — NOT learned).
 
     /** Trailing Charge nights used for the baseline mean / SD / slope. */
-    const val baselineWindow: Int = 14
+    const val chargeBaselineNights: Int = 14
 
     /** Minimum recent Charge nights before a forecast is offered (else null). */
-    const val minBaselineNights: Int = 5
+    const val minChargeNights: Int = 5
 
     /** Trailing Effort nights used for the strain-debt reference average. */
     const val effortWindow: Int = 14
@@ -120,10 +120,10 @@ object RecoveryForecaster {
 
     /**
      * Project tomorrow-morning Charge from tonight's known levers. APPROXIMATE; null
-     * until there are at least [minBaselineNights] of recent Charge to anchor to.
+     * until there are at least [minChargeNights] of recent Charge to anchor to.
      *
      * @param recentCharge recent daily Charge values, OLDEST→NEWEST (0–100). Only the
-     *   trailing [baselineWindow] are used for the baseline mean/SD/slope.
+     *   trailing [chargeBaselineNights] are used for the baseline mean/SD/slope.
      * @param recentEffort recent daily Effort values, OLDEST→NEWEST (0–100); the
      *   trailing [effortWindow] set the strain-debt reference average. May be empty —
      *   the strain term then drops.
@@ -142,9 +142,9 @@ object RecoveryForecaster {
         needHours: Double? = null,
         needNights: Int = 0,
     ): RecoveryForecast? {
-        val chargeWindow = recentCharge.takeLast(baselineWindow)
+        val chargeWindow = recentCharge.takeLast(chargeBaselineNights)
         val nights = chargeWindow.size
-        if (nights < minBaselineNights) return null
+        if (nights < minChargeNights) return null
 
         val center = mean(chargeWindow)
         val sd = sampleSD(chargeWindow)
@@ -176,7 +176,7 @@ object RecoveryForecaster {
         band = band.roundToInt().toDouble()
 
         // Confidence rides the SAME calibrating/building/solid ladder as the daily scores.
-        // The forecast always clears minBaselineNights (never CALIBRATING here): BUILDING
+        // The forecast always clears minChargeNights (never CALIBRATING here): BUILDING
         // on a thin baseline or unrefined sleep-need default, SOLID only when the baseline
         // is full (≥ trustedNights) and the personal need is informed.
         val confidence = if (nights >= trustedNights && needNights >= solidNeedNights) {

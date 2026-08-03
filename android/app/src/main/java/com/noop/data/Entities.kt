@@ -342,25 +342,6 @@ data class SleepSession(
 
     /** Whole-block duration in hours (effective onset → wake). */
     val durationHours: Double get() = (effectiveEndTs - effectiveStartTs) / 3600.0
-
-    /**
-     * DERIVED nap classification, computed at READ time, no schema column. A block is a nap when
-     * SHORT (< [NAP_MAX_HOURS]) or DAYTIME-onset (onset outside the overnight window); the day's
-     * MAIN sleep is resolved separately (see SleepModels.mainSleepBlock). A long overnight
-     * split-sleep block is NOT a nap.
-     */
-    val isNapShaped: Boolean
-        get() {
-            val cal = java.util.Calendar.getInstance().apply { timeInMillis = effectiveStartTs * 1000L }
-            val h = cal.get(java.util.Calendar.HOUR_OF_DAY)
-            val overnightOnset = h >= 20 || h < 10
-            return durationHours < NAP_MAX_HOURS || !overnightOnset
-        }
-
-    companion object {
-        /** A block shorter than this is nap-shaped regardless of onset. */
-        const val NAP_MAX_HOURS: Double = 3.0
-    }
 }
 
 /**

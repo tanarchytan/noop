@@ -313,7 +313,7 @@ object IntelligenceEngine {
         for (stale in dropped) repo.deleteSleepSessionRowOnly(stale)
         if (dropped.isNotEmpty()) {
             diag(
-                "Dedup(#899): removed ${dropped.size} overlapping duplicate sleep " +
+                "Dedup: removed ${dropped.size} overlapping duplicate sleep " +
                     "session(s) re-banked under a shifted strap timebase; re-scoring the affected days.",
             )
         }

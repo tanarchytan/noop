@@ -1,7 +1,6 @@
 package com.noop.analytics
 
 import com.noop.data.StepSample
-import kotlin.math.max
 
 // StepsEstimateEngineTrace.kt — the Steps test-mode traces.
 //
@@ -156,13 +155,8 @@ object StepsEstimateEngineTrace {
             )
         }
 
-        // The scaled total, the SAME expression analyzeDay produces for steps_est (ticks / ticksPerStep,
-        // floored at 0.5 so a bad pref can at most double, never explode, the total).
-        val scaled = if (rawTotal > 0) {
-            Math.round(rawTotal.toDouble() / max(ticksPerStep, 0.5)).toInt()
-        } else {
-            0
-        }
+        // The scaled total, through the SAME divisor analyzeDay applies for steps_est.
+        val scaled = if (rawTotal > 0) AnalyticsEngine.scaledSteps(rawTotal, ticksPerStep) else 0
         // Production analyzeDay returns `scaled > 0 ? scaled : null`, so a tiny rawTotal that rounds to 0
         // yields NO steps_est for the day. Render "none" (not 0) so the trace matches the null headline
         // rather than implying a real zero-step measurement.

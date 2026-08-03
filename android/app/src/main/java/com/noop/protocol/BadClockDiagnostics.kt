@@ -6,7 +6,7 @@ import java.util.Locale
 import java.util.TimeZone
 
 /**
- * #324 bad-clock strap diagnostics: pure formatters for the Backfiller's strap-log lines about a strap
+ * bad-clock strap diagnostics: pure formatters for the Backfiller's strap-log lines about a strap
  * whose RTC reset to a wrong base (future- or far-past-dated banking). Kept in the protocol layer so the
  * formatting mirrors the Swift `BadClockDiagnostics` byte-for-byte. No state, no `now` inside - callers
  * inject `now` so the output is deterministic and unit-testable.
@@ -25,7 +25,7 @@ object BadClockDiagnostics {
 
     /**
      * Signed hour offset of [unix] from [now], worded for a log: "26445h ahead" / "512h behind" / "~now"
-     * (within an hour). The magnitude is what tells a future-clock strap (#928) from a stale-clock one.
+     * (within an hour). The magnitude is what tells a future-clock strap from a stale-clock one.
      */
     fun hoursOffset(unix: Long, now: Long): String {
         val h = (unix - now) / 3600

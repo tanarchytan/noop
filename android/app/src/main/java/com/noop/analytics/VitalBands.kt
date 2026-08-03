@@ -102,13 +102,6 @@ object VitalBands {
         }
     }
 
-    /** Deviation-semantics config for on-device skin-temp rows: ±°C around the personal mean,
-     *  guarded to a physically sane ±8 °C. (The standard `skin_temp` config in [Baselines] is
-     *  the ABSOLUTE-°C one, used for CSV-imported rows.) */
-    val skinTempDeviationCfg = MetricCfg(
-        minVal = -8.0, maxVal = 8.0, floorSpread = 0.3, halfLifeB = 14.0, halfLifeS = 21.0,
-    )
-
     // ── Calendar padding ────────────────────────────────────────────────────────────────────
 
     /** Calendar-align (day, value) rows keyed "yyyy-MM-dd" into a nightly series with null for

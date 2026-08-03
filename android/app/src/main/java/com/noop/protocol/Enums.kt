@@ -4,10 +4,8 @@ package com.noop.protocol
  * On-wire enums for the WHOOP protocol. Each constant carries its raw (on-wire) Int value and
  * every enum offers a `fromRaw(Int)` companion lookup that returns null for unknown codes.
  *
- * Values mirror the canonical schema (whoop_protocol.json) and the project SHARED CONTRACT.
  * These are deliberately a curated subset of the full device enum tables — only the codes the
- * offline companion app reads or sends. Unknown codes are surfaced by name elsewhere (see
- * [Framing.enumLabel]); they are not added here so the enums stay small and intentional.
+ * offline companion app reads or sends, so the enums stay small and intentional.
  */
 
 /** Frame packet type (envelope byte at offset 4 for Whoop 4.0). */
@@ -88,15 +86,15 @@ enum class CommandNumber(val rawValue: Int) {
     // payload). The strap drops the link and re-advertises after boot; stored data is KEPT
     // (non-destructive), though an in-flight offload is interrupted (chunk-acked, so nothing is lost).
     // Opcode 29 is shared across WHOOP 4.0 (harvard/crc8) and 5/MG (puffin/crc16). The 5.0 form is
-    // hardware-confirmed (fw 50.40.1.0, #227); the 4.0 form is NOT — a real 4.0 silently IGNORES this
-    // empty-body frame (#235: no reboot, no disconnect, no COMMAND_RESPONSE), so the correct 4.0 frame
+    // hardware-confirmed (fw 50.40.1.0); the 4.0 form is NOT — a real 4.0 silently IGNORES this
+    // empty-body frame (no reboot, no disconnect, no COMMAND_RESPONSE), so the correct 4.0 frame
     // still needs an HCI capture. rebootStrap() logs the COMMAND_RESPONSE + a no-disconnect watchdog so a
     // strap log shows which case it hit. User-initiated + confirmation-gated only; never automatic.
     // Port of Swift WhoopCommand.rebootStrap.
     REBOOT_STRAP(29),
     // POWER_CYCLE_STRAP (32) — a harder restart than REBOOT_STRAP (a full power cycle of the strap SoC
     // vs a warm reboot). Non-destructive: stored data lives in flash and survives, the strap re-advertises
-    // after boot. Included ONLY as a gated candidate for the WHOOP 4.0 reboot probe (#235: a real 4.0
+    // after boot. Included ONLY as a gated candidate for the WHOOP 4.0 reboot probe (a real 4.0
     // silently ignores opcode 29/empty, and the correct 4.0 reboot frame is unknown). NOT hardware-confirmed
     // on any family. Sent only via rebootProbe(POWER_CYCLE_32_EMPTY), itself gated behind Test Centre →
     // Connection + a confirmation. Never sent automatically. Port of Swift WhoopCommand.powerCycleStrap.
@@ -124,12 +122,12 @@ enum class CommandNumber(val rawValue: Int) {
     GET_ALL_HAPTICS_PATTERN(80),
     // SET_CONFIG / SET_FF_VALUE (0x78) — write one persistent feature flag. The 5/MG "enable R22
     // packets" sequence (Whoop5Config) sends 15 of these to switch on the deep biometric streams.
-    // Reversible; gated behind the deep-data opt-in; iOS/Android only. (#174)
+    // Reversible; gated behind the deep-data opt-in; iOS/Android only.
     SET_CONFIG(120),
     // SET_DEVICE_CONFIG (0x77) — write one persistent DEVICE-config value (distinct from the
     // feature-flag SET_CONFIG/0x78). Used for the "Broadcast HR" flag whoop_live_hr_in_adv_ind_pkt,
     // which makes the strap advertise its HR as a standard 0x180D BLE sensor. Validated on real
-    // hardware (paired on a Garmin Edge 840). Reversible; gated behind the broadcast-HR opt-in. (#181)
+    // hardware (paired on a Garmin Edge 840). Reversible; gated behind the broadcast-HR opt-in.
     SET_DEVICE_CONFIG(119),
     START_RAW_DATA(81),
     STOP_RAW_DATA(82),
@@ -146,13 +144,13 @@ enum class CommandNumber(val rawValue: Int) {
  * Candidate reboot frames for the WHOOP 4.0 reboot probe (Test Centre → Connection, WHOOP 4.0 only).
  *
  * A real WHOOP 4.0 silently ignores NOOP's production reboot frame (opcode 29 REBOOT_STRAP, empty body
- * — #235: no reboot, no disconnect, no COMMAND_RESPONSE), and the correct 4.0 frame is unknown. These
+ * — no reboot, no disconnect, no COMMAND_RESPONSE), and the correct 4.0 frame is unknown. These
  * are the plausible NON-DESTRUCTIVE candidates — a restart / power-cycle only, never a data-wiping
  * opcode — tried one at a time on real hardware so the strap log tells which one works: `reboot: link
  * dropped …` = the strap acted; `reboot: no disconnect within 12s …` = ignored.
  *
  * The definitive fix is still an HCI capture of the official app rebooting a 4.0 (exactly how the alarm
- * frame was pinned — @ujix's capture, #535). This probe is the interim way to find the frame when a 4.0
+ * frame was pinned, from a capture). This probe is the interim way to find the frame when a 4.0
  * is in hand. Twin of Swift `RebootProbeVariant` (Commands.swift); the [logTag] strings are byte-identical
  * across platforms so a strap log reads the same either side.
  */
@@ -172,12 +170,12 @@ enum class RebootProbeVariant(
         "B · POWER_CYCLE(32) empty", "B/powercycle32-empty"),
     // C — opcode 29 REBOOT_STRAP, payload [0x01]: same opcode with a non-empty sub-command byte.
     // On a real 4.0 this DROPPED THE LINK but did NOT power-cycle (sensor stayed on) — a BLE
-    // disconnect, not a reboot (#275). So the sub-command byte reaches the strap; the next two try it
+    // disconnect, not a reboot. So the sub-command byte reaches the strap; the next two try it
     // on the harder power-cycle opcode and a different byte on reboot.
     REBOOT_29_PAYLOAD1(CommandNumber.REBOOT_STRAP, byteArrayOf(0x01),
         "C · REBOOT_STRAP(29) payload=01", "C/reboot29-payload01"),
     // D — opcode 32 POWER_CYCLE_STRAP, payload [0x01]: the "harder restart" opcode with the sub-command
-    // byte that made 29 react (#275). Best remaining safe candidate for a genuine power-cycle.
+    // byte that made 29 react. Best remaining safe candidate for a genuine power-cycle.
     POWER_CYCLE_32_PAYLOAD1(CommandNumber.POWER_CYCLE_STRAP, byteArrayOf(0x01),
         "D · POWER_CYCLE(32) payload=01", "D/powercycle32-payload01"),
     // E — opcode 29 REBOOT_STRAP, payload [0x00]: the zero-byte sub-command (vs empty vs 0x01).

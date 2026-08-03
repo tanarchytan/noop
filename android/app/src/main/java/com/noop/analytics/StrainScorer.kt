@@ -1,8 +1,6 @@
 package com.noop.analytics
 
 import com.noop.data.HrSample
-import kotlin.math.ln
-import kotlin.math.roundToLong
 
 /*
  * Cardiovascular load ("Effort"), a 0–100 logarithmic scale. Independent implementation of
@@ -42,14 +40,6 @@ object StrainScorer {
 
     /** Tanaka (2001): HRmax = 208 − 0.7 × age (gender-independent). */
     fun tanakaHRmax(age: Double): Double = 208.0 - 0.7 * age
-
-    // ---- Logarithmic map (kept for test compatibility) ----
-
-    fun trimpToStrain(trimp: Double, denominator: Double = strainDenominator): Double {
-        if (trimp <= 0) return 0.0
-        val value = maxStrain * ln(trimp + 1.0) / ln(denominator)
-        return (value * 100).roundToLong() / 100.0
-    }
 
     // ---- Public API ----
 

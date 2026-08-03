@@ -171,7 +171,7 @@ object RecoveryScorerTrace {
         // Final logistic score + band, read from recovery(...) verbatim.
         if (score != null) {
             lines.add(
-                "charge score=${round2(score)} band=${RecoveryScorer.band(score)} " +
+                "charge score=${round2(score)} band=${RustScores.band(score)} " +
                     "(logistic k=${round2(RecoveryScorer.logisticK)} z0=${round2(RecoveryScorer.logisticZ0)})",
             )
         } else {

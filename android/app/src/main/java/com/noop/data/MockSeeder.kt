@@ -373,13 +373,8 @@ object MockSeeder {
     }
 
     /**
-     * A plausible light→deep→rem cycle as TIMESTAMPED stage segments tiling `[startTs, endTs]`.
-     *
-     * It used to emit `{"stage", "min"}`, which no reader understood: the timeline's
-     * [parsePersistedSegments] needs `start`/`end` and returned null, so the hero fell to its
-     * reconstructed branch and tap-to-highlight had no real timeline to highlight; and the totals
-     * parser's array branch reads durations from `start`/`end` too, so it scored every stage zero.
-     * The vocabulary was wrong as well — whoop-rs emits `wake`, not `awake`.
+     * A plausible light→deep→rem cycle as TIMESTAMPED `{stage,start,end}` segments tiling
+     * `[startTs, endTs]` — the shape the sleep timeline reads. Stage names match whoop-rs (`wake`).
      */
     internal fun stagesJson(deep: Double, rem: Double, light: Double, awakeMin: Int, startTs: Long, endTs: Long): String {
         val cycle = listOf(

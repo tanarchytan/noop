@@ -11,7 +11,7 @@ package com.noop.analytics
  *
  * Dropped vs the strap: respiration, sleep-performance and skin-temp terms aren't supplied, so the
  * scorer renormalises to HRV + RHR (HRV stays dominant). Honesty rule: null recovery + CALIBRATING
- * when today's HRV or a usable baseline is missing, or history is under [minBaselineNights] nights.
+ * when today's HRV or a usable baseline is missing, or history is under [minHrvNights] nights.
  */
 object WatchRecovery {
 
@@ -23,7 +23,7 @@ object WatchRecovery {
      * above the baseline's own seed gate (4) deliberately: a strap user crosses the seed faster on
      * dense data, but a sparse daily HRV deserves a longer warm-up before it's trusted.
      */
-    const val minBaselineNights = 7
+    const val minHrvNights = 7
 
     /**
      * Compute recovery/Charge from a daily HRV + resting HR vs the person's own baseline.
@@ -50,7 +50,7 @@ object WatchRecovery {
 
         // Honesty gate: no number unless we have today's HRV, a usable baseline, AND at least a week of
         // nights. Any miss -> null recovery + calibrating, never a fabricated value.
-        if (todayHrv == null || !hrvBase.usable || hrvHistory.size < minBaselineNights) {
+        if (todayHrv == null || !hrvBase.usable || hrvHistory.size < minHrvNights) {
             return Result(recovery = null, confidence = ScoreConfidence.CALIBRATING)
         }
 

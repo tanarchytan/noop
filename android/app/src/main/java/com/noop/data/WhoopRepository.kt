@@ -200,8 +200,6 @@ data class DataFreshness(
     val earliestDay: String? = null,
     val latestDay: String? = null,
 ) {
-    val hasAnyHistory: Boolean get() = importedDays > 0 || computedDays > 0 || appleDays > 0
-
     companion object {
         val EMPTY = DataFreshness()
     }
@@ -429,12 +427,6 @@ class WhoopRepository(private val dao: WhoopDao) {
         dao.deleteDismissedSleep(session.deviceId, session.startTs)
         dao.upsertSleepSessions(listOf(session))
     }
-
-    /** Lift a deleted-sleep tombstone by (deviceId, startTs): the night regenerates from raw on the
-     *  next analyze pass for a computed night. An imported night can't be re-created (no raw to
-     *  re-derive); the caller shows that honest caption. */
-    suspend fun allowSleepReDetection(deviceId: String, startTs: Long) =
-        dao.deleteDismissedSleep(deviceId, startTs)
 
     /** Dedup heal: remove ONE sleep-session row WITHOUT a dismissal tombstone. Deletes stale
      *  timebase-shifted duplicates of a night whose canonical copy is staying; a tombstone here would
@@ -940,12 +932,30 @@ class WhoopRepository(private val dao: WhoopDao) {
      * block per day, so window/order/source merge differences wash out.
      */
     suspend fun habitualMidsleepSec(days: Int = 4000): Long? {
+        val (blocks, offsetSec) = habitualHistory(days)
+        return com.noop.analytics.SleepStageTotals.habitualMidsleepSec(blocks, offsetSec)
+    }
+
+    /**
+     * The same learned midsleep PER LOCAL DAY, each over a trailing window, keyed by the day string
+     * [habitualHistory] groups on. The Sleep tab's consistency band reads it so its habitual window bends
+     * with the habit instead of sitting flat; a day whose window is too thin carries null.
+     */
+    suspend fun habitualMidsleepSeries(days: Int = 4000): Map<String, Long?> {
+        val (blocks, offsetSec) = habitualHistory(days)
+        return com.noop.analytics.SleepStageTotals.habitualMidsleepSeries(blocks, offsetSec)
+    }
+
+    /**
+     * The habitual learner's input and the local offset its day keys were built under: one HistoryBlock
+     * per stored session over the registry read scope (imported + its computed siblings, deduped so one
+     * night recorded under several ids doesn't double-weight it), keyed by the local calendar day of the
+     * session midpoint. Reading one id narrowed the night set and could cold-start the learner to null.
+     */
+    private suspend fun habitualHistory(days: Int): Pair<List<com.noop.analytics.SleepStageTotals.HistoryBlock>, Long> {
         val now = System.currentTimeMillis() / 1000L
         val lo = now - days * 86_400L
         val hi = now + 86_400L
-        // The registry read scope (imported) and its computed siblings, collapsing one night recorded
-        // under several ids so it doesn't double-weight the learner. Reading one id narrowed the night
-        // set (the learner could cold-start to null instead of returning a learned value).
         val imported = dedupSleepBlocks(importedSourceIds().map { dao.sleepSessions(it, lo, hi, 4000) })
         val computed = dedupSleepBlocks(computedSourceIds().map { dao.sleepSessions(it, lo, hi, 4000) })
         val offsetSec = (java.util.TimeZone.getDefault().getOffset(System.currentTimeMillis()) / 1000).toLong()
@@ -961,7 +971,7 @@ class WhoopRepository(private val dao: WhoopDao) {
                 )
             }
         }
-        return com.noop.analytics.SleepStageTotals.habitualMidsleepSec(blocks, offsetSec)
+        return blocks to offsetSec
     }
 
     suspend fun metricSeries(deviceId: String, key: String, from: String, to: String) =
@@ -1351,7 +1361,6 @@ class WhoopRepository(private val dao: WhoopDao) {
         val day: String,
         val value: Double,
         val source: String,
-        val sourceKey: String,
     )
 
     /** A candidate (source, key) pair the resolver tries, in precedence order. */
@@ -1369,7 +1378,6 @@ class WhoopRepository(private val dao: WhoopDao) {
 
     /** The full result of resolving one metric: the sources tried + the merged per-day points. */
     data class MetricSeriesResolution(
-        val requestedSource: String,
         val candidates: List<MetricSourceCandidate>,
         val points: List<ResolvedMetricPoint>,
     ) {
@@ -1406,7 +1414,7 @@ class WhoopRepository(private val dao: WhoopDao) {
         // constant bedtime-schedule span) yields to a later candidate's REAL scored night, so a resolver
         // read agrees with the mergeDaily dashboards.
         val perCandidate = candidates.map { it to resolvedRows(it, from, to) }
-        return MetricSeriesResolution(preferredSource, candidates, resolveFirstWins(perCandidate))
+        return MetricSeriesResolution(candidates, resolveFirstWins(perCandidate))
     }
 
     /**
@@ -1780,7 +1788,7 @@ class WhoopRepository(private val dao: WhoopDao) {
                 for (row in rows) {
                     val taken = byDay.containsKey(row.day)
                     if (!taken || (row.day in weakDays && !row.weakSleepTotal)) {
-                        byDay[row.day] = ResolvedMetricPoint(row.day, row.value, candidate.source, candidate.key)
+                        byDay[row.day] = ResolvedMetricPoint(row.day, row.value, candidate.source)
                         if (row.weakSleepTotal) weakDays.add(row.day) else weakDays.remove(row.day)
                     }
                 }

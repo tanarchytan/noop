@@ -1,6 +1,6 @@
 package com.noop.protocol
 
-// Whoop5RawImu.kt — decoder for the WHOOP 5.0/MG raw 6-axis IMU offload buffer (#423). Kotlin twin of
+// Whoop5RawImu.kt — decoder for the WHOOP 5.0/MG raw 6-axis IMU offload buffer. Kotlin twin of
 // WhoopProtocol/Whoop5RawImu.swift — byte-identical layout, scales, and gating (parity contract).
 //
 // The 5/MG ships a 1244-byte buffer during the connect-time offload burst that carries a full second

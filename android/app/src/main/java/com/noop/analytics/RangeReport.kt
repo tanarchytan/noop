@@ -1,7 +1,5 @@
 package com.noop.analytics
 
-import kotlin.math.abs
-
 /*
  * RangeReport.kt — data model for a shareable offline "trends report" over a date range.
  * Pure aggregation only, no rendering (the UI builds the PDF/PNG view from this struct).
@@ -90,24 +88,6 @@ enum class ReportMetric {
             else -> true
         }
 
-    /**
-     * Minimum |slope-per-day| (in the metric's own units) before a trend is called
-     * rising/falling rather than flat. Conservative, deterministic constants (not
-     * personal baselines) so the read is stable and explainable.
-     */
-    val trendSlopeThreshold: Double
-        get() = when (this) {
-            WORKOUTS -> 0.03      // workouts / day (~0.2/week — a clear shift in habit)
-            STRESS -> 0.02        // stress points / day (~0.14/week on the 0–3 scale)
-            RECOVERY -> 0.5       // recovery points / day
-            STRAIN -> 0.5         // Effort points / day
-            SLEEP_HOURS -> 0.05   // hours / day (~3 min/day)
-            HRV -> 0.4            // ms / day
-            RESTING_HR -> 0.2     // bpm / day
-            RESP_RATE -> 0.1      // breaths/min / day (~0.7/week flags illness onset)
-            SKIN_TEMP_DEV -> 0.03 // °C / day (~0.2°C/week)
-        }
-
     companion object {
         /** Fixed iteration order used when building the report and its headlines. */
         val allCases: List<ReportMetric> =
@@ -118,7 +98,7 @@ enum class ReportMetric {
     }
 }
 
-/** Which way a metric moved across the range (by OLS slope vs a small threshold). */
+/** Which way a metric moved across the range. FLAT means the trend's interval straddles zero. */
 enum class ReportTrend { RISING, FALLING, FLAT }
 
 /** A value paired with the day it fell on ("yyyy-MM-dd"). */
@@ -146,6 +126,11 @@ data class MetricRangeStat(
     val trend: ReportTrend,
     /** The value on the latest day present in range. */
     val latest: DayValue,
+    /**
+     * How far the trend stands clear of its own noise, 0 (indistinguishable) to 1 (strong). A display
+     * and ranking scalar from whoop-rs, not a probability. 0 when no trend could be fitted.
+     */
+    val trendSignificance: Double = 0.0,
 ) {
     /** Signed first→second half change (secondHalfMean − firstHalfMean), metric units. */
     val halfDelta: Double get() = secondHalfMean - firstHalfMean
@@ -237,8 +222,9 @@ object RangeReportEngine {
             val firstMean = if (firstHalf.isEmpty()) mn else mean(firstHalf)
             val secondMean = if (secondHalf.isEmpty()) mn else mean(secondHalf)
 
-            val slope = leastSquaresSlope(values)
-            val trend = trendFromSlope(slope, metric.trendSlopeThreshold)
+            // Day offsets from the range start, so gaps count: an unparseable day drops out in Rust.
+            val dayOffsets = days.map { CalendarDay.daysBetween(start, it)?.toDouble() ?: Double.NaN }
+            val line = RustScores.trendline(dayOffsets, values, windowDays = totalDays.toDouble())
 
             val latest = DayValue(days[n - 1], values[n - 1])
 
@@ -246,7 +232,8 @@ object RangeReportEngine {
                 MetricRangeStat(
                     metric = metric, n = n, mean = mn, min = minDV, max = maxDV,
                     firstHalfMean = firstMean, secondHalfMean = secondMean,
-                    trend = trend, latest = latest,
+                    trend = trendOf(line), latest = latest,
+                    trendSignificance = line?.significance ?: 0.0,
                 ),
             )
         }
@@ -259,18 +246,17 @@ object RangeReportEngine {
     // Headlines
 
     /**
-     * One plain-English line per present metric, ranked most-notable first. "Notable" is
-     * the absolute first→second-half change scaled by the metric's trend threshold, so
-     * movers on different units are comparable. Folds in good/bad framing.
+     * One plain-English line per present metric, ranked most-notable first by [salience].
+     * Folds in good/bad framing.
      */
     internal fun makeHeadlines(stats: List<MetricRangeStat>): List<String> =
         stats.sortedByDescending { salience(it) }.map { headline(it) }
 
-    /** |half delta| normalised by the metric's trend threshold (a units-agnostic move). */
-    internal fun salience(s: MetricRangeStat): Double {
-        val t = s.metric.trendSlopeThreshold
-        return if (t > 0) abs(s.halfDelta) / t else abs(s.halfDelta)
-    }
+    /**
+     * Ranking key: the trend's own significance, which is unit-free by construction, so metrics on
+     * different scales compare directly. Ties keep [ReportMetric.allCases] order.
+     */
+    internal fun salience(s: MetricRangeStat): Double = s.trendSignificance
 
     /** Render one metric's headline. Trend word + good/bad framing + the two half means. */
     internal fun headline(s: MetricRangeStat): String {
@@ -294,13 +280,10 @@ object RangeReportEngine {
 
     // Trend
 
-    /**
-     * Map an OLS slope-per-day to a direction against a small threshold. Within ±
-     * threshold reads as flat (noise), so a near-level series never fakes a trend.
-     */
-    internal fun trendFromSlope(slope: Double, threshold: Double): ReportTrend = when {
-        slope > threshold -> ReportTrend.RISING
-        slope < -threshold -> ReportTrend.FALLING
+    /** Name whoop-rs's trend direction. No trend fitted (too few days, too short a span) reads flat. */
+    internal fun trendOf(line: uniffi.whoop_ffi.TrendlineInfo?): ReportTrend = when (line?.direction) {
+        uniffi.whoop_ffi.TrendDirectionInfo.RISING -> ReportTrend.RISING
+        uniffi.whoop_ffi.TrendDirectionInfo.FALLING -> ReportTrend.FALLING
         else -> ReportTrend.FLAT
     }
 
@@ -321,9 +304,6 @@ object RangeReportEngine {
     // Stats (self-contained, deterministic)
 
     internal fun mean(values: List<Double>): Double = RustScores.mean(values)
-
-    /** OLS slope of value vs the 0-based index (per-day trend); 0 for < 2 points. */
-    internal fun leastSquaresSlope(values: List<Double>): Double = RustScores.slope(values)
 
     /**
      * Round to one decimal place, half-away-from-zero (not banker's rounding), so

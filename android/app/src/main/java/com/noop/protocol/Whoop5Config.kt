@@ -15,7 +15,7 @@ package com.noop.protocol
 // NUL-padded to 32 bytes, then a one-byte value (itself an ASCII digit: '1'=0x31 or '2'=0x32) at
 // offset 32, then 7 zero bytes. The inner b3 byte (0x01) is carried as the first payload byte ahead
 // of the body, exactly like CLIENT_HELLO. Reversible (only changes which data the strap emits), gated
-// behind an explicit opt-in, and writable only on real iOS/Android hardware. (#174)
+// behind an explicit opt-in, and writable only on real iOS/Android hardware.
 object Whoop5Config {
 
     /** One persistent feature flag and the value the official app writes for it (ASCII '1'/'2'). */
@@ -25,8 +25,8 @@ object Whoop5Config {
      *  `enable_r22_packets` opens the type-0x2F biometric stream; the rest tune channel selection, wear
      *  detection and sleep behaviour. Flags 1–15 are transcribed verbatim from judes.club's frame-builder
      *  FLAGS array; flag 16 `enable_sig12` is NOT in that array — it was observed as a 16th SET_FF_VALUE
-     *  write in a real on-strap iOS HCI capture (WHOOP 5.0, #103) that otherwise reproduced flags 1–15
-     *  byte-for-byte in this order. `enable_sig12`'s value was corrected 0x32→0x31 (#423): a second real
+     *  write in a real on-strap iOS HCI capture (WHOOP 5.0) that otherwise reproduced flags 1–15
+     *  byte-for-byte in this order. `enable_sig12`'s value was corrected 0x32→0x31: a second real
      *  on-strap capture, this time spanning a live workout, reproduced flags 1–15 identically but decoded
      *  enable_sig12 as ASCII '1'. Keep in lockstep with the Swift `Whoop5Config.enableR22Sequence`. */
     val enableR22Sequence: List<Flag> = listOf(
@@ -45,6 +45,6 @@ object Whoop5Config {
         Flag("enable_passive_strap_fit_gen5", 0x31),
         Flag("enable_sig11_during_sleep", 0x32),
         Flag("dorset_inhibit_wpt", 0x32),
-        Flag("enable_sig12", 0x31),   // #423: real on-strap capture during a live workout, corrected from 0x32
+        Flag("enable_sig12", 0x31),   // real on-strap capture during a live workout
     )
 }

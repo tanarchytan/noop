@@ -34,11 +34,11 @@ data class Spo2Sample(val ts: Int, val red: Int, val ir: Int, val unit: String =
  * A skin-temperature sample at wall-clock unix seconds [ts]. Mirrors the Room `SkinTempSample` and
  * the Swift `SkinTempSample(raw:unit:)` shape.
  *
- * UNIT CONVENTION: [raw] is a device-native register value whose °C scale is FAMILY-SPECIFIC (#938) —
+ * UNIT CONVENTION: [raw] is a device-native register value whose °C scale is FAMILY-SPECIFIC —
  * the 5/MG v18 @73 field is CENTI-degrees C (°C = raw / 100), but the WHOOP 4.0 v24 @72 field is a RAW
  * ADC on a different scale. The analytics reader (AnalyticsEngine / wornNightlySkinTempC, both platforms)
  * converts via [skinTempCelsius], which branches on [DeviceFamily]; running the 4.0 raw through /100 read
- * every worn night ~8 °C, below the 28 °C worn gate (issue #938). The live Oura path stores celsius * 100
+ * every worn night ~8 °C, below the 28 °C worn gate. The live Oura path stores celsius * 100
  * (the 5/MG centidegree convention), so its raw decodes identically on Android and macOS. [unit] carries a
  * scale tag ("raw_adc") so the scale is never silently assumed. (The Room entity has no unit column yet;
  * this carrier-level tag plus this comment document the convention until a migration adds one.)
@@ -46,22 +46,22 @@ data class Spo2Sample(val ts: Int, val red: Int, val ir: Int, val unit: String =
 data class SkinTempSample(val ts: Int, val raw: Int, val unit: String = "raw_adc")
 
 /**
- * WHOOP 4.0 (v24) skin-temp mapping constants (#938). The single provisional slope + anchor live in ONE
+ * WHOOP 4.0 (v24) skin-temp mapping constants. The single provisional slope + anchor live in ONE
  * place so the two-point-calibration TODO has an obvious home. Kept in lockstep with the Swift
  * `Whoop4SkinTemp`.
  */
 object Whoop4SkinTemp {
     /** Worn resting raw register value the GLOBAL anchor pins (first reporter's steady worn baseline, ~826).
-     *  Used as the fallback anchor when a device has too few in-band samples to learn its own (#938). */
+     *  Used as the fallback anchor when a device has too few in-band samples to learn its own. */
     const val ANCHOR_RAW: Double = 826.0
 
     /** Physiological nocturnal wrist skin temperature the anchor raw maps to (°C). */
     const val ANCHOR_CELSIUS: Double = 33.0
 
-    /** PROVISIONAL °C-per-raw-unit slope. TODO(#938): replace with the two-point anchor slope. */
+    /** PROVISIONAL °C-per-raw-unit slope. TODO: replace with the two-point anchor slope. */
     const val PROVISIONAL_SLOPE_C_PER_RAW: Double = 0.05
 
-    // ── Per-device worn anchor (#938, second capture) ───────────────────────────────────────────────
+    // ── Per-device worn anchor (second capture) ───────────────────────────────────────────────
     // The @72 skin-temp field is a raw ADC whose register OFFSET is per-device: two real 4.0 straps show
     // the IDENTICAL no-contact floor (~509) and 11-bit saturation ceiling (2047), but DIFFERENT worn
     // bands — the first strap ~760–865 (anchored ANCHOR_RAW=826), a second ~1100–1600 (nightly mean raw
@@ -74,22 +74,22 @@ object Whoop4SkinTemp {
 
     /** Lower raw bound of the plausible WORN band. Clear of the no-contact floor (~509–520 observed on
      *  two devices); banking stops at removal, so floor-and-below values are doff transients, never worn
-     *  skin — excluding them keeps the learned anchor (a median of worn raws) from being dragged down. (#938) */
+     *  skin — excluding them keeps the learned anchor (a median of worn raws) from being dragged down. */
     const val WORN_MIN_RAW: Int = 550
 
     /** Upper raw bound of the plausible WORN band. Clear of the 11-bit register saturation (2047 observed
      *  pegged during device charging/fault) — a pegged raw is not a worn reading, so it must not enter the
-     *  anchor median or the nightly mean. (#938) */
+     *  anchor median or the nightly mean. */
     const val WORN_MAX_RAW: Int = 2040
 
     /** Minimum in-band samples before a per-device anchor is trusted. Below this, callers fall back to the
      *  global reporter anchor ([ANCHOR_RAW]=826) so sparse-data behavior is byte-identical to today — a
-     *  handful of stray worn raws must not define a device's whole ADC offset. (#938) */
+     *  handful of stray worn raws must not define a device's whole ADC offset. */
     const val MIN_ANCHOR_SAMPLES: Int = 100
 
     /** Per-device worn anchor: median of the in-band raws across the caller's scan window, or null
      *  when fewer than [MIN_ANCHOR_SAMPLES] in-band samples exist (caller falls back to [ANCHOR_RAW]).
-     *  Median (not mean) so doff/don transients and tails can't drag the anchor. (#938) */
+     *  Median (not mean) so doff/don transients and tails can't drag the anchor. */
     fun deviceAnchorRaw(raws: List<Int>): Double? {
         val inBand = raws.filter { it in WORN_MIN_RAW..WORN_MAX_RAW }.sorted()
         if (inBand.size < MIN_ANCHOR_SAMPLES) return null
@@ -100,13 +100,13 @@ object Whoop4SkinTemp {
 }
 
 /**
- * Convert a raw `skin_temp_raw` register value to °C, DEVICE-FAMILY-AWARE (#938).
+ * Convert a raw `skin_temp_raw` register value to °C, DEVICE-FAMILY-AWARE.
  *
  * The two families bank skin temp on DIFFERENT scales, and applying one family's scale to the other is a
  * real decode bug: the historical `skin_temp_raw` field is a RAW ADC on the WHOOP 4.0 (v24 @72, "degC
  * computed server-side" per the schema) but a CENTIDEGREE register on the 5/MG (v18 @73). A single
  * family-blind `raw/100` sent every 4.0 night ~8 °C low, below the 28 °C worn gate, so skin temp and the
- * illness signal vanished (issue #938, reporter dpguglielmi's 4.0 capture).
+ * illness signal vanished.
  *
  * - [DeviceFamily.WHOOP5]: `raw / 100`. PROVEN on real 5/MG captures (Whoop5HistoricalTests: worn 3057 =
  *   30.6 °C, off-wrist 2247 = 22.5 °C). Unchanged.
@@ -122,7 +122,7 @@ object Whoop4SkinTemp {
  *   baseline clamp; a slope error only rescales the deviation and stays directionally correct. All 4.0
  *   values APPROXIMATE.
  *
- *   PER-DEVICE ANCHOR (#938 second capture): [anchorRaw] is the raw that maps to 33.0 °C. It defaults to the
+ *   PER-DEVICE ANCHOR (second capture): [anchorRaw] is the raw that maps to 33.0 °C. It defaults to the
  *   global [Whoop4SkinTemp.ANCHOR_RAW] (826, first reporter's strap) so every existing caller is byte-
  *   identical, but the register OFFSET is per-device — a second real 4.0 strap shows the SAME floor (~509)
  *   and saturation (2047) yet a worn band of ~1100–1600 (nightly mean raw ~1290), which the global 826
@@ -130,7 +130,7 @@ object Whoop4SkinTemp {
  *   [anchorRaw] from the device's OWN worn median ([Whoop4SkinTemp.deviceAnchorRaw]) so the worn band lands
  *   in range; the constant offset cancels in the deviation-from-own-baseline the app consumes.
  *
- *   TODO(#938): replace the provisional slope with the exact two-point anchor once a second worn point at a
+ *   TODO: replace the provisional slope with the exact two-point anchor once a second worn point at a
  *   markedly different ambient pins the ADC→°C transfer (including whether it is linear). Until then this is
  *   a defensible worn-range mapping, NOT a claimed-accurate absolute thermometer. Kept in lockstep with the
  *   Swift `skinTempCelsius(raw:family:anchorRaw:)`.
@@ -154,10 +154,10 @@ fun skinTempCelsius(
 data class WhoopEvent(val ts: Int, val kind: String, val payload: Map<String, Any?>)
 
 /**
- * #324 diagnostic record: a strap RTC-STATE event (RTC_LOST / BOOT / SET_RTC) that the #547 plausibility
+ * Diagnostic record: a strap RTC-STATE event (RTC_LOST / BOOT / SET_RTC) that the plausibility
  * gate dropped for an implausible own-timestamp. [rawTs] is the event's OWN dated value (unix seconds) - on
- * a future-dated strap this is the bad epoch the RTC jumped to, the single most useful signal for #324.
- * Mirrors the Swift `DroppedRtcEvent`.
+ * a future-dated strap this is the bad epoch the RTC jumped to, the single most useful bad-clock
+ * signal there is.
  */
 data class DroppedRtcEvent(val kind: String, val rawTs: Long) {
     companion object {

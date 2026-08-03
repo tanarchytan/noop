@@ -450,7 +450,7 @@ class OuraLiveSource(
         historyCursor = OuraHistoryCursorStore.read(appContext, deviceId)
         // connectGatt can throw (SecurityException if BLUETOOTH_CONNECT was revoked mid-session,
         // IllegalArgumentException on a stale device) - never let that crash the app; a failed start
-        // simply leaves the previous source in place (mirrors [StandardHrSource]).
+        // simply leaves the previous source in place.
         gatt = runCatching {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                 device.connectGatt(appContext, false, gattCallback, BluetoothDevice.TRANSPORT_LE)
@@ -971,7 +971,7 @@ class OuraLiveSource(
                     }
                 } else {
                     log("Oura: 0x42 time-sync REJECTED - implausible epoch ${e.value.epochMs}s (outside the " +
-                        "2020–2035 anchor window); history samples stay unanchored (#91)")
+                        "2020–2035 anchor window); history samples stay unanchored")
                 }
                 // The 0x42 time-sync can arrive ANYWHERE in a history-fetch stream, not necessarily first.
                 // Anything parked while unanchored gets its real time retroactively the moment it lands.
@@ -983,7 +983,7 @@ class OuraLiveSource(
                 // implausible-epoch beacon is a real failure (it can never anchor), so log just that.
                 if (!d.isPlausibleAnchorEpoch(e.value.unixSeconds)) {
                     log("Oura: 0x85 RTC beacon REJECTED - implausible epoch ${e.value.unixSeconds}s (outside " +
-                        "the 2020–2035 anchor window) (#91)")
+                        "the 2020–2035 anchor window)")
                 }
             }
             is OuraEvent.TierB -> {
@@ -1063,7 +1063,7 @@ class OuraLiveSource(
     /**
      * Runs a GATT-callback body so a throw on the binder thread (or a posted main-thread block) can never
      * crash the app. BLE callbacks run outside any try/catch, so an exception here would otherwise crash-loop
-     * the app on every launch since the ring is the persisted active source. Mirrors [StandardHrSource.guardedCallback].
+     * the app on every launch since the ring is the persisted active source.
      */
     private fun guardedCallback(label: String, block: () -> Unit) {
         runCatching(block).onFailure {

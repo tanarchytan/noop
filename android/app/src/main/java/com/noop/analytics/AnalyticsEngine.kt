@@ -35,6 +35,15 @@ import kotlin.math.roundToLong
 object AnalyticsEngine {
 
     /**
+     * Motion ticks (`step_motion_counter@57`) → calibrated steps. The one divisor the daily total, a
+     * workout window and the Steps trace all apply: ticks ÷ [ticksPerStep], floored at 0.5 so a bad
+     * pref can at most double the total, saturating at [Int.MAX_VALUE].
+     */
+    fun scaledSteps(ticks: Int, ticksPerStep: Double): Int =
+        (ticks.toDouble() / max(ticksPerStep, 0.5)).roundToLong()
+            .coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
+
+    /**
      * Pair the strap's WRIST_OFF/WRIST_ON events into off-wrist [start, end) intervals for the
      * sleep detector's wear filter. Each OFF opens an interval that closes at the next ON, or at
      * [windowEnd] if still off-wrist at the end of the window. Repeated OFFs/ONs coalesce.
@@ -449,11 +458,9 @@ object AnalyticsEngine {
             // math lives in whoop-rs (RustScores.steps) so the daily and per-workout totals can never disagree.
             val inDay = (daySteps ?: steps).filter { dayString(it.ts, tzOffsetSeconds) == day }
             val ticks = RustScores.steps(inDay) ?: return@run null
-            // @57 counts motion ticks, not validated steps — the 5/MG counter overcounts. Divide by the
-            // user-calibrated ticks-per-step (default 1.0 = pass-through; floor 0.5 so a bad pref can at
-            // most double, never explode, the total).
-            val scaled = (ticks.toDouble() / max(profile.stepTicksPerStep, 0.5)).roundToLong()
-                .coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
+            // @57 counts motion ticks, not validated steps — the 5/MG counter overcounts, so the
+            // user-calibrated divisor applies (default 1.0 = pass-through).
+            val scaled = scaledSteps(ticks, profile.stepTicksPerStep)
             if (scaled > 0) scaled else null
         }
 

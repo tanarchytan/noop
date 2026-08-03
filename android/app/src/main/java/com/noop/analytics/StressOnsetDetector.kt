@@ -7,10 +7,9 @@ package com.noop.analytics
  * like [SedentaryDetector.evaluate]: the caller persists [Decision.nextState] and feeds it back, so a
  * replayed window can't re-fire. No I/O / BLE here.
  *
- * Math: a rolling clean-R-R buffer feeds a SLOW RMSSD baseline (0.98/0.02 EMA) gated by a resting-HR
- * band (55–100 bpm), fires on a `rmssd < baseline × 0.6` drop, rate-limited to once per 15 min with a
- * single confirming buzz. This engine adds on top:
- *   1. A FAST short-window RMSSD (the latest beats) vs the slow baseline.
+ * Shape only — every threshold, EMA rate, resting-HR band and rate limit lives in whoop-rs behind
+ * [RustScores.stressOnsetEvaluate], never here:
+ *   1. A FAST short-window RMSSD (the latest beats) vs a SLOW RMSSD baseline.
  *   2. EDGE trigger: fire ONCE on the fresh crossing (was-above → now-below), not every tick.
  *   3. The EXERCISE GATE (the credibility line): suppress when HR is out of the resting band AND/OR
  *      recent motion says "metabolic, not stress". A brisk walk's HRV dip must NOT fire a "stressed" cue.
@@ -119,7 +118,7 @@ object StressOnsetDetector {
      * Evaluate the live window and decide whether to fire a JITAI nudge.
      *
      * - [rrBuffer]: the rolling clean-able R-R buffer (rrMs, newest LAST). The fast RMSSD is taken over the
-     *   latest [FAST_WINDOW_BEATS] clean beats; the slow baseline EMA absorbs each trusted fast value.
+     *   latest clean beats; the slow baseline EMA absorbs each trusted fast value.
      * - [currentHR]: latest smoothed live HR (bpm), or null if unknown (then the HR half of the gate can't
      *   pass and we treat HR as out-of-band — conservative).
      * - [recentMotionG]: recent smoothed wrist-motion (g) from `collector.recentGravity`, or null if no
@@ -127,8 +126,9 @@ object StressOnsetDetector {
      * - [sessionActive]: true if a manual Breathe/L1/L2 session is already running (never nudge over it).
      * - [state]: the prior persisted state; [nowSec] / [tzOffsetSec] passed IN (never read a clock).
      *
-     * The EXERCISE GATE suppresses when EITHER signal says metabolic: HR outside [55,100], OR recent motion
-     * at/above [MOTION_GATE_G]. A missing HR is treated as out-of-band (can't confirm resting); missing
+     * The EXERCISE GATE suppresses when EITHER signal says metabolic: HR outside the resting band, OR
+     * recent motion at/above the motion gate (both Rust-owned). A missing HR is treated as
+     * out-of-band (can't confirm resting); missing
      * motion alone does NOT gate (gravity is offloaded and lags, so HR-band carries it), so the resting-HR
      * band is the real-time gate and motion is a secondary confirm when present.
      */

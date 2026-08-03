@@ -1,7 +1,7 @@
 package com.noop.protocol
 
 /**
- * Haptic Clock (#460): turn a wall-clock time into a deterministic list of wrist buzzes so a user can
+ * Haptic Clock: turn a wall-clock time into a deterministic list of wrist buzzes so a user can
  * read the time off the strap without looking at a screen — a long pulse counts tens, a short pulse
  * counts units, in the order hour-tens, hour-units, minute-tens, minute-units.
  *
@@ -28,7 +28,7 @@ object HapticClock {
     }
 
     // Pulse + gap timing (ms). Kept in lock-step with HapticClock.swift — change both together.
-    // #981: the buzz itself is a fixed hardware pattern, so durationMs+gapMs is only the start-to-start
+    // the buzz itself is a fixed hardware pattern, so durationMs+gapMs is only the start-to-start
     // SPACING between buzzes. The old 250ms intra-gap left near-zero silence between unit taps, so they
     // blended on the wrist and were "almost impossible to distinguish". Widened gaps (intra-gap most of
     // all) give clear silence between taps and between digit groups while keeping the sequence practical.

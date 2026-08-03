@@ -410,7 +410,7 @@ class Backfiller(
                     log(
                         "Backfill: strap reported ${ev.kind} with an implausible own-timestamp " +
                             "${BadClockDiagnostics.isoDay(ev.rawTs)} (${BadClockDiagnostics.hoursOffset(ev.rawTs, nowForRtc)} " +
-                            "vs now) — the strap's RTC reset to a wrong base (#324/#928); this is the ground-truth " +
+                            "vs now) — the strap's RTC reset to a wrong base; this is the ground-truth " +
                             "cause of the future-dated banking, not a NOOP decode bug.",
                     )
                 }
@@ -501,7 +501,7 @@ class Backfiller(
         // held records-carrying chunks, freeing history we never stored. Stall the whole offload until
         // a fresh session with a working store re-offers everything past the last GOOD ack.
         if (persistStalled) {
-            log("Backfill: persist stalled earlier this session — NOT acking trim=$trim so the strap can't trim past un-stored history. Reconnect once the store is healthy (a backup restore needs an app restart, #57).")
+            log("Backfill: persist stalled earlier this session — NOT acking trim=$trim so the strap can't trim past un-stored history. Reconnect once the store is healthy (a backup restore needs an app restart).")
             return
         }
 

@@ -1,24 +1,17 @@
 package com.noop.analytics
 
 import com.noop.data.DailyMetric
-import kotlin.math.sqrt
 
 /**
  * Pure adapter turning cached [DailyMetric] history into per-night z-scored inputs for the three v5
  * skin-temp-suite engines (CyclePhaseEngine / CircadianEngine / IllnessSignalEngine), run once per
  * analytics pass. No I/O, no state — caller hands `recentDays` + prefs/profile flags, gets a [Snapshot].
- * Uses a lightweight rolling mean+SD z, not the full [Baselines] EWMA, since the cards only need a
+ * Uses whoop-rs's illness baseline z, not the full [Baselines] EWMA, since the cards only need a
  * deviation-against-your-own-range read, kept cheap and DB-free. NON-CLINICAL: every output is an
  * approximation, never a diagnosis. Cycle awareness is opt-in, gated on a default-off pref before
  * [Snapshot.cycle] is read.
  */
 object V5HealthSignals {
-
-    /** Trailing window (nights) for the rolling baseline used to z-score each signal. */
-    private const val BASELINE_WINDOW = 30
-
-    /** Minimum trailing nights before a z-score is trusted (mirrors Baselines.minNightsTrust intent). */
-    private const val MIN_BASELINE_NIGHTS = 14
 
     /** The published engine results for the Health hub's skin-temp suite, all already decided. */
     data class Snapshot(
@@ -49,20 +42,16 @@ object V5HealthSignals {
         activitySamples: List<uniffi.whoop_ffi.ActivitySample> = emptyList(),
         tzOffsetSeconds: Long = 0,
     ): Snapshot {
-        val baselineTrusted = days.count { hasAnyVital(it) } >= MIN_BASELINE_NIGHTS
+        val baselineCfg = RustScores.illnessBaselineCfg
+        val baselineTrusted = days.count { hasAnyVital(it) } >= baselineCfg.minNights.toInt()
 
-        // ── Per-night z-scores against each signal's trailing rolling baseline ──
-        val nights = ArrayList<CyclePhaseEngine.Night>(days.size)
-        for ((i, d) in days.withIndex()) {
-            val window = days.subList(maxOf(0, i - BASELINE_WINDOW), i)
-            nights.add(
-                CyclePhaseEngine.Night(
-                    day = d.day,
-                    tempZ = zAgainst(d.skinTempDevC, window) { it.skinTempDevC },
-                    rhrZ = zAgainst(d.restingHr?.toDouble(), window) { it.restingHr?.toDouble() },
-                    hrvZ = zAgainst(d.avgHrv, window) { it.avgHrv },
-                )
-            )
+        // ── Per-night z-scores: whoop-rs owns the trailing window, its recent-night gap and the z ──
+        val tempZs = RustScores.illnessBaselineZ(days.map { it.skinTempDevC })
+        val rhrZs = RustScores.illnessBaselineZ(days.map { it.restingHr?.toDouble() })
+        val hrvZs = RustScores.illnessBaselineZ(days.map { it.avgHrv })
+        val respZs = RustScores.illnessBaselineZ(days.map { it.respRateBpm })
+        val nights = days.mapIndexed { i, d ->
+            CyclePhaseEngine.Night(day = d.day, tempZ = tempZs[i], rhrZ = rhrZs[i], hrvZ = hrvZs[i])
         }
 
         // ── Cycle awareness (opt-in) ──
@@ -84,9 +73,7 @@ object V5HealthSignals {
         latest?.rhrZ?.let { if (it >= IllnessSignalEngine.signalZThreshold) firedLabels["restingHR"] = "RHR up" }
         latest?.tempZ?.let { if (it >= IllnessSignalEngine.signalZThreshold) firedLabels["skinTemp"] = "skin temp up" }
         latest?.hrvZ?.let { if (-it >= IllnessSignalEngine.signalZThreshold) firedLabels["hrv"] = "HRV down" }
-        val respZ = days.lastOrNull()?.let { d ->
-            zAgainst(d.respRateBpm, days.subList(maxOf(0, days.size - 1 - BASELINE_WINDOW), maxOf(0, days.size - 1))) { it.respRateBpm }
-        }
+        val respZ = respZs.lastOrNull()
         respZ?.let { if (it >= IllnessSignalEngine.signalZThreshold) firedLabels["respiration"] = "respiration up" }
 
         val illnessInputs = IllnessSignalEngine.Inputs(
@@ -131,23 +118,4 @@ object V5HealthSignals {
     /** A day is "usable" for the baseline if it carries at least one of the four illness/cycle vitals. */
     private fun hasAnyVital(d: DailyMetric): Boolean =
         d.restingHr != null || d.avgHrv != null || d.skinTempDevC != null || d.respRateBpm != null
-
-    /**
-     * Z-score [value] against the trailing [window]'s rolling mean + sample SD for [selector]. Returns
-     * null when the value is absent or there isn't enough trailing data to trust the spread. A floor on
-     * the SD prevents a near-constant series from exploding the z.
-     */
-    private inline fun zAgainst(
-        value: Double?,
-        window: List<DailyMetric>,
-        selector: (DailyMetric) -> Double?,
-    ): Double? {
-        if (value == null) return null
-        val xs = window.mapNotNull(selector)
-        if (xs.size < MIN_BASELINE_NIGHTS) return null
-        val mean = xs.average()
-        val variance = xs.sumOf { (it - mean) * (it - mean) } / (xs.size - 1).coerceAtLeast(1)
-        val sd = sqrt(variance).coerceAtLeast(1e-6)
-        return (value - mean) / sd
-    }
 }
