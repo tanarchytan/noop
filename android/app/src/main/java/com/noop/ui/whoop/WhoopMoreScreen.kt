@@ -47,7 +47,7 @@ private data class MoreSection(@StringRes val headerRes: Int, val items: List<De
  */
 private fun moreSections(hydration: Boolean): List<MoreSection> = listOf(
     MoreSection(
-        R.string.more_group_insights,
+        R.string.more_group_analysis,
         listOf(Destination.Insights, Destination.Intelligence, Destination.Coach),
     ),
     MoreSection(
@@ -88,7 +88,7 @@ internal fun WhoopMoreScreen(onNavigate: (String) -> Unit) {
     // Read on every composition rather than remembered: SharedPreferences is not reactive, so this is
     // what makes the row appear on the way back from the Settings toggle.
     val sections = moreSections(hydration = NoopPrefs.hydrationTracking(context))
-    ScreenScaffold(title = null) {
+    ScreenScaffold(title = stringResource(R.string.nav_more)) {
         Column(verticalArrangement = Arrangement.spacedBy(Metrics.sectionGap)) {
             sections.forEach { section ->
                 Column(verticalArrangement = Arrangement.spacedBy(Metrics.space12)) {

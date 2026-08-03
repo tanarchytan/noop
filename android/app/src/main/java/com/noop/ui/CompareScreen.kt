@@ -969,7 +969,7 @@ private fun CorrelationSection(series: List<CompareSeries>, range: CompareRange)
         SectionHeader(
             "How They Move Together",
             overline = "Pearson r · ${range.phrase}",
-            trailing = if (pairs.isEmpty()) null else "${pairs.size} pairs",
+            trailing = if (pairs.isEmpty()) null else "${pairs.size} pair${if (pairs.size == 1) "" else "s"}",
         )
 
         if (pairs.isEmpty()) {
@@ -1013,9 +1013,10 @@ private fun PairCard(p: PairResult) {
                     modifier = Modifier.weight(1f),
                 )
                 TrendChip(text = signedR(p.r), color = tint)
-                // The headline single value as a small ring: |r| fills it in the relationship's own tint,
-                // with the signed r over it. Same r, same tint, same signedR formatting. The fill key is
-                // the pair, so a scroll that recycles the row brings the ring back already filled.
+                // |r| as a small ring in the relationship's own tint, beside the chip that prints the
+                // signed number. The ring carries the magnitude only: a signed r is five glyphs, wider
+                // than this ring's inner circle, and the chip already says it. The fill key is the pair,
+                // so a scroll that recycles the row brings the ring back already filled.
                 GlowRing(
                     fraction = abs(p.r).coerceIn(0.0, 1.0).toFloat(),
                     value = p.r,
@@ -1023,7 +1024,7 @@ private fun PairCard(p: PairResult) {
                     diameter = PAIR_RING_DIAMETER,
                     lineWidth = PAIR_RING_DIAMETER * RING_STROKE_FRACTION,
                     fillKey = "compare.${p.a.metric}.${p.b.metric}",
-                    format = { signedR(it) },
+                    showsLabel = false,
                 )
             }
 

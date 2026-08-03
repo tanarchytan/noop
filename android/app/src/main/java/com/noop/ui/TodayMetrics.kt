@@ -83,10 +83,12 @@ internal fun MetricGrid(
     // unit, tint and fill fraction. The editor, the enabled order and the collapse expander read the same
     // descriptors, so a tile's presence and its position stay the user's choice.
     val descriptors: Map<KeyMetric, KeyTileData> = mapOf(
+        // Each score tile wears its KeyMetric's own title, the word the hero ring above it and the
+        // customise sheet beside it both use, so one number carries one name down the page.
         KeyMetric.CHARGE to run {
             val v = d?.recovery ?: lastScoredCharge?.value
             KeyTileData(
-                label = "Recovery",
+                label = KeyMetric.CHARGE.title,
                 value = d?.recovery?.let { "${it.roundToInt()}" }
                     ?: recoveryCalibration?.let { "$it/${Baselines.minNightsSeed}" }
                     ?: lastScoredCharge?.let { "${it.value.roundToInt()}" } ?: NO_DATA,
@@ -96,14 +98,14 @@ internal fun MetricGrid(
             )
         },
         KeyMetric.EFFORT to KeyTileData(
-            label = "Strain",
+            label = KeyMetric.EFFORT.title,
             value = d?.strain?.let { UnitFormatter.effortDisplay(it, effortScale) } ?: NO_DATA,
             unit = "", // Strain is a 0–21 load index, not a percentage
             tint = d?.strain?.let { Palette.effortTint(it / StrainScorer.maxStrain) } ?: Palette.effortColor,
             frac = d?.strain?.let { (it / 100.0).coerceIn(0.0, 1.0) },
         ),
         KeyMetric.REST to KeyTileData(
-            label = "Rest",
+            label = KeyMetric.REST.title,
             value = restScore?.let { "${it.roundToInt()}" } ?: NO_DATA,
             unit = if (restScore != null) "%" else "",
             tint = restScore?.let { Palette.recoveryColor(it) } ?: Palette.restColor,

@@ -66,8 +66,8 @@ internal data class HealthVital(
     /** The reading with its unit, or null when the metric has no stored value at all. */
     val formatted: String? get() = value?.let { "${format(it)} $unit".trim() }
 
-    /** The reading alone, for the compact summary column. */
-    val compact: String get() = value?.let(format) ?: HEALTH_NO_READING
+    /** The reading with its unit for the summary column: five numbers in five units need all five. */
+    val compact: String get() = formatted ?: HEALTH_NO_READING
 
     /** In-range keeps the metric's own colour, out-of-range reads warning amber, no reading grey. */
     val accent: Color get() = when (banding.band) {
@@ -86,6 +86,28 @@ internal data class HealthVital(
     }
 
     val spoken: String get() = formatted?.let { "$label $it, $stateCaption" } ?: "$label, no reading"
+}
+
+/**
+ * How many read vitals sit in their band. Home's monitor tile and the Health card both state this one
+ * result, so one day cannot read as a green tick on one screen and an amber warning on the other.
+ */
+internal data class HealthRollUp(val inRange: Int, val read: Int) {
+    val allInRange: Boolean get() = inRange == read
+    val title: String get() = "$inRange/$read metrics within range"
+}
+
+/**
+ * The roll-up over the vitals that HAVE a reading, so an unread metric is never counted as in range and
+ * never as a flag. Null when nothing has been read at all, which is an empty state rather than a verdict.
+ */
+internal fun healthRollUp(vitals: List<HealthVital>): HealthRollUp? {
+    val read = vitals.filter { it.banding.band != VitalBands.Band.NO_DATA }
+    if (read.isEmpty()) return null
+    return HealthRollUp(
+        inRange = read.count { it.banding.band == VitalBands.Band.IN_RANGE },
+        read = read.size,
+    )
 }
 
 /**

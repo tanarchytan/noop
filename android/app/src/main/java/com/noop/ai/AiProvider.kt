@@ -17,6 +17,8 @@ package com.noop.ai
  */
 enum class AiProvider(
     val displayName: String,
+    /** The one-word name a segmented control shows, so three providers fit one row. */
+    val shortName: String,
     val defaultModel: String,
     val models: List<String>,
     val endpoint: String,
@@ -24,6 +26,7 @@ enum class AiProvider(
 ) {
     OPENAI(
         displayName = "OpenAI",
+        shortName = "OpenAI",
         defaultModel = "gpt-4o-mini",
         models = listOf(
             "gpt-4o",
@@ -37,6 +40,7 @@ enum class AiProvider(
     ),
     ANTHROPIC(
         displayName = "Anthropic",
+        shortName = "Anthropic",
         defaultModel = "claude-sonnet-4-6",
         models = listOf(
             "claude-opus-4-8",
@@ -60,6 +64,7 @@ enum class AiProvider(
      */
     CUSTOM(
         displayName = "Custom (OpenAI-compatible)",
+        shortName = "Custom",
         defaultModel = "",
         models = emptyList(),
         endpoint = "",

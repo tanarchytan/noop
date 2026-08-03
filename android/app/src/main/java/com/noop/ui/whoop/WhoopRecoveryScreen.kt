@@ -41,6 +41,8 @@ import com.noop.ui.SectionHeader
 import com.noop.ui.StatePill
 import com.noop.ui.StrandTone
 import com.noop.ui.WeekBarChart
+import com.noop.ui.WeekLineChart
+import com.noop.ui.WeekLineSeries
 import com.noop.ui.hrvReadinessColor
 import com.noop.ui.hrvReadinessWord
 import com.noop.ui.logicalDayKeyNow
@@ -212,37 +214,34 @@ private fun RecoveryWeeklyTrends(
     }
     if (week.hrv.any { it != null }) {
         RecoveryTrendCard("Heart Rate Variability", vitalOpener(onOpenVital, "hrv")) {
-            RecoveryWeekLineChart(
-                values = week.hrv,
+            WeekLineChart(
+                series = WeekLineSeries("Heart rate variability", week.hrv, Palette.metricCyan),
                 dayLabels = week.labels,
-                color = Palette.metricCyan,
-                name = "Heart rate variability",
                 format = { wholeText(it) },
                 highlightIndex = week.highlightIndex,
+                height = Metrics.compactChartHeight,
             )
         }
     }
     if (week.restingHr.any { it != null }) {
         RecoveryTrendCard("Resting Heart Rate", vitalOpener(onOpenVital, "rhr")) {
-            RecoveryWeekLineChart(
-                values = week.restingHr,
+            WeekLineChart(
+                series = WeekLineSeries("Resting heart rate", week.restingHr, Palette.metricRose),
                 dayLabels = week.labels,
-                color = Palette.metricRose,
-                name = "Resting heart rate",
                 format = { wholeText(it) },
                 highlightIndex = week.highlightIndex,
+                height = Metrics.compactChartHeight,
             )
         }
     }
     if (week.respiratory.any { it != null }) {
         RecoveryTrendCard("Respiratory Rate", vitalOpener(onOpenVital, "resp")) {
-            RecoveryWeekLineChart(
-                values = week.respiratory,
+            WeekLineChart(
+                series = WeekLineSeries("Respiratory rate", week.respiratory, Palette.accent),
                 dayLabels = week.labels,
-                color = Palette.accent,
-                name = "Respiratory rate",
                 format = { tenthText(it) },
                 highlightIndex = week.highlightIndex,
+                height = Metrics.compactChartHeight,
             )
         }
     }

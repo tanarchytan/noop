@@ -1251,7 +1251,23 @@ fun WeekBarChart(
     )
 }
 
-// MARK: - WeekDualLineChart
+// MARK: - WeekLineChart / WeekDualLineChart
+
+/**
+ * One week series as a line, every point marked and labelled. Plotted on the shared slot geometry, so a
+ * point sits at the centre of the slot its own day label sits under.
+ */
+@Composable
+fun WeekLineChart(
+    series: WeekLineSeries,
+    dayLabels: List<String>,
+    modifier: Modifier = Modifier,
+    format: (Double) -> String = { formatLineValue(it) },
+    highlightIndex: Int = -1,
+    height: Dp = Metrics.chartHeight,
+) {
+    WeekLinePlot(listOf(series), dayLabels, modifier, format, highlightIndex, height, showsLegend = false)
+}
 
 /**
  * Two overlaid week series on one shared scale, every point marked and labelled, named in a legend row.
@@ -1268,11 +1284,27 @@ fun WeekDualLineChart(
     highlightIndex: Int = -1,
     height: Dp = Metrics.chartHeight,
 ) {
+    WeekLinePlot(
+        listOf(primary, secondary), dayLabels, modifier, format, highlightIndex, height, showsLegend = true,
+    )
+}
+
+/** The plot both week line charts draw: one shared min..max domain, slot-centre x, a label per point. */
+@Composable
+private fun WeekLinePlot(
+    input: List<WeekLineSeries>,
+    dayLabels: List<String>,
+    modifier: Modifier,
+    format: (Double) -> String,
+    highlightIndex: Int,
+    height: Dp,
+    showsLegend: Boolean,
+) {
     val measurer = rememberTextMeasurer()
     val labelStyle = NoopType.captionNumber
     val slots = dayLabels.size
-    val series = remember(primary, secondary, slots) {
-        listOf(primary, secondary).map { s -> s.copy(values = weekPoints(s.values, slots)) }
+    val series = remember(input, slots) {
+        input.map { s -> s.copy(values = weekPoints(s.values, slots)) }
     }
     val domain = remember(series) {
         val all = series.flatMap { it.values }.filterNotNull()
@@ -1281,12 +1313,17 @@ fun WeekDualLineChart(
     val summary = remember(series, dayLabels) {
         series.joinToString(". ") { s -> weekSummary(s.name, dayLabels) { i -> s.values[i]?.let(format) } }
     }
+    val legend: (@Composable () -> Unit)? = if (showsLegend) {
+        { ChartLegend(series.map { it.name to it.color }, mark = LegendMark.Ring) }
+    } else {
+        null
+    }
     WeekChartFrame(
         dayLabels = dayLabels,
         highlightIndex = highlightIndex,
         description = summary,
         modifier = modifier,
-        legend = { ChartLegend(series.map { it.name to it.color }, mark = LegendMark.Ring) },
+        legend = legend,
     ) {
         Canvas(modifier = Modifier.fillMaxWidth().height(height)) {
             if (slots == 0 || domain == null || size.width <= 0f || size.height <= 0f) {
@@ -1312,16 +1349,16 @@ fun WeekDualLineChart(
             val plotted = series.map { offsetsFor(it.values) }
             series.forEachIndexed { si, s ->
                 val offsets = plotted[si]
-                val other = plotted[1 - si]
                 drawRuns(offsets, s.color.copy(alpha = StrandAlpha.unselectedBar))
                 offsets.forEachIndexed { i, p ->
                     val v = s.values[i]
                     if (p == null || v == null) return@forEachIndexed
-                    val (first, second) = labelSides(plotted[0][i], plotted[1][i])
+                    // A lone series always labels above; two decide per slot so they never overprint.
+                    val below = plotted.size > 1 &&
+                        labelSides(plotted[0][i], plotted[1][i]).let { if (si == 0) it.first else it.second }
                     drawRingMarker(s.color, p)
                     drawSlotLabel(
-                        measurer, format(v), labelStyle, s.color, p.x,
-                        labelTop(p, if (si == 0) first else second, gap, labelH),
+                        measurer, format(v), labelStyle, s.color, p.x, labelTop(p, below, gap, labelH),
                     )
                 }
             }

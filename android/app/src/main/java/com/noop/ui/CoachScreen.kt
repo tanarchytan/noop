@@ -122,7 +122,7 @@ private fun CoachSetup(vm: CoachViewModel) {
                 SegmentedPillControl(
                     items = AiProvider.entries,
                     selection = provider,
-                    label = { it.displayName },
+                    label = { it.shortName },
                     onSelect = { vm.selectProvider(context, it) },
                 )
             }

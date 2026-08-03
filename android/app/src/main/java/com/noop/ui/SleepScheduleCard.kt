@@ -44,15 +44,16 @@ private const val SCHEDULE_MIN_HOURS = 8f
 private const val SCHEDULE_HOUR_STEP = 4f
 
 /**
- * The chart's vertical span in hours for the nights it draws: a whole hour outside the earliest bed
- * and the latest wake. A fixed 20:00-to-18:00 axis left the lower half permanently empty. The
- * time-in-bed card derives it from the same nights, so a bar means the same thing on both.
+ * The chart's vertical span in hours for the nights it draws: an hour outside the earliest bed and the
+ * latest wake, then snapped out to the gridline step so the last labelled line always sits past the
+ * data instead of inside a bar. The time-in-bed card derives it from the same nights, so a bar means
+ * the same thing on both.
  */
 internal fun scheduleHourSpan(nights: List<SleepScheduleNight>): ClosedFloatingPointRange<Float> {
     val lo = nights.minOfOrNull { minOf(it.bedHour, it.wakeHour) } ?: 0f
     val hi = nights.maxOfOrNull { maxOf(it.bedHour, it.wakeHour) } ?: SCHEDULE_MIN_HOURS
-    val min = floor(lo) - 1f
-    val max = maxOf(ceil(hi) + 1f, min + SCHEDULE_MIN_HOURS)
+    val min = floor((lo - 1f) / SCHEDULE_HOUR_STEP) * SCHEDULE_HOUR_STEP
+    val max = maxOf(ceil((hi + 1f) / SCHEDULE_HOUR_STEP) * SCHEDULE_HOUR_STEP, min + SCHEDULE_MIN_HOURS)
     return min..max
 }
 

@@ -455,7 +455,8 @@ fun TrendChip(text: String, color: Color = Palette.textTertiary, modifier: Modif
 // MARK: - AutoSizeValue — shrinks to fit instead of truncating
 //
 // Steps the font down (to a 0.6x floor) until the text fits one line, then holds.
-// Resets when the text/style changes.
+// Resets on the text LENGTH, not the text: a ring counting up swaps its digits every frame, and
+// restarting the search on each swap left it at full size for the whole animation.
 @Composable
 internal fun AutoSizeValue(
     text: String,
@@ -464,7 +465,7 @@ internal fun AutoSizeValue(
     modifier: Modifier = Modifier,
     minScale: Float = 0.6f,
 ) {
-    var scale by remember(text, style) { mutableStateOf(1f) }
+    var scale by remember(text.length, style) { mutableStateOf(1f) }
     Text(
         text = text,
         color = color,
@@ -565,8 +566,12 @@ private val SEGMENTED_TRACK_HEIGHT = 36.dp
 /** The inset between the track edge and a segment. */
 private val SEGMENTED_TRACK_INSET = 4.dp
 
-/** Corner radius as a percentage, so the track stays a pill at either height. */
-private const val SEGMENTED_CORNER_PERCENT = 50
+/**
+ * Corner radius fixed at half the one-row height: a pill while the segments fit one row, and a rounded
+ * rect once they wrap. A percentage radius would keep curving through every row, so a two-row track read
+ * as one lens with the wrapped segment inside the bend.
+ */
+private val SEGMENTED_CORNER = SEGMENTED_TRACK_HEIGHT / 2
 
 @Composable
 fun <T> SegmentedPillControl(
@@ -579,7 +584,7 @@ fun <T> SegmentedPillControl(
     // before it is usable.
     enabled: (T) -> Boolean = { true },
 ) {
-    val outerShape = RoundedCornerShape(SEGMENTED_CORNER_PERCENT)
+    val outerShape = RoundedCornerShape(SEGMENTED_CORNER)
     // The track holds one row of segments and grows to a second when the labels do not fit, so a set of
     // long words wraps instead of running past the track and being cut square on one edge.
     FlowRow(
@@ -965,11 +970,18 @@ fun GlowRing(
             // Number, a smaller trailing unit mark, and a caption beneath. Both extra slots scale off the
             // diameter like the number does, so one ring component reads at every size it is drawn at.
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Row(verticalAlignment = Alignment.Bottom) {
-                    Text(
+                // Held to the inner circle and shrunk to fit inside it: at the shared 0.36 number size a
+                // string longer than a two-digit score is wider than the track and crosses the stroke.
+                Row(
+                    modifier = Modifier.width(diameter - lineWidth * 2),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.Bottom,
+                ) {
+                    AutoSizeValue(
                         text = format(animValue.toDouble()),
                         style = glowRingCenterTextStyle(diameter),
-                        maxLines = 1,
+                        color = Palette.textPrimary,
+                        modifier = Modifier.weight(1f, fill = false),
                     )
                     if (unit != null) {
                         Text(
@@ -1009,10 +1021,14 @@ fun RecoveryRing(
     showsLabel: Boolean = true,
     valueFormat: ((Double) -> String)? = null,
 ) {
+    // ONE encoding per value: the arc wears the single colour the ramp maps this score to — the same
+    // colour Home's ring, the Charge tile and the weekly bars give it. Sweeping the whole ramp under
+    // the fill put a large red segment under every score labelled MODERATE.
+    val tint = Palette.recoveryColor(score)
     BevelGauge(
         fraction = score / 100.0,
-        stops = Palette.recoveryStops,
-        tipColor = Palette.recoveryColor(score),
+        stops = listOf(0f to tint, 1f to tint),
+        tipColor = tint,
         // ROUND, never truncate: the home hero ring rounds the same value, so truncating here showed
         // one Charge as 62 on Home and 61 on this screen for a stored 61.8.
         numberText = valueFormat?.invoke(score) ?: score.roundToInt().toString(),
@@ -1045,12 +1061,14 @@ fun StrainGauge(
 ) {
     val clamped = strain.coerceIn(0.0, outOf)
     val fraction = if (outOf > 0) clamped / outOf else 0.0
+    // Sampled by the fill FRACTION so it spans the full ember→amber ramp identically on the 0–100 and
+    // 0–21 display scales, then worn by the whole arc — its sibling Recovery gauge encodes one value
+    // the same way.
+    val tint = Palette.effortTint(fraction)
     BevelGauge(
         fraction = fraction,
-        stops = Palette.strainStops,
-        // Tip tint sampled by the fill FRACTION so it spans the full ember→amber ramp identically on the
-        // 0–100 and 0–21 display scales (a maxed gauge reaches the bright-amber peak, not a stuck ember).
-        tipColor = Palette.effortTint(fraction),
+        stops = listOf(0f to tint, 1f to tint),
+        tipColor = tint,
         numberText = valueText
             ?: if (clamped % 1.0 == 0.0) clamped.toInt().toString() else String.format(java.util.Locale.US, "%.1f", clamped),
         captionText = "of ${outOf.toInt()}",

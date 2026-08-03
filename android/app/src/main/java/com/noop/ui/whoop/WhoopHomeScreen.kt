@@ -125,6 +125,12 @@ fun WhoopHomeScreen(
 
     val state = rememberWhoopHomeState(viewModel, dayOffset)
     val effortScale = UnitPrefs.effortScale(context)
+    val tempUnit = UnitPrefs.temperature(context)
+    // The Health page's own roll-up, off the same rows, so the monitor tile and that page never
+    // summarise one day in opposite tones.
+    val healthRollUp = remember(state.days, tempUnit) {
+        healthRollUp(latestHealthVitals(state.days, tempUnit))
+    }
     val unitSystem = UnitPrefs.system(context)
     var enabledCards by remember { mutableStateOf(DashboardCardPrefs.enabled(context)) }
     var showEditor by remember { mutableStateOf(false) }
@@ -216,6 +222,7 @@ fun WhoopHomeScreen(
             item {
                 WhoopMonitorRow(
                     healthAlert = state.healthAlert,
+                    healthRollUp = healthRollUp,
                     stress = state.stress,
                     onOpenHealth = onOpenHealth,
                     onOpenStress = onOpenStress,
@@ -435,13 +442,9 @@ private fun whoopHeroRings(
             value = effort,
             fraction = if (effortMax > 0.0) effort?.div(effortMax) else null,
             tint = Palette.effortTint((state.effort ?: 0.0) / EFFORT_STORED_MAX),
-            format = { value ->
-                if (effortScale == EffortScale.WHOOP) {
-                    String.format(Locale.US, "%.1f", value)
-                } else {
-                    value.roundToInt().toString()
-                }
-            },
+            // One decimal on either scale, the same as the Effort tile and the Strain screen: rounding
+            // to a whole here printed 71 on the ring for the 70.8 both of those show.
+            format = { value -> String.format(Locale.US, "%.1f", value) },
             emptyTitle = NO_DATA,
             caption = "of ${effortMax.roundToInt()}",
             onClick = onOpenStrain,

@@ -40,8 +40,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.noop.analytics.DaytimeStress
 import com.noop.analytics.RustScores
-import com.noop.analytics.VitalBands
 import com.noop.ui.AppViewModel
+import com.noop.ui.AutoSizeValue
 import com.noop.ui.DataPendingNote
 import com.noop.ui.InsetChartPlaceholder
 import com.noop.ui.LazyScreenScaffold
@@ -143,19 +143,7 @@ private fun HealthMonitorSummaryCard(
                     VitalSummaryColumn(vital, Modifier.weight(1f))
                 }
             }
-            // The roll-up counts only vitals that HAVE a reading, so an unread metric is never
-            // counted as in range and never as a flag.
-            val read = vitals.filter { it.banding.band != VitalBands.Band.NO_DATA }
-            val inRange = read.count { it.banding.band == VitalBands.Band.IN_RANGE }
-            if (read.isNotEmpty()) {
-                val allIn = inRange == read.size
-                StatePill(
-                    title = "$inRange/${read.size} metrics within range",
-                    tone = if (allIn) StrandTone.Accent else StrandTone.Warning,
-                    icon = if (allIn) Icons.Filled.Check else Icons.Filled.WarningAmber,
-                    fillsWidth = true,
-                )
-            }
+            healthRollUp(vitals)?.let { roll -> HealthRollUpPill(roll) }
             if (alert != null) {
                 StatePill(
                     title = alert,
@@ -166,6 +154,17 @@ private fun HealthMonitorSummaryCard(
             }
         }
     }
+}
+
+/** The roll-up as one pill. Home's monitor tile draws the same pill from the same result. */
+@Composable
+internal fun HealthRollUpPill(roll: HealthRollUp) {
+    StatePill(
+        title = roll.title,
+        tone = if (roll.allInRange) StrandTone.Accent else StrandTone.Warning,
+        icon = if (roll.allInRange) Icons.Filled.Check else Icons.Filled.WarningAmber,
+        fillsWidth = true,
+    )
 }
 
 /**
@@ -193,13 +192,13 @@ private fun VitalSummaryColumn(vital: HealthVital, modifier: Modifier = Modifier
             maxLines = 1,
             overflow = TextOverflow.Clip,
         )
-        Text(
-            vital.compact,
-            style = NoopType.captionNumber,
+        // Shrinks to fit rather than clipping: a fifth of the row is narrow, and a unit clipped off is
+        // the defect this line exists to fix.
+        AutoSizeValue(
+            text = vital.compact,
+            style = NoopType.captionNumber.copy(textAlign = TextAlign.Center),
             color = vital.accent,
-            textAlign = TextAlign.Center,
-            maxLines = 1,
-            overflow = TextOverflow.Clip,
+            modifier = Modifier.fillMaxWidth(),
         )
     }
 }

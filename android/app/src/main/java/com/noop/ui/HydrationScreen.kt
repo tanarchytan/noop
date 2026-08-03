@@ -400,6 +400,16 @@ private fun HydrationHistoryBars(
         Text("No history yet.", style = NoopType.footnote, color = Palette.textTertiary)
         return
     }
+    // A week with nothing logged has no bar to draw, and seven full-height tracks read as seven days at
+    // goal. Say the week is empty instead.
+    if (history.none { it.second > 0.0 }) {
+        Text(
+            "No drinks logged in the last 7 days.",
+            style = NoopType.footnote,
+            color = Palette.textTertiary,
+        )
+        return
+    }
     val goal = goalMl.coerceAtLeast(1).toDouble()
     val track = Palette.textPrimary.copy(alpha = 0.10f)
     val priorBar = accent.copy(alpha = 0.45f)

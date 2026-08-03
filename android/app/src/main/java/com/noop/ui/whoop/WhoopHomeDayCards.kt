@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Alarm
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.FitnessCenter
 import androidx.compose.material.icons.filled.Insights
 import androidx.compose.material3.Text
@@ -39,12 +38,14 @@ import java.util.Locale
 // value it is handed; where a figure does not exist yet the element is left out rather than filled in.
 
 /**
- * The health / stress monitor pair. [healthAlert] is the watch's own message; null means nothing was
- * flagged, which is what the pill says — not that every metric was checked.
+ * The health / stress monitor pair. [healthRollUp] is the same in-range result the Health page states,
+ * so the two never summarise one day in opposite tones; [healthAlert] is the watch's own message and
+ * sits beneath it exactly as it does there.
  */
 @Composable
 internal fun WhoopMonitorRow(
     healthAlert: String?,
+    healthRollUp: HealthRollUp?,
     stress: Double?,
     onOpenHealth: () -> Unit,
     onOpenStress: () -> Unit,
@@ -57,15 +58,13 @@ internal fun WhoopMonitorRow(
         NoopCard(modifier = Modifier.weight(1f).fillMaxHeight(), padding = Metrics.space14) {
             Column(verticalArrangement = Arrangement.spacedBy(Metrics.space10)) {
                 NoopCardHeader("Health monitor", onClick = onOpenHealth)
+                if (healthRollUp != null) {
+                    HealthRollUpPill(healthRollUp)
+                } else {
+                    StatePill(title = "No readings yet", tone = StrandTone.Neutral, fillsWidth = true)
+                }
                 if (healthAlert != null) {
                     StatePill(title = healthAlert, tone = StrandTone.Warning, fillsWidth = true)
-                } else {
-                    StatePill(
-                        title = "No flags raised",
-                        tone = StrandTone.Accent,
-                        icon = Icons.Filled.Check,
-                        fillsWidth = true,
-                    )
                 }
             }
         }

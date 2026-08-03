@@ -162,17 +162,14 @@ internal fun SleepEfficiencyTrendCard(series: List<Double>, dates: List<String>,
             InsetChartPlaceholder(message = "Not enough nights yet.")
             return@SleepTrendShell
         }
-        LineChart(
-            values = week,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(Metrics.compactChartHeight)
-                .semantics { contentDescription = "Sleep efficiency over the last ${week.size} nights" },
-            color = Palette.statusPositive,
-            fill = true,
-            selectionEnabled = true,
+        // The same week primitive HOURS VS. NEEDED draws with: a point sits at the centre of the slot
+        // its own day label sits under, instead of running plot edge to plot edge past both of them.
+        WeekLineChart(
+            series = WeekLineSeries("Sleep efficiency", week, Palette.statusPositive),
+            dayLabels = dates.takeLast(week.size).map(::trendDayLabel),
+            format = { pctValue(it) },
+            height = Metrics.compactChartHeight,
         )
-        SleepTrendDayLabels(dates.takeLast(week.size))
         ChartCardFooter(
             listOf(
                 "Latest" to pctValue(week.lastOrNull()),
@@ -364,25 +361,6 @@ private fun SleepTrendShell(title: String, onOpen: (() -> Unit)?, body: @Composa
                 }
             }
             body()
-        }
-    }
-}
-
-/** "Sat 11" under each column, from the trend's own day strings. */
-@Composable
-private fun SleepTrendDayLabels(days: List<String>) {
-    if (days.isEmpty()) return
-    Row(modifier = Modifier.fillMaxWidth().padding(top = Metrics.space2)) {
-        days.forEach { day ->
-            Text(
-                trendDayLabel(day),
-                style = NoopType.footnote,
-                color = Palette.textTertiary,
-                textAlign = TextAlign.Center,
-                maxLines = 1,
-                overflow = TextOverflow.Clip,
-                modifier = Modifier.weight(1f),
-            )
         }
     }
 }
