@@ -95,10 +95,14 @@ fun SleepNightScreen(
     // threshold — the same value AnalyticsEngine.analyzeDay uses, fed to the main-night selector so hero,
     // naps split and edit target pick the block the rollup did. null keeps the cold-start band.
     var habitualMidsleep by remember { mutableStateOf<Long?>(null) }
+    // The same learned value PER DAY over a trailing window, keyed by the night's local day. The
+    // consistency band reads it so its habitual window bends with the habit instead of running flat.
+    var habitualByDay by remember { mutableStateOf<Map<String, Long?>>(emptyMap()) }
     LaunchedEffect(days) {
         // Thread the ACTIVE strap id so the learner unions active + canonical nights; it resolves the
         // canonical "my-whoop" sibling internally either way.
         habitualMidsleep = runCatching { vm.repo.habitualMidsleepSec() }.getOrNull()
+        habitualByDay = runCatching { vm.repo.habitualMidsleepSeries() }.getOrDefault(emptyMap())
     }
 
     // Persisted per-epoch MOTION keyed by each session's detected startTs. `selectNight` reads only the
@@ -128,10 +132,6 @@ fun SleepNightScreen(
 
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-
-    // Day-cycle sky backdrop, default ON. When off, the screen drops the liquid sky for the plain dark
-    // canvas. SharedPreferences isn't reactive, so read once into local state.
-    val showDayCycleBackground = remember { NoopPrefs.showDayCycleBackground(context) }
 
     // Morning-journal nudge: once per calendar day, when the freshest night ended within the last 12h,
     // invite the user to log how they felt. The shown-day is persisted so the sheet never re-pops.
@@ -350,10 +350,6 @@ fun SleepNightScreen(
     LazyScreenScaffold(
         title = "Sleep",
         subtitle = "Last night, read in two seconds.",
-        // Liquid sky backdrop: the time-of-day sky settles into the theme canvas behind the header + hero,
-        // bled full-width behind the status bar via the scaffold's topBackground. Gated on the day-cycle
-        // preference.
-        topBackground = if (showDayCycleBackground) { { LiquidScreenSky() } } else null,
     ) {
         // The transient UNDO banner after a suppressing delete — restores the deleted row into its original
         // namespace and lifts the tombstone.
@@ -502,7 +498,7 @@ fun SleepNightScreen(
                         score = m.consistency.latest,
                         typicalScore = m.consistency.typical,
                         nights = weekSpans.let(::sleepScheduleNights),
-                        habitualMidsleepSec = habitualMidsleep,
+                        habitualByDay = habitualByDay,
                         needMin = m.sleepDebtLedger.needMin,
                     )
                 }
@@ -518,6 +514,16 @@ fun SleepNightScreen(
                         onOpenDetail = { detailMetricKey = "efficiency" },
                     )
                 }
+                item { Spacer(Modifier.height(Metrics.selectorTopUp)) }
+                item {
+                    SleepHoursVsNeededCard(
+                        hours = m.trendHours,
+                        needHours = m.trendNeedHours,
+                        dates = m.trendDates,
+                    )
+                }
+                item { Spacer(Modifier.height(Metrics.selectorTopUp)) }
+                item { SleepRestorativeCard(rows = days, dates = m.trendDates) }
                 item { Spacer(Modifier.height(Metrics.selectorTopUp)) }
                 item { SleepStressCard(nights = weekStress) }
             }
