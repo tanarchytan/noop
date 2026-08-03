@@ -10,15 +10,9 @@ import kotlinx.coroutines.flow.asStateFlow
  * Process-level holder for the in-flight GPS workout's route, owned by [com.noop.NoopApplication]
  * and driven by [com.noop.ble.WhoopConnectionService] — NOT by the Activity-scoped AppViewModel.
  *
- * Why this exists: the route used to be collected in `AppViewModel.viewModelScope`, which Android
- * cancels the moment the ViewModel is cleared (screen off / Activity backgrounded). The collection
- * stopped mid-ride and distance froze (#215 — a 2.84 km ride banked as 0.38 km). The track now lives
- * here, at the process level, and the always-on foreground service feeds it from the platform
- * LocationManager, so it survives the UI going away. The ViewModel observes [state] for live display
- * and reads the final [State.track] when ending the workout; it no longer owns the location stream.
- *
- * Distance/pace are derived here (off the same [RouteMath] helpers AppViewModel used) so the running
- * totals are correct even across periods when no UI is observing.
+ * The track lives at the process level so it survives the UI going away: the foreground service
+ * feeds it from the platform LocationManager, the ViewModel only observes [state] and reads the
+ * final [State.track] when ending the workout. Distance/pace are derived here via [RouteMath].
  */
 object GpsSession {
 

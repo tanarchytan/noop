@@ -62,7 +62,7 @@ class TestCentre internal constructor(private val prefs: SharedPreferences) {
         prefs.edit().putString(ANSWERS_PREFIX + d.id, o.toString()).apply()
     }
 
-    // All-time drained-rows tally (#990) - twin of the Swift TestCentre accessors. Sits in the
+    // All-time drained-rows tally - twin of the Swift TestCentre accessors. Sits in the
     // testcentre.* namespace because the Connection readout is its consumer, but it accrues
     // UNCONDITIONALLY (the Backfiller session summary is not test-mode gated), so it answers "has this
     // install ever drained anything" across sessions - the per-session counter resets on every
@@ -77,7 +77,7 @@ class TestCentre internal constructor(private val prefs: SharedPreferences) {
     }
 
     /** The all-time drained-rows tally (0 before anything ever drained). Shown beside the per-session
-     *  count on the Connection readout (#990). */
+     *  count on the Connection readout. */
     fun cumulativeDrainedRows(): Long = prefs.getLong(CUMULATIVE_DRAINED_KEY, 0L)
 
     /**

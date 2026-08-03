@@ -10,15 +10,15 @@ import com.noop.ui.NotifPrefs
  * Wrist alerts — mirror selected app notifications to a strap buzz.
  *
  * Declaring this service (with BIND_NOTIFICATION_LISTENER_SERVICE in the manifest) is what makes NOOP
- * appear in Android's **Notification Access** list at all (issue #52 — before this, the "Open
- * Notification Access" button opened a list NOOP wasn't in). When the user grants access, Android binds
+ * appear in Android's **Notification Access** list at all: without it the "Open Notification
+ * Access" button opened a list NOOP wasn't in. When the user grants access, Android binds
  * this service and delivers [onNotificationPosted]; we gate on the persisted [NotifPrefs] settings the
  * Notifications screen already writes (master toggle, per-app opt-in, quiet hours, only-when-worn) and
  * buzz the strap with the app's chosen pattern.
  *
  * Everything stays on-device: we never read notification CONTENT — only which package posted, to decide
  * whether to tap the wrist. The buzz uses the same RUN_HAPTICS_PATTERN path as Test buzz, so it works on
- * WHOOP 4.0; on 5/MG the haptic command isn't honoured yet (issue #48).
+ * WHOOP 4.0; on 5/MG the haptic command isn't honoured yet.
  */
 class NoopNotificationListener : NotificationListenerService() {
 
@@ -40,7 +40,7 @@ class NoopNotificationListener : NotificationListenerService() {
         }
 
         // Master gate + per-app opt-in (both default off — nothing buzzes until the user turns it on).
-        // The "all other apps" catch-all (#168) lets anything outside the curated catalog through, since
+        // The "all other apps" catch-all lets anything outside the curated catalog through, since
         // Android package-visibility limits mean we can't list every installed app for per-app opt-in.
         if (!NotifPrefs.getBool(ctx, NotifPrefs.MASTER, false)) return
         if (!NotifPrefs.appEnabled(ctx, sbn.packageName) &&

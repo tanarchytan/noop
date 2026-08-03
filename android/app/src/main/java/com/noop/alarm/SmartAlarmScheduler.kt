@@ -9,7 +9,7 @@ import com.noop.analytics.CalendarDay
 import java.util.Calendar
 
 /**
- * The safety-critical scheduler for the phone smart alarm (#207).
+ * The safety-critical scheduler for the phone smart alarm.
  *
  * DESIGN — fallback-first, the whole point of the feature:
  *

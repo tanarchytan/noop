@@ -29,7 +29,7 @@ class NoopApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         // Record any uncaught crash to a file so it rides along in the shareable strap log — a
-        // device-specific crash (e.g. Insights #224/#267) is otherwise lost to an unreachable logcat.
+        // device-specific crash (e.g. Insights) is otherwise lost to an unreachable logcat.
         CrashCapture.install(this)
         // Apply a staged backup restore before the Room store is opened, so the file swap runs with no
         // live connection or background coroutine that could re-open a torn file mid-swap. No-op normally.
@@ -90,7 +90,7 @@ class NoopApplication : Application() {
             registry = deviceRegistry,
             repository = repository,
             liveSink = { hr, rr -> ble.publishExternalLiveHr(hr, rr) },
-            // #74: reconnect on the PERSISTED family, not the WhoopModel.WHOOP4 default - otherwise a
+            // reconnect on the PERSISTED family, not the WhoopModel.WHOOP4 default - otherwise a
             // 5/MG WHOOP->WHOOP switch rescans the wrong service and misses the 5/MG direct-bond fast
             // path (status=133 on an OS-bonded strap). Mirrors macOS AppModel.scan() reading the persisted
             // "selectedWhoopModel". Same-strap switches now adopt in place (no reconnect) via the
@@ -106,7 +106,7 @@ class NoopApplication : Application() {
             // service are right from the first connect. Same persisted value startWhoop reconnects on.
             whoopFamily = { persistedWhoopModel() },
             // Generic-HR connect lifecycle → the SAME in-app strap log the user exports, so a
-            // "connected but no data" report (issue #421) is no longer blind to the Polar/Wahoo/etc path.
+            // "connected but no data" report is no longer blind to the Polar/Wahoo/etc path.
             straplog = { ble.externalLog(it) },
             // A generic strap's standard battery (0x180F) → the same live battery field the WHOOP uses.
             batterySink = { pct -> ble.publishExternalBattery(pct) },
@@ -116,7 +116,7 @@ class NoopApplication : Application() {
     /** The WHOOP family last seen advertising, persisted by [WhoopBleClient.persistSelectedModel] under
      *  "noop.selectedWhoopModel" in the shared noop_prefs store. Defaults to [WhoopModel.WHOOP4] when
      *  unset or unparseable (the historical connect() default), so a fresh install is unchanged. Used to
-     *  reconnect on the right service after a WHOOP->WHOOP switch (#74). */
+     *  reconnect on the right service after a WHOOP->WHOOP switch. */
     private fun persistedWhoopModel(): WhoopModel =
         NoopPrefs.of(this).getString("noop.selectedWhoopModel", null)
             ?.let { runCatching { WhoopModel.valueOf(it) }.getOrNull() }

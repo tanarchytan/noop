@@ -1,7 +1,7 @@
 package com.noop.alarm
 
 /**
- * The light-sleep detector for the smart alarm (#207) — PURE so it can be reasoned about and tested.
+ * The light-sleep detector for the smart alarm — PURE so it can be reasoned about and tested.
  *
  * It never touches AlarmManager itself; it only DECIDES whether the current overnight HR pattern
  * looks like a lighter sleep phase (or an arousal) within the wake window. The caller (the BLE

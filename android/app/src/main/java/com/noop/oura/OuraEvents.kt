@@ -113,7 +113,7 @@ data class OuraTierBSummary(
  * One decoded `0x50` activity_info record: a `state` code (activity-category; meaning unconfirmed)
  * plus a per-sample MET (metabolic-equivalent) series. THIRD-PARTY FORMULA (OURA_PROTOCOL.md s6.13,
  * [oura-rs] - clean-room fact citation, no code copied): plausible against six real Gen 3 captures
- * from PR #960's investigation (resting ~0.9 MET through a vigorous-activity burst at 7.4 MET, all
+ * measured (resting ~0.9 MET through a vigorous-activity burst at 7.4 MET, all
  * physiologically sane), but NOT independently ground-truth-validated against the Oura app's own
  * numbers. It therefore stays Tier B: emitted only behind `OuraDriver.allowTierB`, and NEVER folded
  * into `OuraStreamMapping`/`Streams`/scoring (steps stay honest - no step count is minted from MET).

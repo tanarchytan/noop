@@ -13,7 +13,7 @@ import com.noop.ui.NotifPrefs
 import com.noop.ui.appLaunchIntent
 
 /**
- * #577 — posts the inactivity (sedentary) wrist nudge as a real system notification, mirroring the iOS
+ * posts the inactivity (sedentary) wrist nudge as a real system notification, mirroring the iOS
  * `AppModel.postInactivity`. A pocketed phone can't show the strap buzz on screen the way the Mac does,
  * so a wrist buzz the user might miss is ALSO surfaced as a local notification. Called from
  * `WhoopBleClient.maybeBuzzInactivity` right after the buzz fires.

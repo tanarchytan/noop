@@ -5,7 +5,7 @@ import android.content.Context
 import android.content.Intent
 
 /**
- * Re-arms the guaranteed wake alarm after a device reboot (#207).
+ * Re-arms the guaranteed wake alarm after a device reboot.
  *
  * AlarmManager schedules are cleared by a restart, so without this a phone that reboots overnight
  * would silently drop the alarm — exactly the failure the safety guarantee exists to prevent. On

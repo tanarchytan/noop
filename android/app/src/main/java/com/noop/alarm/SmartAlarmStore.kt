@@ -5,7 +5,7 @@ import com.noop.analytics.CalendarDay
 import android.content.SharedPreferences
 
 /**
- * Persisted state for the PHONE-based smart alarm (#207).
+ * Persisted state for the PHONE-based smart alarm.
  *
  * This is deliberately SEPARATE from the strap's firmware buzz-alarm (NoopPrefs.smartAlarm*, which
  * arms the WHOOP itself). This one is a guaranteed phone alarm: a hard OS alarm is scheduled at the
@@ -57,6 +57,8 @@ class SmartAlarmStore(private val prefs: SharedPreferences) {
         private const val KEY_DEADLINE_MS = "alarm.scheduledDeadlineMs"
         private const val KEY_WINDOW_START_MS = "alarm.scheduledWindowStartMs"
 
+        // All four are MINUTES: the target is minutes past local midnight, the window is how far
+        // before it a light-sleep wake may fire.
         const val DEFAULT_TARGET = 6 * 60 + 30   // 06:30
         const val DEFAULT_WINDOW = 30
         const val WINDOW_MIN = 5

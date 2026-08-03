@@ -21,6 +21,7 @@ import com.noop.ui.appLaunchIntent
  * per discharge cycle; the full alert re-arms only after the cell drops back below 100%.
  */
 internal object BatteryAlertPolicy {
+    // All three are battery charge in percent.
     const val LOW_THRESHOLD = 15
     const val LOW_REARM_ABOVE = 25
     const val FULL_THRESHOLD = 100
@@ -39,7 +40,7 @@ internal object BatteryAlertPolicy {
      * @param lowAlerted   persisted: has the low alert already fired this discharge cycle?
      * @param fullAlerted  persisted: has the full alert already fired since the last drop below 100?
      *
-     * `clearFull` (#514): the strap was showing a "fully charged" notification and has now dropped
+     * `clearFull`: the strap was showing a "fully charged" notification and has now dropped
      * below 100% — the standing note is stale, so cancel it. It's exactly the full re-arm
      * transition (fullAlerted && pct < FULL_THRESHOLD), surfaced so the notifier can pull the
      * delivered full-charge notification by its id.
@@ -49,7 +50,7 @@ internal object BatteryAlertPolicy {
         var full = fullAlerted
         // The stale 100%-full note must be cleared the moment we re-arm below the full line.
         val clearFull = fullAlerted && pct < FULL_THRESHOLD
-        // Re-arm (hysteresis) so jitter near a threshold can't re-fire. #80: re-arm ONLY on genuine recovery
+        // Re-arm (hysteresis) so jitter near a threshold can't re-fire. Re-arm ONLY on genuine recovery
         // (pct >= LOW_REARM_ABOVE), NOT on charging. The strap reports its charge bit only every ~8 min, so
         // it flickers true→null; re-arming on `true` then firing on the `null` gap re-fired the low alert
         // repeatedly WHILE charging. `fireLow`'s `charging != true` still suppresses an explicit charging
@@ -71,11 +72,11 @@ internal object BatteryAlertPolicy {
  * every live-state update, gated behind a user setting and the OS notification permission. The
  * once-per-crossing dedupe lives in [BatteryAlertPolicy] over two persisted NoopPrefs flags.
  *
- * With thanks to @ujix (#368) for the original notification copy and channel.
+ * With thanks to @ujix for the original notification copy and channel.
  */
 object BatteryAlertNotifier {
     private const val CHANNEL_ID = "noop_battery_alert"
-    // #297: each notifier posts under a DISTINCT id (notify() is tagless, so a shared id silently
+    // each notifier posts under a DISTINCT id (notify() is tagless, so a shared id silently
     // replaces an undismissed notification). Full map: 4201 connection, 4202 illness, 4203 inactivity,
     // 4204 smart alarm, 4205/4206/4207 battery (runtime/low/full), 4208/4209 scheduled report.
     private const val NOTIF_ID_RUNTIME = 4205
@@ -88,7 +89,7 @@ object BatteryAlertNotifier {
      * threshold gives the same warning lead time on a 4.0 and a 5.0/MG, which a fixed SoC line
      * can't) and post at most one notification per discharge cycle. The 15% SoC alert stays as the
      * safety net for straps with no usable estimate (null skips here). Same gating discipline as
-     * #368: persisted flag advances even when delivery is deferred; no-ops when battery alerts are
+     * persisted flag advances even when delivery is deferred; no-ops when battery alerts are
      * off. iOS/macOS twin: BatteryNotifier.onRuntimeEstimate.
      */
     @SuppressLint("MissingPermission") // guarded by areNotificationsEnabled() + runCatching
@@ -159,7 +160,7 @@ object BatteryAlertNotifier {
                     .build()
                 NotificationManagerCompat.from(context).notify(NOTIF_ID_FULL, n)
             }
-            // #514: the strap has dropped below 100% — pull the stale "fully charged" note so it
+            // the strap has dropped below 100% — pull the stale "fully charged" note so it
             // can't linger after the cell discharges. cancel() covers a posted notification; a
             // not-yet-shown one simply no-ops.
             if (decision.clearFull) {

@@ -30,6 +30,7 @@ import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
 import androidx.glance.unit.ColorProvider
 import com.noop.R
+import com.noop.analytics.RecoveryScorer
 import com.noop.ui.MainActivity
 import java.text.DateFormat
 import java.util.Date
@@ -74,8 +75,8 @@ private fun compactWidgetTextSecondary(dark: Boolean) =
 
 private fun compactBandColor(recovery: Int, dark: Boolean): ColorProvider = ColorProvider(
     when {
-        recovery >= 67 -> if (dark) Color(0xFFE8B84B) else Color(0xFFB07D17)
-        recovery >= 34 -> if (dark) Color(0xFFD98A3D) else Color(0xFFC2792E)
+        recovery >= RecoveryScorer.bandYellowMax -> if (dark) Color(0xFFE8B84B) else Color(0xFFB07D17)
+        recovery >= RecoveryScorer.bandRedMax -> if (dark) Color(0xFFD98A3D) else Color(0xFFC2792E)
         else -> if (dark) Color(0xFFE0662F) else Color(0xFFC84E1E)
     },
 )

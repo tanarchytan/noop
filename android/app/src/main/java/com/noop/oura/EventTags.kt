@@ -31,7 +31,7 @@ enum class OuraEventTag(val raw: Int) {
 
     // --- HR / IBI (Tier A) ---
     IBI_AMPLITUDE(0x60),      // ibi_and_amplitude_event (bit-packed)
-    // green_ibi_and_amp_event — Tier B (#287): §6.2 layout (5 deltas+6 amps)
+    // green_ibi_and_amp_event — Tier B: 5 deltas + 6 amps
     // != 0x60; unverified, gated out of live emission. See `tier` below.
     GREEN_IBI_AMP(0x71),
     SPO2_IBI_AMPLITUDE(0x6E), // spo2_ibi_and_amplitude_event (REVERSE byte order)
@@ -90,8 +90,8 @@ enum class OuraEventTag(val raw: Int) {
             SLEEP_SUMMARY_1, SLEEP_SUMMARY_B, SLEEP_SUMMARY_C, SLEEP_SUMMARY_D, SLEEP_SUMMARY_E,
             SLEEP_SUMMARY_F, ACTIVITY_INFO, ACTIVITY_SUMMARY_1, ACTIVITY_SUMMARY_2,
             REAL_STEPS_1, REAL_STEPS_2, SPO2_SMOOTHED,
-            // #287: 0x71 green_ibi_and_amp is NOT corpus-verified — no captured 0x71 fixture, and
-            // OURA_PROTOCOL.md §6.2 documents a DIFFERENT layout (5 IBI deltas + 6 amplitudes, shift
+            // 0x71 green_ibi_and_amp is NOT corpus-verified — no captured 0x71 fixture, and
+            // the documented layout is DIFFERENT (5 IBI deltas + 6 amplitudes, shift
             // [2:0]) than the 0x60 decoder it was wired to (6 absolute IBIs, 4-bit shift). Decoding it
             // with the 0x60 layout fabricates a 6th phantom R-R and reads deltas as absolute intervals,
             // silently corrupting reconstructed HRV. Demote to Tier B (gated out of live emission) until

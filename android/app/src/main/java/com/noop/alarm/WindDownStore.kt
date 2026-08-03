@@ -4,7 +4,7 @@ import android.content.Context
 import android.content.SharedPreferences
 
 /**
- * Persisted state for the wind-down nudge (#207) — a gentle evening local notification suggesting
+ * Persisted state for the wind-down nudge — a gentle evening local notification suggesting
  * it's time to start winding down, so the user can hit their usual wake time with enough sleep.
  *
  * NON-safety-critical (unlike the wake alarm): a missed nudge has no consequence, so it uses an
@@ -44,6 +44,8 @@ class WindDownStore(private val prefs: SharedPreferences) {
         private const val KEY_SLEEP_NEED = "windDown.sleepNeedMinutes"
         private const val KEY_LEAD = "windDown.leadMinutes"
 
+        // All six are MINUTES: the sleep need is a duration, the lead is how long before bedtime the
+        // wind-down reminder fires.
         const val DEFAULT_SLEEP_NEED = 8 * 60
         const val DEFAULT_LEAD = 30
         const val SLEEP_MIN = 5 * 60

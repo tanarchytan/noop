@@ -36,7 +36,7 @@ class AiCoach(private val repo: WhoopRepository) {
 
     /** The device key the rest of the app reads/writes daily metrics under. Coach reads go
      *  through the MERGED raw+computed view ([WhoopRepository.daysMerged]), the same per-field
-     *  coalesce every screen uses, so on-device "-noop" scores are visible too (#124). */
+     *  coalesce every screen uses, so on-device "-noop" scores are visible too. */
     private val deviceId = "my-whoop"
 
     /** The source id native (in-app) journal answers are stored under (matches the UI's
@@ -87,7 +87,7 @@ class AiCoach(private val repo: WhoopRepository) {
         // Include the user's data ONLY with explicit consent; otherwise a note, never their numbers.
         val groundedFull = if (consent) {
             // Merged read, NOT raw days(): a live-strap user's scores live under "my-whoop-noop"
-            // and a raw read misses them, the coach then claimed it had no data. (#124)
+            // and a raw read misses them, the coach then claimed it had no data.
             val days = runCatching { repo.daysMerged() }.getOrDefault(emptyList())
             // Derived stress: a single Baevsky Stress Index summary line over TODAY's R-R, read the
             // same way StressScreen does (repo.rrIntervals over the local day) and gated UNDER this same
@@ -251,7 +251,7 @@ class AiCoach(private val repo: WhoopRepository) {
         sb.append("rest ${avg1(last30) { d -> d.totalSleepMin?.div(60.0) }}h, ")
         sb.append("HRV ${avgInt(last30) { it.avgHrv }}ms, ")
         sb.append("RHR ${avgInt(last30) { d -> d.restingHr?.toDouble() }}bpm\n")
-        // Additional vitals when present (#124, the coach used to see only recovery/strain/sleep/HRV/RHR).
+        // Additional vitals when present (the coach used to see only recovery/strain/sleep/HRV/RHR).
         sb.append("  SpO₂ ${avgInt(last30) { it.spo2Pct }}%, ")
         sb.append("respiration ${avg1(last30) { it.respRateBpm }}/min, ")
         sb.append("skin-temp deviation ${avg1(last30) { it.skinTempDevC }}°C, ")
@@ -433,7 +433,7 @@ class AiCoach(private val repo: WhoopRepository) {
      * only allowed to a PRIVATE-NETWORK host, loopback, RFC1918, link-local, or *.local, because
      * the app's network-security-config permits cleartext app-wide (Android XML can't scope a
      * cleartext rule to a CIDR), so THIS check is what actually keeps cleartext off the public
-     * internet (#187). A public http:// host is rejected with a precise, actionable error.
+     * internet. A public http:// host is rejected with a precise, actionable error.
      */
     private fun guardCustomUrl(base: String) {
         val uri = runCatching { java.net.URI(base) }.getOrNull()
@@ -573,12 +573,12 @@ class AiCoach(private val repo: WhoopRepository) {
 
     private inline fun avgInt(days: List<DailyMetric>, sel: (DailyMetric) -> Double?): String {
         val vals = days.mapNotNull(sel)
-        return if (vals.isEmpty()) "-" else vals.average().roundToInt().toString()
+        return if (vals.isEmpty()) "-" else RustScores.mean(vals).roundToInt().toString()
     }
 
     private inline fun avg1(days: List<DailyMetric>, sel: (DailyMetric) -> Double?): String {
         val vals = days.mapNotNull(sel)
-        return if (vals.isEmpty()) "-" else fmt1(vals.average())
+        return if (vals.isEmpty()) "-" else fmt1(RustScores.mean(vals))
     }
 
     companion object {
@@ -589,7 +589,7 @@ class AiCoach(private val repo: WhoopRepository) {
          * never crosses the public internet: loopback (localhost / 127.0.0.0/8 / ::1), RFC1918
          * (10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16), link-local (169.254.0.0/16 / fe80::/10), the
          * emulator host alias 10.0.2.2, and any *.local mDNS name. Anything else is treated as public.
-         * Pure; `internal` so it's unit-testable (#321) — the byte-parity reference for Swift
+         * Pure; `internal` so it's unit-testable — the byte-parity reference for Swift
          * `AIProvider.isPrivateLANOrLoopback`. Called unqualified by the instance `guardCustomUrl`.
          */
         internal fun isPrivateLanOrLoopback(host: String): Boolean {

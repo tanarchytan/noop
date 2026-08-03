@@ -11,9 +11,9 @@ import androidx.glance.appwidget.updateAll
 data class WidgetSnapshot(
     /** Today's recovery / Charge 0–100, null until NOOP has scored enough nights (honest-blank). */
     val recoveryPct: Int? = null,
-    /** Today's Rest 0–100 (the sleep_performance composite), null until last night is scored (#516). */
+    /** Today's Rest 0–100 (the sleep_performance composite), null until last night is scored. */
     val restPct: Int? = null,
-    /** Today's Effort 0–100 (the day's strain on the 0–100 scale), null until there's a HR window (#516). */
+    /** Today's Effort 0–100 (the day's strain on the 0–100 scale), null until there's a HR window. */
     val effortPct: Int? = null,
     /** Live heart rate, null when not streaming. */
     val heartRate: Int? = null,
@@ -29,7 +29,7 @@ data class WidgetSnapshot(
  * [com.noop.ble.WhoopConnectionService] (long-lived — the widget's heartbeat while the app UI is
  * closed) and [com.noop.ui.AppViewModel] (covers foreground use with the background service off).
  *
- * Throttled by [PushGate] (see its KDoc). CALLER CONTRACT (#82): collect with backpressure
+ * Throttled by [PushGate] (see its KDoc). CALLER CONTRACT: collect with backpressure
  * (`conflate()` + `collect`), NEVER `collectLatest` — push suspends in Glance machinery longer than
  * the live-HR emission interval (~1/s), so collectLatest cancels every push mid-flight and the
  * widget starves on stale prefs forever while the strap streams.
@@ -42,7 +42,7 @@ object WidgetSnapshotStore {
         // Cheap, non-suspending gate FIRST — at live-HR cadence (~1/s) almost every call ends here.
         if (!PushGate.admit(snap)) return
 
-        // Persist before anything suspending, and only THEN mark the gate (#82: marking before the
+        // Persist before anything suspending, and only THEN mark the gate (marking before the
         // write let a cancelled push burn the refresh window — the widget starved on stale prefs).
         // Saving even with no widget placed means a widget added later renders fresh data instantly.
         save(app, snap)
@@ -88,7 +88,7 @@ object WidgetSnapshotStore {
 /**
  * The push-throttle decision, extracted pure so it's unit-testable (PushGateTests). Meaningful
  * changes (recovery, battery 5%-bucket, connection, and HR presence — so the FIRST heart-rate
- * sample shows immediately, #82) admit straight away; an unchanged key re-admits once per
+ * sample shows immediately) admit straight away; an unchanged key re-admits once per
  * [HR_REFRESH_MS] so the displayed HR still ticks. Glance re-inflation is far heavier than a
  * notification post, hence the gate.
  */
@@ -99,7 +99,7 @@ internal object PushGate {
     private var lastPushAtMs = 0L
 
     private fun keyOf(snap: WidgetSnapshot): String =
-        // Rest + Effort join the change-key (#516) so a freshly-scored 2x2 score lands immediately, the
+        // Rest + Effort join the change-key so a freshly-scored 2x2 score lands immediately, the
         // same way recovery does — not waiting out the HR refresh window.
         "${snap.recoveryPct}|${snap.restPct}|${snap.effortPct}|" +
             "${snap.batteryPct?.div(5)}|${snap.connected}|${snap.heartRate != null}"

@@ -27,13 +27,14 @@ import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
 import androidx.glance.unit.ColorProvider
 import com.noop.R
+import com.noop.analytics.RecoveryScorer
 import com.noop.ui.MainActivity
 import java.text.DateFormat
 import java.util.Date
 
 /**
  * Home-screen widget: today's three top scores (Rest · Charge · Effort, Charge centred), with live HR
- * and strap battery at a glance (#516). Renders purely from the [WidgetSnapshotStore] SharedPreferences
+ * and strap battery at a glance. Renders purely from the [WidgetSnapshotStore] SharedPreferences
  * snapshot — no BLE, no DB — so it costs nothing and survives process death. Tapping anywhere opens the
  * app. Each score is honest-null ("—") until NOOP has scored it; it never fabricates a number.
  *
@@ -63,8 +64,8 @@ class NoopGlanceWidget : GlanceAppWidget() {
     }
 
     /** Defence-in-depth, NOT a crash fix: Glance 1.1.0's default already contains composition errors
-     *  (it renders its built-in error layout; verified in bytecode while investigating #82 — which we
-     *  could not reproduce). This override only swaps that generic layout for our own friendlier one.
+     *  (it renders its built-in error layout; verified in bytecode). This override only swaps that
+     *  generic layout for our own friendlier one.
      *  The widget heals on the next successful push. */
     override fun onCompositionError(
         context: Context,
@@ -85,18 +86,18 @@ private fun widgetSurface(dark: Boolean) = ColorProvider(if (dark) Color(0xFF0A1
 private fun widgetTextPrimary(dark: Boolean) = ColorProvider(if (dark) Color(0xFFF4F6F8) else Color(0xFF1A2230))
 private fun widgetTextSecondary(dark: Boolean) = ColorProvider(if (dark) Color(0xFF8A94A4) else Color(0xFF7C8696))
 
-/** Recovery-band colour, the app-wide 67 / 34 cuts (RecoveryScorer.band); deepened on light. Charge and
- *  Rest both read on the recovery band in the app, so they share this. */
+/** Recovery-band colour; the cuts come from [RecoveryScorer], never a copy. Deepened on light.
+ *  Charge and Rest both read on the recovery band in the app, so they share this. */
 private fun bandColor(recovery: Int, dark: Boolean): ColorProvider = ColorProvider(
     when {
-        recovery >= 67 -> if (dark) Color(0xFFE8B84B) else Color(0xFFB07D17)
-        recovery >= 34 -> if (dark) Color(0xFFD98A3D) else Color(0xFFC2792E)
+        recovery >= RecoveryScorer.bandYellowMax -> if (dark) Color(0xFFE8B84B) else Color(0xFFB07D17)
+        recovery >= RecoveryScorer.bandRedMax -> if (dark) Color(0xFFD98A3D) else Color(0xFFC2792E)
         else -> if (dark) Color(0xFFE0662F) else Color(0xFFC84E1E)
     },
 )
 
 /** Effort tint — the app's strain colour (Palette.strain066), a distinct teal so Effort doesn't read as
- *  another recovery band. Deepened on light for contrast on the warm-paper card. (#516) */
+ *  another recovery band. Deepened on light for contrast on the warm-paper card. */
 private fun effortColor(dark: Boolean): ColorProvider =
     ColorProvider(if (dark) Color(0xFF4FB6A8) else Color(0xFF2E7D74))
 
@@ -116,7 +117,7 @@ private fun WidgetContent(snap: WidgetSnapshot, dark: Boolean) {
         verticalAlignment = Alignment.CenterVertically,
     ) {
         // The three top scores in one row, Charge centred + enlarged (the app's hero order Rest · Charge ·
-        // Effort). Each cell is honest-null until that score exists — never a fabricated number. (#516)
+        // Effort). Each cell is honest-null until that score exists — never a fabricated number.
         Row(
             modifier = GlanceModifier.fillMaxWidth(),
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -174,7 +175,7 @@ private fun WidgetContent(snap: WidgetSnapshot, dark: Boolean) {
 
 /** One score column in the 2x2 widget: a small overline label over a big band-coloured "N%" (or a calm
  *  "—" in the secondary colour while that score is still null, so an unscored cell reads honestly rather
- *  than as a broken zero). (#516) */
+ *  than as a broken zero). */
 @Composable
 private fun ScoreCell(
     label: String,

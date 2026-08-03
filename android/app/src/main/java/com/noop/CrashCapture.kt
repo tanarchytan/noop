@@ -7,7 +7,7 @@ import java.io.StringWriter
 
 /**
  * Captures the last uncaught exception to a file so a crash that only reproduces on a user's own
- * device — a deterministic crash on a specific data shape, like the Insights tab (#224/#267) — lands
+ * device — a deterministic crash on a specific data shape, like the Insights tab — lands
  * in the shareable strap log instead of being lost to a logcat no one can reach without adb. The
  * handler records the trace, then chains to the previous handler so the process still dies normally
  * (we never swallow the crash). [LogExport] appends [lastCrash] to the strap log header.

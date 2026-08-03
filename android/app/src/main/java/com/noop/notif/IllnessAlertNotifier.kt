@@ -19,10 +19,9 @@ internal object IllnessAlertPolicy {
 }
 
 /**
- * Posts the illness early-warning as a real system notification — previously it was silent
- * unless the app was open. Called from BOTH the AppViewModel collector (app open) and
- * WhoopConnectionService (background); the persisted day gate makes the dual call sites safe.
- * The message is the on-device APPROXIMATE summary — informational, not a diagnosis.
+ * Posts the illness early-warning as a system notification. Called from BOTH the AppViewModel
+ * collector (app open) and WhoopConnectionService (background); the persisted day gate makes the
+ * dual call sites safe. The message is the on-device APPROXIMATE summary, not a diagnosis.
  */
 object IllnessAlertNotifier {
     private const val CHANNEL_ID = "noop_illness_watch"

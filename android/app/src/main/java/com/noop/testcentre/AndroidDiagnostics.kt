@@ -41,7 +41,7 @@ object AndroidDiagnostics {
             add("Firmware:    ${com.noop.ui.NoopPrefs.lastFirmware(context) ?: "unknown (connect to record)"}")
             val syncSec = com.noop.ui.NoopPrefs.lastSyncAt(context)
             add("Last sync:   ${if (syncSec > 0L) relTime(System.currentTimeMillis() - syncSec * 1000L) else "never"}")
-            // #57: write-health. "Last sync" fires even on an empty/failed offload, so distinguish "rows
+            // write-health. "Last sync" fires even on an empty/failed offload, so distinguish "rows
             // actually landed" from "an offload STALLED on a persist failure" (history won't persist —
             // usually a backup restored without an app restart, the closed-DB class).
             val p = com.noop.ui.NoopPrefs.of(context)
@@ -52,7 +52,7 @@ object AndroidDiagnostics {
             add("Data write:  ${if (okAt > 0L) "rows last landed ${relTime(now - okAt * 1000L)}" else "no rows ever persisted"}")
             if (stalledAt > 0L && stalledAt >= okAt) {
                 add("             ⚠ history NOT persisting — last offload STALLED ${relTime(now - stalledAt * 1000L)} " +
-                    "(if you restored a backup, fully restart the app — #57)")
+                    "(if you restored a backup, fully restart the app)")
             }
             if (restoreAt > 0L) add("Last restore: ${relTime(now - restoreAt * 1000L)}")
             add("Timezone:    ${tzLine()}")
@@ -109,7 +109,7 @@ object AndroidDiagnostics {
             )
             val family = if (com.noop.ui.NoopPrefs.lastDevice(context)?.second == com.noop.ble.WhoopModel.WHOOP5_MG)
                 com.noop.protocol.DeviceFamily.WHOOP5 else com.noop.protocol.DeviceFamily.WHOOP4
-            // Mirror the real per-device anchor (#404): learn it from the WHOLE recent window's raws — not
+            // Mirror the real per-device anchor: learn it from the WHOLE recent window's raws — not
             // just this night — so a single sparse night (<100 in-band) can't misreport under the global
             // fallback when the window as a whole has enough in-band samples for analyzeDay to learn one.
             val windowSkin = repo.skinTempSamples(id, nowSec - 14L * 86400L, nowSec, Int.MAX_VALUE)
@@ -119,8 +119,8 @@ object AndroidDiagnostics {
         }.onFailure { add("(funnels unavailable: ${it.message})") }
     }
 
-    /** Workout & imported-activity source breakdown. The "counted but not shown" bug class (#28: strap
-     *  workouts banked under "my-whoop" while the load queried the active strap id; #29: "activity-file"
+    /** Workout & imported-activity source breakdown. The "counted but not shown" bug class (strap
+     *  workouts banked under "my-whoop" while the load queried the active strap id, or "activity-file"
      *  imports the load path never read) is invisible in a strap log without this. Surfaces the RESOLVED
      *  active deviceId + a per-source STORED workout count + the most-recent workout, so a report reveals
      *  WHERE workouts live vs what the Workouts screen loads. Best-effort. */
@@ -145,7 +145,7 @@ object AndroidDiagnostics {
     }
 
     /** Daily-data source breakdown + on-device volume. The active-strap↔"my-whoop" id mismatch strands
-     *  DAYS / steps / sleep / recovery the same way it strands workouts (#28), so a "no data / no steps /
+     *  DAYS / steps / sleep / recovery the same way it strands workouts, so a "no data / no steps /
      *  0% REM" report needs the same reconciliation: per-source day counts, which metrics are actually
      *  populated over the recent week, and the raw-row footprint. Best-effort. */
     suspend fun dailyDataLines(context: Context): List<String> = buildList {
@@ -175,7 +175,7 @@ object AndroidDiagnostics {
         }.onFailure { add("(daily data unavailable: ${it.message})") }
     }
 
-    /** Alarm state for the debug export: the configured wake + the last arm's sent-vs-strap-reports (#34), so
+    /** Alarm state for the debug export: the configured wake + the last arm's sent-vs-strap-reports, so
      *  a "didn't buzz" report shows whether the strap accepted the time. Reads persisted prefs (written by
      *  WhoopBleClient.armStrapAlarm + the GET_ALARM_TIME readback). Best-effort. */
     fun alarmLines(context: Context): List<String> = buildList {
@@ -193,7 +193,7 @@ object AndroidDiagnostics {
             } else {
                 add("Model: WHOOP 4.0")
             }
-            // #4: strap clock health — a reset/stale OR future-dated clock (the #34 / #928 causes) breaks
+            // #4: strap clock health — a reset/stale OR future-dated clock breaks
             // the alarm even when armed.
             val newest = p.getLong("strap.newestRecordTs", 0L)
             if (newest > 0L) {

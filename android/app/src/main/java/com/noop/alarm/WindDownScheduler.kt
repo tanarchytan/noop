@@ -14,7 +14,7 @@ import com.noop.ui.appLaunchIntent
 import java.util.Calendar
 
 /**
- * The wind-down nudge (#207) — a gentle, NON-safety-critical evening local notification.
+ * The wind-down nudge — a gentle, NON-safety-critical evening local notification.
  *
  * Deliberately INEXACT: a missed wind-down nudge costs nothing, so we use a daily repeating inexact
  * alarm (no exact-alarm permission needed) rather than the privileged primitive the wake alarm uses.

@@ -13,7 +13,7 @@ import com.noop.ui.NoopPrefs
 import com.noop.ui.appLaunchIntent
 import kotlin.math.roundToInt
 
-// MARK: - Scheduled report notifications (#517)
+// MARK: - Scheduled report notifications
 //
 // Two opt-in, default-OFF system notifications, no AI involved:
 //   1. A MORNING RECAP (Charge + Rest) once a fresh night has been processed.
@@ -95,7 +95,7 @@ object ScheduledReportPolicy {
 
 object ScheduledReportNotifier {
     private const val CHANNEL_ID = "noop_scheduled_reports"
-    // #297: distinct ids so a report never silently replaces another notifier's (tagless notify()).
+    // distinct ids so a report never silently replaces another notifier's (tagless notify()).
     // Map: 4201 connection, 4202 illness, 4203 inactivity, 4204 smart alarm, 4205/4206/4207 battery.
     private const val MORNING_NOTIF_ID = 4208
     private const val WORKOUT_NOTIF_ID = 4209

@@ -20,7 +20,7 @@ object OuraGatt {
     const val notifyCharacteristicUUID = "98ED0003-A541-11E4-B6A0-0002A5D5C51B"
 
     // Gen-5 extra characteristics. Roles UNCONFIRMED in the RE corpus, leave UNUSED in v1.
-    //: do not write to these. Listed for discovery completeness only.
+    // do not write to these. Listed for discovery completeness only.
     const val extraCharacteristic4UUID = "98ED0004-A541-11E4-B6A0-0002A5D5C51B"
     const val extraCharacteristic5UUID = "98ED0005-A541-11E4-B6A0-0002A5D5C51B"
     const val extraCharacteristic6UUID = "98ED0006-A541-11E4-B6A0-0002A5D5C51B"

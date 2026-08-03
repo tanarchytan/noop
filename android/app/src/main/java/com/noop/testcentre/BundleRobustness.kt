@@ -6,7 +6,7 @@ package com.noop.testcentre
  * for the export pipeline: it confirms the bundle is well-formed (report.txt present and non-empty,
  * meta.json present), that the optional attachments are HONOURED when they should be (the Display mode's
  * screenshot.png, a captured crash's last-crash.txt), and crucially that redaction actually held - no raw
- * MAC address or WHOOP serial shape survived the scrub in ANY text entry (the #453 / 5.3 regression net).
+ * MAC address or WHOOP serial shape survived the scrub in ANY text entry.
  *
  * Why a separate check and not just trust the assembler: the assembler re-scrubs every file, but a future
  * edit could add an entry that bypasses redactEntries, or a redaction regex could regress. This check reads

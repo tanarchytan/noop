@@ -295,7 +295,7 @@ class OuraDriver(
         val anchorRt = anchorRingTime ?: return null
         val deltaTicks = forRingTimestamp - anchorRt
         val ms = anchorMs + deltaTicks * 100   // default 100 ms/tick (s5.5); bounded input, no overflow
-        // #968: a corrupt/misaligned ring timestamp (seen on a full cursor=0 history dump) can convert to
+        // a corrupt/misaligned ring timestamp (seen on a full cursor=0 history dump) can convert to
         // an implausible epoch. Gate the RESULT to the same 2020-2035 plausible window used for anchoring
         // (was a weak `ms <= 0`), so the caller honestly falls back to arrival time instead of banking a
         // 1970 or far-future sample. Byte-identical to the Swift twin.
@@ -334,7 +334,7 @@ class OuraDriver(
      * True when [epochSeconds] falls inside the anchor plausibility window (2020-01-01 .. 2035-01-01), i.e.
      * `setAnchorIfPlausible` would accept it. A 0x42/0x85 whose epoch is outside this is silently ignored so
      * a garbage value can't anchor history to ~1970. Exposed READ-ONLY so OuraLiveSource can log WHY an
-     * anchor was rejected (#91) without duplicating the bounds or reaching into anchor state. Pure.
+     * anchor was rejected without duplicating the bounds or reaching into anchor state. Pure.
      */
     fun isPlausibleAnchorEpoch(epochSeconds: Long): Boolean = plausibleAnchorMs(epochSeconds) != null
 
@@ -431,8 +431,8 @@ class OuraDriver(
 
             // --- Tier B (only reached when allowTierB == true; otherwise dropped above) ---
             OuraEventTag.GREEN_IBI_AMP ->
-                // #287: 0x71 green_ibi_and_amp. Demoted from Tier A: the 0x60 decoder it used reads 6
-                // ABSOLUTE IBIs, but §6.2 documents 0x71 as 5 IBI DELTAS + 6 amplitudes with a [2:0] shift,
+                // 0x71 green_ibi_and_amp. Demoted from Tier A: the 0x60 decoder it used reads 6
+                // ABSOLUTE IBIs, but 0x71 is 5 IBI DELTAS + 6 amplitudes with a [2:0] shift,
                 // so that decode fabricated a phantom R-R and corrupted HRV. With no captured 0x71 fixture we
                 // cannot write a verified decoder yet, so emit the raw bytes for inspection (never folded into
                 // scoring) rather than a guessed IBI. Gated above unless allowTierB. Promote on a real sample.
@@ -456,7 +456,7 @@ class OuraDriver(
                 )
             OuraEventTag.ACTIVITY_INFO ->
                 // Split out of the raw-bytes TierB wrapper: this ONE activity tag has a plausible decode
-                // formula (OuraDecoders.decodeActivityInfo, third-party [oura-rs], PR #960 investigation).
+                // formula (OuraDecoders.decodeActivityInfo).
                 // Still Tier B - only reached behind allowTierB (gated above), and OuraStreamMapping never
                 // folds ActivityInfo into a durable stream. 0x51/0x52 summaries stay raw below.
                 OuraDecoders.decodeActivityInfo(record)?.let { listOf(OuraEvent.ActivityInfo(it)) }
