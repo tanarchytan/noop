@@ -757,11 +757,25 @@ internal object IntegrityCheckingUniffiLib {
     ): Int
     external fun uniffi_whoop_ffi_checksum_func_hrv_windowed_buckets(
     ): Int
+    external fun uniffi_whoop_ffi_checksum_func_ppg_check_cfg(
+    ): Int
     external fun uniffi_whoop_ffi_checksum_func_ppg_hr(
+    ): Int
+    external fun uniffi_whoop_ffi_checksum_func_ppg_hr_aggregate(
+    ): Int
+    external fun uniffi_whoop_ffi_checksum_func_ppg_hr_derate_poor(
+    ): Int
+    external fun uniffi_whoop_ffi_checksum_func_ppg_signal_check(
     ): Int
     external fun uniffi_whoop_ffi_checksum_func_resp_rate_from_rr(
     ): Int
+    external fun uniffi_whoop_ffi_checksum_func_rr_beats_trusted(
+    ): Int
     external fun uniffi_whoop_ffi_checksum_func_vitality_rmssd_norm(
+    ): Int
+    external fun uniffi_whoop_ffi_checksum_func_illness_baseline_cfg(
+    ): Int
+    external fun uniffi_whoop_ffi_checksum_func_illness_baseline_z_series(
     ): Int
     external fun uniffi_whoop_ffi_checksum_func_daily_resting_hr(
     ): Int
@@ -777,9 +791,13 @@ internal object IntegrityCheckingUniffiLib {
     ): Int
     external fun uniffi_whoop_ffi_checksum_func_recovery_banked_nights(
     ): Int
+    external fun uniffi_whoop_ffi_checksum_func_recovery_driver_rows(
+    ): Int
     external fun uniffi_whoop_ffi_checksum_func_recovery_index_slope(
     ): Int
     external fun uniffi_whoop_ffi_checksum_func_recovery_score(
+    ): Int
+    external fun uniffi_whoop_ffi_checksum_func_recovery_state(
     ): Int
     external fun uniffi_whoop_ffi_checksum_func_rest_score(
     ): Int
@@ -800,6 +818,8 @@ internal object IntegrityCheckingUniffiLib {
     external fun uniffi_whoop_ffi_checksum_func_bridged_night_groups(
     ): Int
     external fun uniffi_whoop_ffi_checksum_func_habitual_midsleep_sec(
+    ): Int
+    external fun uniffi_whoop_ffi_checksum_func_habitual_midsleep_series(
     ): Int
     external fun uniffi_whoop_ffi_checksum_func_main_night_group_indices(
     ): Int
@@ -837,6 +857,8 @@ internal object IntegrityCheckingUniffiLib {
     ): Int
     external fun uniffi_whoop_ffi_checksum_func_daytime_stress(
     ): Int
+    external fun uniffi_whoop_ffi_checksum_func_series_half_change(
+    ): Int
     external fun uniffi_whoop_ffi_checksum_func_series_mean(
     ): Int
     external fun uniffi_whoop_ffi_checksum_func_series_median(
@@ -848,6 +870,8 @@ internal object IntegrityCheckingUniffiLib {
     external fun uniffi_whoop_ffi_checksum_func_series_sample_sd(
     ): Int
     external fun uniffi_whoop_ffi_checksum_func_series_slope(
+    ): Int
+    external fun uniffi_whoop_ffi_checksum_func_series_trendline(
     ): Int
     external fun uniffi_whoop_ffi_checksum_func_sleep_stress(
     ): Int
@@ -1089,12 +1113,26 @@ internal object UniffiLib {
     ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_func_hrv_windowed_buckets(`start`: Int,`end`: Int,`runs`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
+    external fun uniffi_whoop_ffi_fn_func_ppg_check_cfg(uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_func_ppg_hr(`samples`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    external fun uniffi_whoop_ffi_fn_func_ppg_hr_aggregate(`estimates`: RustBuffer.ByValue,`bucketSecs`: Long,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    external fun uniffi_whoop_ffi_fn_func_ppg_hr_derate_poor(`estimates`: RustBuffer.ByValue,`poorSecs`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    external fun uniffi_whoop_ffi_fn_func_ppg_signal_check(`estimates`: RustBuffer.ByValue,`start`: Long,`end`: Long,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_func_resp_rate_from_rr(`beats`: RustBuffer.ByValue,`start`: Long,`end`: Long,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
+    external fun uniffi_whoop_ffi_fn_func_rr_beats_trusted(`opticalSignalPoor`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): Byte
     external fun uniffi_whoop_ffi_fn_func_vitality_rmssd_norm(`forAge`: Double,uniffi_out_err: UniffiRustCallStatus, 
     ): Double
+    external fun uniffi_whoop_ffi_fn_func_illness_baseline_cfg(uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    external fun uniffi_whoop_ffi_fn_func_illness_baseline_z_series(`values`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_func_daily_resting_hr(`sessionFloors`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_func_fitness_age_compute(`age`: Double,`sex`: RustBuffer.ByValue,`restingHr`: Double,`paIndex`: Double,`waistCm`: RustBuffer.ByValue,`lowerConfidence`: Byte,uniffi_out_err: UniffiRustCallStatus, 
@@ -1109,9 +1147,13 @@ internal object UniffiLib {
     ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_func_recovery_banked_nights(`nightlyHrv`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): Int
+    external fun uniffi_whoop_ffi_fn_func_recovery_driver_rows(`d`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_func_recovery_index_slope(`hr`: RustBuffer.ByValue,`start`: Long,`end`: Long,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_func_recovery_score(`d`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    external fun uniffi_whoop_ffi_fn_func_recovery_state(`score`: Double,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_func_rest_score(`asleepSeconds`: Double,`efficiency`: Double,`deepSeconds`: Double,`remSeconds`: Double,`sleepNeedHours`: RustBuffer.ByValue,`consistency`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
@@ -1132,6 +1174,8 @@ internal object UniffiLib {
     external fun uniffi_whoop_ffi_fn_func_bridged_night_groups(`blocks`: RustBuffer.ByValue,`offsetS`: Long,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_func_habitual_midsleep_sec(`history`: RustBuffer.ByValue,`offsetS`: Long,`minDays`: Int,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    external fun uniffi_whoop_ffi_fn_func_habitual_midsleep_series(`history`: RustBuffer.ByValue,`offsetS`: Long,`minDays`: Int,`windowDays`: Int,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_func_main_night_group_indices(`blocks`: RustBuffer.ByValue,`offsetS`: Long,`habitualMidsleepSec`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
@@ -1167,7 +1211,9 @@ internal object UniffiLib {
     ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_func_daily_stress(`today`: RustBuffer.ByValue,`baseline`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
-    external fun uniffi_whoop_ffi_fn_func_daytime_stress(`hours`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    external fun uniffi_whoop_ffi_fn_func_daytime_stress(`hours`: RustBuffer.ByValue,`sleepSpans`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    external fun uniffi_whoop_ffi_fn_func_series_half_change(`values`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_func_series_mean(`values`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): Double
@@ -1181,6 +1227,8 @@ internal object UniffiLib {
     ): Double
     external fun uniffi_whoop_ffi_fn_func_series_slope(`values`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): Double
+    external fun uniffi_whoop_ffi_fn_func_series_trendline(`days`: RustBuffer.ByValue,`values`: RustBuffer.ByValue,`weights`: RustBuffer.ByValue,`windowDays`: Double,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_func_sleep_stress(`hours`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_func_vitality_compute(`chronoAge`: Double,`restingHr`: RustBuffer.ByValue,`vo2max`: RustBuffer.ByValue,`expectedVo2max`: RustBuffer.ByValue,`sleepHours`: RustBuffer.ByValue,`sleepRegularityIndex`: RustBuffer.ByValue,`sleepConsistency`: RustBuffer.ByValue,`rmssd`: RustBuffer.ByValue,`rmssdNorm`: RustBuffer.ByValue,`steps`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
@@ -1436,13 +1484,34 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_whoop_ffi_checksum_func_hrv_windowed_buckets() != 3225) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_whoop_ffi_checksum_func_ppg_check_cfg() != 21102) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_whoop_ffi_checksum_func_ppg_hr() != 2321) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_whoop_ffi_checksum_func_ppg_hr_aggregate() != 12533) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_whoop_ffi_checksum_func_ppg_hr_derate_poor() != 47078) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_whoop_ffi_checksum_func_ppg_signal_check() != 4624) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_whoop_ffi_checksum_func_resp_rate_from_rr() != 35993) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_whoop_ffi_checksum_func_rr_beats_trusted() != 15925) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_whoop_ffi_checksum_func_vitality_rmssd_norm() != 4064) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_whoop_ffi_checksum_func_illness_baseline_cfg() != 42679) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_whoop_ffi_checksum_func_illness_baseline_z_series() != 61346) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_whoop_ffi_checksum_func_daily_resting_hr() != 6631) {
@@ -1466,10 +1535,16 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_whoop_ffi_checksum_func_recovery_banked_nights() != 54983) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_whoop_ffi_checksum_func_recovery_driver_rows() != 21334) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_whoop_ffi_checksum_func_recovery_index_slope() != 43726) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_whoop_ffi_checksum_func_recovery_score() != 23669) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_whoop_ffi_checksum_func_recovery_state() != 53041) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_whoop_ffi_checksum_func_rest_score() != 59242) {
@@ -1500,6 +1575,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_whoop_ffi_checksum_func_habitual_midsleep_sec() != 48228) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_whoop_ffi_checksum_func_habitual_midsleep_series() != 32231) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_whoop_ffi_checksum_func_main_night_group_indices() != 11991) {
@@ -1553,7 +1631,10 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_whoop_ffi_checksum_func_daily_stress() != 7585) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_whoop_ffi_checksum_func_daytime_stress() != 34874) {
+    if (lib.uniffi_whoop_ffi_checksum_func_daytime_stress() != 15774) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_whoop_ffi_checksum_func_series_half_change() != 38773) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_whoop_ffi_checksum_func_series_mean() != 2118) {
@@ -1572,6 +1653,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_whoop_ffi_checksum_func_series_slope() != 39922) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_whoop_ffi_checksum_func_series_trendline() != 18169) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_whoop_ffi_checksum_func_sleep_stress() != 12416) {
@@ -3510,6 +3594,53 @@ public object FfiConverterTypeDriverBaselineInfo: FfiConverterRustBuffer<DriverB
 
 
 /**
+ * One driver row behind a Charge score: the signal, its marginal swing in whole points, and its
+ * direction. `delta_points` is NaN when that driver's own value is.
+ */
+data class DriverRow (
+    var `kind`: DriverKind
+    , 
+    var `deltaPoints`: kotlin.Double
+    , 
+    var `verdict`: DriverVerdict
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeDriverRow: FfiConverterRustBuffer<DriverRow> {
+    override fun read(buf: ByteBuffer): DriverRow {
+        return DriverRow(
+            FfiConverterTypeDriverKind.read(buf),
+            FfiConverterDouble.read(buf),
+            FfiConverterTypeDriverVerdict.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: DriverRow) = (
+            FfiConverterTypeDriverKind.allocationSize(value.`kind`) +
+            FfiConverterDouble.allocationSize(value.`deltaPoints`) +
+            FfiConverterTypeDriverVerdict.allocationSize(value.`verdict`)
+    )
+
+    override fun write(value: DriverRow, buf: ByteBuffer) {
+            FfiConverterTypeDriverKind.write(value.`kind`, buf)
+            FfiConverterDouble.write(value.`deltaPoints`, buf)
+            FfiConverterTypeDriverVerdict.write(value.`verdict`, buf)
+    }
+}
+
+
+
+/**
  * A computed Fitness Age with the inputs to present it. `vo2max` is filled only with a waist.
  * `advance_years` is POSITIVE when older than chronological, matching `rhythm_age`'s convention.
  */
@@ -3566,6 +3697,48 @@ public object FfiConverterTypeFitnessAgeInfo: FfiConverterRustBuffer<FitnessAgeI
             FfiConverterDouble.write(value.`advanceYears`, buf)
             FfiConverterDouble.write(value.`bandYears`, buf)
             FfiConverterBoolean.write(value.`lowerConfidence`, buf)
+    }
+}
+
+
+
+/**
+ * One local day of the habitual-midsleep series; `midsleep_sec` is None where the trailing window holds
+ * fewer than the day floor.
+ */
+data class HabitualMidsleepDay (
+    var `day`: kotlin.String
+    , 
+    var `midsleepSec`: kotlin.Long?
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeHabitualMidsleepDay: FfiConverterRustBuffer<HabitualMidsleepDay> {
+    override fun read(buf: ByteBuffer): HabitualMidsleepDay {
+        return HabitualMidsleepDay(
+            FfiConverterString.read(buf),
+            FfiConverterOptionalLong.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: HabitualMidsleepDay) = (
+            FfiConverterString.allocationSize(value.`day`) +
+            FfiConverterOptionalLong.allocationSize(value.`midsleepSec`)
+    )
+
+    override fun write(value: HabitualMidsleepDay, buf: ByteBuffer) {
+            FfiConverterString.write(value.`day`, buf)
+            FfiConverterOptionalLong.write(value.`midsleepSec`, buf)
     }
 }
 
@@ -3766,8 +3939,8 @@ public object FfiConverterTypeHistorySummary: FfiConverterRustBuffer<HistorySumm
 
 
 /**
- * One hour's aggregates: local `hour` (0–23), mean HR (None below the sample gate) and RMSSD (None on
- * insufficient clean R-R).
+ * One bucket's aggregates: epoch-ms start, local `hour` (0–23), mean HR (None below the sample gate),
+ * RMSSD (None on insufficient clean R-R) and the bucket's mean dynamic accel in g (None when absent).
  */
 data class HourPointInfo (
     var `hour`: kotlin.Int
@@ -3775,6 +3948,10 @@ data class HourPointInfo (
     var `meanHr`: kotlin.Double?
     , 
     var `rmssd`: kotlin.Double?
+    , 
+    var `startMs`: kotlin.Long
+    , 
+    var `motionG`: kotlin.Double?
     
 ){
     
@@ -3794,19 +3971,25 @@ public object FfiConverterTypeHourPointInfo: FfiConverterRustBuffer<HourPointInf
             FfiConverterInt.read(buf),
             FfiConverterOptionalDouble.read(buf),
             FfiConverterOptionalDouble.read(buf),
+            FfiConverterLong.read(buf),
+            FfiConverterOptionalDouble.read(buf),
         )
     }
 
     override fun allocationSize(value: HourPointInfo) = (
             FfiConverterInt.allocationSize(value.`hour`) +
             FfiConverterOptionalDouble.allocationSize(value.`meanHr`) +
-            FfiConverterOptionalDouble.allocationSize(value.`rmssd`)
+            FfiConverterOptionalDouble.allocationSize(value.`rmssd`) +
+            FfiConverterLong.allocationSize(value.`startMs`) +
+            FfiConverterOptionalDouble.allocationSize(value.`motionG`)
     )
 
     override fun write(value: HourPointInfo, buf: ByteBuffer) {
             FfiConverterInt.write(value.`hour`, buf)
             FfiConverterOptionalDouble.write(value.`meanHr`, buf)
             FfiConverterOptionalDouble.write(value.`rmssd`, buf)
+            FfiConverterLong.write(value.`startMs`, buf)
+            FfiConverterOptionalDouble.write(value.`motionG`, buf)
     }
 }
 
@@ -4332,6 +4515,61 @@ public object FfiConverterTypeHrvReadinessInfo: FfiConverterRustBuffer<HrvReadin
             FfiConverterDouble.write(value.`normalLowMs`, buf)
             FfiConverterDouble.write(value.`normalHighMs`, buf)
             FfiConverterBoolean.write(value.`overreachingWatch`, buf)
+    }
+}
+
+
+
+/**
+ * The trailing-baseline policy every illness signal is scored against.
+ */
+data class IllnessBaselineCfgInfo (
+    /**
+     * Recent nights excluded from the baseline, counted back from the scored day.
+     */
+    var `gapNights`: kotlin.UInt
+    , 
+    /**
+     * Nights the baseline averages, ending `gap_nights` before the scored day.
+     */
+    var `windowNights`: kotlin.UInt
+    , 
+    /**
+     * Usable nights the window needs before a reading is trusted.
+     */
+    var `minNights`: kotlin.UInt
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeIllnessBaselineCfgInfo: FfiConverterRustBuffer<IllnessBaselineCfgInfo> {
+    override fun read(buf: ByteBuffer): IllnessBaselineCfgInfo {
+        return IllnessBaselineCfgInfo(
+            FfiConverterUInt.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterUInt.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: IllnessBaselineCfgInfo) = (
+            FfiConverterUInt.allocationSize(value.`gapNights`) +
+            FfiConverterUInt.allocationSize(value.`windowNights`) +
+            FfiConverterUInt.allocationSize(value.`minNights`)
+    )
+
+    override fun write(value: IllnessBaselineCfgInfo, buf: ByteBuffer) {
+            FfiConverterUInt.write(value.`gapNights`, buf)
+            FfiConverterUInt.write(value.`windowNights`, buf)
+            FfiConverterUInt.write(value.`minNights`, buf)
     }
 }
 
@@ -5123,6 +5361,58 @@ public object FfiConverterTypePhaseEstimateInfo: FfiConverterRustBuffer<PhaseEst
 
 
 /**
+ * The PPG-HR tuning the app displays: the emission gate, the clean-second confidence floor, and the two
+ * clean-second fractions that separate the three [PpgSignalCheck] levels.
+ */
+data class PpgCheckCfgInfo (
+    var `minConfidence`: kotlin.Double
+    , 
+    var `goodConfidence`: kotlin.Double
+    , 
+    var `fairFraction`: kotlin.Double
+    , 
+    var `goodFraction`: kotlin.Double
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypePpgCheckCfgInfo: FfiConverterRustBuffer<PpgCheckCfgInfo> {
+    override fun read(buf: ByteBuffer): PpgCheckCfgInfo {
+        return PpgCheckCfgInfo(
+            FfiConverterDouble.read(buf),
+            FfiConverterDouble.read(buf),
+            FfiConverterDouble.read(buf),
+            FfiConverterDouble.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: PpgCheckCfgInfo) = (
+            FfiConverterDouble.allocationSize(value.`minConfidence`) +
+            FfiConverterDouble.allocationSize(value.`goodConfidence`) +
+            FfiConverterDouble.allocationSize(value.`fairFraction`) +
+            FfiConverterDouble.allocationSize(value.`goodFraction`)
+    )
+
+    override fun write(value: PpgCheckCfgInfo, buf: ByteBuffer) {
+            FfiConverterDouble.write(value.`minConfidence`, buf)
+            FfiConverterDouble.write(value.`goodConfidence`, buf)
+            FfiConverterDouble.write(value.`fairFraction`, buf)
+            FfiConverterDouble.write(value.`goodFraction`, buf)
+    }
+}
+
+
+
+/**
  * A derived HR estimate from `ppg_hr`.
  */
 data class PpgEstimate (
@@ -5764,7 +6054,7 @@ public object FfiConverterTypeRrRun: FfiConverterRustBuffer<RrRun> {
 
 
 /**
- * One scored waking hour.
+ * One scored bucket.
  */
 data class ScoredHourInfo (
     var `hour`: kotlin.Int
@@ -5774,6 +6064,8 @@ data class ScoredHourInfo (
     var `rmssd`: kotlin.Double?
     , 
     var `stress`: kotlin.Double
+    , 
+    var `startMs`: kotlin.Long
     
 ){
     
@@ -5794,6 +6086,7 @@ public object FfiConverterTypeScoredHourInfo: FfiConverterRustBuffer<ScoredHourI
             FfiConverterDouble.read(buf),
             FfiConverterOptionalDouble.read(buf),
             FfiConverterDouble.read(buf),
+            FfiConverterLong.read(buf),
         )
     }
 
@@ -5801,7 +6094,8 @@ public object FfiConverterTypeScoredHourInfo: FfiConverterRustBuffer<ScoredHourI
             FfiConverterInt.allocationSize(value.`hour`) +
             FfiConverterDouble.allocationSize(value.`meanHr`) +
             FfiConverterOptionalDouble.allocationSize(value.`rmssd`) +
-            FfiConverterDouble.allocationSize(value.`stress`)
+            FfiConverterDouble.allocationSize(value.`stress`) +
+            FfiConverterLong.allocationSize(value.`startMs`)
     )
 
     override fun write(value: ScoredHourInfo, buf: ByteBuffer) {
@@ -5809,6 +6103,7 @@ public object FfiConverterTypeScoredHourInfo: FfiConverterRustBuffer<ScoredHourI
             FfiConverterDouble.write(value.`meanHr`, buf)
             FfiConverterOptionalDouble.write(value.`rmssd`, buf)
             FfiConverterDouble.write(value.`stress`, buf)
+            FfiConverterLong.write(value.`startMs`, buf)
     }
 }
 
@@ -6291,6 +6586,47 @@ public object FfiConverterTypeSleepSession: FfiConverterRustBuffer<SleepSession>
 
 
 /**
+ * A `[start, end)` sleep or nap span in epoch ms.
+ */
+data class SleepSpanMsInfo (
+    var `startMs`: kotlin.Long
+    , 
+    var `endMs`: kotlin.Long
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeSleepSpanMsInfo: FfiConverterRustBuffer<SleepSpanMsInfo> {
+    override fun read(buf: ByteBuffer): SleepSpanMsInfo {
+        return SleepSpanMsInfo(
+            FfiConverterLong.read(buf),
+            FfiConverterLong.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: SleepSpanMsInfo) = (
+            FfiConverterLong.allocationSize(value.`startMs`) +
+            FfiConverterLong.allocationSize(value.`endMs`)
+    )
+
+    override fun write(value: SleepSpanMsInfo, buf: ByteBuffer) {
+            FfiConverterLong.write(value.`startMs`, buf)
+            FfiConverterLong.write(value.`endMs`, buf)
+    }
+}
+
+
+
+/**
  * One step-counter sample: wrap-aware u16 `counter` + optional activity class (1=walk, 2=run) at `ts`.
  */
 data class SleepStepSample (
@@ -6405,7 +6741,7 @@ public object FfiConverterTypeSleepStreams: FfiConverterRustBuffer<SleepStreams>
 
 /**
  * Sleep-detection window edges: the daytime-nap band, the session gap ceiling and the sparse-gravity
- * span fraction; plus the overnight band and habitual-midsleep floor the main-night pick uses.
+ * span fraction; plus the overnight band and the habitual-midsleep day floor and trailing window span.
  */
 data class SleepWindowCfgInfo (
     var `daytimeBandStartHour`: kotlin.Long
@@ -6421,6 +6757,8 @@ data class SleepWindowCfgInfo (
     var `overnightEndHour`: kotlin.Long
     , 
     var `habitualMinDays`: kotlin.UInt
+    , 
+    var `habitualWindowDays`: kotlin.UInt
     
 ){
     
@@ -6444,6 +6782,7 @@ public object FfiConverterTypeSleepWindowCfgInfo: FfiConverterRustBuffer<SleepWi
             FfiConverterLong.read(buf),
             FfiConverterLong.read(buf),
             FfiConverterUInt.read(buf),
+            FfiConverterUInt.read(buf),
         )
     }
 
@@ -6454,7 +6793,8 @@ public object FfiConverterTypeSleepWindowCfgInfo: FfiConverterRustBuffer<SleepWi
             FfiConverterDouble.allocationSize(value.`sparseGravitySpanFrac`) +
             FfiConverterLong.allocationSize(value.`overnightStartHour`) +
             FfiConverterLong.allocationSize(value.`overnightEndHour`) +
-            FfiConverterUInt.allocationSize(value.`habitualMinDays`)
+            FfiConverterUInt.allocationSize(value.`habitualMinDays`) +
+            FfiConverterUInt.allocationSize(value.`habitualWindowDays`)
     )
 
     override fun write(value: SleepWindowCfgInfo, buf: ByteBuffer) {
@@ -6465,6 +6805,7 @@ public object FfiConverterTypeSleepWindowCfgInfo: FfiConverterRustBuffer<SleepWi
             FfiConverterLong.write(value.`overnightStartHour`, buf)
             FfiConverterLong.write(value.`overnightEndHour`, buf)
             FfiConverterUInt.write(value.`habitualMinDays`, buf)
+            FfiConverterUInt.write(value.`habitualWindowDays`, buf)
     }
 }
 
@@ -6784,6 +7125,52 @@ public object FfiConverterTypeStressDayInfo: FfiConverterRustBuffer<StressDayInf
 
 
 /**
+ * One bucket excluded from both the score and its calm reference.
+ */
+data class SuppressedBucketInfo (
+    var `startMs`: kotlin.Long
+    , 
+    var `hour`: kotlin.Int
+    , 
+    var `suppression`: SuppressionInfo
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeSuppressedBucketInfo: FfiConverterRustBuffer<SuppressedBucketInfo> {
+    override fun read(buf: ByteBuffer): SuppressedBucketInfo {
+        return SuppressedBucketInfo(
+            FfiConverterLong.read(buf),
+            FfiConverterInt.read(buf),
+            FfiConverterTypeSuppressionInfo.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: SuppressedBucketInfo) = (
+            FfiConverterLong.allocationSize(value.`startMs`) +
+            FfiConverterInt.allocationSize(value.`hour`) +
+            FfiConverterTypeSuppressionInfo.allocationSize(value.`suppression`)
+    )
+
+    override fun write(value: SuppressedBucketInfo, buf: ByteBuffer) {
+            FfiConverterLong.write(value.`startMs`, buf)
+            FfiConverterInt.write(value.`hour`, buf)
+            FfiConverterTypeSuppressionInfo.write(value.`suppression`, buf)
+    }
+}
+
+
+
+/**
  * Seconds in each of the five zones (index 0 == Zone 1) plus time below Zone 1.
  */
 data class TimeInZoneInfo (
@@ -6860,6 +7247,118 @@ public object FfiConverterTypeTimeSpan: FfiConverterRustBuffer<TimeSpan> {
     override fun write(value: TimeSpan, buf: ByteBuffer) {
             FfiConverterLong.write(value.`start`, buf)
             FfiConverterLong.write(value.`end`, buf)
+    }
+}
+
+
+
+/**
+ * A weighted linear trend over day offsets carrying its own uncertainty, so no caller picks a slope
+ * threshold. `slope` is per day; `startValue`/`endValue` are FITTED, not observed.
+ */
+data class TrendlineInfo (
+    var `slope`: kotlin.Double
+    , 
+    var `intercept`: kotlin.Double
+    , 
+    var `slopeSe`: kotlin.Double
+    , 
+    var `slopeCiLo`: kotlin.Double
+    , 
+    var `slopeCiHi`: kotlin.Double
+    , 
+    var `startDay`: kotlin.Double
+    , 
+    var `endDay`: kotlin.Double
+    , 
+    var `startValue`: kotlin.Double
+    , 
+    var `endValue`: kotlin.Double
+    , 
+    var `totalChange`: kotlin.Double
+    , 
+    var `totalChangeCiLo`: kotlin.Double
+    , 
+    var `totalChangeCiHi`: kotlin.Double
+    , 
+    var `slopeZ`: kotlin.Double
+    , 
+    var `significance`: kotlin.Double
+    , 
+    var `direction`: TrendDirectionInfo
+    , 
+    var `n`: kotlin.UInt
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeTrendlineInfo: FfiConverterRustBuffer<TrendlineInfo> {
+    override fun read(buf: ByteBuffer): TrendlineInfo {
+        return TrendlineInfo(
+            FfiConverterDouble.read(buf),
+            FfiConverterDouble.read(buf),
+            FfiConverterDouble.read(buf),
+            FfiConverterDouble.read(buf),
+            FfiConverterDouble.read(buf),
+            FfiConverterDouble.read(buf),
+            FfiConverterDouble.read(buf),
+            FfiConverterDouble.read(buf),
+            FfiConverterDouble.read(buf),
+            FfiConverterDouble.read(buf),
+            FfiConverterDouble.read(buf),
+            FfiConverterDouble.read(buf),
+            FfiConverterDouble.read(buf),
+            FfiConverterDouble.read(buf),
+            FfiConverterTypeTrendDirectionInfo.read(buf),
+            FfiConverterUInt.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: TrendlineInfo) = (
+            FfiConverterDouble.allocationSize(value.`slope`) +
+            FfiConverterDouble.allocationSize(value.`intercept`) +
+            FfiConverterDouble.allocationSize(value.`slopeSe`) +
+            FfiConverterDouble.allocationSize(value.`slopeCiLo`) +
+            FfiConverterDouble.allocationSize(value.`slopeCiHi`) +
+            FfiConverterDouble.allocationSize(value.`startDay`) +
+            FfiConverterDouble.allocationSize(value.`endDay`) +
+            FfiConverterDouble.allocationSize(value.`startValue`) +
+            FfiConverterDouble.allocationSize(value.`endValue`) +
+            FfiConverterDouble.allocationSize(value.`totalChange`) +
+            FfiConverterDouble.allocationSize(value.`totalChangeCiLo`) +
+            FfiConverterDouble.allocationSize(value.`totalChangeCiHi`) +
+            FfiConverterDouble.allocationSize(value.`slopeZ`) +
+            FfiConverterDouble.allocationSize(value.`significance`) +
+            FfiConverterTypeTrendDirectionInfo.allocationSize(value.`direction`) +
+            FfiConverterUInt.allocationSize(value.`n`)
+    )
+
+    override fun write(value: TrendlineInfo, buf: ByteBuffer) {
+            FfiConverterDouble.write(value.`slope`, buf)
+            FfiConverterDouble.write(value.`intercept`, buf)
+            FfiConverterDouble.write(value.`slopeSe`, buf)
+            FfiConverterDouble.write(value.`slopeCiLo`, buf)
+            FfiConverterDouble.write(value.`slopeCiHi`, buf)
+            FfiConverterDouble.write(value.`startDay`, buf)
+            FfiConverterDouble.write(value.`endDay`, buf)
+            FfiConverterDouble.write(value.`startValue`, buf)
+            FfiConverterDouble.write(value.`endValue`, buf)
+            FfiConverterDouble.write(value.`totalChange`, buf)
+            FfiConverterDouble.write(value.`totalChangeCiLo`, buf)
+            FfiConverterDouble.write(value.`totalChangeCiHi`, buf)
+            FfiConverterDouble.write(value.`slopeZ`, buf)
+            FfiConverterDouble.write(value.`significance`, buf)
+            FfiConverterTypeTrendDirectionInfo.write(value.`direction`, buf)
+            FfiConverterUInt.write(value.`n`, buf)
     }
 }
 
@@ -7046,6 +7545,10 @@ data class WindowedStressInfo (
     var `highMinutes`: kotlin.Long
     , 
     var `highSharePct`: kotlin.Double?
+    , 
+    var `peakStartMs`: kotlin.Long?
+    , 
+    var `suppressed`: List<SuppressedBucketInfo>
     
 ){
     
@@ -7071,6 +7574,8 @@ public object FfiConverterTypeWindowedStressInfo: FfiConverterRustBuffer<Windowe
             FfiConverterLong.read(buf),
             FfiConverterLong.read(buf),
             FfiConverterOptionalDouble.read(buf),
+            FfiConverterOptionalLong.read(buf),
+            FfiConverterSequenceTypeSuppressedBucketInfo.read(buf),
         )
     }
 
@@ -7083,7 +7588,9 @@ public object FfiConverterTypeWindowedStressInfo: FfiConverterRustBuffer<Windowe
             FfiConverterLong.allocationSize(value.`lowMinutes`) +
             FfiConverterLong.allocationSize(value.`mediumMinutes`) +
             FfiConverterLong.allocationSize(value.`highMinutes`) +
-            FfiConverterOptionalDouble.allocationSize(value.`highSharePct`)
+            FfiConverterOptionalDouble.allocationSize(value.`highSharePct`) +
+            FfiConverterOptionalLong.allocationSize(value.`peakStartMs`) +
+            FfiConverterSequenceTypeSuppressedBucketInfo.allocationSize(value.`suppressed`)
     )
 
     override fun write(value: WindowedStressInfo, buf: ByteBuffer) {
@@ -7096,6 +7603,8 @@ public object FfiConverterTypeWindowedStressInfo: FfiConverterRustBuffer<Windowe
             FfiConverterLong.write(value.`mediumMinutes`, buf)
             FfiConverterLong.write(value.`highMinutes`, buf)
             FfiConverterOptionalDouble.write(value.`highSharePct`, buf)
+            FfiConverterOptionalLong.write(value.`peakStartMs`, buf)
+            FfiConverterSequenceTypeSuppressedBucketInfo.write(value.`suppressed`, buf)
     }
 }
 
@@ -7360,6 +7869,89 @@ public object FfiConverterTypeChan: FfiConverterRustBuffer<Chan> {
     override fun allocationSize(value: Chan) = 4UL
 
     override fun write(value: Chan, buf: ByteBuffer) {
+        buf.putInt(value.ordinal + 1)
+    }
+}
+
+
+
+
+
+/**
+ * Which signal a driver row describes; the caller owns its label, unit and value text.
+ */
+
+enum class DriverKind {
+    
+    HRV,
+    RESTING_HR,
+    SLEEP,
+    RESPIRATORY,
+    SKIN_TEMP,
+    RECOVERY_INDEX,
+    ACTIVITY_BALANCE;
+
+    
+
+
+    companion object
+}
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeDriverKind: FfiConverterRustBuffer<DriverKind> {
+    override fun read(buf: ByteBuffer) = try {
+        DriverKind.values()[buf.getInt() - 1]
+    } catch (e: IndexOutOfBoundsException) {
+        throw RuntimeException("invalid enum value, something is very wrong!!", e)
+    }
+
+    override fun allocationSize(value: DriverKind) = 4UL
+
+    override fun write(value: DriverKind, buf: ByteBuffer) {
+        buf.putInt(value.ordinal + 1)
+    }
+}
+
+
+
+
+
+/**
+ * How a driver reads against its baseline. `LimitingHigh` / `LimitingLow` carry the side for the
+ * symmetric skin-temp term; every single-sided driver yields only the first three.
+ */
+
+enum class DriverVerdict {
+    
+    SUPPORTING,
+    NEUTRAL,
+    LIMITING,
+    LIMITING_HIGH,
+    LIMITING_LOW;
+
+    
+
+
+    companion object
+}
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeDriverVerdict: FfiConverterRustBuffer<DriverVerdict> {
+    override fun read(buf: ByteBuffer) = try {
+        DriverVerdict.values()[buf.getInt() - 1]
+    } catch (e: IndexOutOfBoundsException) {
+        throw RuntimeException("invalid enum value, something is very wrong!!", e)
+    }
+
+    override fun allocationSize(value: DriverVerdict) = 4UL
+
+    override fun write(value: DriverVerdict, buf: ByteBuffer) {
         buf.putInt(value.ordinal + 1)
     }
 }
@@ -7657,6 +8249,45 @@ public object FfiConverterTypeNapVerdictInfo: FfiConverterRustBuffer<NapVerdictI
 
 
 
+/**
+ * How far a whole span's PPG-derived HR can be trusted, coarsest first. The label and colour are the
+ * caller's; the thresholds behind the level are not.
+ */
+
+enum class PpgSignalCheck {
+    
+    POOR,
+    FAIR,
+    GOOD;
+
+    
+
+
+    companion object
+}
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypePpgSignalCheck: FfiConverterRustBuffer<PpgSignalCheck> {
+    override fun read(buf: ByteBuffer) = try {
+        PpgSignalCheck.values()[buf.getInt() - 1]
+    } catch (e: IndexOutOfBoundsException) {
+        throw RuntimeException("invalid enum value, something is very wrong!!", e)
+    }
+
+    override fun allocationSize(value: PpgSignalCheck) = 4UL
+
+    override fun write(value: PpgSignalCheck, buf: ByteBuffer) {
+        buf.putInt(value.ordinal + 1)
+    }
+}
+
+
+
+
+
 
 enum class ReadinessTier {
     
@@ -7684,6 +8315,46 @@ public object FfiConverterTypeReadinessTier: FfiConverterRustBuffer<ReadinessTie
     override fun allocationSize(value: ReadinessTier) = 4UL
 
     override fun write(value: ReadinessTier, buf: ByteBuffer) {
+        buf.putInt(value.ordinal + 1)
+    }
+}
+
+
+
+
+
+/**
+ * The one-word state band a recovery score falls in. The word and its colour are the caller's.
+ */
+
+enum class RecoveryState {
+    
+    DEPLETED,
+    LOW,
+    MODERATE,
+    PRIMED,
+    PEAK;
+
+    
+
+
+    companion object
+}
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeRecoveryState: FfiConverterRustBuffer<RecoveryState> {
+    override fun read(buf: ByteBuffer) = try {
+        RecoveryState.values()[buf.getInt() - 1]
+    } catch (e: IndexOutOfBoundsException) {
+        throw RuntimeException("invalid enum value, something is very wrong!!", e)
+    }
+
+    override fun allocationSize(value: RecoveryState) = 4UL
+
+    override fun write(value: RecoveryState, buf: ByteBuffer) {
         buf.putInt(value.ordinal + 1)
     }
 }
@@ -8343,6 +9014,82 @@ public object FfiConverterTypeStrainMethod: FfiConverterRustBuffer<StrainMethod>
     override fun allocationSize(value: StrainMethod) = 4UL
 
     override fun write(value: StrainMethod, buf: ByteBuffer) {
+        buf.putInt(value.ordinal + 1)
+    }
+}
+
+
+
+
+
+/**
+ * Why a bucket was held out of the score — a known state the caller can word, not a gap.
+ */
+
+enum class SuppressionInfo {
+    
+    ACTIVE,
+    ASLEEP;
+
+    
+
+
+    companion object
+}
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeSuppressionInfo: FfiConverterRustBuffer<SuppressionInfo> {
+    override fun read(buf: ByteBuffer) = try {
+        SuppressionInfo.values()[buf.getInt() - 1]
+    } catch (e: IndexOutOfBoundsException) {
+        throw RuntimeException("invalid enum value, something is very wrong!!", e)
+    }
+
+    override fun allocationSize(value: SuppressionInfo) = 4UL
+
+    override fun write(value: SuppressionInfo, buf: ByteBuffer) {
+        buf.putInt(value.ordinal + 1)
+    }
+}
+
+
+
+
+
+/**
+ * Which way a series moved once its interval is accounted for. `Flat` means the interval straddles
+ * zero, so the direction is not separable from noise — it is not "no movement".
+ */
+
+enum class TrendDirectionInfo {
+    
+    RISING,
+    FALLING,
+    FLAT;
+
+    
+
+
+    companion object
+}
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeTrendDirectionInfo: FfiConverterRustBuffer<TrendDirectionInfo> {
+    override fun read(buf: ByteBuffer) = try {
+        TrendDirectionInfo.values()[buf.getInt() - 1]
+    } catch (e: IndexOutOfBoundsException) {
+        throw RuntimeException("invalid enum value, something is very wrong!!", e)
+    }
+
+    override fun allocationSize(value: TrendDirectionInfo) = 4UL
+
+    override fun write(value: TrendDirectionInfo, buf: ByteBuffer) {
         buf.putInt(value.ordinal + 1)
     }
 }
@@ -9251,6 +9998,38 @@ public object FfiConverterOptionalTypeStressComponentsInfo: FfiConverterRustBuff
 /**
  * @suppress
  */
+public object FfiConverterOptionalTypeTrendlineInfo: FfiConverterRustBuffer<TrendlineInfo?> {
+    override fun read(buf: ByteBuffer): TrendlineInfo? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterTypeTrendlineInfo.read(buf)
+    }
+
+    override fun allocationSize(value: TrendlineInfo?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterTypeTrendlineInfo.allocationSize(value)
+        }
+    }
+
+    override fun write(value: TrendlineInfo?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterTypeTrendlineInfo.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterOptionalTypeVitalityInfo: FfiConverterRustBuffer<VitalityInfo?> {
     override fun read(buf: ByteBuffer): VitalityInfo? {
         if (buf.get().toInt() == 0) {
@@ -9765,6 +10544,62 @@ public object FfiConverterSequenceTypeDebtNightInput: FfiConverterRustBuffer<Lis
         buf.putInt(value.size)
         value.iterator().forEach {
             FfiConverterTypeDebtNightInput.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeDriverRow: FfiConverterRustBuffer<List<DriverRow>> {
+    override fun read(buf: ByteBuffer): List<DriverRow> {
+        val len = buf.getInt()
+        return List<DriverRow>(len) {
+            FfiConverterTypeDriverRow.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<DriverRow>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeDriverRow.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<DriverRow>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeDriverRow.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeHabitualMidsleepDay: FfiConverterRustBuffer<List<HabitualMidsleepDay>> {
+    override fun read(buf: ByteBuffer): List<HabitualMidsleepDay> {
+        val len = buf.getInt()
+        return List<HabitualMidsleepDay>(len) {
+            FfiConverterTypeHabitualMidsleepDay.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<HabitualMidsleepDay>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeHabitualMidsleepDay.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<HabitualMidsleepDay>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeHabitualMidsleepDay.write(it, buf)
         }
     }
 }
@@ -10363,6 +11198,34 @@ public object FfiConverterSequenceTypeSleepSession: FfiConverterRustBuffer<List<
 /**
  * @suppress
  */
+public object FfiConverterSequenceTypeSleepSpanMsInfo: FfiConverterRustBuffer<List<SleepSpanMsInfo>> {
+    override fun read(buf: ByteBuffer): List<SleepSpanMsInfo> {
+        val len = buf.getInt()
+        return List<SleepSpanMsInfo>(len) {
+            FfiConverterTypeSleepSpanMsInfo.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<SleepSpanMsInfo>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeSleepSpanMsInfo.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<SleepSpanMsInfo>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeSleepSpanMsInfo.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterSequenceTypeSleepStepSample: FfiConverterRustBuffer<List<SleepStepSample>> {
     override fun read(buf: ByteBuffer): List<SleepStepSample> {
         val len = buf.getInt()
@@ -10465,6 +11328,34 @@ public object FfiConverterSequenceTypeStressDayInfo: FfiConverterRustBuffer<List
         buf.putInt(value.size)
         value.iterator().forEach {
             FfiConverterTypeStressDayInfo.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeSuppressedBucketInfo: FfiConverterRustBuffer<List<SuppressedBucketInfo>> {
+    override fun read(buf: ByteBuffer): List<SuppressedBucketInfo> {
+        val len = buf.getInt()
+        return List<SuppressedBucketInfo>(len) {
+            FfiConverterTypeSuppressedBucketInfo.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<SuppressedBucketInfo>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeSuppressedBucketInfo.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<SuppressedBucketInfo>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeSuppressedBucketInfo.write(it, buf)
         }
     }
 }
@@ -11366,6 +12257,19 @@ public object FfiConverterSequenceOptionalDouble: FfiConverterRustBuffer<List<ko
     
 
         /**
+         * One source of truth for the PPG-HR trust constants, so a caller cannot hold a stale copy.
+         */ fun `ppgCheckCfg`(): PpgCheckCfgInfo {
+            return FfiConverterTypePpgCheckCfgInfo.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_func_ppg_check_cfg(
+    
+        _status)
+}
+    )
+    }
+    
+
+        /**
          * HR from a v26 optical PPG buffer (24 Hz autocorrelation).
          */ fun `ppgHr`(`samples`: List<PpgSample>): List<PpgEstimate> {
             return FfiConverterSequenceTypePpgEstimate.lift(
@@ -11374,6 +12278,57 @@ public object FfiConverterSequenceOptionalDouble: FfiConverterRustBuffer<List<ko
     
         
         FfiConverterSequenceTypePpgSample.lower(`samples`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Confidence-weighted downsample of [ppg_hr] to `bucket_secs` buckets: `Σ(bpm·conf) / Σ(conf)` per
+         * bucket, stamped at the bucket start with its mean conf. Use instead of averaging `bpm` in SQL — a
+         * plain mean lets one motion-corrupted second drag a bucket as hard as a clean one.
+         */ fun `ppgHrAggregate`(`estimates`: List<PpgEstimate>, `bucketSecs`: kotlin.Long): List<PpgEstimate> {
+            return FfiConverterSequenceTypePpgEstimate.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_func_ppg_hr_aggregate(
+    
+        
+        FfiConverterSequenceTypePpgEstimate.lower(`estimates`),
+        FfiConverterLong.lower(`bucketSecs`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Re-weight PPG-HR seconds by the strap's own optical quality flag: every second listed in `poor_secs`
+         * (a v18 record whose `optical_signal_poor` is set) drops to zero confidence, so it stops voting in
+         * [ppg_hr_aggregate] and stops counting clean in [ppg_signal_check]. Apply before either.
+         */ fun `ppgHrDeratePoor`(`estimates`: List<PpgEstimate>, `poorSecs`: List<kotlin.Long>): List<PpgEstimate> {
+            return FfiConverterSequenceTypePpgEstimate.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_func_ppg_hr_derate_poor(
+    
+        
+        FfiConverterSequenceTypePpgEstimate.lower(`estimates`),
+        FfiConverterSequenceLong.lower(`poorSecs`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Span-level verdict over `[start, end]` inclusive from the fraction of its seconds carrying a clean
+         * estimate. A second the estimator refused counts against the span exactly like a low-confidence one.
+         */ fun `ppgSignalCheck`(`estimates`: List<PpgEstimate>, `start`: kotlin.Long, `end`: kotlin.Long): PpgSignalCheck {
+            return FfiConverterTypePpgSignalCheck.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_func_ppg_signal_check(
+    
+        
+        FfiConverterSequenceTypePpgEstimate.lower(`estimates`),
+        FfiConverterLong.lower(`start`),
+        FfiConverterLong.lower(`end`),_status)
 }
     )
     }
@@ -11396,6 +12351,22 @@ public object FfiConverterSequenceOptionalDouble: FfiConverterRustBuffer<List<ko
     
 
         /**
+         * Whether one record's R-R beats may be trusted, from its `optical_signal_poor` flag alone. The caller
+         * drops the rejected records before building the [RrRun]s it hands [hrv_rmssd_gap_aware]; the rule for
+         * what counts as untrusted stays here.
+         */ fun `rrBeatsTrusted`(`opticalSignalPoor`: kotlin.Boolean?): kotlin.Boolean {
+            return FfiConverterBoolean.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_func_rr_beats_trusted(
+    
+        
+        FfiConverterOptionalBoolean.lower(`opticalSignalPoor`),_status)
+}
+    )
+    }
+    
+
+        /**
          * Nocturnal RMSSD age norm (ms) — the reference the HRV driver is scored against.
          */ fun `vitalityRmssdNorm`(`forAge`: kotlin.Double): kotlin.Double {
             return FfiConverterDouble.lift(
@@ -11404,6 +12375,34 @@ public object FfiConverterSequenceOptionalDouble: FfiConverterRustBuffer<List<ko
     
         
         FfiConverterDouble.lower(`forAge`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * The one baseline policy, read by every illness path so none can hold a second copy of it.
+         */ fun `illnessBaselineCfg`(): IllnessBaselineCfgInfo {
+            return FfiConverterTypeIllnessBaselineCfgInfo.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_func_illness_baseline_cfg(
+    
+        _status)
+}
+    )
+    }
+    
+
+        /**
+         * Per-night z of a chronological (oldest first) daily signal against its own trailing baseline.
+         * A night with no value, or too few usable nights behind it, comes back `None`.
+         */ fun `illnessBaselineZSeries`(`values`: List<kotlin.Double?>): List<kotlin.Double?> {
+            return FfiConverterSequenceOptionalDouble.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_func_illness_baseline_z_series(
+    
+        
+        FfiConverterSequenceOptionalDouble.lower(`values`),_status)
 }
     )
     }
@@ -11516,6 +12515,21 @@ public object FfiConverterSequenceOptionalDouble: FfiConverterRustBuffer<List<ko
     
 
         /**
+         * The per-driver breakdown behind [`recovery_score`], from the identical input: biggest mover first,
+         * ties in emission order, empty exactly where the score returns `None`.
+         */ fun `recoveryDriverRows`(`d`: RecoveryDrivers): List<DriverRow> {
+            return FfiConverterSequenceTypeDriverRow.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_func_recovery_driver_rows(
+    
+        
+        FfiConverterTypeRecoveryDrivers.lower(`d`),_status)
+}
+    )
+    }
+    
+
+        /**
          * Overnight HR-decline slope (bpm/hour) — the recovery-index driver.
          */ fun `recoveryIndexSlope`(`hr`: List<HrTick>, `start`: kotlin.Long, `end`: kotlin.Long): kotlin.Double? {
             return FfiConverterOptionalDouble.lift(
@@ -11540,6 +12554,20 @@ public object FfiConverterSequenceOptionalDouble: FfiConverterRustBuffer<List<ko
     
         
         FfiConverterTypeRecoveryDrivers.lower(`d`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * The state band of a recovery score in [0, 100] — finer than [`recovery_band`]'s three colours.
+         */ fun `recoveryState`(`score`: kotlin.Double): RecoveryState {
+            return FfiConverterTypeRecoveryState.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_func_recovery_state(
+    
+        
+        FfiConverterDouble.lower(`score`),_status)
 }
     )
     }
@@ -11693,6 +12721,24 @@ public object FfiConverterSequenceOptionalDouble: FfiConverterRustBuffer<List<ko
         FfiConverterSequenceTypeSleepHistoryBlock.lower(`history`),
         FfiConverterLong.lower(`offsetS`),
         FfiConverterUInt.lower(`minDays`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * The habitual midsleep PER DAY over a trailing `window_days` window, ascending, so the consistency
+         * band bends with the habit instead of sitting flat. A day whose window is too thin carries None.
+         */ fun `habitualMidsleepSeries`(`history`: List<SleepHistoryBlock>, `offsetS`: kotlin.Long, `minDays`: kotlin.UInt, `windowDays`: kotlin.UInt): List<HabitualMidsleepDay> {
+            return FfiConverterSequenceTypeHabitualMidsleepDay.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_func_habitual_midsleep_series(
+    
+        
+        FfiConverterSequenceTypeSleepHistoryBlock.lower(`history`),
+        FfiConverterLong.lower(`offsetS`),
+        FfiConverterUInt.lower(`minDays`),
+        FfiConverterUInt.lower(`windowDays`),_status)
 }
     )
     }
@@ -11970,15 +13016,33 @@ public object FfiConverterSequenceOptionalDouble: FfiConverterRustBuffer<List<ko
     
 
         /**
-         * Score waking hours for autonomic activation against the day's own calm-hour quartiles (Q25 HR, Q75
-         * RMSSD). Each hour needs its own HR gate applied by the caller (a `None` mean_hr hour is skipped).
-         */ fun `daytimeStress`(`hours`: List<HourPointInfo>): WindowedStressInfo {
+         * Score waking buckets for autonomic activation against the day's own calm quartiles (Q25 HR, Q75
+         * RMSSD). Buckets overlapping `sleep_spans`, and buckets over the motion gate, are dropped BEFORE
+         * that reference is built and returned in `suppressed` instead. Each bucket needs its own HR gate
+         * applied by the caller (a `None` mean_hr bucket is skipped).
+         */ fun `daytimeStress`(`hours`: List<HourPointInfo>, `sleepSpans`: List<SleepSpanMsInfo>): WindowedStressInfo {
             return FfiConverterTypeWindowedStressInfo.lift(
     uniffiRustCall() { _status ->
     UniffiLib.uniffi_whoop_ffi_fn_func_daytime_stress(
     
         
-        FfiConverterSequenceTypeHourPointInfo.lower(`hours`),_status)
+        FfiConverterSequenceTypeHourPointInfo.lower(`hours`),
+        FfiConverterSequenceTypeSleepSpanMsInfo.lower(`sleepSpans`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Second-half mean minus first-half mean of a series, the odd point going to the recent half. `None`
+         * under four points — the window-change number a trend chip shows.
+         */ fun `seriesHalfChange`(`values`: List<kotlin.Double>): kotlin.Double? {
+            return FfiConverterOptionalDouble.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_func_series_half_change(
+    
+        
+        FfiConverterSequenceDouble.lower(`values`),_status)
 }
     )
     }
@@ -12067,6 +13131,25 @@ public object FfiConverterSequenceOptionalDouble: FfiConverterRustBuffer<List<ko
     
         
         FfiConverterSequenceDouble.lower(`values`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Weighted trendline of `values` over `days` (day offsets, not sample index) across a `window_days`-wide
+         * request, with a residual-based 80 % interval. `weights` may be empty for unit weights.
+         * `None` under three finite points, under the window's minimum span, or with no weighted x-spread.
+         */ fun `seriesTrendline`(`days`: List<kotlin.Double>, `values`: List<kotlin.Double>, `weights`: List<kotlin.Double>, `windowDays`: kotlin.Double): TrendlineInfo? {
+            return FfiConverterOptionalTypeTrendlineInfo.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_func_series_trendline(
+    
+        
+        FfiConverterSequenceDouble.lower(`days`),
+        FfiConverterSequenceDouble.lower(`values`),
+        FfiConverterSequenceDouble.lower(`weights`),
+        FfiConverterDouble.lower(`windowDays`),_status)
 }
     )
     }
