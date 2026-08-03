@@ -12,24 +12,30 @@ import kotlin.math.sqrt
 import kotlin.random.Random
 
 /**
- * Seeds a self-contained mock dataset so every screen (Today, Sleep, Trends, Workouts,
- * Health, Stress, Insights, Explore, Compare, Apple Health) has data with no strap or
- * import needed. Gated by the caller to `BuildConfig.ENABLE_MOCK`; a no-op if "my-whoop"
- * already holds daily rows, so it runs at most once and never clobbers real data.
+ * Builds the mock flavour's synthetic datasets so every screen (Today, Sleep, Trends, Workouts,
+ * Health, Stress, Insights, Explore, Compare, Apple Health) has data with no strap or import needed.
+ * Gated by the caller to `BuildConfig.ENABLE_MOCK`.
  *
- * Everything is synthetic and deterministic (fixed RNG seed), physiologically plausible
- * and internally correlated (recovery ↔ HRV ↔ resting-HR ↔ sleep; strain ↔ workouts; a
- * slow fitness drift over the window).
+ * WHICH dataset is [MockScenario]'s; the rows are built in memory first ([build]) and written after,
+ * so a scenario can be asserted without a database. Every scenario is deterministic — one fixed seed
+ * or an explicit table, no wall-clock randomness — so the same day produces the same rows on every
+ * install. [MockScenario.TYPICAL] is additionally physiologically plausible and internally correlated
+ * (recovery ↔ HRV ↔ resting-HR ↔ sleep; strain ↔ workouts; a slow fitness drift over the window).
  */
 object MockSeeder {
 
-    private const val WHOOP = "my-whoop"
-    private const val APPLE = "apple-health"
+    internal const val WHOOP = "my-whoop"
+    internal const val APPLE = "apple-health"
     // NOOP-COMPUTED strap source ("<strap>-noop") holding IntelligenceEngine's derived weekly scores
     // (fitness_age / vo2max_est / vitality / body_age). The computed UNION resolves these under
     // "my-whoop-noop" for the mock, so seeding here (not under "my-whoop") is required or those cards read empty.
-    private const val WHOOP_NOOP = "$WHOOP-noop"
+    internal const val WHOOP_NOOP = "$WHOOP-noop"
     internal const val DAYS = 120
+
+    /** The mock's second paired device, an Oura ring, and the second WHOOP strap
+     *  [MockScenario.TWO_STRAPS] hands the older half of the window to. */
+    internal const val MOCK_OURA = "mock-oura-ring"
+    internal const val SECOND_STRAP = "mock-whoop-4"
 
     /** The one day in the window the wearer did not sleep at all: yesterday, so today carries the night
      *  that follows it and both states are on screen. Fixed, never drawn, so every install matches. */
@@ -54,10 +60,44 @@ object MockSeeder {
         "Running", "Cycling", "Strength", "HIIT", "Swimming", "Yoga", "Walking", "Rowing"
     )
 
-    /** Seed only if the mock (and the user) has no daily history yet. Safe to call on every launch. */
-    suspend fun seedIfEmpty(repo: WhoopRepository) {
-        if (repo.days(WHOOP).isNotEmpty()) return
-        seed(repo)
+    /** Every source id a scenario may write rows under, so switching scenarios can clear the last one. */
+    private val DATA_IDS = listOf(WHOOP, WHOOP_NOOP, APPLE, SECOND_STRAP, MOCK_OURA)
+
+    /** The registry rows the mock adds on top of the migration-seeded WHOOP, removed on a switch so a
+     *  scenario never inherits the previous one's device list. */
+    private val ADDED_REGISTRY_IDS = listOf(MOCK_OURA, SECOND_STRAP)
+
+    /**
+     * Hold [scenario]'s dataset. A no-op when it is already the seeded one; otherwise every mock row
+     * from the previous scenario is cleared first, so a switch never blends two datasets. Returns true
+     * when rows were (re)written, which is the caller's cue that the screens on display are stale.
+     *
+     * [seededId] is the scenario id last written, persisted by the caller. Null means nothing has been
+     * seeded yet, which is also what a fresh install reads.
+     */
+    suspend fun seedScenario(
+        repo: WhoopRepository,
+        registry: DeviceRegistry,
+        scenario: MockScenario,
+        seededId: String?,
+    ): Boolean {
+        val seeded = MockScenario.forId(seededId)
+        if (seeded == scenario && (scenario == MockScenario.EMPTY || repo.days(WHOOP).isNotEmpty())) return false
+        // An unrecorded scenario on a store that already holds the default dataset is the pre-scenario
+        // install: it is TYPICAL, so recognising it here keeps an upgrade from pointlessly reseeding.
+        if (seeded == null && scenario == MockScenario.TYPICAL && repo.days(WHOOP).isNotEmpty()) return false
+        val today = LocalDate.now()
+        val zone = ZoneId.systemDefault()
+        val ds = build(scenario, today, zone)
+        wipe(registry)
+        if (scenario.seedsData) seedMockRing(registry)
+        write(repo, registry, ds)
+        // The dataset's own expected values, so a walk reads them off `adb logcat -s MockSeeder`
+        // instead of judging by eye whether a number looks plausible.
+        for (c in MockClaims.of(scenario, ds, today, zone)) {
+            android.util.Log.i("MockSeeder", "${scenario.id}: $c")
+        }
+        return true
     }
 
     /**
@@ -66,15 +106,14 @@ object MockSeeder {
      * exactly the WHOOP, so it fires once and never clobbers a real pairing. Status `paired` (not
      * active) keeps SourceCoordinator dormant on the WHOOP.
      */
-    suspend fun seedMockDeviceIfNeeded(registry: DeviceRegistry) {
+    private suspend fun seedMockRing(registry: DeviceRegistry) {
         val devices = registry.all()
-        // Only seed when the registry is the freshly-migrated single-WHOOP state.
         if (devices.size != 1) return
-        if (!SourceCoordinatorIsWhoop(devices.first())) return
+        if (!isWhoop(devices.first())) return
         val now = System.currentTimeMillis() / 1000
         registry.add(
             PairedDeviceRow(
-                id = "mock-oura-ring",
+                id = MOCK_OURA,
                 brand = "Oura",
                 model = "Oura Ring 3",
                 nickname = null,
@@ -89,15 +128,50 @@ object MockSeeder {
     }
 
     /** Local WHOOP check, kept here so MockSeeder (data layer) needn't import the BLE-layer coordinator. */
-    private fun SourceCoordinatorIsWhoop(d: PairedDeviceRow): Boolean =
-        d.id == "my-whoop" || d.brand.equals("WHOOP", ignoreCase = true)
+    private fun isWhoop(d: PairedDeviceRow): Boolean =
+        d.id == WHOOP || d.brand.equals("WHOOP", ignoreCase = true)
 
-    private suspend fun seed(repo: WhoopRepository) {
+    /** Clear every row the mock writes, and drop the registry rows it adds, so the next scenario
+     *  starts from the fresh-install state rather than the previous dataset. */
+    private suspend fun wipe(registry: DeviceRegistry) {
+        for (id in DATA_IDS) registry.deleteDeviceData(id)
+        for (id in ADDED_REGISTRY_IDS) registry.delete(id)
+    }
+
+    /** Persist a built dataset. Nothing here derives a value — [build] already decided every row. */
+    private suspend fun write(repo: WhoopRepository, registry: DeviceRegistry, ds: MockDataset) {
+        for (d in ds.devices) repo.upsertDevice(d.id, name = d.name)
+        for (p in ds.pairedDevices) registry.add(p)
+        if (ds.daily.isNotEmpty()) repo.upsertDailyMetrics(ds.daily)
+        if (ds.sleeps.isNotEmpty()) repo.upsertSleepSessions(ds.sleeps)
+        if (ds.hr.isNotEmpty()) repo.insertHr(ds.hr)
+        if (ds.series.isNotEmpty()) repo.upsertMetricSeries(ds.series)
+        if (ds.apple.isNotEmpty()) repo.upsertAppleDaily(ds.apple)
+        if (ds.workouts.isNotEmpty()) repo.upsertWorkouts(ds.workouts)
+        if (ds.journal.isNotEmpty()) repo.upsertJournal(ds.journal)
+    }
+
+    /**
+     * One scenario's rows, in memory. Pure: the same [scenario] on the same [today] in [zone] always
+     * produces the same dataset, so a test can assert it and two runs can be diffed.
+     */
+    internal fun build(
+        scenario: MockScenario,
+        today: LocalDate = LocalDate.now(),
+        zone: ZoneId = ZoneId.systemDefault(),
+    ): MockDataset = when (scenario) {
+        MockScenario.TYPICAL -> typical(today, zone)
+        MockScenario.GAPS -> MockScenarios.gaps(typical(today, zone), today, zone)
+        MockScenario.EMPTY -> MockDataset()
+        MockScenario.EXTREMES -> MockScenarios.extremes(today, zone)
+        MockScenario.BOUNDARIES -> MockScenarios.boundaries(today, zone)
+        MockScenario.TWO_STRAPS -> MockScenarios.twoStraps(typical(today, zone), today, zone)
+    }
+
+    /** The default dataset: [DAYS] correlated days ending on [today], one of them unslept. */
+    private fun typical(today: LocalDate, zone: ZoneId): MockDataset {
         val rng = Random(0xC0FFEE)
-        val zone = ZoneId.systemDefault()
-        val startDay = LocalDate.now().minusDays((DAYS - 1).toLong())
-
-        repo.upsertDevice(WHOOP, name = "WHOOP (mock)")
+        val startDay = today.minusDays((DAYS - 1).toLong())
 
         val daily = ArrayList<DailyMetric>(DAYS)
         val sleeps = ArrayList<SleepSession>(DAYS)
@@ -314,13 +388,11 @@ object MockSeeder {
         // Per-minute HR across the most recent nights, generated last so no earlier draw shifts.
         val hr = sleeps.takeLast(HR_NIGHTS).flatMap { nightHrSamples(rng, it) }
 
-        repo.upsertDailyMetrics(daily)
-        repo.upsertSleepSessions(sleeps)
-        if (hr.isNotEmpty()) repo.insertHr(hr)
-        repo.upsertMetricSeries(series)
-        repo.upsertAppleDaily(apple)
-        if (workouts.isNotEmpty()) repo.upsertWorkouts(workouts)
-        if (journal.isNotEmpty()) repo.upsertJournal(journal)
+        return MockDataset(
+            devices = listOf(MockDeviceRow(WHOOP, "WHOOP (mock)")),
+            daily = daily, sleeps = sleeps, series = series, apple = apple,
+            workouts = workouts, journal = journal, hr = hr,
+        )
     }
 
     // MARK: - helpers
@@ -354,7 +426,7 @@ object MockSeeder {
             val cycles = cos(2.0 * PI * ((ts - from) / span) * 4.0)
             val awakeLift = if (ts < s.startTs || ts > s.endTs) 14.0 else 0.0
             val bpm = base + 6.0 - cycles * 5.0 + awakeLift + gauss(rng, 0.0, 2.2)
-            out.add(HrSample(deviceId = WHOOP, ts = ts, bpm = bpm.coerceIn(38.0, 130.0).toInt()))
+            out.add(HrSample(deviceId = s.deviceId, ts = ts, bpm = bpm.coerceIn(38.0, 130.0).toInt()))
             ts += HR_STEP_SEC
         }
         return out
@@ -367,8 +439,8 @@ object MockSeeder {
         return mean + sd * (sqrt(-2.0 * ln(u1)) * cos(2.0 * PI * u2))
     }
 
-    private fun round1(x: Double) = round(x * 10.0) / 10.0
-    private fun round2(x: Double) = round(x * 100.0) / 100.0
+    internal fun round1(x: Double) = round(x * 10.0) / 10.0
+    internal fun round2(x: Double) = round(x * 100.0) / 100.0
 
     /** Mean + population standard deviation of a sample; SD floored so a z-score never divides by zero.
      *  Used to derive the mock "stress" series the same way WhoopImporter.meanStd does. */

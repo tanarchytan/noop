@@ -28,10 +28,12 @@ import com.noop.BuildConfig
 import com.noop.NoopApplication
 import com.noop.ble.BackgroundHealth
 import com.noop.ble.WhoopModel
+import com.noop.data.MockScenario
 import com.noop.data.MockSeeder
 import com.noop.data.WhoopRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
  * Single-activity host. Requests the runtime BLE permissions the strap connection
@@ -50,18 +52,10 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         WindowCompat.setDecorFitsSystemWindows(window, false)
 
-        // Mock build only: preload a full synthetic dataset so every screen is populated
-        // out of the box (no strap, no import). No-op once seeded; never runs on the full app.
-        if (BuildConfig.ENABLE_MOCK) {
-            lifecycleScope.launch(Dispatchers.IO) {
-                runCatching { MockSeeder.seedIfEmpty(WhoopRepository.from(applicationContext)) }
-                // Also seed a 2nd PAIRED device (an Oura ring) so the Devices screen shows WHOOP (Active)
-                // + a paired Oura ring out of the box. No-op once seeded / if a real pairing exists.
-                runCatching {
-                    MockSeeder.seedMockDeviceIfNeeded((application as NoopApplication).deviceRegistry)
-                }
-            }
-        }
+        // Mock build only: hold one named synthetic dataset so every screen is populated out of the
+        // box (no strap, no import). A no-op once that scenario is the seeded one; never runs on the
+        // full app. A launch extra picks another dataset, which reseeds and restarts the screen.
+        if (BuildConfig.ENABLE_MOCK) seedMockScenario()
 
         // Only pre-warm permissions at launch for already-onboarded users. First-run onboarding
         // requests each permission at the step that explains it, Bluetooth when the Connect step
@@ -102,6 +96,38 @@ class MainActivity : ComponentActivity() {
             NoopTheme {
                 NoopRoot()
             }
+        }
+    }
+
+    /**
+     * Mock only: make the store hold the requested [MockScenario]. A launch extra names it, and the
+     * choice is remembered, so a plain launch keeps the same dataset. Reseeding replaces every mock
+     * row, and the screens already composed are then stale, so the activity restarts itself once the
+     * write lands. The extra is read here, so a running instance must be stopped first:
+     * `am force-stop <id>` then `am start -n <id>/com.noop.ui.MainActivity --es mock_scenario gaps`.
+     */
+    private fun seedMockScenario() {
+        val prefs = NoopPrefs.of(this)
+        MockScenario.forId(intent?.getStringExtra(MockScenario.EXTRA))?.let {
+            prefs.edit().putString(NoopPrefs.KEY_MOCK_SCENARIO, it.id).apply()
+        }
+        val scenario = MockScenario.forId(prefs.getString(NoopPrefs.KEY_MOCK_SCENARIO, null))
+            ?: MockScenario.TYPICAL
+        val seeded = prefs.getString(NoopPrefs.KEY_MOCK_SCENARIO_SEEDED, null)
+        lifecycleScope.launch(Dispatchers.IO) {
+            val reseeded = runCatching {
+                MockSeeder.seedScenario(
+                    WhoopRepository.from(applicationContext),
+                    (application as NoopApplication).deviceRegistry,
+                    scenario,
+                    seeded,
+                )
+            }.getOrDefault(false)
+            if (!reseeded) return@launch
+            prefs.edit().putString(NoopPrefs.KEY_MOCK_SCENARIO_SEEDED, scenario.id).apply()
+            // Only when the dataset actually changed under a composed screen; a first seed on a fresh
+            // install lands before anything has read the store.
+            if (seeded != null) withContext(Dispatchers.Main) { recreate() }
         }
     }
 
@@ -190,6 +216,13 @@ object NoopPrefs {
     /** Set once the battery-optimisation whitelist dialog has been presented, so it never repeats.
      *  Read by [MainActivity.presentBatteryWhitelistOnce]. */
     const val KEY_ASKED_BATTERY_WHITELIST = "noopAskedBatteryWhitelist"
+
+    /** Mock builds only: the [com.noop.data.MockScenario] id the store should hold, set by a launch
+     *  extra and remembered so a plain relaunch keeps the same dataset. */
+    const val KEY_MOCK_SCENARIO = "noop.mockScenario"
+
+    /** The scenario id actually written, so asking for a different one reseeds instead of no-opping. */
+    const val KEY_MOCK_SCENARIO_SEEDED = "noop.mockScenarioSeeded"
 
     /** The calendar day (yyyy-MM-dd) on which the morning-journal nudge was last shown, keeps the
      *  Sleep screen's "Good morning" sheet to at most once per day. */
