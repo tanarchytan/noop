@@ -41,14 +41,19 @@ motion spine.
 
 | File | What is left |
 |---|---|
-| `StrainScorer` (78) | per-bout TRIMP; the daily figure already delegates. Its gates, scale and denominator now read whoop-rs |
+| `StrainScorer` (68) | per-bout TRIMP; the daily figure already delegates. Its gates, scale and denominator now read whoop-rs |
 | `SleepStager` (198) | `sessionHrvWindows`, `hypnogramMetrics`. `findPeaks` moved to its parity test, `standardDeviation` deleted |
+
+### Ported
+
+| File | Algorithm | Where it went |
+|---|---|---|
+| `ChargeDrivers` (289) | per-driver marginal swing via the recovery logistic | `physio_algo::recovery_drivers::driver_rows`, over uniffi as `recovery_driver_rows`. The Kotlin file is gone; `ui/ChargeDriverRows.kt` holds only the wording, and `ChargeDriversGoldenTest` pins the output to the literals frozen off the Kotlin |
 
 ### Statistical engines, untouched
 
 | File | Algorithm | Why it matters |
 |---|---|---|
-| `RecoveryDrivers` (289) | per-driver marginal swing via the recovery logistic | **Highest risk.** It re-implements the model Rust owns; if they drift, the app explains a score using different maths than produced it |
 | `ReadinessEngine` (369) | z-scores + ACWR acute:chronic + Foster monotony | feeds the Coupled screen |
 | `EffectRanker` (311) | Welch t-test + Cohen's d | |
 | `ActivityCostEngine` (211) | rest-baseline vs next-morning delta + bounce-back | |
@@ -58,7 +63,7 @@ motion spine.
 | `AutoWorkoutDetector` (192) | elevated-HR span growth + dip tolerance | |
 | `CaffeineDecay` (156) | exponential half-life | |
 | `IllnessDistance` (151) | Mahalanobis + Gauss-Jordan inversion | |
-| `Analytics` (140) | legacy `IllnessWatch`, Tanaka ladder; RMSSD and the means now delegate | secondary path; the gold path already uses Rust |
+| `Analytics` (143) | legacy `IllnessWatch`, Tanaka ladder; RMSSD and the means now delegate | secondary path; the gold path already uses Rust |
 
 ### Decode leaks — the clearest border violations
 
@@ -69,21 +74,20 @@ Byte decode belongs in Rust, and a hardware-verified twin already exists for eac
 | `protocol/Streams.kt` | 297 | skin-temp register → °C affine calibration |
 | `protocol/Framing.kt` | 119 | `framing::decode` already does this reassembly |
 | `protocol/Whoop5RawImu.kt` | 96 | `records::gen5::v21_imu` |
-| `protocol/Crc.kt` | 42 | `crc::crc32_zlib`; now only synthesises test trailers |
+| `protocol/Crc.kt` | 42 | `crc::crc32_zlib`. **Gone from `main/`** — its only callers were fixture builders, which now use `java.util.zip.CRC32` through `test/…/protocol/TestCrc32.kt` |
 
 ---
 
 **The counts above are re-derived** by `dev-notes/noop-tan/audit_kotlin_algorithms.py`, which reads each
 one out of this table, compares it against the file, checks the row's named member is still there, and
 checks every whoop-rs FFI export is reached from app Kotlin by a qualified `uniffi.whoop_ffi` call. It
-audits `ANALYTICS.md` in the same pass. All 17 rows still carry their maths — nothing has been ported
-since this file was written. Re-run it before trusting a number here.
+audits `ANALYTICS.md` in the same pass. It prints how many rows still carry their maths and which have
+left `main/`; read that, never a count restated here.
 
 ## Suggested order
 
-1. **`RecoveryDrivers`** — the only one where divergence is actively wrong rather than untidy.
-2. **The four decode leaks as a batch** — 545 lines total, twins already exist and are hardware-verified.
-3. The remaining engines, largest first, each behind its existing test.
+1. **The three remaining decode leaks as a batch** — twins already exist and are hardware-verified.
+2. The remaining engines, largest first, each behind its existing test.
 
 ## How to work an item
 

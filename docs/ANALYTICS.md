@@ -104,7 +104,7 @@ downstream and secondary metrics NOOP layers on top of the core scores.
 | Illness early-warning | `IllnessSignalEngine`, `IllnessDistance` (Mahalanobis) |
 | Vitality bands (display ranges) | `VitalBands` |
 | Readiness (ACWR / Foster monotony) | `ReadinessEngine` |
-| Recovery forecast | `RecoveryForecast`, `RecoveryDrivers` |
+| Recovery forecast | `RecoveryForecast`, `ChargeDrivers` |
 | Menstrual cycle phase | `CyclePhaseEngine` |
 | Dose to response | `DoseResponseEngine`, `DoseResponsePriors` |
 | Effect ranking (Cohen's d, Welch t) | `EffectRanker` |
