@@ -5,6 +5,8 @@ import androidx.compose.animation.core.AnimationSpec
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.interaction.InteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -202,4 +204,42 @@ fun Modifier.staggeredAppear(index: Int, isVisible: Boolean = true): Modifier = 
     this
         .alpha(if (!isVisible) 1f else progress)
         .graphicsLayer { translationY = if (!isVisible) 0f else (1f - progress) * rise }
+}
+
+// MARK: - Press response
+
+/**
+ * Settle a tappable surface inward while it is held: 0.975 scale + 0.86 alpha over a 160ms easeOut.
+ * Pass the SAME [interactionSource] the element gives its `clickable`, e.g.:
+ *
+ * ```
+ * val interaction = remember { MutableInteractionSource() }
+ * NoopCard(
+ *     modifier = Modifier
+ *         .clickable(interactionSource = interaction, indication = null) { onTap() }
+ *         .liquidPress(interaction),
+ * ) { ... }
+ * ```
+ *
+ * A `graphicsLayer` scale/alpha only, so it is free on otherwise-static cards. Honours Reduce Motion
+ * (snaps to the pressed/idle state with no easing).
+ */
+fun Modifier.liquidPress(interactionSource: InteractionSource): Modifier = composed {
+    val reduced = rememberReduceMotion()
+    val pressed by interactionSource.collectIsPressedAsState()
+    val scale by animateFloatAsState(
+        targetValue = if (pressed) 0.975f else 1f,
+        animationSpec = if (reduced) tween(0) else tween(durationMillis = 160, easing = Motion.easeOut),
+        label = "liquidPressScale",
+    )
+    val alpha by animateFloatAsState(
+        targetValue = if (pressed) 0.86f else 1f,
+        animationSpec = if (reduced) tween(0) else tween(durationMillis = 160, easing = Motion.easeOut),
+        label = "liquidPressAlpha",
+    )
+    this.graphicsLayer {
+        scaleX = scale
+        scaleY = scale
+        this.alpha = alpha
+    }
 }

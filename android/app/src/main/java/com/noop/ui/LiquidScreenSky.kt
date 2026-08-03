@@ -52,10 +52,13 @@ fun LiquidScreenSky(height: Dp = 340.dp) {
             .background(Palette.surfaceBase)
             .clearAndSetSemantics {}, // decorative — invisible to TalkBack
     ) {
-        // The static time-of-day sky, top-aligned, settling into Palette.surfaceBase over its lower half.
-        LiquidSkyStatic(
-            hour = null, // live local hour (hour + minute/60)
-            modifier = Modifier.fillMaxWidth().height(height),
-        )
+        // The sky is a dark-scheme decoration: its stops are fixed night/day colours that do not follow
+        // the scheme, so in light mode the band stays the plain theme canvas.
+        if (!Palette.isLight) {
+            LiquidSkyStatic(
+                hour = null, // live local hour (hour + minute/60)
+                modifier = Modifier.fillMaxWidth().height(height),
+            )
+        }
     }
 }
