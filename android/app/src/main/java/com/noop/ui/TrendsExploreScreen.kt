@@ -402,11 +402,12 @@ fun TrendsExploreScreen(vm: AppViewModel) {
         )
         }
 
-        // RANGE BAR , overline + title + the one segmented window control, with a caption
-        // that flags a sparse auto-widen.
+        // RANGE BAR , overline + title over the one segmented window control, with a caption
+        // that flags a sparse auto-widen. Six segments need the full row, so the heading gets its
+        // own line rather than the sliver a shared row would leave it.
         item {
-        Row(verticalAlignment = Alignment.Top) {
-            Column(modifier = Modifier.weight(1f)) {
+        Column(verticalArrangement = Arrangement.spacedBy(Metrics.space12)) {
+            Column(modifier = Modifier.fillMaxWidth()) {
                 Overline(selected.category)
                 Text(selected.title, style = NoopType.title2, color = Palette.textPrimary)
                 // The plain-English one-liner for the three headline scores (Charge/Effort/Rest);

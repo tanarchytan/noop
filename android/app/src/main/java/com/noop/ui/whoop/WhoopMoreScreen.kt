@@ -14,6 +14,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -25,6 +26,7 @@ import com.noop.R
 import com.noop.ui.Destination
 import com.noop.ui.Metrics
 import com.noop.ui.NoopCard
+import com.noop.ui.NoopPrefs
 import com.noop.ui.NoopType
 import com.noop.ui.Overline
 import com.noop.ui.Palette
@@ -40,9 +42,10 @@ private data class MoreSection(@StringRes val headerRes: Int, val items: List<De
 
 /**
  * Every destination this page is the only door to, grouped as the page presents them. A row removed
- * here is a screen nothing else reaches, so entries leave only with their screen.
+ * here is a screen nothing else reaches, so entries leave only with their screen. [hydration] is the
+ * Settings opt-in: its row exists only while that toggle is on.
  */
-private val moreSections: List<MoreSection> = listOf(
+private fun moreSections(hydration: Boolean): List<MoreSection> = listOf(
     MoreSection(
         R.string.more_group_insights,
         listOf(Destination.Insights, Destination.Intelligence, Destination.Coach),
@@ -53,9 +56,10 @@ private val moreSections: List<MoreSection> = listOf(
     ),
     MoreSection(
         R.string.more_group_body,
-        listOf(
+        listOfNotNull(
             Destination.Workouts, Destination.Health, Destination.Stress,
             Destination.Breathe, Destination.Intervals,
+            Destination.Hydration.takeIf { hydration },
         ),
     ),
     MoreSection(
@@ -80,9 +84,13 @@ private val moreSections: List<MoreSection> = listOf(
  */
 @Composable
 internal fun WhoopMoreScreen(onNavigate: (String) -> Unit) {
+    val context = LocalContext.current
+    // Read on every composition rather than remembered: SharedPreferences is not reactive, so this is
+    // what makes the row appear on the way back from the Settings toggle.
+    val sections = moreSections(hydration = NoopPrefs.hydrationTracking(context))
     ScreenScaffold(title = null) {
         Column(verticalArrangement = Arrangement.spacedBy(Metrics.sectionGap)) {
-            moreSections.forEach { section ->
+            sections.forEach { section ->
                 Column(verticalArrangement = Arrangement.spacedBy(Metrics.space12)) {
                     Overline(stringResource(section.headerRes))
                     section.items.forEach { destination ->

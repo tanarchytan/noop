@@ -413,17 +413,22 @@ fun CompareScreen(vm: AppViewModel) {
             SectionHeader("Metrics", overline = "Overlay 2-4 signals")
             NoopCard {
                 Column(verticalArrangement = Arrangement.spacedBy(Metrics.gap)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        SegmentedPillControl(
-                            items = CompareRange.entries.toList(),
-                            selection = range,
-                            label = { it.label },
-                            onSelect = {
-                                range = it
-                                ComparePrefs.writeRange(context, it)
-                            },
-                        )
-                        Spacer(Modifier.weight(1f))
+                    // Six segments need the full row, so the add-metric control sits under the window
+                    // picker rather than fighting it for width.
+                    SegmentedPillControl(
+                        items = CompareRange.entries.toList(),
+                        selection = range,
+                        label = { it.label },
+                        onSelect = {
+                            range = it
+                            ComparePrefs.writeRange(context, it)
+                        },
+                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.End,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
                         AddMetricMenu(
                             selectedCount = selected.size,
                             maxSelection = maxSelection,
@@ -563,6 +568,8 @@ private fun AddMetricMenu(
                 if (atMax) "Max 4" else "Add metric",
                 style = NoopType.subhead,
                 color = tint,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
         }
 

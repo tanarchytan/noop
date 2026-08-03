@@ -13,6 +13,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -283,10 +284,12 @@ fun NotificationsSettingsScreen(vm: AppViewModel) {
                 )
             }
 
-            Row(
+            // Flows so the pills and the action each keep their own width: a long strap state pushes
+            // the button onto the next line instead of squeezing its label.
+            FlowRow(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(Metrics.space10),
-                verticalAlignment = Alignment.CenterVertically,
+                verticalArrangement = Arrangement.spacedBy(Metrics.space10),
             ) {
                 StatePill(strapPillTitle(live), tone = strapPillTone(live), pulsing = live.connected)
                 StatePill(
@@ -294,7 +297,6 @@ fun NotificationsSettingsScreen(vm: AppViewModel) {
                     tone = if (enabledCount > 0) StrandTone.Positive else StrandTone.Neutral,
                     showsDot = false,
                 )
-                Spacer(Modifier.weight(1f))
                 PillButton(
                     label = "Test buzz",
                     icon = Icons.Filled.GraphicEq,
@@ -809,7 +811,7 @@ private fun PillButton(label: String, icon: ImageVector, enabled: Boolean, onCli
         horizontalArrangement = Arrangement.spacedBy(Metrics.space6),
     ) {
         Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(14.dp))
-        Text(label, style = NoopType.caption, color = tint)
+        Text(label, style = NoopType.caption, color = tint, maxLines = 1)
     }
 }
 

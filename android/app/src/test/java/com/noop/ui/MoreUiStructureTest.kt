@@ -41,4 +41,21 @@ class MoreUiStructureTest {
         val appRoot = File(dir, "AppRoot.kt").readText()
         assertTrue("AppRoot.kt must remain shell-sized", appRoot.lineSequence().count() < 800)
     }
+
+    /**
+     * Hydration is opt-in and this page is its only door, so the row and the Settings toggle stand or
+     * fall together: no reachable screen without the toggle, no toggle for an unreachable screen.
+     */
+    @Test
+    fun hydrationRowIsTheOptInScreensOnlyDoor() {
+        // Fails rather than assumes: a bad path would otherwise report as a pass and stop gating.
+        val dir = uiSourceDir() ?: error("no ui source root under ${System.getProperty("user.dir")}")
+
+        val source = File(dir, "whoop/WhoopMoreScreen.kt").readText()
+        assertTrue("More page lost its Hydration row", source.contains("Destination.Hydration"))
+        assertTrue(
+            "the Hydration row must follow NoopPrefs.hydrationTracking",
+            source.contains("NoopPrefs.hydrationTracking"),
+        )
+    }
 }
