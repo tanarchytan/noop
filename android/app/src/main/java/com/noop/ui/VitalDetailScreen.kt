@@ -40,6 +40,7 @@ import com.noop.analytics.FitnessReadinessStatus
 import com.noop.analytics.RustScores
 import com.noop.analytics.VitalBands
 import com.noop.data.DailyMetric
+import uniffi.whoop_ffi.HrvReadinessInfo
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -448,7 +449,7 @@ fun VitalDetailScreen(vm: AppViewModel, key: String) {
                     Column(modifier = Modifier.weight(1f)) {
                         Overline("Latest")
                         Text(
-                            text = "${detail.format(latest.second)} ${detail.unit}".trim(),
+                            text = UnitFormatter.withUnit(detail.format(latest.second), detail.unit),
                             style = NoopType.chartValueLarge,
                             color = detail.color,
                         )
@@ -495,7 +496,7 @@ fun VitalDetailScreen(vm: AppViewModel, key: String) {
                         Column(modifier = Modifier.weight(1f)) {
                             Overline(label, color = Palette.textTertiary)
                             Text(
-                                text = metric?.let { "${detail.format(it)} ${detail.unit}".trim() } ?: "—",
+                                text = metric?.let { UnitFormatter.withUnit(detail.format(it), detail.unit) } ?: "—",
                                 style = NoopType.bodyNumber,
                                 color = Palette.textPrimary,
                             )
@@ -520,7 +521,38 @@ fun VitalDetailScreen(vm: AppViewModel, key: String) {
         val readingRows = remember(filteredReadings, detail, strapId) {
             vitalReadingRows(filteredReadings, detail.unit, strapId, detail.format)
         }
+        if (detail.key == "hrv") HrvReadinessCard(days)
         VitalReadingsTable(rows = readingRows)
+    }
+}
+
+/**
+ * Where the nightly HRV baseline sits inside its own normal band, on the HRV vital only. whoop-rs
+ * cuts the tier and the band edges; the word, the colour and the sentence are the choices here.
+ */
+@Composable
+private fun HrvReadinessCard(days: List<DailyMetric>) {
+    val read = remember(days) { RustScores.hrvReadiness(days.map { it.avgHrv }) } ?: return
+    val word = hrvReadinessWord(read.tier) ?: return
+    InsightCard(
+        modifier = Modifier.fillMaxWidth(),
+        category = "HRV readiness",
+        status = word,
+        detail = hrvReadinessDetail(read),
+        statusColor = hrvReadinessColor(read.tier),
+        tint = null,
+    )
+}
+
+/** The band sentence under the readiness word: the 7-night baseline against its normal edges. PURE. */
+internal fun hrvReadinessDetail(read: HrvReadinessInfo): String {
+    val ms = { v: Double -> "${v.roundToInt()} ms" }
+    val band = "Your 7-night baseline is ${ms(read.baseline7Ms)}, against a normal band of " +
+        "${ms(read.normalLowMs)} to ${ms(read.normalHighMs)}."
+    return if (read.overreachingWatch) {
+        band + " It has been drifting down, which is worth watching."
+    } else {
+        band
     }
 }
 
@@ -551,7 +583,7 @@ internal fun vitalReadingRows(
     readings.asReversed().map { reading ->
         VitalReadingRow(
             time = vitalReadingDateLabel(reading.day),
-            value = "${format(reading.value)} $unit".trim(),
+            value = UnitFormatter.withUnit(format(reading.value), unit),
             source = provenanceDisplayLabel(reading.source, strapDeviceId),
         )
     }

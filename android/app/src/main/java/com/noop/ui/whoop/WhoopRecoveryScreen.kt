@@ -19,7 +19,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.text.style.TextAlign
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.noop.ui.ChargeDriver
 import com.noop.analytics.RustScores
@@ -43,12 +42,10 @@ import com.noop.ui.StrandTone
 import com.noop.ui.WeekBarChart
 import com.noop.ui.WeekLineChart
 import com.noop.ui.WeekLineSeries
-import com.noop.ui.hrvReadinessColor
-import com.noop.ui.hrvReadinessWord
 import com.noop.ui.logicalDayKeyNow
 import com.noop.ui.resolveTodayRow
 import com.noop.ui.widgetAnchorRow
-import uniffi.whoop_ffi.ReadinessTier
+import uniffi.whoop_ffi.RecoveryState
 import java.time.LocalDate
 import java.util.Locale
 import kotlin.math.roundToInt
@@ -88,9 +85,6 @@ fun WhoopRecoveryScreen(
 
     val read = remember(days, anchor) { recoveryDayRead(days, anchor) }
     val week = remember(days, dayKey, anchor) { recoveryWeek(days, dayKey, anchor?.day) }
-    // The one-word readiness read: whoop-rs scores the nightly RMSSD series against the personal
-    // normal band and returns the tier; the word and its colour are the only decisions made here.
-    val readinessTier = remember(days) { RustScores.hrvReadiness(days.map { it.avgHrv })?.tier }
 
     ScreenScaffold(
         title = "Recovery",
@@ -104,7 +98,6 @@ fun WhoopRecoveryScreen(
             score = anchor?.recovery,
             carriedFrom = carriedFrom,
             topDriver = read.drivers.firstOrNull(),
-            readinessTier = readinessTier,
         )
         if (read.drivers.isNotEmpty()) RecoveryDriversCard(read)
         if (!week.isEmpty) RecoveryWeeklyTrends(week, onOpenTrends, onOpenVital, onOpenSleep)
@@ -112,15 +105,14 @@ fun WhoopRecoveryScreen(
 }
 
 /**
- * The ring, its carried-day stamp, and the readiness read: the whoop-rs tier as a Push / Maintain /
- * Rest word over the biggest driver's own verdict. Without a tier the verdict stands on its own.
+ * The ring, its carried-day stamp, and the readiness read: the score's own whoop-rs band as a Push /
+ * Maintain / Rest word over the biggest driver's verdict.
  */
 @Composable
 private fun RecoveryHeroBlock(
     score: Double?,
     carriedFrom: String?,
     topDriver: ChargeDriver?,
-    readinessTier: ReadinessTier?,
 ) {
     if (score == null) {
         DataPendingNote(
@@ -129,7 +121,7 @@ private fun RecoveryHeroBlock(
         )
         return
     }
-    val word = hrvReadinessWord(readinessTier)
+    val word = chargeReadinessWord(RustScores.state(score))
     val verdict = topDriver?.let { "${it.label} ${it.verdict}." }
     Column(
         modifier = Modifier.fillMaxWidth(),
@@ -138,25 +130,25 @@ private fun RecoveryHeroBlock(
     ) {
         RecoveryRing(score = score)
         if (carriedFrom != null) Overline("Last scored · ${recoveryDayStamp(carriedFrom)}")
-        if (word != null) {
-            InsightCard(
-                modifier = Modifier.fillMaxWidth(),
-                category = "Readiness",
-                status = word,
-                detail = verdict
-                    ?: "Your overnight heart-rate variability against your own normal band.",
-                statusColor = hrvReadinessColor(readinessTier),
-                tint = null,
-            )
-        } else if (verdict != null) {
-            Text(
-                verdict,
-                style = NoopType.subhead,
-                color = Palette.textSecondary,
-                textAlign = TextAlign.Center,
-            )
-        }
+        InsightCard(
+            modifier = Modifier.fillMaxWidth(),
+            category = "Readiness",
+            status = word,
+            detail = verdict ?: "What today's Charge asks of you.",
+            statusColor = Palette.recoveryColor(score),
+            tint = null,
+        )
     }
+}
+
+/**
+ * The action word a Charge score reads as. whoop-rs cuts the band; only the word is chosen here, and
+ * it moves with the score so a low day never reads the same as a peak one. PURE.
+ */
+internal fun chargeReadinessWord(state: RecoveryState): String = when (state) {
+    RecoveryState.DEPLETED, RecoveryState.LOW -> "Rest"
+    RecoveryState.MODERATE -> "Maintain"
+    RecoveryState.PRIMED, RecoveryState.PEAK -> "Push"
 }
 
 /** One row per signal the score actually used, biggest mover first, with the score's confidence tier. */
