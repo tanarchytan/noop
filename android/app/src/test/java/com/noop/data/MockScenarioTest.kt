@@ -27,12 +27,20 @@ class MockScenarioTest {
      * dataset every walk and screenshot was taken on. Re-pinning it is a decision about the mock data,
      * never a repair for a failing test.
      *
-     * Re-pinned once: `efficiency` was seeded as a percent into a column the store defines as a 0-1
-     * fraction ([MockSeederEfficiencyUnitTest]). Same rows, same counts, corrected unit.
+     * Re-pinned twice. (1) `efficiency` was seeded as a percent into a column the store defines as a
+     * 0-1 fraction ([MockSeederEfficiencyUnitTest]) - same rows, corrected unit. (2) The seeder wrote
+     * today's sessions across the whole calendar day, so Home listed a workout four hours in the
+     * future as completed; a session that ends after [nowSec] is now not written, which drops one row
+     * from this dataset. [noSessionIsWrittenAfterTheDatasetsOwnClock] states that rule directly, since
+     * a digest only says a byte moved and never which one.
      */
-    private val typicalDigest = "f037db4afba2261117ea47e7804acb93f0369842da76b27ca5ed039e7207722f"
+    private val typicalDigest = "d7ded8e9c18d34ef14660edd0d716b7c445d1fcd9b85776910bdb19be4b40949"
 
-    private fun build(s: MockScenario) = MockSeeder.build(s, today, zone)
+    /** The instant the dataset is "as of". Fixed, because "now" decides which of today's sessions have
+     *  finished, and an unpinned clock would rebuild a different dataset every hour. */
+    private val nowSec: Long = today.atTime(14, 0).atZone(zone).toEpochSecond()
+
+    private fun build(s: MockScenario) = MockSeeder.build(s, today, zone, nowSec)
 
     /** Every field of every row, in the order the seeder emits them. */
     private fun canonical(ds: MockDataset): String = buildString {
@@ -57,6 +65,25 @@ class MockScenarioTest {
         assertEquals(
             "TYPICAL moved. Row counts: ${counts(ds)}",
             typicalDigest, digest(ds),
+        )
+    }
+
+    /**
+     * Today is in progress, so no scenario may present a session that has not finished. The second
+     * half is the negative control: built as of the end of the day instead, TYPICAL writes MORE
+     * sessions, which proves the cut fires rather than passing on a dataset that never reached it.
+     */
+    @Test
+    fun noSessionIsWrittenAfterTheDatasetsOwnClock() {
+        for (s in MockScenario.entries) {
+            val future = MockSeeder.build(s, today, zone, nowSec).workouts.filter { it.endTs > nowSec }
+            assertEquals("${s.id} presents an unfinished session as completed", emptyList<WorkoutRow>(), future)
+        }
+        val endOfDay = today.plusDays(1).atStartOfDay(zone).toEpochSecond()
+        assertTrue(
+            "the clock did not cut anything, so this gate proves nothing",
+            MockSeeder.build(MockScenario.TYPICAL, today, zone, endOfDay).workouts.size >
+                MockSeeder.build(MockScenario.TYPICAL, today, zone, nowSec).workouts.size,
         )
     }
 

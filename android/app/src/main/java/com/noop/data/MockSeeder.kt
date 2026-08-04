@@ -161,17 +161,22 @@ object MockSeeder {
         scenario: MockScenario,
         today: LocalDate = LocalDate.now(),
         zone: ZoneId = ZoneId.systemDefault(),
+        nowSec: Long = System.currentTimeMillis() / 1000,
     ): MockDataset = when (scenario) {
-        MockScenario.TYPICAL -> typical(today, zone)
-        MockScenario.GAPS -> MockScenarios.gaps(typical(today, zone), today, zone)
+        MockScenario.TYPICAL -> typical(today, zone, nowSec)
+        MockScenario.GAPS -> MockScenarios.gaps(typical(today, zone, nowSec), today, zone)
         MockScenario.EMPTY -> MockDataset()
         MockScenario.EXTREMES -> MockScenarios.extremes(today, zone)
         MockScenario.BOUNDARIES -> MockScenarios.boundaries(today, zone)
-        MockScenario.TWO_STRAPS -> MockScenarios.twoStraps(typical(today, zone), today, zone)
+        MockScenario.TWO_STRAPS -> MockScenarios.twoStraps(typical(today, zone, nowSec), today, zone)
     }
 
-    /** The default dataset: [DAYS] correlated days ending on [today], one of them unslept. */
-    private fun typical(today: LocalDate, zone: ZoneId): MockDataset {
+    /**
+     * The default dataset: [DAYS] correlated days ending on [today], one of them unslept. A session
+     * that would end after [nowSec] is not written at all: today is in progress, and a completed
+     * workout four hours from now is a claim the app cannot make.
+     */
+    private fun typical(today: LocalDate, zone: ZoneId, nowSec: Long): MockDataset {
         val rng = Random(0xC0FFEE)
         val startDay = today.minusDays((DAYS - 1).toLong())
 
@@ -301,6 +306,7 @@ object MockSeeder {
             )
 
             // --- workouts on training days ---
+            var kept = 0
             repeat(nWorkouts) { k ->
                 val sport = SPORTS[rng.nextInt(SPORTS.size)]
                 val durSec = (gauss(rng, 48.0, 16.0).coerceIn(18.0, 110.0) * 60)
@@ -309,6 +315,10 @@ object MockSeeder {
                 val avg = gauss(rng, 138.0, 12.0).toInt()
                 val src = if (rng.nextDouble() < 0.7) WHOOP else APPLE
                 val distanceSports = setOf("Running", "Cycling", "Walking", "Swimming", "Rowing")
+                // Every draw above is taken either way, so dropping an unfinished session leaves the
+                // rest of the dataset byte-identical.
+                if (start + durSec.toLong() > nowSec) return@repeat
+                kept++
                 workouts.add(
                     WorkoutRow(
                         deviceId = src, startTs = start, endTs = start + durSec.toLong(),
@@ -333,6 +343,10 @@ object MockSeeder {
                         notes = null,
                     )
                 )
+            }
+
+            if (kept != nWorkouts) {
+                daily[daily.lastIndex] = daily.last().copy(exerciseCount = kept)
             }
 
             // --- journal answers for the recent 40 days ---

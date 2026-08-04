@@ -22,7 +22,11 @@ class MockSeederEfficiencyUnitTest {
     private val today: LocalDate = LocalDate.of(2026, 8, 4)
     private val zone: ZoneId = ZoneId.of("Europe/Amsterdam")
 
-    private fun build(s: MockScenario) = MockSeeder.build(s, today, zone)
+    /** The instant the dataset is "as of". Fixed, because "now" decides which of today's sessions have
+     *  finished, and an unpinned clock would rebuild a different dataset every hour. */
+    private val nowSec: Long = today.atTime(14, 0).atZone(zone).toEpochSecond()
+
+    private fun build(s: MockScenario) = MockSeeder.build(s, today, zone, nowSec)
 
     /** The heal migration's own predicate: a fraction can never exceed 1.0, so > 1.5 is a percent row. */
     @Test
