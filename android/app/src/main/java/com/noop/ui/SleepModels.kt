@@ -514,11 +514,17 @@ internal fun buildSleepModel(
             ?.map { seg -> seg.stage to ((seg.end - seg.start) / 60f) }
 
     // Rolling 14-night sleep-debt ledger over the FULL day history (capped to the most-recent 14 counted
-    // nights, no-data nights skipped), using the same personal need the tiles use (`needMin`, ≥ 7.5h). Full
-    // history, not the browsed-night window — a "Last 14 nights" summary matching the debt TILE.
+    // nights, no-data nights skipped). Full history, not the browsed-night window — a "Last 14 nights"
+    // summary matching the debt TILE.
+    //
+    // The need it counts against is the SAME one the Hours vs Needed headline prints. Built on the
+    // personal need while the headline used the export's per-day figure, one card carried two needs
+    // ("NEEDED 7h 29m" over "Baseline need 7h 30m") with nothing saying why they differed, and the
+    // stated balance was measured against the one the percentage above it did not use. They agreed to
+    // within a minute on that dataset by luck, not by construction.
     val sleepDebtLedger = com.noop.analytics.RustScores.sleepDebtLedger(
         series = days.map { it.day to it.totalSleepMin },
-        needHours = needMin / 60.0,
+        needHours = (hoursVsNeededNeedMin ?: needMin) / 60.0,
     )
 
     return SleepModel(

@@ -572,14 +572,13 @@ fun SettingsScreen(
             blurb = "Charge is NOOP's daily readiness score, learned from your own HRV, resting heart rate and more over time. Your history stays.",
         ) {
             Column(verticalArrangement = Arrangement.spacedBy(Metrics.space10)) {
-                Column(verticalArrangement = Arrangement.spacedBy(Metrics.space2)) {
-                    Text("Recalibrate Charge baseline", style = NoopType.subhead, color = Palette.textPrimary)
-                    Text(
-                        "Restarts the roughly 4-night build-up for Charge and your HRV baseline from tonight. Use it if a bad first week set your baseline off. Your history stays.",
-                        style = NoopType.footnote,
-                        color = Palette.textTertiary,
-                    )
-                }
+                // The button below names the action, so a sub-heading above it only spells the same
+                // words a second time. What the reader needs here is what the action DOES.
+                Text(
+                    "Restarts the roughly 4-night build-up for Charge and your HRV baseline from tonight. Use it if a bad first week set your baseline off. Your history stays.",
+                    style = NoopType.footnote,
+                    color = Palette.textTertiary,
+                )
                 NoopButton(
                     text = "Recalibrate Charge baseline",
                     leadingIcon = Icons.Filled.Autorenew,

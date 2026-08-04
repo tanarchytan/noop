@@ -515,7 +515,11 @@ fun StatTile(
                 AutoSizeValue(
                     value,
                     style = NoopType.number(26f),
-                    color = accent,
+                    // The placeholder is the ABSENCE of a value, so it never wears the tile's metric
+                    // colour: Explore's Summary drew AVERAGE and LATEST in the metric accent and MIN,
+                    // MAX and the delta in text-primary, which put one empty state on one screen in
+                    // two colours. An em dash is the same nothing whichever tile holds it.
+                    color = if (value == EM_DASH) Palette.textTertiary else accent,
                     modifier = Modifier.weight(1f),
                 )
                 if (delta != null) {
