@@ -190,8 +190,10 @@ private fun MoverCard(r: RankedEffect, outcome: InsightsOutcome) {
     }
     val tintColor = tone.color
     val arrow = if (e.delta > 0) "↑" else if (e.delta < 0) "↓" else "→"
+    // The delta reads between the two tiles, so it takes their formatter: two whole percents and a
+    // difference at one decimal cannot be got from each other.
     val deltaText = e.pctChange?.let { "$arrow ${abs(it).roundToInt()}%" }
-        ?: "$arrow ${String.format(Locale.US, "%.1f", abs(e.delta))}"
+        ?: "$arrow ${outcome.format(abs(e.delta))}"
 
     NoopCard(tint = outcome.domain.color) {
         Column(verticalArrangement = Arrangement.spacedBy(Metrics.gap)) {

@@ -79,6 +79,8 @@ internal fun SleepStagesCard(
             )
             CardHairline()
             Row(verticalAlignment = Alignment.CenterVertically) {
+                TypicalMarkKey()
+                Spacer(Modifier.width(Metrics.space6))
                 Text("TYPICAL", style = NoopType.overline, color = Palette.textTertiary)
                 Spacer(Modifier.weight(1f))
                 Text("DURATION", style = NoopType.overline, color = Palette.textTertiary)
@@ -315,6 +317,22 @@ private fun SleepStageTrack(spans: List<Pair<Float, Float>>, color: Color, typic
                 pathEffect = PathEffect.dashPathEffect(floatArrayOf(dash, dash), 0f),
             )
         }
+    }
+}
+
+// The dashed swatch beside the word TYPICAL: the same colour, weight and dash the stage tracks mark
+// the personal typical with, so the header row reads as that mark's key rather than a missing value.
+@Composable
+private fun TypicalMarkKey() {
+    Canvas(modifier = Modifier.size(width = Metrics.space16, height = Metrics.space8)) {
+        val dash = Metrics.space4.toPx() / 2f
+        drawLine(
+            color = Palette.textPrimary,
+            start = Offset(0f, size.height / 2f),
+            end = Offset(size.width, size.height / 2f),
+            strokeWidth = Metrics.divider.toPx(),
+            pathEffect = PathEffect.dashPathEffect(floatArrayOf(dash, dash), 0f),
+        )
     }
 }
 

@@ -427,7 +427,6 @@ fun SettingsScreen(
             icon = Icons.Filled.Brightness6,
             title = "Appearance",
             blurb = "Choose Light, Dark, or follow your system. Dark is the signature near-black; Light keeps the same clean look on a bright canvas.",
-            overline = "Settings",
         ) {
             FormRow(label = "Theme") {
                 SegmentedPillControl(
@@ -463,7 +462,6 @@ fun SettingsScreen(
             icon = Icons.Filled.Science,
             title = "Health & wellness",
             blurb = "Optional, on-device wellness signals. Each is off by default, computed only on this phone from data you already have, and never a medical diagnosis.",
-            overline = "Settings",
         ) {
             Column(verticalArrangement = Arrangement.spacedBy(Metrics.space16)) {
                 RowDivider()
@@ -572,7 +570,6 @@ fun SettingsScreen(
             icon = Icons.Filled.Favorite,
             title = "Charge",
             blurb = "Charge is NOOP's daily readiness score, learned from your own HRV, resting heart rate and more over time. Your history stays.",
-            overline = "Settings",
         ) {
             Column(verticalArrangement = Arrangement.spacedBy(Metrics.space10)) {
                 Column(verticalArrangement = Arrangement.spacedBy(Metrics.space2)) {
@@ -601,7 +598,6 @@ fun SettingsScreen(
             icon = Icons.Filled.BatteryStd,
             title = stringResource(R.string.power_saving),
             blurb = stringResource(R.string.power_saving_blurb),
-            overline = "Settings",
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -671,7 +667,6 @@ fun SettingsScreen(
             icon = Icons.Filled.Science,
             title = "Experimental · WHOOP 5 / MG",
             blurb = "Live heart rate already works on a WHOOP 5/MG strap. These probes go further and try to coax more out of it. They are guesses, off by default, and only ever touch a 5/MG strap. WHOOP 4.0 is never affected.",
-            overline = "Settings",
         ) {
             Column(verticalArrangement = Arrangement.spacedBy(Metrics.space10)) {
                 Row(

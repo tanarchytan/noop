@@ -766,7 +766,8 @@ private fun EffectCard(e: BehaviorEffect, outcome: Outcome) {
     }
     val tintColor = tone.color
     val arrow = if (e.delta > 0) "↑" else if (e.delta < 0) "↓" else "→"
-    val deltaText = "$arrow ${String.format(Locale.US, "%.1f", abs(e.delta))}"
+    // The delta reads between the two tiles, so it takes their formatter.
+    val deltaText = "$arrow ${outcome.format(abs(e.delta))}"
     val sentence = effectSentence(e, outcome)
 
     // The card wash reads as the OUTCOME's colour world (so the whole Behaviour Effects
