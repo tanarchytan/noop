@@ -1573,12 +1573,14 @@ fun MetricRow(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(Metrics.space6),
             ) {
-                Text(
-                    value,
+                // The chip is unweighted, so it is measured FIRST and keeps its whole text; the value
+                // takes what is left and shrinks to fit it. Measured the other way round, the value
+                // took the full width and the chip ellipsised its own number away to "...".
+                AutoSizeValue(
+                    text = value,
                     style = NoopType.number(20f, FontWeight.Bold),
                     color = valueColor,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f, fill = false),
                 )
                 if (trend != null) TrendChip(text = trend, color = trendColor)
             }
