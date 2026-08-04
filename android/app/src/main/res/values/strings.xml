@@ -103,7 +103,7 @@
 
     <string name="explore_subtitle">Every signal, one tap deep.</string>
     <string name="explore_import_title">Import your history first</string>
-    <string name="explore_import_body">Import your history first. A WHOOP export in Data Sources fills every metric you can explore here in about a minute.</string>
+    <string name="explore_import_body">A WHOOP export in Data Sources fills every metric you can explore here in about a minute.</string>
     <string name="deep_timeline_title">Deep Timeline</string>
     <string name="explore_deep_timeline_hint">Every second of your day, zoomable.</string>
     <string name="explore_pick_metric">Pick metric</string>

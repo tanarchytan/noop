@@ -8,8 +8,8 @@ import androidx.compose.runtime.Composable
 internal fun SleepEmptyState() {
     DataPendingNote(
         title = "No nights here yet",
-        body = "No nights here yet. Import your WHOOP export in Data Sources to see " +
-            "every night, your sleep stages and trends straight away.",
+        body = "Import your WHOOP export in Data Sources to see every night, your sleep " +
+            "stages and trends straight away.",
     )
 }
 

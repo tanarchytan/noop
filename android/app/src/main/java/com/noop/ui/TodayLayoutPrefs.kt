@@ -156,12 +156,14 @@ enum class DashboardCard(
         fun fromRaw(raw: String?): DashboardCard? = entries.firstOrNull { it.raw == raw }
 
         /**
-         * The default set when the user hasn't customised the dashboard: the original Stress / Fitness age /
-         * Vitality trio plus HRV + Resting HR (per the task's "sensible default"). Cards with no value yet
-         * simply render a dash, so the default set is safe on a fresh install. Mirrors iOS defaultSelection.
+         * The default set when the user hasn't customised the dashboard: the Stress / Fitness age /
+         * Vitality trio. HRV and Resting HR are left out because the Key-Metrics grid above already
+         * carries both by default, and one page printing a number twice is one number too many; the
+         * editor still offers them. Cards with no value yet render a dash, so this is safe on a fresh
+         * install.
          */
         val defaultSelection: List<DashboardCard> = listOf(
-            STRESS, FITNESS_AGE, VITALITY, HRV, RESTING_HR,
+            STRESS, FITNESS_AGE, VITALITY,
         )
 
         /** Canonical order used to list the disabled remainder in the editor (matches iOS allCases order). */

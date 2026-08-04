@@ -316,8 +316,8 @@ private fun EmptyWorkouts(loaded: Boolean, onAdd: () -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(Metrics.space16)) {
         DataPendingNote(
             title = "No workouts yet",
-            body = "No workouts yet. They come from your WHOOP and Apple Health history. " +
-                "Import in Data Sources to bring them in, or add one you tracked elsewhere.",
+            body = "They come from your WHOOP and Apple Health history. Import in Data " +
+                "Sources to bring them in, or add one you tracked elsewhere.",
         )
         if (loaded) AddWorkoutButton(onAdd)
     }

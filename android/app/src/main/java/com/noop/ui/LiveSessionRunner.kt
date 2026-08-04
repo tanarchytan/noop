@@ -256,12 +256,15 @@ object LiveSessionPrefs {
 // MARK: - Pure summary helpers (verdict + streak), Context-free so they are JVM-testable
 
 /**
- * One-line plain-English verdict for the summary, from the three accrued buckets. Honest tiers: under a
- * scoreable minute it refuses to judge; ~70%+ in-band is a clean match; then the dominant miss names
- * itself. Never a number dressed up as praise.
+ * One-line plain-English verdict for the summary, from the three accrued buckets. Honest tiers: no
+ * classified second says so rather than judging; under a scoreable minute it refuses to judge; ~70%+
+ * in-band is a clean match; then the dominant miss names itself. Never a number dressed up as praise.
  */
 internal fun liveSessionVerdict(inBandSec: Double, belowSec: Double, aboveSec: Double): String {
     val total = inBandSec + belowSec + aboveSec
+    // The buckets and the guarded wall clock are different quantities: a session can run for a while
+    // with no heart rate to place in a band, and the summary says so instead of judging nothing.
+    if (total <= 0.0) return "No heart rate reached the session, so nothing could be scored."
     if (total < 60.0) return "Too short to judge."
     val share = inBandSec / total
     return when {

@@ -57,7 +57,7 @@ private fun moreSections(hydration: Boolean): List<MoreSection> = listOf(
     MoreSection(
         R.string.more_group_body,
         listOfNotNull(
-            Destination.Workouts, Destination.Health, Destination.Stress,
+            Destination.Workouts, Destination.Stress,
             Destination.Breathe, Destination.Intervals,
             Destination.Hydration.takeIf { hydration },
         ),
