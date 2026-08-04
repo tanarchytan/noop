@@ -1527,6 +1527,10 @@ fun RowDivider() {
 // The densest reusable line: outline icon + [Overline] label left, bold value with a [TrendChip]
 // direction glyph right, and the comparison figure beneath it.
 
+/** How the row splits: the value side takes a little more, since it carries a chip beside its number. */
+private const val METRIC_ROW_LABEL_WEIGHT = 1.0f
+private const val METRIC_ROW_VALUE_WEIGHT = 1.25f
+
 /**
  * One metric line. [trend] must carry its own sign ("+1,240" / "−12%") — [TrendChip] derives the
  * ▲/▼ from that sign — and [trendColor] carries better/worse, which the caller decides. A null
@@ -1557,11 +1561,11 @@ fun MetricRow(
         if (icon != null) {
             Icon(icon, contentDescription = null, tint = iconTint, modifier = Modifier.size(Metrics.iconSmall))
         }
-        Overline(label, modifier = Modifier.weight(1f), color = Palette.textPrimary)
-        // Both halves are weighted, so a long value takes at most half the row and the label keeps
-        // enough width to wrap on a word rather than mid-word. `fill = false` lets a short value shrink.
+        Overline(label, modifier = Modifier.weight(METRIC_ROW_LABEL_WEIGHT), color = Palette.textPrimary)
+        // Both halves are weighted, so the label keeps enough width to wrap on a word rather than
+        // mid-word while the value keeps its trend chip whole. `fill = false` lets a short value shrink.
         Column(
-            modifier = Modifier.weight(1f, fill = false),
+            modifier = Modifier.weight(METRIC_ROW_VALUE_WEIGHT, fill = false),
             horizontalAlignment = Alignment.End,
             verticalArrangement = Arrangement.spacedBy(Metrics.space2),
         ) {
