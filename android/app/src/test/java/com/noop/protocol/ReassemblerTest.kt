@@ -79,6 +79,34 @@ class ReassemblerTest {
         assertArrayEquals(good, out[0])
     }
 
+    /** A length-correct WHOOP 4 frame of exactly [total] bytes; body is zeros (reassembly is length-only). */
+    private fun frameOfTotal(total: Int): ByteArray {
+        val f = ByteArray(total)
+        f[0] = 0xAA.toByte()
+        val length = total - 4
+        f[1] = (length and 0xFF).toByte()
+        f[2] = ((length ushr 8) and 0xFF).toByte()
+        return f
+    }
+
+    @Test
+    fun reassembler_ceilingAcceptsTheLargestLegalFrameAndDropsOneByteOver() {
+        // The oversize drop has two sides and only the far one was covered. A ceiling that slips DOWN
+        // stops emitting real frames (offload records run ~1.9 KB) with no error anywhere; one that slips
+        // up re-opens the wedge. Pin both edges: 8192 total is accepted, 8193 is dropped.
+        val atCeiling = frameOfTotal(8192)
+        val out = Reassembler().feed(atCeiling)
+        assertEquals(1, out.size)
+        assertArrayEquals(atCeiling, out[0])
+
+        val good = cmd4(CommandNumber.GET_BATTERY_LEVEL, byteArrayOf(0), seq = 0)
+        val r = Reassembler()
+        assertTrue(r.feed(frameOfTotal(8193)).isEmpty())
+        val after = r.feed(good)
+        assertEquals(1, after.size)
+        assertArrayEquals(good, after[0])
+    }
+
     @Test
     fun reassembler_reassemblesWhenFedOneByteAtATime() {
         // Worst case for the offset/compact window: head advances one byte per feed(). Output must still

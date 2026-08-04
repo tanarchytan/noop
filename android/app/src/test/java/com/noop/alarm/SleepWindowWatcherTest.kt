@@ -65,6 +65,43 @@ class SleepWindowWatcherTest {
         assertFalse(w.shouldWake(58))
     }
 
+    // MARK: - the SHIPPED tuning
+    //
+    // Every test above builds its own watcher, so the constructor defaults - the values the phone
+    // actually runs with - reached no assertion and could drift silently. These use SleepWindowWatcher()
+    // and pin each default from both sides.
+
+    @Test fun shippedRiseIsSixBpm() {
+        val below = SleepWindowWatcher()
+        repeat(30) { assertFalse(below.shouldWake(50)) }
+        assertFalse("+5 over the trough must not advance the alarm", below.shouldWake(55))
+        val at = SleepWindowWatcher()
+        repeat(30) { assertFalse(at.shouldWake(50)) }
+        assertTrue("+6 over the trough must fire", at.shouldWake(56))
+    }
+
+    @Test fun shippedWarmUpIsThirtySamples() {
+        val w = SleepWindowWatcher()
+        repeat(28) { assertFalse(w.shouldWake(50)) }
+        // Sample 29 is still inside the warm-up even with a clear rise...
+        assertFalse("the 29th sample is still warming up", w.shouldWake(60))
+        // ...and sample 30 is the first that may fire.
+        assertTrue("the 30th sample may fire", w.shouldWake(60))
+    }
+
+    @Test fun shippedTroughCeilingIsNinetyBpm() {
+        // 90 is a usable trough: the later rise is measured from it.
+        val accepted = SleepWindowWatcher()
+        assertFalse(accepted.shouldWake(90))
+        repeat(28) { assertFalse(accepted.shouldWake(100)) }
+        assertTrue("90 must be accepted as a trough", accepted.shouldWake(100))
+        // 91 is not: with no trough recorded the detector stays silent and the hard deadline wakes the user.
+        val rejected = SleepWindowWatcher()
+        assertFalse(rejected.shouldWake(91))
+        repeat(28) { assertFalse(rejected.shouldWake(100)) }
+        assertFalse("91 must not be accepted as a trough", rejected.shouldWake(100))
+    }
+
     @Test fun nudgeMinuteWrapsAcrossMidnight() {
         // Not the watcher, but the wind-down derivation shares this file's concern: a very early wake
         // can push the nudge before midnight.

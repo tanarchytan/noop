@@ -215,4 +215,48 @@ class LiftingImporterTest {
         assertTrue(note, note.contains("5 exercises"))
         assertTrue(note, note.contains("Leg Day"))
     }
+
+    // MARK: - the aggregate the import summary reports
+
+    @Test
+    fun importMessageSumsVolumeAcrossSessionsAndSpansTheDays() {
+        // Per-session volume was covered; the COMBINED figure on the summary line was not, so scaling it
+        // changed the only number the user sees after an import and failed nothing.
+        // 100×5 = 500 on 1 Jun, 200×5 = 1000 on 2 Jun -> 1,500 kg total.
+        val r = hevy(
+            """
+            title,start_time,exercise_title,set_type,weight_kg,reps
+            A,2026-06-01 10:00:00,Squat,normal,100,5
+            B,2026-06-02 10:00:00,Deadlift,normal,200,5
+            """
+        )
+        assertEquals(
+            "Imported 2 workouts (1,500 kg total volume) from 2026-06-01 to 2026-06-02.",
+            LiftingImporter.importMessage(r),
+        )
+    }
+
+    @Test
+    fun importMessageSingularOneDayAndSkipped() {
+        val r = hevy(
+            """
+            title,start_time,exercise_title,set_type,weight_kg,reps
+            A,2026-06-01 10:00:00,Squat,normal,100,5
+            Bad,,Squat,normal,100,5
+            """
+        )
+        // One session, so no day span and no plural; the skipped row is reported honestly.
+        assertEquals("Imported 1 workout (500 kg total volume), 1 skipped.", LiftingImporter.importMessage(r))
+    }
+
+    @Test
+    fun importMessageOmitsVolumeWhenNothingWasLoaded() {
+        val r = hevy(
+            """
+            title,start_time,exercise_title,set_type,reps
+            Pull,2026-06-01 10:00:00,Pull Up,normal,12
+            """
+        )
+        assertEquals("Imported 1 workout.", LiftingImporter.importMessage(r))
+    }
 }

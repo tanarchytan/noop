@@ -130,23 +130,33 @@ object LiftingImporter {
         repo.upsertDevice(deviceId, name = "Lifting log")
         repo.upsertWorkouts(rows)
 
-        val totalVolume = result.sessions.sumOf { it.volumeLoadKg }
         return ImportSummary(
             source = SOURCE_LABEL,
             counts = linkedMapOf("workouts" to rows.size),
             firstDay = result.firstDay,
             lastDay = result.lastDay,
-            message = buildString {
-                append("Imported ${rows.size} workout")
-                if (rows.size != 1) append("s")
-                if (totalVolume > 0) append(" (${groupedKg(totalVolume)} kg total volume)")
-                if (result.firstDay != null && result.lastDay != null && result.firstDay != result.lastDay) {
-                    append(" from ${result.firstDay} to ${result.lastDay}")
-                }
-                if (result.skipped > 0) append(", ${result.skipped} skipped")
-                append(".")
-            },
+            message = importMessage(result),
         )
+    }
+
+    /**
+     * The one-line import summary: sessions landed, their COMBINED volume load, the day span and
+     * anything skipped. Pure, so the aggregate figure the user reads is pinned by a fixture rather than
+     * only its per-session parts.
+     */
+    internal fun importMessage(result: Result): String {
+        val count = result.sessions.size
+        val totalVolume = result.sessions.sumOf { it.volumeLoadKg }
+        return buildString {
+            append("Imported $count workout")
+            if (count != 1) append("s")
+            if (totalVolume > 0) append(" (${groupedKg(totalVolume)} kg total volume)")
+            if (result.firstDay != null && result.lastDay != null && result.firstDay != result.lastDay) {
+                append(" from ${result.firstDay} to ${result.lastDay}")
+            }
+            if (result.skipped > 0) append(", ${result.skipped} skipped")
+            append(".")
+        }
     }
 
     // MARK: - Detection + dispatch
