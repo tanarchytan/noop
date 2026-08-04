@@ -1,5 +1,6 @@
 package com.noop.data
 
+import com.noop.analytics.StrainScorer
 import org.json.JSONArray
 import org.json.JSONObject
 import java.time.LocalDate
@@ -53,8 +54,9 @@ object MockSeeder {
     internal const val HR_STEP_SEC = 60L
     internal const val HR_EDGE_PAD_SEC = 1_800L
 
-    /** Effort rescale factor: the old 0–21 strain scale → the new 0–100 Effort scale (100/21). */
-    private const val STRAIN_SCALE = 100.0 / 21.0
+    /** Effort rescale factor: WHOOP's 0–21 Day Strain axis → our Effort axis. Read from the one owner
+     *  rather than restated, so a seeded Effort cannot land on a different scale than an imported one. */
+    private val STRAIN_SCALE = StrainScorer.whoopDayStrainToEffort
 
     private val SPORTS = listOf(
         "Running", "Cycling", "Strength", "HIIT", "Swimming", "Yoga", "Walking", "Rowing"

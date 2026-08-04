@@ -2,6 +2,7 @@ package com.noop.ingest
 
 import android.content.Context
 import android.net.Uri
+import com.noop.analytics.StrainScorer
 import com.noop.data.DailyMetric
 import com.noop.data.ImportSummary
 import com.noop.data.JournalEntry
@@ -52,11 +53,12 @@ object WhoopCsvImporter {
     internal const val MAX_TOTAL_BYTES = 1L shl 30
 
     /**
-     * WHOOP "Day Strain" is on a 0–21 scale, but NOOP's "Effort" score lives on 0–100
-     * (StrainScorer.maxStrain = 100). Rescale an imported Day Strain by 100/21 when writing the
-     * `strain` metric so imported history sits on the same axis as live-computed Effort.
+     * WHOOP "Day Strain" is on a 0–21 scale, but NOOP's "Effort" score lives on 0–[StrainScorer.maxStrain].
+     * Rescale an imported Day Strain when writing the `strain` metric so imported history sits on the
+     * same axis as live-computed Effort. Read from [StrainScorer], not restated: the scale top is
+     * whoop-rs's, and a local copy of it is how the import axis drifts away from the score's own.
      */
-    private const val DAY_STRAIN_TO_EFFORT_SCALE = 100.0 / 21.0
+    private val DAY_STRAIN_TO_EFFORT_SCALE = StrainScorer.whoopDayStrainToEffort
 
     /**
      * WHOOP CSVs carry "Sleep efficiency %" on a 0–100 scale, but NOOP's `efficiency` columns store

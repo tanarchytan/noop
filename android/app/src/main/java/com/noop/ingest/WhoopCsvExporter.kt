@@ -2,6 +2,7 @@ package com.noop.ingest
 
 import android.content.Context
 import android.net.Uri
+import com.noop.analytics.StrainScorer
 import com.noop.data.DailyMetric
 import com.noop.data.JournalEntry
 import com.noop.data.MetricSeriesRow
@@ -172,10 +173,13 @@ object WhoopCsvExporter {
                 listOf(
                     d.day + " 00:00:00", "", "UTC+00:00",
                     num(d.recovery), num(d.restingHr), num(d.avgHrv), num(d.skinTempDevC),
-                    // Day Strain column is WHOOP's 0–21 scale; down-convert our 0–100 Effort so the
-                    // CSV is WHOOP-format and the round-trip is lossless (import scales back ×100/21).
-                    // Divide by the same 100.0/21.0 constant the importer multiplies by.
-                    num(d.spo2Pct), num(d.strain?.let { it / (100.0 / 21.0) }),
+                    // Day Strain column is WHOOP's 0–21 scale; down-convert our Effort so the CSV is
+                    // WHOOP-format and the round-trip is lossless. DIVIDES by the factor the importer
+                    // multiplies by, which is the exact inverse operation; multiplying by the reciprocal
+                    // ratio instead is not, and `num` prints full `toString` precision, so it would put
+                    // 16.000529999999998 in the file where 16.00053 belongs. The comment here used to
+                    // claim it used "the same constant the importer multiplies by" while retyping it.
+                    num(d.spo2Pct), num(d.strain?.let { it / StrainScorer.whoopDayStrainToEffort }),
                     "", "", "",            // energy / max HR / avg HR — not on the Android daily row
                     "", "",                // sleep/wake onset live in sleeps.csv
                     num(s["sleep_performance"]), num(d.respRateBpm), num(d.totalSleepMin),
@@ -252,7 +256,8 @@ object WhoopCsvExporter {
             sb.append(
                 listOf(
                     utc(w.startTs), utc(w.startTs), utc(w.endTs), "UTC+00:00",
-                    csvField(w.sport), num(w.strain?.let { it / (100.0 / 21.0) }), num(w.energyKcal), num(w.maxHr), num(w.avgHr),
+                    csvField(w.sport), num(w.strain?.let { it / StrainScorer.whoopDayStrainToEffort }),
+                    num(w.energyKcal), num(w.maxHr), num(w.avgHr),
                     num(zones?.get(0)), num(zones?.get(1)), num(zones?.get(2)),
                     num(zones?.get(3)), num(zones?.get(4)),
                     num(w.distanceM), csvField(sourceLabel(w)),

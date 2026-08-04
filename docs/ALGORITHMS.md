@@ -41,6 +41,15 @@ puts two nights in the store under one date, and the screens split five to one o
 `IntelligenceEngine`), source arbitration (`FusionResolver`, `DayOwnerResolver`,
 `MetricArbitrationPolicy`), presentation (`CalibrationMilestones`, `ScoreConfidence`) and the pacers.
 
+**`StrainScorer.WHOOP_DAY_STRAIN_MAX = 21.0` is Kotlin-held on purpose**, and it is the only number in
+the Day Strain ↔ Effort conversion that is. It is another vendor's display axis, not a property of our
+Effort score, so there is nothing on the Rust side to read it from; the scale top it divides into
+(`maxStrain`) *is* whoop-rs's, via `strain_cfg`. Before 2026-08-04 the ratio was written out five times —
+`MockSeeder.STRAIN_SCALE`, `WhoopCsvImporter.DAY_STRAIN_TO_EFFORT_SCALE`, `UnitFormatter.EFFORT_SCALE_FACTOR`
+and twice inline in `WhoopCsvExporter` — each with its own hardcoded `100`, held together only by comments
+promising they were byte-identical, one of which cited a class that does not exist in this fork. All five
+now read `StrainScorer`, and `EffortScaleOneOwnerTest` fails on a sixth copy.
+
 ---
 
 ## Remaining — Kotlin that still owns maths
@@ -49,7 +58,7 @@ puts two nights in the store under one date, and the screens split five to one o
 
 | File | What is left |
 |---|---|
-| `StrainScorer` (68) | per-bout TRIMP; the daily figure already delegates. Its gates, scale and denominator now read whoop-rs |
+| `StrainScorer` (92) | per-bout TRIMP; the daily figure already delegates. Its gates, scale and denominator now read whoop-rs, and it is where the Day Strain ↔ Effort conversion lives |
 | `SleepStager` (198) | `sessionHrvWindows`, `hypnogramMetrics`. `findPeaks` moved to its parity test, `standardDeviation` deleted |
 
 ### Ported
@@ -100,10 +109,69 @@ asks. The rule is already on the Rust side, so wiring these is adapter work and 
 | `ppg_signal_check` | a span's Poor/Fair/Good verdict from its clean-second fraction | nothing |
 | `ppg_check_cfg` | the four trust constants, so a caller cannot hold a stale copy | nothing |
 
-**Do not wire these as a cleanup.** `rr_beats_trusted` changes every HRV figure already on screen by
-dropping beats that currently count, and no measurement exists of how many. Measure the drop rate against
-the stored `v18Sample` rows first, then wire it as instrumentation beside the incumbent, the way any
-derived-signal change lands here.
+**Do not wire these as a cleanup**, and the reason is now measured rather than assumed.
+
+### The drop-rate measurement, 2026-08-04
+
+Run against the stored `v18Sample` rows in `whoop-data/own-data/strap-data/mine/noop-merged-with-drain-20260801.noopbak`,
+which is **one UTC day (2026-08-01), two straps, 6,970 seconds** — a real cohort, not a large one.
+
+| | seconds | flagged `opticalSignalPoor` |
+|---|---|---|
+| `whoop-D5:B2:02:FA:38:29` | 6,794 | 4,749 (69.90%) |
+| `whoop-E4:0B:03:2B:C6:21` | 176 | 176 (100%) |
+| **both** | **6,970** | **4,925 (70.66%)** |
+
+Joining `rrInterval` on `(deviceId, ts)`, wiring `rr_beats_trusted` as it stands would drop **4,008 of
+5,593 beats (71.7%)**.
+
+**The decode is sound, and the flag still does not mean what the export assumes.** Two checks, opposite
+verdicts:
+
+* *Sound*: 4,925 of 4,925 flagged seconds have `opticalAmpA` NULL and 0 of 2,045 unflagged ones do —
+  perfect separation, so the bit is being read correctly and matches the decoder's own contract that a
+  flagged second withholds its amplitude.
+* *Not beat quality*: flagged seconds carry beats at the **same** rate as clean ones (0.814 vs 0.775
+  beats/sec, flagged slightly higher) and carry a measured HR that is physiologically ordinary
+  (mean 94.1 bpm, range 80–114, against 88.1 bpm and 50–113 on the clean seconds). The flag also toggles
+  152 times across the day with a median flagged run of 15 seconds, so it is not one long dropout that
+  could be dismissed as off-wrist.
+
+`optical_signal_poor` is an **amplitude sentinel** — the front-end had no amplitude to report — and
+whoop-rs's own doc for `rr_trusted` says exactly that before treating it as a beat-trust signal. Nothing
+here shows the beats on those seconds are bad. Wiring it would delete 71.7% of every HRV figure's input on
+this evidence, so **the export's premise needs revisiting before any caller is added**, not merely a
+bigger sample. A replacement signal has to come from something that actually tracks beat quality.
+
+The four PPG exports are additionally **unfed**: `ppgHrSample` is empty in both the merged backup and the
+2026-07-31 debug database, so the v26 optical stream that would supply them has never landed. Wiring them
+today would change nothing at all.
+
+---
+
+## One quantity, two producers — the nightly RMSSD series
+
+`HrvReadiness::evaluate` is reached two ways, and they do not agree.
+
+| Producer | Trust filter | Missing night |
+|---|---|---|
+| `whoopctl report` → `HrvReadiness::nightly_rmssd` | applies `rr_trusted` | absent from the vector entirely |
+| Android → `WhoopRecoveryScreen` → `RustScores.hrvReadiness(days.map { it.avgHrv })` | none | absent, because `dailyMetric` has no row for an unworn day |
+
+On the day measured above the CLI would compute its series from 28% of the beats the app uses. Same
+function, same name, different number.
+
+**Gaps are compressed, not honoured**, on both paths. `evaluate` documented `None` slots as missing nights
+and then dropped them, so its windows count READINGS, not calendar days: `baseline7` is the last 7 nights
+that produced a value, and after a fortnight off-wrist it spans a month. `cv_slope` then fits a trend over
+index, treating those unevenly spaced nights as evenly spaced. This is the same defect the weekly sleep
+charts carried until `calendarWindow` landed — there, a day with no data became a slot; here it still
+vanishes.
+
+Corrected in the whoop-rs doc comments and pinned by `evaluate_compresses_gaps_it_does_not_honour_them`,
+which asserts that padding a series with `None` gives byte-identical output to omitting those nights.
+**Behaviour deliberately unchanged**: it moves a displayed readiness tier, so it lands as instrumentation
+beside the incumbent, the way any derived-signal change lands here.
 
 ---
 

@@ -1,6 +1,7 @@
 package com.noop.ui
 
 import android.content.Context
+import com.noop.analytics.StrainScorer
 import java.util.Locale
 import kotlin.math.roundToInt
 
@@ -214,12 +215,14 @@ object UnitFormatter {
     // MARK: Effort scale (stored 0–100)
 
     /**
-     * NOOP stores Effort 0–100 (StrainScorer.maxStrain = 100). WHOOP's Day Strain axis is 0–21, and the
-     * import boundary rescales by 100/21 (WhoopCsvImporter / WhoopExportImporter.dayStrainToEffortScale),
-     * so the exact inverse for a display-only 0–100 → 0–21 conversion is ×21/100, kept byte-identical to
-     * that import factor.
+     * NOOP stores Effort on 0–`StrainScorer.maxStrain`; WHOOP's Day Strain axis is 0–21. This is the
+     * display-only conversion between them, READ from [StrainScorer] rather than restated — there were
+     * five copies of this one ratio (here, `MockSeeder`, `WhoopCsvImporter` and twice inline in
+     * `WhoopCsvExporter`) and "kept byte-identical" was the only thing holding them together. The
+     * citation this comment used to carry, `WhoopExportImporter.dayStrainToEffortScale`, names a class
+     * that does not exist in this Android-only fork.
      */
-    const val EFFORT_SCALE_FACTOR = 21.0 / 100.0
+    val EFFORT_SCALE_FACTOR = StrainScorer.effortToWhoopDayStrain
 
     /** The stored 0–100 Effort value mapped onto the selected display scale (the raw number, no unit). */
     fun effortValue(value: Double, scale: EffortScale): Double =
