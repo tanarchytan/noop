@@ -48,8 +48,13 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         LiveSessionRow::class,
         PpgWaveformSampleEntity::class,
         V18Sample::class,
+        ImuFeatureSample::class,
+        EcgSessionRow::class,
+        RhythmScreenRow::class,
+        RhythmMorphologyRow::class,
+        CoachMessageRow::class,
     ],
-    version = 101,
+    version = 102,
     exportSchema = false,
 )
 abstract class WhoopDatabase : RoomDatabase() {
@@ -59,7 +64,7 @@ abstract class WhoopDatabase : RoomDatabase() {
         const val DB_NAME = "noop_whoop.db"
 
         /** Current Room schema version. Must match [Database.version]. */
-        const val SCHEMA_VERSION = 101
+        const val SCHEMA_VERSION = 102
 
         /**
          * Ordered list of all Room migrations, earliest to latest, used by
@@ -74,7 +79,7 @@ abstract class WhoopDatabase : RoomDatabase() {
             MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14,
             MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18,
             MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21, MIGRATION_21_22,
-            MIGRATION_100_101,
+            MIGRATION_100_101, MIGRATION_101_102,
             ) + UPSTREAM_CATCHALL_MIGRATIONS
         }
 
@@ -133,6 +138,97 @@ abstract class WhoopDatabase : RoomDatabase() {
                     "UPDATE `pairedDevice` SET `sourceKind` = 'legacy' " +
                         "WHERE `id` = 'my-whoop' AND `peripheralId` IS NULL",
                 )
+            }
+        }
+
+        /**
+         * The strap's hardware-revision string on the device row ([PairedDeviceRow.hardwareRev]).
+         * Nullable with no SQL DEFAULT, so a row whose strap has not been read stays honestly unknown
+         * rather than claiming a variant.
+         */
+        internal val HARDWARE_REV_MIGRATION_SQL: List<String> = listOf(
+            "ALTER TABLE `pairedDevice` ADD COLUMN `hardwareRev` TEXT",
+        )
+
+        /**
+         * whoop-rs's IMU activity-feature vector per window ([ImuFeatureSample]). CREATE TABLE only;
+         * SQL must match Room's generated shape, composite PK (deviceId, ts) in declaration order.
+         */
+        internal val IMU_FEATURE_MIGRATION_SQL: List<String> = listOf(
+            "CREATE TABLE IF NOT EXISTS `imuFeatureSample` (`deviceId` TEXT NOT NULL, " +
+                "`ts` INTEGER NOT NULL, `windowS` INTEGER NOT NULL, `sampleRateHz` INTEGER NOT NULL, " +
+                "`accelEnergyG` REAL NOT NULL, `gyroEnergyDps` REAL NOT NULL, `jerkRms` REAL NOT NULL, " +
+                "`cadenceHz` REAL, `cadenceStrength` REAL NOT NULL, `sampleCount` INTEGER NOT NULL, " +
+                "`algoVersion` TEXT NOT NULL, PRIMARY KEY(`deviceId`, `ts`))",
+        )
+
+        /**
+         * ECG captures and both rhythm paths ([EcgSessionRow], [RhythmScreenRow],
+         * [RhythmMorphologyRow]). CREATE TABLE + CREATE INDEX only; nothing writes them yet.
+         */
+        internal val ECG_RHYTHM_MIGRATION_SQL: List<String> = listOf(
+            "CREATE TABLE IF NOT EXISTS `ecgSession` (`id` TEXT NOT NULL, `deviceId` TEXT NOT NULL, " +
+                "`startUnix` INTEGER NOT NULL, `durationMs` INTEGER NOT NULL, " +
+                "`sampleCount` INTEGER NOT NULL, `samples` BLOB NOT NULL, `sampleRateHz` REAL NOT NULL, " +
+                "`sampleRateSource` TEXT NOT NULL, `countsPerMv` REAL, `countsPerMvSource` TEXT, " +
+                "`layoutJson` TEXT, `sweepQuality` REAL, `sweepMargin` REAL, `leadOffJson` TEXT, " +
+                "`wrist` TEXT, `firmwareVersion` TEXT, `hardwareRev` TEXT, `strapVariant` TEXT, " +
+                "PRIMARY KEY(`id`))",
+            "CREATE INDEX IF NOT EXISTS `index_ecgSession_deviceId_startUnix` " +
+                "ON `ecgSession` (`deviceId`, `startUnix`)",
+            "CREATE TABLE IF NOT EXISTS `rhythmScreen` (`deviceId` TEXT NOT NULL, " +
+                "`startUnix` INTEGER NOT NULL, `scope` TEXT NOT NULL, `algoVersion` TEXT NOT NULL, " +
+                "`durationS` INTEGER NOT NULL, `verdict` TEXT, `refusal` TEXT, " +
+                "`windowsAssessed` INTEGER, `windowsIrregular` INTEGER, `episodeWindows` INTEGER, " +
+                "`confidence` TEXT, `cosen` REAL, `residualCosen` REAL, `rmssdOverMean` REAL, " +
+                "`shannonEntropy` REAL, `turningPointRatio` REAL, `sampleEntropy` REAL, `sd1` REAL, " +
+                "`sd2` REAL, `cellOccupancy` REAL, `ectopicFraction` REAL, `meanRrMs` REAL, " +
+                "`beatsUsed` INTEGER, `beatsRejected` INTEGER, `duplicateFraction` REAL, " +
+                "`rescaledFraction` REAL, `coverage` REAL, " +
+                "PRIMARY KEY(`deviceId`, `startUnix`, `scope`, `algoVersion`))",
+            "CREATE INDEX IF NOT EXISTS `index_rhythmScreen_deviceId_startUnix` " +
+                "ON `rhythmScreen` (`deviceId`, `startUnix`)",
+            "CREATE TABLE IF NOT EXISTS `rhythmMorphology` (`ecgSessionId` TEXT NOT NULL, " +
+                "`algoVersion` TEXT NOT NULL, `fsHz` REAL NOT NULL, `beats` INTEGER NOT NULL, " +
+                "`pWaveFinding` TEXT NOT NULL, `pWaveLimit` TEXT, `pWaveBeatsExamined` INTEGER, " +
+                "`pWaveBeatsExcluded` INTEGER, `pWavePresentFraction` REAL, `pWaveConsistency` REAL, " +
+                "`pWaveAmplitudeRatio` REAL, `pWaveNoiseRatio` REAL, `pWaveConfidence` REAL, " +
+                "`atrialBandRatio` REAL, `atrialBandSegments` INTEGER, " +
+                "`atrialBandMedianSegmentMs` REAL, `atrialBandConfidence` REAL, " +
+                "`atrialBandLimit` TEXT, `beatTemplateCorrelation` REAL, `beatTemplateBeats` INTEGER, " +
+                "`beatTemplateConfidence` REAL, `bSqi` REAL, `bExcess` REAL, `kSqi` REAL, " +
+                "`pSqi` REAL, `basSqi` REAL, PRIMARY KEY(`ecgSessionId`, `algoVersion`))",
+            "CREATE INDEX IF NOT EXISTS `index_rhythmMorphology_ecgSessionId` " +
+                "ON `rhythmMorphology` (`ecgSessionId`)",
+        )
+
+        /**
+         * The coach transcript ([CoachMessageRow]). CREATE TABLE only, composite PK
+         * (conversationId, seq) in declaration order.
+         */
+        internal val COACH_MESSAGE_MIGRATION_SQL: List<String> = listOf(
+            "CREATE TABLE IF NOT EXISTS `coachMessage` (`conversationId` TEXT NOT NULL, " +
+                "`seq` INTEGER NOT NULL, `role` TEXT NOT NULL, `text` TEXT NOT NULL, " +
+                "`createdAt` INTEGER NOT NULL, `provider` TEXT, `model` TEXT, " +
+                "`contextIncluded` INTEGER NOT NULL, `error` TEXT, " +
+                "PRIMARY KEY(`conversationId`, `seq`))",
+        )
+
+        /**
+         * v101 -> v102: additive, four independent additions — [HARDWARE_REV_MIGRATION_SQL],
+         * [IMU_FEATURE_MIGRATION_SQL], [ECG_RHYTHM_MIGRATION_SQL], [COACH_MESSAGE_MIGRATION_SQL].
+         *
+         * A version step rather than more columns on v101: a device already carries v101 with real
+         * data, and changing that version's identity hash would make its app refuse to open the store.
+         * ALTER ADD COLUMN and CREATE TABLE are metadata-only, so this step costs the same at any
+         * database size.
+         */
+        internal val MIGRATION_101_102 = object : Migration(101, 102) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                for (stmt in HARDWARE_REV_MIGRATION_SQL) db.execSQL(stmt)
+                for (stmt in IMU_FEATURE_MIGRATION_SQL) db.execSQL(stmt)
+                for (stmt in ECG_RHYTHM_MIGRATION_SQL) db.execSQL(stmt)
+                for (stmt in COACH_MESSAGE_MIGRATION_SQL) db.execSQL(stmt)
             }
         }
 

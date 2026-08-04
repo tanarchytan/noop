@@ -95,6 +95,11 @@ class SourceCoordinatorAdoptionTest {
         override suspend fun deleteLiveSessionsFor(deviceId: String) {}
         override suspend fun deleteDismissedWorkoutsFor(deviceId: String) {}
         override suspend fun deleteDismissedSleepsFor(deviceId: String) {}
+        override suspend fun deleteV18For(deviceId: String) {}
+        override suspend fun deleteImuFeaturesFor(deviceId: String) {}
+        override suspend fun deleteRhythmScreensFor(deviceId: String) {}
+        override suspend fun deleteRhythmMorphologyFor(deviceId: String) {}
+        override suspend fun deleteEcgSessionsFor(deviceId: String) {}
         override suspend fun deleteDayOwnershipFor(deviceId: String) {
             owners.entries.removeIf { it.value.deviceId == deviceId }
         }

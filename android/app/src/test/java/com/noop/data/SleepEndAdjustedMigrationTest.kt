@@ -40,11 +40,16 @@ class SleepEndAdjustedMigrationTest {
         assertTrue("must key on the whole-minute fingerprint", sql[1].contains("`endTs` % 60 = 0"))
     }
 
+    /** The step is v100 -> v101 and stays there. v101 is now on a device, so later columns take their
+     *  own version instead of moving this one under an installed store. */
     @Test
-    fun migration_isPartOfTheUnreleasedV101Step() {
+    fun migration_isPartOfTheV101Step() {
         assertEquals(100, WhoopDatabase.MIGRATION_100_101.startVersion)
         assertEquals(101, WhoopDatabase.MIGRATION_100_101.endVersion)
-        assertEquals("no version bump: v101 is unreleased", 101, WhoopDatabase.SCHEMA_VERSION)
+        assertTrue(
+            "v101 must stay reachable as its own step",
+            WhoopDatabase.ALL_MIGRATIONS.any { it.startVersion == 100 && it.endVersion == 101 },
+        )
     }
 
     // ── The accessor pair the column backs ───────────────────────────────────────────────────────────

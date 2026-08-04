@@ -47,14 +47,17 @@ class DataIncludedMigrationTest {
         assertTrue("the entity default must agree", deviceRow("x").dataIncluded)
     }
 
-    /** v101 is unreleased, so it absorbs these columns instead of burning a version: a v100 install
-     *  reaches the whole schema in ONE hop and no step past v101 exists. */
+    /** These columns landed on v101 and stay there: a v100 install walks 100 -> 101 -> 102, both steps
+     *  additive, and no step runs past the current schema. */
     @Test
-    fun theColumnsLandOnTheUnreleasedV101Step() {
-        assertEquals("no version bump: v101 is unreleased", 101, WhoopDatabase.SCHEMA_VERSION)
+    fun theColumnsStayOnTheV101Step() {
         assertTrue(
-            "v100 must reach the current schema in one hop",
+            "v100 must still reach v101 on its own step",
             WhoopDatabase.ALL_MIGRATIONS.any { it.startVersion == 100 && it.endVersion == 101 },
+        )
+        assertTrue(
+            "v101 must reach the current schema",
+            WhoopDatabase.ALL_MIGRATIONS.any { it.startVersion == 101 && it.endVersion == 102 },
         )
         assertTrue(
             "no migration may step past the current schema",

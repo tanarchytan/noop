@@ -48,6 +48,10 @@ data class PairedDeviceRow(
      *  identity that survives an address change; null means unverified, and an unverified row is never
      *  merged with anything. Resolution lives in [StrapIdentity]. */
     val serial: String? = null,
+    /** The strap's hardware-revision string (GATT 0x2A27), stored verbatim. It is what separates a 5.0
+     *  from an MG, and so what an electrode-only capability may be offered on; the prefix table that
+     *  classifies it stays in whoop-rs. Null until a connection reads it. */
+    val hardwareRev: String? = null,
 )
 
 /**

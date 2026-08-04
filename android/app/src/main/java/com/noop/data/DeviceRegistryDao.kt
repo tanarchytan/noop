@@ -107,6 +107,14 @@ interface DeviceRegistryDao {
     @Query("DELETE FROM liveSession WHERE deviceId = :deviceId") suspend fun deleteLiveSessionsFor(deviceId: String)
     @Query("DELETE FROM dismissedWorkout WHERE deviceId = :deviceId") suspend fun deleteDismissedWorkoutsFor(deviceId: String)
     @Query("DELETE FROM dismissedSleep WHERE deviceId = :deviceId") suspend fun deleteDismissedSleepsFor(deviceId: String)
+    @Query("DELETE FROM v18Sample WHERE deviceId = :deviceId") suspend fun deleteV18For(deviceId: String)
+    @Query("DELETE FROM imuFeatureSample WHERE deviceId = :deviceId") suspend fun deleteImuFeaturesFor(deviceId: String)
+    @Query("DELETE FROM rhythmScreen WHERE deviceId = :deviceId") suspend fun deleteRhythmScreensFor(deviceId: String)
+    // Keyed to its capture, not to the device, so it is cleared THROUGH ecgSession and must run before
+    // it — the other order leaves every morphology row orphaned.
+    @Query("DELETE FROM rhythmMorphology WHERE ecgSessionId IN (SELECT id FROM ecgSession WHERE deviceId = :deviceId)")
+    suspend fun deleteRhythmMorphologyFor(deviceId: String)
+    @Query("DELETE FROM ecgSession WHERE deviceId = :deviceId") suspend fun deleteEcgSessionsFor(deviceId: String)
 
     /** Set the owner override for a day (insert-or-replace by the day PK). */
     @Insert(onConflict = OnConflictStrategy.REPLACE)

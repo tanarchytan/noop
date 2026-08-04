@@ -81,6 +81,11 @@ class RegistryDayOwnerSourceTest {
         override suspend fun deleteLiveSessionsFor(deviceId: String) {}
         override suspend fun deleteDismissedWorkoutsFor(deviceId: String) {}
         override suspend fun deleteDismissedSleepsFor(deviceId: String) {}
+        override suspend fun deleteV18For(deviceId: String) {}
+        override suspend fun deleteImuFeaturesFor(deviceId: String) {}
+        override suspend fun deleteRhythmScreensFor(deviceId: String) {}
+        override suspend fun deleteRhythmMorphologyFor(deviceId: String) {}
+        override suspend fun deleteEcgSessionsFor(deviceId: String) {}
     }
 
     private fun registry(dao: FakeDao) = DeviceRegistry(

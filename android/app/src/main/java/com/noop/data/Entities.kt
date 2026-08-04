@@ -546,3 +546,38 @@ data class LiveSessionRow(
     val easeCount: Int,
     val hrSource: String,
 )
+
+/**
+ * whoop-rs's activity-feature vector over one window of raw 6-axis IMU, stored instead of the raw
+ * samples: the strap's 100 Hz stream is orders of magnitude larger and is discarded once the window is
+ * extracted, so this is the durable record of a window's motion. PK (deviceId, ts).
+ *
+ * Every field is lifted verbatim from the FFI record — no arithmetic happens here. [sampleRateHz] and
+ * [windowS] are the provenance a feature is only interpretable against; [algoVersion] names the
+ * extractor, because the raw the vector came from is gone and cannot be re-run.
+ */
+@Entity(tableName = "imuFeatureSample", primaryKeys = ["deviceId", "ts"])
+data class ImuFeatureSample(
+    val deviceId: String,
+    /** Window start, wall-clock unix seconds. */
+    val ts: Long,
+    /** Window length in seconds. */
+    val windowS: Int,
+    /** The rate the samples were extracted at; every figure below is conditional on it. */
+    val sampleRateHz: Int,
+    /** RMS of the accel-magnitude AC, gravity removed, in g. */
+    val accelEnergyG: Double,
+    /** Mean gyroscope magnitude over the window, deg/s. */
+    val gyroEnergyDps: Double,
+    /** RMS of the accel first difference, g/sample. */
+    val jerkRms: Double,
+    /** Dominant gait-band cadence, Hz. Null when no peak cleared the extractor's strength floor: an
+     *  absent cadence stays absent, never a fabricated 0. */
+    val cadenceHz: Double? = null,
+    /** Normalised strength of that cadence peak. */
+    val cadenceStrength: Double,
+    /** Raw samples the window held. */
+    val sampleCount: Int,
+    /** The whoop-rs extractor stamp that produced this vector. */
+    val algoVersion: String,
+)

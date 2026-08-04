@@ -208,6 +208,12 @@ class DeviceRegistry(
         dao.deleteLiveSessionsFor(id)
         dao.deleteDismissedWorkoutsFor(id)
         dao.deleteDismissedSleepsFor(id)
+        dao.deleteV18For(id)
+        dao.deleteImuFeaturesFor(id)
+        dao.deleteRhythmScreensFor(id)
+        // Morphology hangs off the capture, so it goes first; deleting ecgSession first would strand it.
+        dao.deleteRhythmMorphologyFor(id)
+        dao.deleteEcgSessionsFor(id)
     }
 
     /** Set the owner override for a day (insert-or-replace). */
