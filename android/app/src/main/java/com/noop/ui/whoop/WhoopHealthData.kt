@@ -38,13 +38,16 @@ internal const val STRESS_SCALE_MAX = 3.0
 internal const val HEALTH_NO_READING = "—"
 
 // Typical-adult fallback windows, used until the personal baseline is trusted and again whenever a
-// wear gap makes it stale. Wellness bands, never clinical cut points.
-private val RESP_TYPICAL_RPM = 12.0..20.0
-private val SPO2_TYPICAL_PCT = 95.0..100.0
-private val RHR_TYPICAL_BPM = 40.0..60.0
-private val HRV_TYPICAL_MS = 40.0..120.0
-private val SKIN_ABS_TYPICAL_C = 33.0..36.0
-private val SKIN_DEV_TYPICAL_C = -0.6..0.6
+// wear gap makes it stale. Every edge is whoop-rs's; an unknown key is a wiring error, not a default.
+private fun typicalRange(vital: String): ClosedFloatingPointRange<Double> =
+    VitalBands.typicalRange(vital) ?: error("no typical range for vital '$vital'")
+
+private val RESP_TYPICAL_RPM by lazy { typicalRange("resp") }
+private val SPO2_TYPICAL_PCT by lazy { typicalRange("spo2") }
+private val RHR_TYPICAL_BPM by lazy { typicalRange("rhr") }
+private val HRV_TYPICAL_MS by lazy { typicalRange("hrv") }
+private val SKIN_ABS_TYPICAL_C by lazy { typicalRange("skin_abs") }
+private val SKIN_DEV_TYPICAL_C by lazy { typicalRange("skin_dev") }
 
 /** The band a metric with no stored reading at all carries. */
 private val NO_READING_BAND = VitalBands.Result(VitalBands.Band.NO_DATA, VitalBands.Basis.POPULATION, 0)

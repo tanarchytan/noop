@@ -31,29 +31,22 @@ object StrainScorer {
     /** Log-map denominator: the Edwards daily ceiling maps to exactly [maxStrain]. */
     val strainDenominator: Double = RustScores.strainCfg.denominator
 
-    /**
-     * WHOOP's published Day Strain ceiling. The one number in the conversion below that whoop-rs does
-     * NOT own: it is another vendor's axis, not a property of our Effort score, so there is nothing on
-     * the Rust side to read it from. Recorded in `docs/ALGORITHMS.md` as Kotlin-held.
-     */
-    const val WHOOP_DAY_STRAIN_MAX: Double = 21.0
+    /** The other vendor's Day Strain ceiling, the top of the axis the conversions below map onto. */
+    val WHOOP_DAY_STRAIN_MAX: Double = RustScores.strainCfg.whoopDayStrainMax
+
+    /** Day Strain → Effort, the multiplier the import boundary applies. */
+    val whoopDayStrainToEffort: Double = RustScores.strainCfg.whoopDayStrainToEffort
 
     /**
-     * WHOOP Day Strain (0–[WHOOP_DAY_STRAIN_MAX]) → our Effort axis (0–[maxStrain]). The import
-     * boundary multiplies by this so an imported history sits on the same axis as a live-computed
-     * Effort. [maxStrain] comes from whoop-rs, so the ceiling has one owner and cannot drift here.
+     * Effort → Day Strain, for the display toggle. Not for the CSV export boundary: multiplying by
+     * this is a different operation from dividing by [whoopDayStrainToEffort], and only the division
+     * inverts the import exactly, so the exporter divides and a round trip returns what it started with.
      */
-    val whoopDayStrainToEffort: Double = maxStrain / WHOOP_DAY_STRAIN_MAX
+    val effortToWhoopDayStrain: Double = RustScores.strainCfg.effortToWhoopDayStrain
 
-    /**
-     * The same conversion the other way, for the DISPLAY toggle that shows a stored Effort on WHOOP's
-     * axis. Stated as a ratio of the same two constants rather than `1 / whoopDayStrainToEffort`.
-     *
-     * Not for the CSV export boundary: `x * effortToWhoopDayStrain` and `x / whoopDayStrainToEffort`
-     * differ in the last bit on about 29% of values, and only the division is the exact inverse of what
-     * the importer does, so the exporter divides and a round trip returns the value it started with.
-     */
-    val effortToWhoopDayStrain: Double = WHOOP_DAY_STRAIN_MAX / maxStrain
+    /** A stored Effort on the axis the reader chose. The stored value never moves. */
+    fun effortOnAxis(value: Double, whoopAxis: Boolean): Double =
+        uniffi.whoop_ffi.effortOnAxis(value, whoopAxis)
 
     const val defaultRestingHR: Double = 60.0
 

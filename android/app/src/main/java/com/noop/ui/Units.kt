@@ -41,7 +41,7 @@ enum class TemperatureUnit(val raw: String) {
 }
 
 /**
- * How the Effort score is displayed. NOOP stores Effort 0–100 (StrainScorer.maxStrain = 100);
+ * How the Effort score is displayed. NOOP stores Effort on whoop-rs's 0–100 axis;
  * people coming from WHOOP often think in its 0–21 Day Strain axis, so this purely cosmetic toggle lets
  * the SAME stored value be shown on either scale. Default is NOOP's own 0–100 — the data never changes.
  * Mirrors the macOS [EffortScale].
@@ -214,19 +214,9 @@ object UnitFormatter {
 
     // MARK: Effort scale (stored 0–100)
 
-    /**
-     * NOOP stores Effort on 0–`StrainScorer.maxStrain`; WHOOP's Day Strain axis is 0–21. This is the
-     * display-only conversion between them, READ from [StrainScorer] rather than restated — there were
-     * five copies of this one ratio (here, `MockSeeder`, `WhoopCsvImporter` and twice inline in
-     * `WhoopCsvExporter`) and "kept byte-identical" was the only thing holding them together. The
-     * citation this comment used to carry, `WhoopExportImporter.dayStrainToEffortScale`, names a class
-     * that does not exist in this Android-only fork.
-     */
-    val EFFORT_SCALE_FACTOR = StrainScorer.effortToWhoopDayStrain
-
     /** The stored 0–100 Effort value mapped onto the selected display scale (the raw number, no unit). */
     fun effortValue(value: Double, scale: EffortScale): Double =
-        if (scale == EffortScale.WHOOP) value * EFFORT_SCALE_FACTOR else value
+        StrainScorer.effortOnAxis(value, scale == EffortScale.WHOOP)
 
     /**
      * Format a stored 0–100 Effort value for display on the selected scale, to one decimal — the single

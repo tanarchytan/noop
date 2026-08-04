@@ -2,6 +2,7 @@ package com.noop.ui
 
 import com.noop.analytics.PeriodComparison
 import com.noop.analytics.SeriesStat
+import com.noop.analytics.StrainScorer
 import com.noop.analytics.WeeklyMetric
 import com.noop.analytics.WeeklyMetricSummary
 import org.junit.Assert.assertEquals
@@ -83,7 +84,7 @@ class WeeklyDigestCardFormattingTest {
 
     @Test fun effortDisplayFactorFollowsTheScaleToggle() {
         assertEquals(1.0, effortDisplayFactor(EffortScale.HUNDRED), 0.0)
-        assertEquals(UnitFormatter.EFFORT_SCALE_FACTOR, effortDisplayFactor(EffortScale.WHOOP), 0.0)
+        assertEquals(StrainScorer.effortToWhoopDayStrain, effortDisplayFactor(EffortScale.WHOOP), 0.0)
     }
 
     // ── deltaText: the sub-1% fallback ──────────────────────────────────────────

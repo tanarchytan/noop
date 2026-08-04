@@ -4,8 +4,8 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 
 /**
- * Goal-formula tests for the Hydration tracker (MVP). Mirrors the Swift HydrationGoalTests so the daily
- * goal stays byte-parity across iOS and Android: baseline + effort bump + nearest-50 rounding + caps.
+ * Goal tests for the Hydration tracker. The formula lives in whoop-rs; these pin the values the app
+ * gets back across the seam, so a change on either side of it shows up here.
  *
  * Goldens are computed by hand from the closed-form rule:
  *   goal = round50(sexBaseline + clamp(round(effort/100 * 700), 0, 700))
@@ -73,11 +73,21 @@ class HydrationGoalTest {
     }
 
     @Test fun goal_round_half_up() {
-        // 3225 is exactly between 3200 and 3250 → rounds up to 3250.
-        assertEquals(3250, HydrationGoal.roundToNearest(3225, 50))
-        // 3224 → 3200, 3226 → 3250
-        assertEquals(3200, HydrationGoal.roundToNearest(3224, 50))
-        assertEquals(3250, HydrationGoal.roundToNearest(3226, 50))
+        // other: 3200 + bump 25 = 3225, exactly between 3200 and 3250 → rounds up.
+        assertEquals(3250, HydrationGoal.dailyGoalMl("nonbinary", 3.6))
+        // one millilitre either side: 3224 → 3200, 3226 → 3250.
+        assertEquals(3200, HydrationGoal.dailyGoalMl("nonbinary", 3.4))
+        assertEquals(3250, HydrationGoal.dailyGoalMl("nonbinary", 3.72))
+    }
+
+    // ── The tuning table (whoop-rs owns it; this pins what the app reads) ─────────
+
+    @Test fun cfg_carries_the_baselines_the_cap_and_the_grid() {
+        assertEquals(3700, HydrationGoal.cfg.baselineMaleMl)
+        assertEquals(2700, HydrationGoal.cfg.baselineFemaleMl)
+        assertEquals(3200, HydrationGoal.cfg.baselineOtherMl)
+        assertEquals(700, HydrationGoal.cfg.maxEffortBumpMl)
+        assertEquals(50, HydrationGoal.cfg.roundToMl)
     }
 
     // ── Quick-log amounts (the three tap sizes) ──────────────────────────────────

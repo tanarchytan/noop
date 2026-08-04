@@ -30,6 +30,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.noop.analytics.RestScorer
+import com.noop.analytics.StrainScorer
 import com.noop.analytics.WeeklyDigest
 import com.noop.analytics.WeeklyDigestEngine
 import com.noop.analytics.WeeklyMetric
@@ -59,7 +60,7 @@ import kotlin.math.roundToInt
  * display only. 1.0 leaves every sentence byte-identical to the pre-toggle output.
  */
 internal fun effortDisplayFactor(scale: EffortScale): Double =
-    if (scale == EffortScale.WHOOP) UnitFormatter.EFFORT_SCALE_FACTOR else 1.0
+    if (scale == EffortScale.WHOOP) StrainScorer.effortToWhoopDayStrain else 1.0
 
 /**
  * Build the weekly digest for the week containing today's logical local day from a

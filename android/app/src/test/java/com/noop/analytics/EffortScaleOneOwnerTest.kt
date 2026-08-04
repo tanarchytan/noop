@@ -1,5 +1,6 @@
 package com.noop.analytics
 
+import com.noop.ui.EffortScale
 import com.noop.ui.UnitFormatter
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -16,8 +17,9 @@ import java.io.File
  * does not exist in this fork. The numbers agreed, so no test could have failed; the defect was that
  * the next edit to any one of them would have been silent.
  *
- * These tests pin the two properties that make it one owner: the scale top is whoop-rs's, and no
- * source file outside [StrainScorer] writes the ratio down again.
+ * The owner is now whoop-rs. These tests pin the three properties that keep it one: both directions
+ * come back from `strain_cfg`, the display toggle converts across the seam, and no Kotlin source
+ * outside [StrainScorer] writes the ratio down again.
  */
 class EffortScaleOneOwnerTest {
 
@@ -43,10 +45,17 @@ class EffortScaleOneOwnerTest {
         )
     }
 
-    /** The display toggle reads the owner rather than carrying its own copy. */
+    /** The display toggle converts in whoop-rs rather than carrying its own copy of the ratio. */
     @Test
     fun theDisplayToggleReadsTheOwner() {
-        assertEquals(StrainScorer.effortToWhoopDayStrain, UnitFormatter.EFFORT_SCALE_FACTOR, 0.0)
+        for (v in listOf(0.0, 12.3, 50.0, 76.193, 100.0)) {
+            assertEquals(
+                v * StrainScorer.effortToWhoopDayStrain,
+                UnitFormatter.effortValue(v, EffortScale.WHOOP),
+                0.0,
+            )
+            assertEquals(v, UnitFormatter.effortValue(v, EffortScale.HUNDRED), 0.0)
+        }
     }
 
     /**

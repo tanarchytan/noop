@@ -37,18 +37,21 @@ puts two nights in the store under one date, and the screens split five to one o
 ## Correctly Kotlin — no maths to move
 
 `BatteryEstimator` · `CyclePhaseEngine` · `DoseResponseEngine` · `IllnessSignalEngine` ·
-`SedentaryDetector` · `VitalBands` · plus the orchestration layer (`AnalyticsEngine`,
+`SedentaryDetector` · plus the orchestration layer (`AnalyticsEngine`,
 `IntelligenceEngine`), source arbitration (`FusionResolver`, `DayOwnerResolver`,
 `MetricArbitrationPolicy`), presentation (`CalibrationMilestones`, `ScoreConfidence`) and the pacers.
 
-**`StrainScorer.WHOOP_DAY_STRAIN_MAX = 21.0` is Kotlin-held on purpose**, and it is the only number in
-the Day Strain ↔ Effort conversion that is. It is another vendor's display axis, not a property of our
-Effort score, so there is nothing on the Rust side to read it from; the scale top it divides into
-(`maxStrain`) *is* whoop-rs's, via `strain_cfg`. Before 2026-08-04 the ratio was written out five times —
-`MockSeeder.STRAIN_SCALE`, `WhoopCsvImporter.DAY_STRAIN_TO_EFFORT_SCALE`, `UnitFormatter.EFFORT_SCALE_FACTOR`
-and twice inline in `WhoopCsvExporter` — each with its own hardcoded `100`, held together only by comments
-promising they were byte-identical, one of which cited a class that does not exist in this fork. All five
-now read `StrainScorer`, and `EffortScaleOneOwnerTest` fails on a sixth copy.
+**`WHOOP_DAY_STRAIN_MAX = 21.0` is no longer Kotlin-held.** This file used to argue it had to be:
+another vendor's display axis is not a property of our Effort score, so there was said to be nothing on
+the Rust side to read it from. That argument was about who OWNS the number, and the border rule is about
+where the arithmetic RUNS — `21.0 / maxStrain` is a conversion behind a displayed figure wherever the two
+constants come from. It now lives in `physio_algo::strain` with both directions and the conversion itself,
+and `StrainScorer` reads all three off `strain_cfg`. Before 2026-08-04 the ratio was written out five
+times — `MockSeeder.STRAIN_SCALE`, `WhoopCsvImporter.DAY_STRAIN_TO_EFFORT_SCALE`,
+`UnitFormatter.EFFORT_SCALE_FACTOR` and twice inline in `WhoopCsvExporter` — each with its own hardcoded
+`100`, held together only by comments promising they were byte-identical, one of which cited a class that
+does not exist in this fork. All five now read `StrainScorer`, and `EffortScaleOneOwnerTest` fails on a
+sixth copy.
 
 ---
 
@@ -58,7 +61,7 @@ now read `StrainScorer`, and `EffortScaleOneOwnerTest` fails on a sixth copy.
 
 | File | What is left |
 |---|---|
-| `StrainScorer` (92) | per-bout TRIMP; the daily figure already delegates. Its gates, scale and denominator now read whoop-rs, and it is where the Day Strain ↔ Effort conversion lives |
+| `StrainScorer` (85) | per-bout TRIMP; the daily figure already delegates. Its gates, scale, denominator and both Day Strain ↔ Effort ratios now read whoop-rs |
 | `SleepStager` (198) | `sessionHrvWindows`, `hypnogramMetrics`. `findPeaks` moved to its parity test, `standardDeviation` deleted |
 
 ### Ported
@@ -66,6 +69,9 @@ now read `StrainScorer`, and `EffortScaleOneOwnerTest` fails on a sixth copy.
 | File | Algorithm | Where it went |
 |---|---|---|
 | `ChargeDrivers` (289) | per-driver marginal swing via the recovery logistic | `physio_algo::recovery_drivers::driver_rows`, over uniffi as `recovery_driver_rows`. The Kotlin file is gone; `ui/ChargeDriverRows.kt` holds only the wording, and `ChargeDriversGoldenTest` pins the output to the literals frozen off the Kotlin |
+| `UnitFormatter` | `EFFORT_SCALE_FACTOR` and `effortValue` — the Day Strain display conversion | `physio_algo::strain::{WHOOP_DAY_STRAIN_MAX, WHOOP_DAY_STRAIN_TO_EFFORT, EFFORT_TO_WHOOP_DAY_STRAIN, effort_on_axis}`, over uniffi as `strain_cfg` + `effort_on_axis`. The Kotlin constant is gone; `effortValue` is a pass-through and `WeeklyDigestCard` reads `StrainScorer` |
+| `HydrationGoal` (70 → 27) | the whole displayed daily goal: sex baselines, the Effort bump, the clamp and the 50 ml grid | `physio_algo::hydration`, over uniffi as `hydration_cfg` + `hydration_baseline_for_sex` + `hydration_effort_bump_ml` + `hydration_daily_goal_ml`. What is left in Kotlin is the quick-log ladder (30 / 237 / 500 ml), which is what a tap STORES, not a formula |
+| `VitalBands` (126 → 100) | `band()`, the 2σ gate, the six typical-adult windows and the 20 °C absolute-vs-deviation split | `physio_algo::vital_bands`, over uniffi as `vital_band` + `vital_typical_range` + `skin_temp_is_absolute` + `skin_temp_history`. The enums stay in Kotlin to carry the wire strings a tile colours and captions; `WhoopHealthData` reads its six windows through `VitalBands.typicalRange` and holds no range literal |
 
 ### Statistical engines, untouched
 
