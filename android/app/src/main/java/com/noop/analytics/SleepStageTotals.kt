@@ -99,6 +99,48 @@ object SleepStageTotals {
         return if (m.inBed > 0.0) m else null
     }
 
+    /** The FFI stage for a stored stage name; `wake`/`awake` and any unknown label all read as wake. */
+    internal fun ffiStage(name: String): uniffi.whoop_ffi.SleepStage = when (name) {
+        "deep" -> uniffi.whoop_ffi.SleepStage.DEEP
+        "rem" -> uniffi.whoop_ffi.SleepStage.REM
+        "light" -> uniffi.whoop_ffi.SleepStage.LIGHT
+        else -> uniffi.whoop_ffi.SleepStage.WAKE
+    }
+
+    /**
+     * One session's `[{start,end,stage}]` stages as FFI segments, or null when they carry no timeline:
+     * the imported `[{stage,min}]` / dict shapes, unparseable JSON, or no usable segment. Passed through
+     * as stored — clipping to the window is the writer's job, since wake outside it still subtracts.
+     */
+    internal fun timelineSegments(stagesJSON: String?): List<uniffi.whoop_ffi.SleepSegment>? {
+        val json = stagesJSON ?: return null
+        val arr = try { JSONArray(json) } catch (e: Throwable) {
+            android.util.Log.w("SleepStages", "timelineSegments: not a segment array, no timeline to read", e)
+            return null
+        }
+        val out = ArrayList<uniffi.whoop_ffi.SleepSegment>(arr.length())
+        for (i in 0 until arr.length()) {
+            val seg = arr.optJSONObject(i) ?: continue
+            if (!seg.has("start") || !seg.has("end")) return null      // {stage,min} shape: no timeline
+            val s = seg.optLong("start")
+            val e = seg.optLong("end")
+            if (e <= s) continue
+            out.add(uniffi.whoop_ffi.SleepSegment(s, e, ffiStage(seg.optString("stage", ""))))
+        }
+        return if (out.isEmpty()) null else out
+    }
+
+    /**
+     * The efficiency to STORE for a session whose stages are [stagesJSON] over its `[start, end]`
+     * in-bed window, computed in whoop-rs from the timeline those stages carry. Falls back to
+     * [fallback] only when they carry NO timeline to re-derive from, so a window the user moved never
+     * keeps an efficiency describing the old one.
+     */
+    fun efficiencyForWindow(start: Long, end: Long, stagesJSON: String?, fallback: Double?): Double? {
+        val segments = timelineSegments(stagesJSON) ?: return fallback
+        return RustScores.sleepEfficiency(start, end, segments)
+    }
+
     /**
      * Trims a computed `[{start,end,stage}]` stagesJSON so no segment begins before [onsetSec]:
      * segments fully before it are dropped, one straddling it is cut to `[onsetSec, end]`. The

@@ -125,8 +125,8 @@ object HealthExportPlan {
     }
 
     /** Parses the `{start,end,stage}` segment array: `wake`/`awake` classify as awake, everything
-     *  else as asleep — same rule as [HealthConnectImporter] / `WhoopRepository.sleepEfficiency`, so
-     *  the split matches the rest of NOOP. Coalesces same-class runs; empty on null/malformed JSON. */
+     *  else as asleep — same rule as [HealthConnectImporter] / [SleepStageTotals.ffiStage], so the
+     *  split matches the rest of NOOP. Coalesces same-class runs; empty on null/malformed JSON. */
     private fun parseStages(json: String?): List<StagePlan> {
         json ?: return emptyList()
         val arr = runCatching { org.json.JSONArray(json) }.getOrNull() ?: return emptyList()

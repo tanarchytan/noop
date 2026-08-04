@@ -379,7 +379,10 @@ class WhoopRepository(private val dao: WhoopDao) {
      *
      *  [wakeSetByUser] says which bound the user actually moved. Only a wake the user set is banked in
      *  [SleepSession.endTsAdjusted] and frozen; a bed-only edit leaves it null and [SleepSession.endTs]
-     *  detected, so [SleepStageHealer] may still refresh the end once more raw lands. */
+     *  detected, so [SleepStageHealer] may still refresh the end once more raw lands.
+     *
+     *  [SleepSession.efficiency] is re-derived from the reclipped stages over the CORRECTED window, so
+     *  the row cannot keep a number describing the window the user just moved away from. */
     suspend fun updateSleepSessionTimes(
         session: SleepSession,
         newStartTs: Long,
@@ -395,6 +398,7 @@ class WhoopRepository(private val dao: WhoopDao) {
         val reclipped = com.noop.analytics.SleepWindowReclip.reclip(
             session.stagesJSON, session.effectiveStartTs, session.effectiveEndTs, safeStartTs, safeEndTs,
         )
+        val stagesJSON = reclipped ?: session.stagesJSON
         dao.upsertSleepSessions(
             listOf(session.copy(
                 startTsAdjusted = safeStartTs,
@@ -402,7 +406,10 @@ class WhoopRepository(private val dao: WhoopDao) {
                     session.endTsAdjusted, safeEndTs, wakeSetByUser,
                 ),
                 userEdited = true,
-                stagesJSON = reclipped ?: session.stagesJSON,
+                stagesJSON = stagesJSON,
+                efficiency = com.noop.analytics.SleepStageTotals.efficiencyForWindow(
+                    safeStartTs, safeEndTs, stagesJSON, session.efficiency,
+                ),
             )),
         )
     }
@@ -502,7 +509,9 @@ class WhoopRepository(private val dao: WhoopDao) {
                 deviceId = computedId,
                 startTs = safeStartTs,
                 endTs = safeEndTs,
-                efficiency = sleepEfficiency(stagesJSON),
+                efficiency = com.noop.analytics.SleepStageTotals.efficiencyForWindow(
+                    safeStartTs, safeEndTs, stagesJSON, fallback = null,
+                ),
                 stagesJSON = stagesJSON,
                 userEdited = true,
                 startTsAdjusted = null,
@@ -511,34 +520,24 @@ class WhoopRepository(private val dao: WhoopDao) {
         )
     }
 
-    /** Asleep fraction (light+deep+rem ÷ total in-bed) of a segment-array [stagesJSON], or null when the
-     *  JSON is the fallback wake-only block / unparseable. Seeds a manual nap's efficiency so its footer
-     *  reads sensibly before the next recompute re-derives it. */
-    private fun sleepEfficiency(stagesJSON: String?): Double? {
-        stagesJSON ?: return null
-        val arr = runCatching { org.json.JSONArray(stagesJSON) }.getOrNull() ?: return null
-        var asleep = 0.0
-        var total = 0.0
-        for (i in 0 until arr.length()) {
-            val o = arr.optJSONObject(i) ?: continue
-            val s = o.optLong("start", -1L)
-            val e = o.optLong("end", -1L)
-            val stage = o.optString("stage")
-            if (s < 0 || e <= s) continue
-            val dur = (e - s).toDouble()
-            total += dur
-            if (stage != "wake" && stage != "awake") asleep += dur
-        }
-        return if (total > 0 && asleep > 0) asleep / total else null
-    }
-
-    /** Narrow stages-ONLY write for the post-sync self-heal, driven by
-     *  [com.noop.analytics.SleepStageHealer]. Replaces a user-edited night's stage breakdown with stages
-     *  re-derived from the now-available raw, leaving the corrected bed/wake bounds and the userEdited
-     *  flag untouched. Scoped to userEdited=1 rows by the DAO query; keyed by the IMMUTABLE
-     *  [detectedStartTs]. Returns rows changed. */
-    suspend fun updateSleepStages(deviceId: String, detectedStartTs: Long, stagesJSON: String): Int =
-        dao.updateSleepStages(deviceId, detectedStartTs, stagesJSON)
+    /** Narrow stages write for the post-sync self-heal, driven by [com.noop.analytics.SleepStageHealer].
+     *  Replaces a user-edited night's stage breakdown with stages re-derived from the now-available raw,
+     *  leaving the corrected bed/wake bounds and the userEdited flag untouched. [start]..[end] are the
+     *  night's corrected bounds, so the row's efficiency is re-derived from the stages being written
+     *  rather than left describing the ones they replace. Scoped to userEdited=1 rows by the DAO query;
+     *  keyed by the IMMUTABLE [detectedStartTs]. Returns rows changed. */
+    suspend fun updateSleepStages(
+        deviceId: String,
+        detectedStartTs: Long,
+        stagesJSON: String,
+        start: Long,
+        end: Long,
+    ): Int = dao.updateSleepStages(
+        deviceId,
+        detectedStartTs,
+        stagesJSON,
+        com.noop.analytics.SleepStageTotals.efficiencyForWindow(start, end, stagesJSON, fallback = null),
+    )
 
     /** The other half of that heal: replace a user-edited night's DETECTED wake with the one a fresh
      *  detection gives, leaving the onset, the stages and the userEdited flag untouched. Scoped by the

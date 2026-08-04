@@ -257,13 +257,9 @@ object AnalyticsEngine {
         val avgHRVDaily: Double? = run {
             val deepVals = matched.mapNotNull { s ->
                 val ffiSegments = s.stages.map { seg ->
-                    val stage = when (seg.stage) {
-                        "deep" -> uniffi.whoop_ffi.SleepStage.DEEP
-                        "rem" -> uniffi.whoop_ffi.SleepStage.REM
-                        "light" -> uniffi.whoop_ffi.SleepStage.LIGHT
-                        else -> uniffi.whoop_ffi.SleepStage.WAKE
-                    }
-                    uniffi.whoop_ffi.SleepSegment(start = seg.start, end = seg.end, stage = stage)
+                    uniffi.whoop_ffi.SleepSegment(
+                        start = seg.start, end = seg.end, stage = SleepStageTotals.ffiStage(seg.stage),
+                    )
                 }
                 RustScores.nightlyHrv(s.start, s.end, rr, ffiSegments)
             }

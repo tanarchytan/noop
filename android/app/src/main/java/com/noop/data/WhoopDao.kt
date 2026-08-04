@@ -124,18 +124,24 @@ interface WhoopDao : DeviceRegistryDao {
     suspend fun insertSleepSession(row: SleepSession): Long
 
     /**
-     * Replace ONLY the stage breakdown of a user-edited night, leaving its bed/wake bounds
-     * (startTsAdjusted/endTsAdjusted) and userEdited flag untouched — used by the post-sync heal that swaps
-     * in real stages once raw arrives for a night edited before it landed (edit-time stages were a
-     * fabricated placeholder). Scoped to `userEdited = 1` (Room stores Boolean true as INTEGER 1), so
-     * it never rewrites an un-edited night. Keyed by the IMMUTABLE detected (deviceId, startTs), never
-     * effectiveStartTs. Returns rows changed (0 when none match).
+     * Replace the stage breakdown of a user-edited night AND the efficiency read off it, leaving its
+     * bed/wake bounds (startTsAdjusted/endTsAdjusted) and userEdited flag untouched — used by the post-sync
+     * heal that swaps in real stages once raw arrives for a night edited before it landed (edit-time stages
+     * were a fabricated placeholder). The two move together or the row describes stages it no longer holds.
+     * Scoped to `userEdited = 1` (Room stores Boolean true as INTEGER 1), so it never rewrites an un-edited
+     * night. Keyed by the IMMUTABLE detected (deviceId, startTs), never effectiveStartTs. Returns rows
+     * changed (0 when none match).
      */
     @Query(
-        "UPDATE sleepSession SET stagesJSON = :stagesJSON " +
+        "UPDATE sleepSession SET stagesJSON = :stagesJSON, efficiency = :efficiency " +
             "WHERE deviceId = :deviceId AND startTs = :detectedStartTs AND userEdited = 1"
     )
-    suspend fun updateSleepStages(deviceId: String, detectedStartTs: Long, stagesJSON: String): Int
+    suspend fun updateSleepStages(
+        deviceId: String,
+        detectedStartTs: Long,
+        stagesJSON: String,
+        efficiency: Double?,
+    ): Int
 
     /**
      * Refresh a hand-edited night's DETECTED wake from a fresh detection, leaving its onset, its stage

@@ -401,6 +401,14 @@ internal object RustScores {
     fun nightlyHrv(start: Long, end: Long, rr: List<RrInterval>, segments: List<SleepSegment>): Double? =
         uniffi.whoop_ffi.hrvNightly(start.toUInt(), end.toUInt(), groupReports(rr.sortedBy { it.ts }), segments)
 
+    // ── Sleep efficiency ─────────────────────────────────────────────────────
+
+    /** THE sleep efficiency in [0,1] of the in-bed window [start]..[end]: asleep / in-bed, asleep =
+     *  in-bed − wake. [segments] are that window's own stages, so a hand-corrected window must be
+     *  reclipped first. Null when the window is empty or nothing is asleep. */
+    fun sleepEfficiency(start: Long, end: Long, segments: List<SleepSegment>): Double? =
+        uniffi.whoop_ffi.sleepEfficiency(start, end, segments)
+
     // ── Steps (5/MG cumulative motion counter) ───────────────────────────────
 
     /** Raw wrap-aware motion-tick total over [samples] (5/MG `step_motion_counter@57`). `null` for

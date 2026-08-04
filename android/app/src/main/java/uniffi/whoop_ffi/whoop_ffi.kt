@@ -873,6 +873,8 @@ internal object IntegrityCheckingUniffiLib {
     ): Int
     external fun uniffi_whoop_ffi_checksum_func_sleep_debt_ledger(
     ): Int
+    external fun uniffi_whoop_ffi_checksum_func_sleep_efficiency(
+    ): Int
     external fun uniffi_whoop_ffi_checksum_func_sleep_regularity_index(
     ): Int
     external fun uniffi_whoop_ffi_checksum_func_stage_sleep_refined(
@@ -1272,6 +1274,8 @@ internal object UniffiLib {
     external fun uniffi_whoop_ffi_fn_func_personal_sleep_need_hours(`recentAsleepHours`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): Double
     external fun uniffi_whoop_ffi_fn_func_sleep_debt_ledger(`series`: RustBuffer.ByValue,`needHours`: RustBuffer.ByValue,`window`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    external fun uniffi_whoop_ffi_fn_func_sleep_efficiency(`start`: Long,`end`: Long,`stages`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_func_sleep_regularity_index(`firstLocalMidnight`: Long,`days`: Int,`asleep`: RustBuffer.ByValue,`covered`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
@@ -1744,6 +1748,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_whoop_ffi_checksum_func_sleep_debt_ledger() != 34646) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_whoop_ffi_checksum_func_sleep_efficiency() != 18005) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_whoop_ffi_checksum_func_sleep_regularity_index() != 52338) {
@@ -13782,6 +13789,24 @@ public object FfiConverterSequenceOptionalDouble: FfiConverterRustBuffer<List<ko
         FfiConverterSequenceTypeDebtNightInput.lower(`series`),
         FfiConverterOptionalDouble.lower(`needHours`),
         FfiConverterOptionalUInt.lower(`window`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Sleep efficiency in `[0, 1]` over the in-bed window `[start, end]`: asleep / in-bed, asleep =
+         * in-bed − wake. `stages` are that window's OWN segments, so reclip an edited window first. `None`
+         * when the window is empty or nothing is asleep, so "not staged" never reads as a real zero.
+         */ fun `sleepEfficiency`(`start`: kotlin.Long, `end`: kotlin.Long, `stages`: List<SleepSegment>): kotlin.Double? {
+            return FfiConverterOptionalDouble.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_func_sleep_efficiency(
+    
+        
+        FfiConverterLong.lower(`start`),
+        FfiConverterLong.lower(`end`),
+        FfiConverterSequenceTypeSleepSegment.lower(`stages`),_status)
 }
     )
     }

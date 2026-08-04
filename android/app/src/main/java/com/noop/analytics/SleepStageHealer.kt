@@ -17,8 +17,8 @@ import kotlin.math.max
  * Fix: invoked from [IntelligenceEngine] after each sync backfill, before scoring, in two halves.
  * First the END: a night whose wake the user never set carries a DETECTED end
  * ([SleepSession.endTsAdjusted] null), so a fresh detection over the same night replaces it. Then the
- * STAGES: re-derived from the raw over the night's bounds, rewriting the breakdown ONLY. Neither half
- * touches the user's own onset, a wake the user DID set, or the `userEdited` flag. Takes
+ * STAGES: re-derived from the raw over the night's bounds, rewriting the breakdown and the efficiency
+ * read off it. Neither half touches the user's own onset, a wake the user DID set, or the flag. Takes
  * [WhoopRepository] as a parameter because [SleepStager.stageSession] is internal to this package.
  *
  * Idempotent: a night already staged from raw re-derives to byte-identical JSON (skips the write); a
@@ -182,7 +182,11 @@ object SleepStageHealer {
         val healed = healLoop(
             edited,
             { row -> restageFromRaw(repo, strapDeviceId, row.effectiveStartTs, row.effectiveEndTs) },
-            { row, json -> repo.updateSleepStages(row.deviceId, row.startTs, json) },
+            { row, json ->
+                repo.updateSleepStages(
+                    row.deviceId, row.startTs, json, row.effectiveStartTs, row.effectiveEndTs,
+                )
+            },
         )
         return if (healed > 0) editedRows() else edited
     }

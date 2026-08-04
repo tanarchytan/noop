@@ -44,24 +44,9 @@ class ManualNapTest {
         }
     }
 
-    /** Mirror of WhoopRepository.sleepEfficiency — asleep fraction of a segment-array stagesJSON. */
-    private fun sleepEfficiency(stagesJSON: String?): Double? {
-        stagesJSON ?: return null
-        val arr = runCatching { org.json.JSONArray(stagesJSON) }.getOrNull() ?: return null
-        var asleep = 0.0
-        var total = 0.0
-        for (i in 0 until arr.length()) {
-            val o = arr.optJSONObject(i) ?: continue
-            val s = o.optLong("start", -1L)
-            val e = o.optLong("end", -1L)
-            val stage = o.optString("stage")
-            if (s < 0 || e <= s) continue
-            val dur = (e - s).toDouble()
-            total += dur
-            if (stage != "wake" && stage != "awake") asleep += dur
-        }
-        return if (total > 0 && asleep > 0) asleep / total else null
-    }
+    /** The efficiency `addManualNap` seeds for a chosen window — the whoop-rs value, not a local copy. */
+    private fun sleepEfficiency(start: Long, end: Long, stagesJSON: String?): Double? =
+        SleepStageTotals.efficiencyForWindow(start, end, stagesJSON, fallback = null)
 
     // ── A manual nap is its OWN session, protected by the recompute guard ───────────────────────────
 
@@ -113,18 +98,17 @@ class ManualNapTest {
     // ── Efficiency seeded for a freshly-staged nap ──────────────────────────────────────────────────
 
     @Test
-    fun napEfficiencyIsAsleepFraction() {
-        // 30 min total, 20 min light asleep + 10 min wake → efficiency 2/3.
+    fun napEfficiencyIsAsleepOverTheChosenWindow() {
+        // 30 min in bed, 20 min light asleep + 10 min wake → efficiency 2/3.
         val json = """[{"start":0,"end":1200,"stage":"light"},{"start":1200,"end":1800,"stage":"wake"}]"""
-        val eff = sleepEfficiency(json)
-        assertEquals(2.0 / 3.0, eff!!, 1e-9)
+        assertEquals(2.0 / 3.0, sleepEfficiency(0, 1800, json)!!, 1e-9)
     }
 
     @Test
     fun wakeOnlyFallbackHasNullEfficiency() {
         // The fallback block (strap not dense yet) is a single wake segment — no asleep time → null.
-        assertNull(sleepEfficiency(stages(50_000, 51_800, "wake")))
-        assertNull(sleepEfficiency(null))
-        assertNull(sleepEfficiency("[]"))
+        assertNull(sleepEfficiency(50_000, 51_800, stages(50_000, 51_800, "wake")))
+        assertNull(sleepEfficiency(50_000, 51_800, null))
+        assertNull(sleepEfficiency(50_000, 51_800, "[]"))
     }
 }
