@@ -256,7 +256,7 @@ internal fun rememberWhoopHomeState(viewModel: AppViewModel, dayOffset: Int): Wh
         if (viewModel.todayCardsLoadedSig == sig) return@LaunchedEffect
         stress = runCatching {
             val stored = viewModel.repo.resolvedSeries("stress", WhoopRepository.WHOOP_SOURCE, SERIES_FROM, SERIES_TO)
-                .values.associate { (day, v) -> day to v.coerceIn(0.0, STRESS_SCALE_MAX) }
+                .values.toMap()
             StressModel.build(days, stored)?.score
         }.getOrNull()
         fitnessAge = runCatching { viewModel.repo.latestMetricComputedUnion("fitness_age")?.value }.getOrNull()

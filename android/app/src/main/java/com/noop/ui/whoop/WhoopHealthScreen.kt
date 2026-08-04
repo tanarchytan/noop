@@ -56,10 +56,12 @@ import com.noop.ui.RealtimeHrOwner
 import com.noop.ui.RealtimeHrWhileVisible
 import com.noop.ui.StatePill
 import com.noop.ui.StrandTone
+import com.noop.ui.StressModel
 import com.noop.ui.TileSparkline
 import com.noop.ui.UnitPrefs
 import com.noop.ui.durationText
 import java.time.LocalDate
+import java.util.Locale
 
 // MARK: - Health
 //
@@ -103,6 +105,11 @@ fun WhoopHealthScreen(
     LaunchedEffect(todayIso) {
         stress = runCatching { loadStressDay(vm, todayIso) }.getOrDefault(DaytimeStress.Result.EMPTY)
     }
+    // The day's 0-3 score, through the same model the Home tile reads, so the two cannot disagree.
+    var stressScore by remember { mutableStateOf<Double?>(null) }
+    LaunchedEffect(days) {
+        stressScore = runCatching { StressModel.build(days, loadStoredStress(vm))?.score }.getOrNull()
+    }
 
     LazyScreenScaffold(
         title = "Health",
@@ -120,7 +127,7 @@ fun WhoopHealthScreen(
         }
         item { HeartRateHero(vm, zoneSet) }
         item { HealthMonitorSummaryCard(vitals, alert, onOpenHealthMonitor) }
-        item { StressMonitorSummaryCard(stress, onOpenStressMonitor) }
+        item { StressMonitorSummaryCard(stressScore, stress, onOpenStressMonitor) }
         item { HealthDisclaimer() }
     }
 }
@@ -216,20 +223,22 @@ private fun ColumnRule() {
 
 // MARK: - Stress Monitor summary
 
-/** Today's high-stress total beside the scored hours it came from. */
+/**
+ * The day's 0-3 score — the same quantity the Home tile and the Stress Monitor gauge read — with the
+ * scored hours behind it. The hourly series only draws the sparkline; its absence never denies the score.
+ */
 @Composable
-private fun StressMonitorSummaryCard(read: DaytimeStress.Result?, onOpen: () -> Unit) {
+private fun StressMonitorSummaryCard(score: Double?, read: DaytimeStress.Result?, onOpen: () -> Unit) {
     NoopCard(tint = Palette.stressColor) {
         Column(verticalArrangement = Arrangement.spacedBy(Metrics.space16)) {
             NoopCardHeader("Stress Monitor", onClick = onOpen)
             val levels = read?.scored?.mapNotNull { it.level }.orEmpty()
-            val highStress = read?.let { durationText(it.highMinutes.toDouble()) }
-            if (highStress == null || levels.isEmpty()) {
+            if (score == null) {
                 InsetChartPlaceholder(
                     message = if (read == null) {
                         "Reading today's heart rate…"
                     } else {
-                        "No stress scored yet today."
+                        "Not enough resting heart rate or HRV to score today."
                     },
                     height = Metrics.motionStripHeight + Metrics.sectionGap,
                 )
@@ -243,25 +252,41 @@ private fun StressMonitorSummaryCard(read: DaytimeStress.Result?, onOpen: () -> 
                         modifier = Modifier.weight(1f),
                         verticalArrangement = Arrangement.spacedBy(Metrics.space4),
                     ) {
-                        Overline("Today's high stress")
+                        Overline("Today's stress")
                         Text(
-                            highStress,
+                            String.format(Locale.US, "%.1f", score),
                             style = NoopType.number(26f, FontWeight.Bold),
                             color = Palette.textPrimary,
                             maxLines = 1,
                         )
+                        Text(
+                            stressHoursCaption(levels.size, read?.highMinutes),
+                            style = NoopType.footnote,
+                            color = Palette.textTertiary,
+                        )
                     }
-                    TileSparkline(
-                        values = levels,
-                        color = Palette.stressColor,
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(Metrics.motionStripHeight),
-                    )
+                    if (levels.size >= 2) {
+                        TileSparkline(
+                            values = levels,
+                            color = Palette.stressColor,
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(Metrics.motionStripHeight),
+                        )
+                    }
                 }
             }
         }
     }
+}
+
+/**
+ * The line under the day's score: the high-stress total once an hour has been scored, else what the
+ * hour-by-hour read is still short of. PURE.
+ */
+internal fun stressHoursCaption(scoredHours: Int, highMinutes: Long?): String = when {
+    scoredHours >= 2 && highMinutes != null -> "${durationText(highMinutes.toDouble())} high stress today"
+    else -> "Hour-by-hour detail needs more scored hours"
 }
 
 // MARK: - Notice
