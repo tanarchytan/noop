@@ -95,18 +95,19 @@ internal fun chargeDriverRows(
         )
     }
     if (skinTempDev != null) {
-        // A deviation already; its reference is the personal baseline, which sits at zero.
+        // A deviation already; its reference is the personal baseline, which sits at zero. The
+        // reference goes in the baseline slot so the value stays short enough for the row's label.
         text[DriverKind.SKIN_TEMP] = Triple(
             "Skin temperature",
-            String.format(Locale.US, "%+.1f C vs baseline", skinTempDev),
-            "",
+            String.format(Locale.US, "%+.1f °C", skinTempDev),
+            "vs baseline",
         )
     }
     if (recoveryIndexSlope != null) {
         text[DriverKind.RECOVERY_INDEX] = Triple(
             "Recovery index",
-            String.format(Locale.US, "%+.1f bpm/hr overnight", recoveryIndexSlope),
-            "",
+            String.format(Locale.US, "%+.1f bpm/hr", recoveryIndexSlope),
+            "overnight",
         )
     }
     if (priorDayEffort != null && effortBaseline != null) {

@@ -56,7 +56,8 @@ class TodayUiStructureTest {
             ),
             "TodayHeartRate.kt" to setOf(
                 "HrWindow", "hrWindowKeeps", "HrWindowPills", "HeartRateTrendCard", "HrTimeAxisLabels",
-                "hrChartTransformGestures", "OverviewHRChart", "hrHoursMinutes", "hrPeakIn", "HrMarker",
+                "hrChartTransformGestures", "HR_MARKER_LANE", "HR_MARKER_MAX_LANES",
+                "OverviewHRChart", "hrHoursMinutes", "hrPeakIn", "HrMarker",
                 "HrMarkerPills", "glyphOffset",
                 "ChartMarkerPill", "WorkoutGlyph",
             ),

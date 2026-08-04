@@ -77,10 +77,10 @@ class ChargeDriversGoldenTest {
                 "Heart rate variability|23|62 ms|50 ms baseline|above baseline, supporting recovery",
                 "Resting heart rate|4|51 bpm|55 bpm baseline|below baseline, supporting recovery",
                 "Sleep quality|1|90%||a strong night, supporting recovery",
-                "Recovery index|1|-3.0 bpm/hr overnight||resting HR fell through the night, supporting recovery",
+                "Recovery index|1|-3.0 bpm/hr|overnight|resting HR fell through the night, supporting recovery",
                 "Activity balance|-1|75 effort yesterday|40 baseline|a harder day yesterday, limiting recovery",
                 "Respiratory rate|0|15.0 br/min|16.0 br/min baseline|below baseline, supporting recovery",
-                "Skin temperature|0|+0.4 C vs baseline||warmer than baseline, limiting recovery",
+                "Skin temperature|0|+0.4 °C|vs baseline|warmer than baseline, limiting recovery",
             ),
             rows(
                 hrv = 62.0, rhr = 51.0, resp = 15.0,
@@ -158,18 +158,18 @@ class ChargeDriversGoldenTest {
     @Test fun recoveryIndexVerdictAtItsCutPoint() {
         assertEquals(
             listOf(
-                "Recovery index|-1|+1.0 bpm/hr overnight||resting HR rose overnight, limiting recovery",
+                "Recovery index|-1|+1.0 bpm/hr|overnight|resting HR rose overnight, limiting recovery",
                 hrvFlat, rhrFlat,
             ),
             background(recoveryIndexSlope = 1.0),
         )
         assertEquals(
-            listOf(hrvFlat, rhrFlat, "Recovery index|0|+0.0 bpm/hr overnight||resting HR held flat overnight"),
+            listOf(hrvFlat, rhrFlat, "Recovery index|0|+0.0 bpm/hr|overnight|resting HR held flat overnight"),
             background(recoveryIndexSlope = 0.0),
         )
         assertEquals(
             listOf(
-                "Recovery index|1|-1.0 bpm/hr overnight||resting HR fell through the night, supporting recovery",
+                "Recovery index|1|-1.0 bpm/hr|overnight|resting HR fell through the night, supporting recovery",
                 hrvFlat, rhrFlat,
             ),
             background(recoveryIndexSlope = -1.0),
@@ -203,19 +203,19 @@ class ChargeDriversGoldenTest {
     /** The band edge is INCLUSIVE: exactly +/-0.3 reads neutral, one ulp beyond does not. */
     @Test fun skinTempBandEdgeIsInclusiveAtPointThree() {
         assertEquals(
-            listOf(hrvFlat, rhrFlat, "Skin temperature|0|+0.0 C vs baseline||near baseline"),
+            listOf(hrvFlat, rhrFlat, "Skin temperature|0|+0.0 °C|vs baseline|near baseline"),
             background(skinTempDev = 0.0),
         )
         assertEquals(
-            listOf("Skin temperature|-1|+0.3 C vs baseline||near baseline", hrvFlat, rhrFlat),
+            listOf("Skin temperature|-1|+0.3 °C|vs baseline|near baseline", hrvFlat, rhrFlat),
             background(skinTempDev = 0.3),
         )
         assertEquals(
-            listOf("Skin temperature|-1|-0.3 C vs baseline||near baseline", hrvFlat, rhrFlat),
+            listOf("Skin temperature|-1|-0.3 °C|vs baseline|near baseline", hrvFlat, rhrFlat),
             background(skinTempDev = -0.3),
         )
         assertEquals(
-            listOf("Skin temperature|-1|+0.3 C vs baseline||near baseline", hrvFlat, rhrFlat),
+            listOf("Skin temperature|-1|+0.3 °C|vs baseline|near baseline", hrvFlat, rhrFlat),
             background(skinTempDev = 0.29999999),
         )
     }
@@ -223,11 +223,11 @@ class ChargeDriversGoldenTest {
     /** Just outside the band the verdict flips while the DISPLAYED value still rounds to +/-0.3 C. */
     @Test fun skinTempJustOutsideTheBandFlipsTheVerdictNotTheDisplayedValue() {
         assertEquals(
-            listOf("Skin temperature|-1|+0.3 C vs baseline||warmer than baseline, limiting recovery", hrvFlat, rhrFlat),
+            listOf("Skin temperature|-1|+0.3 °C|vs baseline|warmer than baseline, limiting recovery", hrvFlat, rhrFlat),
             background(skinTempDev = 0.30000001),
         )
         assertEquals(
-            listOf("Skin temperature|-1|-0.3 C vs baseline||cooler than baseline, limiting recovery", hrvFlat, rhrFlat),
+            listOf("Skin temperature|-1|-0.3 °C|vs baseline|cooler than baseline, limiting recovery", hrvFlat, rhrFlat),
             background(skinTempDev = -0.30000001),
         )
     }
@@ -235,11 +235,11 @@ class ChargeDriversGoldenTest {
     /** The penalty is symmetric on |deviation|: equal magnitudes cost equal points, opposite words. */
     @Test fun skinTempPenaltyIsSymmetric() {
         assertEquals(
-            listOf("Skin temperature|-4|+1.5 C vs baseline||warmer than baseline, limiting recovery", hrvFlat, rhrFlat),
+            listOf("Skin temperature|-4|+1.5 °C|vs baseline|warmer than baseline, limiting recovery", hrvFlat, rhrFlat),
             background(skinTempDev = 1.5),
         )
         assertEquals(
-            listOf("Skin temperature|-4|-1.5 C vs baseline||cooler than baseline, limiting recovery", hrvFlat, rhrFlat),
+            listOf("Skin temperature|-4|-1.5 °C|vs baseline|cooler than baseline, limiting recovery", hrvFlat, rhrFlat),
             background(skinTempDev = -1.5),
         )
     }
@@ -292,9 +292,9 @@ class ChargeDriversGoldenTest {
                 "Heart rate variability|32|62 ms|50 ms baseline|above baseline, supporting recovery",
                 "Activity balance|-2|75 effort yesterday|40 baseline|a harder day yesterday, limiting recovery",
                 "Sleep quality|1|90%||a strong night, supporting recovery",
-                "Recovery index|1|-3.0 bpm/hr overnight||resting HR fell through the night, supporting recovery",
+                "Recovery index|1|-3.0 bpm/hr|overnight|resting HR fell through the night, supporting recovery",
                 "Respiratory rate|0|15.0 br/min|16.0 br/min baseline|below baseline, supporting recovery",
-                "Skin temperature|0|+0.4 C vs baseline||warmer than baseline, limiting recovery",
+                "Skin temperature|0|+0.4 °C|vs baseline|warmer than baseline, limiting recovery",
             ),
             rows(
                 hrv = 62.0, rhr = 51.0, resp = 15.0,
@@ -311,9 +311,9 @@ class ChargeDriversGoldenTest {
                 "Heart rate variability|24|62 ms|50 ms baseline|above baseline, supporting recovery",
                 "Resting heart rate|4|51 bpm|55 bpm baseline|below baseline, supporting recovery",
                 "Sleep quality|1|90%||a strong night, supporting recovery",
-                "Recovery index|1|-3.0 bpm/hr overnight||resting HR fell through the night, supporting recovery",
+                "Recovery index|1|-3.0 bpm/hr|overnight|resting HR fell through the night, supporting recovery",
                 "Activity balance|-1|75 effort yesterday|40 baseline|a harder day yesterday, limiting recovery",
-                "Skin temperature|0|+0.4 C vs baseline||warmer than baseline, limiting recovery",
+                "Skin temperature|0|+0.4 °C|vs baseline|warmer than baseline, limiting recovery",
             ),
             rows(
                 hrv = 62.0, rhr = 51.0, resp = null,
@@ -329,10 +329,10 @@ class ChargeDriversGoldenTest {
             listOf(
                 "Heart rate variability|26|62 ms|50 ms baseline|above baseline, supporting recovery",
                 "Resting heart rate|4|51 bpm|55 bpm baseline|below baseline, supporting recovery",
-                "Recovery index|1|-3.0 bpm/hr overnight||resting HR fell through the night, supporting recovery",
+                "Recovery index|1|-3.0 bpm/hr|overnight|resting HR fell through the night, supporting recovery",
                 "Activity balance|-1|75 effort yesterday|40 baseline|a harder day yesterday, limiting recovery",
                 "Respiratory rate|0|15.0 br/min|16.0 br/min baseline|below baseline, supporting recovery",
-                "Skin temperature|0|+0.4 C vs baseline||warmer than baseline, limiting recovery",
+                "Skin temperature|0|+0.4 °C|vs baseline|warmer than baseline, limiting recovery",
             ),
             rows(
                 hrv = 62.0, rhr = 51.0, resp = 15.0,
@@ -349,7 +349,7 @@ class ChargeDriversGoldenTest {
                 "Heart rate variability|23|62 ms|50 ms baseline|above baseline, supporting recovery",
                 "Resting heart rate|3|51 bpm|55 bpm baseline|below baseline, supporting recovery",
                 "Sleep quality|1|90%||a strong night, supporting recovery",
-                "Recovery index|1|-3.0 bpm/hr overnight||resting HR fell through the night, supporting recovery",
+                "Recovery index|1|-3.0 bpm/hr|overnight|resting HR fell through the night, supporting recovery",
                 "Activity balance|-1|75 effort yesterday|40 baseline|a harder day yesterday, limiting recovery",
                 "Respiratory rate|0|15.0 br/min|16.0 br/min baseline|below baseline, supporting recovery",
             ),
@@ -370,7 +370,7 @@ class ChargeDriversGoldenTest {
                 "Sleep quality|1|90%||a strong night, supporting recovery",
                 "Activity balance|-1|75 effort yesterday|40 baseline|a harder day yesterday, limiting recovery",
                 "Respiratory rate|0|15.0 br/min|16.0 br/min baseline|below baseline, supporting recovery",
-                "Skin temperature|0|+0.4 C vs baseline||warmer than baseline, limiting recovery",
+                "Skin temperature|0|+0.4 °C|vs baseline|warmer than baseline, limiting recovery",
             ),
             rows(
                 hrv = 62.0, rhr = 51.0, resp = 15.0,
@@ -388,9 +388,9 @@ class ChargeDriversGoldenTest {
                 "Heart rate variability|21|62 ms|50 ms baseline|above baseline, supporting recovery",
                 "Resting heart rate|3|51 bpm|55 bpm baseline|below baseline, supporting recovery",
                 "Sleep quality|1|90%||a strong night, supporting recovery",
-                "Recovery index|1|-3.0 bpm/hr overnight||resting HR fell through the night, supporting recovery",
+                "Recovery index|1|-3.0 bpm/hr|overnight|resting HR fell through the night, supporting recovery",
                 "Respiratory rate|0|15.0 br/min|16.0 br/min baseline|below baseline, supporting recovery",
-                "Skin temperature|0|+0.4 C vs baseline||warmer than baseline, limiting recovery",
+                "Skin temperature|0|+0.4 °C|vs baseline|warmer than baseline, limiting recovery",
             ),
             rows(
                 hrv = 62.0, rhr = 51.0, resp = 15.0,

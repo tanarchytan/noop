@@ -562,6 +562,12 @@ private suspend fun PointerInputScope.hrChartTransformGestures(
 // self-hides when its data is absent (no sleep, calibrating Charge, no workouts). Mirrors the macOS
 // OverviewHRChart (Packages/StrandDesign) in NOOP's own colour language.
 
+/** One marker lane's height: the pill plus the gap under it. */
+private val HR_MARKER_LANE = 34.dp
+
+/** The most lanes the pills are given headroom for; a third pill shares a lane with one of the two. */
+private const val HR_MARKER_MAX_LANES = 2
+
 @Composable
 private fun OverviewHRChart(
     buckets: List<HrBucket>,
@@ -584,15 +590,20 @@ private fun OverviewHRChart(
     val span = (maxV - minV).takeIf { it > 0.0 } ?: 1.0
     val n = bpm.size
 
-    // Geometry constants copied verbatim from LineChart/pointsFor so overlay positions land on the curve.
-    val strokePx = 2.5f
-    val topPad = strokePx + 4f
-    val bottomPad = strokePx + 4f
-
     // Plot pixel size, captured from the Box that wraps both the line and the overlay.
     var plotW by remember { mutableStateOf(0f) }
     var plotH by remember { mutableStateOf(0f) }
     val density = LocalDensity.current
+
+    // The band the marker pills take at the top of the plot. The curve is inset by it and the pills
+    // sit in it, so a peak at the top of the day is not drawn under a pill.
+    val markerLanes = listOfNotNull(sleep, recovery, strain).size.coerceAtMost(HR_MARKER_MAX_LANES)
+    val markerHeadroom = HR_MARKER_LANE * markerLanes
+
+    // Geometry constants copied verbatim from LineChart/pointsFor so overlay positions land on the curve.
+    val strokePx = 2.5f
+    val topPad = strokePx + 4f + with(density) { markerHeadroom.toPx() }
+    val bottomPad = strokePx + 4f
 
     // ── time → x helpers ──
     // Fractional list index for a wall-clock unix-seconds time, interpolating between bucket
@@ -714,6 +725,7 @@ private fun OverviewHRChart(
             // carries the unit — "14:32 · 87 bpm" instead of a bare "87".
             formatValue = { "${it.roundToInt()} bpm" },
             timestamps = bucketTimestamps,
+            topInset = markerHeadroom,
         )
 
         // 2) Wake divider + dashed rules + glow end-cap, drawn in one Canvas ON TOP of the line.

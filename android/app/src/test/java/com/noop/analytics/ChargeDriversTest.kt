@@ -94,8 +94,9 @@ class ChargeDriversTest {
             respBaseline = null, sleepPerf = null, skinTempDev = 0.4,
         )
         val skin = drivers.first { it.label == "Skin temperature" }
-        assertTrue("skin temp must read as a +/- deviation", skin.valueText.contains("vs baseline"))
-        assertTrue(skin.valueText.contains("+0.4"))
+        // The sign carries the deviation; the reference it is measured against is the baseline line.
+        assertTrue("skin temp must read as a +/- deviation", skin.valueText.contains("+0.4"))
+        assertEquals("vs baseline", skin.baselineText)
         // The symmetric penalty never lifts Charge.
         assertTrue(skin.deltaPoints <= 0)
     }

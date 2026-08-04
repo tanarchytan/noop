@@ -408,6 +408,9 @@ object StrandAlpha {
     const val chartLabel = 0.95f
     const val unselectedBar = 0.88f
     const val warningFill = 0.12f
+
+    /** The plate behind a chart's value label, so a number stays readable over another series' line. */
+    const val labelPlate = 0.82f
 }
 
 // MARK: - Metrics (ported from StrandDesign/Components.swift NoopMetrics)

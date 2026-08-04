@@ -44,6 +44,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.TextMeasurer
@@ -53,6 +54,7 @@ import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -160,7 +162,10 @@ fun LineChart(
     dragSelectionEnabled: Boolean = true,
     formatValue: ((Double) -> String)? = null,
     timestamps: List<Long>? = null,
+    // Headroom above the curve's own maximum, for a caller that draws over the top of the plot.
+    topInset: Dp = 0.dp,
 ) {
+    val topInsetPx = with(LocalDensity.current) { topInset.toPx() }
     val cleanValues = remember(values) { values.filter { it.isFinite() } }
     val cleanTimestamps = remember(values, timestamps) {
         if (timestamps == null || timestamps.size != values.size) null
@@ -237,7 +242,7 @@ fun LineChart(
                 .fillMaxSize()
                 .drawWithCache {
                     val strokePx = 2.5f
-                    val topPad = strokePx + 4f
+                    val topPad = strokePx + 4f + topInsetPx
                     val bottomPad = strokePx + 4f
                     val pts = pointsFor(cleanValues, size.width, size.height, topPad, bottomPad)
                     if (pts.isEmpty()) {
@@ -284,7 +289,7 @@ fun LineChart(
                     drawContent()
                     if (selectionEnabled && selectedIndex >= 0) {
                         val strokePx = 2.5f
-                        val topPad = strokePx + 4f
+                        val topPad = strokePx + 4f + topInsetPx
                         val bottomPad = strokePx + 4f
                         val pts = pointsFor(cleanValues, size.width, size.height, topPad, bottomPad)
                         if (selectedIndex in pts.indices) {
@@ -1132,7 +1137,14 @@ private fun DrawScope.drawRuns(points: List<Offset?>, color: Color) {
     }
 }
 
-/** [text] centred on [centerX] with its top at [top], held inside the canvas so a label never clips out. */
+/** The card-coloured plate behind a slot label: its inset around the glyphs and its own corner. */
+private const val SLOT_LABEL_PLATE_PAD = 3f
+private const val SLOT_LABEL_PLATE_CORNER = 4f
+
+/**
+ * [text] centred on [centerX] with its top at [top], held inside the canvas so a label never clips out,
+ * over a card-coloured plate so a number stays readable where another series' line runs under it.
+ */
 internal fun DrawScope.drawSlotLabel(
     measurer: TextMeasurer,
     text: String,
@@ -1144,14 +1156,20 @@ internal fun DrawScope.drawSlotLabel(
     val layout = measurer.measure(text, style)
     val maxX = (size.width - layout.size.width).coerceAtLeast(0f)
     val maxY = (size.height - layout.size.height).coerceAtLeast(0f)
-    drawText(
-        textLayoutResult = layout,
-        color = color,
-        topLeft = Offset(
-            (centerX - layout.size.width / 2f).coerceIn(0f, maxX),
-            top.coerceIn(0f, maxY),
-        ),
+    val at = Offset(
+        (centerX - layout.size.width / 2f).coerceIn(0f, maxX),
+        top.coerceIn(0f, maxY),
     )
+    drawRoundRect(
+        color = Palette.surfaceRaised.copy(alpha = StrandAlpha.labelPlate),
+        topLeft = Offset(at.x - SLOT_LABEL_PLATE_PAD, at.y - SLOT_LABEL_PLATE_PAD),
+        size = Size(
+            layout.size.width + SLOT_LABEL_PLATE_PAD * 2f,
+            layout.size.height + SLOT_LABEL_PLATE_PAD * 2f,
+        ),
+        cornerRadius = CornerRadius(SLOT_LABEL_PLATE_CORNER, SLOT_LABEL_PLATE_CORNER),
+    )
+    drawText(textLayoutResult = layout, color = color, topLeft = at)
 }
 
 /** The whole week as one sentence, so a chart is never silent to a screen reader. */

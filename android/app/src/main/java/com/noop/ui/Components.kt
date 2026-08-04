@@ -476,7 +476,9 @@ internal fun AutoSizeValue(
         overflow = TextOverflow.Ellipsis,
         modifier = modifier,
         onTextLayout = { result ->
-            if (result.didOverflowWidth && scale > minScale) {
+            // hasVisualOverflow, not didOverflowWidth: a one-line non-wrapping paragraph is laid out
+            // AT its constraint, so didOverflowWidth stays false and the step-down never fired.
+            if (result.hasVisualOverflow && scale > minScale) {
                 scale = maxOf(minScale, scale - 0.08f)
             }
         },
@@ -1556,7 +1558,13 @@ fun MetricRow(
             Icon(icon, contentDescription = null, tint = iconTint, modifier = Modifier.size(Metrics.iconSmall))
         }
         Overline(label, modifier = Modifier.weight(1f), color = Palette.textPrimary)
-        Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(Metrics.space2)) {
+        // Both halves are weighted, so a long value takes at most half the row and the label keeps
+        // enough width to wrap on a word rather than mid-word. `fill = false` lets a short value shrink.
+        Column(
+            modifier = Modifier.weight(1f, fill = false),
+            horizontalAlignment = Alignment.End,
+            verticalArrangement = Arrangement.spacedBy(Metrics.space2),
+        ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(Metrics.space6),

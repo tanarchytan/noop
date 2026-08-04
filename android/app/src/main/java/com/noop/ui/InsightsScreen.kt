@@ -1488,7 +1488,9 @@ private fun RelationshipRow(rel: Relationship) {
                 style = NoopType.headline,
                 color = Palette.textPrimary,
                 modifier = Modifier.weight(1f),
-                maxLines = 1,
+                // Two lines: the longest pair names do not fit beside the r chip on one, and a
+                // truncated metric name is not recoverable from the row.
+                maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
             )
             Text(
@@ -1701,12 +1703,15 @@ private fun effectSentence(e: BehaviorEffect, outcome: Outcome): String {
         else -> "no different"
     }
     val name = outcome.outcomeName.lowercase(Locale.US)
+    // The behaviour is a journal QUESTION ("Any alcohol?"), so it is quoted verbatim rather than
+    // folded into the sentence, where its own question mark lands mid-clause.
+    val logged = "‘${e.behavior}’"
     if (e.delta == 0.0) {
-        return "On days you logged ${e.behavior.lowercase(Locale.US)}, your $name was no different."
+        return "On days you logged $logged, your $name was no different."
     }
     val withStr = outcome.format(e.meanWith)
     val withoutStr = outcome.format(e.meanWithout)
-    return "On days you logged ${e.behavior.lowercase(Locale.US)}, your $name averaged " +
+    return "On days you logged $logged, your $name averaged " +
         "$withStr, $dir than the $withoutStr on days you didn't."
 }
 

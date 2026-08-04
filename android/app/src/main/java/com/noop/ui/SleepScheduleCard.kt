@@ -147,9 +147,12 @@ internal fun SleepScheduleCard(
                     .drawBehind {
                         val chartW = size.width - SCHEDULE_Y_GUTTER_PX
                         val chartH = size.height
-                        fun y(hour: Float) = (chartH * ((hour - yMin) / range)).coerceIn(0f, chartH)
-
                         val cornerPx = Metrics.cornerSm.toPx()
+                        // The plot is inset by the clip's own corner radius, so the first and last
+                        // gridlines and their labels sit clear of the rounded corners that cut them.
+                        fun y(hour: Float) =
+                            (cornerPx + (chartH - cornerPx * 2f) * ((hour - yMin) / range)).coerceIn(0f, chartH)
+
                         val paint = android.graphics.Paint().apply {
                             color = labelArgb
                             textSize = 20f
