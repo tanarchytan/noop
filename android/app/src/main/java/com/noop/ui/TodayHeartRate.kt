@@ -249,8 +249,8 @@ internal fun HeartRateTrendCard(
     // TODAY that is the identical full-buckets list, so the default path is byte-for-byte the old one.
     val bpm = remember(winBuckets) { winBuckets.map { it.avgBpm } }
     val latest = bpm.last().roundToInt()
-    val min = bpm.min().roundToInt()
-    val max = bpm.max().roundToInt()
+    val min = RustScores.min(bpm).roundToInt()
+    val max = RustScores.max(bpm).roundToInt()
     val avg = RustScores.mean(bpm).roundToInt()
 
     // the RENDERED subset: the zoom window narrows which of the loaded buckets draw (the gesture
@@ -268,9 +268,9 @@ internal fun HeartRateTrendCard(
     // Timeline idiom), so a zoomed curve keeps honest max/avg/min beside it; the footer Min/Avg/Max row
     // below reads the whole SELECTED window — the full day for Today, or the rolling last-N-hours
     // span — so it matches the subtitle and stays stable while you pinch around within that window.
-    val visMax = visBpm.max().roundToInt()
+    val visMax = RustScores.max(visBpm).roundToInt()
     val visAvg = RustScores.mean(visBpm).roundToInt()
-    val visMin = visBpm.min().roundToInt()
+    val visMin = RustScores.min(visBpm).roundToInt()
 
     // Round wall-clock ticks for the RENDERED extent, shared by the gridlines (drawn inside
     // OverviewHRChart) and the axis-label strip below so they align.

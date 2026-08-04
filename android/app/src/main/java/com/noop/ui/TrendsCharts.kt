@@ -256,9 +256,9 @@ private fun ChartWithAxes(
     // See ChartCard.chartHeadroom , fraction of the plot left empty above the peak.
     headroom: Float = 0f,
 ) {
-    val maxV = values.max()
+    val maxV = RustScores.max(values)
     val avgV = RustScores.mean(values)
-    val minV = values.min()
+    val minV = RustScores.min(values)
     Column(verticalArrangement = Arrangement.spacedBy(Metrics.space4)) {
         Row(
             modifier = Modifier.height(IntrinsicSize.Min),

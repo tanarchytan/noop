@@ -724,6 +724,12 @@ internal object RustScores {
     /** Arithmetic mean; 0.0 when empty, so a caller that must show "no data" checks the input. */
     fun mean(values: List<Double>): Double = uniffi.whoop_ffi.seriesMean(values)
 
+    /** Smallest value; 0.0 when empty. The low end of a chart axis, owned with the [mean] beside it. */
+    fun min(values: List<Double>): Double = uniffi.whoop_ffi.seriesMin(values)
+
+    /** Largest value; 0.0 when empty. The high end of the same axis. */
+    fun max(values: List<Double>): Double = uniffi.whoop_ffi.seriesMax(values)
+
     /** Sample SD (n−1) of a series; 0.0 under two points. */
     fun sampleSD(values: List<Double>): Double = uniffi.whoop_ffi.seriesSampleSd(values)
 
