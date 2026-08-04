@@ -763,6 +763,8 @@ internal object IntegrityCheckingUniffiLib {
     ): Int
     external fun uniffi_whoop_ffi_checksum_func_hrv_freq_domain(
     ): Int
+    external fun uniffi_whoop_ffi_checksum_func_hrv_nightly(
+    ): Int
     external fun uniffi_whoop_ffi_checksum_func_hrv_overlapping_reports(
     ): Int
     external fun uniffi_whoop_ffi_checksum_func_hrv_pnn50_plain(
@@ -784,8 +786,6 @@ internal object IntegrityCheckingUniffiLib {
     external fun uniffi_whoop_ffi_checksum_func_hrv_sdnn(
     ): Int
     external fun uniffi_whoop_ffi_checksum_func_hrv_windowed_avg(
-    ): Int
-    external fun uniffi_whoop_ffi_checksum_func_hrv_windowed_avg_deep(
     ): Int
     external fun uniffi_whoop_ffi_checksum_func_hrv_windowed_buckets(
     ): Int
@@ -1075,10 +1075,10 @@ internal object UniffiLib {
     ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_func_activity_series(`gravity`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
-    external fun uniffi_whoop_ffi_fn_func_calories_estimate_bout(`hr`: RustBuffer.ByValue,`weightKg`: Double,`heightCm`: Double,`age`: Double,`sex`: RustBuffer.ByValue,`hrmax`: Double,`restingHr`: Double,uniffi_out_err: UniffiRustCallStatus, 
+    external fun uniffi_whoop_ffi_fn_func_calories_estimate_bout(`hr`: RustBuffer.ByValue,`weightKg`: Double,`heightCm`: Double,`age`: Double,`sex`: RustBuffer.ByValue,`hrmax`: RustBuffer.ByValue,`restingHr`: Double,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
-    external fun uniffi_whoop_ffi_fn_func_calories_estimate_day(`hr`: RustBuffer.ByValue,`weightKg`: Double,`heightCm`: Double,`age`: Double,`sex`: RustBuffer.ByValue,`hrmax`: Double,`restingHr`: Double,uniffi_out_err: UniffiRustCallStatus, 
-    ): Double
+    external fun uniffi_whoop_ffi_fn_func_calories_estimate_day(`hr`: RustBuffer.ByValue,`confirmedBouts`: RustBuffer.ByValue,`weightKg`: Double,`heightCm`: Double,`age`: Double,`sex`: RustBuffer.ByValue,`hrmax`: RustBuffer.ByValue,`restingHr`: Double,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_func_imu_features(`samples`: RustBuffer.ByValue,`sampleRateHz`: Int,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_func_rhythm_age_from_samples(`samples`: RustBuffer.ByValue,`tzOffsetSeconds`: Long,`chronologicalAge`: Double,`sex`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
@@ -1163,6 +1163,8 @@ internal object UniffiLib {
     ): Int
     external fun uniffi_whoop_ffi_fn_func_hrv_freq_domain(`rrMs`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
+    external fun uniffi_whoop_ffi_fn_func_hrv_nightly(`start`: Int,`end`: Int,`reports`: RustBuffer.ByValue,`segments`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_func_hrv_overlapping_reports(`runs`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_func_hrv_pnn50_plain(`rrMs`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
@@ -1184,8 +1186,6 @@ internal object UniffiLib {
     external fun uniffi_whoop_ffi_fn_func_hrv_sdnn(`rrMs`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_func_hrv_windowed_avg(`start`: Int,`end`: Int,`runs`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
-    ): RustBuffer.ByValue
-    external fun uniffi_whoop_ffi_fn_func_hrv_windowed_avg_deep(`start`: Int,`end`: Int,`runs`: RustBuffer.ByValue,`segments`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_func_hrv_windowed_buckets(`start`: Int,`end`: Int,`runs`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
@@ -1449,10 +1449,10 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_whoop_ffi_checksum_func_activity_series() != 3898) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_whoop_ffi_checksum_func_calories_estimate_bout() != 16137) {
+    if (lib.uniffi_whoop_ffi_checksum_func_calories_estimate_bout() != 9873) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_whoop_ffi_checksum_func_calories_estimate_day() != 21433) {
+    if (lib.uniffi_whoop_ffi_checksum_func_calories_estimate_day() != 54712) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_whoop_ffi_checksum_func_imu_features() != 61222) {
@@ -1581,6 +1581,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_whoop_ffi_checksum_func_hrv_freq_domain() != 33413) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_whoop_ffi_checksum_func_hrv_nightly() != 46829) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_whoop_ffi_checksum_func_hrv_overlapping_reports() != 46557) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
@@ -1612,9 +1615,6 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_whoop_ffi_checksum_func_hrv_windowed_avg() != 28307) {
-        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
-    }
-    if (lib.uniffi_whoop_ffi_checksum_func_hrv_windowed_avg_deep() != 1836) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_whoop_ffi_checksum_func_hrv_windowed_buckets() != 3225) {
@@ -3568,6 +3568,95 @@ public object FfiConverterTypeBaselinesCfgInfo: FfiConverterRustBuffer<Baselines
             FfiConverterInt.write(value.`minNightsSeed`, buf)
             FfiConverterInt.write(value.`minNightsTrust`, buf)
             FfiConverterInt.write(value.`earlyAdaptNights`, buf)
+    }
+}
+
+
+
+/**
+ * One motion-confirmed span from [workout_detect]: `[start, end]` unix seconds, both inclusive.
+ */
+data class ConfirmedBout (
+    var `start`: kotlin.Long
+    , 
+    var `end`: kotlin.Long
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeConfirmedBout: FfiConverterRustBuffer<ConfirmedBout> {
+    override fun read(buf: ByteBuffer): ConfirmedBout {
+        return ConfirmedBout(
+            FfiConverterLong.read(buf),
+            FfiConverterLong.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: ConfirmedBout) = (
+            FfiConverterLong.allocationSize(value.`start`) +
+            FfiConverterLong.allocationSize(value.`end`)
+    )
+
+    override fun write(value: ConfirmedBout, buf: ByteBuffer) {
+            FfiConverterLong.write(value.`start`, buf)
+            FfiConverterLong.write(value.`end`, buf)
+    }
+}
+
+
+
+/**
+ * A day's energy split. `total_kcal` is the whole-day estimate, `resting_kcal` the Harris-Benedict
+ * floor inside it, `active_kcal` the excess over lying still. Only `active_kcal` is comparable to a
+ * phone's "active energy"; merging `total_kcal` into that series compares TDEE against active-only.
+ */
+data class DayCaloriesInfo (
+    var `totalKcal`: kotlin.Double
+    , 
+    var `restingKcal`: kotlin.Double
+    , 
+    var `activeKcal`: kotlin.Double
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeDayCaloriesInfo: FfiConverterRustBuffer<DayCaloriesInfo> {
+    override fun read(buf: ByteBuffer): DayCaloriesInfo {
+        return DayCaloriesInfo(
+            FfiConverterDouble.read(buf),
+            FfiConverterDouble.read(buf),
+            FfiConverterDouble.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: DayCaloriesInfo) = (
+            FfiConverterDouble.allocationSize(value.`totalKcal`) +
+            FfiConverterDouble.allocationSize(value.`restingKcal`) +
+            FfiConverterDouble.allocationSize(value.`activeKcal`)
+    )
+
+    override fun write(value: DayCaloriesInfo, buf: ByteBuffer) {
+            FfiConverterDouble.write(value.`totalKcal`, buf)
+            FfiConverterDouble.write(value.`restingKcal`, buf)
+            FfiConverterDouble.write(value.`activeKcal`, buf)
     }
 }
 
@@ -6258,6 +6347,53 @@ public object FfiConverterTypeRrOverlapInfo: FfiConverterRustBuffer<RrOverlapInf
     override fun write(value: RrOverlapInfo, buf: ByteBuffer) {
             FfiConverterUInt.write(value.`overlapping`, buf)
             FfiConverterUInt.write(value.`total`, buf)
+    }
+}
+
+
+
+/**
+ * One record's R-R plus the strap's `opticalSignalPoor` for that record. What [`crate::hrv_nightly`]
+ * takes, so the trust filter travels with the beats instead of being a step a caller can omit.
+ */
+data class RrReport (
+    var `unix`: kotlin.UInt
+    , 
+    var `rr`: List<kotlin.UShort>
+    , 
+    var `opticalSignalPoor`: kotlin.Boolean?
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeRrReport: FfiConverterRustBuffer<RrReport> {
+    override fun read(buf: ByteBuffer): RrReport {
+        return RrReport(
+            FfiConverterUInt.read(buf),
+            FfiConverterSequenceUShort.read(buf),
+            FfiConverterOptionalBoolean.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: RrReport) = (
+            FfiConverterUInt.allocationSize(value.`unix`) +
+            FfiConverterSequenceUShort.allocationSize(value.`rr`) +
+            FfiConverterOptionalBoolean.allocationSize(value.`opticalSignalPoor`)
+    )
+
+    override fun write(value: RrReport, buf: ByteBuffer) {
+            FfiConverterUInt.write(value.`unix`, buf)
+            FfiConverterSequenceUShort.write(value.`rr`, buf)
+            FfiConverterOptionalBoolean.write(value.`opticalSignalPoor`, buf)
     }
 }
 
@@ -10963,6 +11099,34 @@ public object FfiConverterSequenceTypeBandStateSample: FfiConverterRustBuffer<Li
 /**
  * @suppress
  */
+public object FfiConverterSequenceTypeConfirmedBout: FfiConverterRustBuffer<List<ConfirmedBout>> {
+    override fun read(buf: ByteBuffer): List<ConfirmedBout> {
+        val len = buf.getInt()
+        return List<ConfirmedBout>(len) {
+            FfiConverterTypeConfirmedBout.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<ConfirmedBout>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeConfirmedBout.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<ConfirmedBout>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeConfirmedBout.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterSequenceTypeDebtNightInfo: FfiConverterRustBuffer<List<DebtNightInfo>> {
     override fun read(buf: ByteBuffer): List<DebtNightInfo> {
         val len = buf.getInt()
@@ -11373,6 +11537,34 @@ public object FfiConverterSequenceTypeRrBeat: FfiConverterRustBuffer<List<RrBeat
         buf.putInt(value.size)
         value.iterator().forEach {
             FfiConverterTypeRrBeat.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeRrReport: FfiConverterRustBuffer<List<RrReport>> {
+    override fun read(buf: ByteBuffer): List<RrReport> {
+        val len = buf.getInt()
+        return List<RrReport>(len) {
+            FfiConverterTypeRrReport.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<RrReport>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeRrReport.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<RrReport>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeRrReport.write(it, buf)
         }
     }
 }
@@ -12092,8 +12284,9 @@ public object FfiConverterSequenceOptionalDouble: FfiConverterRustBuffer<List<ko
     
 
         /**
-         * Bout energy estimate (kcal, kJ) from HR samples. Each sample weighted by elapsed time to next.
-         */ fun `caloriesEstimateBout`(`hr`: List<HrTick>, `weightKg`: kotlin.Double, `heightCm`: kotlin.Double, `age`: kotlin.Double, `sex`: kotlin.String, `hrmax`: kotlin.Double, `restingHr`: kotlin.Double): List<kotlin.Double> {
+         * Bout energy (kcal, kJ) from a motion-confirmed span's HR samples, each weighted by elapsed time to
+         * the next. `hrmax` absent → resolved from the bout's own peak, then age.
+         */ fun `caloriesEstimateBout`(`hr`: List<HrTick>, `weightKg`: kotlin.Double, `heightCm`: kotlin.Double, `age`: kotlin.Double, `sex`: kotlin.String, `hrmax`: kotlin.Double?, `restingHr`: kotlin.Double): List<kotlin.Double> {
             return FfiConverterSequenceDouble.lift(
     uniffiRustCall() { _status ->
     UniffiLib.uniffi_whoop_ffi_fn_func_calories_estimate_bout(
@@ -12104,7 +12297,7 @@ public object FfiConverterSequenceOptionalDouble: FfiConverterRustBuffer<List<ko
         FfiConverterDouble.lower(`heightCm`),
         FfiConverterDouble.lower(`age`),
         FfiConverterString.lower(`sex`),
-        FfiConverterDouble.lower(`hrmax`),
+        FfiConverterOptionalDouble.lower(`hrmax`),
         FfiConverterDouble.lower(`restingHr`),_status)
 }
     )
@@ -12112,19 +12305,22 @@ public object FfiConverterSequenceOptionalDouble: FfiConverterRustBuffer<List<ko
     
 
         /**
-         * Whole-day energy estimate (kcal) from HR samples. Each sample = one second.
-         */ fun `caloriesEstimateDay`(`hr`: List<HrTick>, `weightKg`: kotlin.Double, `heightCm`: kotlin.Double, `age`: kotlin.Double, `sex`: kotlin.String, `hrmax`: kotlin.Double, `restingHr`: kotlin.Double): kotlin.Double {
-            return FfiConverterDouble.lift(
+         * Whole-day energy (kcal) from HR samples, split into its resting and active halves. Seconds inside a
+         * `confirmed_bouts` span are billed exactly as [calories_estimate_bout] bills them; the rest face the
+         * higher unconfirmed-HR gate. `hrmax` absent → resolved from the day's own peak, then age.
+         */ fun `caloriesEstimateDay`(`hr`: List<HrTick>, `confirmedBouts`: List<ConfirmedBout>, `weightKg`: kotlin.Double, `heightCm`: kotlin.Double, `age`: kotlin.Double, `sex`: kotlin.String, `hrmax`: kotlin.Double?, `restingHr`: kotlin.Double): DayCaloriesInfo {
+            return FfiConverterTypeDayCaloriesInfo.lift(
     uniffiRustCall() { _status ->
     UniffiLib.uniffi_whoop_ffi_fn_func_calories_estimate_day(
     
         
         FfiConverterSequenceTypeHrTick.lower(`hr`),
+        FfiConverterSequenceTypeConfirmedBout.lower(`confirmedBouts`),
         FfiConverterDouble.lower(`weightKg`),
         FfiConverterDouble.lower(`heightCm`),
         FfiConverterDouble.lower(`age`),
         FfiConverterString.lower(`sex`),
-        FfiConverterDouble.lower(`hrmax`),
+        FfiConverterOptionalDouble.lower(`hrmax`),
         FfiConverterDouble.lower(`restingHr`),_status)
 }
     )
@@ -12750,6 +12946,25 @@ public object FfiConverterSequenceOptionalDouble: FfiConverterRustBuffer<List<ko
     
 
         /**
+         * THE nightly HRV value (ms) a readiness word is computed from: per-5min-bucket gap-aware RMSSD over
+         * deep-sleep (SWS/N3) buckets only, from reports the strap's optical front end did not flag. Takes the
+         * full segment list and filters for `SleepStage::Deep` internally. `None` when no deep bucket yields one.
+         */ fun `hrvNightly`(`start`: kotlin.UInt, `end`: kotlin.UInt, `reports`: List<RrReport>, `segments`: List<SleepSegment>): kotlin.Double? {
+            return FfiConverterOptionalDouble.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_func_hrv_nightly(
+    
+        
+        FfiConverterUInt.lower(`start`),
+        FfiConverterUInt.lower(`end`),
+        FfiConverterSequenceTypeRrReport.lower(`reports`),
+        FfiConverterSequenceTypeSleepSegment.lower(`segments`),_status)
+}
+    )
+    }
+    
+
+        /**
          * The overlap behind an `hrv_rr_coverage` above 1.0: the same test that breaks contiguity in the
          * gap-aware RMSSD, reported as a count.
          */ fun `hrvOverlappingReports`(`runs`: List<RrRun>): RrOverlapInfo {
@@ -12910,25 +13125,6 @@ public object FfiConverterSequenceOptionalDouble: FfiConverterRustBuffer<List<ko
         FfiConverterUInt.lower(`start`),
         FfiConverterUInt.lower(`end`),
         FfiConverterSequenceTypeRrRun.lower(`runs`),_status)
-}
-    )
-    }
-    
-
-        /**
-         * Deep-sleep-windowed session avgHrv (ms): per-5min-bucket RMSSD like [hrv_windowed_avg], keeping only
-         * buckets whose center falls inside a deep-sleep (SWS/N3) span. Takes the full segment list; filters for
-         * `SleepStage::Deep` internally. `None` when no deep bucket yields a value.
-         */ fun `hrvWindowedAvgDeep`(`start`: kotlin.UInt, `end`: kotlin.UInt, `runs`: List<RrRun>, `segments`: List<SleepSegment>): kotlin.Double? {
-            return FfiConverterOptionalDouble.lift(
-    uniffiRustCall() { _status ->
-    UniffiLib.uniffi_whoop_ffi_fn_func_hrv_windowed_avg_deep(
-    
-        
-        FfiConverterUInt.lower(`start`),
-        FfiConverterUInt.lower(`end`),
-        FfiConverterSequenceTypeRrRun.lower(`runs`),
-        FfiConverterSequenceTypeSleepSegment.lower(`segments`),_status)
 }
     )
     }

@@ -14,7 +14,9 @@ import uniffi.whoop_ffi.WorkoutGravitySample
 import uniffi.whoop_ffi.DebtNightInput
 import uniffi.whoop_ffi.DriverBaselineInfo
 import uniffi.whoop_ffi.DriverRow
+import uniffi.whoop_ffi.ConfirmedBout
 import uniffi.whoop_ffi.CorrelationStrength
+import uniffi.whoop_ffi.DayCaloriesInfo
 import uniffi.whoop_ffi.DebtSeverity
 import uniffi.whoop_ffi.RecoveryState
 import uniffi.whoop_ffi.FitnessAgeInfo
@@ -24,6 +26,7 @@ import uniffi.whoop_ffi.HrTick
 import uniffi.whoop_ffi.HrZoneSetInfo
 import uniffi.whoop_ffi.RecoveryDrivers
 import uniffi.whoop_ffi.RrBeat
+import uniffi.whoop_ffi.RrReport
 import uniffi.whoop_ffi.RrRun
 import uniffi.whoop_ffi.SleepSegment
 import uniffi.whoop_ffi.SleepSpanMsInfo
@@ -51,19 +54,27 @@ internal object RustScores {
     private fun baseline(b: RecoveryScorer.DriverBaseline?): DriverBaselineInfo? =
         b?.let { DriverBaselineInfo(it.mean, it.spread) }
 
-    /** Folds consecutive same-`ts` R-R into one run, preserving intra-second beat order. Clamps each rrMs
-     *  into UShort range rather than dropping it: an out-of-range beat still reaches the whoop-rs clean,
-     *  which drops it WITH a contiguity break, instead of splicing its neighbours into a spurious pair. */
-    private fun groupRuns(rr: List<RrInterval>): List<RrRun> {
-        val out = ArrayList<RrRun>()
+    /** Folds consecutive same-`ts` R-R into one (second, beats) pair, preserving intra-second beat order.
+     *  Clamps each rrMs into UShort range rather than dropping it: an out-of-range beat still reaches the
+     *  whoop-rs clean, which drops it WITH a contiguity break, instead of splicing neighbours into a pair. */
+    private fun groupBeats(rr: List<RrInterval>): List<Pair<UInt, List<UShort>>> {
+        val out = ArrayList<Pair<UInt, MutableList<UShort>>>()
         for (r in rr) {
             val ms = r.rrMs.coerceIn(0, UShort.MAX_VALUE.toInt()).toUShort()
             val last = out.lastOrNull()
-            if (last != null && last.unix == r.ts.toUInt()) last.rr = last.rr + ms
-            else out.add(RrRun(r.ts.toUInt(), listOf(ms)))
+            if (last != null && last.first == r.ts.toUInt()) last.second.add(ms)
+            else out.add(r.ts.toUInt() to mutableListOf(ms))
         }
-        return out
+        return out.map { it.first to it.second.toList() }
     }
+
+    private fun groupRuns(rr: List<RrInterval>): List<RrRun> =
+        groupBeats(rr).map { (ts, beats) -> RrRun(ts, beats) }
+
+    /** [groupBeats] in the report shape the nightly HRV reads. The strap's optical-quality flag is not
+     *  stored per interval, so it is null — unknown, never a claim that the signal was good. */
+    private fun groupReports(rr: List<RrInterval>): List<RrReport> =
+        groupBeats(rr).map { (ts, beats) -> RrReport(ts, beats, null) }
 
     private fun method(m: StrainScorer.Method): StrainMethod = when (m) {
         StrainScorer.Method.EDWARDS -> StrainMethod.EDWARDS
@@ -383,11 +394,12 @@ internal object RustScores {
         state, enabled, autoNudge, quietHoursEnabled, quietStartMin, quietEndMin, nowSec, tzOffsetSec,
     )
 
-    // ── Deep-sleep HRV window ────────────────────────────────────────────────
+    // ── Nightly HRV ──────────────────────────────────────────────────────────
 
-    /** Session avgHrv (ms) from 5-min buckets whose centre falls in deep-sleep spans. */
-    fun windowedAvgHrvDeep(start: Long, end: Long, rr: List<RrInterval>, segments: List<SleepSegment>): Double? =
-        uniffi.whoop_ffi.hrvWindowedAvgDeep(start.toUInt(), end.toUInt(), groupRuns(rr.sortedBy { it.ts }), segments)
+    /** THE nightly HRV (ms): mean per-bucket gap-aware RMSSD over deep-sleep buckets. Both the window
+     *  and the trust filter live in whoop-rs, so no caller can produce a second version of this number. */
+    fun nightlyHrv(start: Long, end: Long, rr: List<RrInterval>, segments: List<SleepSegment>): Double? =
+        uniffi.whoop_ffi.hrvNightly(start.toUInt(), end.toUInt(), groupReports(rr.sortedBy { it.ts }), segments)
 
     // ── Steps (5/MG cumulative motion counter) ───────────────────────────────
 
@@ -401,16 +413,29 @@ internal object RustScores {
 
     // ── Calories (whole-day HR estimate) ─────────────────────────────────────
 
-    /** APPROXIMATE whole-day energy (kcal) from the day's HR. Applies the profile / hrmax / resting
-     *  fallbacks, then delegates the Keytel active + Harris-Benedict BMR model to whoop-rs. */
-    fun caloriesDay(hr: List<HrSample>, profile: UserProfile, hrmax: Double?, restingHR: Double?): Double =
+    /** APPROXIMATE whole-day energy (kcal) from the day's HR, split into its resting and active halves.
+     *  Applies the profile / hrmax / resting fallbacks, then delegates the Keytel active +
+     *  Harris-Benedict BMR model to whoop-rs.
+     *
+     *  [bouts] are the spans the workout detector confirmed; a second inside one is billed on the bout's
+     *  gate so the day and the per-workout estimate cannot bill it twice. It has NO default: passing an
+     *  empty list is a claim that no bout was confirmed, and a silent default would restate the
+     *  double-billing this argument exists to prevent. */
+    fun caloriesDay(
+        hr: List<HrSample>,
+        bouts: List<ExerciseSession>,
+        profile: UserProfile,
+        hrmax: Double?,
+        restingHR: Double?,
+    ): DayCaloriesInfo =
         uniffi.whoop_ffi.caloriesEstimateDay(
             hrTicks(hr),
+            bouts.map { ConfirmedBout(it.start, it.end) },
             if (profile.weightKg > 0) profile.weightKg else 70.0,
             if (profile.heightCm > 0) profile.heightCm else 170.0,
             if (profile.age > 0) profile.age else 30.0,
             profile.sex,
-            hrmax ?: 220.0,
+            hrmax,
             restingHR ?: 60.0,
         )
 

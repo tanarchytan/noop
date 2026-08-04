@@ -265,7 +265,7 @@ object AnalyticsEngine {
                     }
                     uniffi.whoop_ffi.SleepSegment(start = seg.start, end = seg.end, stage = stage)
                 }
-                RustScores.windowedAvgHrvDeep(s.start, s.end, rr, ffiSegments)
+                RustScores.nightlyHrv(s.start, s.end, rr, ffiSegments)
             }
             if (deepVals.isEmpty()) null else deepVals.sum() / deepVals.size
         }
@@ -465,19 +465,22 @@ object AnalyticsEngine {
         }
 
         // ── Daily calories (APPROXIMATE, HR-only whole-day estimate) ──────────
-        // Whole-day active+resting energy from the full HR window: resting BMR below activeThreshold,
-        // Keytel active above (same model the per-workout estimate uses). Summed over the LOCAL
-        // calendar day, not the ~42h night window, so late hours aren't dropped. Null with no HR.
+        // The ACTIVE half only — the excess over lying still. Every reader treats this column as active
+        // energy (the phone series it back-fills, the coach line, the 800 kcal ring), so the whole-day
+        // total would compare TDEE against active-only. Summed over the LOCAL calendar day, not the
+        // ~42h night window, so late hours aren't dropped. Null with no HR.
+        // The detected bouts are passed so a second inside one is billed once, on the bout's own gate.
         val dayHrFiltered = (dayHr ?: hr).filter { dayString(it.ts, tzOffsetSeconds) == day }
         val activeKcalEst: Double? = if (dayHrFiltered.isEmpty()) {
             null
         } else {
             RustScores.caloriesDay(
                 hr = dayHrFiltered,
+                bouts = workouts,
                 profile = profile,
                 hrmax = effMaxHR,
                 restingHR = restingHRDaily?.toDouble(),
-            )
+            ).activeKcal
         }
 
         // ── Time in the heart-rate zone bands ─────────────────────────────────
