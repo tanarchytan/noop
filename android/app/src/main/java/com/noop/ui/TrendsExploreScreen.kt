@@ -628,7 +628,14 @@ private fun HeroChartCard(
                     Text(subtitle, style = NoopType.footnote, color = Palette.textTertiary)
                 }
                 Column(horizontalAlignment = Alignment.End) {
-                    Text(heroValue, style = NoopType.number(20f), color = metric.accent)
+                    // Same rule the Summary tiles below follow: a placeholder is not a reading, so it
+                    // never wears the metric's colour. Left on the accent it made one empty screen
+                    // print the same nothing in two colours.
+                    Text(
+                        heroValue,
+                        style = NoopType.number(20f),
+                        color = if (latest == null) Palette.textTertiary else metric.accent,
+                    )
                     Text(asOf, style = NoopType.footnote, color = Palette.textTertiary)
                 }
             }
