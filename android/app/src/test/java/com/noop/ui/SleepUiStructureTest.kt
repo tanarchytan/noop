@@ -54,7 +54,7 @@ class SleepUiStructureTest {
                 "metricAtDay", "consistencySeries", "mean",
                 "pctValue",
                 "debtRead", "debtBalanceColor", "debtSigned", "durationText",
-                "sleepAverageOrNull", "clockLabel", "sessionClockLabel",
+                "clockLabel", "sessionClockLabel",
                 "clockLabelFor", "localDayString", "clockTimeLabel",
             ),
             "SleepStageTimeline.kt" to setOf(

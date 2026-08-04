@@ -666,9 +666,6 @@ internal fun durationText(minutes: Double): String {
     return if (m < 60) "${m}m" else "${m / 60}h ${m % 60}m"
 }
 
-internal fun List<Double>.sleepAverageOrNull(): Double? =
-    if (isEmpty()) null else RustScores.mean(this)
-
 internal fun clockLabel(latest: DailyMetric, session: SleepSession?): String {
     if (session != null) return sessionClockLabel(session)
     // Fall back to the daily metric's day string (YYYY-MM-DD), formatted to "EEE d MMM".

@@ -2,6 +2,7 @@ package com.noop.protocol
 
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.File
 
@@ -13,6 +14,10 @@ import java.io.File
  *
  * Self-skips unless WHOOP_CAPTURE points at the .jsonl (kept out of the repo; the frames are real). Loads
  * the host libwhoop_ffi via JNA (buildRustHostDll), like the other FFI parity tests.
+ *
+ * WITHOUT that capture this gate does not run at all, and the suite reports it as a pass: gutting
+ * [classifyHistoricalMeta] to return `Other` for every frame leaves the whole suite green. Nothing else
+ * covers the METADATA path, so treat a green run here as "unmeasured", not "verified".
  */
 class CaptureTrimParityTest {
 
@@ -56,6 +61,10 @@ class CaptureTrimParityTest {
         }
 
         println("CaptureTrimParity: meta_type $metaTypeOk/$metaAll, HISTORY_END unix+trim $endOk/$endTotal")
+        // Floors: an equality between two counters both at zero passes while proving nothing, so a
+        // capture that carries no METADATA (or no HISTORY_END) must fail rather than read as parity.
+        assertTrue("capture carries no METADATA frames", metaAll > 0)
+        assertTrue("capture carries no HISTORY_END frame — the trim cursor is unchecked", endTotal > 0)
         assertEquals("metadata classified", metaAll, metaTypeOk)
         assertEquals("HISTORY_END trim+unix parity", endTotal, endOk)
     }

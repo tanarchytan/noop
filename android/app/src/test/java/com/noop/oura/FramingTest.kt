@@ -133,6 +133,12 @@ class FramingTest {
     fun testTLVLenBelowFourIsRejected() {
         // len must be >= 4 to cover the 4 timestamp bytes; len=3 -> null (honest, no guess).
         assertNull(OuraFraming.parseRecord(intArrayOf(0x7B, 0x03, 0x00, 0x01, 0x02)))
+        // len=4 is the boundary itself: timestamp only, empty payload, accepted. Without this the
+        // cut point can move from 4 to 5 with every other case still passing.
+        val edge = OuraFraming.parseRecord(intArrayOf(0x7B, 0x04, 0x02, 0x00, 0x01, 0x00))
+        assertEquals(0x7B, edge?.type)
+        assertEquals(0x0001_0002L, edge?.ringTimestamp)
+        assertEquals(0, edge?.payload?.size)
     }
 
     // MARK: - Reassembler: multiple records per notification

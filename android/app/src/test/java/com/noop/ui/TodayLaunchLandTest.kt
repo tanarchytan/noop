@@ -29,18 +29,6 @@ class TodayLaunchLandTest {
         )
     }
 
-    // Fresh launch always lands on today.
-    @Test
-    fun testFreshLaunchWithTodayDataLandsOnToday() {
-        assertEquals(
-            0,
-            launchDayOffset(
-                isFreshLaunch = true,
-                savedOffset = 0,
-            ),
-        )
-    }
-
     @Test
     fun testFreshLaunchIgnoresAnyStaleSavedOffset() {
         // Even if a saved offset rides the saved-instance-state restore, a fresh launch overrides it to today.
