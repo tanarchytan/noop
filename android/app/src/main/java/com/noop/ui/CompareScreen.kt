@@ -97,7 +97,7 @@ data class CompareMetric(
         } else {
             java.lang.String.format(Locale.US, "%.${decimals}f", v)
         }
-        return if (unit.isEmpty()) n else "$n $unit"
+        return UnitFormatter.withUnit(n, unit)
     }
 
     /** Unit-aware format: weight/lean_mass (kg) and skin_temp (°C) convert + relabel via
@@ -492,8 +492,7 @@ fun CompareScreen(vm: AppViewModel) {
                     item {
                         DataPendingNote(
                             title = "Compare needs at least two metrics with history",
-                            body = "Compare needs at least two metrics with history. Import your " +
-                                "WHOOP export in Data Sources first.",
+                            body = "Import your WHOOP export in Data Sources first.",
                         )
                     }
                 } else {

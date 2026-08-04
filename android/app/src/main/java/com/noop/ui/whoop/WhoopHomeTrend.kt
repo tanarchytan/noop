@@ -27,6 +27,10 @@ private const val CHARGE_AXIS_MAX = 100.0
 /** Gridline fractions both axes tick at — thirds of the plot, matching the reference layout. */
 private val AXIS_TICK_FRACTIONS = listOf(1.0 / 3.0, 2.0 / 3.0, 1.0)
 
+/** A tick sits on a whole number, so the two axes label the same gridline at the same precision. */
+private fun axisTicks(max: Double): List<Double> =
+    AXIS_TICK_FRACTIONS.map { (it * max).roundToInt().toDouble() }
+
 /**
  * The week of Effort against Charge, with the day on screen highlighted. [scale] only changes how the
  * stored 0-100 Effort is PRINTED; the stored value is untouched. The week itself comes from the shared
@@ -59,8 +63,8 @@ internal fun WhoopStrainRecoveryCard(
                 rightColorFor = { Palette.recoveryColor(it) },
                 leftFormat = { formatLineValue(it) },
                 rightFormat = { "${it.roundToInt()}%" },
-                leftTicks = AXIS_TICK_FRACTIONS.map { it * effortMax },
-                rightTicks = AXIS_TICK_FRACTIONS.map { it * CHARGE_AXIS_MAX },
+                leftTicks = axisTicks(effortMax),
+                rightTicks = axisTicks(CHARGE_AXIS_MAX),
                 highlightIndex = week.todayIndex,
             )
         }

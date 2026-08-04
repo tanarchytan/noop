@@ -39,7 +39,7 @@ class VitalReadingsTableTest {
         val rows = vitalReadingRows(spo2Readings, "%", strap, spo2Format)
         // Ascending input (01 → 03) must render descending (03 → 01).
         assertEquals(listOf("3 Jan", "2 Jan", "1 Jan"), rows.map { it.time })
-        assertEquals("97 %", rows.first().value)   // the newest reading leads
+        assertEquals("97%", rows.first().value)    // the newest reading leads; percent binds tight
     }
 
     @Test fun sourceLabelsResolvePerSample() {

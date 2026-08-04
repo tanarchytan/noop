@@ -442,7 +442,7 @@ private fun MetricChartCard(
 
     val subtitle = run {
         val unit = if (n == 1) "reading" else "readings"
-        if (resolved.fellBack) "$n $unit · sparse - widened to ${resolved.effective.windowName}"
+        if (resolved.fellBack) "$n $unit · sparse, widened to ${resolved.effective.windowName}"
         else "$n $unit · ${range.windowName}"
     }
 
@@ -525,7 +525,7 @@ private fun ChartFooterRow(items: List<Pair<String, String>>) {
 
 // MARK: - Formatting helpers
 
-private fun withUnit(value: String, unit: String): String = if (unit.isEmpty()) value else "$value $unit"
+private fun withUnit(value: String, unit: String): String = UnitFormatter.withUnit(value, unit)
 
 private fun intString(v: Double): String {
     val n = v.roundToInt()

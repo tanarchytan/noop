@@ -128,11 +128,11 @@ private data class MetricSpec(
     val displayUnit: String get() = if (whoopEffort) "/21" else unit
 
     fun format(v: Double): String {
-        if (!v.isFinite()) return ","
+        if (!v.isFinite()) return EM_DASH
         // Effort: the stored value is 0–100; convert to 0–21 for display when that scale is picked.
         val shown = if (whoopEffort) UnitFormatter.effortValue(v, EffortScale.WHOOP) else v
         val n = if (decimals == 0) "${shown.roundToInt()}" else String.format(Locale.US, "%.${decimals}f", shown)
-        return if (displayUnit.isEmpty()) n else "$n $displayUnit"
+        return UnitFormatter.withUnit(n, displayUnit)
     }
 }
 
@@ -402,24 +402,19 @@ fun TrendsExploreScreen(vm: AppViewModel) {
         )
         }
 
-        // RANGE BAR , overline + title over the one segmented window control, with a caption
-        // that flags a sparse auto-widen. Six segments need the full row, so the heading gets its
-        // own line rather than the sliver a shared row would leave it.
+        // RANGE BAR , the one segmented window control with a caption that flags a sparse
+        // auto-widen. The picker above already names the metric, so only its one-liner repeats here.
         item {
         Column(verticalArrangement = Arrangement.spacedBy(Metrics.space12)) {
-            Column(modifier = Modifier.fillMaxWidth()) {
-                Overline(selected.category)
-                Text(selected.title, style = NoopType.title2, color = Palette.textPrimary)
-                // The plain-English one-liner for the three headline scores (Charge/Effort/Rest);
-                // null for every other metric, so only the scores show a subtitle here.
-                selected.description?.let { blurb ->
-                    Text(
-                        blurb,
-                        style = NoopType.footnote,
-                        color = Palette.textTertiary,
-                        modifier = Modifier.padding(top = Metrics.space2),
-                    )
-                }
+            // The plain-English one-liner for the three headline scores (Charge/Effort/Rest);
+            // null for every other metric, so only the scores show a subtitle here.
+            selected.description?.let { blurb ->
+                Text(
+                    blurb,
+                    style = NoopType.footnote,
+                    color = Palette.textTertiary,
+                    modifier = Modifier.fillMaxWidth(),
+                )
             }
             SegmentedPillControl(
                 items = ExploreRange.entries.toList(),
@@ -527,7 +522,11 @@ private fun MetricDropdown(
         ) {
             Box(modifier = Modifier.size(10.dp).clip(CircleShape).background(selected.accent))
             Column(modifier = Modifier.weight(1f)) {
-                Overline(selected.category, color = Palette.textTertiary)
+                // A metric whose name IS its category (Charge, Effort, Rest) would print the word
+                // twice in one row, so the eyebrow only appears when it says something else.
+                if (!selected.category.equals(selected.title, ignoreCase = true)) {
+                    Overline(selected.category, color = Palette.textTertiary)
+                }
                 Text(selected.title, style = NoopType.headline, color = Palette.textPrimary)
             }
             Icon(
@@ -610,7 +609,7 @@ private fun HeroChartCard(
     range: ExploreRange,
     fellBack: Boolean,
 ) {
-    val heroValue = latest?.let { metric.format(it.value) } ?: ","
+    val heroValue = latest?.let { metric.format(it.value) } ?: EM_DASH
     val asOf = latest?.let { "as of ${it.day}" } ?: "no readings yet"
     // The range bar above already prints the authoritative reading-count caption; the hero only
     // names its window so the count isn't doubled in one card height.
@@ -750,7 +749,7 @@ private fun StatRow(
     val prevStat = statOf(prev.map { it.value })
     val hasDelta = s.n > 0 && prevStat.n > 0
     val delta = if (hasDelta) s.mean - prevStat.mean else Double.NaN
-    val deltaText = if (hasDelta) signed(metric, delta) else ","
+    val deltaText = if (hasDelta) signed(metric, delta) else EM_DASH
     val pctChange = if (hasDelta && prevStat.mean != 0.0) {
         ((s.mean - prevStat.mean) / abs(prevStat.mean)) * 100.0
     } else null
@@ -797,7 +796,7 @@ private fun StatRow(
             StatTile(
                 modifier = Modifier.weight(1f),
                 label = stringResource(R.string.explore_latest),
-                value = latest?.let { metric.format(it.value) } ?: ",",
+                value = latest?.let { metric.format(it.value) } ?: EM_DASH,
                 caption = latest?.day,
                 accent = metric.accent,
             )
@@ -842,9 +841,10 @@ private fun rangeCaption(
     effectiveRange: ExploreRange,
     fellBack: Boolean,
 ): String {
-    if (series.isEmpty()) return ","
+    // Nothing to count reads as nothing, not as a lone placeholder glyph under the range pills.
+    if (series.isEmpty()) return ""
     val n = windowed.size
     val unit = if (n == 1) "reading" else "readings"
-    return if (fellBack) "$n $unit · sparse , widened to ${effectiveRange.windowName}"
+    return if (fellBack) "$n $unit · sparse, widened to ${effectiveRange.windowName}"
     else "$n $unit · ${range.windowName}"
 }

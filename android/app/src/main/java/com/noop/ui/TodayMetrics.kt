@@ -265,7 +265,8 @@ private fun KeyTile(data: KeyTileData, modifier: Modifier = Modifier) {
             )
             if (data.unit.isNotEmpty() && hasValue) {
                 Text(
-                    " ${data.unit}",
+                    // Empty value, so this is the unit with the join's own spacing: "%" binds tight.
+                    UnitFormatter.withUnit("", data.unit),
                     style = NoopType.caption,
                     color = Palette.textPrimary,
                     maxLines = 1,

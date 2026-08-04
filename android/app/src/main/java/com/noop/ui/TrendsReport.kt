@@ -537,7 +537,7 @@ object TrendsReportRenderer {
         val unit = metric.unit
         var num = if (metric.usesOneDecimal) round1(v) else "${v.roundToInt()}"
         if (metric == ReportMetric.SKIN_TEMP_DEV && v > 0) num = "+$num"
-        return if (unit.isEmpty()) num else "$num $unit"
+        return UnitFormatter.withUnit(num, unit)
     }
 
     private fun meanText(stat: MetricRangeStat): String = valueText(stat.mean, stat.metric)

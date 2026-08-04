@@ -240,6 +240,19 @@ object UnitFormatter {
     fun effortScaleMax(scale: EffortScale): String =
         if (scale == EffortScale.WHOOP) "21" else "100"
 
+    // MARK: Unit joining
+
+    /**
+     * Join a formatted number to its unit. Percent and the "/21" style denominators bind tight to the
+     * number ("94%", "12.3/21"); every other unit takes a space ("71 ms"). The ONE join, so the same
+     * value cannot be spelled two ways on two screens.
+     */
+    fun withUnit(value: String, unit: String): String = when {
+        unit.isEmpty() -> value
+        unit == "%" || unit.startsWith("/") -> value + unit
+        else -> "$value $unit"
+    }
+
     // MARK: Helpers
 
     private fun oneDecimal(v: Double): String = String.format(Locale.US, "%.1f", v)

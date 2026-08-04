@@ -125,7 +125,7 @@ private fun windowPoints(
 private fun caption(count: Int, eff: TrendsRange, selected: TrendsRange): String {
     val unit = if (count == 1) "reading" else "readings"
     return if (eff != selected) {
-        "$count $unit · sparse , widened to ${eff.longName}"
+        "$count $unit · sparse, widened to ${eff.longName}"
     } else {
         "$count $unit · ${selected.longName}"
     }
@@ -355,7 +355,7 @@ internal fun MetricTrendCard(
         footer = listOf(
             // Plain "Mean" to match the bare Min/Max columns; the unit moves into the value
             // (e.g. "58 ms") so uppercasing can't render a shouty "MEAN MS".
-            stringResource(R.string.trends_mean) to (avg?.let { "${fmt(it)} $unit" } ?: EM_DASH),
+            stringResource(R.string.trends_mean) to (avg?.let { UnitFormatter.withUnit(fmt(it), unit) } ?: EM_DASH),
             stringResource(R.string.trends_min) to (resolved.values.minOrNull()?.let { fmt(it) } ?: EM_DASH),
             stringResource(R.string.trends_max) to (resolved.values.maxOrNull()?.let { fmt(it) } ?: EM_DASH),
         ),
@@ -466,7 +466,8 @@ internal fun EmptyTrends() {
 
 // MARK: - Small numeric helpers
 
-internal const val EM_DASH = ","
+/** The no-reading placeholder: one glyph, never an empty slot and never a stray comma. */
+internal const val EM_DASH = "—"
 
 internal fun List<Double>.averageOrNull(): Double? =
     if (isEmpty()) null else RustScores.mean(this)

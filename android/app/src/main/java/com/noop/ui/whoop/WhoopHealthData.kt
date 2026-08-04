@@ -64,7 +64,7 @@ internal data class HealthVital(
     val format: (Double) -> String,
 ) {
     /** The reading with its unit, or null when the metric has no stored value at all. */
-    val formatted: String? get() = value?.let { "${format(it)} $unit".trim() }
+    val formatted: String? get() = value?.let { UnitFormatter.withUnit(format(it), unit) }
 
     /** The reading with its unit for the summary column: five numbers in five units need all five. */
     val compact: String get() = formatted ?: HEALTH_NO_READING
