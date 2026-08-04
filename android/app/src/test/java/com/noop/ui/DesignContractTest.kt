@@ -39,6 +39,7 @@ class DesignContractTest {
     private val literalFontSize = Regex("""fontSize\s*=\s*\d+(?:\.\d+)?\.sp""")
     private val bareWhiteBlack = Regex("""\bColor\.(White|Black)\b""")
     private val literalGap = Regex("""spacedBy\((\d+)\.dp\)""")
+    private val placeholderValue = Regex("""(?:else|\?:)\s*"[,.;:'\-–]"\s*[,)]""")
 
     /**
      * The app's `ui` package. A miss THROWS rather than skipping: written with `assumeTrue`, a bad
@@ -154,6 +155,22 @@ class DesignContractTest {
         assertEquals(
             "bare white/black in ui/ — read a Palette token, or fork on Palette.isLight:\n" +
                 offenders.joinToString("\n") { "  $it" },
+            emptyList<String>(), offenders,
+        )
+    }
+
+    /**
+     * The stand-in a value falls back to when there is nothing to show is [EM_DASH], and only that.
+     * A punctuation glyph spelled at the call site reads as a rendering failure, and it survives a
+     * repair of the shared constant - which is exactly what happened: `EM_DASH` was corrected while
+     * three Explore tiles kept the comma they had already copied out of it.
+     */
+    @Test
+    fun anAbsentValueFallsBackToTheSharedPlaceholder() {
+        val offenders = hits { placeholderValue.containsMatchIn(it) }
+        assertEquals(
+            "a short literal stands in for a missing value in ui/, use EM_DASH or say what is absent:" +
+                offenders.joinToString(prefix = "\n  ", separator = "\n  "),
             emptyList<String>(), offenders,
         )
     }

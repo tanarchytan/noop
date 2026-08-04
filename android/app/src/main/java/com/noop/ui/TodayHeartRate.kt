@@ -357,13 +357,17 @@ internal fun HeartRateTrendCard(
                             },
                     )
                     // X-axis: labels use the SAME timestamp interpolation as the line and markers,
-                    // so the axis agrees with the curve even when the day has gaps. "Now"
-                    // only on the un-zoomed live day — a zoomed window's right edge is wherever
-                    // the user panned it.
+                    // so the axis agrees with the curve even when the day has gaps. The edge label
+                    // names the last sample's clock time, only on the un-zoomed live day — a zoomed
+                    // window's right edge is wherever the user panned it.
                     HrTimeAxisLabels(
                         ticks = timeTicks,
                         timestamps = visTimestamps,
-                        showNow = selectedDay == today && hrZoom == null,
+                        edgeLabel = if (selectedDay == today && hrZoom == null) {
+                            chartTickTime(visTimestamps.last(), ZoneId.systemDefault())
+                        } else {
+                            null
+                        },
                     )
                 }
             }
@@ -411,13 +415,16 @@ internal fun HeartRateTrendCard(
 
 // The Today HR x-axis label strip: one Text per round-time tick, centred under its gridline via
 // the SAME per-bucket timestamp interpolation the chart uses (timestampFraction, Charts.kt) and
-// clamped into the strip. "Now" keeps its right-edge slot; a tick label that would collide with
+// clamped into the strip. [edgeLabel] keeps the right-edge slot; a tick label that would collide with
 // it (or with its left neighbour) is skipped rather than overlapped.
+//
+// The edge slot names the RIGHT EDGE, which is the last sample and not the wall clock: the domain is
+// the data range, so on a day whose stream stopped early the two are hours apart.
 @Composable
 private fun HrTimeAxisLabels(
     ticks: List<Pair<Long, String>>,
     timestamps: List<Long>,
-    showNow: Boolean,
+    edgeLabel: String?,
 ) {
     Layout(
         modifier = Modifier.fillMaxWidth(),
@@ -425,8 +432,8 @@ private fun HrTimeAxisLabels(
             ticks.forEach { (_, label) ->
                 Text(label, style = NoopType.footnote, color = Palette.textTertiary, maxLines = 1)
             }
-            if (showNow) {
-                Text("Now", style = NoopType.footnote, color = Palette.textTertiary, maxLines = 1)
+            if (edgeLabel != null) {
+                Text(edgeLabel, style = NoopType.footnote, color = Palette.textTertiary, maxLines = 1)
             }
         },
     ) { measurables, constraints ->
@@ -435,15 +442,15 @@ private fun HrTimeAxisLabels(
         val width = constraints.maxWidth
         val height = placeables.maxOfOrNull { it.height } ?: 0
         layout(width, height) {
-            val nowPlaceable = if (showNow) placeables.last() else null
-            val nowLeft = nowPlaceable?.let { width - it.width } ?: Int.MAX_VALUE
-            nowPlaceable?.place(width - nowPlaceable.width, 0)
+            val edgePlaceable = if (edgeLabel != null) placeables.last() else null
+            val nowLeft = edgePlaceable?.let { width - it.width } ?: Int.MAX_VALUE
+            edgePlaceable?.place(width - edgePlaceable.width, 0)
             var lastRight = Int.MIN_VALUE
             ticks.forEachIndexed { i, (ts, _) ->
                 val p = placeables[i]
                 val frac = timestampFraction(timestamps, ts) ?: return@forEachIndexed
                 val x = (frac * width - p.width / 2f).roundToInt().coerceIn(0, (width - p.width).coerceAtLeast(0))
-                // Skip a label that would overlap its neighbour or the "Now" marker.
+                // Skip a label that would overlap its neighbour or the edge label.
                 if (x > lastRight && x + p.width <= nowLeft - 8) {
                     p.place(x, 0)
                     lastRight = x + p.width + 8

@@ -639,8 +639,11 @@ private fun HeroChartCard(
                 // narrow left gutter compact.
                 val values = windowed.map { it.value }
                 val maxV = values.max()
-                val avgV = RustScores.mean(values)
                 val minV = values.min()
+                // The middle label sits at the plot's geometric centre, so it has to be the DOMAIN
+                // midpoint; the mean is not at the centre and reading the curve against it is out by
+                // the gap between them. The window mean keeps its own AVERAGE tile below.
+                val midV = RustScores.mean(listOf(minV, maxV))
                 val fmtY: (Double) -> String = { v -> metric.format(v).substringBefore(' ').take(7) }
                 Column(verticalArrangement = Arrangement.spacedBy(Metrics.space4)) {
                     Row(
@@ -652,7 +655,7 @@ private fun HeroChartCard(
                             verticalArrangement = Arrangement.SpaceBetween,
                         ) {
                             Text(fmtY(maxV), style = NoopType.footnote, color = Palette.textTertiary, maxLines = 1)
-                            Text(fmtY(avgV), style = NoopType.footnote, color = Palette.textTertiary, maxLines = 1)
+                            Text(fmtY(midV), style = NoopType.footnote, color = Palette.textTertiary, maxLines = 1)
                             Text(fmtY(minV), style = NoopType.footnote, color = Palette.textTertiary, maxLines = 1)
                         }
                         // The shared LineChart with a glowing "now" end-cap on its latest sample ,
@@ -771,20 +774,20 @@ private fun StatRow(
             StatTile(
                 modifier = Modifier.weight(1f),
                 label = stringResource(R.string.explore_average),
-                value = if (s.n > 0) metric.format(s.mean) else ",",
+                value = if (s.n > 0) metric.format(s.mean) else EM_DASH,
                 caption = stringResource(R.string.explore_n_days, s.n),
                 accent = metric.accent,
             )
             StatTile(
                 modifier = Modifier.weight(1f),
                 label = stringResource(R.string.explore_min),
-                value = if (s.n > 0) metric.format(s.min) else ",",
+                value = if (s.n > 0) metric.format(s.min) else EM_DASH,
                 accent = Palette.textPrimary,
             )
             StatTile(
                 modifier = Modifier.weight(1f),
                 label = stringResource(R.string.explore_max),
-                value = if (s.n > 0) metric.format(s.max) else ",",
+                value = if (s.n > 0) metric.format(s.max) else EM_DASH,
                 accent = Palette.textPrimary,
             )
         }

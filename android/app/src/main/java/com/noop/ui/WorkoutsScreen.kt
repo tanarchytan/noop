@@ -729,7 +729,7 @@ private fun SummarySection(
             StatTile(
                 modifier = m,
                 label = "Most Active",
-                value = modal?.sport ?: "–",
+                value = modal?.sport ?: EM_DASH,
                 caption = modal?.let { "${it.count} session${if (it.count == 1) "" else "s"}" },
                 accent = Palette.textPrimary,
             )
@@ -1178,12 +1178,12 @@ private fun SessionRow(
         }
         Cell(durationLabel(row.durationS), Modifier.weight(1f))
         Cell(
-            row.avgHr?.toString() ?: "–",
+            row.avgHr?.toString() ?: EM_DASH,
             Modifier.weight(1f),
             color = if (row.avgHr != null) Palette.metricRose else null,
         )
         Cell(
-            row.energyKcal?.let { grouped(it) } ?: "–",
+            row.energyKcal?.let { grouped(it) } ?: EM_DASH,
             Modifier.weight(1f),
             color = if (row.energyKcal != null) Palette.metricAmber else null,
         )
@@ -1293,7 +1293,7 @@ private fun WorkoutDetailSheet(vm: AppViewModel, row: WorkoutRow, onDismiss: () 
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(Metrics.space12)) {
                     val lo = hrCurve.minOrNull()?.roundToInt() ?: 0
                     val hi = hrCurve.maxOrNull()?.roundToInt() ?: 0
-                    MiniStat("Avg", row.avgHr?.let { "$it bpm" } ?: "–", Modifier.weight(1f))
+                    MiniStat("Avg", row.avgHr?.let { "$it bpm" } ?: EM_DASH, Modifier.weight(1f))
                     MiniStat("Peak", (row.maxHr ?: hi).let { "$it bpm" }, Modifier.weight(1f))
                     MiniStat("Low", "$lo bpm", Modifier.weight(1f))
                 }
@@ -1390,7 +1390,7 @@ private fun RecoveryStat(label: String, value: Int?, modifier: Modifier = Modifi
     ) {
         Overline(label)
         Text(
-            value?.toString() ?: "–",
+            value?.toString() ?: EM_DASH,
             style = NoopType.number(24f),
             color = value?.let { if (it >= 0) Palette.statusPositive else Palette.statusWarning }
                 ?: Palette.textTertiary,

@@ -64,7 +64,7 @@ class SleepUiStructureTest {
             ),
             "SleepStagesCard.kt" to setOf(
                 "STAGE_ORDER", "SleepStagesCard", "SleepStagesHeadline", "SleepStageRows", "SleepStageRow",
-                "SleepStageDot", "SleepStageTrack", "SleepMotionStrip", "SleepStageInsight",
+                "SleepStageDot", "SleepStageTrack", "TypicalMarkKey", "SleepMotionStrip", "SleepStageInsight",
                 "SleepStagesFooter", "stageMinutes", "stageRowColor",
             ),
             "SleepPerformanceCard.kt" to setOf(
@@ -86,7 +86,7 @@ class SleepUiStructureTest {
                 "ClockLabelRow",
                 "TimelinePoint", "TimelineChart",
                 "GlowEndCap", "TileSparkline",
-                "timelineBucketSeconds", "zoomedWindow", "chartTimeTicks",
+                "timelineBucketSeconds", "zoomedWindow", "chartTickTime", "chartTimeTicks",
                 "timestampFraction", "pannedWindow",
                 "chartTickTimeFormat", "lineChartSelectionLabel", "stageColor",
                 "seriesSummary", "hypnogramSummary", "pointsFor", "drawBaseline",

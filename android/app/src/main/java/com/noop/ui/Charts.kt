@@ -651,6 +651,11 @@ fun zoomedWindow(
 
 private val chartTickTimeFormat = DateTimeFormatter.ofPattern("HH:mm", Locale.US)
 
+// One wall-clock time in the same HH:mm the x-axis ticks carry, so a label placed off-tick
+// (a plot edge) reads as one of them.
+fun chartTickTime(epochSec: Long, zone: ZoneId): String =
+    Instant.ofEpochSecond(epochSec).atZone(zone).format(chartTickTimeFormat)
+
 fun chartTimeTicks(startEpochSec: Long, endEpochSec: Long, zone: ZoneId): List<Pair<Long, String>> {
     if (endEpochSec <= startEpochSec) return emptyList()
     val spanHours = (endEpochSec - startEpochSec) / 3600.0
