@@ -111,11 +111,28 @@ class PaletteContrastTest {
         assertAtLeast(contrast(t.textTertiary, t.surfaceBase), 4.5, "light textTertiary on surfaceBase")
     }
 
+    /** A StatePill's own 12% wash of [tone] over the card it sits on. Confirmed on the phone: the
+     *  all-clear chip's background is 0.12*statusPositive + 0.88*surfaceRaised to the byte. */
+    private fun pillBackground(tone: Color): Color = Color(
+        red = 0.12f * tone.red + 0.88f * t.surfaceRaised.red,
+        green = 0.12f * tone.green + 0.88f * t.surfaceRaised.green,
+        blue = 0.12f * tone.blue + 0.88f * t.surfaceRaised.blue,
+    )
+
     @Test
-    fun lightStateTokensCarryAPillLabelOnACardAtAA() {
-        assertAtLeast(contrast(t.statusPositive, t.surfaceRaised), 4.5, "light statusPositive on a card")
-        assertAtLeast(contrast(t.statusWarning, t.surfaceRaised), 4.5, "light statusWarning on a card")
-        assertAtLeast(contrast(t.statusCritical, t.surfaceRaised), 4.5, "light statusCritical on a card")
+    fun lightStateTokensCarryAPillLabelOnTheirOwnWashAtAA() {
+        // The FIRST version of this arm measured the label against the bare card and passed, while the
+        // screen it was written for measured 4.15. A pill tints its own background in its own colour,
+        // so a token that clears the card can still fail the pill — the surface a label draws on is
+        // the one the gate has to name.
+        for ((name, tone) in listOf(
+            "statusPositive" to t.statusPositive,
+            "statusWarning" to t.statusWarning,
+            "statusCritical" to t.statusCritical,
+            "accent" to t.accent,
+        )) {
+            assertAtLeast(contrast(tone, pillBackground(tone)), 4.5, "light $name on its own pill wash")
+        }
     }
 
     @Test

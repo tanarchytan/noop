@@ -152,10 +152,11 @@ val LightTokens = PaletteTokens(
     strain000 = Color(0xFF2A5082), strain033 = Color(0xFF3F6FA8), strain066 = Color(0xFF5A8AC0), strain100 = Color(0xFF7EA8D8),
     sleepAwake = Color(0xFF9AA0AE), sleepLight = Color(0xFF4C7BB8), sleepDeep = Color(0xFF2E5488), sleepREM = Color(0xFF7A5AA8),
     zone1 = Color(0xFF4C7BB8), zone2 = Color(0xFF2E8C9E), zone3 = Color(0xFFC79A3E), zone4 = Color(0xFFC2792E), zone5 = Color(0xFFC0402A),
-    // The three STATE tokens are drawn as label text inside a StatePill, on a card (surfaceRaised),
-    // so their floor is 4.5:1 against THAT surface. Spelled by eye the green measured 3.63 and the
-    // amber 3.30, which put "all clear" and "off baseline" below AA on the screen that states them.
-    statusPositive = Color(0xFF4A7A3E), statusWarning = Color(0xFF9E6524), statusCritical = Color(0xFFC0402A),
+    // The three STATE tokens are drawn as label text inside a StatePill, which washes the card in the
+    // SAME colour at 12% — so the floor is measured against that composite, not against the bare card.
+    // Measured on the phone, the all-clear chip's background is exactly 0.12*token + 0.88*surfaceRaised.
+    // Spelled by eye the green read 3.63 on the card and 3.35 on its own wash.
+    statusPositive = Color(0xFF3F6B34), statusWarning = Color(0xFF8C591D), statusCritical = Color(0xFFB03A26),
     // metricRose is heart rate's IDENTITY, and it had been spelled as the critical red exactly —
     // dE 7.4 from the recovery floor swatch — so a healthy 55 bpm was drawn in the colour that means
     // "this is bad". Rose in the dark scheme is magenta; the light twin is a deep rose, dE 39.6 from
