@@ -144,7 +144,12 @@ internal fun MetricGrid(
         KeyMetric.RESPIRATORY to run {
             val v = d?.respRateBpm ?: carriedDay?.respRateBpm
             KeyTileData(
-                label = "Respiratory",
+                // A third of the screen holds about nine characters at the overline size, so the
+                // full word ellipsises here and nowhere else in the grid. Health already prints this
+                // metric as RESP in its five-up row; the grid is the same width problem, so it takes
+                // the same short form rather than a truncation.
+                label = "Resp",
+                spokenLabel = "Respiratory",
                 value = v?.let { String.format(Locale.US, "%.1f", it) } ?: NO_DATA,
                 unit = if (v != null) "rpm" else "",
                 tint = Palette.accent,
@@ -222,13 +227,17 @@ internal fun MetricGrid(
     }
 }
 
-/** One compact Key-Metrics tile's data: label, value, unit, tint and the bar's fill fraction. */
+/** One compact Key-Metrics tile's data: label, value, unit, tint and the bar's fill fraction.
+ *  [spokenLabel] carries the unabbreviated name where the drawn one is a short form, so a screen
+ *  reader never has to expand "RESP" for the listener. [frac] is null when the tile HAS no scale to
+ *  read the value against, which is not the same as a value sitting at the bottom of one. */
 private data class KeyTileData(
     val label: String,
     val value: String,
     val unit: String,
     val tint: Color,
     val frac: Double?,
+    val spokenLabel: String? = null,
 )
 
 /** Corner radius of a key-metric tile, tighter than a full card so three sit in a row without crowding. */
@@ -246,7 +255,9 @@ private fun KeyTile(data: KeyTileData, modifier: Modifier = Modifier) {
             .clip(RoundedCornerShape(KEY_TILE_RADIUS))
             .frostedCardSurface(cornerRadius = KEY_TILE_RADIUS)
             .padding(horizontal = Metrics.space12, vertical = Metrics.space10)
-            .semantics { contentDescription = "${data.label} ${data.value} ${data.unit}".trim() },
+            .semantics {
+                contentDescription = "${data.spokenLabel ?: data.label} ${data.value} ${data.unit}".trim()
+            },
         verticalArrangement = Arrangement.spacedBy(Metrics.space6),
     ) {
         Text(
@@ -273,17 +284,25 @@ private fun KeyTile(data: KeyTileData, modifier: Modifier = Modifier) {
                 )
             }
         }
-        LinearProgressIndicator(
-            progress = { (data.frac ?: 0.0).toFloat() },
-            color = data.tint,
-            trackColor = Palette.surfaceInset,
-            strokeCap = StrokeCap.Round,
-            gapSize = 0.dp,
-            drawStopIndicator = {},
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(Metrics.progressHeight),
-        )
+        // A tile only gets a bar when it HAS a scale to fill. Weight has a reading and no range to
+        // normalise it against, so `frac` is null there; drawn as 0% it put a real 79.2 kg over an
+        // empty track and read as bottom-of-range. The slot is held so the three-up rows still tile
+        // to one height.
+        if (data.frac != null) {
+            LinearProgressIndicator(
+                progress = { data.frac.toFloat() },
+                color = data.tint,
+                trackColor = Palette.surfaceInset,
+                strokeCap = StrokeCap.Round,
+                gapSize = 0.dp,
+                drawStopIndicator = {},
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(Metrics.progressHeight),
+            )
+        } else {
+            Spacer(Modifier.height(Metrics.progressHeight))
+        }
     }
 }
 

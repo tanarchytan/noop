@@ -38,6 +38,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -645,22 +646,29 @@ private fun HeroChartCard(
                 // the gap between them. The window mean keeps its own AVERAGE tile below.
                 val midV = RustScores.mean(listOf(minV, maxV))
                 val fmtY: (Double) -> String = { v -> metric.format(v).substringBefore(' ').take(7) }
-                Column(verticalArrangement = Arrangement.spacedBy(Metrics.space4)) {
-                    Row(
-                        modifier = Modifier.height(IntrinsicSize.Min),
-                        horizontalArrangement = Arrangement.spacedBy(Metrics.space4),
+                Row(
+                    modifier = Modifier.height(IntrinsicSize.Min),
+                    horizontalArrangement = Arrangement.spacedBy(Metrics.space4),
+                ) {
+                    Column(
+                        modifier = Modifier.height(Metrics.chartHeight),
+                        verticalArrangement = Arrangement.SpaceBetween,
                     ) {
-                        Column(
-                            modifier = Modifier.height(Metrics.chartHeight),
-                            verticalArrangement = Arrangement.SpaceBetween,
-                        ) {
-                            Text(fmtY(maxV), style = NoopType.footnote, color = Palette.textTertiary, maxLines = 1)
-                            Text(fmtY(midV), style = NoopType.footnote, color = Palette.textTertiary, maxLines = 1)
-                            Text(fmtY(minV), style = NoopType.footnote, color = Palette.textTertiary, maxLines = 1)
-                        }
+                        Text(fmtY(maxV), style = NoopType.footnote, color = Palette.textTertiary, maxLines = 1)
+                        Text(fmtY(midV), style = NoopType.footnote, color = Palette.textTertiary, maxLines = 1)
+                        Text(fmtY(minV), style = NoopType.footnote, color = Palette.textTertiary, maxLines = 1)
+                    }
+                    // The plot and its date row are ONE column, so a date can only ever address the
+                    // width the curve occupies. Laid out beside the y-gutter instead, the row spanned
+                    // the whole card and every label named a point 244 px to its right — about nine
+                    // days of error at a month's readings.
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(Metrics.space4),
+                    ) {
                         // The shared LineChart with a glowing "now" end-cap on its latest sample ,
                         // the Bevel idiom from Today's OverviewHRChart.
-                        Box(modifier = Modifier.weight(1f).height(Metrics.chartHeight)) {
+                        Box(modifier = Modifier.fillMaxWidth().height(Metrics.chartHeight)) {
                             LineChart(
                                 values = values,
                                 modifier = Modifier.fillMaxSize(),
@@ -670,21 +678,27 @@ private fun HeroChartCard(
                             )
                             GlowEndCap(values = values, tipColor = metric.accent)
                         }
-                    }
-                    val days = windowed.map { it.day }
-                    Row(modifier = Modifier.fillMaxWidth()) {
-                        listOf(days.first(), days.getOrNull(days.lastIndex / 2), days.last()).forEach { d ->
-                            Text(
-                                d?.let {
-                                    runCatching { LocalDate.parse(it).format(DateTimeFormatter.ofPattern("d MMM", Locale.US)) }
-                                        .getOrDefault(it)
-                                }.orEmpty(),
-                                style = NoopType.footnote,
-                                color = Palette.textTertiary,
-                                modifier = Modifier.weight(1f),
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                            )
+                        val days = windowed.map { it.day }
+                        // First and last points sit ON the plot's edges, so their labels anchor to the
+                        // same edges; the middle one centres. Three start-aligned thirds put each label
+                        // a third of a slot left of the point it names.
+                        val ends = listOf(TextAlign.Start, TextAlign.Center, TextAlign.End)
+                        Row(modifier = Modifier.fillMaxWidth()) {
+                            listOf(days.first(), days.getOrNull(days.lastIndex / 2), days.last())
+                                .forEachIndexed { i, d ->
+                                    Text(
+                                        d?.let {
+                                            runCatching { LocalDate.parse(it).format(DateTimeFormatter.ofPattern("d MMM", Locale.US)) }
+                                                .getOrDefault(it)
+                                        }.orEmpty(),
+                                        style = NoopType.footnote,
+                                        color = Palette.textTertiary,
+                                        textAlign = ends[i],
+                                        modifier = Modifier.weight(1f),
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                    )
+                                }
                         }
                     }
                 }
