@@ -1,5 +1,6 @@
 package com.noop.ui
 
+import com.noop.analytics.RustScores
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -17,15 +18,19 @@ class SleepStressCardTest {
     @Test
     fun `a mirrored driver lights the opposite tier`() {
         // 0% high stress is the GOOD end, so it lights the tier a 100% score would.
-        assertEquals(driverTierIndex(100.0), driverTierLit(0.0, higherIsBetter = false))
-        assertEquals(driverTierIndex(0.0), driverTierLit(100.0, higherIsBetter = false))
-        assertEquals(driverTierIndex(50.0), driverTierLit(50.0, higherIsBetter = false))
+        assertEquals(RustScores.sleepDriverTier(100.0), RustScores.sleepDriverTierLit(0.0, higherIsBetter = false))
+        assertEquals(RustScores.sleepDriverTier(0.0), RustScores.sleepDriverTierLit(100.0, higherIsBetter = false))
+        assertEquals(RustScores.sleepDriverTier(50.0), RustScores.sleepDriverTierLit(50.0, higherIsBetter = false))
     }
 
     @Test
     fun `an ordinary driver is not mirrored`() {
         listOf(0.0, 34.0, 61.0, 90.0, 100.0).forEach {
-            assertEquals("$it% unmirrored", driverTierIndex(it), driverTierLit(it, higherIsBetter = true))
+            assertEquals(
+                "$it% unmirrored",
+                RustScores.sleepDriverTier(it),
+                RustScores.sleepDriverTierLit(it, higherIsBetter = true),
+            )
         }
     }
 

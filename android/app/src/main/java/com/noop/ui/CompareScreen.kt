@@ -52,6 +52,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.noop.data.DailyMetric
 import com.noop.data.MoodStore
 import com.noop.ingest.NutritionCsvImporter
+import uniffi.whoop_ffi.CorrelationStrength
 import java.util.Locale
 import kotlin.math.abs
 

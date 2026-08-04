@@ -1729,7 +1729,7 @@ private fun relationshipSentence(rel: Relationship): String {
         "(r = ${String.format(Locale.US, "%.2f", rel.r)}, n = ${rel.n})."
 }
 
-/** Tint a correlation by strength, keyed on the recovery gradient so strong positive
- *  reads mint and strong negative reads red. Maps r∈[-1,1] → 0…1 of the scale. */
+/** Tint a correlation on the recovery gradient, so strong positive reads mint and strong negative
+ *  reads red. Where an r sits on the ramp is whoop-rs's. */
 private fun correlationColor(r: Double): Color =
-    Palette.sample(Palette.recoveryStops, ((r + 1.0) / 2.0).toFloat())
+    Palette.sample(Palette.recoveryStops, RustScores.rampPositionCorrelation(r).toFloat())

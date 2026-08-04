@@ -14,6 +14,8 @@ import uniffi.whoop_ffi.WorkoutGravitySample
 import uniffi.whoop_ffi.DebtNightInput
 import uniffi.whoop_ffi.DriverBaselineInfo
 import uniffi.whoop_ffi.DriverRow
+import uniffi.whoop_ffi.CorrelationStrength
+import uniffi.whoop_ffi.DebtSeverity
 import uniffi.whoop_ffi.RecoveryState
 import uniffi.whoop_ffi.FitnessAgeInfo
 import uniffi.whoop_ffi.HourPointInfo
@@ -750,6 +752,44 @@ internal object RustScores {
 
     /** Second-half mean minus first-half mean of a series; null under four points. */
     fun halfChange(values: List<Double>): Double? = uniffi.whoop_ffi.seriesHalfChange(values)
+
+    // ── Bands and tiers (the cut points behind a word, a swatch or a ramp position) ───────────
+
+    /** How many equal tiers a sleep-performance driver's 0-100 is read in. */
+    val sleepDriverTiers: Int by lazy { uniffi.whoop_ffi.sleepDriverTiers().toInt() }
+
+    /** Which tier a driver's 0-100 falls in, counting from 0. Off-scale values clamp into range. */
+    fun sleepDriverTier(percent: Double): Int = uniffi.whoop_ffi.sleepDriverTier(percent).toInt()
+
+    /** The tier a driver LIGHTS: mirrored when its 0 is the good end. Only the lit tier moves. */
+    fun sleepDriverTierLit(percent: Double, higherIsBetter: Boolean): Int =
+        uniffi.whoop_ffi.sleepDriverTierLit(percent, higherIsBetter).toInt()
+
+    /** Where a tier sits on a 0..1 ramp, so its swatch samples the scale the value does. */
+    fun sleepDriverTierPosition(tier: Int): Double =
+        uniffi.whoop_ffi.sleepDriverTierPosition(tier.toUInt())
+
+    /** How far behind a SIGNED sleep-debt balance reads; the colour for each band is the UI's. */
+    fun sleepDebtSeverity(balanceMin: Double): DebtSeverity =
+        uniffi.whoop_ffi.sleepDebtSeverity(balanceMin)
+
+    /** The strength band of a Pearson r, by |r|. Each surface words the band its own way. */
+    fun correlationStrength(r: Double): CorrelationStrength = uniffi.whoop_ffi.correlationStrength(r)
+
+    /** Fewest overlapping day pairs a correlation may be shown from. */
+    val correlationMinPairs: Int by lazy { uniffi.whoop_ffi.correlationMinPairs().toInt() }
+
+    /** Anchor positions of the Charge and Effort reading ramps; the colours at them are the palette's. */
+    val rampStops: uniffi.whoop_ffi.RampStopsInfo by lazy { uniffi.whoop_ffi.rampStops() }
+
+    /** Where a 0-100 score sits on its ramp, clamped to the ends. */
+    fun rampPositionScore(score: Double): Double = uniffi.whoop_ffi.rampPositionScore(score)
+
+    /** Where an already-normalised 0..1 fraction sits on its ramp. */
+    fun rampPositionFraction(fraction: Double): Double = uniffi.whoop_ffi.rampPositionFraction(fraction)
+
+    /** Where a Pearson r sits on a ramp: −1 at the bottom, 0 at the middle, +1 at the top. */
+    fun rampPositionCorrelation(r: Double): Double = uniffi.whoop_ffi.rampPositionCorrelation(r)
 
     // ── Tuning tables (whoop-rs owns every value; read, never copied) ─────────
 

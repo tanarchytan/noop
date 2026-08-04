@@ -691,13 +691,45 @@ internal object IntegrityCheckingUniffiLib {
     ): Int
     external fun uniffi_whoop_ffi_checksum_func_workout_detect(
     ): Int
+    external fun uniffi_whoop_ffi_checksum_func_correlation_min_pairs(
+    ): Int
+    external fun uniffi_whoop_ffi_checksum_func_correlation_strength(
+    ): Int
+    external fun uniffi_whoop_ffi_checksum_func_ramp_position_correlation(
+    ): Int
+    external fun uniffi_whoop_ffi_checksum_func_ramp_position_fraction(
+    ): Int
+    external fun uniffi_whoop_ffi_checksum_func_ramp_position_score(
+    ): Int
+    external fun uniffi_whoop_ffi_checksum_func_ramp_stops(
+    ): Int
+    external fun uniffi_whoop_ffi_checksum_func_sleep_debt_severity(
+    ): Int
+    external fun uniffi_whoop_ffi_checksum_func_sleep_driver_tier(
+    ): Int
+    external fun uniffi_whoop_ffi_checksum_func_sleep_driver_tier_lit(
+    ): Int
+    external fun uniffi_whoop_ffi_checksum_func_sleep_driver_tier_position(
+    ): Int
+    external fun uniffi_whoop_ffi_checksum_func_sleep_driver_tiers(
+    ): Int
     external fun uniffi_whoop_ffi_checksum_func_baseline_fold_history(
     ): Int
     external fun uniffi_whoop_ffi_checksum_func_baseline_metric_cfg(
     ): Int
     external fun uniffi_whoop_ffi_checksum_func_baseline_update(
     ): Int
+    external fun uniffi_whoop_ffi_checksum_func_skin_temp_history(
+    ): Int
+    external fun uniffi_whoop_ffi_checksum_func_skin_temp_is_absolute(
+    ): Int
+    external fun uniffi_whoop_ffi_checksum_func_vital_band(
+    ): Int
+    external fun uniffi_whoop_ffi_checksum_func_vital_typical_range(
+    ): Int
     external fun uniffi_whoop_ffi_checksum_func_baselines_cfg(
+    ): Int
+    external fun uniffi_whoop_ffi_checksum_func_hydration_cfg(
     ): Int
     external fun uniffi_whoop_ffi_checksum_func_nap_defaults(
     ): Int
@@ -779,6 +811,8 @@ internal object IntegrityCheckingUniffiLib {
     ): Int
     external fun uniffi_whoop_ffi_checksum_func_daily_resting_hr(
     ): Int
+    external fun uniffi_whoop_ffi_checksum_func_effort_on_axis(
+    ): Int
     external fun uniffi_whoop_ffi_checksum_func_fitness_age_compute(
     ): Int
     external fun uniffi_whoop_ffi_checksum_func_hr_recovery_calculate(
@@ -857,11 +891,21 @@ internal object IntegrityCheckingUniffiLib {
     ): Int
     external fun uniffi_whoop_ffi_checksum_func_daytime_stress(
     ): Int
+    external fun uniffi_whoop_ffi_checksum_func_hydration_baseline_for_sex(
+    ): Int
+    external fun uniffi_whoop_ffi_checksum_func_hydration_daily_goal_ml(
+    ): Int
+    external fun uniffi_whoop_ffi_checksum_func_hydration_effort_bump_ml(
+    ): Int
     external fun uniffi_whoop_ffi_checksum_func_series_half_change(
+    ): Int
+    external fun uniffi_whoop_ffi_checksum_func_series_max(
     ): Int
     external fun uniffi_whoop_ffi_checksum_func_series_mean(
     ): Int
     external fun uniffi_whoop_ffi_checksum_func_series_median(
+    ): Int
+    external fun uniffi_whoop_ffi_checksum_func_series_min(
     ): Int
     external fun uniffi_whoop_ffi_checksum_func_series_pearson(
     ): Int
@@ -1047,13 +1091,45 @@ internal object UniffiLib {
     ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_func_workout_detect(`hr`: RustBuffer.ByValue,`gravity`: RustBuffer.ByValue,`restingHr`: RustBuffer.ByValue,`maxHr`: RustBuffer.ByValue,`age`: RustBuffer.ByValue,`weightKg`: Double,`heightCm`: Double,`sex`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
+    external fun uniffi_whoop_ffi_fn_func_correlation_min_pairs(uniffi_out_err: UniffiRustCallStatus, 
+    ): Int
+    external fun uniffi_whoop_ffi_fn_func_correlation_strength(`r`: Double,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    external fun uniffi_whoop_ffi_fn_func_ramp_position_correlation(`r`: Double,uniffi_out_err: UniffiRustCallStatus, 
+    ): Double
+    external fun uniffi_whoop_ffi_fn_func_ramp_position_fraction(`fraction`: Double,uniffi_out_err: UniffiRustCallStatus, 
+    ): Double
+    external fun uniffi_whoop_ffi_fn_func_ramp_position_score(`score`: Double,uniffi_out_err: UniffiRustCallStatus, 
+    ): Double
+    external fun uniffi_whoop_ffi_fn_func_ramp_stops(uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    external fun uniffi_whoop_ffi_fn_func_sleep_debt_severity(`balanceMin`: Double,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    external fun uniffi_whoop_ffi_fn_func_sleep_driver_tier(`percent`: Double,uniffi_out_err: UniffiRustCallStatus, 
+    ): Int
+    external fun uniffi_whoop_ffi_fn_func_sleep_driver_tier_lit(`percent`: Double,`higherIsBetter`: Byte,uniffi_out_err: UniffiRustCallStatus, 
+    ): Int
+    external fun uniffi_whoop_ffi_fn_func_sleep_driver_tier_position(`tier`: Int,uniffi_out_err: UniffiRustCallStatus, 
+    ): Double
+    external fun uniffi_whoop_ffi_fn_func_sleep_driver_tiers(uniffi_out_err: UniffiRustCallStatus, 
+    ): Int
     external fun uniffi_whoop_ffi_fn_func_baseline_fold_history(`values`: RustBuffer.ByValue,`cfg`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_func_baseline_metric_cfg(`metric`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_func_baseline_update(`state`: RustBuffer.ByValue,`value`: RustBuffer.ByValue,`cfg`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
+    external fun uniffi_whoop_ffi_fn_func_skin_temp_history(`value`: Double,`history`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    external fun uniffi_whoop_ffi_fn_func_skin_temp_is_absolute(`value`: Double,uniffi_out_err: UniffiRustCallStatus, 
+    ): Byte
+    external fun uniffi_whoop_ffi_fn_func_vital_band(`value`: RustBuffer.ByValue,`history`: RustBuffer.ByValue,`populationRange`: RustBuffer.ByValue,`cfg`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    external fun uniffi_whoop_ffi_fn_func_vital_typical_range(`vital`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_func_baselines_cfg(uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    external fun uniffi_whoop_ffi_fn_func_hydration_cfg(uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_func_nap_defaults(uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
@@ -1135,6 +1211,8 @@ internal object UniffiLib {
     ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_func_daily_resting_hr(`sessionFloors`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
+    external fun uniffi_whoop_ffi_fn_func_effort_on_axis(`value`: Double,`whoopAxis`: Byte,uniffi_out_err: UniffiRustCallStatus, 
+    ): Double
     external fun uniffi_whoop_ffi_fn_func_fitness_age_compute(`age`: Double,`sex`: RustBuffer.ByValue,`restingHr`: Double,`paIndex`: Double,`waistCm`: RustBuffer.ByValue,`lowerConfidence`: Byte,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_func_hr_recovery_calculate(`hr`: RustBuffer.ByValue,`workoutStart`: Long,`workoutEnd`: Long,`maxHr`: Double,uniffi_out_err: UniffiRustCallStatus, 
@@ -1213,11 +1291,21 @@ internal object UniffiLib {
     ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_func_daytime_stress(`hours`: RustBuffer.ByValue,`sleepSpans`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
+    external fun uniffi_whoop_ffi_fn_func_hydration_baseline_for_sex(`sex`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): Int
+    external fun uniffi_whoop_ffi_fn_func_hydration_daily_goal_ml(`sex`: RustBuffer.ByValue,`effort`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): Int
+    external fun uniffi_whoop_ffi_fn_func_hydration_effort_bump_ml(`effort`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): Int
     external fun uniffi_whoop_ffi_fn_func_series_half_change(`values`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
+    external fun uniffi_whoop_ffi_fn_func_series_max(`values`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): Double
     external fun uniffi_whoop_ffi_fn_func_series_mean(`values`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): Double
     external fun uniffi_whoop_ffi_fn_func_series_median(`values`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): Double
+    external fun uniffi_whoop_ffi_fn_func_series_min(`values`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): Double
     external fun uniffi_whoop_ffi_fn_func_series_pearson(`xs`: RustBuffer.ByValue,`ys`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
@@ -1385,6 +1473,39 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_whoop_ffi_checksum_func_workout_detect() != 49862) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_whoop_ffi_checksum_func_correlation_min_pairs() != 7050) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_whoop_ffi_checksum_func_correlation_strength() != 29903) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_whoop_ffi_checksum_func_ramp_position_correlation() != 2744) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_whoop_ffi_checksum_func_ramp_position_fraction() != 31085) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_whoop_ffi_checksum_func_ramp_position_score() != 6683) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_whoop_ffi_checksum_func_ramp_stops() != 22832) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_whoop_ffi_checksum_func_sleep_debt_severity() != 973) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_whoop_ffi_checksum_func_sleep_driver_tier() != 17233) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_whoop_ffi_checksum_func_sleep_driver_tier_lit() != 14751) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_whoop_ffi_checksum_func_sleep_driver_tier_position() != 10387) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_whoop_ffi_checksum_func_sleep_driver_tiers() != 58428) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_whoop_ffi_checksum_func_baseline_fold_history() != 15983) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
@@ -1394,7 +1515,22 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_whoop_ffi_checksum_func_baseline_update() != 62026) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_whoop_ffi_checksum_func_skin_temp_history() != 54314) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_whoop_ffi_checksum_func_skin_temp_is_absolute() != 16638) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_whoop_ffi_checksum_func_vital_band() != 35352) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_whoop_ffi_checksum_func_vital_typical_range() != 59030) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_whoop_ffi_checksum_func_baselines_cfg() != 52314) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_whoop_ffi_checksum_func_hydration_cfg() != 54310) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_whoop_ffi_checksum_func_nap_defaults() != 45829) {
@@ -1517,6 +1653,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_whoop_ffi_checksum_func_daily_resting_hr() != 6631) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_whoop_ffi_checksum_func_effort_on_axis() != 3407) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_whoop_ffi_checksum_func_fitness_age_compute() != 9363) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
@@ -1634,13 +1773,28 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_whoop_ffi_checksum_func_daytime_stress() != 15774) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_whoop_ffi_checksum_func_hydration_baseline_for_sex() != 50059) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_whoop_ffi_checksum_func_hydration_daily_goal_ml() != 6745) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_whoop_ffi_checksum_func_hydration_effort_bump_ml() != 54387) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_whoop_ffi_checksum_func_series_half_change() != 38773) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_whoop_ffi_checksum_func_series_max() != 57975) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_whoop_ffi_checksum_func_series_mean() != 2118) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_whoop_ffi_checksum_func_series_median() != 48020) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_whoop_ffi_checksum_func_series_min() != 16443) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_whoop_ffi_checksum_func_series_pearson() != 15008) {
@@ -4521,6 +4675,62 @@ public object FfiConverterTypeHrvReadinessInfo: FfiConverterRustBuffer<HrvReadin
 
 
 /**
+ * Sex baselines, the Effort bump ceiling and the rounding grid behind `hydration_daily_goal_ml`.
+ */
+data class HydrationCfgInfo (
+    var `baselineMaleMl`: kotlin.Int
+    , 
+    var `baselineFemaleMl`: kotlin.Int
+    , 
+    var `baselineOtherMl`: kotlin.Int
+    , 
+    var `maxEffortBumpMl`: kotlin.Int
+    , 
+    var `roundToMl`: kotlin.Int
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeHydrationCfgInfo: FfiConverterRustBuffer<HydrationCfgInfo> {
+    override fun read(buf: ByteBuffer): HydrationCfgInfo {
+        return HydrationCfgInfo(
+            FfiConverterInt.read(buf),
+            FfiConverterInt.read(buf),
+            FfiConverterInt.read(buf),
+            FfiConverterInt.read(buf),
+            FfiConverterInt.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: HydrationCfgInfo) = (
+            FfiConverterInt.allocationSize(value.`baselineMaleMl`) +
+            FfiConverterInt.allocationSize(value.`baselineFemaleMl`) +
+            FfiConverterInt.allocationSize(value.`baselineOtherMl`) +
+            FfiConverterInt.allocationSize(value.`maxEffortBumpMl`) +
+            FfiConverterInt.allocationSize(value.`roundToMl`)
+    )
+
+    override fun write(value: HydrationCfgInfo, buf: ByteBuffer) {
+            FfiConverterInt.write(value.`baselineMaleMl`, buf)
+            FfiConverterInt.write(value.`baselineFemaleMl`, buf)
+            FfiConverterInt.write(value.`baselineOtherMl`, buf)
+            FfiConverterInt.write(value.`maxEffortBumpMl`, buf)
+            FfiConverterInt.write(value.`roundToMl`, buf)
+    }
+}
+
+
+
+/**
  * The trailing-baseline policy every illness signal is scored against.
  */
 data class IllnessBaselineCfgInfo (
@@ -5540,6 +5750,47 @@ public object FfiConverterTypePpgSample: FfiConverterRustBuffer<PpgSample> {
     override fun write(value: PpgSample, buf: ByteBuffer) {
             FfiConverterLong.write(value.`ts`, buf)
             FfiConverterInt.write(value.`value`, buf)
+    }
+}
+
+
+
+/**
+ * Anchor positions of the two reading ramps on a 0..1 scale. The colours at them are the caller's.
+ */
+data class RampStopsInfo (
+    var `recovery`: List<kotlin.Double>
+    , 
+    var `strain`: List<kotlin.Double>
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeRampStopsInfo: FfiConverterRustBuffer<RampStopsInfo> {
+    override fun read(buf: ByteBuffer): RampStopsInfo {
+        return RampStopsInfo(
+            FfiConverterSequenceDouble.read(buf),
+            FfiConverterSequenceDouble.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: RampStopsInfo) = (
+            FfiConverterSequenceDouble.allocationSize(value.`recovery`) +
+            FfiConverterSequenceDouble.allocationSize(value.`strain`)
+    )
+
+    override fun write(value: RampStopsInfo, buf: ByteBuffer) {
+            FfiConverterSequenceDouble.write(value.`recovery`, buf)
+            FfiConverterSequenceDouble.write(value.`strain`, buf)
     }
 }
 
@@ -6982,7 +7233,8 @@ public object FfiConverterTypeSpo2Span: FfiConverterRustBuffer<Spo2Span> {
 
 
 /**
- * Effort (strain) scale, log-map denominator and the two coverage gates.
+ * Effort (strain) scale, log-map denominator, the two coverage gates, and the Day Strain axis a
+ * display or an import boundary converts to.
  */
 data class StrainCfgInfo (
     var `minReadings`: kotlin.UInt
@@ -6992,6 +7244,12 @@ data class StrainCfgInfo (
     var `maxStrain`: kotlin.Double
     , 
     var `denominator`: kotlin.Double
+    , 
+    var `whoopDayStrainMax`: kotlin.Double
+    , 
+    var `whoopDayStrainToEffort`: kotlin.Double
+    , 
+    var `effortToWhoopDayStrain`: kotlin.Double
     
 ){
     
@@ -7012,6 +7270,9 @@ public object FfiConverterTypeStrainCfgInfo: FfiConverterRustBuffer<StrainCfgInf
             FfiConverterLong.read(buf),
             FfiConverterDouble.read(buf),
             FfiConverterDouble.read(buf),
+            FfiConverterDouble.read(buf),
+            FfiConverterDouble.read(buf),
+            FfiConverterDouble.read(buf),
         )
     }
 
@@ -7019,7 +7280,10 @@ public object FfiConverterTypeStrainCfgInfo: FfiConverterRustBuffer<StrainCfgInf
             FfiConverterUInt.allocationSize(value.`minReadings`) +
             FfiConverterLong.allocationSize(value.`minSpanSeconds`) +
             FfiConverterDouble.allocationSize(value.`maxStrain`) +
-            FfiConverterDouble.allocationSize(value.`denominator`)
+            FfiConverterDouble.allocationSize(value.`denominator`) +
+            FfiConverterDouble.allocationSize(value.`whoopDayStrainMax`) +
+            FfiConverterDouble.allocationSize(value.`whoopDayStrainToEffort`) +
+            FfiConverterDouble.allocationSize(value.`effortToWhoopDayStrain`)
     )
 
     override fun write(value: StrainCfgInfo, buf: ByteBuffer) {
@@ -7027,6 +7291,9 @@ public object FfiConverterTypeStrainCfgInfo: FfiConverterRustBuffer<StrainCfgInf
             FfiConverterLong.write(value.`minSpanSeconds`, buf)
             FfiConverterDouble.write(value.`maxStrain`, buf)
             FfiConverterDouble.write(value.`denominator`, buf)
+            FfiConverterDouble.write(value.`whoopDayStrainMax`, buf)
+            FfiConverterDouble.write(value.`whoopDayStrainToEffort`, buf)
+            FfiConverterDouble.write(value.`effortToWhoopDayStrain`, buf)
     }
 }
 
@@ -7359,6 +7626,94 @@ public object FfiConverterTypeTrendlineInfo: FfiConverterRustBuffer<TrendlineInf
             FfiConverterDouble.write(value.`significance`, buf)
             FfiConverterTypeTrendDirectionInfo.write(value.`direction`, buf)
             FfiConverterUInt.write(value.`n`, buf)
+    }
+}
+
+
+
+/**
+ * An inclusive typical-adult window.
+ */
+data class TypicalRangeInfo (
+    var `min`: kotlin.Double
+    , 
+    var `max`: kotlin.Double
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeTypicalRangeInfo: FfiConverterRustBuffer<TypicalRangeInfo> {
+    override fun read(buf: ByteBuffer): TypicalRangeInfo {
+        return TypicalRangeInfo(
+            FfiConverterDouble.read(buf),
+            FfiConverterDouble.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: TypicalRangeInfo) = (
+            FfiConverterDouble.allocationSize(value.`min`) +
+            FfiConverterDouble.allocationSize(value.`max`)
+    )
+
+    override fun write(value: TypicalRangeInfo, buf: ByteBuffer) {
+            FfiConverterDouble.write(value.`min`, buf)
+            FfiConverterDouble.write(value.`max`, buf)
+    }
+}
+
+
+
+/**
+ * One banded vital: `band` ∈ inRange/outOfRange/noData, `basis` ∈ personal/population, and the
+ * valid-night count the basis was decided on.
+ */
+data class VitalBandInfo (
+    var `band`: kotlin.String
+    , 
+    var `basis`: kotlin.String
+    , 
+    var `nights`: kotlin.Int
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeVitalBandInfo: FfiConverterRustBuffer<VitalBandInfo> {
+    override fun read(buf: ByteBuffer): VitalBandInfo {
+        return VitalBandInfo(
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterInt.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: VitalBandInfo) = (
+            FfiConverterString.allocationSize(value.`band`) +
+            FfiConverterString.allocationSize(value.`basis`) +
+            FfiConverterInt.allocationSize(value.`nights`)
+    )
+
+    override fun write(value: VitalBandInfo, buf: ByteBuffer) {
+            FfiConverterString.write(value.`band`, buf)
+            FfiConverterString.write(value.`basis`, buf)
+            FfiConverterInt.write(value.`nights`, buf)
     }
 }
 
@@ -7869,6 +8224,84 @@ public object FfiConverterTypeChan: FfiConverterRustBuffer<Chan> {
     override fun allocationSize(value: Chan) = 4UL
 
     override fun write(value: Chan, buf: ByteBuffer) {
+        buf.putInt(value.ordinal + 1)
+    }
+}
+
+
+
+
+
+/**
+ * How strong a correlation reads. Each surface words these its own way; none owns the cut points.
+ */
+
+enum class CorrelationStrength {
+    
+    NEGLIGIBLE,
+    WEAK,
+    MODERATE,
+    STRONG,
+    VERY_STRONG;
+
+    
+
+
+    companion object
+}
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeCorrelationStrength: FfiConverterRustBuffer<CorrelationStrength> {
+    override fun read(buf: ByteBuffer) = try {
+        CorrelationStrength.values()[buf.getInt() - 1]
+    } catch (e: IndexOutOfBoundsException) {
+        throw RuntimeException("invalid enum value, something is very wrong!!", e)
+    }
+
+    override fun allocationSize(value: CorrelationStrength) = 4UL
+
+    override fun write(value: CorrelationStrength, buf: ByteBuffer) {
+        buf.putInt(value.ordinal + 1)
+    }
+}
+
+
+
+
+
+/**
+ * How far behind a sleep-debt balance reads. The word and colour for each band are the caller's.
+ */
+
+enum class DebtSeverity {
+    
+    ON_TARGET,
+    MODERATE,
+    HEAVY;
+
+    
+
+
+    companion object
+}
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeDebtSeverity: FfiConverterRustBuffer<DebtSeverity> {
+    override fun read(buf: ByteBuffer) = try {
+        DebtSeverity.values()[buf.getInt() - 1]
+    } catch (e: IndexOutOfBoundsException) {
+        throw RuntimeException("invalid enum value, something is very wrong!!", e)
+    }
+
+    override fun allocationSize(value: DebtSeverity) = 4UL
+
+    override fun write(value: DebtSeverity, buf: ByteBuffer) {
         buf.putInt(value.ordinal + 1)
     }
 }
@@ -10030,6 +10463,38 @@ public object FfiConverterOptionalTypeTrendlineInfo: FfiConverterRustBuffer<Tren
 /**
  * @suppress
  */
+public object FfiConverterOptionalTypeTypicalRangeInfo: FfiConverterRustBuffer<TypicalRangeInfo?> {
+    override fun read(buf: ByteBuffer): TypicalRangeInfo? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterTypeTypicalRangeInfo.read(buf)
+    }
+
+    override fun allocationSize(value: TypicalRangeInfo?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterTypeTypicalRangeInfo.allocationSize(value)
+        }
+    }
+
+    override fun write(value: TypicalRangeInfo?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterTypeTypicalRangeInfo.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterOptionalTypeVitalityInfo: FfiConverterRustBuffer<VitalityInfo?> {
     override fun read(buf: ByteBuffer): VitalityInfo? {
         if (buf.get().toInt() == 0) {
@@ -11774,6 +12239,158 @@ public object FfiConverterSequenceOptionalDouble: FfiConverterRustBuffer<List<ko
     )
     }
     
+
+        /**
+         * Fewest overlapping day pairs a correlation may be shown from.
+         */ fun `correlationMinPairs`(): kotlin.UInt {
+            return FfiConverterUInt.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_func_correlation_min_pairs(
+    
+        _status)
+}
+    )
+    }
+    
+
+        /**
+         * Strength band of a Pearson `r`, cut on `|r|`, so −0.62 and +0.62 read equally strong.
+         */ fun `correlationStrength`(`r`: kotlin.Double): CorrelationStrength {
+            return FfiConverterTypeCorrelationStrength.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_func_correlation_strength(
+    
+        
+        FfiConverterDouble.lower(`r`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Where a Pearson `r` sits on a ramp: −1 at the bottom, 0 at the middle, +1 at the top.
+         */ fun `rampPositionCorrelation`(`r`: kotlin.Double): kotlin.Double {
+            return FfiConverterDouble.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_func_ramp_position_correlation(
+    
+        
+        FfiConverterDouble.lower(`r`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Where an already-normalised 0..1 fraction sits on its ramp.
+         */ fun `rampPositionFraction`(`fraction`: kotlin.Double): kotlin.Double {
+            return FfiConverterDouble.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_func_ramp_position_fraction(
+    
+        
+        FfiConverterDouble.lower(`fraction`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Where a 0-100 score sits on its ramp, clamped to the ends.
+         */ fun `rampPositionScore`(`score`: kotlin.Double): kotlin.Double {
+            return FfiConverterDouble.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_func_ramp_position_score(
+    
+        
+        FfiConverterDouble.lower(`score`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * The ramp anchor positions, so a palette places its colours instead of naming where they sit.
+         */ fun `rampStops`(): RampStopsInfo {
+            return FfiConverterTypeRampStopsInfo.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_func_ramp_stops(
+    
+        _status)
+}
+    )
+    }
+    
+
+        /**
+         * Severity band of a SIGNED ledger balance (minutes; negative = debt). Any surplus is on target.
+         */ fun `sleepDebtSeverity`(`balanceMin`: kotlin.Double): DebtSeverity {
+            return FfiConverterTypeDebtSeverity.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_func_sleep_debt_severity(
+    
+        
+        FfiConverterDouble.lower(`balanceMin`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Which tier a driver's 0-100 falls in, counting from 0. Off-scale values clamp into range.
+         */ fun `sleepDriverTier`(`percent`: kotlin.Double): kotlin.UInt {
+            return FfiConverterUInt.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_func_sleep_driver_tier(
+    
+        
+        FfiConverterDouble.lower(`percent`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * The tier a driver LIGHTS, mirrored when `higher_is_better` is false. Only the lit tier moves.
+         */ fun `sleepDriverTierLit`(`percent`: kotlin.Double, `higherIsBetter`: kotlin.Boolean): kotlin.UInt {
+            return FfiConverterUInt.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_func_sleep_driver_tier_lit(
+    
+        
+        FfiConverterDouble.lower(`percent`),
+        FfiConverterBoolean.lower(`higherIsBetter`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Where a tier sits on a 0..1 ramp, so its swatch samples the same scale the value does.
+         */ fun `sleepDriverTierPosition`(`tier`: kotlin.UInt): kotlin.Double {
+            return FfiConverterDouble.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_func_sleep_driver_tier_position(
+    
+        
+        FfiConverterUInt.lower(`tier`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * How many equal tiers a sleep-performance driver's 0-100 is read in.
+         */ fun `sleepDriverTiers`(): kotlin.UInt {
+            return FfiConverterUInt.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_func_sleep_driver_tiers(
+    
+        _status)
+}
+    )
+    }
+    
  fun `baselineFoldHistory`(`values`: List<kotlin.Double?>, `cfg`: MetricCfgInfo): BaselineStateInfo {
             return FfiConverterTypeBaselineStateInfo.lift(
     uniffiRustCall() { _status ->
@@ -11817,11 +12434,88 @@ public object FfiConverterSequenceOptionalDouble: FfiConverterRustBuffer<List<ko
     
 
         /**
+         * Blank every history entry of the other skin-temp kind, so a baseline is never folded across the
+         * absolute and deviation scales at once.
+         */ fun `skinTempHistory`(`value`: kotlin.Double, `history`: List<kotlin.Double?>): List<kotlin.Double?> {
+            return FfiConverterSequenceOptionalDouble.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_func_skin_temp_history(
+    
+        
+        FfiConverterDouble.lower(`value`),
+        FfiConverterSequenceOptionalDouble.lower(`history`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Whether a skin-temp reading is an absolute wrist temperature rather than a ±°C deviation.
+         */ fun `skinTempIsAbsolute`(`value`: kotlin.Double): kotlin.Boolean {
+            return FfiConverterBoolean.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_func_skin_temp_is_absolute(
+    
+        
+        FfiConverterDouble.lower(`value`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Band one vital against the wearer's own baseline once trusted, else the typical window.
+         * `history` is nightly values oldest first excluding the displayed day; a `None` `cfg` leaves the
+         * window as the only yardstick.
+         */ fun `vitalBand`(`value`: kotlin.Double?, `history`: List<kotlin.Double?>, `populationRange`: TypicalRangeInfo, `cfg`: MetricCfgInfo?): VitalBandInfo {
+            return FfiConverterTypeVitalBandInfo.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_func_vital_band(
+    
+        
+        FfiConverterOptionalDouble.lower(`value`),
+        FfiConverterSequenceOptionalDouble.lower(`history`),
+        FfiConverterTypeTypicalRangeInfo.lower(`populationRange`),
+        FfiConverterOptionalTypeMetricCfgInfo.lower(`cfg`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * The typical-adult window for a vital key ("resp" / "spo2" / "rhr" / "hrv" / "skin_abs" /
+         * "skin_dev"); `None` for an unknown key.
+         */ fun `vitalTypicalRange`(`vital`: kotlin.String): TypicalRangeInfo? {
+            return FfiConverterOptionalTypeTypicalRangeInfo.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_func_vital_typical_range(
+    
+        
+        FfiConverterString.lower(`vital`),_status)
+}
+    )
+    }
+    
+
+        /**
          * The cold-start gates every metric baseline shares, beside the per-metric `baseline_metric_cfg`.
          */ fun `baselinesCfg`(): BaselinesCfgInfo {
             return FfiConverterTypeBaselinesCfgInfo.lift(
     uniffiRustCall() { _status ->
     UniffiLib.uniffi_whoop_ffi_fn_func_baselines_cfg(
+    
+        _status)
+}
+    )
+    }
+    
+
+        /**
+         * The daily fluid-goal tuning.
+         */ fun `hydrationCfg`(): HydrationCfgInfo {
+            return FfiConverterTypeHydrationCfgInfo.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_func_hydration_cfg(
     
         _status)
 }
@@ -12417,6 +13111,22 @@ public object FfiConverterSequenceOptionalDouble: FfiConverterRustBuffer<List<ko
     
         
         FfiConverterSequenceOptionalInt.lower(`sessionFloors`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * A stored Effort on the axis the reader chose: Day Strain when `whoop_axis`, else the native
+         * 0–100 value unchanged. The stored number never moves; only what is shown converts.
+         */ fun `effortOnAxis`(`value`: kotlin.Double, `whoopAxis`: kotlin.Boolean): kotlin.Double {
+            return FfiConverterDouble.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_func_effort_on_axis(
+    
+        
+        FfiConverterDouble.lower(`value`),
+        FfiConverterBoolean.lower(`whoopAxis`),_status)
 }
     )
     }
@@ -13034,12 +13744,69 @@ public object FfiConverterSequenceOptionalDouble: FfiConverterRustBuffer<List<ko
     
 
         /**
+         * The sex baseline (ml) behind the daily fluid goal. Anything but male/female is neutral.
+         */ fun `hydrationBaselineForSex`(`sex`: kotlin.String): kotlin.Int {
+            return FfiConverterInt.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_func_hydration_baseline_for_sex(
+    
+        
+        FfiConverterString.lower(`sex`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * The displayed daily fluid goal (ml): sex baseline + Effort bump, on the rounding grid.
+         */ fun `hydrationDailyGoalMl`(`sex`: kotlin.String, `effort`: kotlin.Double?): kotlin.Int {
+            return FfiConverterInt.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_func_hydration_daily_goal_ml(
+    
+        
+        FfiConverterString.lower(`sex`),
+        FfiConverterOptionalDouble.lower(`effort`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * The extra fluid (ml) today's Effort adds, clamped to the bump ceiling. `None` Effort adds none.
+         */ fun `hydrationEffortBumpMl`(`effort`: kotlin.Double?): kotlin.Int {
+            return FfiConverterInt.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_func_hydration_effort_bump_ml(
+    
+        
+        FfiConverterOptionalDouble.lower(`effort`),_status)
+}
+    )
+    }
+    
+
+        /**
          * Second-half mean minus first-half mean of a series, the odd point going to the recent half. `None`
          * under four points — the window-change number a trend chip shows.
          */ fun `seriesHalfChange`(`values`: List<kotlin.Double>): kotlin.Double? {
             return FfiConverterOptionalDouble.lift(
     uniffiRustCall() { _status ->
     UniffiLib.uniffi_whoop_ffi_fn_func_series_half_change(
+    
+        
+        FfiConverterSequenceDouble.lower(`values`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Largest value in a series. `0.0` when empty, NaN when any value is NaN. See [`series_min`].
+         */ fun `seriesMax`(`values`: List<kotlin.Double>): kotlin.Double {
+            return FfiConverterDouble.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_func_series_max(
     
         
         FfiConverterSequenceDouble.lower(`values`),_status)
@@ -13069,6 +13836,21 @@ public object FfiConverterSequenceOptionalDouble: FfiConverterRustBuffer<List<ko
             return FfiConverterDouble.lift(
     uniffiRustCall() { _status ->
     UniffiLib.uniffi_whoop_ffi_fn_func_series_median(
+    
+        
+        FfiConverterSequenceDouble.lower(`values`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Smallest value in a series. `0.0` when empty, NaN when any value is NaN — the low end of a chart's
+         * own y-axis, sharing an owner with the [`series_mean`] printed between the two extremes.
+         */ fun `seriesMin`(`values`: List<kotlin.Double>): kotlin.Double {
+            return FfiConverterDouble.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_func_series_min(
     
         
         FfiConverterSequenceDouble.lower(`values`),_status)

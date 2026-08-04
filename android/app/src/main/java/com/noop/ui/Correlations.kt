@@ -1,24 +1,20 @@
 package com.noop.ui
 
 import com.noop.analytics.RustScores
-import kotlin.math.abs
+import uniffi.whoop_ffi.CorrelationStrength
 
 // MARK: - Correlation engine
 //
-// The one day-alignment adapter, strength ladder and display gate the correlation surfaces (Compare,
-// Mind, Insights) share. The r itself is whoop-rs's; only the join, the band and the "too few pairs
-// to show" gate live here.
+// The one day-alignment adapter the correlation surfaces (Compare, Mind, Insights) share. The r, the
+// pair gate and the strength ladder are whoop-rs's; only the join and the wording live here.
 
 /** A Pearson r over [n] aligned day pairs. */
 internal data class Correlation(val r: Double, val n: Int)
 
-/** Strength band of a correlation by |r|. Each surface words the band its own way. */
-internal enum class CorrelationStrength { NEGLIGIBLE, WEAK, MODERATE, STRONG, VERY_STRONG }
-
 internal object CorrelationEngine {
 
     /** Below this many overlapping days a correlation is not shown at all. */
-    const val MIN_PAIRS = 3
+    val MIN_PAIRS: Int get() = RustScores.correlationMinPairs
 
     /** Inner-join two day-keyed series on the day key → (x, y) pairs sorted by day. */
     fun alignByDay(
@@ -42,17 +38,8 @@ internal object CorrelationEngine {
         return Correlation(r = r, n = xy.size)
     }
 
-    /** The |r| cut points every correlation surface bands on. */
-    fun strength(r: Double): CorrelationStrength {
-        val m = abs(r)
-        return when {
-            m < 0.1 -> CorrelationStrength.NEGLIGIBLE
-            m < 0.3 -> CorrelationStrength.WEAK
-            m < 0.5 -> CorrelationStrength.MODERATE
-            m < 0.7 -> CorrelationStrength.STRONG
-            else -> CorrelationStrength.VERY_STRONG
-        }
-    }
+    /** The band every correlation surface reads; whoop-rs owns where one band ends and the next begins. */
+    fun strength(r: Double): CorrelationStrength = RustScores.correlationStrength(r)
 
     /** The band as a sentence-opening noun phrase, as Insights and Mind word it. */
     fun strengthPhrase(r: Double): String = when (strength(r)) {

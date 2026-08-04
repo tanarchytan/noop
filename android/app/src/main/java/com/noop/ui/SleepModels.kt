@@ -8,6 +8,7 @@ import com.noop.analytics.SleepDebtLedger
 import com.noop.analytics.SleepStageTotals
 import com.noop.data.DailyMetric
 import com.noop.data.SleepSession
+import uniffi.whoop_ffi.DebtSeverity
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -645,15 +646,13 @@ internal fun debtRead(ledger: SleepDebtLedger): String {
     }
 }
 
-/**
- * Color the balance by sign + size: surplus/within-band → positive green, modest debt →
- * warning, heavier debt → critical.
- */
-internal fun debtBalanceColor(ledger: SleepDebtLedger): Color = when {
-    ledger.magnitudeMin < SleepDebt.ON_TARGET_BAND_MIN || !ledger.isDebt -> Palette.statusPositive
-    ledger.magnitudeMin < 180.0 -> Palette.statusWarning
-    else -> Palette.statusCritical
-}
+/** The balance's colour, one per severity band; whoop-rs decides which band it lands in. */
+internal fun debtBalanceColor(ledger: SleepDebtLedger): Color =
+    when (RustScores.sleepDebtSeverity(ledger.balanceMin)) {
+        DebtSeverity.ON_TARGET -> Palette.statusPositive
+        DebtSeverity.MODERATE -> Palette.statusWarning
+        DebtSeverity.HEAVY -> Palette.statusCritical
+    }
 
 /** Signed "+1h 20m" / "−2h 10m" / "0m" balance string. */
 internal fun debtSigned(minutes: Double): String {

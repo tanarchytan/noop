@@ -76,25 +76,28 @@ object Palette {
     val onFill get() = active.onFill
     const val disabledOpacity = 0.45f
 
-    // Recovery / Charge gradient.
+    // Recovery / Charge gradient, low end to high. Where each anchor sits is whoop-rs's.
     val recovery000 get() = active.recovery000
     val recovery030 get() = active.recovery030
     val recovery055 get() = active.recovery055
     val recovery078 get() = active.recovery078
     val recovery100 get() = active.recovery100
 
-    /** Ordered gradient stops for the recovery scale. */
+    /** The recovery ramp: whoop-rs's anchor positions carrying this scheme's colours, in order. */
     val recoveryStops: List<Pair<Float, Color>>
-        get() = listOf(0.00f to recovery000, 0.30f to recovery030, 0.55f to recovery055, 0.78f to recovery078, 1.00f to recovery100)
+        get() = RustScores.rampStops.recovery.map { it.toFloat() }
+            .zip(listOf(recovery000, recovery030, recovery055, recovery078, recovery100))
 
-    // Strain / Effort ramp.
+    // Strain / Effort ramp, low end to high. Where each anchor sits is whoop-rs's.
     val strain000 get() = active.strain000
     val strain033 get() = active.strain033
     val strain066 get() = active.strain066
     val strain100 get() = active.strain100
 
+    /** The effort ramp: whoop-rs's anchor positions carrying this scheme's colours, in order. */
     val strainStops: List<Pair<Float, Color>>
-        get() = listOf(0.00f to strain000, 0.33f to strain033, 0.66f to strain066, 1.00f to strain100)
+        get() = RustScores.rampStops.strain.map { it.toFloat() }
+            .zip(listOf(strain000, strain033, strain066, strain100))
 
     // Sleep stages.
     val sleepAwake get() = active.sleepAwake
@@ -299,17 +302,20 @@ object Palette {
     fun washLabel(tint: Color): Color = if (isLight) lerp(tint, textPrimary, WASH_LABEL_INK) else tint
 
     /** Sample the recovery gradient at a recovery score 0..100. */
-    fun recoveryColor(score: Double): Color = sample(recoveryStops, (score / 100.0).toFloat())
+    fun recoveryColor(score: Double): Color =
+        sample(recoveryStops, RustScores.rampPositionScore(score).toFloat())
 
     /** Sample the strain gradient at an Effort value on the 0..100 scale. */
-    fun strainColor(strain: Double): Color = sample(strainStops, (strain / 100.0).toFloat())
+    fun strainColor(strain: Double): Color =
+        sample(strainStops, RustScores.rampPositionScore(strain).toFloat())
 
     /**
      * Effort tint sampled by a 0..1 fraction (e.g. value/scaleMax), spreading the full ember→amber
      * ramp. Prefer this for gauge tips / value-tinted accents so a high Effort reads as bright amber
      * rather than ember. strainColor() stays for callers holding a 0..100 value.
      */
-    fun effortTint(fraction: Double): Color = sample(strainStops, fraction.coerceIn(0.0, 1.0).toFloat())
+    fun effortTint(fraction: Double): Color =
+        sample(strainStops, RustScores.rampPositionFraction(fraction).toFloat())
 
     /** The state word for a recovery score. whoop-rs picks the band; only the word is chosen here. */
     fun recoveryState(score: Double): String = when (RustScores.state(score)) {

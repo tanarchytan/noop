@@ -1,5 +1,6 @@
 package com.noop.ui
 
+import com.noop.analytics.RustScores
 import com.noop.data.MockSeeder
 import com.noop.data.SleepSession
 import org.junit.Assert.assertEquals
@@ -153,13 +154,33 @@ class SleepCardFixturesTest {
     /** The driver strip marks which third of 0-100 a value lands in, top tier inclusive at 100. */
     @Test
     fun driverTiersSplitTheRangeInThirds() {
-        assertEquals(0, driverTierIndex(0.0))
-        assertEquals(0, driverTierIndex(33.0))
-        assertEquals(1, driverTierIndex(34.0))
-        assertEquals(1, driverTierIndex(66.0))
-        assertEquals(2, driverTierIndex(67.0))
-        assertEquals(2, driverTierIndex(100.0))
-        assertEquals("above the scale still reads as the top tier", 2, driverTierIndex(140.0))
+        assertEquals(0, RustScores.sleepDriverTier(0.0))
+        assertEquals(0, RustScores.sleepDriverTier(33.0))
+        assertEquals(1, RustScores.sleepDriverTier(34.0))
+        assertEquals(1, RustScores.sleepDriverTier(66.0))
+        assertEquals(2, RustScores.sleepDriverTier(67.0))
+        assertEquals(2, RustScores.sleepDriverTier(100.0))
+        assertEquals("above the scale still reads as the top tier", 2, RustScores.sleepDriverTier(140.0))
+    }
+
+    /** A driver whose 0 is the good end lights the mirrored tier; the tier itself is unmoved. */
+    @Test
+    fun aLowerIsBetterDriverLightsTheMirroredTier() {
+        assertEquals(3, RustScores.sleepDriverTiers)
+        assertEquals(0, RustScores.sleepDriverTierLit(10.0, true))
+        assertEquals(2, RustScores.sleepDriverTierLit(10.0, false))
+        assertEquals(1, RustScores.sleepDriverTierLit(50.0, true))
+        assertEquals(1, RustScores.sleepDriverTierLit(50.0, false))
+        assertEquals(2, RustScores.sleepDriverTierLit(95.0, true))
+        assertEquals(0, RustScores.sleepDriverTierLit(95.0, false))
+    }
+
+    /** The three tier swatches spread across the whole ramp, so the legend reads as one scale. */
+    @Test
+    fun tierSwatchesSpanTheRamp() {
+        assertEquals(0.0, RustScores.sleepDriverTierPosition(0), 0.0)
+        assertEquals(0.5, RustScores.sleepDriverTierPosition(1), 0.0)
+        assertEquals(1.0, RustScores.sleepDriverTierPosition(2), 0.0)
     }
 
     /** Every stage row reads its own minutes, so a row can't print another stage's total. */

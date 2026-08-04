@@ -23,11 +23,12 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.noop.analytics.RustScores
 
 private val SLEEP_VESSEL_DIAMETER: Dp = 184.dp
 
-/** How many tiers the driver strip splits 0-100 into, and the width of one tier. */
-private const val DRIVER_TIERS = 3
+/** How many tiers the driver strip splits 0-100 into, read once from whoop-rs. */
+private val DRIVER_TIERS: Int by lazy { RustScores.sleepDriverTiers }
 
 /**
  * One driver under the sleep-performance score. [percent] is 0-100 and may be absent, which draws an
@@ -97,7 +98,7 @@ internal fun SleepPerformanceCard(score: Double?, asleepMin: Double?, drivers: L
 @Composable
 private fun SleepScoreVessel(score: Double) {
     GlowRing(
-        fraction = (score / 100.0).coerceIn(0.0, 1.0).toFloat(),
+        fraction = RustScores.rampPositionScore(score).toFloat(),
         value = score,
         color = Palette.restColor,
         diameter = SLEEP_VESSEL_DIAMETER,
@@ -143,8 +144,9 @@ private fun SleepDriverRow(driver: SleepDriver) {
  */
 @Composable
 private fun SleepDriverStrip(percent: Double?, higherIsBetter: Boolean) {
-    val fill = percent?.let { (it / 100.0).coerceIn(0.0, 1.0).toFloat() }
-    val tint = percent?.let { driverTierColor(driverTierLit(it, higherIsBetter)) } ?: Palette.textTertiary
+    val fill = percent?.let { RustScores.rampPositionScore(it).toFloat() }
+    val tint = percent?.let { driverTierColor(RustScores.sleepDriverTierLit(it, higherIsBetter)) }
+        ?: Palette.textTertiary
     val tickColor = Palette.hairlineStrong
     Box(
         modifier = Modifier
@@ -169,18 +171,10 @@ private fun SleepDriverStrip(percent: Double?, higherIsBetter: Boolean) {
     )
 }
 
-/** Which third of 0-100 [percent] falls in, clamped to the top tier at 100. */
-internal fun driverTierIndex(percent: Double): Int =
-    ((percent / 100.0) * DRIVER_TIERS).toInt().coerceIn(0, DRIVER_TIERS - 1)
-
-/** The tier the strip lights: the value's own third, mirrored for a driver whose 0 is the good end. */
-internal fun driverTierLit(percent: Double, higherIsBetter: Boolean): Int =
-    driverTierIndex(percent).let { if (higherIsBetter) it else DRIVER_TIERS - 1 - it }
-
 /** The tier's colour: the low, middle and high of the app's own 0-100 ramp, so the three swatches read
  *  as one scale. A text token in the middle drew that swatch in the colour of the word beside it. */
 private fun driverTierColor(tier: Int): Color =
-    Palette.sample(Palette.recoveryStops, tier.toFloat() / (DRIVER_TIERS - 1))
+    Palette.sample(Palette.recoveryStops, RustScores.sleepDriverTierPosition(tier).toFloat())
 
 private fun driverTierWord(tier: Int): String = when (tier) {
     0 -> "Poor"

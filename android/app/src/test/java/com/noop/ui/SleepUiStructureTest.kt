@@ -70,7 +70,7 @@ class SleepUiStructureTest {
             "SleepPerformanceCard.kt" to setOf(
                 "SLEEP_VESSEL_DIAMETER", "DRIVER_TIERS",
                 "SleepDriver", "SleepPerformanceCard", "SleepScoreVessel", "SleepDriverRow",
-                "SleepDriverStrip", "driverTierIndex", "driverTierLit", "driverTierColor", "driverTierWord",
+                "SleepDriverStrip", "driverTierColor", "driverTierWord",
                 "SleepDriverLegend",
             ),
             "SleepHrChart.kt" to setOf(
