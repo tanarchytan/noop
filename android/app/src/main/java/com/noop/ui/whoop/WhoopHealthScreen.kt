@@ -168,7 +168,10 @@ private fun HealthMonitorSummaryCard(
 internal fun HealthRollUpPill(roll: HealthRollUp) {
     StatePill(
         title = roll.title,
-        tone = if (roll.allInRange) StrandTone.Accent else StrandTone.Warning,
+        // All clear is a POSITIVE state, not an interactive affordance. On Accent it was drawn in the
+        // chrome colour, which in light put "5/5 metrics within range" into the same narrow red band
+        // as the heart-rate hue and the critical swatch beside it.
+        tone = if (roll.allInRange) StrandTone.Positive else StrandTone.Warning,
         icon = if (roll.allInRange) Icons.Filled.Check else Icons.Filled.WarningAmber,
         fillsWidth = true,
     )

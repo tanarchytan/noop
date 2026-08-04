@@ -141,16 +141,26 @@ val LightTokens = PaletteTokens(
     surfaceInset = Color(0xFFF4EDE0), hairline = Color(0xFFD8CBB2), hairlineStrong = Color(0xFFC6B597),
     textPrimary = Color(0xFF2A2018), textSecondary = Color(0xFF5C5245), textTertiary = Color(0xFF6C6255),
     glowAmbient = Color(0xFFF0E0C4),
-    // Light chrome accent is terracotta (the warm brand tone for this scheme).
-    accent = Color(0xFFB85A3C), accentHover = Color(0xFFA24A2E), accentMuted = Color(0xFFF2E1D6), focusRing = Color(0xFFB85A3C),
+    // Light chrome accent is terracotta (the warm brand tone for this scheme), set by the same 4.5:1
+    // floor against surfaceBase that fixes textTertiary: the accent carries TEXT (CUSTOMISE, Show
+    // fewer, the selected nav label) on the page itself, and the lighter terracotta measured 3.55:1
+    // there. Hover keeps the light scheme's convention of going darker, not brighter.
+    accent = Color(0xFFA24A2E), accentHover = Color(0xFF8A3D22), accentMuted = Color(0xFFF2E1D6), focusRing = Color(0xFFA24A2E),
     onFill = Color(0xFFFFFFFF),
     recovery000 = Color(0xFFB0402A), recovery030 = Color(0xFFC06A34), recovery055 = Color(0xFFC79A3E),
     recovery078 = Color(0xFF8A9A44), recovery100 = Color(0xFF5E8F4E),
     strain000 = Color(0xFF2A5082), strain033 = Color(0xFF3F6FA8), strain066 = Color(0xFF5A8AC0), strain100 = Color(0xFF7EA8D8),
     sleepAwake = Color(0xFF9AA0AE), sleepLight = Color(0xFF4C7BB8), sleepDeep = Color(0xFF2E5488), sleepREM = Color(0xFF7A5AA8),
     zone1 = Color(0xFF4C7BB8), zone2 = Color(0xFF2E8C9E), zone3 = Color(0xFFC79A3E), zone4 = Color(0xFFC2792E), zone5 = Color(0xFFC0402A),
-    statusPositive = Color(0xFF5E8F4E), statusWarning = Color(0xFFC2792E), statusCritical = Color(0xFFC0402A),
-    metricCyan = Color(0xFF2E8C9E), metricPurple = Color(0xFF7A5AA8), metricAmber = Color(0xFFC2792E), metricRose = Color(0xFFC0402A),
+    // The three STATE tokens are drawn as label text inside a StatePill, on a card (surfaceRaised),
+    // so their floor is 4.5:1 against THAT surface. Spelled by eye the green measured 3.63 and the
+    // amber 3.30, which put "all clear" and "off baseline" below AA on the screen that states them.
+    statusPositive = Color(0xFF4A7A3E), statusWarning = Color(0xFF9E6524), statusCritical = Color(0xFFC0402A),
+    // metricRose is heart rate's IDENTITY, and it had been spelled as the critical red exactly —
+    // dE 7.4 from the recovery floor swatch — so a healthy 55 bpm was drawn in the colour that means
+    // "this is bad". Rose in the dark scheme is magenta; the light twin is a deep rose, dE 39.6 from
+    // critical and 34.4 from the chrome accent.
+    metricCyan = Color(0xFF2E8C9E), metricPurple = Color(0xFF7A5AA8), metricAmber = Color(0xFFC2792E), metricRose = Color(0xFFA83E63),
     chargeColor = Color(0xFFB5673A), chargeDeep = Color(0xFF8F4E24), chargeBright = Color(0xFFD89A5E), chargeGlow = Color(0xFFC2743E),
     effortColor = Color(0xFF3F6FA8), effortDeep = Color(0xFF2A5082), effortBright = Color(0xFF6E9BCC), effortGlow = Color(0xFF3F6FA8),
     restColor = Color(0xFF7A5AA8), restDeep = Color(0xFF54397A), restBright = Color(0xFFA98CD0), restGlow = Color(0xFF7A5AA8),
