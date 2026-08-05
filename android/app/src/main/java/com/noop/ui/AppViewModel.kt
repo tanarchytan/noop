@@ -281,15 +281,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /** Live connection + biometric snapshot, surfaced straight from the BLE client. */
     val live: StateFlow<LiveState> = ble.state
 
-    /** What the WHOOP battery pack last reported over its own read-only link, surfaced straight from
-     *  [com.noop.ble.PowerPackBleClient]. Empty until [watchPowerPack] turns it on. */
-    val powerPack: StateFlow<com.noop.ble.PowerPackState> = noopApp.powerPack.state
-
-    /** Start or stop looking at the pack. Only the Devices screen calls this, for as long as it is on
-     *  screen, so the second link exists only while someone is reading it. */
-    fun watchPowerPack(on: Boolean) {
-        if (on) noopApp.powerPack.start() else noopApp.powerPack.stop()
-    }
+    /** Ask the strap for its battery pack's fuel gauge now. The Devices screen calls this on entry so
+     *  the pack row is current without waiting for the next keep-alive poll. */
+    fun refreshBatteryPack() = ble.refreshBatteryPack()
 
     /** Which strap the user is pairing — drives the scan filter in [connect]. Defaults to WHOOP 4.0. */
     private val _selectedModel = MutableStateFlow(WhoopModel.WHOOP4)

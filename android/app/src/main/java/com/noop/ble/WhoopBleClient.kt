@@ -137,6 +137,14 @@ data class LiveState(
      *  (a.b.c.d) via REPORT_VERSION_INFO, WHOOP 5/MG reports `fw_version` via GET_HELLO. Shown on the
      *  Devices card. Null until the handshake response decodes. */
     val strapFirmware: String? = null,
+    /** The 5.0 battery pack's charge, as the STRAP reports it (GET_BATTERY_PACK_INFO). The pack talks
+     *  NFC to the strap and never BLE to the phone, so the strap is the only path to it. Null on a 4.0,
+     *  with no pack attached, or before the first reply. */
+    val packSocPct: Double? = null,
+    /** The pack's own serial, from the same reply. Null until it answers. */
+    val packSerial: String? = null,
+    /** The pack's cell voltage in millivolts, from the same reply. */
+    val packMillivolts: Int? = null,
     /** Historical record layout version (`hist_version`, e.g. v24/v25 on WHOOP 4.0) observed from the
      *  active connection's backfill. This is distinct from [strapFirmware]: FW 41.17.6.0 is the strap
      *  firmware build, while v24/v25 is the binary layout used by banked history records. */
@@ -746,6 +754,7 @@ class WhoopBleClient(
             previous.clearedBiometrics().copy(
                 connected = false, bonded = false, encryptedBond = false,
                 charging = null, strapFirmware = null, historyLayoutVersion = null,
+                packSocPct = null, packSerial = null, packMillivolts = null,
                 pairingHint = null, scanning = false,
                 statusNote = null,
             )
@@ -929,6 +938,9 @@ class WhoopBleClient(
      *  [stopWhoopScan]. @Volatile: written on the main looper, read on the GATT/scan callback thread. */
     @Volatile
     private var scanningForList = false
+
+    /** One raw pack reply is logged per link, so the undecoded tail can be read off a strap log. */
+    private var packReplyLogged = false
 
     /**
      * Multi-source seam: publish a live HR/R-R reading from a NON-WHOOP source into the SAME [state]
@@ -1999,7 +2011,8 @@ class WhoopBleClient(
         CommandNumber.SEND_HISTORICAL_DATA, CommandNumber.HISTORICAL_DATA_RESULT,
         CommandNumber.SET_CLOCK, CommandNumber.GET_CLOCK, CommandNumber.GET_DATA_RANGE,
         CommandNumber.SET_ALARM_TIME, CommandNumber.DISABLE_ALARM, CommandNumber.GET_ALARM_TIME,
-        CommandNumber.REBOOT_STRAP, CommandNumber.SELECT_WRIST -> true
+        CommandNumber.REBOOT_STRAP, CommandNumber.SELECT_WRIST,
+        CommandNumber.GET_BATTERY_PACK_INFO -> true
         CommandNumber.SET_CONFIG -> puffinExperiment.isDeepDataEnabled
         CommandNumber.SET_DEVICE_CONFIG -> false
         else -> false
@@ -2427,6 +2440,17 @@ class WhoopBleClient(
             safeGatt("readCharacteristic($label)") { ops.readCharacteristicCompat(ch) }
             scheduleDeviceInfoReads(attempt + 1)
         }, DEVICE_INFO_READ_DELAYS_MS[attempt])
+    }
+
+    /**
+     * Ask the strap for its battery pack's fuel gauge (GET_BATTERY_PACK_INFO). The pack reaches the
+     * strap over NFC and never advertises to the phone, so polling the strap is the only way to read it.
+     * A read; 5/MG only, since a 4.0 has no pack command. The reply lands in the COMMAND_RESPONSE
+     * handler, and a strap with no pack attached simply answers without pack fields.
+     */
+    fun refreshBatteryPack() {
+        if (connectedFamily != DeviceFamily.WHOOP5) return
+        send(CommandNumber.GET_BATTERY_PACK_INFO, byteArrayOf(0x01))
     }
 
     fun refreshBattery() {
@@ -3597,6 +3621,24 @@ class WhoopBleClient(
                         runCatching { NoopPrefs.setLastFirmware(context, fw) }
                     }
                 }
+                // The battery pack, as the strap reports it. Only republished when a field actually
+                // moved, and only ever from a reply that carried it: a strap with no pack attached
+                // leaves the last reading alone rather than zeroing it.
+                doubleValue(parsed.parsed["pack_soc_pct"])?.let { soc ->
+                    val serial = parsed.parsed["pack_serial"] as? String
+                    val mv = (parsed.parsed["pack_millivolts"] as? Int)
+                    if (_state.value.packSocPct != soc || _state.value.packSerial != serial) {
+                        log("pack: soc=$soc% mv=${mv ?: "?"} serial=${serial ?: "?"} id=${parsed.parsed["pack_id"]}")
+                    }
+                    // The reply carries more than whoop-rs names today, so dump it ONCE per link: the
+                    // pack's own firmware is in there and has no offset yet.
+                    if (!packReplyLogged) {
+                        packReplyLogged = true
+                        log("pack raw: ${frame.toHex()}")
+                    }
+                    _state.update { it.copy(packSocPct = soc, packSerial = serial ?: it.packSerial,
+                                            packMillivolts = mv ?: it.packMillivolts) }
+                }
                 val respCmd = parsed.parsed["resp_cmd"] as? String
                 val result = parsed.parsed["result"] as? String
                 // Reboot ack: log the COMMAND_RESPONSE result for a user reboot on both families (also
@@ -3960,6 +4002,7 @@ class WhoopBleClient(
                     // here (~60s) rather than only while the Live screen is open — the ring stays current
                     // on any screen without a manual sync, and the read keeps the link warm.
                     refreshBattery()
+                    refreshBatteryPack()
                 }
             }
         }
@@ -4243,7 +4286,7 @@ class WhoopBleClient(
                 send(CommandNumber.GET_CLOCK, byteArrayOf(), withResponse = true)
                 // Populate the battery ring right after connect, not only once the Live screen opens. Posted
                 // after the clock writes settle so the 0x2A19 read does not race them on a slow stack.
-                handler.postDelayed({ refreshBattery() }, BATTERY_ON_CONNECT_DELAY_MS)
+                handler.postDelayed({ refreshBattery(); refreshBatteryPack() }, BATTERY_ON_CONNECT_DELAY_MS)
                 log("WHOOP 5/MG: clock synced (set/get) — strap can persist history now")
                 if (!backfillStarted) {
                     backfillStarted = true
@@ -5025,7 +5068,11 @@ class WhoopBleClient(
             charging = null,        // a stale charging flag must not outlive the link
             strapFirmware = null,   // nor stale firmware/layout versions
             historyLayoutVersion = null,
+            packSocPct = null,      // nor the pack the dropped strap was reporting
+            packSerial = null,
+            packMillivolts = null,
         ) }
+        packReplyLogged = false
         // Multi-WHOOP: the link is down - clear the published connected address so SourceCoordinator's
         // adoption sink can't re-fire on a stale strap id. Same for the serial, so the next strap's
         // identity is never resolved against the last one's.

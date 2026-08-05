@@ -82,6 +82,10 @@ enum class CommandNumber(val rawValue: Int) {
     // Port of Swift `WhoopCommand.historicalDataResult` (whoop_protocol.json: 23 HISTORICAL_DATA_RESULT).
     HISTORICAL_DATA_RESULT(23),
     GET_BATTERY_LEVEL(26),
+    // GET_BATTERY_PACK_INFO (151) — the 5.0 battery pack's fuel gauge, read THROUGH the strap. The pack
+    // reaches the strap over NFC and never advertises to the phone, so the strap is the only path to it.
+    // A read; payload [0x01]. A 4.0 has no pack command, and a strap with no pack attached answers empty.
+    GET_BATTERY_PACK_INFO(151),
     // REBOOT_STRAP (29) — restart the strap. Empty body (the official app's builder passes a null
     // payload). The strap drops the link and re-advertises after boot; stored data is KEPT
     // (non-destructive), though an in-flight offload is interrupted (chunk-acked, so nothing is lost).

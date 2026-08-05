@@ -187,6 +187,15 @@ object RustAdapter {
                     }
                 }
             }
+            // The 5.0 battery pack, as the strap reports it: the pack reaches the strap over NFC and
+            // never the phone, so this response is the only path to its charge. whoop-rs owns the
+            // offsets; this only names the fields the live router reads.
+            is Response.BatteryPack -> {
+                parsed["pack_soc_pct"] = resp.socPct
+                parsed["pack_millivolts"] = resp.millivolts.toInt()
+                parsed["pack_id"] = resp.packId.toLong()
+                if (resp.serial.isNotBlank()) parsed["pack_serial"] = resp.serial
+            }
             else -> Unit
         }
     }

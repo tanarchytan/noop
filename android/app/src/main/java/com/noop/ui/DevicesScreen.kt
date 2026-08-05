@@ -94,13 +94,9 @@ fun DevicesScreen(
 ) {
     val scope = rememberCoroutineScope()
     val live by viewModel.live.collectAsStateWithLifecycle()
-    // The WHOOP battery pack is a second BLE peripheral, so it is only looked at while this screen is
-    // on show — the link exists exactly as long as someone is reading it.
-    val powerPack by viewModel.powerPack.collectAsStateWithLifecycle()
-    DisposableEffect(Unit) {
-        viewModel.watchPowerPack(true)
-        onDispose { viewModel.watchPowerPack(false) }
-    }
+    // The battery pack reports through the strap, so opening this screen asks the strap for a fresh
+    // reading rather than waiting for the next keep-alive poll.
+    LaunchedEffect(live.connected) { if (live.connected) viewModel.refreshBatteryPack() }
 
     val context = LocalContext.current
 
@@ -186,9 +182,12 @@ fun DevicesScreen(
                     live.historyLayoutVersion else null,
                 // The strap's own charge report, never a guess from the pack being nearby.
                 isCharging = device.status == DeviceStatus.active.name && live.connected && live.charging == true,
-                // The pack charges a strap, so it belongs on the active WHOOP's card and nowhere else.
-                powerPack = if (device.status == DeviceStatus.active.name && SourceCoordinator.isWhoop(device))
-                    powerPack else null,
+                // The pack's charge, as the strap reported it. Only on the active WHOOP's card, and only
+                // once the strap has actually answered with one.
+                packSocPct = if (device.status == DeviceStatus.active.name && live.connected)
+                    live.packSocPct else null,
+                packSerial = if (device.status == DeviceStatus.active.name && live.connected)
+                    live.packSerial else null,
                 onMakeActive = { switchTarget = device },
                 onRename = { renameTarget = device },
                 onRemove = { removeTarget = device },
@@ -406,10 +405,11 @@ private fun DeviceCard(
     liveHistoryLayout: Int? = null,
     /** The strap reports it is taking charge — drives the "Charging · Live" pill. */
     isCharging: Boolean = false,
-    /** What the WHOOP battery pack last reported over its own read-only link, or null on a card the
-     *  pack is not being looked at for. Its gauge sits under the strap's and its firmware under the
-     *  strap's; both are absent until the pack actually answers. */
-    powerPack: com.noop.ble.PowerPackState? = null,
+    /** The battery pack's charge as the strap reported it, or null on a card it does not apply to. Its
+     *  gauge sits under the strap's own, and is absent until the strap answers with one. */
+    packSocPct: Double? = null,
+    /** The pack's own serial, from the same reply, shown under the strap's firmware line. */
+    packSerial: String? = null,
     onMakeActive: () -> Unit,
     onRename: () -> Unit,
     onRemove: (() -> Unit)?,
@@ -492,9 +492,9 @@ private fun DeviceCard(
                 BatteryBar(pct = liveBatteryPct)
             }
 
-            // The pack's own charge, under the strap's. Its own peripheral, so it appears only once it
-            // has answered a read — an absent pack has no gauge rather than a zeroed one.
-            powerPack?.batteryPct?.let { BatteryBar(pct = it, label = "PowerPack") }
+            // The pack's own charge, under the strap's. Absent until the strap reports one, so a strap
+            // with no pack on it shows no gauge rather than a zeroed one.
+            packSocPct?.let { BatteryBar(pct = Math.round(it).toInt(), label = "PowerPack") }
 
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
@@ -524,11 +524,10 @@ private fun DeviceCard(
                 )
             }
 
-            // The pack's firmware, directly under the strap's. Falls back to why there is no reading,
-            // so a pack that cannot be reached says so instead of going quiet.
-            powerPack?.let { pack -> powerPackLine(pack)?.let { line ->
+            // The pack's own line, directly under the strap's firmware line.
+            powerPackLine(packSocPct, packSerial)?.let { line ->
                 Text(line, style = NoopType.footnote, color = Palette.textTertiary)
-            } }
+            }
         }
     }
 
@@ -620,16 +619,14 @@ internal fun devicePillState(
 }
 
 /**
- * The pack's own footnote, sitting under the strap's firmware line: its firmware once read, else an
- * honest word about why there is no reading. Null when nothing is being looked at, so the line is
- * absent rather than empty.
+ * The pack's own footnote, sitting under the strap's firmware line: its serial once the strap reports
+ * one, else nothing. Null when the strap reported no pack at all, so the line is absent rather than
+ * claiming a pack that is not there.
  */
-internal fun powerPackLine(pack: com.noop.ble.PowerPackState): String? = when {
-    pack.firmware != null -> "PowerPack · FW ${pack.firmware}"
-    pack.connected -> "PowerPack · connected"
-    pack.scanning -> "PowerPack · looking…"
-    pack.note != null -> "PowerPack · ${pack.note}"
-    else -> null
+internal fun powerPackLine(socPct: Double?, serial: String?): String? = when {
+    socPct == null -> null
+    !serial.isNullOrBlank() -> "PowerPack · $serial"
+    else -> "PowerPack"
 }
 
 @Composable

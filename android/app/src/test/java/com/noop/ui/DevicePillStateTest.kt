@@ -106,24 +106,13 @@ class DevicePillStateTest {
     }
 
     @Test
-    fun powerPackLine_prefersTheFirmwareItActuallyRead() {
-        assertEquals(
-            "PowerPack · FW 3.30.5.0",
-            powerPackLine(com.noop.ble.PowerPackState(connected = true, firmware = "3.30.5.0")),
-        )
-        assertEquals(
-            "PowerPack · connected",
-            powerPackLine(com.noop.ble.PowerPackState(connected = true)),
-        )
-        assertEquals(
-            "PowerPack · looking…",
-            powerPackLine(com.noop.ble.PowerPackState(scanning = true)),
-        )
-        assertEquals(
-            "PowerPack · not found nearby",
-            powerPackLine(com.noop.ble.PowerPackState(note = "not found nearby")),
-        )
-        // Nothing is being looked at, so the line is absent rather than an empty claim.
-        assertNull(powerPackLine(com.noop.ble.PowerPackState()))
+    fun powerPackLine_namesOnlyAPackTheStrapActuallyReported() {
+        assertEquals("PowerPack · BPK-0001", powerPackLine(67.0, "BPK-0001"))
+        // A charge with no serial still names the pack; a blank serial must not read as one.
+        assertEquals("PowerPack", powerPackLine(67.0, null))
+        assertEquals("PowerPack", powerPackLine(67.0, "  "))
+        // No charge means the strap reported no pack, so the line is absent rather than invented.
+        assertNull(powerPackLine(null, null))
+        assertNull(powerPackLine(null, "BPK-0001"))
     }
 }
