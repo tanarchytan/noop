@@ -942,6 +942,13 @@ class WhoopBleClient(
     /** One raw pack reply is logged per link, so the undecoded tail can be read off a strap log. */
     private var packReplyLogged = false
 
+    /** Dump the first GET_BATTERY_PACK_INFO reply of this link — present or absent — and only the first. */
+    private fun logPackReplyOnce(frame: ByteArray) {
+        if (packReplyLogged) return
+        packReplyLogged = true
+        log("pack raw: ${frame.toHex()}")
+    }
+
     /**
      * Multi-source seam: publish a live HR/R-R reading from a NON-WHOOP source into the SAME [state]
      * flow the UI observes, so a generic HR strap's live HR shows in the existing Live UI. Invoked ONLY
@@ -3621,23 +3628,26 @@ class WhoopBleClient(
                         runCatching { NoopPrefs.setLastFirmware(context, fw) }
                     }
                 }
-                // The battery pack, as the strap reports it. Only republished when a field actually
-                // moved, and only ever from a reply that carried it: a strap with no pack attached
-                // leaves the last reading alone rather than zeroing it.
+                // The battery pack, as the strap reports it. Republished only when a field moved, and
+                // only from a reply: an unanswered tick leaves the last reading alone.
                 doubleValue(parsed.parsed["pack_soc_pct"])?.let { soc ->
                     val serial = parsed.parsed["pack_serial"] as? String
                     val mv = (parsed.parsed["pack_millivolts"] as? Int)
                     if (_state.value.packSocPct != soc || _state.value.packSerial != serial) {
                         log("pack: soc=$soc% mv=${mv ?: "?"} serial=${serial ?: "?"} id=${parsed.parsed["pack_id"]}")
                     }
-                    // The reply carries more than whoop-rs names today, so dump it ONCE per link: the
-                    // pack's own firmware is in there and has no offset yet.
-                    if (!packReplyLogged) {
-                        packReplyLogged = true
-                        log("pack raw: ${frame.toHex()}")
-                    }
+                    logPackReplyOnce(frame)
                     _state.update { it.copy(packSocPct = soc, packSerial = serial ?: it.packSerial,
                                             packMillivolts = mv ?: it.packMillivolts) }
+                }
+                // whoop-rs read this reply as "the strap has no pack": drop the row rather than keep a
+                // reading the pack can no longer back. Silence never reaches here, so it cannot flap.
+                if (parsed.parsed["pack_absent"] == true) {
+                    logPackReplyOnce(frame)
+                    if (_state.value.packSocPct != null || _state.value.packSerial != null) {
+                        log("pack: none attached — clearing")
+                    }
+                    _state.update { it.copy(packSocPct = null, packSerial = null, packMillivolts = null) }
                 }
                 val respCmd = parsed.parsed["resp_cmd"] as? String
                 val result = parsed.parsed["result"] as? String

@@ -196,6 +196,9 @@ object RustAdapter {
                 parsed["pack_id"] = resp.packId.toLong()
                 if (resp.serial.isNotBlank()) parsed["pack_serial"] = resp.serial
             }
+            // The strap answered and reports no pack. Only ever set from a reply, so the live router can
+            // tell it apart from a tick that went unanswered.
+            is Response.NoBatteryPack -> parsed["pack_absent"] = true
             else -> Unit
         }
     }
@@ -208,6 +211,7 @@ object RustAdapter {
         is Response.Version -> r.respCmd.toInt()
         is Response.ExtendedBattery -> r.respCmd.toInt()
         is Response.BatteryPack -> r.respCmd.toInt()
+        is Response.NoBatteryPack -> r.respCmd.toInt()
         is Response.Other -> r.respCmd.toInt()
     }
 
@@ -219,6 +223,7 @@ object RustAdapter {
         is Response.Version -> r.result?.toInt()
         is Response.ExtendedBattery -> r.result?.toInt()
         is Response.BatteryPack -> r.result?.toInt()
+        is Response.NoBatteryPack -> r.result?.toInt()
         is Response.Other -> r.result?.toInt()
     }
 

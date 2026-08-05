@@ -9030,6 +9030,20 @@ sealed class Response {
         companion object
     }
     
+    /**
+     * The strap answered GET_BATTERY_PACK_INFO with no pack attached — the app clears its pack row on
+     * this, where a missing reply must leave it alone.
+     */
+    data class NoBatteryPack(
+        val `respCmd`: kotlin.UByte, 
+        val `result`: kotlin.UByte?) : Response()
+        
+    {
+        
+
+        companion object
+    }
+    
     data class Other(
         val `respCmd`: kotlin.UByte, 
         val `result`: kotlin.UByte?) : Response()
@@ -9098,7 +9112,11 @@ public object FfiConverterTypeResponse : FfiConverterRustBuffer<Response>{
                 FfiConverterUShort.read(buf),
                 FfiConverterUInt.read(buf),
                 )
-            8 -> Response.Other(
+            8 -> Response.NoBatteryPack(
+                FfiConverterUByte.read(buf),
+                FfiConverterOptionalUByte.read(buf),
+                )
+            9 -> Response.Other(
                 FfiConverterUByte.read(buf),
                 FfiConverterOptionalUByte.read(buf),
                 )
@@ -9177,6 +9195,14 @@ public object FfiConverterTypeResponse : FfiConverterRustBuffer<Response>{
                 + FfiConverterUInt.allocationSize(value.`packId`)
             )
         }
+        is Response.NoBatteryPack -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterUByte.allocationSize(value.`respCmd`)
+                + FfiConverterOptionalUByte.allocationSize(value.`result`)
+            )
+        }
         is Response.Other -> {
             // Add the size for the Int that specifies the variant plus the size needed for all fields
             (
@@ -9245,8 +9271,14 @@ public object FfiConverterTypeResponse : FfiConverterRustBuffer<Response>{
                 FfiConverterUInt.write(value.`packId`, buf)
                 Unit
             }
-            is Response.Other -> {
+            is Response.NoBatteryPack -> {
                 buf.putInt(8)
+                FfiConverterUByte.write(value.`respCmd`, buf)
+                FfiConverterOptionalUByte.write(value.`result`, buf)
+                Unit
+            }
+            is Response.Other -> {
+                buf.putInt(9)
                 FfiConverterUByte.write(value.`respCmd`, buf)
                 FfiConverterOptionalUByte.write(value.`result`, buf)
                 Unit
