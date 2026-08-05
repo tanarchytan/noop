@@ -6,7 +6,7 @@
 
 <p align="center"><b>Your strap. Your data. Your machine. Offline, on-device, no cloud.</b></p>
 
-<p align="center"><sub>The <b>Android-only</b> line of NOOP — the <b>Liquid Metal</b> look: living liquid scores and a sky that moves with your day.</sub></p>
+<p align="center"><sub>The <b>Android-only</b> line of NOOP — a dark, card-based dashboard: your day at a glance, and every number drills into where it came from.</sub></p>
 
 <p align="center">
   <a href="#features">Features</a> ·
@@ -15,11 +15,15 @@
 </p>
 
 <p align="center">
-  <img src="docs/assets/shot-android-today.png" alt="Today on Android" width="240">
-  &nbsp;&nbsp;
-  <img src="docs/assets/shot-android-trend.png" alt="A metric's own trend on Android" width="240">
+  <img src="docs/assets/shot-android-today.png" alt="Today: Rest, Charge and Effort" width="205">
+  &nbsp;
+  <img src="docs/assets/shot-android-sleep.png" alt="A night's sleep stages laid across the night" width="205">
+  &nbsp;
+  <img src="docs/assets/shot-android-health.png" alt="Body signals: body clock and Rhythm Age" width="205">
+  &nbsp;
+  <img src="docs/assets/shot-android-trend.png" alt="Heart rate through the day" width="205">
 </p>
-<p align="center"><sub>The <b>Liquid Metal</b> look: living liquid scores, a sky that moves with your day — Today, and a metric&rsquo;s own trend.</sub></p>
+<p align="center"><sub>Today · last night&rsquo;s stages laid across the night · body signals read over days · heart rate through the day.<br>Screenshots use the <code>mock</code> flavour&rsquo;s synthetic dataset, not real wearer data.</sub></p>
 
 > **This is the Android-only fork** (`tanarchytan/noop`, branch `noop-tan`) of the cross-platform
 > [ryanbr/noop](https://github.com/ryanbr/noop). The iOS and macOS apps have been removed here; only the
@@ -120,27 +124,38 @@ that premise:
 Everything below is a real screen in the Android app (Jetpack Compose,
 `android/app/src/main/java/com/noop/ui/`):
 
-| Screen | What it does |
+The app is four tabs. Everything else lives behind **More**.
+
+| Tab | What it does |
 |---|---|
-| **Today** (Control Center) | Home dashboard: recovery ring, a "today's synthesis" insight, a grid of stat tiles (recovery, strain, sleep, HRV, RHR, SpO₂, respiratory, steps, weight, calories) each with a 14-day sparkline, live strap **battery %** and HR trend, recent workouts, and a data-sources footer. |
-| **Readiness** | An on-device "should you push today?" read that synthesizes established sports-science signals from your own history — HRV vs your baseline (Plews/Buchheit), resting-HR drift (Lamberts), sleeping respiratory-rate drift, training-load balance (acute:chronic workload ratio, Gabbett) and training monotony (Foster) — into a single headline (Primed / Balanced / Strained / Run down) with the drivers behind it. Pure local math, not medical advice. |
-| **Live** | Real-time view of the connected strap — heart rate and frame stream as they arrive (~1 Hz). |
+| **Home** | The day in one screen: **Rest**, **Charge** and **Effort** rings, the Health and Stress monitors, your day's activities, and tonight's sleep + wake alarm. Each ring taps through to its own detail page. |
+| **Health** | Live heart rate, the vital signs (respiratory rate, SpO₂, resting HR, HRV, skin temperature), the day's HR curve with Charge and Effort marked on the timeline, and your HR zones. Below those sit the **body signals** — read over days rather than seconds: an illness heads-up, cycle awareness (opt-in), your **body clock**, and **Rhythm Age**. |
+| **Sleep** | Last night's performance and its drivers, the stages laid across the night against the HR trace, efficiency, resting HR and HRV — computed by the on-device sleep stager. Browse back through **past nights**, not just last night, and hand-correct a bed or wake time the detector got wrong. |
+| **More** | The full list, grouped below. |
+
+| Behind More | What it does |
+|---|---|
+| **Insights** | Behavioral and correlational insights derived from your own series — including **Activity Cost**, which learns what each activity type typically costs your next-morning recovery (and how long you take to bounce back) from your own history. |
+| **Intelligence** | The longer-horizon read across your own history. |
+| **Coach** | An optional **AI Coach** you can ask about your data in plain language. It's the one feature that can ever use the network: off until you add your own key — Anthropic, OpenAI, or any OpenAI-compatible endpoint including a local/self-hosted model (Ollama, LM Studio) — and it sends only a short text summary of recent metrics plus your question, never raw streams or identifiers. With a local model the conversation never leaves your machine. See [`docs/PRIVACY_SECURITY.md`](docs/PRIVACY_SECURITY.md). |
+| **Explore** | Interrogate any single metric over time, built from the metric catalog. |
+| **Compare** | Plot two metrics together / against each other over a shared timeline. |
+| **Workouts** | Detected and manual exercise sessions with strain and heart-rate detail. Tap any session for a full **detail view** — its HR curve over the workout, time in each HR zone, duration, avg/max HR, and the Effort it added. |
+| **Stress** | Day-level stress / autonomic load, hour by hour. |
 | **Breathe** | **HRV haptic breathing biofeedback.** The strap both *measures* HRV (R-R intervals) and *buzzes* its haptic motor, so NOOP paces your breath with felt cues (one buzz inhale, two exhale) and shows live HR + rolling RMSSD responding as the session deepens. Presets: Relax 4-6, Coherence 5.5, Box 4-4. Each session reports a **pre/post HRV outcome** so you can see how much you settled. |
 | **Intervals** | **Silent haptic HIIT timer.** The strap buzzes every transition (triple-buzz into WORK, single into REST, 3-2-1 tick at phase ends, long buzz on finish) so you train hands-free. Falls back to a glanceable visual timer with no strap. |
-| **Explore** (Metric Explorer) | Interrogate any single metric over time, built from the metric catalog. |
-| **Compare** | Plot two metrics together / against each other over a shared timeline. |
-| **Insights** | Behavioral and correlational insights derived from your own series — including **Activity Cost**, which learns what each activity type typically costs your next-morning recovery (and how long you take to bounce back) from your own history. |
-| **Sleep** | Sleep sessions with a hypnogram, stage breakdown, efficiency, resting HR, and HRV — computed by the on-device sleep stager. Browse back through **past nights**, not just last night. |
-| **Trends** | Long-range trends across recovery, strain, sleep, and biometrics — and a **shareable one-page PDF report** (recovery / sleep / HRV / resting HR / strain over a range you choose), rendered entirely on-device for a doctor, coach, or your own records. |
-| **Workouts** | Detected and manual exercise sessions with strain and heart-rate detail. Tap any session for a full **detail view** — its HR curve over the workout, time in each HR zone, duration, avg/max HR, and the Effort it added. |
-| **Health** | Biometric overview (HR, HRV, SpO₂, skin temperature, respiratory rate, etc.). |
-| **Stress** | Day-level stress / autonomic load visualization. |
-| **Mind** | A quick **daily mood check-in** that correlates how you feel against your own recovery, sleep and HRV over time — so you can see what actually moves your mood. On-device and **non-clinical**: a self-reflection log, not a mental-health assessment. |
-| **Apple Health** | Browse and reconcile data imported from your Apple Health export. |
+| **Your Data, Fused** | When two sources describe the same day, this is where you see which one NOOP took and whether they agreed — each metric carries its source, its trust tier, and an explicit agree / minor-delta / conflict state. |
 | **Data Sources** | One-tap import of a WHOOP CSV export, an Apple Health export, or a **nutrition CSV** (Cronometer / MacroFactor), plus live-strap status. "Bring your history in once, then it's yours." |
+| **Backup & Sync** | Export and restore the whole store as a single `.noopbak` file. On-device, no account. |
+| **Devices** | The straps you've paired, which one is active, and what each contributes. |
+| **Automations** | Rules that fire on your own data, including HR-zone coaching. |
+| **Alarms** | The one alarm surface: the phone-based **wake window** (light-sleep detection with a guaranteed OS backup), the strap's own firmware wake alarm, and the wind-down reminder. |
 | **Notifications** | Configure local notifications and thresholds. |
-| **Coach** | An optional **AI Coach** you can ask about your data in plain language. It's the one feature that can ever use the network: off until you add your own key — Anthropic, OpenAI, or any OpenAI-compatible endpoint including a local/self-hosted model (Ollama, LM Studio) — and it sends only a short text summary of recent metrics plus your question, never raw streams or identifiers. With a local model the conversation never leaves your machine. See [`docs/PRIVACY_SECURITY.md`](docs/PRIVACY_SECURITY.md). |
 | **Settings** | Profile, preferences, **step calibration** (tune the stride/step estimate to your own walking), unit choices, the in-app **What's new** changelog, and an opt-in **Experimental** section (WHOOP 5/MG protocol probes). |
+
+Also in the tree: **Trends** (long-range trends plus a shareable one-page PDF report rendered
+on-device), **Hydration**, **Apple Health** browsing, a **mood check-in** that correlates how you felt
+against your own recovery and sleep, and a **Debug / Test Centre** for protocol work.
 
 There is also a first-run **onboarding wizard** that sets expectations
 (independent/experimental, WHOOP 4.0 vs 5/MG, on-device only), and an in-app
@@ -193,7 +208,7 @@ Each still reproduces the numbers its predecessor produced.
 | **Resting HR** | Reads about 10 bpm below a reference band. The gap is consistent, and it is not a sensor or wrist difference — two bands agree to within 2 bpm on the same statistic. Left unchanged because the evidence says something is off, not what the right answer is |
 | **Body Age** | Every input cites a published mortality study, but only cardio fitness is published as a per-unit figure; the others are our interpolations of grouped results, and the sleep-duration weight is ours. A wellness comparison, not a clinical age |
 | **Blood oxygen (4.0)** | **Not reported, and the sample rate is why.** The red/IR pair arrives once a second, so the fastest signal it can carry is 0.5 Hz — while a pulse runs 0.83 to 3 Hz. The heartbeat a blood-oxygen reading depends on is gone before the app sees the data. Measured on two straps and 2.1 million samples: 89% and 98% of windows held no pulsation, and the few that flickered produced about 80%, which would be severe hypoxaemia in two healthy people. The app declines instead. The 5.0/MG reading is the strap's own and is unaffected |
-| **Rhythm Age** | Has never yet produced a value — it needs 7 days of continuous on-chip motion, and its scale factor is unconfirmed |
+| **Rhythm Age** | Now produces a value, and has a card in Health. It needs 7 worn days of on-chip motion before it first appears, and below that floor it counts up rather than hiding. Read it as a trend, not a number: its scale factor is still unconfirmed |
 | **Everything on WHOOP 4.0** | The decoders are written and unit-tested but have never run against a real 4.0 band |
 
 **The one gap:** **ECG** — it requires the MG electrode (absent on the 5.0), and even on MG the
