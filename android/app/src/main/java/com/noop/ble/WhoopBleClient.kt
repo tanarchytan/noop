@@ -939,13 +939,14 @@ class WhoopBleClient(
     @Volatile
     private var scanningForList = false
 
-    /** One raw pack reply is logged per link, so the undecoded tail can be read off a strap log. */
-    private var packReplyLogged = false
+    /** The pack presence a raw reply has already been dumped for on this link; null until the first. */
+    private var packReplyLogged: Boolean? = null
 
-    /** Dump the first GET_BATTERY_PACK_INFO reply of this link — present or absent — and only the first. */
-    private fun logPackReplyOnce(frame: ByteArray) {
-        if (packReplyLogged) return
-        packReplyLogged = true
+    /** Dump a GET_BATTERY_PACK_INFO reply the first time this link sees each presence state, so the
+     *  undecoded tail of both shapes — and the moment one becomes the other — reads off a strap log. */
+    private fun logPackReplyOnce(frame: ByteArray, present: Boolean) {
+        if (packReplyLogged == present) return
+        packReplyLogged = present
         log("pack raw: ${frame.toHex()}")
     }
 
@@ -3636,14 +3637,14 @@ class WhoopBleClient(
                     if (_state.value.packSocPct != soc || _state.value.packSerial != serial) {
                         log("pack: soc=$soc% mv=${mv ?: "?"} serial=${serial ?: "?"} id=${parsed.parsed["pack_id"]}")
                     }
-                    logPackReplyOnce(frame)
+                    logPackReplyOnce(frame, present = true)
                     _state.update { it.copy(packSocPct = soc, packSerial = serial ?: it.packSerial,
                                             packMillivolts = mv ?: it.packMillivolts) }
                 }
                 // whoop-rs read this reply as "the strap has no pack": drop the row rather than keep a
                 // reading the pack can no longer back. Silence never reaches here, so it cannot flap.
                 if (parsed.parsed["pack_absent"] == true) {
-                    logPackReplyOnce(frame)
+                    logPackReplyOnce(frame, present = false)
                     if (_state.value.packSocPct != null || _state.value.packSerial != null) {
                         log("pack: none attached — clearing")
                     }
@@ -5082,7 +5083,7 @@ class WhoopBleClient(
             packSerial = null,
             packMillivolts = null,
         ) }
-        packReplyLogged = false
+        packReplyLogged = null
         // Multi-WHOOP: the link is down - clear the published connected address so SourceCoordinator's
         // adoption sink can't re-fire on a stale strap id. Same for the serial, so the next strap's
         // identity is never resolved against the last one's.
