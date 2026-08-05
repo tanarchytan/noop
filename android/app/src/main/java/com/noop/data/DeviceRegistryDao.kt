@@ -74,6 +74,11 @@ interface DeviceRegistryDao {
     @Query("UPDATE pairedDevice SET serial = :serial WHERE id = :id")
     suspend fun setSerial(id: String, serial: String?)
 
+    /** Record the strap's hardware revision (GATT 0x2A27) on its row, verbatim. A strap that never
+     *  answered the read keeps a null, which no reader may treat as a board. */
+    @Query("UPDATE pairedDevice SET hardwareRev = :hardwareRev WHERE id = :id")
+    suspend fun setHardwareRev(id: String, hardwareRev: String?)
+
     // MARK: deleteAllData — clear one device's recordings across every deviceId-keyed table.
     //
     // Room has no dynamic table names, so each device-scoped table gets its own DELETE here; the

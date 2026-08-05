@@ -400,10 +400,16 @@ class WhoopBleClient(
         private val DEVICE_INFO_SERVICE: UUID = UUID.fromString("0000180a-0000-1000-8000-00805f9b34fb")
         private val SERIAL_NUMBER_CHAR: UUID = UUID.fromString("00002a25-0000-1000-8000-00805f9b34fb")
 
-        /** Attempts at the 0x2A25 read, and the delay before each. Spaced past the CCCD drain and the
-         *  bond so a read cannot take the single in-flight GATT slot from them; a strap that never
-         *  answers keeps its address-derived identity. */
-        private val SERIAL_READ_DELAYS_MS = longArrayOf(3_000L, 8_000L, 20_000L)
+        /** Device Information: the strap's hardware revision, stored verbatim on its registry row. It is
+         *  what separates a 5.0 board from an MG one; the prefix table that classifies it stays in
+         *  whoop-rs, so nothing here reads meaning into the string. */
+        private val HARDWARE_REVISION_CHAR: UUID = UUID.fromString("00002a27-0000-1000-8000-00805f9b34fb")
+
+        /** Attempts at the Device Information reads (0x2A25 then 0x2A27), and the delay before each.
+         *  Spaced past the CCCD drain and the bond so a read cannot take the single in-flight GATT slot
+         *  from them; a strap that never answers keeps its address-derived identity. Two values are
+         *  wanted and one read goes out per tick, so the ladder carries a spare beyond the retries. */
+        private val SERIAL_READ_DELAYS_MS = longArrayOf(3_000L, 8_000L, 10_000L, 20_000L)
 
         // Client Characteristic Configuration Descriptor — written to enable notifications
         // (Android requires the explicit write; the local stack also needs setCharacteristicNotification).
@@ -711,6 +717,16 @@ class WhoopBleClient(
          *  BATTERY_LEVEL replayed mid-backfill (an offload frame) — the only case that must be excluded. */
         fun shouldApplyChargingFromBatteryEvent(replayedOffload: Boolean): Boolean = !replayedOffload
 
+        /** The charge state a CHARGING_ON / CHARGING_OFF event states outright, or null for any other
+         *  event. The strap raises these the moment a pack goes on or comes off, so they carry the live
+         *  answer that BATTERY_LEVEL's own flag only refreshes on its slow cadence. Event strings are
+         *  "NAME(rawValue)", so prefix-match. */
+        fun chargingFromEvent(event: String): Boolean? = when {
+            event.startsWith("CHARGING_ON") -> true
+            event.startsWith("CHARGING_OFF") -> false
+            else -> null
+        }
+
         /** Is this EVENT string a PHYSICAL GESTURE (double-tap / wrist on/off)? Gestures take the
          *  freshness-gated branch; everything else (BLE_BONDED, BATTERY_LEVEL, STRAP_DRIVEN_ALARM_EXECUTED=57)
          *  takes the non-gesture branch. Event strings are "NAME(rawValue)", so prefix-match. */
@@ -902,6 +918,11 @@ class WhoopBleClient(
     /** The connected strap's own serial (GATT 0x2A25), or null while unread/disconnected. Lands a few
      *  seconds after the address and drives SourceCoordinator's serial identity binding. */
     val connectedStrapSerial: StateFlow<String?> = _connectedStrapSerial.asStateFlow()
+
+    private val _connectedStrapHardwareRev = MutableStateFlow<String?>(null)
+    /** The connected strap's hardware revision (GATT 0x2A27), or null while unread/disconnected. Read
+     *  on the same schedule as the serial and stored verbatim on the strap's registry row. */
+    val connectedStrapHardwareRev: StateFlow<String?> = _connectedStrapHardwareRev.asStateFlow()
 
     /** Add-a-WHOOP wizard present-scan flag: while true, [onScanResult] ACCUMULATES every discovered
      *  strap into [discoveredWhoops] instead of auto-connecting. Set by [scanForWhoops], cleared by
@@ -2382,24 +2403,28 @@ class WhoopBleClient(
      * uses ONLY the command; WHOOP 5/MG uses ONLY 0x2A19 (its proprietary command isn't framed).
      */
     /**
-     * Read the strap's serial (GATT 0x2A25) on [attempt], retrying on the [SERIAL_READ_DELAYS_MS]
-     * schedule while it is still unknown and the link is up. A read only — the BLE safety contract
-     * forbids writes to hardware, and this adds none. A strap that never answers (older firmware, an
-     * unbonded refusal, no Device Information service) keeps its address-derived identity.
+     * Read the strap's Device Information on [attempt] — its serial (GATT 0x2A25) first, then its
+     * hardware revision (0x2A27) — retrying on the [SERIAL_READ_DELAYS_MS] schedule while either is
+     * still unknown and the link is up. ONE read per tick, since the stack carries one operation at a
+     * time. Reads only — the BLE safety contract forbids writes to hardware, and this adds none. A
+     * strap that never answers keeps its address-derived identity and a null revision, never a guess.
      */
     @SuppressLint("MissingPermission")
     private fun scheduleSerialRead(attempt: Int) {
         if (attempt >= SERIAL_READ_DELAYS_MS.size) return
         handler.postDelayed({
             val g = gatt ?: return@postDelayed
-            if (_connectedStrapSerial.value != null) return@postDelayed
+            val wantSerial = _connectedStrapSerial.value == null
+            if (!wantSerial && _connectedStrapHardwareRev.value != null) return@postDelayed
             val ops = gattOps
-            val ch = g.getService(DEVICE_INFO_SERVICE)?.getCharacteristic(SERIAL_NUMBER_CHAR)
+            val info = g.getService(DEVICE_INFO_SERVICE)
+            val label = if (wantSerial) "serial" else "hardware revision"
+            val ch = info?.getCharacteristic(if (wantSerial) SERIAL_NUMBER_CHAR else HARDWARE_REVISION_CHAR)
             if (ops == null || ch == null) {
-                if (attempt == 0) log("Serial (0x2A25) not offered by this strap — keeping its address identity")
+                if (attempt == 0) log("Device Information not offered by this strap — keeping its address identity")
                 return@postDelayed
             }
-            safeGatt("readCharacteristic(serial)") { ops.readCharacteristicCompat(ch) }
+            safeGatt("readCharacteristic($label)") { ops.readCharacteristicCompat(ch) }
             scheduleSerialRead(attempt + 1)
         }, SERIAL_READ_DELAYS_MS[attempt])
     }
@@ -3344,6 +3369,15 @@ class WhoopBleClient(
                     log("Strap serial (0x2A25): $serial")
                 }
             }
+            // 0x2A27 = the strap's hardware revision, a UTF-8 string. Stored verbatim on the registry
+            // row; a blank or unreadable value stays null so no board is inferred that was never read.
+            uuid == HARDWARE_REVISION_CHAR -> {
+                val rev = bytes.toString(Charsets.UTF_8).trim { it <= ' ' }
+                if (rev.isNotEmpty() && _connectedStrapHardwareRev.value != rev) {
+                    _connectedStrapHardwareRev.value = rev
+                    log("Strap hardware revision (0x2A27): $rev")
+                }
+            }
             // WHOOP4 custom notify chars, OR the WHOOP 5/MG puffin notify chars (fd4b0003/4/5/7) once
             // bonded — both carry framed records (REALTIME_DATA etc.) through the family-aware reassembler.
             uuid == CMD_NOTIFY_CHAR || uuid == EVENT_NOTIFY_CHAR || uuid == DATA_NOTIFY_CHAR ||
@@ -3685,6 +3719,12 @@ class WhoopBleClient(
                             (parsed.parsed["battery_charging"] as? Int)?.let {
                                 _state.update { s -> s.copy(charging = it != 0) }
                             }
+                        }
+                        // The strap raises CHARGING_ON/OFF as a pack goes on or comes off, so the pill
+                        // turns over immediately instead of waiting for the next BATTERY_LEVEL. Same
+                        // historical-replay exclusion as the flag above.
+                        if (shouldApplyChargingFromBatteryEvent(replayedOffload)) {
+                            chargingFromEvent(ev)?.let { on -> _state.update { s -> s.copy(charging = on) } }
                         }
                         // Strap fired its firmware smart alarm (STRAP_DRIVEN_ALARM_EXECUTED, event 57) →
                         // re-arm the next day's instant (single absolute time). Dispatches from here (NOT a
@@ -4990,6 +5030,7 @@ class WhoopBleClient(
         // identity is never resolved against the last one's.
         _connectedPeripheralAddress.value = null
         _connectedStrapSerial.value = null
+        _connectedStrapHardwareRev.value = null
         reset()
 
         // close() can itself throw DeadObjectException on a dead binder - teardown must NEVER throw,

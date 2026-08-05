@@ -222,6 +222,24 @@ class SourceCoordinator(
     }
 
     /**
+     * The connected strap reported its hardware revision (GATT 0x2A27). Record it verbatim on the
+     * active WHOOP row ([DeviceRegistry.recordHardwareRev]) so the board a capture came off stays
+     * known after the fact. Ignored while the active source is not a WHOOP, and never guessed: a strap
+     * that did not answer the read keeps its null.
+     */
+    fun connectedHardwareRevChanged(hardwareRev: String?) {
+        if (hardwareRev.isNullOrBlank()) return
+        scope.launch {
+            val devices = registry.all()
+            val activeId = registry.activeDeviceId() ?: return@launch
+            if (!isWhoop(activeId, devices)) return@launch
+            if (devices.firstOrNull { it.id == activeId }?.hardwareRev == hardwareRev) return@launch
+            registry.recordHardwareRev(activeId, hardwareRev)
+            log("Strap hardware revision $hardwareRev recorded on $activeId.")
+        }
+    }
+
+    /**
      * Lazy creation: the registry names no active device and a WHOOP is on the link, so this is the
      * first strap this install has met — mint its row via [DeviceRegistry.adoptStrap] and point the
      * write id at it. Returns the new id, or null when some other device kind already holds the

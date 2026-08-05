@@ -148,6 +148,15 @@ class DeviceRegistry(
         }
     }
 
+    /**
+     * Record the connected strap's hardware revision (GATT 0x2A27) on [id], exactly as it was read.
+     * Nothing is inferred from it here — classifying a revision into a board is whoop-rs's, so a strap
+     * that has not been read stays null rather than inheriting a guess.
+     */
+    suspend fun recordHardwareRev(id: String, hardwareRev: String) {
+        dao.setHardwareRev(id, hardwareRev)
+    }
+
     /** The paired device whose `peripheralId` matches [peripheralId], or null if none — resolves a
      *  strap discovered by its MAC address back to its registry row. */
     suspend fun deviceForPeripheralId(peripheralId: String): PairedDeviceRow? =

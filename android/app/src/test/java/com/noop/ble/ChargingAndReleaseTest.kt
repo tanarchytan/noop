@@ -27,6 +27,19 @@ class ChargingAndReleaseTest {
         assertFalse(WhoopBleClient.shouldApplyChargingFromBatteryEvent(replayedOffload = true))
     }
 
+    // --- CHARGING_ON / CHARGING_OFF: the immediate answer, beside the slow BATTERY_LEVEL flag ---------
+
+    @Test fun chargingEventsStateTheChargeOutright() {
+        assertTrue(WhoopBleClient.chargingFromEvent("CHARGING_ON(7)") == true)
+        assertTrue(WhoopBleClient.chargingFromEvent("CHARGING_OFF(8)") == false)
+    }
+
+    @Test fun everyOtherEventLeavesTheChargeAlone() {
+        for (e in listOf("BATTERY_LEVEL(3)", "WRIST_ON(9)", "BLE_BONDED(23)", "DOUBLE_TAP(14)")) {
+            assertNull("$e must not touch the charge", WhoopBleClient.chargingFromEvent(e))
+        }
+    }
+
     // --- H3 / #520: released LiveState -----------------------------------------------------------------
 
     @Test fun releasedState_dropsTheLinkAndClearsLiveReadouts() {

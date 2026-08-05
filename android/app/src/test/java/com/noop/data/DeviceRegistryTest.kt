@@ -75,6 +75,9 @@ class DeviceRegistryTest {
         override suspend fun setSerial(id: String, serial: String?) {
             devices[id]?.let { devices[id] = it.copy(serial = serial) }
         }
+        override suspend fun setHardwareRev(id: String, hardwareRev: String?) {
+            devices[id]?.let { devices[id] = it.copy(hardwareRev = hardwareRev) }
+        }
 
         override suspend fun deviceForPeripheralId(peripheralId: String): PairedDeviceRow? =
             devices.values.firstOrNull { it.peripheralId == peripheralId }

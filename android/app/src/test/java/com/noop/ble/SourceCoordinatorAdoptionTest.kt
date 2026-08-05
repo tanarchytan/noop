@@ -59,6 +59,9 @@ class SourceCoordinatorAdoptionTest {
         override suspend fun setSerial(id: String, serial: String?) {
             devices[id]?.let { devices[id] = it.copy(serial = serial) }
         }
+        override suspend fun setHardwareRev(id: String, hardwareRev: String?) {
+            devices[id]?.let { devices[id] = it.copy(hardwareRev = hardwareRev) }
+        }
         override suspend fun deletePairedDevice(id: String) { devices.remove(id) }
         override suspend fun renameDevice(id: String, nickname: String?) {
             devices[id]?.let { devices[id] = it.copy(nickname = nickname) }
@@ -429,5 +432,28 @@ class SourceCoordinatorAdoptionTest {
 
         assertEquals("a different WHOOP must drop the current link", 1, stops)
         assertEquals("a different WHOOP must reconnect", 1, starts)
+    }
+
+    // --- Hardware revision (GATT 0x2A27) -----------------------------------------------------------
+
+    @Test
+    fun hardwareRevisionIsRecordedVerbatimOnTheActiveWhoop() = runBlocking {
+        val dao = FakeRegistryDao().apply { devices["my-whoop"] = whoopRow("my-whoop", peripheralId = null) }
+        val coordinator = coordinatorOver(dao)
+
+        coordinator.connectedHardwareRevChanged("WG50_r45")
+
+        assertEquals("WG50_r45", dao.devices["my-whoop"]!!.hardwareRev)
+    }
+
+    @Test
+    fun anUnreadHardwareRevisionLeavesTheRowNull() = runBlocking {
+        val dao = FakeRegistryDao().apply { devices["my-whoop"] = whoopRow("my-whoop", peripheralId = null) }
+        val coordinator = coordinatorOver(dao)
+
+        coordinator.connectedHardwareRevChanged(null)
+        coordinator.connectedHardwareRevChanged("   ")
+
+        assertNull(dao.devices["my-whoop"]!!.hardwareRev)
     }
 }
