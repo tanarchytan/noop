@@ -1804,13 +1804,72 @@ class WhoopRepository(private val dao: WhoopDao) {
          * canonical import covers is still surfaced. Pure + order-stable: de-dupe is keyed on `day`, and
          * the result is re-sorted oldest-first downstream by [mergeDaily]. A single-source caller passes
          * one list and gets it back unchanged.
+         *
+         * A day two ids both cover is coalesced per COLUMN ([coalesceDay]), not taken whole: the earlier
+         * list keeps every column it carries and the later ones only fill what it left null. Whole-row
+         * first-wins let a hollow row (steps and nothing else) discard a complete one, and nothing
+         * downstream healed it — [mergeDaily] only bridges imported/computed/phone, never two straps.
          */
         internal fun unionByDay(lists: List<List<DailyMetric>>): List<DailyMetric> {
             if (lists.size == 1) return lists[0]
             val byDay = LinkedHashMap<String, DailyMetric>()
-            // First list wins: only fill a day a later (lower-precedence) list covers and an earlier one didn't.
-            for (list in lists) for (d in list) byDay.putIfAbsent(d.day, d)
+            for (list in lists) for (d in list) {
+                val held = byDay[d.day]
+                byDay[d.day] = if (held == null) d else coalesceDay(held, d)
+            }
             return byDay.values.toList()
+        }
+
+        /**
+         * One day held by two source ids, folded into [winner]'s row: [winner] keeps every column it
+         * carries and [filler] supplies only the ones it left null. "Carries" is NON-NULL, so a measured
+         * zero (no steps, no strain) is a value and is never overwritten.
+         *
+         * Columns that only mean something together are taken as a GROUP, whole and from one row, so a
+         * sleep total never sits beside another strap's stage minutes: the sleep block (and the Rest
+         * inputs the score is recomputed from), the Charge and its persisted inputs, the HR-zone split,
+         * the skin-temperature pair (each strap has its own baseline anchor) and the raw red/IR pair. A
+         * group moves only when [winner] is empty across the WHOLE group. [winner]'s `deviceId` stays,
+         * so the folded row keeps the identity the union already gave it.
+         */
+        internal fun coalesceDay(winner: DailyMetric, filler: DailyMetric): DailyMetric {
+            val sleepFromFiller = winner.totalSleepMin == null && winner.efficiency == null &&
+                winner.deepMin == null && winner.remMin == null && winner.lightMin == null &&
+                winner.disturbances == null && winner.sleepNeedHours == null &&
+                winner.sleepConsistency == null
+            val chargeFromFiller = winner.recovery == null && winner.recoveryIndexSlope == null &&
+                winner.priorDayEffort == null
+            val zonesFromFiller = winner.zone1to3Min == null && winner.zone4to5Min == null
+            val skinTempFromFiller = winner.skinTempDevC == null && winner.skinTempAbsC == null
+            val rawSpo2FromFiller = winner.spo2Red == null && winner.spo2Ir == null
+            return winner.copy(
+                totalSleepMin = if (sleepFromFiller) filler.totalSleepMin else winner.totalSleepMin,
+                efficiency = if (sleepFromFiller) filler.efficiency else winner.efficiency,
+                deepMin = if (sleepFromFiller) filler.deepMin else winner.deepMin,
+                remMin = if (sleepFromFiller) filler.remMin else winner.remMin,
+                lightMin = if (sleepFromFiller) filler.lightMin else winner.lightMin,
+                disturbances = if (sleepFromFiller) filler.disturbances else winner.disturbances,
+                sleepNeedHours = if (sleepFromFiller) filler.sleepNeedHours else winner.sleepNeedHours,
+                sleepConsistency = if (sleepFromFiller) filler.sleepConsistency else winner.sleepConsistency,
+                recovery = if (chargeFromFiller) filler.recovery else winner.recovery,
+                recoveryIndexSlope = if (chargeFromFiller) filler.recoveryIndexSlope else winner.recoveryIndexSlope,
+                priorDayEffort = if (chargeFromFiller) filler.priorDayEffort else winner.priorDayEffort,
+                zone1to3Min = if (zonesFromFiller) filler.zone1to3Min else winner.zone1to3Min,
+                zone4to5Min = if (zonesFromFiller) filler.zone4to5Min else winner.zone4to5Min,
+                skinTempDevC = if (skinTempFromFiller) filler.skinTempDevC else winner.skinTempDevC,
+                skinTempAbsC = if (skinTempFromFiller) filler.skinTempAbsC else winner.skinTempAbsC,
+                spo2Red = if (rawSpo2FromFiller) filler.spo2Red else winner.spo2Red,
+                spo2Ir = if (rawSpo2FromFiller) filler.spo2Ir else winner.spo2Ir,
+                // Independent columns: each stands alone, so a plain per-column fill is safe.
+                restingHr = winner.restingHr ?: filler.restingHr,
+                avgHrv = winner.avgHrv ?: filler.avgHrv,
+                strain = winner.strain ?: filler.strain,
+                exerciseCount = winner.exerciseCount ?: filler.exerciseCount,
+                spo2Pct = winner.spo2Pct ?: filler.spo2Pct,
+                respRateBpm = winner.respRateBpm ?: filler.respRateBpm,
+                steps = winner.steps ?: filler.steps,
+                activeKcalEst = winner.activeKcalEst ?: filler.activeKcalEst,
+            )
         }
 
         /**
