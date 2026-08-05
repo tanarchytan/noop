@@ -63,7 +63,8 @@ class SleepUiStructureTest {
                 "stageRowSpans", "nightSpanSec", "nightStageIntervals",
             ),
             "SleepStagesCard.kt" to setOf(
-                "STAGE_ORDER", "SleepStagesCard", "SleepStagesHeadline", "SleepStageRows", "SleepStageRow",
+                "STAGE_ORDER", "NO_SHARE", "stagePercentByLabel",
+                "SleepStagesCard", "SleepStagesHeadline", "SleepStageRows", "SleepStageRow",
                 "SleepStageDot", "SleepStageTrack", "TypicalMarkKey", "SleepMotionStrip", "SleepStageInsight",
                 "SleepStagesFooter", "stageMinutes", "stageRowColor",
             ),

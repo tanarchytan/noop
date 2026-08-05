@@ -35,11 +35,25 @@ import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import com.noop.analytics.RustScores
 import java.util.Locale
 import kotlin.math.roundToInt
 
 /** The four stage rows, in the order the reference lists them. */
 private val STAGE_ORDER = listOf("Awake", "Light", "Deep", "REM")
+
+/** What a share reads as on a night with nothing to split. */
+private const val NO_SHARE = "--"
+
+/**
+ * The night's four stages as whole percentages that sum to exactly 100, keyed by row label.
+ * whoop-rs apportions them; a night with no minutes yields an empty map, so no row prints a share
+ * the night never had.
+ */
+internal fun stagePercentByLabel(stages: Stages): Map<String, Int> {
+    val split = RustScores.wholePercentages(STAGE_ORDER.map { stageMinutes(stages, it) }) ?: return emptyMap()
+    return STAGE_ORDER.zip(split).toMap()
+}
 
 /**
  * HOURS OF SLEEP — the night's asleep total, its heart-rate trace with the selected stage banded onto
@@ -66,6 +80,9 @@ internal fun SleepStagesCard(
     // invented architecture has no genuine timeline to band the heart rate against.
     val real = realSegments?.takeIf { it.size >= 2 }
     var selectedStage by remember(real) { mutableStateOf<String?>(null) }
+    // ONE apportionment for the whole card: whoop-rs splits the night into whole percentages that
+    // sum to 100, and the rows and the insight line below both read that one result.
+    val stagePercents = remember(stages) { stagePercentByLabel(stages) }
 
     NoopCard(padding = Metrics.cardPadding, tint = Palette.restColor) {
         Column(verticalArrangement = Arrangement.spacedBy(Metrics.space14)) {
@@ -96,6 +113,7 @@ internal fun SleepStagesCard(
             }
             SleepStageRows(
                 stages = stages,
+                stagePercents = stagePercents,
                 realSegments = real,
                 typicalByStage = typicalByStage,
                 onsetTs = onsetTs,
@@ -128,6 +146,7 @@ private fun SleepStagesHeadline(asleepMin: Double, typicalAsleepMin: Double?) {
 @Composable
 private fun SleepStageRows(
     stages: Stages,
+    stagePercents: Map<String, Int>,
     realSegments: List<Pair<String, Float>>?,
     typicalByStage: Map<String, Double?>,
     onsetTs: Long?,
@@ -160,6 +179,7 @@ private fun SleepStageRows(
             SleepStageRow(
                 label = label,
                 minutes = minutes,
+                percent = stagePercents[label],
                 total = stages.total,
                 color = stageRowColor(label),
                 spans = spans,
@@ -178,18 +198,22 @@ private fun SleepStageRows(
                 ClockLabelRow(onsetTs, wakeTs)
             }
         }
-        SleepStageInsight(selectedStage, stages)
+        SleepStageInsight(selectedStage, stages, stagePercents)
     }
 }
 
 /**
  * One stage row: a selection dot, the stage name, its share of the night, the duration, and the hatched
  * full-night track carrying that stage's runs plus a dashed mark at the personal typical.
+ *
+ * [percent] is the card's one apportionment, not this row's own rounding; null means the night had
+ * nothing to split and the row says so rather than printing a zero it did not measure.
  */
 @Composable
 private fun SleepStageRow(
     label: String,
     minutes: Double,
+    percent: Int?,
     total: Double,
     color: Color,
     spans: List<Pair<Float, Float>>,
@@ -199,7 +223,6 @@ private fun SleepStageRow(
     dimmed: Boolean,
     onTap: () -> Unit,
 ) {
-    val percent = if (total > 0.0) (minutes / total * 100.0).roundToInt() else 0
     val segColor = if (dimmed) Palette.textTertiary.copy(alpha = 0.55f) else color
     val pctColor = if (dimmed) Palette.textTertiary else color
     val shape = RoundedCornerShape(Metrics.stageRowCorner)
@@ -216,7 +239,9 @@ private fun SleepStageRow(
             .clickable(onClickLabel = "Highlights this stage on the sleep chart", onClick = onTap)
             .padding(horizontal = Metrics.stageRowPadH, vertical = Metrics.stageRowPadV)
             .semantics(mergeDescendants = true) {
-                contentDescription = "$label: ${durationText(minutes)}, $percent percent of the night"
+                contentDescription = percent
+                    ?.let { "$label: ${durationText(minutes)}, $it percent of the night" }
+                    ?: "$label: ${durationText(minutes)}, share of the night not known"
             },
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -229,7 +254,12 @@ private fun SleepStageRow(
                 maxLines = 1,
             )
             Spacer(modifier = Modifier.width(Metrics.space8))
-            Text("$percent%", style = NoopType.captionNumber, color = pctColor, maxLines = 1)
+            Text(
+                percent?.let { "$it%" } ?: NO_SHARE,
+                style = NoopType.captionNumber,
+                color = pctColor,
+                maxLines = 1,
+            )
             Spacer(modifier = Modifier.weight(1f))
             Text(
                 durationText(minutes),
@@ -380,13 +410,15 @@ private fun SleepMotionStrip(epochs: List<Double>) {
 
 /** Fixed-height insight slot under the axis, so selecting a stage never reflows the card. */
 @Composable
-private fun SleepStageInsight(selectedStage: String?, stages: Stages) {
+private fun SleepStageInsight(selectedStage: String?, stages: Stages, stagePercents: Map<String, Int>) {
     val text = if (selectedStage == null) {
         "Tap a stage to highlight it across the night."
     } else {
-        val minutes = stageMinutes(stages, selectedStage)
-        val percent = if (stages.total > 0.0) (minutes / stages.total * 100.0).roundToInt() else 0
-        "$selectedStage tonight: ${durationText(minutes)} — $percent% of the night."
+        // The rows' own apportionment, so the sentence can never disagree with the row above it.
+        val minutes = durationText(stageMinutes(stages, selectedStage))
+        stagePercents[selectedStage]
+            ?.let { "$selectedStage tonight: $minutes — $it% of the night." }
+            ?: "$selectedStage tonight: $minutes."
     }
     Box(
         modifier = Modifier.fillMaxWidth().height(Metrics.stageInsightHeight),
