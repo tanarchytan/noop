@@ -517,10 +517,13 @@ private fun HrvSnapshotButton(enabled: Boolean, onClick: () -> Unit) {
 }
 
 /**
- * The skin-temperature suite, each card rendered only when its engine produced a result: the illness
+ * The multi-day signal suite, each card rendered only when its engine produced a result: the illness
  * heads-up when it is not quiet, cycle awareness once opted in, the body clock when estimated, and
  * Rhythm Age once the strap has banked any motion at all (below the worn-day floor it counts up
  * instead of hiding, so the wait is visible rather than silent).
+ *
+ * None of the four is a skin temperature; they read motion, R-R and sleep timing over days, which is
+ * what separates them from the live vitals above.
  */
 @Composable
 private fun SkinTempSuite(
@@ -543,7 +546,7 @@ private fun SkinTempSuite(
     // section title with nothing under it.
     if (heads == null && cycle == null && !offersOptIn && bodyClock == null && !showsRhythmAge) return
     Column(verticalArrangement = Arrangement.spacedBy(Metrics.gap)) {
-        NoopCardHeader("Skin temperature", color = Palette.textSecondary)
+        NoopCardHeader("Body signals", color = Palette.textSecondary)
         heads?.let { HeadsUpCard(result = it, distance = signals.illnessDistance) }
         cycle?.let { CycleAwarenessCard(result = it, onTurnOff = onTurnOffCycle) }
         if (offersOptIn) CycleAwarenessOptInCard(onEnable = onEnableCycle)
