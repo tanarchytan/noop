@@ -65,11 +65,24 @@ data class MockDataset(
     val workouts: List<WorkoutRow> = emptyList(),
     val journal: List<JournalEntry> = emptyList(),
     val hr: List<HrSample> = emptyList(),
+    /** On-chip motion, the rest-activity signal the circadian cosinor and Rhythm Age are fitted on. */
+    val gravity: List<GravitySample> = emptyList(),
+    val steps: List<StepSample> = emptyList(),
+    val skinTemp: List<SkinTempSample> = emptyList(),
 ) {
     val isEmpty: Boolean
         get() = devices.isEmpty() && pairedDevices.isEmpty() && daily.isEmpty() && sleeps.isEmpty() &&
-            series.isEmpty() && apple.isEmpty() && workouts.isEmpty() && journal.isEmpty() && hr.isEmpty()
+            series.isEmpty() && apple.isEmpty() && workouts.isEmpty() && journal.isEmpty() &&
+            hr.isEmpty() && gravity.isEmpty() && steps.isEmpty() && skinTemp.isEmpty()
 }
+
+/** The three per-sample streams [MockSeeder.rawStreams] builds together, so one call yields one
+ *  wearer's motion, step ticks and skin temperature over the same window. */
+data class MockRawStreams(
+    val gravity: List<GravitySample> = emptyList(),
+    val steps: List<StepSample> = emptyList(),
+    val skinTemp: List<SkinTempSample> = emptyList(),
+)
 
 /**
  * One checkable statement a scenario makes about the data it seeds. [expected] is what the scenario

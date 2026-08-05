@@ -1,6 +1,8 @@
 package com.noop.data
 
+import com.noop.analytics.CircadianEngine
 import com.noop.analytics.RustScores
+import com.noop.analytics.SleepStageHealer
 import com.noop.analytics.SleepStageTotals
 import java.time.LocalDate
 import java.time.ZoneId
@@ -24,7 +26,7 @@ object MockClaims {
         when (scenario) {
             MockScenario.TYPICAL -> typical(ds, zone)
             MockScenario.GAPS -> gaps(ds, today, zone)
-            MockScenario.EMPTY -> empty(ds)
+            MockScenario.EMPTY -> empty(ds, zone)
             MockScenario.EXTREMES -> extremes(ds, zone)
             MockScenario.BOUNDARIES -> boundaries(ds, zone)
             MockScenario.TWO_STRAPS -> twoStraps(ds, zone)
@@ -36,6 +38,9 @@ object MockClaims {
         count("days with a row but no night", 1, ds.daily.count { it.totalSleepMin == null }),
         count("sources writing rows", 3, sourceCount(ds)),
         stagesAgree(ds, zone),
+        wornDaysClaim(ds, zone, MockSeeder.RAW_STREAM_DAYS),
+        rhythmOffered(ds, zone, "yes"),
+        stagesSurviveTheRaw(ds),
     )
 
     private fun gaps(ds: MockDataset, today: LocalDate, zone: ZoneId): List<MockClaim> {
@@ -67,11 +72,15 @@ object MockClaims {
                 ds.series.count { it.day == unslept && it.key.startsWith("sleep_") },
             ),
             stagesAgree(ds, zone),
+            // The unworn day is the only one of the wear gaps inside the rest-activity window.
+            wornDaysClaim(ds, zone, MockSeeder.RAW_STREAM_DAYS - 1),
+            rhythmOffered(ds, zone, "yes"),
         )
     }
 
-    private fun empty(ds: MockDataset) = listOf(
+    private fun empty(ds: MockDataset, zone: ZoneId) = listOf(
         claim("rows of any kind", "none", if (ds.isEmpty) "none" else "${ds.daily.size} days"),
+        wornDaysClaim(ds, zone, 0),
     )
 
     private fun extremes(ds: MockDataset, zone: ZoneId): List<MockClaim> {
@@ -94,6 +103,9 @@ object MockClaims {
                 "${ds.series.filter { it.key == "sleep_performance" }.map { it.value }.maxOrNull()}",
             ),
             stagesAgree(ds, zone),
+            // The bottom end of the wear scale: a strap banking no motion at all, where a card that
+            // counted up for ever would be noise, so it is left out instead.
+            wornDaysClaim(ds, zone, 0),
         )
     }
 
@@ -113,6 +125,8 @@ object MockClaims {
                 "${ds.series.filter { it.key == "sleep_performance" }.map { it.value }.maxOrNull()}",
             ),
             stagesAgree(ds, zone),
+            wornDaysClaim(ds, zone, CircadianEngine.MIN_WORN_DAYS - 1),
+            rhythmOffered(ds, zone, "no, ${CircadianEngine.MIN_WORN_DAYS - 1} of ${CircadianEngine.MIN_WORN_DAYS} days"),
         )
     }
 
@@ -132,6 +146,14 @@ object MockClaims {
             count("HR samples on a different strap from their night", 0, strayHr),
             count("straps in the device list", 1, ds.pairedDevices.count { it.id == MockSeeder.SECOND_STRAP }),
             stagesAgree(ds, zone),
+            // The swap took the rest-activity window with it: the active strap holds only the days
+            // since the swap, which is under the floor, and the retired strap holds the rest.
+            wornDaysClaim(ds, zone, MockScenarios.STRAP_SWAP_DAY.toInt()),
+            count(
+                "days of motion under the retired strap",
+                MockSeeder.RAW_STREAM_DAYS - MockScenarios.STRAP_SWAP_DAY.toInt(),
+                wornDays(ds, zone, MockSeeder.SECOND_STRAP),
+            ),
         )
     }
 
@@ -152,6 +174,60 @@ object MockClaims {
     }
 
     private fun near(a: Double, b: Double?): Boolean = b != null && abs(a - b) <= STAGE_TOLERANCE_MIN
+
+    // MARK: - rest-activity
+
+    /**
+     * Distinct local days of on-chip motion under [deviceId] — what the Body Clock and Rhythm Age cards
+     * count against whoop-rs's worn-day floor, and therefore what decides whether either appears at all.
+     * Counted by the one owner of that rule, never by a second copy of it here.
+     */
+    private fun wornDays(ds: MockDataset, zone: ZoneId, deviceId: String = MockSeeder.WHOOP): Int =
+        CircadianEngine.wornDays(activity(ds, deviceId), tzOffsetSeconds(zone))
+
+    private fun wornDaysClaim(ds: MockDataset, zone: ZoneId, expected: Int) =
+        count("days of motion under the active strap", expected, wornDays(ds, zone))
+
+    /**
+     * Whether whoop-rs reads a Rhythm Age off the seeded rhythm, and when it does not, the count the
+     * card shows instead. Asked at [REFERENCE_AGE] because the transform needs SOME real age; which one
+     * scales the answer but never decides that there is one, and the wearer's own age is not the
+     * dataset's to state.
+     */
+    private fun rhythmOffered(ds: MockDataset, zone: ZoneId, expected: String): MockClaim {
+        val samples = activity(ds, MockSeeder.WHOOP)
+        val worn = CircadianEngine.wornDays(samples, tzOffsetSeconds(zone))
+        val age = if (worn >= CircadianEngine.MIN_WORN_DAYS) {
+            RustScores.rhythmAge(samples, tzOffsetSeconds(zone), REFERENCE_AGE, RustScores.sexInput("male"))
+        } else {
+            null
+        }
+        val actual = when {
+            age != null -> "yes"
+            worn >= CircadianEngine.MIN_WORN_DAYS -> "no, the rhythm is too flat"
+            else -> "no, $worn of ${CircadianEngine.MIN_WORN_DAYS} days"
+        }
+        return claim("whoop-rs reads a rhythm age", expected, actual)
+    }
+
+    /** The age the Rhythm Age question is asked at. The dataset owns the motion, not the wearer. */
+    private const val REFERENCE_AGE = 47.0
+
+    /** The seeded motion is deliberately too coarse to restage a night, so every night keeps the stages
+     *  the scenario gave it rather than a re-derived set the claims above never saw. */
+    private fun stagesSurviveTheRaw(ds: MockDataset): MockClaim = count(
+        "nights the seeded motion is dense enough to restage", 0,
+        ds.sleeps.count {
+            SleepStageHealer.isDense(ds.gravity.filter { g -> g.deviceId == it.deviceId }, it.startTs, it.endTs)
+        },
+    )
+
+    private fun activity(ds: MockDataset, deviceId: String): List<uniffi.whoop_ffi.ActivitySample> =
+        ds.gravity.filter { it.deviceId == deviceId }
+            .mapNotNull { g -> g.dynAccelG?.let { uniffi.whoop_ffi.ActivitySample(g.ts, it) } }
+
+    private fun tzOffsetSeconds(zone: ZoneId): Long =
+        zone.rules.getOffset(java.time.Instant.now()).totalSeconds.toLong()
 
     /** "840.0 asleep, 0.0 awake" for a night, so a decode mismatch names both halves. */
     private fun decoded(s: SleepSession?): String {

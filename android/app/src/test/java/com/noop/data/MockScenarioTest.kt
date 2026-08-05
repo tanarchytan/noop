@@ -1,5 +1,7 @@
 package com.noop.data
 
+import com.noop.analytics.CircadianEngine
+import com.noop.analytics.SleepStageHealer
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
@@ -33,8 +35,13 @@ class MockScenarioTest {
      * future as completed; a session that ends after [nowSec] is now not written, which drops one row
      * from this dataset. [noSessionIsWrittenAfterTheDatasetsOwnClock] states that rule directly, since
      * a digest only says a byte moved and never which one.
+     *
+     * Re-pinned a third time: the dataset gained the raw per-sample streams (motion, step ticks, skin
+     * temperature) it had never carried, so no motion-derived surface could render on it at all. Those
+     * rows are covered here rather than left out, because a digest that does not cover a table cannot
+     * notice that table changing.
      */
-    private val typicalDigest = "d7ded8e9c18d34ef14660edd0d716b7c445d1fcd9b85776910bdb19be4b40949"
+    private val typicalDigest = "f3b409446cf84a6d3d38e8e2f6c28f91cb939de020b451208d394b16e2f201d9"
 
     /** The instant the dataset is "as of". Fixed, because "now" decides which of today's sessions have
      *  finished, and an unpinned clock would rebuild a different dataset every hour. */
@@ -53,6 +60,9 @@ class MockScenarioTest {
         ds.workouts.forEach { appendLine("workout|$it") }
         ds.journal.forEach { appendLine("journal|$it") }
         ds.hr.forEach { appendLine("hr|$it") }
+        ds.gravity.forEach { appendLine("gravity|$it") }
+        ds.steps.forEach { appendLine("steps|$it") }
+        ds.skinTemp.forEach { appendLine("skinTemp|$it") }
     }
 
     private fun digest(ds: MockDataset): String =
@@ -170,7 +180,70 @@ class MockScenarioTest {
         )
     }
 
+    /**
+     * The three states a motion-derived card has, each on a scenario: an estimate, a count-up towards
+     * the floor, and no card at all. Before the raw streams were seeded every scenario sat in the third
+     * one, so neither the Body Clock nor Rhythm Age could be reached from the mock at all.
+     */
+    @Test
+    fun theWornDayFloorIsCoveredOnBothSides() {
+        val zone = ZoneId.of("Europe/Amsterdam")
+        val offset = zone.rules.getOffset(java.time.Instant.now()).totalSeconds.toLong()
+        fun worn(s: MockScenario, deviceId: String = MockSeeder.WHOOP) = CircadianEngine.wornDays(
+            build(s).gravity.filter { it.deviceId == deviceId }
+                .mapNotNull { g -> g.dynAccelG?.let { uniffi.whoop_ffi.ActivitySample(g.ts, it) } },
+            offset,
+        )
+        assertEquals("TYPICAL must clear the floor", MockSeeder.RAW_STREAM_DAYS, worn(MockScenario.TYPICAL))
+        assertTrue("GAPS keeps enough days to clear the floor", worn(MockScenario.GAPS) >= CircadianEngine.MIN_WORN_DAYS)
+        assertEquals(
+            "BOUNDARIES must sit one day UNDER the floor, or the count-up state is never drawn",
+            CircadianEngine.MIN_WORN_DAYS - 1, worn(MockScenario.BOUNDARIES),
+        )
+        assertEquals("EXTREMES seeds no motion", 0, worn(MockScenario.EXTREMES))
+        assertEquals("EMPTY seeds no motion", 0, worn(MockScenario.EMPTY))
+        // The swap moves the window with the strap: the active one holds only the days since it.
+        assertEquals(MockScenarios.STRAP_SWAP_DAY.toInt(), worn(MockScenario.TWO_STRAPS))
+        assertEquals(
+            MockSeeder.RAW_STREAM_DAYS - MockScenarios.STRAP_SWAP_DAY.toInt(),
+            worn(MockScenario.TWO_STRAPS, MockSeeder.SECOND_STRAP),
+        )
+    }
+
+    /**
+     * The seeded motion is a fixture INPUT, not a second opinion on a night: it must stay under
+     * [SleepStageHealer]'s density gate, or the heal pass would re-derive stages on device and the
+     * curated night every stage claim is written against would quietly stop being the one on screen.
+     */
+    @Test
+    fun theSeededMotionCannotRestageASeededNight() {
+        for (s in MockScenario.entries) {
+            val ds = build(s)
+            val dense = ds.sleeps.count {
+                SleepStageHealer.isDense(ds.gravity.filter { g -> g.deviceId == it.deviceId }, it.startTs, it.endTs)
+            }
+            assertEquals("$s seeds motion dense enough to restage a night", 0, dense)
+        }
+    }
+
+    /** No stream row may sit after the dataset's own clock, for the same reason no session may. */
+    @Test
+    fun noStreamSampleIsWrittenAfterTheDatasetsOwnClock() {
+        for (s in MockScenario.entries) {
+            val ds = build(s)
+            val future = ds.gravity.count { it.ts > nowSec } + ds.steps.count { it.ts > nowSec } +
+                ds.skinTemp.count { it.ts > nowSec }
+            assertEquals("${s.id} banks a stream sample from the future", 0, future)
+        }
+        assertTrue(
+            "the clock did not cut anything, so this gate proves nothing",
+            MockSeeder.build(MockScenario.TYPICAL, today, zone, today.plusDays(1).atStartOfDay(zone).toEpochSecond())
+                .gravity.size > build(MockScenario.TYPICAL).gravity.size,
+        )
+    }
+
     private fun counts(ds: MockDataset) =
         "daily=${ds.daily.size} sleeps=${ds.sleeps.size} series=${ds.series.size} " +
-            "apple=${ds.apple.size} workouts=${ds.workouts.size} journal=${ds.journal.size} hr=${ds.hr.size}"
+            "apple=${ds.apple.size} workouts=${ds.workouts.size} journal=${ds.journal.size} " +
+            "hr=${ds.hr.size} gravity=${ds.gravity.size} steps=${ds.steps.size} skinTemp=${ds.skinTemp.size}"
 }

@@ -1511,6 +1511,12 @@ class WhoopRepository(private val dao: WhoopDao) {
      *  covering the same seconds are no-ops. */
     suspend fun insertHr(rows: List<HrSample>) = dao.insertHr(rows)
 
+    /** Persist per-sample stream rows directly, for a caller that already holds entities rather than a
+     *  decoded [StreamBatch]. Same IGNORE-on-(deviceId, ts) dedup as the decode path's [insert]. */
+    suspend fun insertGravity(rows: List<GravitySample>) = dao.insertGravity(rows)
+    suspend fun insertSteps(rows: List<StepSample>) = dao.insertSteps(rows)
+    suspend fun insertSkinTemp(rows: List<SkinTempSample>) = dao.insertSkinTemp(rows)
+
     suspend fun latestHrSampleTs(deviceId: String): Long? = dao.latestHrSampleTs(deviceId)
     suspend fun latestHr(deviceId: String): HrSample? = dao.latestHr(deviceId)
     suspend fun latestBattery(deviceId: String): BatterySample? = dao.latestBattery(deviceId)

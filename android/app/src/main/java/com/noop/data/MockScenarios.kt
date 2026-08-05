@@ -1,5 +1,6 @@
 package com.noop.data
 
+import com.noop.analytics.CircadianEngine
 import com.noop.analytics.RustScores
 import java.time.Instant
 import java.time.LocalDate
@@ -117,6 +118,11 @@ object MockScenarios {
             workouts = base.workouts.filterNot { localDay(it.startTs, zone) in absent },
             journal = base.journal.filterNot { it.day in absent },
             hr = hr,
+            // A day the strap was off banked no motion either, so the rest-activity window loses that
+            // day rather than reading a still one.
+            gravity = base.gravity.filterNot { localDay(it.ts, zone) in absent },
+            steps = base.steps.filterNot { localDay(it.ts, zone) in absent },
+            skinTemp = base.skinTemp.filterNot { localDay(it.ts, zone) in absent },
         )
     }
 
@@ -174,6 +180,11 @@ object MockScenarios {
             },
             journal = base.journal.map { it.copy(deviceId = reassign(it.deviceId, it.day)) },
             hr = hr,
+            // A strap's raw streams follow its days, so the active strap's rest-activity window holds
+            // only the days it was actually on the wrist.
+            gravity = base.gravity.map { it.copy(deviceId = reassign(it.deviceId, localDay(it.ts, zone))) },
+            steps = base.steps.map { it.copy(deviceId = reassign(it.deviceId, localDay(it.ts, zone))) },
+            skinTemp = base.skinTemp.map { it.copy(deviceId = reassign(it.deviceId, localDay(it.ts, zone))) },
         )
     }
 
@@ -216,8 +227,13 @@ object MockScenarios {
      * A day sitting exactly on each recovery-state edge and a day one [EDGE_STEP] below it, plus the
      * two ends of the scale and a night slept to exactly the need. The edges are read back from
      * whoop-rs, so this fixture holds no copy of a threshold.
+     *
+     * It carries the OTHER edge nothing else covers: one day short of the rest-activity worn-day floor,
+     * so the Body Clock and Rhythm Age cards are exercised counting up ("6 of 7 days") rather than
+     * naming a year. [MockScenario.TYPICAL] sits above that floor and [MockScenario.EXTREMES] seeds no
+     * motion at all, so the three states a motion-derived card has are each on a scenario.
      */
-    internal fun boundaries(today: LocalDate, zone: ZoneId): MockDataset {
+    internal fun boundaries(today: LocalDate, zone: ZoneId, nowSec: Long): MockDataset {
         val scores = buildList {
             add(100.0)
             for (e in recoveryStateEdges().asReversed()) {
@@ -233,6 +249,13 @@ object MockScenarios {
             )
         return tabled(rows, today, zone, BOUNDARIES_HR_SEED)
             .let { it.copy(series = it.series + weekly(today, zone, rows.size, BOUNDARIES_WEEKLY, BOUNDARIES_WEEKLY)) }
+            .let { ds ->
+                val raw = MockSeeder.rawStreams(
+                    MockSeeder.WHOOP, ds.daily, ds.sleeps, ds.apple, today, zone, nowSec,
+                    days = CircadianEngine.MIN_WORN_DAYS - 1,
+                )
+                ds.copy(gravity = raw.gravity, steps = raw.steps, skinTemp = raw.skinTemp)
+            }
     }
 
     /**

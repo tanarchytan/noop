@@ -1,5 +1,6 @@
 package com.noop.data
 
+import com.noop.analytics.CalendarDay
 import com.noop.analytics.StrainScorer
 import org.json.JSONArray
 import org.json.JSONObject
@@ -9,6 +10,7 @@ import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.ln
 import kotlin.math.round
+import kotlin.math.sin
 import kotlin.math.sqrt
 import kotlin.random.Random
 
@@ -53,6 +55,38 @@ object MockSeeder {
     /** Seconds between seeded HR samples, and how far either side of a night they run. */
     internal const val HR_STEP_SEC = 60L
     internal const val HR_EDGE_PAD_SEC = 1_800L
+
+    /** Trailing days of raw per-sample streams a scenario seeds — the window AppViewModel reads the
+     *  rest-activity cosinor over, so the Body Clock and Rhythm Age cards have an input at all. */
+    internal const val RAW_STREAM_DAYS = 14
+
+    /** Seconds between raw stream samples. Coarse deliberately: twelve bins an hour is ample for the
+     *  per-hour cosinor, and stays under SleepStageHealer's ~1-sample-per-2-minutes density gate, so the
+     *  seeded stages are the ones every night keeps. */
+    internal const val RAW_STEP_SEC = 300L
+
+    /** Local hour the wearer's motion peaks, and the hour their skin temperature does — mid-afternoon
+     *  and pre-dawn respectively. The two anchors the seeded diurnal shapes are drawn around. */
+    private const val MOTION_PEAK_HOUR = 15.0
+    private const val SKIN_TEMP_PEAK_HOUR = 3.0
+
+    /** Nightly skin temperature (°C) the ±deviation columns hang off, and the amplitude the raw
+     *  register swings by across a day (warmest asleep, coolest mid-afternoon). */
+    private const val SKIN_TEMP_BASE_C = 34.0
+    private const val SKIN_TEMP_SWING_C = 0.6
+
+    /** Gravity-removed motion (g) awake: the floor at the rhythm's trough and the span up to its peak.
+     *  Asleep the whole figure is scaled by [ASLEEP_MOTION_SCALE], so a night spent awake stands out. */
+    private const val MOTION_FLOOR_G = 0.012
+    private const val MOTION_SPAN_G = 0.042
+    private const val ASLEEP_MOTION_SCALE = 0.12
+
+    /** Wrist tilt from vertical (radians) at the motion peak: the arm is raised through the active
+     *  hours and hangs still overnight. */
+    private const val WRIST_TILT_RAD = 1.2
+
+    /** The strap's step counter is a u16 that wraps, and whoop-rs sums it wrap-aware. */
+    private const val STEP_COUNTER_MODULO = 0x1_0000
 
     /** Effort rescale factor: WHOOP's 0–21 Day Strain axis → our Effort axis. Read from the one owner
      *  rather than restated, so a seeded Effort cannot land on a different scale than an imported one. */
@@ -151,6 +185,9 @@ object MockSeeder {
         if (ds.apple.isNotEmpty()) repo.upsertAppleDaily(ds.apple)
         if (ds.workouts.isNotEmpty()) repo.upsertWorkouts(ds.workouts)
         if (ds.journal.isNotEmpty()) repo.upsertJournal(ds.journal)
+        if (ds.gravity.isNotEmpty()) repo.insertGravity(ds.gravity)
+        if (ds.steps.isNotEmpty()) repo.insertSteps(ds.steps)
+        if (ds.skinTemp.isNotEmpty()) repo.insertSkinTemp(ds.skinTemp)
     }
 
     /**
@@ -167,7 +204,7 @@ object MockSeeder {
         MockScenario.GAPS -> MockScenarios.gaps(typical(today, zone, nowSec), today, zone)
         MockScenario.EMPTY -> MockDataset()
         MockScenario.EXTREMES -> MockScenarios.extremes(today, zone)
-        MockScenario.BOUNDARIES -> MockScenarios.boundaries(today, zone)
+        MockScenario.BOUNDARIES -> MockScenarios.boundaries(today, zone, nowSec)
         MockScenario.TWO_STRAPS -> MockScenarios.twoStraps(typical(today, zone, nowSec), today, zone)
     }
 
@@ -403,11 +440,15 @@ object MockSeeder {
 
         // Per-minute HR across the most recent nights, generated last so no earlier draw shifts.
         val hr = sleeps.takeLast(HR_NIGHTS).flatMap { nightHrSamples(rng, it) }
+        // The raw per-sample streams draw from their OWN generator, so their arrival cannot shift a
+        // single figure above.
+        val raw = rawStreams(WHOOP, daily, sleeps, apple, today, zone, nowSec)
 
         return MockDataset(
             devices = listOf(MockDeviceRow(WHOOP, "WHOOP (mock)")),
             daily = daily, sleeps = sleeps, series = series, apple = apple,
             workouts = workouts, journal = journal, hr = hr,
+            gravity = raw.gravity, steps = raw.steps, skinTemp = raw.skinTemp,
         )
     }
 
@@ -448,6 +489,103 @@ object MockSeeder {
         return out
     }
 
+    /**
+     * The strap's own per-sample streams over the trailing [days] days ending on [today]: gravity-removed
+     * motion ([GravitySample.dynAccelG] — the rest-activity signal the circadian cosinor and Rhythm Age
+     * are fitted on), the wrist orientation it rides on, the u16 step-tick counter and the skin-temp
+     * register. Fixture inputs, the class of value a decoded record carries; nothing displayed is
+     * derived here.
+     *
+     * The rhythm is the dataset's own. Motion follows a daily cosine peaking at [MOTION_PEAK_HOUR] and
+     * is scaled down while one of [sleeps] covers the sample, so the unslept night reads as a night
+     * spent moving rather than a second quiet one. Each day's ticks are handed out in proportion to that
+     * day's motion and sum to its [AppleDaily.steps], so the strap counter and the phone agree. Samples
+     * stop at [nowSec]: today is in progress, and motion from this evening is a claim nothing can make.
+     */
+    internal fun rawStreams(
+        deviceId: String,
+        daily: List<DailyMetric>,
+        sleeps: List<SleepSession>,
+        apple: List<AppleDaily>,
+        today: LocalDate,
+        zone: ZoneId,
+        nowSec: Long,
+        days: Int = RAW_STREAM_DAYS,
+    ): MockRawStreams {
+        if (days <= 0) return MockRawStreams()
+        val rng = Random(0x5EED_0071)
+        val absByDay = daily.associate { it.day to it.skinTempAbsC }
+        val stepsByDay = apple.associate { it.day to it.steps }
+        val nights = sleeps.map { it.startTs to it.endTs }
+
+        val gravity = ArrayList<GravitySample>(days * (CalendarDay.SECONDS_PER_DAY / RAW_STEP_SEC).toInt())
+        val steps = ArrayList<StepSample>(gravity.size)
+        val skinTemp = ArrayList<SkinTempSample>(gravity.size)
+        var counter = 0
+
+        for (back in (days - 1) downTo 0) {
+            val date = today.minusDays(back.toLong())
+            val day = date.toString()
+            val dayStart = date.atStartOfDay(zone).toEpochSecond()
+
+            // Pass 1: the day's motion, so pass 2 can hand out its step ticks in proportion to it.
+            val stamps = ArrayList<Long>()
+            val motion = ArrayList<Double>()
+            var ts = dayStart
+            while (ts < dayStart + CalendarDay.SECONDS_PER_DAY && ts <= nowSec) {
+                val hour = (ts - dayStart) / 3600.0
+                val rhythm = 0.5 + 0.5 * cos(2.0 * PI * (hour - MOTION_PEAK_HOUR) / 24.0)
+                val asleep = nights.any { (from, to) -> ts in from..to }
+                val awake = MOTION_FLOOR_G + MOTION_SPAN_G * rhythm
+                val level = if (asleep) awake * ASLEEP_MOTION_SCALE else awake
+                stamps.add(ts)
+                motion.add((level * (1.0 + gauss(rng, 0.0, 0.15))).coerceAtLeast(0.0005))
+                ts += RAW_STEP_SEC
+            }
+            if (stamps.isEmpty()) continue
+
+            val motionSum = motion.sum()
+            val dayTicks = stepsByDay[day] ?: 0
+            val absC = absByDay[day] ?: SKIN_TEMP_BASE_C
+
+            for (i in stamps.indices) {
+                val at = stamps[i]
+                val hour = (at - dayStart) / 3600.0
+                val rhythm = 0.5 + 0.5 * cos(2.0 * PI * (hour - MOTION_PEAK_HOUR) / 24.0)
+                // A unit gravity vector: the wrist tilts up with the day's activity and turns once a day.
+                val tilt = WRIST_TILT_RAD * rhythm
+                val yaw = 2.0 * PI * ((at - dayStart) / CalendarDay.SECONDS_PER_DAY.toDouble())
+                gravity.add(
+                    GravitySample(
+                        deviceId = deviceId, ts = at,
+                        x = round4(sin(tilt) * cos(yaw)), y = round4(sin(tilt) * sin(yaw)),
+                        z = round4(cos(tilt)), dynAccelG = round4(motion[i]),
+                    )
+                )
+
+                val ticks = Math.round(dayTicks * (motion[i] / motionSum)).toInt()
+                counter = (counter + ticks) % STEP_COUNTER_MODULO
+                steps.add(
+                    StepSample(
+                        deviceId = deviceId, ts = at, counter = counter,
+                        // The wearer is walking exactly while the counter advances; a class is a label
+                        // on the sample, never a threshold on a displayed number.
+                        activityClass = if (ticks > 0) 1 else 0,
+                    )
+                )
+
+                // Skin temperature runs opposite the motion: warmest asleep, coolest mid-afternoon. The
+                // day's own nightly column is the peak, so the raw stream and that column agree.
+                val tempC = absC - SKIN_TEMP_SWING_C +
+                    SKIN_TEMP_SWING_C * cos(2.0 * PI * (hour - SKIN_TEMP_PEAK_HOUR) / 24.0)
+                skinTemp.add(
+                    SkinTempSample(deviceId = deviceId, ts = at, raw = Math.round(tempC * 100.0).toInt())
+                )
+            }
+        }
+        return MockRawStreams(gravity = gravity, steps = steps, skinTemp = skinTemp)
+    }
+
     /** Box–Muller normal sample. */
     private fun gauss(rng: Random, mean: Double, sd: Double): Double {
         val u1 = rng.nextDouble().coerceIn(1e-9, 1.0)
@@ -457,6 +595,10 @@ object MockSeeder {
 
     internal fun round1(x: Double) = round(x * 10.0) / 10.0
     internal fun round2(x: Double) = round(x * 100.0) / 100.0
+
+    /** The resolution a raw motion / gravity figure is written at, so a stream row reads like a decoded
+     *  one rather than carrying seventeen digits of a generator's arithmetic. */
+    internal fun round4(x: Double) = round(x * 10_000.0) / 10_000.0
 
     /** Mean + population standard deviation of a sample; SD floored so a z-score never divides by zero.
      *  Used to derive the mock "stress" series the same way WhoopImporter.meanStd does. */
