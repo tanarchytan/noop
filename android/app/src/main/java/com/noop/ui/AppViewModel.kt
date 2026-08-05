@@ -281,6 +281,16 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /** Live connection + biometric snapshot, surfaced straight from the BLE client. */
     val live: StateFlow<LiveState> = ble.state
 
+    /** What the WHOOP battery pack last reported over its own read-only link, surfaced straight from
+     *  [com.noop.ble.PowerPackBleClient]. Empty until [watchPowerPack] turns it on. */
+    val powerPack: StateFlow<com.noop.ble.PowerPackState> = noopApp.powerPack.state
+
+    /** Start or stop looking at the pack. Only the Devices screen calls this, for as long as it is on
+     *  screen, so the second link exists only while someone is reading it. */
+    fun watchPowerPack(on: Boolean) {
+        if (on) noopApp.powerPack.start() else noopApp.powerPack.stop()
+    }
+
     /** Which strap the user is pairing — drives the scan filter in [connect]. Defaults to WHOOP 4.0. */
     private val _selectedModel = MutableStateFlow(WhoopModel.WHOOP4)
     val selectedModel: StateFlow<WhoopModel> = _selectedModel.asStateFlow()
@@ -543,6 +553,13 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             ble.connectedStrapSerial
                 .collect { serial -> noopApp.sourceCoordinator.connectedSerialChanged(serial) }
+        }
+        // The hardware revision (0x2A27) lands on the same read schedule and is what separates one 5-series
+        // board from the other, so it is recorded verbatim on the active strap's row. Same distinct-emission
+        // property as the two flows above.
+        viewModelScope.launch {
+            ble.connectedStrapHardwareRev
+                .collect { rev -> noopApp.sourceCoordinator.connectedHardwareRevChanged(rev) }
         }
         // Re-arm the strap's firmware alarm once per process-alive day. The firmware alarm is a single
         // absolute instant with NO recurrence and was previously re-armed ONLY on the bond edge — so a

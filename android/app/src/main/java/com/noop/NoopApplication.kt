@@ -2,6 +2,7 @@ package com.noop
 
 import android.app.Application
 import android.util.Log
+import com.noop.ble.PowerPackBleClient
 import com.noop.ble.SourceCoordinator
 import com.noop.ble.WhoopBleClient
 import com.noop.ble.WhoopModel
@@ -65,6 +66,15 @@ class NoopApplication : Application() {
             // client never has to read the UI/prefs layer. Default OFF — see WhoopBleClient.debugLogcat.
             debugLogcat = NoopPrefs.debugLogging(applicationContext)
         }
+    }
+
+    /**
+     * Process-wide READ-ONLY client for the WHOOP battery pack — a BLE peripheral of its own, reached
+     * directly rather than through the strap. Owned here so a screen rotation keeps the link instead of
+     * rescanning; only the Devices screen starts and stops it. Its log lines join the strap log.
+     */
+    val powerPack: PowerPackBleClient by lazy {
+        PowerPackBleClient(applicationContext, log = { ble.externalLog(it) })
     }
 
     /**

@@ -44,6 +44,7 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -93,6 +94,13 @@ fun DevicesScreen(
 ) {
     val scope = rememberCoroutineScope()
     val live by viewModel.live.collectAsStateWithLifecycle()
+    // The WHOOP battery pack is a second BLE peripheral, so it is only looked at while this screen is
+    // on show — the link exists exactly as long as someone is reading it.
+    val powerPack by viewModel.powerPack.collectAsStateWithLifecycle()
+    DisposableEffect(Unit) {
+        viewModel.watchPowerPack(true)
+        onDispose { viewModel.watchPowerPack(false) }
+    }
 
     val context = LocalContext.current
 
@@ -176,6 +184,11 @@ fun DevicesScreen(
                 // Historical record layout from the current backfill, distinct from strap firmware.
                 liveHistoryLayout = if (device.status == DeviceStatus.active.name && live.connected)
                     live.historyLayoutVersion else null,
+                // The strap's own charge report, never a guess from the pack being nearby.
+                isCharging = device.status == DeviceStatus.active.name && live.connected && live.charging == true,
+                // The pack charges a strap, so it belongs on the active WHOOP's card and nowhere else.
+                powerPack = if (device.status == DeviceStatus.active.name && SourceCoordinator.isWhoop(device))
+                    powerPack else null,
                 onMakeActive = { switchTarget = device },
                 onRename = { renameTarget = device },
                 onRemove = { removeTarget = device },
@@ -391,6 +404,12 @@ private fun DeviceCard(
     liveFirmware: String? = null,
     /** The active+connected strap's observed banked-history record layout (`hist_version`). */
     liveHistoryLayout: Int? = null,
+    /** The strap reports it is taking charge — drives the "Charging · Live" pill. */
+    isCharging: Boolean = false,
+    /** What the WHOOP battery pack last reported over its own read-only link, or null on a card the
+     *  pack is not being looked at for. Its gauge sits under the strap's and its firmware under the
+     *  strap's; both are absent until the pack actually answers. */
+    powerPack: com.noop.ble.PowerPackState? = null,
     onMakeActive: () -> Unit,
     onRename: () -> Unit,
     onRemove: (() -> Unit)?,
@@ -447,7 +466,7 @@ private fun DeviceCard(
                     StatePill("Beta", tone = StrandTone.Warning, showsDot = false)
                     Spacer(Modifier.width(Metrics.space6))
                 }
-                StatePill(device, isActive, isLiveConnected, bondRefused, isReconnecting)
+                StatePill(device, isActive, isLiveConnected, bondRefused, isReconnecting, isCharging)
             }
 
             // Honest local-takeover state row for an adopted Oura ring that is paired but not the
@@ -472,6 +491,10 @@ private fun DeviceCard(
             if (liveBatteryPct != null) {
                 BatteryBar(pct = liveBatteryPct)
             }
+
+            // The pack's own charge, under the strap's. Its own peripheral, so it appears only once it
+            // has answered a read — an absent pack has no gauge rather than a zeroed one.
+            powerPack?.batteryPct?.let { BatteryBar(pct = it, label = "PowerPack") }
 
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
@@ -500,6 +523,12 @@ private fun DeviceCard(
                     onSetWrist = onSetWrist,
                 )
             }
+
+            // The pack's firmware, directly under the strap's. Falls back to why there is no reading,
+            // so a pack that cannot be reached says so instead of going quiet.
+            powerPack?.let { pack -> powerPackLine(pack)?.let { line ->
+                Text(line, style = NoopType.footnote, color = Palette.textTertiary)
+            } }
         }
     }
 
@@ -524,18 +553,18 @@ private fun DeviceCard(
 }
 
 /**
- * The active+connected device's live battery: a leading "Battery" label, a progress bar filled to the
- * reported percent in the accent, and the trailing %.
+ * A live battery reading: a leading [label], a progress bar filled to the reported percent in the
+ * accent, and the trailing %. Used for the strap's own charge and, under it, the pack's.
  */
 @Composable
-private fun BatteryBar(pct: Int) {
+private fun BatteryBar(pct: Int, label: String = "Battery") {
     val clamped = pct.coerceIn(0, 100)
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(Metrics.space10),
-        modifier = Modifier.semantics { contentDescription = "Battery $clamped%" },
+        modifier = Modifier.semantics { contentDescription = "$label $clamped%" },
     ) {
-        Text("Battery", style = NoopType.footnote, color = Palette.textTertiary)
+        Text(label, style = NoopType.footnote, color = Palette.textTertiary)
         LinearProgressIndicator(
             progress = { clamped / 100f },
             color = Palette.accent,
@@ -571,6 +600,9 @@ internal fun devicePillState(
     isReconnecting: Boolean,
     bondRefused: Boolean,
     isLiveConnected: Boolean,
+    /** The strap says it is taking charge right now. Only meaningful on a live link, and only ever
+     *  the strap's own CHARGING/BATTERY_LEVEL report — never inferred from a pack being nearby. */
+    isCharging: Boolean = false,
 ): DevicePillState = when {
     isArchived -> DevicePillState("Removed", StrandTone.Neutral, showsDot = false)
     !isActive -> DevicePillState("Paired", StrandTone.Neutral)
@@ -580,8 +612,24 @@ internal fun devicePillState(
     // BLE-connected but the encrypted bond was refused — no data flows, so this must not read
     // as "Active · Live".
     bondRefused -> DevicePillState("Connected · not paired", StrandTone.Warning)
+    // Charging is the more specific live state, so it replaces "Active · Live" rather than sitting
+    // beside it; the link is still live either way.
+    isLiveConnected && isCharging -> DevicePillState("Charging · Live", StrandTone.Accent, pulsing = true)
     isLiveConnected -> DevicePillState("Active · Live", StrandTone.Positive, pulsing = true)
     else -> DevicePillState("Active", StrandTone.Positive)
+}
+
+/**
+ * The pack's own footnote, sitting under the strap's firmware line: its firmware once read, else an
+ * honest word about why there is no reading. Null when nothing is being looked at, so the line is
+ * absent rather than empty.
+ */
+internal fun powerPackLine(pack: com.noop.ble.PowerPackState): String? = when {
+    pack.firmware != null -> "PowerPack · FW ${pack.firmware}"
+    pack.connected -> "PowerPack · connected"
+    pack.scanning -> "PowerPack · looking…"
+    pack.note != null -> "PowerPack · ${pack.note}"
+    else -> null
 }
 
 @Composable
@@ -591,6 +639,7 @@ private fun StatePill(
     isLiveConnected: Boolean,
     bondRefused: Boolean = false,
     isReconnecting: Boolean = false,
+    isCharging: Boolean = false,
 ) {
     val state = devicePillState(
         isArchived = device.status == DeviceStatus.archived.name,
@@ -598,6 +647,7 @@ private fun StatePill(
         isReconnecting = isReconnecting,
         bondRefused = bondRefused,
         isLiveConnected = isLiveConnected,
+        isCharging = isCharging,
     )
     StatePill(state.label, tone = state.tone, showsDot = state.showsDot, pulsing = state.pulsing)
 }
