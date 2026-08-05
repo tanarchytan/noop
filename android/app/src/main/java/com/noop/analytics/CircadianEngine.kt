@@ -1,9 +1,19 @@
 package com.noop.analytics
 
 // Body-clock phase estimate: maps the whoop-rs `circadian` cosinor result onto the type
-// [BodyClockCard] renders and words the note beside it. The fit, its gates and its constants are
-// whoop-rs; nothing here is arithmetic. Wellness awareness only, approximate.
+// [BodyClockCard] renders and words the note beside it. The fit and its constants are whoop-rs; what
+// is here is the coverage the fit is offered on. Wellness awareness only, approximate.
 object CircadianEngine {
+
+    /** Distinct worn days of rest-activity a cosinor fit needs before anything derived from it is
+     *  offered: fewer days fit a spurious rhythm. The Kotlin twin of the whoop-rs `circadian` gate,
+     *  read by both the store-side pass and the live Health-hub read so the two agree on what is ready. */
+    const val MIN_WORN_DAYS = 7
+
+    /** Distinct LOCAL days the samples cover — what [MIN_WORN_DAYS] is counted against, and what the
+     *  cosinor is told it observed. Days, never sample count: a dense burst over one day is one day. */
+    fun wornDays(samples: List<uniffi.whoop_ffi.ActivitySample>, tzOffsetSeconds: Long): Int =
+        samples.map { (it.unix + tzOffsetSeconds) / CalendarDay.SECONDS_PER_DAY }.distinct().size
 
     enum class PhaseConfidence(val raw: String) {
         UNREADABLE("unreadable"),

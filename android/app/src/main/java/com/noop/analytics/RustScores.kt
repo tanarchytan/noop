@@ -560,6 +560,15 @@ internal object RustScores {
         uniffi.whoop_ffi.circadianPhaseFromSamples(
             samples, tzOffsetSeconds, daysObserved.toUInt(), habitualWakeHour, observedTempMinHour)
 
+    /** The profile's sex tag ("male" | "female" | anything else) as the FFI enum. Pure adapter, so every
+     *  caller hands whoop-rs the same value for the same profile. */
+    fun sexInput(sex: String): uniffi.whoop_ffi.SexInput =
+        when (sex.lowercase(java.util.Locale.US)) {
+            "male" -> uniffi.whoop_ffi.SexInput.MALE
+            "female" -> uniffi.whoop_ffi.SexInput.FEMALE
+            else -> uniffi.whoop_ffi.SexInput.UNKNOWN
+        }
+
     /** Circadian Rhythm Age (relative) from raw (unix, motion) samples + tz offset + age + sex; whoop-rs
      *  bins per local hour, fits the cosinor, and applies the Gompertz transform. */
     fun rhythmAge(

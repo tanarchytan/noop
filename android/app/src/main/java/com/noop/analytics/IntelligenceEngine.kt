@@ -993,7 +993,7 @@ object IntelligenceEngine {
 
         // Circadian Rhythm Age, weekly, keyed to the week's Saturday: pool the trailing 14 days' per-hour
         // on-chip motion (gravitySample.dynAccelG) into the rest-activity cosinor + biological-age transform.
-        // Owner-resolved per day; needs >= 7 worn days of motion, else nothing persists.
+        // Owner-resolved per day; needs [CircadianEngine.MIN_WORN_DAYS] worn days of motion, else nothing persists.
         if (profile.age > 0) {
             val rhythmSamples = ArrayList<com.noop.data.GravitySample>()
             for (off in 0 until 14) {
@@ -1006,14 +1006,11 @@ object IntelligenceEngine {
             val activitySamples = rhythmSamples.mapNotNull { s ->
                 s.dynAccelG?.let { uniffi.whoop_ffi.ActivitySample(s.ts, it) }
             }
-            // A day or two of data fits a spurious rhythm, so require >= 7 distinct worn days first.
-            val wornDays = activitySamples.map { (it.unix + tzOffsetSeconds) / CalendarDay.SECONDS_PER_DAY }.distinct().size
-            if (wornDays >= 7) {
-                val sexInput = when (profile.sex.lowercase(java.util.Locale.US)) {
-                    "male" -> uniffi.whoop_ffi.SexInput.MALE
-                    "female" -> uniffi.whoop_ffi.SexInput.FEMALE
-                    else -> uniffi.whoop_ffi.SexInput.UNKNOWN
-                }
+            // A day or two of data fits a spurious rhythm, so require the shared worn-day floor first —
+            // the SAME gate the Health hub's live card applies before it offers a number.
+            val wornDays = CircadianEngine.wornDays(activitySamples, tzOffsetSeconds)
+            if (wornDays >= CircadianEngine.MIN_WORN_DAYS) {
+                val sexInput = RustScores.sexInput(profile.sex)
                 RustScores.rhythmAge(activitySamples, tzOffsetSeconds, profile.age, sexInput)?.let { ra ->
                     repo.upsertMetricSeries(listOf(MetricSeriesRow(deviceId = computedId,
                         day = saturdayKeyOnOrBefore(newestDay), key = "rhythm_age", value = ra.cosinorAgeYears)))

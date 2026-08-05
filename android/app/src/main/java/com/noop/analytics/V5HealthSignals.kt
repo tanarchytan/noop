@@ -26,12 +26,22 @@ object V5HealthSignals {
         val illnessDistance: IllnessDistance.Result?,
         /** True once there are enough trusted nights for any of these to be more than "learning". */
         val baselineTrusted: Boolean,
+        /**
+         * Circadian Rhythm Age off the SAME cosinor fit as [bodyClock], so the two readings can never
+         * disagree. Null below [CircadianEngine.MIN_WORN_DAYS] worn days, without a usable age, or when
+         * whoop-rs finds the rhythm too flat to read.
+         */
+        val rhythmAge: uniffi.whoop_ffi.RhythmAgeInfo? = null,
+        /** Distinct local days of rest-activity behind [bodyClock] / [rhythmAge] — what the cards count
+         *  against [CircadianEngine.MIN_WORN_DAYS] while they are still filling up. */
+        val restActivityWornDays: Int = 0,
     )
 
     /**
-     * Runs the three engines over [days] (oldest to newest). [cycleOptedIn] gates the cycle classifier
+     * Runs the engines over [days] (oldest to newest). [cycleOptedIn] gates the cycle classifier
      * (off returns a cheap LEARNING result so the UI's opt-in card still shows). [loggedPeriodStarts] are
      * optional "yyyy-MM-dd" period-start days; [journalContext] carries same-day confounder flags for illness suppression.
+     * [chronologicalAge] (fractional years, 0 = unknown) and [sex] feed the Rhythm Age transform only.
      */
     fun evaluate(
         days: List<DailyMetric>,
@@ -41,6 +51,8 @@ object V5HealthSignals {
         habitualWakeHour: Double = 7.0,
         activitySamples: List<uniffi.whoop_ffi.ActivitySample> = emptyList(),
         tzOffsetSeconds: Long = 0,
+        chronologicalAge: Double = 0.0,
+        sex: String = "",
     ): Snapshot {
         val baselineCfg = RustScores.illnessBaselineCfg
         val baselineTrusted = days.count { hasAnyVital(it) } >= baselineCfg.minNights.toInt()
@@ -105,14 +117,24 @@ object V5HealthSignals {
         // ── Body clock: whoop-rs bins the rest-activity samples per local hour and fits the cosinor,
         //    the same fit Rhythm Age reads, so the two can never disagree. No samples leaves it null and
         //    the card keeps its honest empty state. ──
-        val wornDays = activitySamples.map { (it.unix + tzOffsetSeconds) / 86_400L }.distinct().size
+        val wornDays = CircadianEngine.wornDays(activitySamples, tzOffsetSeconds)
         val bodyClock = if (activitySamples.isEmpty()) null else {
             RustScores.circadianPhase(activitySamples, tzOffsetSeconds, wornDays, habitualWakeHour, null)
                 ?.let { CircadianEngine.fromRust(it) }
         }
 
+        // ── Rhythm Age: the same samples, the same whoop-rs cosinor, then its biological-age transform.
+        //    Gated on [CircadianEngine.MIN_WORN_DAYS] worn days exactly as the store-side pass is, so the
+        //    card never shows a number that pass would refuse to persist. ──
+        val rhythmAge = if (chronologicalAge > 0 && wornDays >= CircadianEngine.MIN_WORN_DAYS) {
+            RustScores.rhythmAge(activitySamples, tzOffsetSeconds, chronologicalAge, RustScores.sexInput(sex))
+        } else {
+            null
+        }
+
         return Snapshot(cycle = cycle, bodyClock = bodyClock, illness = illness,
-            illnessDistance = illnessDistance, baselineTrusted = baselineTrusted)
+            illnessDistance = illnessDistance, baselineTrusted = baselineTrusted,
+            rhythmAge = rhythmAge, restActivityWornDays = wornDays)
     }
 
     /** A day is "usable" for the baseline if it carries at least one of the four illness/cycle vitals. */

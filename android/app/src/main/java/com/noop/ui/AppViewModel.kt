@@ -617,6 +617,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                         journalContext = illnessJournalContext(days),
                         activitySamples = restActivitySamples(),
                         tzOffsetSeconds = localTzOffsetSeconds(),
+                        chronologicalAge = profileStore.ageYears,
+                        sex = profileStore.sex,
                     )
                 }
                 // Keep the home-screen widget fresh while the app is open — covers users who turned
@@ -1885,11 +1887,19 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         _cycleTrackingEnabled.value = enabled
         NoopPrefs.setCycleTracking(appContext, enabled)
         val days = recentDays.value
+        // The rest-activity reads need suspending I/O this synchronous flip cannot do, so the Body Clock
+        // and Rhythm Age come forward from the last full pass rather than being blanked by a toggle that
+        // has nothing to do with either.
+        val prior = _v5Signals.value
         runCatching {
             _v5Signals.value = V5HealthSignals.evaluate(
                 days = days,
                 cycleOptedIn = enabled,
                 journalContext = illnessJournalContext(days),
+            ).copy(
+                bodyClock = prior?.bodyClock,
+                rhythmAge = prior?.rhythmAge,
+                restActivityWornDays = prior?.restActivityWornDays ?: 0,
             )
         }
     }

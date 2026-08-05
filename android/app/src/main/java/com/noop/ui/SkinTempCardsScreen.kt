@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.DirectionsRun
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Info
@@ -45,7 +46,7 @@ import kotlin.math.roundToInt
 
 // MARK: - Skin-temperature suite cards (v5 pillar) — Compose twin
 //
-// Kotlin/Compose mirror of Strand/Screens/SkinTempCardsView.swift. Three self-contained,
+// Kotlin/Compose mirror of Strand/Screens/SkinTempCardsView.swift. Four self-contained,
 // reusable cards driven entirely by a pure com.noop.analytics engine RESULT passed in
 // (Wave 3 runs the engines in the analytics pass and mounts these in the Health hub):
 //
@@ -55,6 +56,9 @@ import kotlin.math.roundToInt
 //                            probabilistic next-period WINDOW (never a hard date).
 //   • BodyClockCard        — CircadianEngine.PhaseEstimate. LIGHT + SLEEP TIMING only, never a
 //                            supplement/drug.
+//   • RhythmAgeCard        — whoop-rs RhythmAgeInfo off the SAME cosinor fit as the body clock,
+//                            charted against real age and Fitness Age. A relative wellness
+//                            estimate to watch as a trend — never a diagnosis, never a lifespan.
 //   • HeadsUpCard          — IllnessSignalEngine.Result. Confounder-suppressed illness
 //                            "heads-up". On-device estimate — not a diagnosis.
 //
@@ -249,7 +253,77 @@ fun BodyClockCard(estimate: CircadianEngine.PhaseEstimate) {
     }
 }
 
-// MARK: - 3. Heads-Up card (illness early-warning, confounder-suppressed)
+// MARK: - 3. Rhythm Age card
+
+/**
+ * Circadian Rhythm Age: the body-clock age whoop-rs reads from the same rest-activity cosinor
+ * [BodyClockCard] renders, charted against real age and Fitness Age. A relative wellness estimate,
+ * approximate — never a diagnosis, never a life expectancy.
+ *
+ * [wornDays] and [confidence] come from that one shared fit, so the card can only ever say what the
+ * fit supports: below [CircadianEngine.MIN_WORN_DAYS] it counts up instead of showing a number, and
+ * a rhythm too flat to read says so rather than naming a year.
+ */
+@Composable
+fun RhythmAgeCard(
+    info: uniffi.whoop_ffi.RhythmAgeInfo?,
+    wornDays: Int,
+    chronologicalAge: Double,
+    confidence: CircadianEngine.PhaseConfidence?,
+    fitnessAge: Double? = null,
+) {
+    val hue = Palette.restColor
+    NoopCard(tint = hue) {
+        Column(verticalArrangement = Arrangement.spacedBy(Metrics.gap)) {
+            Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Overline("Rhythm age")
+                    Text("Read from your on-wrist motion", style = NoopType.footnote, color = Palette.textTertiary)
+                }
+                StatePill(
+                    rhythmAgeStateLabel(info, confidence),
+                    tone = rhythmAgeStateTone(info, confidence),
+                )
+            }
+
+            Text(rhythmAgeTitle(info, wornDays), style = NoopType.title2, color = Palette.textPrimary)
+            Text(rhythmAgeNote(info, wornDays), style = NoopType.subhead, color = Palette.textSecondary)
+
+            // The chart the number is read against: your real age always, your Fitness Age when the
+            // weekly pass has one. Both are years, so they sit on one scale.
+            if (info != null) {
+                Column {
+                    NoopStatRow(
+                        icon = Icons.Filled.CalendarMonth,
+                        label = "Your age",
+                        value = yearsString(chronologicalAge),
+                        unit = "yrs",
+                        iconTint = hue,
+                    )
+                    if (fitnessAge != null) {
+                        RowDivider()
+                        NoopStatRow(
+                            icon = Icons.AutoMirrored.Filled.DirectionsRun,
+                            label = "Fitness age",
+                            value = yearsString(fitnessAge),
+                            unit = "yrs",
+                            iconTint = hue,
+                        )
+                    }
+                }
+            }
+
+            Text(
+                "A wellness estimate from the shape of your daily rhythm, best read as a trend rather " +
+                    "than a number. It is not a medical result and not a life expectancy.",
+                style = NoopType.caption,
+                color = Palette.textTertiary,
+            )
+        }
+    }
+}
+
+// MARK: - 4. Heads-Up card (illness early-warning, confounder-suppressed)
 
 /**
  * The confounder-suppressed illness "heads-up". Renders the engine's already-decided level +
@@ -399,6 +473,52 @@ private fun bodyClockConfidenceTone(c: CircadianEngine.PhaseConfidence): StrandT
     CircadianEngine.PhaseConfidence.WIDE -> StrandTone.Accent
     CircadianEngine.PhaseConfidence.SOLID -> StrandTone.Accent
 }
+
+/** The headline: the age itself once the fit supports one, otherwise the honest reason it doesn't. */
+private fun rhythmAgeTitle(info: uniffi.whoop_ffi.RhythmAgeInfo?, wornDays: Int): String = when {
+    info != null -> "${yearsString(info.cosinorAgeYears)} yrs"
+    wornDays < CircadianEngine.MIN_WORN_DAYS -> "Still building"
+    else -> "Hard to read right now"
+}
+
+/**
+ * The sentence under the headline. Below the worn-day floor it repeats the promise the changelog
+ * makes and shows how far along the wear is; above it, how the estimate sits against real age.
+ */
+private fun rhythmAgeNote(info: uniffi.whoop_ffi.RhythmAgeInfo?, wornDays: Int): String {
+    if (info == null) {
+        if (wornDays >= CircadianEngine.MIN_WORN_DAYS) {
+            return "Your rhythm is too flat to read right now - keep wearing it for a clearer picture."
+        }
+        val days = wornDays.coerceAtLeast(0)
+        return "It needs about a week of wear before it first appears. " +
+            "$days of ${CircadianEngine.MIN_WORN_DAYS} days so far."
+    }
+    val years = abs(info.advanceYears).roundToInt()
+    if (years < 1) return "About level with your real age."
+    val plural = if (years == 1) "year" else "years"
+    // POSITIVE advance = older than chronological, matching the whoop-rs convention.
+    val dir = if (info.advanceYears > 0) "older" else "younger"
+    return "About $years $plural $dir than your real age."
+}
+
+/** The pill reuses the SHARED fit's confidence, so it can never claim more than the body clock does. */
+private fun rhythmAgeStateLabel(
+    info: uniffi.whoop_ffi.RhythmAgeInfo?,
+    confidence: CircadianEngine.PhaseConfidence?,
+): String = if (info == null || confidence == null) "Calibrating" else bodyClockConfidenceLabel(confidence)
+
+private fun rhythmAgeStateTone(
+    info: uniffi.whoop_ffi.RhythmAgeInfo?,
+    confidence: CircadianEngine.PhaseConfidence?,
+): StrandTone = if (info == null || confidence == null) {
+    StrandTone.Neutral
+} else {
+    bodyClockConfidenceTone(confidence)
+}
+
+/** Whole years, locale-free — the unit every age on this card is shown in. */
+private fun yearsString(years: Double): String = years.roundToInt().toString()
 
 /** Card hue follows the level: raised / already-unwell = amber warning (matches the shipped
  *  banner); suppressed / mild = a calmer neutral so it never scares. */

@@ -28,6 +28,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
@@ -77,6 +78,7 @@ import com.noop.ui.PhysiologyStack
 import com.noop.ui.ProfileStore
 import com.noop.ui.RealtimeHrOwner
 import com.noop.ui.RealtimeHrWhileVisible
+import com.noop.ui.RhythmAgeCard
 import com.noop.ui.SectionHeader
 import com.noop.ui.StatePill
 import com.noop.ui.StrandTone
@@ -129,6 +131,11 @@ fun WhoopHealthMonitorScreen(
     val zone5Bpm = remember(zoneSet) {
         zoneSet.zones.firstOrNull { it.number.toInt() == 5 }?.lower?.roundToInt() ?: 0
     }
+    // The second series Rhythm Age is charted against. Read through the computed union, which resolves
+    // its own newest-day/active-strap precedence, so a two-strap day cannot surface an arbitrary value.
+    val fitnessAge by produceState<Double?>(initialValue = null) {
+        value = runCatching { vm.repo.latestMetricComputedUnion("fitness_age")?.value }.getOrNull()
+    }
     val activeConnection by remember { derivedStateOf { live.connected && live.bonded } }
     val vitals = remember(days, tempUnit) { latestHealthVitals(days, tempUnit) }
     var showHrvSnapshot by remember { mutableStateOf(false) }
@@ -168,6 +175,8 @@ fun WhoopHealthMonitorScreen(
                 signals = v5Signals,
                 cycleEnabled = cycleEnabled,
                 optInApplies = cycleOptInApplies(profile.sex),
+                chronologicalAge = profile.ageYears,
+                fitnessAge = fitnessAge,
                 onEnableCycle = { vm.setCycleTrackingEnabled(true) },
                 onTurnOffCycle = { vm.setCycleTrackingEnabled(false) },
             )
@@ -509,13 +518,17 @@ private fun HrvSnapshotButton(enabled: Boolean, onClick: () -> Unit) {
 
 /**
  * The skin-temperature suite, each card rendered only when its engine produced a result: the illness
- * heads-up when it is not quiet, cycle awareness once opted in, and the body clock when estimated.
+ * heads-up when it is not quiet, cycle awareness once opted in, the body clock when estimated, and
+ * Rhythm Age once the strap has banked any motion at all (below the worn-day floor it counts up
+ * instead of hiding, so the wait is visible rather than silent).
  */
 @Composable
 private fun SkinTempSuite(
     signals: V5HealthSignals.Snapshot?,
     cycleEnabled: Boolean,
     optInApplies: Boolean,
+    chronologicalAge: Double,
+    fitnessAge: Double?,
     onEnableCycle: () -> Unit,
     onTurnOffCycle: () -> Unit,
 ) {
@@ -523,14 +536,26 @@ private fun SkinTempSuite(
     val cycle = if (cycleEnabled) signals?.cycle else null
     val offersOptIn = !cycleEnabled && optInApplies
     val bodyClock = signals?.bodyClock
+    // No motion banked at all (a strap that sends none) leaves the card out entirely: a counter stuck
+    // at zero for ever is noise, not a wait.
+    val showsRhythmAge = (signals?.restActivityWornDays ?: 0) > 0
     // The header only exists while a card does. Emitted unconditionally it ended the scroll on a
     // section title with nothing under it.
-    if (heads == null && cycle == null && !offersOptIn && bodyClock == null) return
+    if (heads == null && cycle == null && !offersOptIn && bodyClock == null && !showsRhythmAge) return
     Column(verticalArrangement = Arrangement.spacedBy(Metrics.gap)) {
         NoopCardHeader("Skin temperature", color = Palette.textSecondary)
         heads?.let { HeadsUpCard(result = it, distance = signals.illnessDistance) }
         cycle?.let { CycleAwarenessCard(result = it, onTurnOff = onTurnOffCycle) }
         if (offersOptIn) CycleAwarenessOptInCard(onEnable = onEnableCycle)
         bodyClock?.let { BodyClockCard(estimate = it) }
+        if (showsRhythmAge && signals != null) {
+            RhythmAgeCard(
+                info = signals.rhythmAge,
+                wornDays = signals.restActivityWornDays,
+                chronologicalAge = chronologicalAge,
+                confidence = bodyClock?.confidence,
+                fitnessAge = fitnessAge,
+            )
+        }
     }
 }
