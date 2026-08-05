@@ -67,12 +67,13 @@ internal data class SleepModel(
     val typicalDeepMin: Double?,
     val typicalRemMin: Double?,
     val typicalLightMin: Double?,
-    /** The trend window's asleep hours, need hours, efficiency and day keys — one entry per SLOT of
-     *  [trendDates], null where that night has no reading, so every weekly card shares one axis and a
-     *  gap draws as a gap. */
+    /** The trend window's asleep hours, need hours, efficiency, performance and day keys — one entry
+     *  per SLOT of [trendDates], null where that night has no reading, so every weekly card shares one
+     *  axis and a gap draws as a gap. */
     val trendHours: List<Double?>,
     val trendNeedHours: List<Double>,
     val trendEfficiency: List<Double?>,
+    val trendPerformance: List<Double?>,
     val trendDates: List<String>,
     /** Persisted per-epoch segments as ordered (stage, minutes) weights — the REAL hypnogram (on-device
      *  approximate staging) — or null → synthesized fallback. */
@@ -449,13 +450,14 @@ internal fun buildSleepModel(
 
     // Per-tile metrics — each a full pass over the FULL day history (asleep totals). Where the WHOOP export
     // carried the figure verbatim (metricSeries), it wins per day; the on-device recomputation fills the rest.
-    val performance = metricAtDay(days, latest) { d ->
+    // ONE producer for a night's 0–100, read by both the tile metric and the weekly chart.
+    fun performanceOf(d: DailyMetric): Double? =
         imported.performance[d.day]                       // WHOOP's own 0–100 figure wins per day
             // else the REAL Rest composite (RestScorer.restFromDaily) — the same source the Today Rest score
             // and the metric-detail overlay read, so every surface agrees (a hours-vs-need proxy ceilings
             // live 5.0 nights at 100%).
             ?: com.noop.analytics.RestScorer.restFromDaily(d)
-    }
+    val performance = metricAtDay(days, latest, ::performanceOf)
     val efficiency = metricAtDay(days, latest) { d ->
         d.efficiency?.let { if (it <= 1.0) it * 100.0 else it }
     }
@@ -498,6 +500,10 @@ internal fun buildSleepModel(
     val trendEfficiency = trendDates.map { d ->
         rowByDay[d]?.takeIf { (it.totalSleepMin ?: 0.0) > 0.0 }
             ?.efficiency?.let { if (it <= 1.0) it * 100.0 else it }
+    }
+    // Same gaps again, off the same producer the performance tile reads.
+    val trendPerformance = trendDates.map { d ->
+        rowByDay[d]?.takeIf { (it.totalSleepMin ?: 0.0) > 0.0 }?.let(::performanceOf)
     }
     // The need line is continuous: a personal need exists on a night that was missed.
     val trendNeedHours = trendDates.map { d -> ((imported.needMin[d] ?: needMin) / 60.0) }
@@ -546,6 +552,7 @@ internal fun buildSleepModel(
         trendHours = trendHours,
         trendNeedHours = trendNeedHours,
         trendEfficiency = trendEfficiency,
+        trendPerformance = trendPerformance,
         trendDates = trendDates,
         realSegments = realSegments,
         sleepDebtLedger = sleepDebtLedger,

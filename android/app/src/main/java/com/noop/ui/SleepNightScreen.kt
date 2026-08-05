@@ -503,6 +503,14 @@ fun SleepNightScreen(
                 item { Spacer(Modifier.height(Metrics.selectorTopUp)) }
                 item { SectionHeader("Weekly trends", overline = "Sleep", trailing = "Last 7 nights") }
                 item { Spacer(Modifier.height(Metrics.selectorTopUp)) }
+                item {
+                    SleepPerformanceTrendCard(
+                        series = m.trendPerformance,
+                        dates = m.trendDates,
+                        onOpenDetail = { detailMetricKey = "performance" },
+                    )
+                }
+                item { Spacer(Modifier.height(Metrics.selectorTopUp)) }
                 item { SleepTimeInBedCard(nights = weekSlots.let(::sleepScheduleNights), slots = weekSlots) }
                 item { Spacer(Modifier.height(Metrics.selectorTopUp)) }
                 item {

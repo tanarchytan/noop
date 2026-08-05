@@ -106,6 +106,7 @@ class SleepUiStructureTest {
             "SleepEmptyState.kt" to setOf("SleepEmptyState"),
             "SleepTrendCards.kt" to setOf(
                 "TIME_IN_BED_CHART_HEIGHT", "SLEEP_TREND_NIGHTS", "SleepTimeInBedCard",
+                "SleepPerformanceTrendCard", "SLEEP_PERFORMANCE_SCALE_MAX",
                 "SleepEfficiencyTrendCard", "SleepTrendShell", "trendDayLabel",
                 "SLEEP_STRESS_CHART_HEIGHT", "sleepStressLow", "sleepStressMedium",
                 "sleepStressHigh", "sleepStressLegend", "SleepStressNight", "SleepStressCard",

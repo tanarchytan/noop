@@ -158,6 +158,42 @@ internal fun SleepTimeInBedCard(nights: List<SleepScheduleNight>, slots: List<Ni
 }
 
 /**
+ * SLEEP PERFORMANCE — the week's 0-100 as one bar per night, each labelled above its own bar, with
+ * the chevron opening the metric's full-history sheet. A night with no reading keeps its slot and
+ * draws no bar, so an unworn night never reads as a zero-scoring one.
+ */
+@Composable
+internal fun SleepPerformanceTrendCard(series: List<Double?>, dates: List<String>, onOpenDetail: () -> Unit) {
+    val week = series.takeLast(SLEEP_TREND_NIGHTS)
+    val read = week.filterNotNull()
+    SleepTrendShell(title = "SLEEP PERFORMANCE", onOpen = onOpenDetail) {
+        if (read.isEmpty()) {
+            InsetChartPlaceholder(message = "Not enough nights yet.")
+            return@SleepTrendShell
+        }
+        WeekBarChart(
+            values = week,
+            dayLabels = dates.takeLast(week.size).map(::trendDayLabel),
+            color = Palette.restColor,
+            format = { pctValue(it) },
+            axisMax = SLEEP_PERFORMANCE_SCALE_MAX,
+            height = Metrics.compactChartHeight,
+        )
+        // The footer describes the nights that HAPPENED, so a gap neither averages in nor wins "Latest".
+        ChartCardFooter(
+            listOf(
+                "Latest" to pctValue(read.lastOrNull()),
+                "Week avg" to pctValue(RustScores.mean(read)),
+                "Best" to pctValue(read.maxOrNull()),
+            ),
+        )
+    }
+}
+
+/** The score's own ceiling, so one 92% bar is the same height on every week. */
+private const val SLEEP_PERFORMANCE_SCALE_MAX = 100.0
+
+/**
  * SLEEP EFFICIENCY — the trailing week as a line, with the chevron opening the metric's own
  * full-history sheet. A night with no reading arrives as a null and keeps its slot on the axis.
  */
