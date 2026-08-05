@@ -24,7 +24,7 @@ object AppChangelog {
      * Bump this when you add a release below. The "What's New" sheet shows automatically when the
      * stored last-seen version is behind this. (Decoupled from the bundle version on purpose.)
      */
-    const val CURRENT_VERSION = "10.0.0-tan"
+    const val CURRENT_VERSION = "10.0.0"
 
     data class Release(
         val version: String,
@@ -36,17 +36,18 @@ object AppChangelog {
     /** Newest first. */
     val releases: List<Release> = listOf(
         Release(
-            version = "10.0.0-tan",
-            title = "Rhythm Age arrives for real, and two numbers get honest",
+            version = "10.0.0",
+            title = "Rhythm Age arrives for real, HRV reads true, and three numbers get honest",
             date = "August 2026",
             items = listOf(
-                "**Nothing breaks in this one.** The version jumps to 10 because of how much has changed underneath, not because anything about your data or your setup does. Your history upgrades in place, and you do not need to re-pair, re-import or restore.",
-                "**Rhythm Age now has a card, in Health.** The last release announced it; the number was being computed and stored but had nowhere to appear, so nobody ever saw one. It sits under Body signals beside your body clock, charted against your real age and your fitness age. It still needs seven worn days before it first appears, and below that it counts up rather than hiding, so the wait is visible.",
-                "**Daily calories now show the active half only, so the number drops.** It had been showing your whole day including the energy you burn lying still, in a place that everything else treats as active energy — the phone series it fills in, the coach, the ring. A day that read 1,450 will now read a few hundred. The old figure was not wrong, it was answering a different question.",
-                "**Editing a night's bed or wake time re-scores that night.** Correcting the window used to move the stages but leave the sleep efficiency describing the old one, so an edited night quietly disagreed with itself. Every night you have already corrected is right again after the next sync.",
-                "**Wearing two straps no longer loses a day.** When two straps both recorded the same day, one of the two was dropped whole — and if the one that won happened to be the emptier, the day could show no sleep, no recovery and no resting heart rate while the other strap held all of it. The day is now assembled from both.",
-                "**Blood oxygen on WHOOP 4.0 is withheld rather than estimated.** The last release showed it as an uncalibrated percentage. The strap samples the red and infrared pair once a second, which is too slow to see a heartbeat at all, so the reading could not carry the pulse it depends on. Showing nothing is the honest answer. WHOOP 5.0/MG is unaffected — that figure comes from the strap itself.",
-                "**Sleep reads as a night, not a table.** Your stages are laid across the night against your heart rate, so you can see where the deep ran and where you woke, and every stage percentage adds to a hundred.",
+                "**Nothing breaks in this one.** The version jumps to 10 because of how much changed underneath, not because anything about your data or your setup does. Your history upgrades in place — no re-pair, no re-import, no restore.",
+                "**Rhythm Age now has a card, in Health.** The last release announced it; the number was being computed and stored but had nowhere to appear, so nobody ever saw one. It sits under Body signals beside your body clock, charted against your real age and your fitness age. It still needs about a week of wear, and below that it counts up rather than hiding.",
+                "**Your HRV was reading low.** When several heartbeats land in the same second they were read shortest-first instead of in the order they happened — and HRV is built entirely from the gaps between consecutive beats, so sorting them flattened it. On this fork's own strap the nightly figure was about a quarter too low. Nights recorded from here on read true; earlier nights keep their stored values, because the original order was never saved.",
+                "**Daily calories now show the active half only, so the number drops.** It had been showing your whole day including the energy you burn lying still, in a place everything else treats as active energy. A day that read 1,450 will now read a few hundred. The old figure was not wrong, it was answering a different question.",
+                "**Editing a night's bed or wake time re-scores that night.** Correcting the window used to move the stages but leave the sleep efficiency describing the old one, so an edited night quietly disagreed with itself.",
+                "**Wearing two straps no longer loses a day.** When two straps both recorded the same day one was dropped whole — and if the one that won was the emptier, the day could show no sleep, no recovery and no resting heart rate while the other held all of it.",
+                "**Blood oxygen on WHOOP 4.0 is withheld rather than estimated.** The sensor pair is sampled once a second, slower than a heartbeat, so the pulse the calculation depends on never reaches the app. Showing nothing is the honest answer. WHOOP 5.0 and MG are unaffected — that reading comes from the strap itself.",
+                "**Skin temperature, VO2 max and your heart-rate zones reach Health Connect**, and weight, height, blood pressure, hydration, nutrition and period dates now arrive from it. Almost nothing else on a phone measures skin temperature, so it is the most useful thing NOOP can contribute.",
             ),
         ),
         Release(

@@ -24,7 +24,7 @@ android {
         minSdk = 26
         targetSdk = 36
         versionCode = 298
-        versionName = "10.0.0-dev-tan"
+        versionName = "10.0.0-dev"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -92,7 +92,7 @@ android {
         // Release candidate: byte-for-byte the release build plus debuggability. No id or version
         // suffix on purpose — it must land on top of an installed release and keep its data, which
         // needs the same applicationId and the same signing key. The versionName already says which
-        // candidate this is (e.g. 9.0.1-rc3-tan).
+        // candidate this is (e.g. 10.0.0-rc1).
         create("rc") {
             initWith(getByName("release"))
             isDebuggable = true
