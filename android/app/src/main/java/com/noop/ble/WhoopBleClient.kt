@@ -409,7 +409,7 @@ class WhoopBleClient(
          *  Spaced past the CCCD drain and the bond so a read cannot take the single in-flight GATT slot
          *  from them; a strap that never answers keeps its address-derived identity. Two values are
          *  wanted and one read goes out per tick, so the ladder carries a spare beyond the retries. */
-        private val SERIAL_READ_DELAYS_MS = longArrayOf(3_000L, 8_000L, 10_000L, 20_000L)
+        private val DEVICE_INFO_READ_DELAYS_MS = longArrayOf(3_000L, 8_000L, 10_000L, 20_000L)
 
         // Client Characteristic Configuration Descriptor — written to enable notifications
         // (Android requires the explicit write; the local stack also needs setCharacteristicNotification).
@@ -2404,14 +2404,14 @@ class WhoopBleClient(
      */
     /**
      * Read the strap's Device Information on [attempt] — its serial (GATT 0x2A25) first, then its
-     * hardware revision (0x2A27) — retrying on the [SERIAL_READ_DELAYS_MS] schedule while either is
+     * hardware revision (0x2A27) — retrying on the [DEVICE_INFO_READ_DELAYS_MS] schedule while either is
      * still unknown and the link is up. ONE read per tick, since the stack carries one operation at a
      * time. Reads only — the BLE safety contract forbids writes to hardware, and this adds none. A
      * strap that never answers keeps its address-derived identity and a null revision, never a guess.
      */
     @SuppressLint("MissingPermission")
-    private fun scheduleSerialRead(attempt: Int) {
-        if (attempt >= SERIAL_READ_DELAYS_MS.size) return
+    private fun scheduleDeviceInfoReads(attempt: Int) {
+        if (attempt >= DEVICE_INFO_READ_DELAYS_MS.size) return
         handler.postDelayed({
             val g = gatt ?: return@postDelayed
             val wantSerial = _connectedStrapSerial.value == null
@@ -2425,8 +2425,8 @@ class WhoopBleClient(
                 return@postDelayed
             }
             safeGatt("readCharacteristic($label)") { ops.readCharacteristicCompat(ch) }
-            scheduleSerialRead(attempt + 1)
-        }, SERIAL_READ_DELAYS_MS[attempt])
+            scheduleDeviceInfoReads(attempt + 1)
+        }, DEVICE_INFO_READ_DELAYS_MS[attempt])
     }
 
     fun refreshBattery() {
@@ -3186,9 +3186,10 @@ class WhoopBleClient(
             // 3. Standard battery profile (plain %).
             g.getService(BATTERY_SERVICE)?.getCharacteristic(BATTERY_CHAR)?.let { cccdQueue.add(it) }
 
-            // 4. The strap's own serial (0x2A25), read — never written — on a delay so it cannot take
-            // the single in-flight GATT slot from the CCCD writes or the bond.
-            scheduleSerialRead(0)
+            // 4. The strap's own serial (0x2A25) and hardware revision (0x2A27), read — never written
+            // — on a delay so they cannot take the single in-flight GATT slot from the CCCD writes or
+            // the bond.
+            scheduleDeviceInfoReads(0)
 
             // Enable notifications one at a time. When the queue is fully drained, startSession() fires
             // the first command (bond / CLIENT_HELLO) — never racing the descriptor writes.
