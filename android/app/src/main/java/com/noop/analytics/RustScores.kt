@@ -9,7 +9,10 @@ import com.noop.data.StepSample
 import uniffi.whoop_ffi.WindowedStressInfo
 import uniffi.whoop_ffi.NapConfigInfo
 import uniffi.whoop_ffi.NapVerdictInfo
+import com.noop.protocol.DeviceFamily
 import com.noop.protocol.RawImuSample
+import uniffi.whoop_ffi.Gen
+import uniffi.whoop_ffi.StrapVariant
 import uniffi.whoop_ffi.WorkoutGravitySample
 import uniffi.whoop_ffi.DebtNightInput
 import uniffi.whoop_ffi.DriverBaselineInfo
@@ -838,6 +841,23 @@ internal object RustScores {
 
     /** Where a Pearson r sits on a ramp: −1 at the bottom, 0 at the middle, +1 at the top. */
     fun rampPositionCorrelation(r: Double): Double = uniffi.whoop_ffi.rampPositionCorrelation(r)
+
+    /**
+     * [parts] as whole percentages summing to exactly 100, so shares drawn side by side never read
+     * 99 or 101. Null when nothing was measured — an empty split has no percentages, not zeroes.
+     */
+    fun wholePercentages(parts: List<Double>): List<Int>? =
+        uniffi.whoop_ffi.wholePercentages(parts)?.map { it.toInt() }
+
+    // ── Strap identity (the hardware-revision prefix table lives in whoop-rs) ─
+
+    /** Which strap [hardwareRev] names, with [family] as the fallback. A 5-series strap with no
+     *  usable revision classifies as UNKNOWN and is never resolved to the nearer guess. */
+    fun strapVariant(hardwareRev: String?, family: DeviceFamily): StrapVariant =
+        uniffi.whoop_ffi.strapVariant(
+            hardwareRev,
+            if (family == DeviceFamily.WHOOP4) Gen.GEN4 else Gen.GEN5,
+        )
 
     // ── Tuning tables (whoop-rs owns every value; read, never copied) ─────────
 

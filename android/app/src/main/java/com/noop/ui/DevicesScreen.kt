@@ -62,14 +62,17 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.noop.analytics.RustScores
 import com.noop.ble.LiveState
 import com.noop.ble.SourceCoordinator
 import com.noop.data.DeviceStatus
 import com.noop.data.PairedDeviceRow
 import com.noop.data.SourceKind
+import com.noop.protocol.DeviceFamily
 import com.noop.protocol.RebootProbeVariant
 import com.noop.testcentre.TestCentre
 import com.noop.testcentre.TestDomain
+import uniffi.whoop_ffi.StrapVariant
 import kotlinx.coroutines.launch
 
 // MARK: - Devices
@@ -990,11 +993,23 @@ private fun deviceModelLabel(device: PairedDeviceRow): String {
     if (!SourceCoordinator.isWhoop(device)) return device.model.ifBlank { device.brand }
     val model = device.model.lowercase()
     return when {
-        model.contains("5") || model.contains("mg") -> "WHOOP 5.0 / MG"
+        model.contains("5") || model.contains("mg") -> fiveSeriesLabel(device.hardwareRev)
         model.contains("4") -> "WHOOP 4.0"
         else -> "WHOOP"
     }
 }
+
+/**
+ * The 5-series label narrowed by the strap's own GATT hardware revision. whoop-rs owns the
+ * revision-to-variant table; a revision it cannot place, or one never read, keeps the combined
+ * label rather than picking a side.
+ */
+internal fun fiveSeriesLabel(hardwareRev: String?): String =
+    when (RustScores.strapVariant(hardwareRev, DeviceFamily.WHOOP5)) {
+        StrapVariant.WHOOP_MG -> "WHOOP MG"
+        StrapVariant.WHOOP5 -> "WHOOP 5.0"
+        else -> "WHOOP 5.0 / MG"
+    }
 
 /**
  * Honest paired-but-not-connected note for a locally-adopted Oura ring (Beta). Amber heads-up, no

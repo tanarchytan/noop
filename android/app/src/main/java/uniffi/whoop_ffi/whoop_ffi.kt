@@ -713,6 +713,8 @@ internal object IntegrityCheckingUniffiLib {
     ): Int
     external fun uniffi_whoop_ffi_checksum_func_sleep_driver_tiers(
     ): Int
+    external fun uniffi_whoop_ffi_checksum_func_whole_percentages(
+    ): Int
     external fun uniffi_whoop_ffi_checksum_func_baseline_fold_history(
     ): Int
     external fun uniffi_whoop_ffi_checksum_func_baseline_metric_cfg(
@@ -750,6 +752,8 @@ internal object IntegrityCheckingUniffiLib {
     external fun uniffi_whoop_ffi_checksum_func_data_range_oldest(
     ): Int
     external fun uniffi_whoop_ffi_checksum_func_data_range_pages_behind(
+    ): Int
+    external fun uniffi_whoop_ffi_checksum_func_strap_variant(
     ): Int
     external fun uniffi_whoop_ffi_checksum_func_hrv_analyze_raw(
     ): Int
@@ -1115,6 +1119,8 @@ internal object UniffiLib {
     ): Double
     external fun uniffi_whoop_ffi_fn_func_sleep_driver_tiers(uniffi_out_err: UniffiRustCallStatus, 
     ): Int
+    external fun uniffi_whoop_ffi_fn_func_whole_percentages(`parts`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_func_baseline_fold_history(`values`: RustBuffer.ByValue,`cfg`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_func_baseline_metric_cfg(`metric`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
@@ -1152,6 +1158,8 @@ internal object UniffiLib {
     external fun uniffi_whoop_ffi_fn_func_data_range_oldest(`frame`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_func_data_range_pages_behind(`frame`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    external fun uniffi_whoop_ffi_fn_func_strap_variant(`hardwareRev`: RustBuffer.ByValue,`family`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_func_hrv_analyze_raw(`rrMs`: RustBuffer.ByValue,`maxRejectedFraction`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
@@ -1510,6 +1518,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_whoop_ffi_checksum_func_sleep_driver_tiers() != 58428) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_whoop_ffi_checksum_func_whole_percentages() != 11295) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_whoop_ffi_checksum_func_baseline_fold_history() != 15983) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
@@ -1565,6 +1576,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_whoop_ffi_checksum_func_data_range_pages_behind() != 43033) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_whoop_ffi_checksum_func_strap_variant() != 23581) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_whoop_ffi_checksum_func_hrv_analyze_raw() != 10710) {
@@ -9631,6 +9645,48 @@ public object FfiConverterTypeStrainMethod: FfiConverterRustBuffer<StrainMethod>
 
 
 /**
+ * The strap as a capability, not as a wire format.
+ */
+
+enum class StrapVariant {
+    
+    WHOOP4,
+    WHOOP5,
+    WHOOP_MG,
+    /**
+     * Identity not read, or a revision prefix nothing has seen. Never resolved to the nearer guess.
+     */
+    UNKNOWN;
+
+    
+
+
+    companion object
+}
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeStrapVariant: FfiConverterRustBuffer<StrapVariant> {
+    override fun read(buf: ByteBuffer) = try {
+        StrapVariant.values()[buf.getInt() - 1]
+    } catch (e: IndexOutOfBoundsException) {
+        throw RuntimeException("invalid enum value, something is very wrong!!", e)
+    }
+
+    override fun allocationSize(value: StrapVariant) = 4UL
+
+    override fun write(value: StrapVariant, buf: ByteBuffer) {
+        buf.putInt(value.ordinal + 1)
+    }
+}
+
+
+
+
+
+/**
  * Why a bucket was held out of the score — a known state the caller can word, not a gap.
  */
 
@@ -12626,6 +12682,21 @@ public object FfiConverterSequenceOptionalDouble: FfiConverterRustBuffer<List<ko
     )
     }
     
+
+        /**
+         * A split as whole percentages summing to exactly 100, so shares rounded one at a time can no
+         * longer read 99 or 101 side by side. `None` when nothing was measured.
+         */ fun `wholePercentages`(`parts`: List<kotlin.Double>): List<kotlin.UInt>? {
+            return FfiConverterOptionalSequenceUInt.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_func_whole_percentages(
+    
+        
+        FfiConverterSequenceDouble.lower(`parts`),_status)
+}
+    )
+    }
+    
  fun `baselineFoldHistory`(`values`: List<kotlin.Double?>, `cfg`: MetricCfgInfo): BaselineStateInfo {
             return FfiConverterTypeBaselineStateInfo.lift(
     uniffiRustCall() { _status ->
@@ -12892,6 +12963,22 @@ public object FfiConverterSequenceOptionalDouble: FfiConverterRustBuffer<List<ko
     
         
         FfiConverterByteArray.lower(`frame`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * Classify a GATT Hardware Revision string, with the wire generation as the fallback where the
+         * revision is absent or unrecognised. A Gen5 strap with no usable revision stays `Unknown`.
+         */ fun `strapVariant`(`hardwareRev`: kotlin.String?, `family`: Gen): StrapVariant {
+            return FfiConverterTypeStrapVariant.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_func_strap_variant(
+    
+        
+        FfiConverterOptionalString.lower(`hardwareRev`),
+        FfiConverterTypeGen.lower(`family`),_status)
 }
     )
     }
