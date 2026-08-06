@@ -192,8 +192,7 @@ object RustAdapter {
             // offsets; this only names the fields the live router reads.
             is Response.BatteryPack -> {
                 parsed["pack_soc_pct"] = resp.socPct
-                parsed["pack_millivolts"] = resp.millivolts.toInt()
-                parsed["pack_id"] = resp.packId.toLong()
+                parsed["pack_bt_addr"] = resp.btAddr
                 if (resp.serial.isNotBlank()) parsed["pack_serial"] = resp.serial
             }
             // The strap answered and reports no pack. Only ever set from a reply, so the live router can

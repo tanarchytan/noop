@@ -3,8 +3,10 @@ package com.noop.protocol
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import uniffi.whoop_ffi.Gen
+import uniffi.whoop_ffi.PackSignal
 
 /**
  * The battery pack's firmware, off the two channels the strap volunteers it on. No command serves it,
@@ -87,20 +89,21 @@ class PackIdentityTest {
     @Test
     fun theHardwareInformationEventCarriesTheSamePackAndItsSerial() {
         RustCodec.packReader().use { reader ->
-            val info = reader.pushFrame(Gen.GEN5, bytes(hwInfoHex))!!
+            val info = identity(reader.pushFrame(Gen.GEN5, bytes(hwInfoHex)))
             assertEquals("3.30.5.0", info.firmware)
             assertEquals("WBB5AP0126395", info.serial)
             assertEquals("f7381d2e3161", info.btAddr)
             assertEquals(73.3, info.socPct!!, 1e-9)
-            // Nothing changed, so nothing is republished.
-            assertNull(reader.pushFrame(Gen.GEN5, bytes(hwInfoHex)))
+            // Still an identity, but nothing moved — so a caller can stay quiet about it.
+            val repeat = reader.pushFrame(Gen.GEN5, bytes(hwInfoHex))
+            assertEquals(false, (repeat as PackSignal.Identity).changed)
         }
     }
 
     @Test
     fun theChargeEventCarriesOnlyTheChargeAndACorruptFrameCarriesNothing() {
         RustCodec.packReader().use { reader ->
-            val info = reader.pushFrame(Gen.GEN5, bytes(socHex))!!
+            val info = identity(reader.pushFrame(Gen.GEN5, bytes(socHex)))
             assertEquals(70.3, info.socPct!!, 1e-9)
             assertNull(info.firmware)
         }
@@ -111,12 +114,18 @@ class PackIdentityTest {
         }
     }
 
+    /** The values a frame carried, or a failure naming what came back instead. */
+    private fun identity(signal: PackSignal?): uniffi.whoop_ffi.PackInfo {
+        assertTrue("expected pack values, got $signal", signal is PackSignal.Identity)
+        return (signal as PackSignal.Identity).info
+    }
+
     /** The two channels are independent encodings of one attach, so they must agree field for field. */
     @Test
     fun theEventAndTheConsoleAgree() {
         RustCodec.packReader().use { fromWire ->
             RustCodec.packReader().use { fromText ->
-                val wire = fromWire.pushFrame(Gen.GEN5, bytes(hwInfoHex))!!
+                val wire = identity(fromWire.pushFrame(Gen.GEN5, bytes(hwInfoHex)))
                 chunks.take(8).forEach { fromText.pushConsole(it) }
                 val text = fromText.info()!!
                 assertEquals(wire.firmware, text.firmware)
@@ -134,5 +143,55 @@ class PackIdentityTest {
     fun aPackEventIsClassifiedRatherThanLeftUnknown() {
         assertEquals("PUFFIN_EVENTS_FROM_STRAP", RustAdapter.parseFrame(bytes(hwInfoHex), DeviceFamily.WHOOP5).typeName)
         assertEquals("PUFFIN_EVENTS_FROM_STRAP", RustAdapter.parseFrame(bytes(socHex), DeviceFamily.WHOOP5).typeName)
+    }
+
+    /** The strap's own attach/detach, and its unprompted pack block filled and zeroed. Real frames
+     *  from two straps; these are what let presence stop waiting on a poll. */
+    private val attachedHex = "aa0110000100208130e41500cfd7576a140e0000d3b899e3"
+    private val detachedHex = "aa011000010020813018160047d8576a701d00008065c557"
+    private val infoPresentHex =
+        "aa012c0001002cd130e56d00cfd7576aae271c0001ccb7a6dc16095742423541" +
+            "50303131333635350000004903010c00ba269563"
+    private val infoZeroedHex =
+        "aa012c0001002cd1308c6d00208d526af5681c00010000000000000000000000" +
+            "00000000000000000000000000010e005b84085f"
+
+    @Test
+    fun theStrapStatesPresenceOutrightSoNoPollHasToNoticeIt() {
+        RustCodec.packReader().use { reader ->
+            assertEquals(PackSignal.Attached, reader.pushFrame(Gen.GEN5, bytes(attachedHex)))
+            assertEquals(PackSignal.Detached, reader.pushFrame(Gen.GEN5, bytes(detachedHex)))
+            // A zeroed pack block is the strap saying there is no pack, never a pack at 0%.
+            assertEquals(PackSignal.Detached, reader.pushFrame(Gen.GEN5, bytes(infoZeroedHex)))
+            assertNull("a presence signal invented an identity", reader.info())
+        }
+    }
+
+    @Test
+    fun theUnpromptedPackBlockCarriesTheSameFieldsTheReplyDoes() {
+        RustCodec.packReader().use { reader ->
+            val sig = reader.pushFrame(Gen.GEN5, bytes(infoPresentHex))
+            assertTrue("the pack block did not read as an identity", sig is PackSignal.Identity)
+            val info = (sig as PackSignal.Identity).info
+            assertEquals("WBB5AP0113655", info.serial)
+            assertEquals("ccb7a6dc1609", info.btAddr)
+            assertEquals(84.1, info.socPct!!, 1e-9)
+        }
+    }
+
+    /** One WPT_HEALTH frame exists and nothing decodes it: a single sample cannot pin a layout, so
+     *  it surfaces named with its raw body instead of an invented value. It is also the pack's OWN
+     *  event vocabulary, which reuses the strap's numbers for other things — reading the two tables
+     *  as one would make a crashed pack look like an attach. */
+    @Test
+    fun anUndecodedPackEventSurfacesNamedWithItsRawBody() {
+        val wptHealthHex = "aa0118000102a320366713007d94526a7a340800010042010100000037d1d87e"
+        RustCodec.packReader().use { reader ->
+            val sig = reader.pushFrame(Gen.GEN5, bytes(wptHealthHex))
+            assertTrue("WPT_HEALTH did not surface as an undecoded pack event", sig is PackSignal.Undecoded)
+            assertEquals("WPT_HEALTH", (sig as PackSignal.Undecoded).name)
+            assertEquals("00420101000000", sig.body)
+            assertNull("an undecoded event invented an identity", reader.info())
+        }
     }
 }

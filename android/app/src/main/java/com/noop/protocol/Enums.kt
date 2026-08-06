@@ -54,12 +54,20 @@ enum class EventNumber(val rawValue: Int) {
     WRIST_OFF(10),
     DOUBLE_TAP(14),
     TEMPERATURE_LEVEL(17),
+    /** The strap's own battery-pack attach/detach signals — presence stated outright, ahead of any
+     *  poll. Distinct from the pack's own event vocabulary, which reuses these numbers for other
+     *  things on its own channel. */
+    BATTERY_PACK_CONNECTED(21),
+    BATTERY_PACK_REMOVED(22),
     BLE_BONDED(23),
     BLE_REALTIME_HR_ON(33),
     BLE_REALTIME_HR_OFF(34),
     STRAP_DRIVEN_ALARM_EXECUTED(57),
     APP_DRIVEN_ALARM_EXECUTED(58),
-    HAPTICS_FIRED(60);
+    HAPTICS_FIRED(60),
+
+    /** The pack block, unprompted — the same fields the pack command answers with. */
+    BATTERY_PACK_INFO(109);
 
     companion object {
         private val byRaw = entries.associateBy { it.rawValue }

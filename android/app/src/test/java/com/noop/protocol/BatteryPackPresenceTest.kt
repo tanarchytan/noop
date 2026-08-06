@@ -33,8 +33,10 @@ class BatteryPackPresenceTest {
         assertEquals("SUCCESS(1)", parsed.parsed["result"])
         assertEquals(74.1, parsed.parsed["pack_soc_pct"] as Double, 1e-9)
         assertEquals("WBB5AP0126395", parsed.parsed["pack_serial"])
-        assertEquals(773667063L, parsed.parsed["pack_id"])
         assertNull(parsed.parsed["pack_absent"])
+        // Bytes 4..10 are the pack's Bluetooth address, ONE field. Split into a u32 id and a u16
+        // "voltage" they read as 773667063 and 24881, and no cell sits at 24 volts.
+        assertEquals("f7381d2e3161", parsed.parsed["pack_bt_addr"])
     }
 
     /** The same command, same strap, pack removed: still SUCCESS, so only the zeroed pack block tells
@@ -48,6 +50,6 @@ class BatteryPackPresenceTest {
         assertEquals(true, parsed.parsed["pack_absent"])
         assertNull(parsed.parsed["pack_soc_pct"])
         assertNull(parsed.parsed["pack_serial"])
-        assertNull(parsed.parsed["pack_millivolts"])
+        assertNull(parsed.parsed["pack_bt_addr"])
     }
 }

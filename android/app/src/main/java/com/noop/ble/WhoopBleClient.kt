@@ -147,8 +147,9 @@ data class LiveState(
      *  when one is attached, and that reaches the phone on the NEXT sync — so this is the remembered
      *  value, seeded from prefs, and it outlives a link the way the pack outlives it. */
     val packFirmware: String? = null,
-    /** The pack's cell voltage in millivolts, from the same reply. */
-    val packMillivolts: Int? = null,
+    /** The pack's Bluetooth address, from the same reply. Identity, not a reading; the pack's own
+     *  events carry the same six bytes. */
+    val packBtAddr: String? = null,
     /** Historical record layout version (`hist_version`, e.g. v24/v25 on WHOOP 4.0) observed from the
      *  active connection's backfill. This is distinct from [strapFirmware]: FW 41.17.6.0 is the strap
      *  firmware build, while v24/v25 is the binary layout used by banked history records. */
@@ -666,6 +667,11 @@ class WhoopBleClient(
          *  read can't occupy the single GATT op slot the critical setup commands need. Diagnostic only. */
         private const val RSSI_READ_DELAY_MS = 3000L
 
+        /** Pack polls skipped while no pack is believed attached. Attach and detach arrive as strap
+         *  events, so this only stops asking every minute for a pack that is not there — and it still
+         *  asks, so presence recovers on its own if the events never come. */
+        private const val PACK_ABSENT_POLL_EVERY = 5
+
         /** True when [frame] is part of the historical offload (HISTORICAL_DATA=47, EVENT=48,
          *  METADATA=49, CONSOLE_LOGS=50) rather than the live stream (REALTIME_DATA=40,
          *  REALTIME_RAW_DATA=43). The live type-43 raw flood streams continuously and unprompted, so the idle-watchdog must not re-arm on it. */
@@ -758,7 +764,7 @@ class WhoopBleClient(
             previous.clearedBiometrics().copy(
                 connected = false, bonded = false, encryptedBond = false,
                 charging = null, strapFirmware = null, historyLayoutVersion = null,
-                packSocPct = null, packSerial = null, packMillivolts = null,
+                packSocPct = null, packSerial = null, packBtAddr = null,
                 pairingHint = null, scanning = false,
                 statusNote = null,
             )
@@ -958,6 +964,53 @@ class WhoopBleClient(
      *  arrived console line can never be joined onto the next link's first chunk. */
     @Volatile
     private var packReader = RustCodec.packReader()
+
+    /** Whether a pack is believed attached: true/false once the strap has said, null until it has.
+     *  Drives how often [refreshBatteryPack] is asked, never what is displayed — the row is only ever
+     *  filled or cleared by an actual reply or an actual event. */
+    @Volatile
+    private var packPresent: Boolean? = null
+
+    /** Take a presence fact and let it clear the row. Only a statement by the strap reaches here —
+     *  an attach/detach event, or a reply. Silence never does, so a link hiccup cannot flap the row. */
+    private fun setPackPresence(present: Boolean, why: String) {
+        packPresent = present
+        if (present) return
+        if (_state.value.packSocPct != null || _state.value.packSerial != null) {
+            log("pack: none attached ($why) — clearing")
+        }
+        _state.update { it.copy(packSocPct = null, packSerial = null, packBtAddr = null) }
+    }
+
+    /** Drop a remembered firmware that belongs to a DIFFERENT pack, so a newly-attached one shows no
+     *  firmware until it reports its own rather than inheriting the last pack's. */
+    private fun forgetPackFirmwareOfAnotherPack(serial: String?) {
+        if (serial.isNullOrBlank()) return
+        val remembered = runCatching { com.noop.ui.NoopPrefs.packFirmware(context, serial) }.getOrNull()
+        if (remembered == null && _state.value.packFirmware != null) {
+            _state.update { it.copy(packFirmware = null) }
+        }
+    }
+
+    /** Route one thing the strap said about the pack. Presence is applied as stated; values go
+     *  through [applyPackInfo]; a pack event this codec does not decode is logged named and raw so a
+     *  capture can pin its layout. */
+    private fun applyPackSignal(signal: uniffi.whoop_ffi.PackSignal) {
+        when (signal) {
+            is uniffi.whoop_ffi.PackSignal.Attached -> {
+                if (packPresent != true) log("pack: attached (strap event) — reading its charge")
+                packPresent = true
+                refreshBatteryPack()
+            }
+            is uniffi.whoop_ffi.PackSignal.Detached -> setPackPresence(false, "strap event")
+            is uniffi.whoop_ffi.PackSignal.Identity -> {
+                packPresent = true
+                if (signal.changed) applyPackInfo(signal.info)
+            }
+            is uniffi.whoop_ffi.PackSignal.Undecoded ->
+                log("pack event ${signal.name}: body=${signal.body} — named, not decoded")
+        }
+    }
 
     /** Publish what whoop-rs read off the strap's pack channels, and remember the firmware — the
      *  strap narrates it only at a pack ATTACH, which reaches the phone a whole sync later, so a
@@ -3666,22 +3719,21 @@ class WhoopBleClient(
                 // only from a reply: an unanswered tick leaves the last reading alone.
                 doubleValue(parsed.parsed["pack_soc_pct"])?.let { soc ->
                     val serial = parsed.parsed["pack_serial"] as? String
-                    val mv = (parsed.parsed["pack_millivolts"] as? Int)
+                    val addr = parsed.parsed["pack_bt_addr"] as? String
                     if (_state.value.packSocPct != soc || _state.value.packSerial != serial) {
-                        log("pack: soc=$soc% mv=${mv ?: "?"} serial=${serial ?: "?"} id=${parsed.parsed["pack_id"]}")
+                        log("pack: soc=$soc% serial=${serial ?: "?"} addr=${addr ?: "?"}")
                     }
                     logPackReplyOnce(frame, present = true)
+                    packPresent = true
                     _state.update { it.copy(packSocPct = soc, packSerial = serial ?: it.packSerial,
-                                            packMillivolts = mv ?: it.packMillivolts) }
+                                            packBtAddr = addr ?: it.packBtAddr) }
+                    forgetPackFirmwareOfAnotherPack(serial)
                 }
                 // whoop-rs read this reply as "the strap has no pack": drop the row rather than keep a
                 // reading the pack can no longer back. Silence never reaches here, so it cannot flap.
                 if (parsed.parsed["pack_absent"] == true) {
                     logPackReplyOnce(frame, present = false)
-                    if (_state.value.packSocPct != null || _state.value.packSerial != null) {
-                        log("pack: none attached — clearing")
-                    }
-                    _state.update { it.copy(packSocPct = null, packSerial = null, packMillivolts = null) }
+                    setPackPresence(false, "the strap answered with no pack")
                 }
                 val respCmd = parsed.parsed["resp_cmd"] as? String
                 val result = parsed.parsed["result"] as? String
@@ -3787,10 +3839,16 @@ class WhoopBleClient(
             // What the strap forwards from its NFC poller — the battery pack's identity and charge,
             // the only channel either reaches the phone on unprompted.
             "PUFFIN_EVENTS_FROM_STRAP" -> {
-                packReader.pushFrame(connectedFamily.gen, frame)?.let { applyPackInfo(it) }
+                packReader.pushFrame(connectedFamily.gen, frame)?.let { applyPackSignal(it) }
             }
 
             "EVENT" -> {
+                // The strap states a pack attach/detach here, and carries the pack block unprompted.
+                // A REPLAYED event is history, so it must not move the live presence. 5/MG only: a
+                // 4.0 has no pack, so nothing from one may ever be read as one attaching.
+                if (!replayedOffload && connectedFamily == DeviceFamily.WHOOP5) {
+                    packReader.pushFrame(connectedFamily.gen, frame)?.let { applyPackSignal(it) }
+                }
                 (parsed.parsed["event"] as? String)?.let { ev ->
                     // Event strings are "NAME(rawValue)", e.g. "WRIST_ON(9)" (see Schema.enumName).
                     // Pure [isGestureEvent] so the gesture-vs-non-gesture routing is unit-testable.
@@ -4056,7 +4114,12 @@ class WhoopBleClient(
                     // here (~60s) rather than only while the Live screen is open — the ring stays current
                     // on any screen without a manual sync, and the read keeps the link warm.
                     refreshBattery()
-                    refreshBatteryPack()
+                    // The pack rides the SAME tick: its charge is the only thing the poll is still for,
+                    // since attach/detach arrive as events. While no pack is believed attached the ask
+                    // thins out rather than stopping, so presence still recovers with no events at all.
+                    if (packPresent != false || keepAliveTick % (2 * PACK_ABSENT_POLL_EVERY) == 0) {
+                        refreshBatteryPack()
+                    }
                 }
             }
         }
@@ -5124,12 +5187,14 @@ class WhoopBleClient(
             historyLayoutVersion = null,
             packSocPct = null,      // nor the pack the dropped strap was reporting
             packSerial = null,
-            packMillivolts = null,
+            packBtAddr = null,
         ) }
         packReplyLogged = null
         // A fresh pack reader per link: the old one may hold half a console line, and joining that
-        // onto the next link's first chunk would make one line out of two.
+        // onto the next link's first chunk would make one line out of two. Presence goes back to
+        // unknown so the next link asks rather than trusting what the last one saw.
         packReader = RustCodec.packReader()
+        packPresent = null
         // Multi-WHOOP: the link is down - clear the published connected address so SourceCoordinator's
         // adoption sink can't re-fire on a stale strap id. Same for the serial, so the next strap's
         // identity is never resolved against the last one's.

@@ -1929,7 +1929,7 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_whoop_ffi_checksum_method_packreader_push_console() != 5556) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_whoop_ffi_checksum_method_packreader_push_frame() != 42911) {
+    if (lib.uniffi_whoop_ffi_checksum_method_packreader_push_frame() != 36453) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_whoop_ffi_checksum_constructor_whoopcodec_new() != 40964) {
@@ -2506,9 +2506,8 @@ public object FfiConverterByteArray: FfiConverterRustBuffer<ByteArray> {
 
 
 /**
- * Accumulates the pack's identity for one link: feed every CONSOLE_LOGS text and every frame, and
- * it reports the moment a complete new value arrived. Interior-mutable for the `&self` methods
- * uniffi objects require.
+ * Accumulates the pack for one link: feed every CONSOLE_LOGS text and every frame. Interior-mutable
+ * for the `&self` methods uniffi objects require.
  */
 public interface PackReaderInterface {
     
@@ -2524,18 +2523,17 @@ public interface PackReaderInterface {
     fun `pushConsole`(`chunk`: kotlin.String): PackInfo?
     
     /**
-     * Feed one complete frame. Only a pack event carries anything; every other frame, and any frame
-     * that failed its checksum, returns nothing.
+     * Feed one complete frame. Returns what it said about the pack, or nothing when it said
+     * nothing — including any frame that failed its checksum.
      */
-    fun `pushFrame`(`gen`: Gen, `bytes`: kotlin.ByteArray): PackInfo?
+    fun `pushFrame`(`gen`: Gen, `bytes`: kotlin.ByteArray): PackSignal?
     
     companion object
 }
 
 /**
- * Accumulates the pack's identity for one link: feed every CONSOLE_LOGS text and every frame, and
- * it reports the moment a complete new value arrived. Interior-mutable for the `&self` methods
- * uniffi objects require.
+ * Accumulates the pack for one link: feed every CONSOLE_LOGS text and every frame. Interior-mutable
+ * for the `&self` methods uniffi objects require.
  */
 open class PackReader: Disposable, AutoCloseable, PackReaderInterface
 {
@@ -2686,10 +2684,10 @@ open class PackReader: Disposable, AutoCloseable, PackReaderInterface
 
     
     /**
-     * Feed one complete frame. Only a pack event carries anything; every other frame, and any frame
-     * that failed its checksum, returns nothing.
-     */override fun `pushFrame`(`gen`: Gen, `bytes`: kotlin.ByteArray): PackInfo? {
-            return FfiConverterOptionalTypePackInfo.lift(
+     * Feed one complete frame. Returns what it said about the pack, or nothing when it said
+     * nothing — including any frame that failed its checksum.
+     */override fun `pushFrame`(`gen`: Gen, `bytes`: kotlin.ByteArray): PackSignal? {
+            return FfiConverterOptionalTypePackSignal.lift(
     callWithHandle {
     uniffiRustCall() { _status ->
     UniffiLib.uniffi_whoop_ffi_fn_method_packreader_push_frame(
@@ -9187,6 +9185,137 @@ public object FfiConverterTypeNapVerdictInfo: FfiConverterRustBuffer<NapVerdictI
 
 
 
+/**
+ * What one frame said about the pack. `Detached` is the strap stating there is no pack — its own
+ * removal signal, or a pack block it zeroed.
+ */
+sealed class PackSignal {
+    
+    object Attached : PackSignal()
+    
+    
+    object Detached : PackSignal()
+    
+    
+    /**
+     * The frame carried values, already merged. `changed` is true when this one moved something,
+     * so a caller can log a change without logging the once-a-second charge report.
+     */
+    data class Identity(
+        val `info`: uniffi.whoop_ffi.PackInfo, 
+        val `changed`: kotlin.Boolean) : PackSignal()
+        
+    {
+        
+
+        companion object
+    }
+    
+    /**
+     * A pack event named from the pack's own vocabulary but not decoded, with its raw body so a
+     * capture can pin the layout.
+     */
+    data class Undecoded(
+        val `name`: kotlin.String, 
+        val `body`: kotlin.String) : PackSignal()
+        
+    {
+        
+
+        companion object
+    }
+    
+
+    
+
+    
+    
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypePackSignal : FfiConverterRustBuffer<PackSignal>{
+    override fun read(buf: ByteBuffer): PackSignal {
+        return when(buf.getInt()) {
+            1 -> PackSignal.Attached
+            2 -> PackSignal.Detached
+            3 -> PackSignal.Identity(
+                FfiConverterTypePackInfo.read(buf),
+                FfiConverterBoolean.read(buf),
+                )
+            4 -> PackSignal.Undecoded(
+                FfiConverterString.read(buf),
+                FfiConverterString.read(buf),
+                )
+            else -> throw RuntimeException("invalid enum value, something is very wrong!!")
+        }
+    }
+
+    override fun allocationSize(value: PackSignal): ULong = when(value) {
+        is PackSignal.Attached -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is PackSignal.Detached -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is PackSignal.Identity -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterTypePackInfo.allocationSize(value.`info`)
+                + FfiConverterBoolean.allocationSize(value.`changed`)
+            )
+        }
+        is PackSignal.Undecoded -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterString.allocationSize(value.`name`)
+                + FfiConverterString.allocationSize(value.`body`)
+            )
+        }
+    }
+
+    override fun write(value: PackSignal, buf: ByteBuffer) {
+        when(value) {
+            is PackSignal.Attached -> {
+                buf.putInt(1)
+                Unit
+            }
+            is PackSignal.Detached -> {
+                buf.putInt(2)
+                Unit
+            }
+            is PackSignal.Identity -> {
+                buf.putInt(3)
+                FfiConverterTypePackInfo.write(value.`info`, buf)
+                FfiConverterBoolean.write(value.`changed`, buf)
+                Unit
+            }
+            is PackSignal.Undecoded -> {
+                buf.putInt(4)
+                FfiConverterString.write(value.`name`, buf)
+                FfiConverterString.write(value.`body`, buf)
+                Unit
+            }
+        }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
+    }
+}
+
+
+
+
+
 
 enum class ReadinessTier {
     
@@ -9344,8 +9473,7 @@ sealed class Response {
         val `result`: kotlin.UByte?, 
         val `serial`: kotlin.String, 
         val `socPct`: kotlin.Double, 
-        val `millivolts`: kotlin.UShort, 
-        val `packId`: kotlin.UInt) : Response()
+        val `btAddr`: kotlin.String) : Response()
         
     {
         
@@ -9432,8 +9560,7 @@ public object FfiConverterTypeResponse : FfiConverterRustBuffer<Response>{
                 FfiConverterOptionalUByte.read(buf),
                 FfiConverterString.read(buf),
                 FfiConverterDouble.read(buf),
-                FfiConverterUShort.read(buf),
-                FfiConverterUInt.read(buf),
+                FfiConverterString.read(buf),
                 )
             8 -> Response.NoBatteryPack(
                 FfiConverterUByte.read(buf),
@@ -9514,8 +9641,7 @@ public object FfiConverterTypeResponse : FfiConverterRustBuffer<Response>{
                 + FfiConverterOptionalUByte.allocationSize(value.`result`)
                 + FfiConverterString.allocationSize(value.`serial`)
                 + FfiConverterDouble.allocationSize(value.`socPct`)
-                + FfiConverterUShort.allocationSize(value.`millivolts`)
-                + FfiConverterUInt.allocationSize(value.`packId`)
+                + FfiConverterString.allocationSize(value.`btAddr`)
             )
         }
         is Response.NoBatteryPack -> {
@@ -9590,8 +9716,7 @@ public object FfiConverterTypeResponse : FfiConverterRustBuffer<Response>{
                 FfiConverterOptionalUByte.write(value.`result`, buf)
                 FfiConverterString.write(value.`serial`, buf)
                 FfiConverterDouble.write(value.`socPct`, buf)
-                FfiConverterUShort.write(value.`millivolts`, buf)
-                FfiConverterUInt.write(value.`packId`, buf)
+                FfiConverterString.write(value.`btAddr`, buf)
                 Unit
             }
             is Response.NoBatteryPack -> {
@@ -11121,6 +11246,38 @@ public object FfiConverterOptionalTypeLive: FfiConverterRustBuffer<Live?> {
         } else {
             buf.put(1)
             FfiConverterTypeLive.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterOptionalTypePackSignal: FfiConverterRustBuffer<PackSignal?> {
+    override fun read(buf: ByteBuffer): PackSignal? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterTypePackSignal.read(buf)
+    }
+
+    override fun allocationSize(value: PackSignal?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterTypePackSignal.allocationSize(value)
+        }
+    }
+
+    override fun write(value: PackSignal?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterTypePackSignal.write(value, buf)
         }
     }
 }
