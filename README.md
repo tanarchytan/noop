@@ -121,10 +121,8 @@ that premise:
 
 ## Features
 
-Everything below is a real screen in the Android app (Jetpack Compose,
-`android/app/src/main/java/com/noop/ui/`):
-
-The app is four tabs. Everything else lives behind **More**.
+Everything below is a real screen in the Android app. It is four tabs; everything
+else lives behind **More**.
 
 | Tab | What it does |
 |---|---|
@@ -265,50 +263,66 @@ needs a little data before everything fills in:
 
 ## Architecture
 
-The Android app lives entirely under [`android/`](android/) — a self-contained
-Gradle project (Kotlin, Jetpack Compose, Room). It's organized by domain under
-`android/app/src/main/java/com/noop/`:
+**The maths is not in the app.** Every formula, threshold and wire decode lives in
+**[whoop-rs](https://github.com/tanarchytan/whoop-rs)**, a Rust core compiled into the
+APK as a native library and called over [uniffi](https://mozilla.github.io/uniffi-rs/).
+The Android app is a frontend: it decides *when* to ask, *what* to store and *how* to
+word it — never *what the number is*. A threshold behind a displayed band is
+calculation and belongs in Rust; its colour and label are presentation and stay in
+Kotlin. That line is enforced by an audit, not by convention.
+
+The app itself lives under [`android/`](android/) — a self-contained Gradle project
+(Kotlin, Jetpack Compose, Room), organized by domain:
 
 ```
 android/
   app/src/main/java/com/noop/
-    ble/         CoreBluetooth-equivalent link: bonding, offload, live notifications
-    protocol/    BLE frame parsing, CRC, command/event/packet decode (WHOOP 4.0 + 5.0/MG)
+    ble/         the strap link: bonding, offload, live notifications
+    protocol/    frame handling at the app edge; the decode itself is whoop-rs
     data/        Room/SQLite persistence — migrations, streams, caches (WhoopRepository)
-    analytics/   HRV / recovery / strain / sleep / correlation math (pure, testable)
+    analytics/   the seam to whoop-rs (RustScores/RustCodec) + orchestration
     ingest/      WHOOP CSV + Apple Health + nutrition importers
     ui/          Compose screens, the design system (Palette / Metrics), charts
     widget/      home-screen widgets
-  app/src/test/  JVM unit tests (run on Linux/CI, no device) — analytics, protocol, import
+  app/src/main/java/uniffi/whoop_ffi/   generated bindings — do not hand-edit
+  app/src/main/jniLibs/                 libwhoop_ffi.so, arm64-v8a + x86_64
+  app/src/test/  JVM unit tests (no device) — they load the host build of the same
+                 Rust library, so a Kotlin test exercises the shipped algorithm
 ```
+
+Changing an algorithm therefore means changing whoop-rs, regenerating the bindings and
+rebuilding both ABIs — a stale `.so` links fine and passes every test against outdated
+behaviour, so the build stamps a fingerprint and a checker compares it to the source tree.
 
 - **Protocol** (`com.noop.protocol`) is platform-pure: it implements the on-wire
   frame format for both strap generations (WHOOP 4.0 = CRC8 poly 0x07 header,
   service `61080001-…`; WHOOP 5.0/MG = CRC16-Modbus header, "puffin" packet types,
   service `fd4b0001-…`). Decoding is schema-driven and includes CRC8, CRC16-Modbus,
   and zlib CRC-32, frame framing, value interpretation, and historical-stream reassembly.
-- **Analytics** (`com.noop.analytics`) are pure, database-free functions grounded
-  in published methods — RMSSD/SDNN from R-R intervals (Task Force 1996, Malik
-  ectopic filtering), a 0–100 HRV-dominant recovery score, a 0–21 logarithmic strain
-  scale (Karvonen %HRR + Edwards/Banister TRIMP), sleep/wake detection with approximate
-  4-class staging, and day-aligned/lagged correlations. Each is explicitly an
-  approximation, not a reproduction of any proprietary model.
+- **Analytics** are grounded in published methods — RMSSD/SDNN from R-R intervals
+  (Task Force 1996, Malik ectopic filtering), an HRV-dominant recovery score, a
+  logarithmic effort scale (Karvonen %HRR + Edwards/Banister TRIMP), sleep/wake
+  detection with approximate 4-class staging, and day-aligned/lagged correlations.
+  **They are computed in whoop-rs**, not in Kotlin; `com.noop.analytics` is the seam
+  that maps app types onto the FFI and decides which window to ask about. Each is
+  explicitly an approximation, not a reproduction of any proprietary model.
 - **Storage** (`com.noop.data`) keeps everything on-device in Room/SQLite —
   decoded-stream tables (`hrSample`, `rrInterval`, `spo2Sample`, `skinTempSample`,
   `respSample`), server-derived metric caches (`sleepSession`, `dailyMetric`),
   cursors, and a raw-frame outbox. Third-party deps: Room + Compose only.
 
-> This fork keeps the Android reimplementation as its own source of truth. The
-> analytics and stored-data values are the same numbers the upstream Swift app
-> computes; when a fix belongs upstream too, PR the Kotlin change to
-> [ryanbr/noop](https://github.com/ryanbr/noop) with its Swift twin.
+> **This fork's source of truth is whoop-rs, not the Kotlin.** Upstream keeps the
+> analytics in Swift and Kotlin as parallel reimplementations; here a single Rust core
+> serves the app, so the two can never drift apart. When a fix belongs upstream too, PR
+> the equivalent Kotlin change to [ryanbr/noop](https://github.com/ryanbr/noop) with its
+> Swift twin — the fix travels, the architecture does not.
 
 ---
 
 ## Quickstart (Android)
 
 **Requirements:** JDK 17 (a recent Android Studio JBR works), the Android SDK
-(`compileSdk 34`), and — to pair live — your own WHOOP strap. To just explore, you
+(`compileSdk 36`), and — to pair live — your own WHOOP strap. To just explore, you
 can import a CSV / Apple Health export instead.
 
 ```bash
@@ -336,7 +350,7 @@ Notes:
   release is an ordinary update that keeps your data. `debug` (`.debug`) is local dev only and is
   never published.
 - Build e.g. `./gradlew assembleFullRelease`, `assembleFullRc`, `assembleMockRc`.
-- `minSdk 26` (Android 8+), `compileSdk 34`. Stack: AGP / Gradle / Kotlin, KSP, Room, Compose.
+- `minSdk 26` (Android 8+), `compileSdk 36`, `targetSdk 36`. Stack: AGP 9.3.1, Gradle 9.6.1, Kotlin 2.3.10, KSP2, Room 2.8.4, Compose. Plus the Rust toolchain and `cargo-ndk` if you change whoop-rs.
 - Release APKs are built and signed by hand (or via the fork release workflow); the
   debug build falls back to the Android debug key, so CI needs no secrets.
 
