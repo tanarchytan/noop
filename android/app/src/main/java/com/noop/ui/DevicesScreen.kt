@@ -191,6 +191,8 @@ fun DevicesScreen(
                     live.packSocPct else null,
                 packSerial = if (device.status == DeviceStatus.active.name && live.connected)
                     live.packSerial else null,
+                packFirmware = if (device.status == DeviceStatus.active.name && live.connected)
+                    live.packFirmware else null,
                 onMakeActive = { switchTarget = device },
                 onRename = { renameTarget = device },
                 onRemove = { removeTarget = device },
@@ -413,6 +415,9 @@ private fun DeviceCard(
     packSocPct: Double? = null,
     /** The pack's own serial, from the same reply, shown under the strap's firmware line. */
     packSerial: String? = null,
+    /** The pack's own firmware, shown on the same line. Remembered rather than live: no command
+     *  serves it, so it arrives on the sync after a pack attach and must outlast the link. */
+    packFirmware: String? = null,
     onMakeActive: () -> Unit,
     onRename: () -> Unit,
     onRemove: (() -> Unit)?,
@@ -528,7 +533,7 @@ private fun DeviceCard(
             }
 
             // The pack's own line, directly under the strap's firmware line.
-            powerPackLine(packSocPct, packSerial)?.let { line ->
+            powerPackLine(packSocPct, packSerial, packFirmware)?.let { line ->
                 Text(line, style = NoopType.footnote, color = Palette.textTertiary)
             }
         }
@@ -626,10 +631,17 @@ internal fun devicePillState(
  * one, else nothing. Null when the strap reported no pack at all, so the line is absent rather than
  * claiming a pack that is not there.
  */
-internal fun powerPackLine(socPct: Double?, serial: String?): String? = when {
-    socPct == null -> null
-    !serial.isNullOrBlank() -> "PowerPack · $serial"
-    else -> "PowerPack"
+/** The pack's line under the strap's firmware line. Gated on a charge the strap actually reported,
+ *  so a remembered firmware never names a pack that is not attached. Firmware leads (it matches the
+ *  strap's own line above it); the serial keeps its place after it. */
+internal fun powerPackLine(socPct: Double?, serial: String?, firmware: String? = null): String? {
+    if (socPct == null) return null
+    val parts = listOfNotNull(
+        "PowerPack",
+        firmware?.takeIf { it.isNotBlank() }?.let { "FW $it" },
+        serial?.takeIf { it.isNotBlank() },
+    )
+    return parts.joinToString(" · ")
 }
 
 @Composable

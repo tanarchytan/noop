@@ -143,6 +143,10 @@ data class LiveState(
     val packSocPct: Double? = null,
     /** The pack's own serial, from the same reply. Null until it answers. */
     val packSerial: String? = null,
+    /** The pack's own firmware version. No command serves it: the strap narrates the pack's identity
+     *  when one is attached, and that reaches the phone on the NEXT sync — so this is the remembered
+     *  value, seeded from prefs, and it outlives a link the way the pack outlives it. */
+    val packFirmware: String? = null,
     /** The pack's cell voltage in millivolts, from the same reply. */
     val packMillivolts: Int? = null,
     /** Historical record layout version (`hist_version`, e.g. v24/v25 on WHOOP 4.0) observed from the
@@ -950,6 +954,30 @@ class WhoopBleClient(
         log("pack raw: ${frame.toHex()}")
     }
 
+    /** The battery pack's identity, accumulated across this link. Replaced on teardown so a half-
+     *  arrived console line can never be joined onto the next link's first chunk. */
+    @Volatile
+    private var packReader = RustCodec.packReader()
+
+    /** Publish what whoop-rs read off the strap's pack channels, and remember the firmware — the
+     *  strap narrates it only at a pack ATTACH, which reaches the phone a whole sync later, so a
+     *  value that vanished on reconnect would be absent almost always. The NFC charge is a
+     *  cross-check and is logged, never written over the command reply's [LiveState.packSocPct]. */
+    private fun applyPackInfo(info: uniffi.whoop_ffi.PackInfo) {
+        val serial = info.serial ?: _state.value.packSerial
+        info.firmware?.let { fw ->
+            if (_state.value.packFirmware != fw) {
+                _state.update { it.copy(packFirmware = fw) }
+                runCatching { com.noop.ui.NoopPrefs.setPackFirmware(context, fw, serial) }
+            }
+        }
+        log(
+            "pack id: fw=${info.firmware ?: "?"} serial=${serial ?: "?"} hw=${info.hwVersion ?: "?"}" +
+                " family=${info.hwFamily ?: "?"} colorway=${info.colorway ?: "?"}" +
+                " addr=${info.btAddr ?: "?"} nfcSoc=${info.socPct ?: "?"}% (nfcSoc is a cross-check)",
+        )
+    }
+
     /**
      * Multi-source seam: publish a live HR/R-R reading from a NON-WHOOP source into the SAME [state]
      * flow the UI observes, so a generic HR strap's live HR shows in the existing Live UI. Invoked ONLY
@@ -1149,6 +1177,11 @@ class WhoopBleClient(
     private val rawHistoryArchive = RawHistoryArchive(context)
 
     init {
+        // Seed the remembered pack firmware, so an attached pack names its firmware immediately
+        // instead of only after the first sync that follows the next attach.
+        runCatching { com.noop.ui.NoopPrefs.packFirmware(context) }.getOrNull()?.let { fw ->
+            _state.update { it.copy(packFirmware = fw) }
+        }
         // Retro-decode: when the decoder gains a historical layout, re-run every archived undecodable
         // frame through it and insert whatever now decodes — the only path by which already-acked,
         // strap-freed history backfills after an update. Runs once per app version, idempotent (rows
@@ -3744,7 +3777,17 @@ class WhoopBleClient(
                 // strap log (capped; the ring buffer holds 2k lines).
                 (parsed.parsed["console"] as? String)?.let { txt ->
                     log("strap: ${txt.take(300)}")
+                    // The same text carries the attached pack's identity. It arrives in chunks that
+                    // split a line mid-value, so the reader reassembles it and answers only with a
+                    // complete one; feed every chunk in arrival order.
+                    packReader.pushConsole(txt)?.let { applyPackInfo(it) }
                 }
+            }
+
+            // What the strap forwards from its NFC poller — the battery pack's identity and charge,
+            // the only channel either reaches the phone on unprompted.
+            "PUFFIN_EVENTS_FROM_STRAP" -> {
+                packReader.pushFrame(connectedFamily.gen, frame)?.let { applyPackInfo(it) }
             }
 
             "EVENT" -> {
@@ -5084,6 +5127,9 @@ class WhoopBleClient(
             packMillivolts = null,
         ) }
         packReplyLogged = null
+        // A fresh pack reader per link: the old one may hold half a console line, and joining that
+        // onto the next link's first chunk would make one line out of two.
+        packReader = RustCodec.packReader()
         // Multi-WHOOP: the link is down - clear the published connected address so SourceCoordinator's
         // adoption sink can't re-fire on a stale strap id. Same for the serial, so the next strap's
         // identity is never resolved against the last one's.

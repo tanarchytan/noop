@@ -115,4 +115,16 @@ class DevicePillStateTest {
         assertNull(powerPackLine(null, null))
         assertNull(powerPackLine(null, "BPK-0001"))
     }
+
+    @Test
+    fun powerPackLine_showsTheFirmwareAheadOfTheSerialAndKeepsBoth() {
+        assertEquals(
+            "PowerPack · FW 3.30.5.0 · WBB5AP0126395",
+            powerPackLine(73.3, "WBB5AP0126395", "3.30.5.0"),
+        )
+        assertEquals("PowerPack · FW 3.30.5.0", powerPackLine(73.3, null, "3.30.5.0"))
+        assertEquals("PowerPack · WBB5AP0126395", powerPackLine(73.3, "WBB5AP0126395", "  "))
+        // A remembered firmware must never name a pack the strap is not reporting a charge for.
+        assertNull(powerPackLine(null, "WBB5AP0126395", "3.30.5.0"))
+    }
 }

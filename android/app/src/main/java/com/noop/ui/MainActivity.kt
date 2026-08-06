@@ -750,6 +750,32 @@ object NoopPrefs {
         }.apply()
     }
 
+    /** Last-known battery-pack firmware, with the serial it belongs to. The strap only narrates the
+     *  pack's identity when a pack is ATTACHED, and that narration reaches the phone on the NEXT sync,
+     *  so the value must survive a reconnect rather than blank until the next attach. Keyed by serial
+     *  so a different pack never inherits this one's firmware; a null serial means "not yet known". */
+    const val KEY_PACK_FIRMWARE = "noop.packFirmware"
+    const val KEY_PACK_FIRMWARE_SERIAL = "noop.packFirmwareSerial"
+
+    /** The remembered firmware, or null when it belongs to a different pack than [serial]. */
+    fun packFirmware(context: Context, serial: String? = null): String? {
+        val p = of(context)
+        val owner = p.getString(KEY_PACK_FIRMWARE_SERIAL, null)
+        if (serial != null && owner != null && owner != serial) return null
+        return p.getString(KEY_PACK_FIRMWARE, null)
+    }
+
+    fun setPackFirmware(context: Context, fw: String?, serial: String?) {
+        of(context).edit().apply {
+            if (fw.isNullOrBlank()) remove(KEY_PACK_FIRMWARE) else putString(KEY_PACK_FIRMWARE, fw)
+            if (serial.isNullOrBlank()) {
+                remove(KEY_PACK_FIRMWARE_SERIAL)
+            } else {
+                putString(KEY_PACK_FIRMWARE_SERIAL, serial)
+            }
+        }.apply()
+    }
+
     /** The wrist last sent to the strap with SELECT_WRIST (true = right). This is what NOOP wrote, not
      *  a strap readback — the strap's own body-location block is not decoded in-app. Null = never set. */
     const val KEY_WRIST_RIGHT = "noop.strapWristRight"

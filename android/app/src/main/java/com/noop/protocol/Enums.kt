@@ -21,7 +21,11 @@ enum class PacketType(val rawValue: Int) {
     METADATA(49),
     CONSOLE_LOGS(50),
     REALTIME_IMU_DATA_STREAM(51),
-    HISTORICAL_IMU_DATA_STREAM(52);
+    HISTORICAL_IMU_DATA_STREAM(52),
+
+    /** 5/MG only: what the strap forwards from its NFC poller, which is the only path the battery
+     *  pack's own identity and charge reach the phone by. Decoded in whoop-rs. */
+    PUFFIN_EVENTS_FROM_STRAP(54);
 
     companion object {
         private val byRaw = entries.associateBy { it.rawValue }

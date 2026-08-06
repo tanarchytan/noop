@@ -4,6 +4,7 @@ import uniffi.whoop_ffi.Gen
 import uniffi.whoop_ffi.HistorySummary
 import uniffi.whoop_ffi.Live
 import uniffi.whoop_ffi.MetadataInfo
+import uniffi.whoop_ffi.PackReader
 import uniffi.whoop_ffi.PpgEstimate
 import uniffi.whoop_ffi.PpgFrame
 import uniffi.whoop_ffi.PpgSample
@@ -65,6 +66,11 @@ object RustCodec {
 
     /** Gap-aware, artifact-corrected nightly RMSSD (ms) from per-record R-R runs. */
     fun rmssd(runs: List<RrRun>): Double? = hrvRmssdGapAware(runs)
+
+    /** A fresh battery-pack identity reader for ONE link. Stateful: the strap's console arrives in
+     *  chunks that split a line mid-value, so a reader carried across links could join a stale
+     *  fragment onto a fresh chunk. Take a new one per connection. */
+    fun packReader(): PackReader = PackReader()
 
     // --- Outbound command frames: whoop-rs builds every frame's bytes (envelope + CRC + payload). Kotlin
     //     keeps only the send policy (seq counter, 5/MG allow-list, opt-in gates, R22 ordering). ---
