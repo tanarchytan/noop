@@ -985,11 +985,9 @@ class WhoopBleClient(
     /** Drop a remembered firmware that belongs to a DIFFERENT pack, so a newly-attached one shows no
      *  firmware until it reports its own rather than inheriting the last pack's. */
     private fun forgetPackFirmwareOfAnotherPack(serial: String?) {
-        if (serial.isNullOrBlank()) return
-        val remembered = runCatching { com.noop.ui.NoopPrefs.packFirmware(context, serial) }.getOrNull()
-        if (remembered == null && _state.value.packFirmware != null) {
-            _state.update { it.copy(packFirmware = null) }
-        }
+        if (serial.isNullOrBlank() || _state.value.packFirmware == null) return
+        val stillOurs = runCatching { com.noop.ui.NoopPrefs.packFirmware(context, serial) }.getOrNull()
+        if (stillOurs == null) _state.update { it.copy(packFirmware = null) }
     }
 
     /** Route one thing the strap said about the pack. Presence is applied as stated; values go
