@@ -9,9 +9,9 @@ The rule: a number the user sees is computed in whoop-rs. Kotlin decides *when* 
 and *how to word it* — never *what the number is*. `RustScores.kt` is the single seam; it holds one thin
 adapter per engine and no arithmetic.
 
-**State: five FFI exports have no Kotlin caller** (see *Exported but unreached*, below); the rest are
-called. What remains after that is Kotlin still carrying its own maths. Read the counts off the audit,
-never off this sentence.
+**State: every FFI export has a Kotlin caller.** The five that did not were deleted rather than wired
+(see *The optical-quality surface*, below). What remains is Kotlin still carrying its own maths. Read
+the counts off the audit, never off this sentence.
 
 ---
 
@@ -101,26 +101,34 @@ Byte decode belongs in Rust, and a hardware-verified twin already exists for eac
 
 ---
 
-## Exported but unreached — Rust waiting for a caller
+## The optical-quality surface — measured, then deleted rather than wired
 
-The optical-quality surface. The strap flags its own bad optical seconds, the decoder stores that flag as
-`v18Sample.opticalSignalPoor`, and whoop-rs owns the rule for what the flag disqualifies. Nothing in Kotlin
-asks. The rule is already on the Rust side, so wiring these is adapter work and moves no arithmetic.
+Five algorithm exports had no Kotlin caller: `rr_beats_trusted`, `ppg_hr_derate_poor`,
+`ppg_hr_aggregate`, `ppg_signal_check` and `ppg_check_cfg`. **All five were deleted from the FFI on
+2026-08-06**, taking the surface from 130 exports to 125, so every remaining export has a caller. The
+algorithms stay in `physio-algo` with their tests: `hrv::rr_trusted` is still applied inside
+`HrvReadiness::nightly_hrv`, and `ppg::aggregate`, `ppg::signal_check` and `ppg::derate_poor_seconds`
+still carry their sensitivity harness. Only the doors were removed.
 
-| Export | What it decides | What reads it today |
-|---|---|---|
-| `rr_beats_trusted` | whether one record's R-R beats may enter an `RrRun` | nothing; `RustScores.groupRuns` folds every beat |
-| `ppg_hr_derate_poor` | drops flagged seconds to zero confidence before any reduction | nothing |
-| `ppg_hr_aggregate` | confidence-weighted downsample, instead of a plain mean | nothing |
-| `ppg_signal_check` | a span's Poor/Fair/Good verdict from its clean-second fraction | nothing |
-| `ppg_check_cfg` | the four trust constants, so a caller cannot hold a stale copy | nothing |
+**Kotlin held no twin of any of them**, checked before deciding, because a Kotlin copy would have made
+this the case that matters most under the border rule. `RustScores.groupRuns` folds every beat with no
+filter; `RustScores.groupReports` passes `null` for the optical flag and says in its own comment that
+null means unknown, never a claim the signal was good; and no file under `analytics/` or `ui/` computes
+a PPG signal-quality verdict. There was nothing to delete on the Kotlin side.
 
-**Do not wire these as a cleanup**, and the reason is now measured rather than assumed.
+| Export | Why it was deleted rather than given a door |
+|---|---|
+| `rr_beats_trusted` | Its only possible input is `v18Sample.opticalSignalPoor`, which is measured to be an amplitude sentinel rather than a beat-quality flag. Wiring it drops 71.7% of every HRV figure's beats |
+| `ppg_hr_derate_poor` | Same flag, same falsified premise: it would zero the confidence of 70.66% of seconds on that sentinel |
+| `ppg_hr_aggregate` | Fed but inert: 32,867 of the 32,966 stored PPG-HR seconds are shadowed by a measured `hrSample` and excluded by the anti-join, so only 99 reach a chart, and confidence weighting moves those buckets by at most 0.241 bpm |
+| `ppg_signal_check` | Nothing shows or gates on PPG signal quality. Inventing a screen to justify an export is the wrong direction |
+| `ppg_check_cfg` | It exists only to hand a caller the four constants behind `ppg_signal_check`. With no caller for the check, nothing needs the constants |
 
-### The drop-rate measurement, 2026-08-04
+### The drop-rate measurement, 2026-08-04 — reproduced exactly, 2026-08-06
 
 Run against the stored `v18Sample` rows in `whoop-data/own-data/strap-data/mine/noop-merged-with-drain-20260801.noopbak`,
-which is **one UTC day (2026-08-01), two straps, 6,970 seconds** — a real cohort, not a large one.
+which is **one UTC day (2026-08-01), two straps, 6,970 seconds** — a real cohort, not a large one. Every
+figure below was re-derived from the same backup on 2026-08-06 and came back identical.
 
 | | seconds | flagged `opticalSignalPoor` |
 |---|---|---|
@@ -139,21 +147,37 @@ verdicts:
   flagged second withholds its amplitude.
 * *Not beat quality*: flagged seconds carry beats at the **same** rate as clean ones (0.814 vs 0.775
   beats/sec, flagged slightly higher) and carry a measured HR that is physiologically ordinary
-  (mean 94.1 bpm, range 80–114, against 88.1 bpm and 50–113 on the clean seconds). The flag also toggles
+  (mean 94.1 bpm, range 80-114, against 88.1 bpm and 50-113 on the clean seconds). The flag also toggles
   152 times across the day with a median flagged run of 15 seconds, so it is not one long dropout that
   could be dismissed as off-wrist.
 
 `optical_signal_poor` is an **amplitude sentinel** — the front-end had no amplitude to report — and
 whoop-rs's own doc for `rr_trusted` says exactly that before treating it as a beat-trust signal. Nothing
-here shows the beats on those seconds are bad. Wiring it would delete 71.7% of every HRV figure's input on
-this evidence, so **the export's premise needs revisiting before any caller is added**, not merely a
-bigger sample. A replacement signal has to come from something that actually tracks beat quality.
+here shows the beats on those seconds are bad. A replacement signal has to come from something that
+actually tracks beat quality, and until one exists there is no caller to write.
 
-The four PPG exports are additionally **unfed**: `ppgHrSample` is empty in both the merged backup and the
-2026-07-31 debug database, so the v26 optical stream that would supply them has never landed. Wiring them
-today would change nothing at all.
+### Correction 2026-08-06 — the PPG stream is NOT unfed
 
----
+The 2026-08-04 write-up added that "`ppgHrSample` is empty in both the merged backup and the 2026-07-31
+debug database, so the v26 optical stream that would supply them has never landed." **Half of that is
+false.** Measured directly:
+
+| database | `ppgHrSample` | `ppgWaveformSample` |
+|---|---|---|
+| `noop-merged-with-drain-20260801.noopbak` | **32,966 rows, 3 devices** | **43,552 rows** |
+| `noop-debug-db-20260731/noop_whoop.db` | 0 | 0 |
+| `phone-20260728/noop_whoop.db` | 0 | 0 |
+
+The stream has landed. What makes the reductions inert is a different fact, and a stronger one: the
+anti-join in `WhoopDao.hrSamples`/`hrBuckets` admits a PPG second only when no measured `hrSample`
+covers it, and **32,867 of the 32,966 are shadowed**. The 99 that survive fall into 11 sixty-second
+buckets, where a confidence-weighted mean differs from the plain SQL mean by a median of 0.000 bpm and
+at most 0.241 bpm — under the whole bpm the chart draws.
+
+Two loose threads, recorded rather than fixed: 95 of the stored rows carry a confidence below
+`ppg::MIN_CONFIDENCE` (minimum 0.258 against a 0.3 emission gate), so either they predate the gate or
+the gate is not applied where it is documented; and `WhoopDao.hrBuckets` computes a displayed mean in
+SQL, which is arithmetic behind a displayed number living in the app rather than in whoop-rs.
 
 ## One quantity, two producers — the nightly RMSSD series
 

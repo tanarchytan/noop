@@ -793,19 +793,9 @@ internal object IntegrityCheckingUniffiLib {
     ): Int
     external fun uniffi_whoop_ffi_checksum_func_hrv_windowed_buckets(
     ): Int
-    external fun uniffi_whoop_ffi_checksum_func_ppg_check_cfg(
-    ): Int
     external fun uniffi_whoop_ffi_checksum_func_ppg_hr(
     ): Int
-    external fun uniffi_whoop_ffi_checksum_func_ppg_hr_aggregate(
-    ): Int
-    external fun uniffi_whoop_ffi_checksum_func_ppg_hr_derate_poor(
-    ): Int
-    external fun uniffi_whoop_ffi_checksum_func_ppg_signal_check(
-    ): Int
     external fun uniffi_whoop_ffi_checksum_func_resp_rate_from_rr(
-    ): Int
-    external fun uniffi_whoop_ffi_checksum_func_rr_beats_trusted(
     ): Int
     external fun uniffi_whoop_ffi_checksum_func_vitality_rmssd_norm(
     ): Int
@@ -1199,20 +1189,10 @@ internal object UniffiLib {
     ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_func_hrv_windowed_buckets(`start`: Int,`end`: Int,`runs`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
-    external fun uniffi_whoop_ffi_fn_func_ppg_check_cfg(uniffi_out_err: UniffiRustCallStatus, 
-    ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_func_ppg_hr(`samples`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
-    ): RustBuffer.ByValue
-    external fun uniffi_whoop_ffi_fn_func_ppg_hr_aggregate(`estimates`: RustBuffer.ByValue,`bucketSecs`: Long,uniffi_out_err: UniffiRustCallStatus, 
-    ): RustBuffer.ByValue
-    external fun uniffi_whoop_ffi_fn_func_ppg_hr_derate_poor(`estimates`: RustBuffer.ByValue,`poorSecs`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
-    ): RustBuffer.ByValue
-    external fun uniffi_whoop_ffi_fn_func_ppg_signal_check(`estimates`: RustBuffer.ByValue,`start`: Long,`end`: Long,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_func_resp_rate_from_rr(`beats`: RustBuffer.ByValue,`start`: Long,`end`: Long,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
-    external fun uniffi_whoop_ffi_fn_func_rr_beats_trusted(`opticalSignalPoor`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
-    ): Byte
     external fun uniffi_whoop_ffi_fn_func_vitality_rmssd_norm(`forAge`: Double,uniffi_out_err: UniffiRustCallStatus, 
     ): Double
     external fun uniffi_whoop_ffi_fn_func_illness_baseline_cfg(uniffi_out_err: UniffiRustCallStatus, 
@@ -1638,25 +1618,10 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_whoop_ffi_checksum_func_hrv_windowed_buckets() != 3225) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_whoop_ffi_checksum_func_ppg_check_cfg() != 21102) {
-        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
-    }
     if (lib.uniffi_whoop_ffi_checksum_func_ppg_hr() != 2321) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_whoop_ffi_checksum_func_ppg_hr_aggregate() != 12533) {
-        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
-    }
-    if (lib.uniffi_whoop_ffi_checksum_func_ppg_hr_derate_poor() != 47078) {
-        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
-    }
-    if (lib.uniffi_whoop_ffi_checksum_func_ppg_signal_check() != 4624) {
-        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
-    }
     if (lib.uniffi_whoop_ffi_checksum_func_resp_rate_from_rr() != 35993) {
-        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
-    }
-    if (lib.uniffi_whoop_ffi_checksum_func_rr_beats_trusted() != 15925) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_whoop_ffi_checksum_func_vitality_rmssd_norm() != 4064) {
@@ -5681,58 +5646,6 @@ public object FfiConverterTypePhaseEstimateInfo: FfiConverterRustBuffer<PhaseEst
 
 
 /**
- * The PPG-HR tuning the app displays: the emission gate, the clean-second confidence floor, and the two
- * clean-second fractions that separate the three [PpgSignalCheck] levels.
- */
-data class PpgCheckCfgInfo (
-    var `minConfidence`: kotlin.Double
-    , 
-    var `goodConfidence`: kotlin.Double
-    , 
-    var `fairFraction`: kotlin.Double
-    , 
-    var `goodFraction`: kotlin.Double
-    
-){
-    
-
-    
-
-    
-    companion object
-}
-
-/**
- * @suppress
- */
-public object FfiConverterTypePpgCheckCfgInfo: FfiConverterRustBuffer<PpgCheckCfgInfo> {
-    override fun read(buf: ByteBuffer): PpgCheckCfgInfo {
-        return PpgCheckCfgInfo(
-            FfiConverterDouble.read(buf),
-            FfiConverterDouble.read(buf),
-            FfiConverterDouble.read(buf),
-            FfiConverterDouble.read(buf),
-        )
-    }
-
-    override fun allocationSize(value: PpgCheckCfgInfo) = (
-            FfiConverterDouble.allocationSize(value.`minConfidence`) +
-            FfiConverterDouble.allocationSize(value.`goodConfidence`) +
-            FfiConverterDouble.allocationSize(value.`fairFraction`) +
-            FfiConverterDouble.allocationSize(value.`goodFraction`)
-    )
-
-    override fun write(value: PpgCheckCfgInfo, buf: ByteBuffer) {
-            FfiConverterDouble.write(value.`minConfidence`, buf)
-            FfiConverterDouble.write(value.`goodConfidence`, buf)
-            FfiConverterDouble.write(value.`fairFraction`, buf)
-            FfiConverterDouble.write(value.`goodFraction`, buf)
-    }
-}
-
-
-
-/**
  * A derived HR estimate from `ppg_hr`.
  */
 data class PpgEstimate (
@@ -8831,45 +8744,6 @@ public object FfiConverterTypeNapVerdictInfo: FfiConverterRustBuffer<NapVerdictI
     override fun allocationSize(value: NapVerdictInfo) = 4UL
 
     override fun write(value: NapVerdictInfo, buf: ByteBuffer) {
-        buf.putInt(value.ordinal + 1)
-    }
-}
-
-
-
-
-
-/**
- * How far a whole span's PPG-derived HR can be trusted, coarsest first. The label and colour are the
- * caller's; the thresholds behind the level are not.
- */
-
-enum class PpgSignalCheck {
-    
-    POOR,
-    FAIR,
-    GOOD;
-
-    
-
-
-    companion object
-}
-
-
-/**
- * @suppress
- */
-public object FfiConverterTypePpgSignalCheck: FfiConverterRustBuffer<PpgSignalCheck> {
-    override fun read(buf: ByteBuffer) = try {
-        PpgSignalCheck.values()[buf.getInt() - 1]
-    } catch (e: IndexOutOfBoundsException) {
-        throw RuntimeException("invalid enum value, something is very wrong!!", e)
-    }
-
-    override fun allocationSize(value: PpgSignalCheck) = 4UL
-
-    override fun write(value: PpgSignalCheck, buf: ByteBuffer) {
         buf.putInt(value.ordinal + 1)
     }
 }
@@ -13273,19 +13147,6 @@ public object FfiConverterSequenceOptionalDouble: FfiConverterRustBuffer<List<ko
     
 
         /**
-         * One source of truth for the PPG-HR trust constants, so a caller cannot hold a stale copy.
-         */ fun `ppgCheckCfg`(): PpgCheckCfgInfo {
-            return FfiConverterTypePpgCheckCfgInfo.lift(
-    uniffiRustCall() { _status ->
-    UniffiLib.uniffi_whoop_ffi_fn_func_ppg_check_cfg(
-    
-        _status)
-}
-    )
-    }
-    
-
-        /**
          * HR from a v26 optical PPG buffer (24 Hz autocorrelation).
          */ fun `ppgHr`(`samples`: List<PpgSample>): List<PpgEstimate> {
             return FfiConverterSequenceTypePpgEstimate.lift(
@@ -13294,57 +13155,6 @@ public object FfiConverterSequenceOptionalDouble: FfiConverterRustBuffer<List<ko
     
         
         FfiConverterSequenceTypePpgSample.lower(`samples`),_status)
-}
-    )
-    }
-    
-
-        /**
-         * Confidence-weighted downsample of [ppg_hr] to `bucket_secs` buckets: `Σ(bpm·conf) / Σ(conf)` per
-         * bucket, stamped at the bucket start with its mean conf. Use instead of averaging `bpm` in SQL — a
-         * plain mean lets one motion-corrupted second drag a bucket as hard as a clean one.
-         */ fun `ppgHrAggregate`(`estimates`: List<PpgEstimate>, `bucketSecs`: kotlin.Long): List<PpgEstimate> {
-            return FfiConverterSequenceTypePpgEstimate.lift(
-    uniffiRustCall() { _status ->
-    UniffiLib.uniffi_whoop_ffi_fn_func_ppg_hr_aggregate(
-    
-        
-        FfiConverterSequenceTypePpgEstimate.lower(`estimates`),
-        FfiConverterLong.lower(`bucketSecs`),_status)
-}
-    )
-    }
-    
-
-        /**
-         * Re-weight PPG-HR seconds by the strap's own optical quality flag: every second listed in `poor_secs`
-         * (a v18 record whose `optical_signal_poor` is set) drops to zero confidence, so it stops voting in
-         * [ppg_hr_aggregate] and stops counting clean in [ppg_signal_check]. Apply before either.
-         */ fun `ppgHrDeratePoor`(`estimates`: List<PpgEstimate>, `poorSecs`: List<kotlin.Long>): List<PpgEstimate> {
-            return FfiConverterSequenceTypePpgEstimate.lift(
-    uniffiRustCall() { _status ->
-    UniffiLib.uniffi_whoop_ffi_fn_func_ppg_hr_derate_poor(
-    
-        
-        FfiConverterSequenceTypePpgEstimate.lower(`estimates`),
-        FfiConverterSequenceLong.lower(`poorSecs`),_status)
-}
-    )
-    }
-    
-
-        /**
-         * Span-level verdict over `[start, end]` inclusive from the fraction of its seconds carrying a clean
-         * estimate. A second the estimator refused counts against the span exactly like a low-confidence one.
-         */ fun `ppgSignalCheck`(`estimates`: List<PpgEstimate>, `start`: kotlin.Long, `end`: kotlin.Long): PpgSignalCheck {
-            return FfiConverterTypePpgSignalCheck.lift(
-    uniffiRustCall() { _status ->
-    UniffiLib.uniffi_whoop_ffi_fn_func_ppg_signal_check(
-    
-        
-        FfiConverterSequenceTypePpgEstimate.lower(`estimates`),
-        FfiConverterLong.lower(`start`),
-        FfiConverterLong.lower(`end`),_status)
 }
     )
     }
@@ -13361,22 +13171,6 @@ public object FfiConverterSequenceOptionalDouble: FfiConverterRustBuffer<List<ko
         FfiConverterSequenceTypeRrBeat.lower(`beats`),
         FfiConverterLong.lower(`start`),
         FfiConverterLong.lower(`end`),_status)
-}
-    )
-    }
-    
-
-        /**
-         * Whether one record's R-R beats may be trusted, from its `optical_signal_poor` flag alone. The caller
-         * drops the rejected records before building the [RrRun]s it hands [hrv_rmssd_gap_aware]; the rule for
-         * what counts as untrusted stays here.
-         */ fun `rrBeatsTrusted`(`opticalSignalPoor`: kotlin.Boolean?): kotlin.Boolean {
-            return FfiConverterBoolean.lift(
-    uniffiRustCall() { _status ->
-    UniffiLib.uniffi_whoop_ffi_fn_func_rr_beats_trusted(
-    
-        
-        FfiConverterOptionalBoolean.lower(`opticalSignalPoor`),_status)
 }
     )
     }
