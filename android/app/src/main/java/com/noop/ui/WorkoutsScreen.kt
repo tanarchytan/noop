@@ -86,6 +86,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.noop.analytics.RustScores
 import com.noop.analytics.WorkoutSport
 import com.noop.data.WorkoutRow
 import java.time.Instant
@@ -845,9 +846,10 @@ private fun ZonesSection(rows: List<WorkoutRow>) {
                 )
                 CardDivider()
                 // 5-up stat strip, identical rhythm to the sport cards' MiniStat row.
+                val shares = remember(z) { zonePercents(z.minutes) }
                 Row(modifier = Modifier.fillMaxWidth()) {
                     z.minutes.forEachIndexed { i, m ->
-                        ZoneStat(i + 1, m, z.totalMinutes, Modifier.weight(1f))
+                        ZoneStat(i + 1, m, shares?.getOrNull(i), Modifier.weight(1f))
                     }
                 }
                 Text(
@@ -860,8 +862,17 @@ private fun ZonesSection(rows: List<WorkoutRow>) {
     }
 }
 
+/**
+ * The five zones as whole percentages summing to exactly 100, so the strip never reads 99 or 101.
+ * whoop-rs apportions them; null when no zone carries time, so no zone prints a share it never had.
+ */
+internal fun zonePercents(minutes: List<Double>): List<Int>? = RustScores.wholePercentages(minutes)
+
+/** What a zone reads as on a session with nothing to split. */
+private const val NO_ZONE_SHARE = "--"
+
 @Composable
-private fun ZoneStat(zone: Int, minutes: Double, total: Double, modifier: Modifier = Modifier) {
+private fun ZoneStat(zone: Int, minutes: Double, pct: Int?, modifier: Modifier = Modifier) {
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(3.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Box(
@@ -873,7 +884,7 @@ private fun ZoneStat(zone: Int, minutes: Double, total: Double, modifier: Modifi
             Overline("Z$zone")
         }
         Text(
-            "${(minutes / total * 100).roundToInt()}%",
+            if (pct == null) NO_ZONE_SHARE else "$pct%",
             style = NoopType.number(15f),
             color = Palette.textPrimary,
             maxLines = 1,
@@ -1331,8 +1342,9 @@ private fun WorkoutDetailSheet(vm: AppViewModel, row: WorkoutRow, onDismiss: () 
                         modifier = Modifier.fillMaxWidth(),
                         height = 24.dp,
                     )
+                    val shares = remember(z) { zonePercents(z) }
                     Row(modifier = Modifier.fillMaxWidth()) {
-                        z.forEachIndexed { i, m -> ZoneStat(i + 1, m, total, Modifier.weight(1f)) }
+                        z.forEachIndexed { i, m -> ZoneStat(i + 1, m, shares?.getOrNull(i), Modifier.weight(1f)) }
                     }
                     Text(
                         if (zonesFromImport) "WHOOP's imported per-zone split for this session."

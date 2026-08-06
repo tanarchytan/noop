@@ -55,6 +55,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.noop.analytics.RustScores
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -79,10 +80,14 @@ private fun seriesSummary(values: List<Double>, noun: String): String {
         "low ${formatLineValue(lo)}, high ${formatLineValue(hi)}"
 }
 
-private fun hypnogramSummary(stages: List<Pair<String, Float>>): String {
-    if (stages.isEmpty()) return "Sleep stages, no data"
-    val total = stages.map { if (it.second.isFinite() && it.second > 0f) it.second else 0f }.sum()
-    if (total <= 0f) return "Sleep stages, no data"
+/**
+ * The hypnogram's spoken summary: each stage's share of the night as a whole percentage. whoop-rs
+ * apportions the four shares so they sum to exactly 100, and yields nothing for a night with no
+ * minutes — so the summary never speaks a total the night never had. A stage with no minutes is left
+ * unspoken rather than announced as zero.
+ */
+internal fun hypnogramSummary(stages: List<Pair<String, Float>>): String {
+    val noData = "Sleep stages, no data"
     val order = listOf("deep", "rem", "light", "awake")
     val byStage = LinkedHashMap<String, Float>()
     for (key in order) byStage[key] = 0f
@@ -93,15 +98,14 @@ private fun hypnogramSummary(stages: List<Pair<String, Float>>): String {
         }
         byStage[key] = (byStage[key] ?: 0f) + v
     }
-    val parts = order.mapNotNull { key ->
-        val v = byStage[key] ?: 0f
-        if (v <= 0f) null else {
-            val pct = (v / total * 100f).roundToInt()
+    val split = RustScores.wholePercentages(order.map { (byStage[it] ?: 0f).toDouble() }) ?: return noData
+    val parts = order.mapIndexedNotNull { i, key ->
+        if ((byStage[key] ?: 0f) <= 0f) null else {
             val label = if (key == "rem") "REM" else key.replaceFirstChar { it.uppercase() }
-            "$pct percent $label"
+            "${split[i]} percent $label"
         }
     }
-    return if (parts.isEmpty()) "Sleep stages, no data" else "Sleep stages, " + parts.joinToString(", ")
+    return if (parts.isEmpty()) noData else "Sleep stages, " + parts.joinToString(", ")
 }
 
 // MARK: - Shared geometry helpers
