@@ -63,5 +63,9 @@ dev-docs/
 dev-notes/
 
 # Device screenshots and scratch captures taken while testing on hardware. Ignored because a
-# blanket stage has swept them into a commit before.
+# blanket stage has swept them into a commit before — and did again: 15 phone-*.png (11.8 MB) had
+# been sitting in Tools/ unreferenced. A capture belongs in .dev-screens/ or outside the repo; a
+# screenshot that documents something belongs in docs/assets/ with a reference to it.
 .dev-screens/
+phone-*.png
+screencap*.png
