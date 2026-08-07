@@ -9,6 +9,7 @@ import com.noop.data.DeviceRegistry
 import com.noop.data.WhoopDatabase
 import com.noop.data.WhoopRepository
 import com.noop.ui.NoopPrefs
+import com.noop.ui.UnitPrefs
 import kotlinx.coroutines.runBlocking
 
 /**
@@ -34,6 +35,9 @@ class NoopApplication : Application() {
         // Apply a staged backup restore before the Room store is opened, so the file swap runs with no
         // live connection or background coroutine that could re-open a torn file mid-swap. No-op normally.
         WhoopDatabase.applyPendingRestore(this)
+        // Seed the unit/Effort display state before any screen reads it, so the first composition
+        // shows the stored preference rather than the Metric default.
+        UnitPrefs.reload(this)
     }
 
     /** Process-wide Room-backed store. One instance shared by the UI and the background service. */

@@ -318,6 +318,7 @@ object NoopPrefs {
 
     fun setUnitSystem(context: Context, system: UnitSystem) {
         of(context).edit().putString(KEY_UNIT_SYSTEM, system.raw).apply()
+        UnitPrefs.reload(context)
     }
 
     /** Persist the temperature override, or pass null to clear it back to "match the system". */
@@ -325,6 +326,7 @@ object NoopPrefs {
         of(context).edit().apply {
             if (unit == null) remove(KEY_TEMPERATURE_UNIT) else putString(KEY_TEMPERATURE_UNIT, unit.raw)
         }.apply()
+        UnitPrefs.reload(context)
     }
 
     /** Health Connect periodic auto-sync (Samsung Health → Health Connect → NOOP). Default OFF.

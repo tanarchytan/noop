@@ -1,6 +1,9 @@
 package com.noop.ui
 
 import android.content.Context
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import com.noop.analytics.StrainScorer
 import java.util.Locale
 import kotlin.math.roundToInt
@@ -60,37 +63,51 @@ enum class EffortScale(val raw: String) {
 }
 
 /**
- * Reads the two unit preferences from [NoopPrefs] and resolves the "match the system" default for
- * temperature. SharedPreferences isn't reactive, so Compose screens read these once into remembered
- * state (exactly like the other toggles) and re-read on a recomposition triggered by the Settings write.
+ * The three display preferences, held as Compose snapshot state over [NoopPrefs] and resolving the
+ * "match the system" default for temperature. SharedPreferences is not observable, so a screen that
+ * read it directly kept its old unit until something unrelated recomposed it; reading state here means
+ * every screen redraws the instant a toggle is written. [reload] re-seeds from the store.
  */
 object UnitPrefs {
+    /** SharedPreferences key for the Effort display scale. Mirrors macOS @AppStorage("effort.scale"). */
+    const val KEY_EFFORT_SCALE = "effort.scale"
+
+    private var systemState by mutableStateOf(UnitSystem.METRIC)
+    private var temperatureOverrideState by mutableStateOf<String?>(null)
+    private var effortScaleState by mutableStateOf(EffortScale.HUNDRED)
+
+    /**
+     * Re-seed all three from [NoopPrefs]. Called once at process start and after any write that goes
+     * around the setters below (a backup restore rewrites the keys directly).
+     */
+    fun reload(context: Context) {
+        val prefs = NoopPrefs.of(context)
+        systemState = UnitSystem.fromRaw(prefs.getString(NoopPrefs.KEY_UNIT_SYSTEM, null))
+        temperatureOverrideState = prefs.getString(NoopPrefs.KEY_TEMPERATURE_UNIT, null)
+        effortScaleState = EffortScale.fromRaw(prefs.getString(KEY_EFFORT_SCALE, null))
+    }
+
     /** The length/mass system (default Metric). */
-    fun system(context: Context): UnitSystem =
-        UnitSystem.fromRaw(NoopPrefs.of(context).getString(NoopPrefs.KEY_UNIT_SYSTEM, null))
+    fun system(context: Context): UnitSystem = systemState
 
     /** The resolved temperature unit, applying the "match the length/mass system" default. */
-    fun temperature(context: Context): TemperatureUnit {
-        val override = TemperatureUnit.fromRaw(
-            NoopPrefs.of(context).getString(NoopPrefs.KEY_TEMPERATURE_UNIT, null),
-        )
-        return override ?: system(context).temperatureMatching
-    }
+    fun temperature(context: Context): TemperatureUnit =
+        resolveTemperature(systemState, temperatureOverrideState)
+
+    /** The raw temperature override as stored: null/empty = "match the length/mass system". */
+    fun temperatureOverrideRaw(context: Context): String = temperatureOverrideState.orEmpty()
 
     /** Pure resolver shared with the tests: explicit override wins, else follow the system. */
     fun resolveTemperature(system: UnitSystem, override: String?): TemperatureUnit =
         TemperatureUnit.fromRaw(override) ?: system.temperatureMatching
 
-    /** SharedPreferences key for the Effort display scale. Mirrors macOS @AppStorage("effort.scale"). */
-    const val KEY_EFFORT_SCALE = "effort.scale"
+    /** The Effort display scale (default 0–100). */
+    fun effortScale(context: Context): EffortScale = effortScaleState
 
-    /** The Effort display scale (default 0–100). Read once into Compose state like the other prefs. */
-    fun effortScale(context: Context): EffortScale =
-        EffortScale.fromRaw(NoopPrefs.of(context).getString(KEY_EFFORT_SCALE, null))
-
-    /** Persist the Effort display scale. */
+    /** Persist the Effort display scale and publish it to every screen reading [effortScale]. */
     fun setEffortScale(context: Context, scale: EffortScale) {
         NoopPrefs.of(context).edit().putString(KEY_EFFORT_SCALE, scale.raw).apply()
+        effortScaleState = scale
     }
 }
 

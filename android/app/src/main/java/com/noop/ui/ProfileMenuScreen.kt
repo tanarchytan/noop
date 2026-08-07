@@ -68,12 +68,11 @@ fun ProfileMenuScreen(vm: AppViewModel) {
     fun mutate(block: () -> Unit) { block(); rev++ }
 
     // Imperial/Metric display preference. Display-only — stored data stays SI. Drives both the body
-    // profile entry fields (imperial vs metric) and the Units card, so it's screen-level state.
-    var unitSystem by remember { mutableStateOf(UnitPrefs.system(context)) }
-    var temperatureRaw by remember {
-        mutableStateOf(NoopPrefs.of(context).getString(NoopPrefs.KEY_TEMPERATURE_UNIT, "") ?: "")
-    }
-    var effortScale by remember { mutableStateOf(UnitPrefs.effortScale(context)) }
+    // profile entry fields (imperial vs metric) and the Units card. Read straight from [UnitPrefs],
+    // which is snapshot state, so this screen and every other one flip together.
+    val unitSystem = UnitPrefs.system(context)
+    val temperatureRaw = UnitPrefs.temperatureOverrideRaw(context)
+    val effortScale = UnitPrefs.effortScale(context)
 
     // Steps-estimate calibration screen (WHOOP 4.0), reached from the Profile card's "Steps estimate"
     // tap-through. Full-screen Dialog; a manual-coefficient write bumps `rev` so the summary refreshes.
@@ -369,10 +368,7 @@ fun ProfileMenuScreen(vm: AppViewModel) {
                         items = listOf(UnitSystem.METRIC, UnitSystem.IMPERIAL),
                         selection = unitSystem,
                         label = { if (it == UnitSystem.METRIC) "Metric" else "Imperial" },
-                        onSelect = {
-                            unitSystem = it
-                            NoopPrefs.setUnitSystem(context, it)
-                        },
+                        onSelect = { NoopPrefs.setUnitSystem(context, it) },
                     )
                 }
                 RowDivider()
@@ -389,10 +385,7 @@ fun ProfileMenuScreen(vm: AppViewModel) {
                                 else -> "Match"
                             }
                         },
-                        onSelect = {
-                            temperatureRaw = it
-                            NoopPrefs.setTemperatureUnit(context, TemperatureUnit.fromRaw(it))
-                        },
+                        onSelect = { NoopPrefs.setTemperatureUnit(context, TemperatureUnit.fromRaw(it)) },
                     )
                 }
                 RowDivider()
@@ -403,10 +396,7 @@ fun ProfileMenuScreen(vm: AppViewModel) {
                         items = listOf(EffortScale.HUNDRED, EffortScale.WHOOP),
                         selection = effortScale,
                         label = { if (it == EffortScale.HUNDRED) "0-100" else "0-21" },
-                        onSelect = {
-                            effortScale = it
-                            UnitPrefs.setEffortScale(context, it)
-                        },
+                        onSelect = { UnitPrefs.setEffortScale(context, it) },
                     )
                 }
             }

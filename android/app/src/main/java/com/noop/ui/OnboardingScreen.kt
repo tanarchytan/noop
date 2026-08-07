@@ -542,11 +542,10 @@ private fun BondedStep(viewModel: AppViewModel) {
 private fun ProfileStep() {
     val context = LocalContext.current
     val profile = remember { ProfileStore.from(context.applicationContext) }
-    // Imperial/Metric display preference. The stored profile is always SI; the steppers keep
-    // operating in SI and only the DISPLAYED value re-labels to lb / ft-in. Held in remembered state
-    // so the Units control below can flip it live. SharedPreferences isn't reactive, so the
-    // picker writes through to NoopPrefs AND updates this state to re-render the Weight/Height labels.
-    var unitSystem by remember { mutableStateOf(UnitPrefs.system(context)) }
+    // Imperial/Metric display preference. The stored profile is always SI; only the DISPLAYED value
+    // re-labels to lb / ft-in. [UnitPrefs] is snapshot state, so the Units control below flips this
+    // screen and every other one at once.
+    val unitSystem = UnitPrefs.system(context)
     var rev by remember { mutableIntStateOf(0) }
     fun mutate(block: () -> Unit) {
         block()
@@ -597,10 +596,7 @@ private fun ProfileStep() {
                         items = listOf(UnitSystem.METRIC, UnitSystem.IMPERIAL),
                         selection = unitSystem,
                         label = { if (it == UnitSystem.METRIC) "Metric" else "Imperial" },
-                        onSelect = {
-                            unitSystem = it
-                            NoopPrefs.setUnitSystem(context, it)
-                        },
+                        onSelect = { NoopPrefs.setUnitSystem(context, it) },
                         modifier = Modifier.fillMaxWidth(),
                     )
                 }

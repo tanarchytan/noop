@@ -132,5 +132,7 @@ object BackupSettingsBridge {
         }
         (values["effort.scale"] as? String)?.let { editor.putString(UnitPrefs.KEY_EFFORT_SCALE, it) }
         editor.apply()
+        // These keys are written straight to the store, around the setters that publish the change.
+        UnitPrefs.reload(context)
     }
 }
