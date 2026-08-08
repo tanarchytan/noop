@@ -119,5 +119,13 @@ internal fun lastSpo2Row(days: List<DailyMetric>, todayKey: String): DailyMetric
 internal fun lastSkinTempRow(days: List<DailyMetric>, todayKey: String): DailyMetric? =
     days.lastOrNull { it.skinTempDevC != null && it.day < todayKey }
 
+/**
+ * PER-FIELD twin of [lastVitalsRow] for Effort. Charge already carries a prior scored day forward, so on
+ * a store whose newest data is older than today one ring showed a number and the other showed nothing —
+ * which reads as Effort never having arrived. Same strictly-prior future-clock guard.
+ */
+internal fun lastEffortRow(days: List<DailyMetric>, todayKey: String): DailyMetric? =
+    days.lastOrNull { it.strain != null && it.day < todayKey }
+
 /** 04:00 local — the hour the logical day rolls. Between midnight and this hour, Today stays put. */
 internal const val LOGICAL_DAY_ROLLOVER_HOUR: Int = 4

@@ -221,8 +221,8 @@ object UnitFormatter {
      * 9/5 but does NOT add the +32 offset — that would be wrong for a difference.
      */
     fun temperatureDeltaFromCelsius(dc: Double, unit: TemperatureUnit, decimals: Int = 1): String = when (unit) {
-        TemperatureUnit.CELSIUS -> decimalString(dc, decimals) + " °C"
-        TemperatureUnit.FAHRENHEIT -> decimalString(dc * 9.0 / 5.0, decimals) + " °F"
+        TemperatureUnit.CELSIUS -> signedDecimal(dc, decimals) + " °C"
+        TemperatureUnit.FAHRENHEIT -> signedDecimal(dc * 9.0 / 5.0, decimals) + " °F"
     }
 
     /** Temperature unit label only. "°C" / "°F". */
@@ -263,6 +263,11 @@ object UnitFormatter {
     // MARK: Helpers
 
     private fun oneDecimal(v: Double): String = String.format(Locale.US, "%.1f", v)
+
+    /** A deviation always carries its sign: "0.5 °C" cannot say whether it is warmer or cooler. */
+    private fun signedDecimal(v: Double, decimals: Int): String =
+        if (decimals == 0) String.format(Locale.US, "%+d", v.roundToInt())
+        else String.format(Locale.US, "%+.${decimals}f", v)
 
     private fun decimalString(v: Double, decimals: Int): String =
         if (decimals == 0) "${v.roundToInt()}" else String.format(Locale.US, "%.${decimals}f", v)

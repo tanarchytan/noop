@@ -862,8 +862,11 @@ object RestScorer {
             val adequacy = clamp01((deepSeconds / tstSeconds) / deepShareTarget)
             deepFloorFactor + (1.0 - deepFloorFactor) * adequacy
         } else 1.0
-        val restorativeScore = if (tstSeconds > 0)
-            clamp01((restorativeSeconds / tstSeconds) / restorativeTargetShare) * deepFactor else 0.0
+        // Minutes against the need, mirroring the scorer. As a share of what was slept this printed a
+        // term the composite beside it no longer computes.
+        val restorativeTargetSeconds = needSeconds * restorativeTargetShare
+        val restorativeScore = if (restorativeTargetSeconds > 0)
+            clamp01(restorativeSeconds / restorativeTargetSeconds) * deepFactor else 0.0
         val consistencyScore = clamp01(consistency ?: NEUTRAL_CONSISTENCY)
         // Pull the composite from the real scorer (whoop-rs) so the trace can't diverge from the stored
         // score. It takes deep + REM separately; restorative = deep + REM, so REM = restorative - deep.

@@ -1,5 +1,6 @@
 package com.noop.analytics
 
+import com.noop.ui.TemperatureUnit
 import com.noop.ui.chargeDriverRows
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -37,6 +38,7 @@ class ChargeDriversGoldenTest {
         effortBaseline: BaselineState? = null,
         priorDayEffort: Double? = null,
     ): List<String> = chargeDriverRows(
+        tempUnit = TemperatureUnit.CELSIUS,
         hrv = hrv, rhr = rhr, resp = resp,
         hrvBaseline = hrvBaseline, rhrBaseline = rhrBaseline, respBaseline = respBaseline,
         sleepPerf = sleepPerf, skinTempDev = skinTempDev, recoveryIndexSlope = recoveryIndexSlope,

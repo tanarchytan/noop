@@ -31,6 +31,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
@@ -125,7 +126,8 @@ internal fun RecoveryDriversSection(
     // Read the row the Charge ring itself reads: today's own when scored, else the carried last-scored
     // day so the breakdown matches the carried ring instead of vanishing at the rollover.
     val readDay = carriedDay ?: displayDay
-    val drivers = remember(days, readDay) { recoveryChargeDrivers(days, readDay) }
+    val tempUnit = UnitPrefs.temperature(LocalContext.current)
+    val drivers = remember(days, readDay, tempUnit) { recoveryChargeDrivers(days, readDay, tempUnit) }
     if (drivers.isEmpty()) return
 
     val tier = remember(days, readDay) { chargeConfidenceTier(days, readDay) }
@@ -348,6 +350,7 @@ internal fun recoveryCalibrationNights(
 internal fun recoveryChargeDrivers(
     days: List<DailyMetric>,
     displayDay: DailyMetric?,
+    tempUnit: TemperatureUnit,
 ): List<ChargeDriver> {
     val day = displayDay ?: return emptyList()
     val hrv = day.avgHrv ?: return emptyList()
@@ -369,6 +372,7 @@ internal fun recoveryChargeDrivers(
     val sleepPerf = RestScorer.restFromDaily(day)?.let { it / 100.0 } ?: day.efficiency
 
     return chargeDriverRows(
+        tempUnit = tempUnit,
         hrv = hrv,
         rhr = rhr,
         resp = day.respRateBpm,

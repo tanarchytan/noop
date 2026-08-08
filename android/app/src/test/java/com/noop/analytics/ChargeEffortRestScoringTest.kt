@@ -206,15 +206,16 @@ class ChargeEffortRestScoringTest {
 
     @Test
     fun rest_durationDominatesShortNight() {
-        // 4h asleep against the 8h default → duration 50; eff 0.95 (95); restorative share 0.5 → 100.
-        // No consistency → neutral 50 at full weight.
+        // 4h asleep against the 8h default → duration 50; eff 0.95 (95). Restorative is MINUTES against
+        // the need: 2h of deep+REM against the 4h target → 50, not the 100 its share of a short night
+        // used to earn. No consistency → neutral 50 at full weight.
         val score = RustScores.rest(
             asleepSeconds = 4 * 3600.0,
             efficiency = 0.95,
             deepSeconds = 1.0 * 3600.0,
             remSeconds = 1.0 * 3600.0,
         )!!
-        val expected = 50.0 * 0.50 + 95.0 * 0.20 + 100.0 * 0.20 + 50.0 * 0.10
+        val expected = 50.0 * 0.50 + 95.0 * 0.20 + 50.0 * 0.20 + 50.0 * 0.10
         assertEquals(expected, score, EPS)
     }
 
@@ -230,9 +231,9 @@ class ChargeEffortRestScoringTest {
     fun rest_oversleepDurationClampsAtHundred() {
         // 10h asleep against an 8h need does not over-credit: duration clamps at 100.
         val score = RustScores.rest(10 * 3600.0, 0.90, 2.0 * 3600.0, 2.5 * 3600.0)!!
-        val restShare = (2.0 + 2.5) / 10.0 // 0.45 → /0.5 → 90
+        // 4.5h of deep+REM clears the need's 4h restorative target, so that term caps at 100 too.
         // No consistency → neutral 50 at full weight.
-        val expected = 100.0 * 0.50 + 90.0 * 0.20 + (restShare / 0.50 * 100.0) * 0.20 + 50.0 * 0.10
+        val expected = 100.0 * 0.50 + 90.0 * 0.20 + 100.0 * 0.20 + 50.0 * 0.10
         assertEquals(expected, score, EPS)
     }
 

@@ -669,9 +669,11 @@ object NoopPrefs {
         of(context).edit().putInt(KEY_CAFFEINE_BEDTIME_MIN, minutes.coerceIn(0, 24 * 60 - 1)).apply()
     }
 
-    /** Whether the one-shot full-history Effort rescore has run. Set true once it completes so the
-     *  on-upgrade pass that regenerates deep-history strain on the 0–100 axis never re-runs. */
-    const val KEY_EFFORT_RESCORE_DONE = "noop.effortRescore.v313.done"
+    /** Whether the one-shot full-history rescore has run, for the algorithm generation named in the key.
+     *  Bump the suffix whenever a stored metric's formula changes: history keeps the OLD value otherwise,
+     *  and a baseline folded over both generations carries the step between them.
+     *  v601 = resting HR moved to the median, and Rest scores restorative in minutes. */
+    const val KEY_EFFORT_RESCORE_DONE = "noop.effortRescore.v601.done"
 
     fun effortRescoreDone(context: Context): Boolean =
         of(context).getBoolean(KEY_EFFORT_RESCORE_DONE, false)

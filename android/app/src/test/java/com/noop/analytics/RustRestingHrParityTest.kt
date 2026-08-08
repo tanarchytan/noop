@@ -18,12 +18,13 @@ import kotlin.math.roundToInt
  * before deletion, the empirical analog of the decode cutover's 869/869.
  *
  * The stored columns this pins:
- *   - per-session floor -> `SleepSession.restingHr` (SleepStager.kt:1088 now calls the FFI).
- *   - min of the per-session floors -> `DailyMetric.restingHr` (AnalyticsEngine.kt:345 now folds via
- *     [RustScores.dailyRestingHr]).
+ *   - per-session MEDIAN -> `SleepSession.restingHr`.
+ *   - min of the per-session values -> `DailyMetric.restingHr`.
  *
- * The Kotlin twins are gone, so the reference here is [floorReference]: a self-contained restatement of the
- * stored floor SPEC — the minimum of fixed 5-min tumbling-bin means over `[start, end]` (inclusive), falling
+ * The Kotlin twins are gone, so the reference here is [medianReference]: a self-contained restatement of the
+ * stored SPEC - the median of the in-bed samples, even counts averaged, rounded half-UP.
+ * [floorReference] restates the lowest-sustained floor this column used to hold, and stays so the gate can
+ * SHOW the two statistics disagreeing rather than assume it is reading the new one. The old floor SPEC — the minimum of fixed 5-min tumbling-bin means over `[start, end]` (inclusive), falling
  * back to the whole-segment mean when no bin holds a sample, rounded half-UP. This is exactly the live math
  * that was stored (the #686 win-qualification lived only in the dormant `RecoveryScorer.restingHR` and was
  * NEVER applied to stored data, so the FFI must NOT reproduce it). A drift here is FAIL / BLOCKED, to be
@@ -66,6 +67,15 @@ class RustRestingHrParityTest {
         return (seg.sumOf { it.bpm }.toDouble() / seg.size.toDouble()).roundToInt()
     }
 
+    /** The stored SPEC: median of the in-bed samples, even counts averaged, rounded half-up. */
+    private fun medianReference(hr: List<HrSample>, start: Long, end: Long): Int? {
+        val seg = hr.filter { it.ts in start..end }.map { it.bpm }.sorted()
+        if (seg.isEmpty()) return null
+        val n = seg.size
+        val mid = if (n % 2 == 1) seg[n / 2].toDouble() else (seg[n / 2 - 1] + seg[n / 2]) / 2.0
+        return kotlin.math.floor(mid + 0.5).toInt()
+    }
+
     /**
      * Derive a dense per-beat HR series from a night's captured R-R: `bpm = round(60000 / rrMs)` at each
      * beat's `ts`. The SAME list feeds both legs, so the gate isolates the floor math (bin anchoring /
@@ -90,7 +100,7 @@ class RustRestingHrParityTest {
     }
 
     @Test
-    fun `session and daily resting HR match the stored floor spec on real nights`() {
+    fun `session and daily resting HR match the stored median spec on real nights`() {
         val f = fixture()
         assumeTrue("resting-HR fixture absent (local-only), skipping: $candidates", f != null)
         val nights = loadNights(f!!)
@@ -100,11 +110,17 @@ class RustRestingHrParityTest {
         val rustFloors = ArrayList<Int?>(nights.size)
         for ((idx, n) in nights.withIndex()) {
             // SleepSession.restingHr: the per-session floor (Room-stored Int).
+            val kMedian = medianReference(n.hr, n.onset, n.wake)
+            val rMedian = RustScores.sessionRestingHr(n.hr, n.onset, n.wake)
+            assertEquals("night $idx session median (stored SleepSession.restingHr)", kMedian, rMedian)
+            // The floor is what this column used to hold; the median must never sit below it, or the
+            // gate cannot tell which of the two statistics it is reading.
             val kFloor = floorReference(n.hr, n.onset, n.wake)
-            val rFloor = RustScores.sessionRestingHr(n.hr, n.onset, n.wake)
-            assertEquals("night $idx session floor (stored SleepSession.restingHr)", kFloor, rFloor)
-            refFloors.add(kFloor)
-            rustFloors.add(rFloor)
+            if (kFloor != null && kMedian != null) {
+                assertTrue("night $idx median $kMedian below floor $kFloor", kMedian >= kFloor)
+            }
+            refFloors.add(kMedian)
+            rustFloors.add(rMedian)
         }
 
         // DailyMetric.restingHr: min of the per-session floors, nulls dropped.
@@ -116,14 +132,14 @@ class RustRestingHrParityTest {
     @Test
     fun `empty window yields null on both legs`() {
         // No HR samples in window -> null (never-fabricate contract), identical on both paths.
-        val kFloor = floorReference(emptyList(), start = 0L, end = 1_000L)
-        val rFloor = RustScores.sessionRestingHr(emptyList(), start = 0L, end = 1_000L)
-        assertEquals("empty-window session floor", null, kFloor)
-        assertEquals("empty-window session floor parity", kFloor, rFloor)
+        val kMedian = medianReference(emptyList(), start = 0L, end = 1_000L)
+        val rMedian = RustScores.sessionRestingHr(emptyList(), start = 0L, end = 1_000L)
+        assertEquals("empty-window session value", null, kMedian)
+        assertEquals("empty-window session parity", kMedian, rMedian)
     }
 
     @Test
-    fun `session floor matches the spec on a crafted multi-bin window`() {
+    fun `session resting HR matches the spec on a crafted multi-bin window`() {
         // A deterministic in-bed window with distinct 5-min bins (60, 52, 55 bpm) so the floor is the real
         // 52-bpm bin on both legs — isolates bin anchoring, min selection and half-up rounding from a fixture.
         val start = 1_000L
@@ -132,10 +148,11 @@ class RustRestingHrParityTest {
         for (i in 0 until 300) hr.add(HrSample(dev, start + 300 + i, 52))
         for (i in 0 until 300) hr.add(HrSample(dev, start + 600 + i, 55))
         val end = start + 900
-        val kFloor = floorReference(hr, start, end)
-        val rFloor = RustScores.sessionRestingHr(hr, start, end)
-        assertEquals("crafted session floor spec", 52, kFloor)
-        assertEquals("crafted session floor parity", kFloor, rFloor)
+        val kMedian = medianReference(hr, start, end)
+        val rMedian = RustScores.sessionRestingHr(hr, start, end)
+        assertEquals("crafted session median spec", 55, kMedian)
+        assertEquals("crafted session median parity", kMedian, rMedian)
+        assertEquals("the floor this column used to hold", 52, floorReference(hr, start, end))
     }
 
     @Test

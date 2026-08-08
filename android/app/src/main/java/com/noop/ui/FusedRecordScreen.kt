@@ -29,6 +29,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
@@ -215,6 +216,7 @@ private fun FusedMetricRow(
     showProvenance: Boolean,
     onCompare: () -> Unit,
 ) {
+    val tempUnit = UnitPrefs.temperature(LocalContext.current)
     val point = row.point
     val accent = row.accent ?: Palette.textPrimary
     val isConflict = point.agreement == AgreementState.CONFLICT
@@ -249,7 +251,7 @@ private fun FusedMetricRow(
             )
             Spacer(Modifier.width(Metrics.space8))
             AutoSizeValue(
-                FusionFormat.value(point.value, point.metric),
+                FusionFormat.value(point.value, point.metric, tempUnit),
                 style = NoopType.number(20f),
                 color = accent,
             )
@@ -267,20 +269,20 @@ private fun FusedMetricRow(
                 }
             }
 
-            AgreementLine(point = point, onCompare = onCompare)
+            AgreementLine(tempUnit = tempUnit, point = point, onCompare = onCompare)
         }
     }
 }
 
 @Composable
-private fun AgreementLine(point: FusedMetricPoint, onCompare: () -> Unit) {
+private fun AgreementLine(point: FusedMetricPoint, tempUnit: TemperatureUnit, onCompare: () -> Unit) {
     val other = point.contributors.drop(1).firstOrNull()
     when (point.agreement) {
         AgreementState.SINGLE -> Unit
 
         AgreementState.AGREE -> if (other != null) {
             Text(
-                "${other.source.displayName} agrees: ${FusionFormat.value(other.value, point.metric)}",
+                "${other.source.displayName} agrees: ${FusionFormat.value(other.value, point.metric, tempUnit)}",
                 style = NoopType.footnote,
                 color = Palette.textTertiary,
             )
@@ -293,7 +295,7 @@ private fun AgreementLine(point: FusedMetricPoint, onCompare: () -> Unit) {
             ) {
                 StatePill("Differs slightly", tone = StrandTone.Neutral, showsDot = false)
                 Text(
-                    "${other.source.displayName}: ${FusionFormat.value(other.value, point.metric)}",
+                    "${other.source.displayName}: ${FusionFormat.value(other.value, point.metric, tempUnit)}",
                     style = NoopType.footnote,
                     color = Palette.textSecondary,
                 )
@@ -310,7 +312,7 @@ private fun AgreementLine(point: FusedMetricPoint, onCompare: () -> Unit) {
         ) {
             StatePill("Sources differ", tone = StrandTone.Warning)
             Text(
-                conflictSummary(point),
+                conflictSummary(point, tempUnit),
                 style = NoopType.footnote,
                 color = Palette.textSecondary,
                 maxLines = 2,
@@ -327,9 +329,9 @@ private fun AgreementLine(point: FusedMetricPoint, onCompare: () -> Unit) {
     }
 }
 
-private fun conflictSummary(point: FusedMetricPoint): String {
+private fun conflictSummary(point: FusedMetricPoint, tempUnit: TemperatureUnit): String {
     val other = point.contributors.drop(1).firstOrNull() ?: return "Tap to compare"
-    return "${other.source.displayName} says ${FusionFormat.value(other.value, point.metric)}. Tap to compare"
+    return "${other.source.displayName} says ${FusionFormat.value(other.value, point.metric, tempUnit)}. Tap to compare"
 }
 
 // MARK: - Conflict-compare dialog
@@ -408,13 +410,14 @@ private fun ContributorRow(
     metricKey: String,
     isWinner: Boolean,
 ) {
+    val tempUnit = UnitPrefs.temperature(LocalContext.current)
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = Metrics.space12)
             .semantics {
                 contentDescription =
-                    "${contrib.source.displayName}, ${FusionFormat.value(contrib.value, metricKey)}" +
+                    "${contrib.source.displayName}, ${FusionFormat.value(contrib.value, metricKey, tempUnit)}" +
                     if (isWinner) ", in use" else ""
             },
         verticalAlignment = Alignment.CenterVertically,
@@ -437,7 +440,7 @@ private fun ContributorRow(
             Text(contrib.reason, style = NoopType.footnote, color = Palette.textTertiary)
         }
         Text(
-            FusionFormat.value(contrib.value, metricKey),
+            FusionFormat.value(contrib.value, metricKey, tempUnit),
             style = NoopType.number(18f),
             color = if (isWinner) Palette.textPrimary else Palette.textSecondary,
         )
@@ -452,13 +455,14 @@ private fun ContributorRow(
  * units. Sleep/duration keys read as "7h 12m"; temp as "34.1°C"; HR/HRV/steps as integers + unit.
  */
 object FusionFormat {
-    fun value(v: Double, metricKey: String): String =
+    fun value(v: Double, metricKey: String, tempUnit: TemperatureUnit): String =
         when (MetricArbitrationPolicy.kind(metricKey)) {
             MetricArbitrationPolicy.MetricKind.RESTING_HR,
             MetricArbitrationPolicy.MetricKind.HEART_RATE -> "${v.roundToInt()} bpm"
             MetricArbitrationPolicy.MetricKind.HRV -> "${v.roundToInt()} ms"
             MetricArbitrationPolicy.MetricKind.SPO2 -> "${v.roundToInt()}%"
-            MetricArbitrationPolicy.MetricKind.SKIN_TEMP -> String.format(Locale.US, "%+.1f °C", v)
+            MetricArbitrationPolicy.MetricKind.SKIN_TEMP ->
+                UnitFormatter.temperatureDeltaFromCelsius(v, tempUnit)
             MetricArbitrationPolicy.MetricKind.STEPS -> integerGrouped(v)
             MetricArbitrationPolicy.MetricKind.SLEEP -> duration(v)
             MetricArbitrationPolicy.MetricKind.CALORIES -> "${integerGrouped(v)} kcal"

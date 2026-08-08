@@ -20,6 +20,7 @@ import com.noop.ui.NoopPrefs
 import com.noop.ui.ProfileStore
 import com.noop.ui.StressModel
 import com.noop.ui.freshRestScore
+import com.noop.ui.lastEffortRow
 import com.noop.ui.lastScoredRecoveryDay
 import com.noop.ui.lastSkinTempRow
 import com.noop.ui.lastSpo2Row
@@ -201,8 +202,14 @@ internal fun rememberWhoopHomeState(viewModel: AppViewModel, dayOffset: Int): Wh
             }.getOrNull()
         }
     }
+    // Charge carries a prior scored day forward when today has none, so Effort does too — otherwise a
+    // store whose newest day is older than today shows one ring filled and the other empty, and the
+    // empty one reads as "Effort never imported". Today's own value always wins where it exists.
+    val effortDay = remember(days, carryBound, dayOffset, metric) {
+        if (dayOffset == 0) lastEffortRow(days, maxOf(metric?.day ?: "", carryBound)) else null
+    }
     val effort = run {
-        val stored = metric?.strain
+        val stored = metric?.strain ?: effortDay?.strain
         val live = liveStrain
         if (live != null && stored != null) maxOf(live, stored) else (live ?: stored)
     }

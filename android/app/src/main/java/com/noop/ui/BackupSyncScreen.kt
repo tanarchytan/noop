@@ -514,6 +514,17 @@ fun BackupSyncScreen(repo: WhoopRepository) {
                     }
                 }
             },
+            // The folder list is not the only place a backup can live. Without this the file picker was
+            // reachable only when the folder happened to be empty, so a backup sitting in Downloads --
+            // the one a user is handed when they move phones -- could not be selected at all.
+            dismissButton = {
+                TextButton(onClick = {
+                    showSnapshotPicker = false
+                    pickRestoreFile.launch(RESTORE_MIME_TYPES)
+                }) {
+                    Text("Pick a file…", style = NoopType.body, color = Palette.accent)
+                }
+            },
             confirmButton = {
                 TextButton(onClick = { showSnapshotPicker = false }) {
                     Text("Cancel", style = NoopType.body, color = Palette.textSecondary)
@@ -569,8 +580,13 @@ fun BackupSyncScreen(repo: WhoopRepository) {
  *  job keeps this many and prunes the oldest. Kept modest — a few days of rollback without hoarding. */
 private val KEEP_OPTIONS = listOf(1, 3, 5, 7, 10, 14)
 
+// `.noopbak` has no registered MIME type, so what a picker resolves it to is the device's guess. Where
+// that guess is none of the three below the file greys out and cannot be selected at all, which reads
+// as "the backup won't import". The wildcard is the floor: selection is not the gate, `importFrom`'s
+// magic-byte + origin validation is, and it refuses anything that is not a backup.
 private val RESTORE_MIME_TYPES = arrayOf(
     "application/octet-stream",
     "application/zip",
     "application/x-sqlite3",
+    "*/*",
 )

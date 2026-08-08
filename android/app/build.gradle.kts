@@ -23,8 +23,8 @@ android {
         applicationId = "com.noop.tan"
         minSdk = 26
         targetSdk = 36
-        versionCode = 298
-        versionName = "10.0.0-rc1"
+        versionCode = 299
+        versionName = "10.0.0-rc2"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -261,9 +261,15 @@ tasks.withType<Test>().configureEach { dependsOn(buildRustHostDll) }
 // milliseconds. The onlyIf covers one case and one only: no sibling whoop-rs checkout at all, as on a
 // CI runner building the app alone. A checkout that IS present with a missing cargo or cargo-ndk fails
 // the build from inside the script, rather than quietly shipping whatever `.so` is lying around.
+// --app-src pins the target to THIS module, not the script's default worktree. Several worktrees share
+// one whoop-rs checkout, so without it a build here refreshes another tree's jniLibs and ships the
+// stale library it was left holding.
 val syncRustJniLibs = tasks.register<Exec>("syncRustJniLibs") {
     workingDir = whoopRsDir
-    commandLine("python", whoopRsDir.resolve("tools/sync-jnilibs.py").absolutePath, "--ensure")
+    commandLine(
+        "python", whoopRsDir.resolve("tools/sync-jnilibs.py").absolutePath, "--ensure",
+        "--app-src", project.projectDir.resolve("src").absolutePath,
+    )
     onlyIf { whoopRsDir.resolve("tools/sync-jnilibs.py").exists() }
 }
 tasks.matching { it.name.startsWith("merge") && it.name.endsWith("JniLibFolders") }

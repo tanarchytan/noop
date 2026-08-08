@@ -42,6 +42,7 @@ data class ChargeDriver(
  * (declining) being the good pattern.
  */
 internal fun chargeDriverRows(
+    tempUnit: TemperatureUnit,
     hrv: Double,
     rhr: Double,
     resp: Double?,
@@ -99,7 +100,7 @@ internal fun chargeDriverRows(
         // reference goes in the baseline slot so the value stays short enough for the row's label.
         text[DriverKind.SKIN_TEMP] = Triple(
             "Skin temperature",
-            String.format(Locale.US, "%+.1f °C", skinTempDev),
+            UnitFormatter.temperatureDeltaFromCelsius(skinTempDev, tempUnit),
             "vs baseline",
         )
     }

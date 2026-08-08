@@ -1,5 +1,6 @@
 package com.noop.ui
 
+import com.noop.ui.TemperatureUnit
 import com.noop.analytics.ScoreConfidence
 import com.noop.data.DailyMetric
 import org.junit.Assert.assertEquals
@@ -36,7 +37,7 @@ class RecoveryDriversUiTest {
 
     @Test fun scoredDayProducesDriverRows() {
         val days = scoredHistory()
-        val drivers = recoveryChargeDrivers(days, days.last())
+        val drivers = recoveryChargeDrivers(days, days.last(), TemperatureUnit.CELSIUS)
         assertTrue("a usable baseline should yield driver rows", drivers.isNotEmpty())
         val labels = drivers.map { it.label }
         assertTrue(labels.contains("Heart rate variability"))
@@ -51,7 +52,7 @@ class RecoveryDriversUiTest {
             day("2026-01-01", hrv = 55.0),
             day("2026-01-02", hrv = 58.0, recovery = null),
         )
-        assertTrue(recoveryChargeDrivers(days, days.last()).isEmpty())
+        assertTrue(recoveryChargeDrivers(days, days.last(), TemperatureUnit.CELSIUS).isEmpty())
     }
 
     @Test fun confidenceTierIsSurfaced() {
@@ -64,7 +65,7 @@ class RecoveryDriversUiTest {
     }
 
     @Test fun nullDayProducesNoRows() {
-        assertTrue(recoveryChargeDrivers(scoredHistory(), null).isEmpty())
+        assertTrue(recoveryChargeDrivers(scoredHistory(), null, TemperatureUnit.CELSIUS).isEmpty())
     }
 
     @Test fun ouraDriverRowsSurfaceFromPersistedInputs() {
@@ -83,7 +84,7 @@ class RecoveryDriversUiTest {
             efficiency = 0.9, totalSleepMin = 450.0, strain = 55.0,
             recoveryIndexSlope = -3.0, priorDayEffort = 75.0,
         )
-        val labels = recoveryChargeDrivers(past + today, today).map { it.label }
+        val labels = recoveryChargeDrivers(past + today, today, TemperatureUnit.CELSIUS).map { it.label }
         assertTrue(labels.contains("Recovery index"))
         assertTrue(labels.contains("Activity balance"))
     }

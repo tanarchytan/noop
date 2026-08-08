@@ -1,5 +1,6 @@
 package com.noop.analytics
 
+import com.noop.ui.TemperatureUnit
 import com.noop.ui.chargeDriverRows
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -24,6 +25,7 @@ class ChargeDriversTest {
 
     @Test fun allTermsPresentYieldOneRowEachInOrder() {
         val drivers = chargeDriverRows(
+        tempUnit = TemperatureUnit.CELSIUS,
             hrv = 62.0, rhr = 51.0, resp = 15.0,
             hrvBaseline = baseline(50.0, 6.0),
             rhrBaseline = baseline(55.0, 3.0),
@@ -57,6 +59,7 @@ class ChargeDriversTest {
     @Test fun missingInputYieldsNoRowNotAFakeZero() {
         // No resp value, no resp baseline, no skin-temp -> those rows are absent entirely.
         val drivers = chargeDriverRows(
+        tempUnit = TemperatureUnit.CELSIUS,
             hrv = 55.0, rhr = 55.0, resp = null,
             hrvBaseline = baseline(50.0, 6.0),
             rhrBaseline = null, respBaseline = null,
@@ -73,6 +76,7 @@ class ChargeDriversTest {
     @Test fun deltaSignTracksDirection() {
         // HRV well above baseline -> lifts Charge (positive). RHR well above baseline (worse) -> pulls down.
         val drivers = chargeDriverRows(
+        tempUnit = TemperatureUnit.CELSIUS,
             hrv = 80.0, rhr = 70.0, resp = null,
             hrvBaseline = baseline(50.0, 6.0),
             rhrBaseline = baseline(55.0, 3.0),
@@ -88,6 +92,7 @@ class ChargeDriversTest {
 
     @Test fun skinTempIsARelativeDeviationNeverAbsolute() {
         val drivers = chargeDriverRows(
+        tempUnit = TemperatureUnit.CELSIUS,
             hrv = 50.0, rhr = 55.0, resp = null,
             hrvBaseline = baseline(50.0, 6.0),
             rhrBaseline = baseline(55.0, 3.0),
@@ -103,6 +108,7 @@ class ChargeDriversTest {
 
     @Test fun recoveryIndexAndActivityBalanceRowsAppearWhenSupplied() {
         val drivers = chargeDriverRows(
+        tempUnit = TemperatureUnit.CELSIUS,
             hrv = 55.0, rhr = 55.0, resp = null,
             hrvBaseline = baseline(50.0, 6.0),
             rhrBaseline = baseline(55.0, 3.0),
@@ -123,6 +129,7 @@ class ChargeDriversTest {
         // Slope null -> no Recovery index row; effort value present but its baseline null -> no Activity
         // balance row (needs BOTH), matching recovery(...)'s drop discipline.
         val drivers = chargeDriverRows(
+        tempUnit = TemperatureUnit.CELSIUS,
             hrv = 55.0, rhr = 55.0, resp = null,
             hrvBaseline = baseline(50.0, 6.0),
             rhrBaseline = baseline(55.0, 3.0),
@@ -141,6 +148,7 @@ class ChargeDriversTest {
             status = BaselineStatus.CALIBRATING,
         )
         val drivers = chargeDriverRows(
+        tempUnit = TemperatureUnit.CELSIUS,
             hrv = 60.0, rhr = 50.0, resp = null,
             hrvBaseline = coldHRV, rhrBaseline = null, respBaseline = null,
             sleepPerf = 0.9, skinTempDev = null,
@@ -150,6 +158,7 @@ class ChargeDriversTest {
 
     @Test fun noRowCarriesAnEmDash() {
         val drivers = chargeDriverRows(
+        tempUnit = TemperatureUnit.CELSIUS,
             hrv = 62.0, rhr = 51.0, resp = 15.0,
             hrvBaseline = baseline(50.0, 6.0),
             rhrBaseline = baseline(55.0, 3.0),

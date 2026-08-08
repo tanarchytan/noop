@@ -204,15 +204,12 @@ object DataBackup {
                 reconciled = false
             }
             else -> {
-                val liveDbFile = appContext.getDatabasePath(WhoopDatabase.DB_NAME)
-                if (!liveDbFile.exists()) {
-                    return rejectForeign(
+                val liveDbFile = ensureLiveStore(appContext)
+                    ?: return rejectForeign(
                         tempSqlite,
                         tempSettings,
-                        "There's no NOOP store on this device yet to merge this backup into. Open NOOP once " +
-                            "to set up your store, then import again.",
+                        "Couldn't prepare a NOOP store on this device to bring the backup into. [no-store]",
                     )
-                }
                 importWarnings = runCatching {
                     reconcileForeign(appContext, liveDbFile, tempSqlite)
                 }.getOrElse { e ->
@@ -237,21 +234,31 @@ object DataBackup {
                 WhoopDatabase.ALL_MIGRATIONS,
             )
             if (migrationError != null) {
-                val liveDbFile = appContext.getDatabasePath(WhoopDatabase.DB_NAME)
-                if (!liveDbFile.exists()) {
-                    return rejectForeign(
+                // A migration failure is NOT a dead end on a device with no store yet. Materialise the
+                // empty one this version creates and row-copy into that, so a fresh install takes the
+                // same path a used one already did -- the new-phone restore is the common case, and it
+                // was the only one with no fallback.
+                Log.w(
+                    "DataBackup",
+                    "migrate failed, falling back to row-copy: $migrationError | staged " +
+                        "v=${readUserVersion(tempSqlite)} tables=${backupTables.size} " +
+                        "bytes=${tempSqlite.length()} origin=${backupOriginOf(backupTables)}",
+                )
+                val liveDbFile = ensureLiveStore(appContext)
+                    ?: return rejectForeign(
                         tempSqlite,
                         tempSettings,
-                        "The backup could not be migrated to the current NOOP schema: $migrationError",
+                        "The backup could not be migrated to the current NOOP schema and no store could " +
+                            "be prepared to copy it into: $migrationError [no-store]",
                     )
-                }
                 importWarnings = runCatching {
                     reconcileForeign(appContext, liveDbFile, tempSqlite)
                 }.getOrElse { e ->
                     return rejectForeign(
                         tempSqlite,
                         tempSettings,
-                        "Couldn't bring this backup into NOOP's format: ${e.message}",
+                        "Couldn't bring this backup into NOOP's format: ${e.message} " +
+                            "(after: $migrationError) [row-copy]",
                     )
                 }
             } else {
@@ -481,13 +488,36 @@ object DataBackup {
         return tableNames.any { it !in housekeeping && !it.startsWith("sqlite_") }
     }
 
-    /** Every table name in [file], opened READ-ONLY so the probed file is never mutated. Empty on
-     *  failure. Carries [PRESERVE_ON_CORRUPTION]: without an explicit handler the framework
-     *  default would DELETE the staged file when the open reports SQLITE_NOTADB/CORRUPT. */
+    /**
+     * The live store's file, creating it when this device has none yet: [WhoopDatabase.get] builds an
+     * empty one at the current schema, which is all the row-copy path needs as a target. Null only when
+     * the store cannot be opened at all.
+     */
+    private fun ensureLiveStore(appContext: Context): File? {
+        val dbFile = appContext.getDatabasePath(WhoopDatabase.DB_NAME)
+        if (dbFile.exists()) return dbFile
+        return runCatching {
+            WhoopDatabase.get(appContext).query("PRAGMA user_version", null).use { it.moveToFirst() }
+            dbFile.takeIf { it.exists() }
+        }.getOrNull()
+    }
+
+    /**
+     * Opens [file] read-only, falling back to read-write. Every `.noopbak` payload is a WAL-mode
+     * database with no `-shm` beside it, which SQLite cannot open read-only until it can create that
+     * sidecar — so the read-only attempt fails on exactly the normal case. Both carry
+     * [PRESERVE_ON_CORRUPTION]: the framework default DELETES the file it is probing on
+     * SQLITE_NOTADB/CORRUPT.
+     */
+    private fun openProbe(file: File): SQLiteDatabase? = runCatching {
+        SQLiteDatabase.openDatabase(file.path, null, SQLiteDatabase.OPEN_READONLY, PRESERVE_ON_CORRUPTION)
+    }.recoverCatching {
+        SQLiteDatabase.openDatabase(file.path, null, SQLiteDatabase.OPEN_READWRITE, PRESERVE_ON_CORRUPTION)
+    }.getOrNull()
+
+    /** Every table name in [file]. Empty on failure. */
     private fun sqliteTableNames(file: File): Set<String> {
-        val db = runCatching {
-            SQLiteDatabase.openDatabase(file.path, null, SQLiteDatabase.OPEN_READONLY, PRESERVE_ON_CORRUPTION)
-        }.getOrNull() ?: return emptySet()
+        val db = openProbe(file) ?: return emptySet()
         return try {
             val names = LinkedHashSet<String>()
             db.rawQuery("SELECT name FROM sqlite_master WHERE type = 'table'", null).use { c ->
@@ -501,13 +531,10 @@ object DataBackup {
         }
     }
 
-    /** [file]'s actual shape, opened READ-ONLY so the probed file is never mutated. Null when it
-     *  cannot be opened or holds no table at all — a damaged or foreign file, not a repairable one.
-     *  Carries [PRESERVE_ON_CORRUPTION] for the same reason [sqliteTableNames] does. */
+    /** [file]'s actual shape. Null when it cannot be opened or holds no table at all — a damaged or
+     *  foreign file, not a repairable one. */
     private fun sqliteShape(file: File): Map<String, SchemaShape.Table>? {
-        val db = runCatching {
-            SQLiteDatabase.openDatabase(file.path, null, SQLiteDatabase.OPEN_READONLY, PRESERVE_ON_CORRUPTION)
-        }.getOrNull() ?: return null
+        val db = openProbe(file) ?: return null
         return try {
             SchemaShape.read { sql -> db.rawQuery(sql, null) }.takeIf { it.isNotEmpty() }
         } catch (e: Exception) {
@@ -725,12 +752,27 @@ object DataBackup {
                     "INSERT OR REPLACE INTO room_master_table (id, identity_hash) VALUES (42, ?)",
                     arrayOf(target.identityHash),
                 )
+                // Fold the WAL into the main file. Only that file is copied to the pending-restore slot,
+                // so anything still sitting in a sidecar -- which is all of the DDL above -- would be
+                // dropped on the way, and the restore would land the pre-migration shape silently.
+                db.query("PRAGMA wal_checkpoint(TRUNCATE)").use { it.moveToFirst() }
                 null // success
             } finally {
                 helper.close()
             }
         }.getOrElse { e ->
             "Migration from v$currentVersion to v$targetVersion failed: ${e.message}"
+        } ?: run {
+            listOf(File(stagedFile.path + "-wal"), File(stagedFile.path + "-shm")).forEach { it.delete() }
+            // Re-read the file itself rather than trust the write. A stamp that did not survive the
+            // checkpoint is the one failure this whole path cannot afford to pass on as success.
+            val landed = readUserVersion(stagedFile)
+            if (landed != targetVersion) {
+                "The migrated backup did not keep its schema version (reads ${landed ?: "unreadable"}, " +
+                    "expected $targetVersion). [stamp-lost]"
+            } else {
+                null
+            }
         }
     }
 

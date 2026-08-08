@@ -114,8 +114,19 @@ class UnitFormatterTest {
     @Test
     fun temperatureDeltaHasNoOffset() {
         // A +0.6 °C deviation is a 1.08 °F deviation — scale by 9/5, do NOT add 32.
-        assertEquals("1.1 °F", UnitFormatter.temperatureDeltaFromCelsius(0.6, TemperatureUnit.FAHRENHEIT))
-        assertEquals("0.6 °C", UnitFormatter.temperatureDeltaFromCelsius(0.6, TemperatureUnit.CELSIUS))
+        assertEquals("+1.1 °F", UnitFormatter.temperatureDeltaFromCelsius(0.6, TemperatureUnit.FAHRENHEIT))
+        assertEquals("+0.6 °C", UnitFormatter.temperatureDeltaFromCelsius(0.6, TemperatureUnit.CELSIUS))
+    }
+
+    /** A deviation always carries its sign, in both units and at zero: unsigned, "0.6 °C" cannot say
+     *  whether it is warmer or cooler than the baseline it is measured against. */
+    @Test
+    fun temperatureDeltaAlwaysCarriesItsSign() {
+        assertEquals("-0.6 °C", UnitFormatter.temperatureDeltaFromCelsius(-0.6, TemperatureUnit.CELSIUS))
+        assertEquals("-1.1 °F", UnitFormatter.temperatureDeltaFromCelsius(-0.6, TemperatureUnit.FAHRENHEIT))
+        assertEquals("+0.0 °C", UnitFormatter.temperatureDeltaFromCelsius(0.0, TemperatureUnit.CELSIUS))
+        // An ABSOLUTE temperature is not a deviation and must stay unsigned.
+        assertEquals("33.4 °C", UnitFormatter.temperatureFromCelsius(33.4, TemperatureUnit.CELSIUS))
     }
 
     // --- Preference resolution ---

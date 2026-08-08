@@ -17,10 +17,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.noop.ui.ChargeDriver
+import com.noop.ui.UnitPrefs
 import com.noop.analytics.RustScores
 import com.noop.analytics.ScoreConfidence
 import com.noop.ui.AppViewModel
@@ -83,7 +85,8 @@ fun WhoopRecoveryScreen(
     val dayKey = today?.day ?: resolvedToday?.day ?: logicalKey
     val carriedFrom = anchor?.day?.takeIf { it != dayKey }
 
-    val read = remember(days, anchor) { recoveryDayRead(days, anchor) }
+    val tempUnit = UnitPrefs.temperature(LocalContext.current)
+    val read = remember(days, anchor, tempUnit) { recoveryDayRead(days, anchor, tempUnit) }
     val week = remember(days, dayKey, anchor) { recoveryWeek(days, dayKey, anchor?.day) }
 
     ScreenScaffold(

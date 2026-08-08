@@ -7,6 +7,7 @@ import com.noop.analytics.RustScores
 import com.noop.analytics.ScoreConfidence
 import com.noop.analytics.StrainScorer
 import com.noop.data.DailyMetric
+import com.noop.ui.TemperatureUnit
 import com.noop.ui.ChargeDriver
 import com.noop.ui.EffortScale
 import com.noop.ui.UnitFormatter
@@ -102,11 +103,11 @@ internal data class RecoveryDayRead(
 )
 
 /** Fold [days] into the personal baselines, then let analytics score the driver rows for [day]. */
-internal fun recoveryDayRead(days: List<DailyMetric>, day: DailyMetric?): RecoveryDayRead {
+internal fun recoveryDayRead(days: List<DailyMetric>, day: DailyMetric?, tempUnit: TemperatureUnit): RecoveryDayRead {
     val ordered = days.sortedBy { it.day }
     val hrvBaseline = Baselines.foldHistory(ordered.map { it.avgHrv }, Baselines.hrvCfg)
     return RecoveryDayRead(
-        drivers = chargeDriversFor(ordered, day, hrvBaseline),
+        drivers = chargeDriversFor(ordered, day, hrvBaseline, tempUnit),
         confidence = ScoreConfidence.forCharge(day?.recovery, hrvBaseline),
     )
 }
@@ -120,12 +121,14 @@ private fun chargeDriversFor(
     ordered: List<DailyMetric>,
     day: DailyMetric?,
     hrvBaseline: BaselineState,
+    tempUnit: TemperatureUnit,
 ): List<ChargeDriver> {
     val d = day ?: return emptyList()
     val hrv = d.avgHrv ?: return emptyList()
     val rhr = d.restingHr?.toDouble() ?: return emptyList()
     if (!hrvBaseline.usable) return emptyList()
     return chargeDriverRows(
+        tempUnit = tempUnit,
         hrv = hrv,
         rhr = rhr,
         resp = d.respRateBpm,
