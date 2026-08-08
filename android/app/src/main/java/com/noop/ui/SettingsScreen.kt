@@ -419,16 +419,16 @@ fun SettingsScreen(
     var powerSavingBatteryPct by remember { mutableStateOf(NoopPrefs.powerSavingBatteryPct(context)) }
 
     ScreenScaffold(
-        title = "Settings",
-        subtitle = "Your numbers, your strap, and how NOOP works. All on this phone.",
+        title = stringResource(R.string.nav_settings),
+        subtitle = stringResource(R.string.settings_subtitle),
     ) {
         // --- Appearance (Theme) ---
         NoopSettingsSection(
             icon = Icons.Filled.Brightness6,
-            title = "Appearance",
-            blurb = "Choose Light, Dark, or follow your system. Dark is the signature near-black; Light keeps the same clean look on a bright canvas.",
+            title = stringResource(R.string.settings_appearance),
+            blurb = stringResource(R.string.settings_appearance_blurb),
         ) {
-            FormRow(label = "Theme") {
+            FormRow(label = stringResource(R.string.settings_theme)) {
                 SegmentedPillControl(
                     items = listOf(AppearanceMode.SYSTEM, AppearanceMode.LIGHT, AppearanceMode.DARK),
                     selection = themeMode,
@@ -444,11 +444,13 @@ fun SettingsScreen(
             // and blued/dark-blue titanium. The swap enables exactly one <activity-alias>
             // (.IconDefault /.IconNavy) at runtime; the launcher may take a beat (or briefly
             // disappear/redraw) while it re-reads the icon.
-            FormRow(label = "App icon") {
+            FormRow(label = stringResource(R.string.settings_app_icon)) {
+                val titanium = stringResource(R.string.settings_icon_titanium)
+                val blueTitanium = stringResource(R.string.settings_icon_blue_titanium)
                 SegmentedPillControl(
                     items = listOf(false, true),
                     selection = appIconNavy,
-                    label = { if (it) "Blue Titanium" else "Titanium" },
+                    label = { if (it) blueTitanium else titanium },
                     onSelect = { navy ->
                         appIconNavy = navy
                         setAppIcon(context, navy)
@@ -460,8 +462,8 @@ fun SettingsScreen(
         // --- Health & wellness (v5 opt-in toggles) ---
         NoopSettingsSection(
             icon = Icons.Filled.Science,
-            title = "Health & wellness",
-            blurb = "Optional, on-device wellness signals. Each is off by default, computed only on this phone from data you already have, and never a medical diagnosis.",
+            title = stringResource(R.string.settings_health_wellness),
+            blurb = stringResource(R.string.settings_health_wellness_blurb),
         ) {
             Column(verticalArrangement = Arrangement.spacedBy(Metrics.space16)) {
                 RowDivider()
@@ -472,8 +474,8 @@ fun SettingsScreen(
                 // Settings toggle was the one surface that was missed, so a male profile could enable it here.
                 if (cycleTracking || cycleOptInApplies(profile.sex)) {
                     NoopToggleRow(
-                        title = "Cycle awareness",
-                        detail = "Reads a coarse menstrual-cycle phase from your nightly skin-temperature shift, on this device only. Awareness only: not contraception, not a fertility predictor, not a medical service.",
+                        title = stringResource(R.string.settings_cycle_awareness),
+                        detail = stringResource(R.string.settings_cycle_awareness_detail),
                         checked = cycleTracking,
                         onCheckedChange = {
                             cycleTracking = it
@@ -483,8 +485,8 @@ fun SettingsScreen(
                     RowDivider()
                 }
                 NoopToggleRow(
-                    title = "Hydration tracking",
-                    detail = "Adds a simple fluid log with a daily goal that adjusts to your effort. Tap to add a sip, cup or bottle and watch a progress ring fill. On this phone only. Nothing is synced.",
+                    title = stringResource(R.string.settings_hydration_tracking),
+                    detail = stringResource(R.string.settings_hydration_tracking_detail),
                     checked = hydrationTracking,
                     onCheckedChange = {
                         hydrationTracking = it
@@ -493,8 +495,8 @@ fun SettingsScreen(
                 )
                 RowDivider()
                 NoopToggleRow(
-                    title = "Auto-detect workouts",
-                    detail = "After a sync, NOOP looks over your recent heart rate for a sustained, raised stretch that looks like exercise and offers to save it. It only ever suggests. Nothing is saved until you tap Save, and you can dismiss any suggestion. Deliberately conservative, so the odd workout may be missed. On this phone only.",
+                    title = stringResource(R.string.settings_auto_detect_workouts),
+                    detail = stringResource(R.string.settings_auto_detect_workouts_detail),
                     checked = autoDetectWorkouts,
                     onCheckedChange = {
                         autoDetectWorkouts = it
@@ -503,8 +505,8 @@ fun SettingsScreen(
                 )
                 RowDivider()
                 NoopToggleRow(
-                    title = "Keep screen on during a workout",
-                    detail = "Holds the screen awake while you're recording a workout, so your live heart rate stays visible without the phone dimming. Only applies during a recording. The screen sleeps normally the rest of the time. Leaving it on does use a bit more battery, and means your unlocked screen stays visible for the whole workout, so flip it off if that's a concern.",
+                    title = stringResource(R.string.settings_keep_screen_on),
+                    detail = stringResource(R.string.settings_keep_screen_on_detail),
                     checked = workoutKeepScreenOn,
                     onCheckedChange = {
                         workoutKeepScreenOn = it
@@ -515,8 +517,8 @@ fun SettingsScreen(
                 // BETA + default ON (the one exception to this section's off-by-default rule): the flag
                 // gates the Today entry so anyone can wave the beta away here with one flip.
                 NoopToggleRow(
-                    title = "Live Sessions (beta)",
-                    detail = "Silence-first strap coaching during workouts.",
+                    title = stringResource(R.string.settings_live_sessions),
+                    detail = stringResource(R.string.settings_live_sessions_detail),
                     checked = liveSessionsBeta,
                     onCheckedChange = {
                         liveSessionsBeta = it
@@ -525,8 +527,8 @@ fun SettingsScreen(
                 )
                 RowDivider()
                 NoopToggleRow(
-                    title = "Stress check-ins (haptic)",
-                    detail = "Lets NOOP notice a fresh HRV dip while you're still and offer a minute to breathe. \"Stress\" here is an autonomic proxy from your own baseline, never a diagnosis. The strap gives one light confirming buzz; no push notification.",
+                    title = stringResource(R.string.settings_stress_checkins),
+                    detail = stringResource(R.string.settings_stress_checkins_detail),
                     checked = stressCheckIn,
                     onCheckedChange = {
                         stressCheckIn = it
@@ -537,8 +539,8 @@ fun SettingsScreen(
                 )
                 if (stressCheckIn) {
                     NoopToggleRow(
-                        title = "Offer a breath automatically",
-                        detail = "When a dip is detected, surface the check-in card on its own (rate-limited, quiet-hours aware). Off keeps it manual.",
+                        title = stringResource(R.string.settings_auto_breath),
+                        detail = stringResource(R.string.settings_auto_breath_detail),
                         checked = stressAutoNudge,
                         onCheckedChange = {
                             stressAutoNudge = it
@@ -548,8 +550,8 @@ fun SettingsScreen(
                 }
                 RowDivider()
                 NoopToggleRow(
-                    title = "Share on-device signals with the Coach",
-                    detail = "When the opt-in Coach is set up with your own key, also include a short summary of your strongest on-device patterns and Lab Book markers in its context. Summary only; no raw data leaves your phone. Requires the Coach's own data consent first.",
+                    title = stringResource(R.string.settings_coach_signals),
+                    detail = stringResource(R.string.settings_coach_signals_detail),
                     checked = coachSignals,
                     onCheckedChange = {
                         coachSignals = it
@@ -568,23 +570,24 @@ fun SettingsScreen(
         // foldHistory drops every night before that epoch and re-seeds. Mirrors the iOS/Mac button.
         NoopSettingsSection(
             icon = Icons.Filled.Favorite,
-            title = "Charge",
-            blurb = "Charge is NOOP's daily readiness score, learned from your own HRV, resting heart rate and more over time. Your history stays.",
+            title = stringResource(R.string.settings_charge),
+            blurb = stringResource(R.string.settings_charge_blurb),
         ) {
             Column(verticalArrangement = Arrangement.spacedBy(Metrics.space10)) {
                 // The button below names the action, so a sub-heading above it only spells the same
                 // words a second time. What the reader needs here is what the action DOES.
                 Text(
-                    "Restarts the roughly 4-night build-up for Charge and your HRV baseline from tonight. Use it if a bad first week set your baseline off. Your history stays.",
+                    stringResource(R.string.settings_charge_recalibrate_help),
                     style = NoopType.footnote,
                     color = Palette.textTertiary,
                 )
+                val recalibrateLabel = stringResource(R.string.settings_recalibrate_charge)
                 NoopButton(
-                    text = "Recalibrate Charge baseline",
+                    text = recalibrateLabel,
                     leadingIcon = Icons.Filled.Autorenew,
                     kind = NoopButtonKind.Secondary,
                     fullWidth = true,
-                    modifier = Modifier.semantics { contentDescription = "Recalibrate Charge baseline" },
+                    modifier = Modifier.semantics { contentDescription = recalibrateLabel },
                     onClick = { showRecalibrateConfirm = true },
                 )
             }
@@ -654,8 +657,8 @@ fun SettingsScreen(
         // the experimental probes and Trends report stay one tap away. Mirrors the iOS SettingsView
         // "Advanced" disclosure and the Test Centre Advanced group.
         SettingsDisclosure(
-            title = "Advanced",
-            subtitle = "Experimental 5/MG probes and the shareable Trends report. Tucked away to keep the everyday screen tidy.",
+            title = stringResource(R.string.settings_advanced),
+            subtitle = stringResource(R.string.settings_advanced_subtitle),
             expanded = advancedOpen,
             onToggle = { advancedOpen = !advancedOpen; SettingsDisclosurePrefs.write(NoopPrefs.of(context), advancedOpen) },
         ) {
@@ -664,17 +667,19 @@ fun SettingsScreen(
         if (showFiveMGControls) {
         NoopSettingsSection(
             icon = Icons.Filled.Science,
-            title = "Experimental · WHOOP 5 / MG",
-            blurb = "Live heart rate already works on a WHOOP 5/MG strap. These probes go further and try to coax more out of it. They are guesses, off by default, and only ever touch a 5/MG strap. WHOOP 4.0 is never affected.",
+            title = stringResource(R.string.settings_experimental_5mg),
+            blurb = stringResource(R.string.settings_experimental_5mg_blurb),
         ) {
             Column(verticalArrangement = Arrangement.spacedBy(Metrics.space10)) {
+                val probesLabel = stringResource(R.string.settings_probes_toggle)
+                val deepDataLabel = stringResource(R.string.settings_deep_data_toggle_desc)
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(Metrics.space16),
                 ) {
                     Text(
-                        "Try WHOOP 5/MG protocol probes",
+                        probesLabel,
                         style = NoopType.subhead,
                         color = Palette.textPrimary,
                         modifier = Modifier.weight(1f),
@@ -693,12 +698,12 @@ fun SettingsScreen(
                             uncheckedBorderColor = Palette.hairline,
                         ),
                         modifier = Modifier.semantics {
-                            contentDescription = "Try WHOOP 5/MG protocol probes"
+                            contentDescription = probesLabel
                         },
                     )
                 }
                 Text(
-                    "On a 5/MG connection NOOP will send a puffin realtime-stream request after the handshake, and log what comes back. If you have a 5/MG strap, turning this on and sharing your strap log helps map the protocol. No effect on WHOOP 4.0.",
+                    stringResource(R.string.settings_probes_detail),
                     style = NoopType.caption,
                     color = Palette.textTertiary,
                 )
@@ -710,7 +715,7 @@ fun SettingsScreen(
                     horizontalArrangement = Arrangement.spacedBy(Metrics.space16),
                 ) {
                     Text(
-                        "Unlock WHOOP 5/MG deep data (R22)",
+                        stringResource(R.string.settings_deep_data_toggle),
                         style = NoopType.subhead,
                         color = Palette.textPrimary,
                         modifier = Modifier.weight(1f),
@@ -729,48 +734,48 @@ fun SettingsScreen(
                             uncheckedBorderColor = Palette.hairline,
                         ),
                         modifier = Modifier.semantics {
-                            contentDescription = "Unlock WHOOP 5/MG deep data"
+                            contentDescription = deepDataLabel
                         },
                     )
                 }
                 Text(
-                    "WHOOP 5/MG straps hand a fresh app only live heart rate. The official app switches on the deeper streams (high-rate HR + motion + history) by writing a set of feature flags, a sequence two independent projects have documented. With this on, the button below sends that exact sequence to your strap. Unlike everything else here it does write to the strap, but it's reversible (it only changes which data the strap emits) and is the same thing the official app does. Experimental: it may do nothing on your firmware.",
+                    stringResource(R.string.settings_deep_data_detail),
                     style = NoopType.caption,
                     color = Palette.textTertiary,
                 )
                 if (deepData) {
                     NoopButton(
-                        text = "Send enable sequence to strap",
+                        text = stringResource(R.string.settings_send_enable_sequence),
                         leadingIcon = Icons.Filled.Bolt,
                         kind = NoopButtonKind.Primary,
                         enabled = live.encryptedBond && live.worn,
                         onClick = { vm.ble.enableWhoop5DeepData() },
                     )
                     Text(
-                        if (!live.encryptedBond) "Needs the full encrypted bond: close the official WHOOP app and pair the strap to NOOP first (a live-HR-only link can't carry the unlock)."
-                        else if (!live.worn) "Put the strap on first. The deep stream is on-wrist only."
-                        else "Wear the strap, tap once, then let it sync and share your strap log.",
+                        if (!live.encryptedBond) stringResource(R.string.settings_deep_data_needs_bond)
+                        else if (!live.worn) stringResource(R.string.settings_deep_data_needs_worn)
+                        else stringResource(R.string.settings_deep_data_ready),
                         style = NoopType.caption,
                         color = Palette.textTertiary,
                     )
                     // Live R22 telemetry : proof of what the strap is doing right now.
                     if (live.r22FlagsAccepted > 0) {
                         Text(
-                            if (live.r22FlagsAccepted >= 15) "✓ Strap accepted all 15 R22 flags"
-                            else "Strap accepted ${live.r22FlagsAccepted}/15 R22 flags…",
+                            if (live.r22FlagsAccepted >= 15) stringResource(R.string.settings_r22_all_flags)
+                            else stringResource(R.string.settings_r22_partial_flags, live.r22FlagsAccepted),
                             style = NoopType.caption,
                             color = if (live.r22FlagsAccepted >= 15) Palette.statusPositive else Palette.textSecondary,
                         )
                     }
                     if (live.deepPacketsThisSession > 0) {
                         Text(
-                            "${live.deepPacketsThisSession} type-0x2F historical-offload frame(s) seen outside our sync. These are history (e.g. another app pulling the strap's backlog), not a live R22 stream.",
+                            stringResource(R.string.settings_deep_packets_seen, live.deepPacketsThisSession),
                             style = NoopType.caption,
                             color = Palette.textSecondary,
                         )
                     } else if (live.r22FlagsAccepted >= 15) {
                         Text(
-                            "Flags accepted, but the enable sequence doesn't start a separate live stream. The deep records arrive as part of the normal history sync.",
+                            stringResource(R.string.settings_r22_no_live_stream),
                             style = NoopType.caption,
                             color = Palette.textTertiary,
                         )
@@ -790,9 +795,9 @@ fun SettingsScreen(
 
         if (showRecalibrateConfirm) {
             NoopConfirmDialog(
-                title = "Recalibrate your Charge baseline?",
-                text = "This restarts the roughly 4-night build-up for Charge and your HRV baseline. Your history stays. Use it if a bad first week, like wearing it while sick, set your baseline off.",
-                confirmLabel = "Recalibrate",
+                title = stringResource(R.string.settings_recalibrate_confirm_title),
+                text = stringResource(R.string.settings_recalibrate_confirm_text),
+                confirmLabel = stringResource(R.string.settings_recalibrate_confirm_action),
                 onConfirm = {
                     val nowSeconds = System.currentTimeMillis() / 1000L
                     val editor = NoopPrefs.of(context).edit()
@@ -802,7 +807,7 @@ fun SettingsScreen(
                     vm.syncNow()
                     Toast.makeText(
                         context,
-                        "Charge baseline reset. NOOP will re-learn it from tonight. Your history stays, and it takes a few nights to settle.",
+                        context.getString(R.string.settings_recalibrate_toast),
                         Toast.LENGTH_LONG,
                     ).show()
                 },
@@ -897,6 +902,8 @@ private fun SettingsDisclosure(
         label = "advancedChevron",
     )
     val headerInteraction = remember { MutableInteractionSource() }
+    val expandedState = stringResource(R.string.settings_state_expanded)
+    val collapsedState = stringResource(R.string.settings_state_collapsed)
     Column(verticalArrangement = Arrangement.spacedBy(Metrics.screenRowSpacing)) {
         Row(
             modifier = Modifier
@@ -910,7 +917,7 @@ private fun SettingsDisclosure(
                 )
                 .semantics {
                     contentDescription = title
-                    stateDescription = if (expanded) "Expanded" else "Collapsed"
+                    stateDescription = if (expanded) expandedState else collapsedState
                 },
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(Metrics.space12),

@@ -26,9 +26,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import com.noop.R
 import com.noop.analytics.AutoWorkoutDetector
 import com.noop.analytics.AutoWorkoutDetectorTrace
 import com.noop.data.DailyMetric
@@ -80,23 +82,25 @@ private val autoNudgeDateFmt: DateTimeFormatter =
 
 private fun hhmm(epochSec: Long): String = autoNudgeTimeFmt.format(Instant.ofEpochSecond(epochSec))
 
-/** A relative LOCAL-day prefix for the prompt: "" when the bout started today, "yesterday " when it
- *  was yesterday, else "on <date> ". The card shows HH:mm only, so a late-night bout would otherwise
- *  read as today. */
-private fun dayLabel(epochSec: Long): String {
+/** "Looks like a workout [yesterday ]around 14:05 - 14:32 (avg HR 148, 27 min). Save it?" The card
+ *  shows HH:mm only, so the bout's LOCAL day picks one of three whole sentences. */
+private fun promptText(context: android.content.Context, w: AutoWorkoutDetector.DetectedWorkout): String {
     val zone = ZoneId.systemDefault()
+    val start = hhmm(w.startSec)
+    val end = hhmm(w.endSec)
     return relativeDayLabel(
-        Instant.ofEpochSecond(epochSec).atZone(zone).toLocalDate(),
-        today = "", yesterday = "yesterday ",
-        other = "on ${autoNudgeDateFmt.format(Instant.ofEpochSecond(epochSec))} ",
+        Instant.ofEpochSecond(w.startSec).atZone(zone).toLocalDate(),
+        today = context.getString(R.string.workouts_nudge_prompt_today, start, end, w.avgBpm, w.durationMin),
+        yesterday = context.getString(
+            R.string.workouts_nudge_prompt_yesterday, start, end, w.avgBpm, w.durationMin,
+        ),
+        other = context.getString(
+            R.string.workouts_nudge_prompt_on,
+            autoNudgeDateFmt.format(Instant.ofEpochSecond(w.startSec)), start, end, w.avgBpm, w.durationMin,
+        ),
         now = LocalDate.now(zone),
     )
 }
-
-/** "Looks like a workout [yesterday ]around 14:05–14:32 (avg HR 148, 27 min). Save it?" Mirrors iOS. */
-private fun promptText(w: AutoWorkoutDetector.DetectedWorkout): String =
-    "Looks like a workout ${dayLabel(w.startSec)}around ${hhmm(w.startSec)} - ${hhmm(w.endSec)} " +
-        "(avg HR ${w.avgBpm}, ${w.durationMin} min). Save it?"
 
 @Composable
 fun AutoWorkoutNudgeCard(
@@ -125,6 +129,7 @@ fun AutoWorkoutNudgeCard(
     val w = candidate
     if (handledThisSession || w == null) return
 
+    val dismissLabel = stringResource(R.string.workouts_nudge_dismiss_cd)
     NoopCard(tint = Palette.accent) {
         Column(verticalArrangement = Arrangement.spacedBy(Metrics.space8)) {
             Box(modifier = Modifier.fillMaxWidth()) {
@@ -136,7 +141,10 @@ fun AutoWorkoutNudgeCard(
                         modifier = Modifier.size(18.dp),
                     )
                     Spacer(Modifier.width(8.dp))
-                    Text("Looks like a workout", style = NoopType.headline, color = Palette.textPrimary)
+                    Text(
+                        stringResource(R.string.workouts_nudge_title),
+                        style = NoopType.headline, color = Palette.textPrimary,
+                    )
                 }
                 // Standard × dismiss → record the window durably so it never re-prompts.
                 IconButton(
@@ -148,7 +156,7 @@ fun AutoWorkoutNudgeCard(
                     modifier = Modifier
                         .align(Alignment.TopEnd)
                         .size(Metrics.iconButton)
-                        .semantics { contentDescription = "Dismiss this workout suggestion" },
+                        .semantics { contentDescription = dismissLabel },
                 ) {
                     Icon(
                         Icons.Filled.Close,
@@ -159,7 +167,7 @@ fun AutoWorkoutNudgeCard(
                 }
             }
             Text(
-                promptText(w),
+                promptText(context, w),
                 style = NoopType.footnote,
                 color = Palette.textSecondary,
             )
@@ -197,7 +205,7 @@ fun AutoWorkoutNudgeCard(
                     colors = ButtonDefaults.buttonColors(
                         containerColor = Palette.accent, contentColor = Palette.surfaceBase,
                     ),
-                ) { Text("Save it") }
+                ) { Text(stringResource(R.string.workouts_nudge_save)) }
 
                 OutlinedButton(
                     onClick = {
@@ -205,7 +213,7 @@ fun AutoWorkoutNudgeCard(
                         handledThisSession = true
                         candidate = null
                     },
-                ) { Text("Not a workout", color = Palette.textSecondary) }
+                ) { Text(stringResource(R.string.workouts_nudge_not_workout), color = Palette.textSecondary) }
             }
         }
     }

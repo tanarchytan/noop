@@ -1,5 +1,6 @@
 package com.noop.ui
 
+import androidx.annotation.StringRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -34,9 +35,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import com.noop.R
 import com.noop.analytics.CircadianEngine
 import com.noop.analytics.CyclePhaseEngine
 import com.noop.analytics.IllnessDistance
@@ -70,11 +73,8 @@ import kotlin.math.roundToInt
 // MARK: - Shared chrome
 
 /** The standing privacy promise repeated on every sensitive skin-temp surface. */
-private const val SKIN_TEMP_PRIVACY_LINE =
-    "This stays on your device. It is never uploaded, never synced, never shared."
-
 @Composable
-private fun PrivacyNote(text: String = SKIN_TEMP_PRIVACY_LINE) {
+private fun PrivacyNote(text: String = stringResource(R.string.skintemp_privacy)) {
     Row(
         verticalAlignment = Alignment.Top,
         horizontalArrangement = Arrangement.spacedBy(Metrics.space6),
@@ -126,20 +126,23 @@ fun CycleAwarenessCard(
             // Header: overline + confidence pill.
             Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
                 Column(modifier = Modifier.weight(1f)) {
-                    Overline("Cycle awareness")
+                    Overline(stringResource(R.string.skintemp_cycle_awareness))
                     Text(
-                        "From your nightly temperature",
+                        stringResource(R.string.skintemp_cycle_from_temp),
                         style = NoopType.footnote,
                         color = Palette.textTertiary,
                     )
                 }
-                StatePill(cycleConfidenceLabel(result.confidence), tone = cycleConfidenceTone(result.confidence))
+                StatePill(
+                    stringResource(cycleConfidenceLabel(result.confidence)),
+                    tone = cycleConfidenceTone(result.confidence),
+                )
             }
 
             // Headline phase + cycle-day RANGE.
             Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(Metrics.space8)) {
                 Text(
-                    cyclePhaseTitle(result.phase),
+                    stringResource(cyclePhaseTitle(result.phase)),
                     style = NoopType.title2,
                     color = Palette.textPrimary,
                     modifier = Modifier.weight(1f, fill = false),
@@ -157,8 +160,10 @@ fun CycleAwarenessCard(
                 Row(verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.spacedBy(Metrics.space8)) {
                     Icon(Icons.Filled.CalendarMonth, contentDescription = null, tint = hue, modifier = Modifier.size(16.dp))
                     Text(
-                        "A period is likely between ${prettyDay(w.earliestDay)} and " +
-                            "${prettyDay(w.latestDay)} (a window, not a fixed date).",
+                        stringResource(
+                            R.string.skintemp_cycle_next_period,
+                            prettyDay(w.earliestDay), prettyDay(w.latestDay),
+                        ),
                         style = NoopType.subhead,
                         color = Palette.textSecondary,
                     )
@@ -169,17 +174,21 @@ fun CycleAwarenessCard(
             if (onLogPeriod != null || onOpenDetail != null || onTurnOff != null) {
                 Row(horizontalArrangement = Arrangement.spacedBy(Metrics.gap)) {
                     if (onLogPeriod != null) {
-                        OutlinedButton(onClick = onLogPeriod) { Text("Log period start") }
+                        OutlinedButton(onClick = onLogPeriod) {
+                            Text(stringResource(R.string.skintemp_cycle_log_period))
+                        }
                     }
                     if (onOpenDetail != null) {
                         OutlinedButton(
                             onClick = onOpenDetail,
                             colors = ButtonDefaults.outlinedButtonColors(contentColor = Palette.accent),
-                        ) { Text("View detail") }
+                        ) { Text(stringResource(R.string.skintemp_view_detail)) }
                     }
                     // symmetric off-control (turn cycle awareness off where it was turned on).
                     if (onTurnOff != null) {
-                        OutlinedButton(onClick = onTurnOff) { Text("Turn off") }
+                        OutlinedButton(onClick = onTurnOff) {
+                            Text(stringResource(R.string.skintemp_turn_off))
+                        }
                     }
                 }
             }
@@ -203,17 +212,20 @@ fun CycleAwarenessOptInCard(onEnable: () -> Unit) {
         Column(verticalArrangement = Arrangement.spacedBy(Metrics.gap)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Metrics.space8)) {
                 Icon(Icons.Filled.Thermostat, contentDescription = null, tint = Palette.restColor, modifier = Modifier.size(Metrics.iconSmall))
-                Text("Cycle awareness", style = NoopType.headline, color = Palette.textPrimary)
+                Text(
+                    stringResource(R.string.skintemp_cycle_awareness),
+                    style = NoopType.headline, color = Palette.textPrimary,
+                )
             }
             Text(
-                "NOOP can read a coarse menstrual-cycle phase from your nightly skin temperature, " +
-                    "entirely on your device. It is awareness only: not contraception, not a fertility " +
-                    "predictor, not a medical service.",
+                stringResource(R.string.skintemp_cycle_optin_body),
                 style = NoopType.subhead,
                 color = Palette.textSecondary,
             )
             PrivacyNote()
-            OutlinedButton(onClick = onEnable) { Text("Turn on cycle awareness") }
+            OutlinedButton(onClick = onEnable) {
+                Text(stringResource(R.string.skintemp_cycle_optin_enable))
+            }
         }
     }
 }
@@ -231,10 +243,16 @@ fun BodyClockCard(estimate: CircadianEngine.PhaseEstimate) {
         Column(verticalArrangement = Arrangement.spacedBy(Metrics.gap)) {
             Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
                 Column(modifier = Modifier.weight(1f)) {
-                    Overline("Body clock")
-                    Text("Light + sleep timing only", style = NoopType.footnote, color = Palette.textTertiary)
+                    Overline(stringResource(R.string.skintemp_body_clock))
+                    Text(
+                        stringResource(R.string.skintemp_body_clock_sub),
+                        style = NoopType.footnote, color = Palette.textTertiary,
+                    )
                 }
-                StatePill(bodyClockConfidenceLabel(estimate.confidence), tone = bodyClockConfidenceTone(estimate.confidence))
+                StatePill(
+                    stringResource(bodyClockConfidenceLabel(estimate.confidence)),
+                    tone = bodyClockConfidenceTone(estimate.confidence),
+                )
             }
 
             Text(bodyClockOffsetTitle(estimate), style = NoopType.title2, color = Palette.textPrimary)
@@ -244,7 +262,7 @@ fun BodyClockCard(estimate: CircadianEngine.PhaseEstimate) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Metrics.space6)) {
                 Icon(Icons.Filled.NightsStay, contentDescription = null, tint = hue, modifier = Modifier.size(14.dp))
                 Text(
-                    "Estimated body-clock low around ${clockString(estimate.tempMinHour)}",
+                    stringResource(R.string.skintemp_body_clock_low, clockString(estimate.tempMinHour)),
                     style = NoopType.footnote,
                     color = Palette.textTertiary,
                 )
@@ -277,11 +295,14 @@ fun RhythmAgeCard(
         Column(verticalArrangement = Arrangement.spacedBy(Metrics.gap)) {
             Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
                 Column(modifier = Modifier.weight(1f)) {
-                    Overline("Rhythm age")
-                    Text("Read from your on-wrist motion", style = NoopType.footnote, color = Palette.textTertiary)
+                    Overline(stringResource(R.string.skintemp_rhythm_age))
+                    Text(
+                        stringResource(R.string.skintemp_rhythm_age_sub),
+                        style = NoopType.footnote, color = Palette.textTertiary,
+                    )
                 }
                 StatePill(
-                    rhythmAgeStateLabel(info, confidence),
+                    stringResource(rhythmAgeStateLabel(info, confidence)),
                     tone = rhythmAgeStateTone(info, confidence),
                 )
             }
@@ -295,7 +316,7 @@ fun RhythmAgeCard(
                 Column {
                     NoopStatRow(
                         icon = Icons.Filled.CalendarMonth,
-                        label = "Your age",
+                        label = stringResource(R.string.skintemp_your_age),
                         value = yearsString(chronologicalAge),
                         unit = "yrs",
                         iconTint = hue,
@@ -304,7 +325,7 @@ fun RhythmAgeCard(
                         RowDivider()
                         NoopStatRow(
                             icon = Icons.AutoMirrored.Filled.DirectionsRun,
-                            label = "Fitness age",
+                            label = stringResource(R.string.skintemp_fitness_age),
                             value = yearsString(fitnessAge),
                             unit = "yrs",
                             iconTint = hue,
@@ -314,8 +335,7 @@ fun RhythmAgeCard(
             }
 
             Text(
-                "A wellness estimate from the shape of your daily rhythm, best read as a trend rather " +
-                    "than a number. It is not a medical result and not a life expectancy.",
+                stringResource(R.string.skintemp_rhythm_disclaimer),
                 style = NoopType.caption,
                 color = Palette.textTertiary,
             )
@@ -352,18 +372,21 @@ fun HeadsUpCard(
                     Icon(headsUpGlyph(result.level), contentDescription = null, tint = hue, modifier = Modifier.size(15.dp))
                 }
                 Column(verticalArrangement = Arrangement.spacedBy(Metrics.space4)) {
-                    Text(headsUpTitle(result.level), style = NoopType.headline, color = Palette.textPrimary)
+                    Text(
+                        stringResource(headsUpTitle(result.level)),
+                        style = NoopType.headline, color = Palette.textPrimary,
+                    )
                     Text(result.copy, style = NoopType.subhead, color = Palette.textSecondary)
                 }
             }
 
             // The visible "why": which signals fired.
             if (result.firedSignals.isNotEmpty()) {
-                WhyRow("Signals up", result.firedSignals, hue)
+                WhyRow(stringResource(R.string.skintemp_signals_up), result.firedSignals, hue)
             }
             // ...and what was ruled out (the differentiating part vs a black-box warning).
             if (result.suppressedBy.isNotEmpty()) {
-                WhyRow("Explained by", result.suppressedBy, Palette.textTertiary)
+                WhyRow(stringResource(R.string.skintemp_explained_by), result.suppressedBy, Palette.textTertiary)
             }
             // Optional confidence read from the parallel Mahalanobis distance, only when the level is
             // raised. Subtle by design: it augments, never gates (the engine already decided to raise).
@@ -381,13 +404,18 @@ fun HeadsUpCard(
  * (distance 0.0)", so it's excluded. The raised path always has >= 2 present features, so its distance is
  * meaningful. The band mirrors iOS exactly. Augment-only, never gates.
  */
+@Composable
 private fun headsUpConfidenceLine(
     level: IllnessSignalEngine.Level,
     distance: IllnessDistance.Result?,
 ): String? {
     if (level != IllnessSignalEngine.Level.RAISED) return null
     val d = distance ?: return null
-    return "Confidence: ${illnessConfidenceBand(d.distance)} (distance ${illnessConfidenceFormatted(d.distance)})"
+    return stringResource(
+        R.string.skintemp_confidence,
+        stringResource(illnessConfidenceBand(d.distance)),
+        illnessConfidenceFormatted(d.distance),
+    )
 }
 
 /**
@@ -395,10 +423,11 @@ private fun headsUpConfidenceLine(
  * whether the Heads-Up card shows (the engine's level already did). Bands: >= 3.5 strong, >= 2.5
  * moderate, else slight. Identical to the Swift twin (IllnessConfidence.band).
  */
-private fun illnessConfidenceBand(distance: Double): String = when {
-    distance >= 3.5 -> "strong"
-    distance >= 2.5 -> "moderate"
-    else -> "slight"
+@StringRes
+private fun illnessConfidenceBand(distance: Double): Int = when {
+    distance >= 3.5 -> R.string.skintemp_conf_strong
+    distance >= 2.5 -> R.string.skintemp_conf_moderate
+    else -> R.string.skintemp_conf_slight
 }
 
 /** One-decimal display value for the distance, locale-independent. Mirrors iOS String(format: "%.1f"). */
@@ -426,25 +455,29 @@ private fun WhyRow(label: String, values: List<String>, tint: Color) {
 
 // MARK: - Derived copy / presentation (mirror the Swift card exactly)
 
-private fun cyclePhaseTitle(phase: CyclePhaseEngine.Phase): String = when (phase) {
-    CyclePhaseEngine.Phase.FOLLICULAR -> "Follicular"
-    CyclePhaseEngine.Phase.PERI_OVULATORY -> "Mid-cycle shift"
-    CyclePhaseEngine.Phase.LUTEAL -> "Luteal"
-    CyclePhaseEngine.Phase.UNKNOWN -> "No clear pattern"
-    CyclePhaseEngine.Phase.LEARNING -> "Learning your pattern"
+@StringRes
+private fun cyclePhaseTitle(phase: CyclePhaseEngine.Phase): Int = when (phase) {
+    CyclePhaseEngine.Phase.FOLLICULAR -> R.string.skintemp_phase_follicular
+    CyclePhaseEngine.Phase.PERI_OVULATORY -> R.string.skintemp_phase_periovulatory
+    CyclePhaseEngine.Phase.LUTEAL -> R.string.skintemp_phase_luteal
+    CyclePhaseEngine.Phase.UNKNOWN -> R.string.skintemp_phase_unknown
+    CyclePhaseEngine.Phase.LEARNING -> R.string.skintemp_phase_learning
 }
 
 /** "~day 18–22" — always a RANGE, never a single point. */
+@Composable
 private fun cycleDayText(r: CyclePhaseEngine.Result): String? {
     val lo = r.cycleDayLow ?: return null
     val hi = r.cycleDayHigh ?: return null
-    return if (lo == hi) "· ~day $lo" else "· ~day $lo - $hi"
+    return if (lo == hi) stringResource(R.string.skintemp_cycle_day, lo)
+    else stringResource(R.string.skintemp_cycle_day_range, lo, hi)
 }
 
-private fun cycleConfidenceLabel(c: CyclePhaseEngine.Confidence): String = when (c) {
-    CyclePhaseEngine.Confidence.LEARNING -> "Learning"
-    CyclePhaseEngine.Confidence.BUILDING -> "Building"
-    CyclePhaseEngine.Confidence.SOLID -> "Solid"
+@StringRes
+private fun cycleConfidenceLabel(c: CyclePhaseEngine.Confidence): Int = when (c) {
+    CyclePhaseEngine.Confidence.LEARNING -> R.string.skintemp_conf_learning
+    CyclePhaseEngine.Confidence.BUILDING -> R.string.skintemp_conf_building
+    CyclePhaseEngine.Confidence.SOLID -> R.string.skintemp_conf_solid
 }
 
 private fun cycleConfidenceTone(c: CyclePhaseEngine.Confidence): StrandTone = when (c) {
@@ -454,18 +487,24 @@ private fun cycleConfidenceTone(c: CyclePhaseEngine.Confidence): StrandTone = wh
 }
 
 /** "About 25 min later than your schedule" — a plain, skimmable headline. */
+@Composable
 private fun bodyClockOffsetTitle(e: CircadianEngine.PhaseEstimate): String {
-    if (e.confidence == CircadianEngine.PhaseConfidence.UNREADABLE) return "Hard to read right now"
+    if (e.confidence == CircadianEngine.PhaseConfidence.UNREADABLE) {
+        return stringResource(R.string.skintemp_hard_to_read)
+    }
     val mins = abs(e.offsetVsScheduleMinutes).roundToInt()
-    if (mins <= 20) return "About in sync with your schedule"
-    val dir = if (e.offsetVsScheduleMinutes > 0) "later" else "earlier"
-    return "About $mins min $dir than your schedule"
+    if (mins <= 20) return stringResource(R.string.skintemp_body_clock_in_sync)
+    val dir = stringResource(
+        if (e.offsetVsScheduleMinutes > 0) R.string.skintemp_dir_later else R.string.skintemp_dir_earlier,
+    )
+    return stringResource(R.string.skintemp_body_clock_offset, mins, dir)
 }
 
-private fun bodyClockConfidenceLabel(c: CircadianEngine.PhaseConfidence): String = when (c) {
-    CircadianEngine.PhaseConfidence.UNREADABLE -> "Calibrating"
-    CircadianEngine.PhaseConfidence.WIDE -> "Building"
-    CircadianEngine.PhaseConfidence.SOLID -> "Solid"
+@StringRes
+private fun bodyClockConfidenceLabel(c: CircadianEngine.PhaseConfidence): Int = when (c) {
+    CircadianEngine.PhaseConfidence.UNREADABLE -> R.string.skintemp_conf_calibrating
+    CircadianEngine.PhaseConfidence.WIDE -> R.string.skintemp_conf_building
+    CircadianEngine.PhaseConfidence.SOLID -> R.string.skintemp_conf_solid
 }
 
 private fun bodyClockConfidenceTone(c: CircadianEngine.PhaseConfidence): StrandTone = when (c) {
@@ -475,38 +514,44 @@ private fun bodyClockConfidenceTone(c: CircadianEngine.PhaseConfidence): StrandT
 }
 
 /** The headline: the age itself once the fit supports one, otherwise the honest reason it doesn't. */
+@Composable
 private fun rhythmAgeTitle(info: uniffi.whoop_ffi.RhythmAgeInfo?, wornDays: Int): String = when {
-    info != null -> "${yearsString(info.cosinorAgeYears)} yrs"
-    wornDays < CircadianEngine.MIN_WORN_DAYS -> "Still building"
-    else -> "Hard to read right now"
+    info != null -> stringResource(R.string.skintemp_rhythm_age_years, yearsString(info.cosinorAgeYears))
+    wornDays < CircadianEngine.MIN_WORN_DAYS -> stringResource(R.string.skintemp_rhythm_still_building)
+    else -> stringResource(R.string.skintemp_hard_to_read)
 }
 
 /**
  * The sentence under the headline. Below the worn-day floor it repeats the promise the changelog
  * makes and shows how far along the wear is; above it, how the estimate sits against real age.
  */
+@Composable
 private fun rhythmAgeNote(info: uniffi.whoop_ffi.RhythmAgeInfo?, wornDays: Int): String {
     if (info == null) {
         if (wornDays >= CircadianEngine.MIN_WORN_DAYS) {
-            return "Your rhythm is too flat to read right now - keep wearing it for a clearer picture."
+            return stringResource(R.string.skintemp_rhythm_too_flat)
         }
         val days = wornDays.coerceAtLeast(0)
-        return "It needs about a week of wear before it first appears. " +
-            "$days of ${CircadianEngine.MIN_WORN_DAYS} days so far."
+        return stringResource(R.string.skintemp_rhythm_needs_wear, days, CircadianEngine.MIN_WORN_DAYS)
     }
     val years = abs(info.advanceYears).roundToInt()
-    if (years < 1) return "About level with your real age."
-    val plural = if (years == 1) "year" else "years"
+    if (years < 1) return stringResource(R.string.skintemp_rhythm_level)
+    val plural = stringResource(if (years == 1) R.string.skintemp_year else R.string.skintemp_years)
     // POSITIVE advance = older than chronological, matching the whoop-rs convention.
-    val dir = if (info.advanceYears > 0) "older" else "younger"
-    return "About $years $plural $dir than your real age."
+    val dir = stringResource(if (info.advanceYears > 0) R.string.skintemp_older else R.string.skintemp_younger)
+    return stringResource(R.string.skintemp_rhythm_vs_age, years, plural, dir)
 }
 
 /** The pill reuses the SHARED fit's confidence, so it can never claim more than the body clock does. */
+@StringRes
 private fun rhythmAgeStateLabel(
     info: uniffi.whoop_ffi.RhythmAgeInfo?,
     confidence: CircadianEngine.PhaseConfidence?,
-): String = if (info == null || confidence == null) "Calibrating" else bodyClockConfidenceLabel(confidence)
+): Int = if (info == null || confidence == null) {
+    R.string.skintemp_conf_calibrating
+} else {
+    bodyClockConfidenceLabel(confidence)
+}
 
 private fun rhythmAgeStateTone(
     info: uniffi.whoop_ffi.RhythmAgeInfo?,
@@ -535,12 +580,13 @@ private fun headsUpGlyph(level: IllnessSignalEngine.Level): ImageVector = when (
     IllnessSignalEngine.Level.QUIET -> Icons.Filled.CheckCircle
 }
 
-private fun headsUpTitle(level: IllnessSignalEngine.Level): String = when (level) {
-    IllnessSignalEngine.Level.RAISED -> "Heads-up"
-    IllnessSignalEngine.Level.ALREADY_UNWELL -> "Rest up"
-    IllnessSignalEngine.Level.SUPPRESSED -> "Probably not illness"
-    IllnessSignalEngine.Level.MILD -> "A few signals are up"
-    IllnessSignalEngine.Level.QUIET -> "Nothing notable"
+@StringRes
+private fun headsUpTitle(level: IllnessSignalEngine.Level): Int = when (level) {
+    IllnessSignalEngine.Level.RAISED -> R.string.skintemp_headsup_raised
+    IllnessSignalEngine.Level.ALREADY_UNWELL -> R.string.skintemp_headsup_unwell
+    IllnessSignalEngine.Level.SUPPRESSED -> R.string.skintemp_headsup_suppressed
+    IllnessSignalEngine.Level.MILD -> R.string.skintemp_headsup_mild
+    IllnessSignalEngine.Level.QUIET -> R.string.skintemp_headsup_quiet
 }
 
 // MARK: - Formatting helpers (locale-free, matching the engine's own helpers)

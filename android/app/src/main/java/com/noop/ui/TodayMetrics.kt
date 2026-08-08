@@ -30,10 +30,12 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.noop.R
 import com.noop.analytics.Baselines
 import com.noop.analytics.ReadinessEngine
 import com.noop.analytics.ScoreConfidence
@@ -114,7 +116,7 @@ internal fun MetricGrid(
         KeyMetric.HRV to run {
             val v = d?.avgHrv ?: carriedDay?.avgHrv
             KeyTileData(
-                label = "HRV",
+                label = stringResource(R.string.today_metric_hrv),
                 value = v?.let { "${it.roundToInt()}" } ?: NO_DATA,
                 unit = if (v != null) "ms" else "",
                 tint = Palette.metricCyan,
@@ -124,7 +126,7 @@ internal fun MetricGrid(
         KeyMetric.RESTING_HR to run {
             val v = d?.restingHr ?: carriedDay?.restingHr
             KeyTileData(
-                label = "Rest HR",
+                label = stringResource(R.string.today_metric_rest_hr_short),
                 value = v?.toString() ?: NO_DATA,
                 unit = if (v != null) "bpm" else "",
                 tint = Palette.metricRose,
@@ -148,8 +150,8 @@ internal fun MetricGrid(
                 // full word ellipsises here and nowhere else in the grid. Health already prints this
                 // metric as RESP in its five-up row; the grid is the same width problem, so it takes
                 // the same short form rather than a truncation.
-                label = "Resp",
-                spokenLabel = "Respiratory",
+                label = stringResource(R.string.today_metric_resp_short),
+                spokenLabel = stringResource(R.string.today_metric_respiratory),
                 value = v?.let { String.format(Locale.US, "%.1f", it) } ?: NO_DATA,
                 unit = if (v != null) "rpm" else "",
                 tint = Palette.accent,
@@ -161,7 +163,7 @@ internal fun MetricGrid(
             val realSteps = d?.steps ?: importedStepsForDay
             val steps = realSteps ?: estimatedStepsForDay
             KeyTileData(
-                label = "Steps",
+                label = stringResource(R.string.today_metric_steps),
                 value = steps?.let { intString(it.toDouble()) } ?: NO_DATA,
                 unit = "",
                 tint = Palette.metricCyan,
@@ -171,7 +173,7 @@ internal fun MetricGrid(
         KeyMetric.WEIGHT to run {
             val weight = weightTile(latestWeightKg, profileWeightKg, unitSystem)
             KeyTileData(
-                label = "Weight",
+                label = stringResource(R.string.today_metric_weight),
                 value = weight.value,
                 unit = "",
                 tint = Palette.accent,
@@ -179,7 +181,7 @@ internal fun MetricGrid(
             )
         },
         KeyMetric.CALORIES to KeyTileData(
-            label = "Calories",
+            label = stringResource(R.string.today_metric_calories),
             value = d?.activeKcalEst?.let { intString(it) } ?: NO_DATA,
             unit = if (d?.activeKcalEst != null) "kcal" else "",
             tint = Palette.metricAmber,
@@ -213,7 +215,11 @@ internal fun MetricGrid(
                 colors = ButtonDefaults.textButtonColors(contentColor = Palette.accent),
             ) {
                 Text(
-                    if (metricsExpanded) "Show fewer" else "Show all metrics ($hidden)",
+                    if (metricsExpanded) {
+                        stringResource(R.string.today_show_fewer)
+                    } else {
+                        stringResource(R.string.today_show_all_metrics, hidden)
+                    },
                     style = NoopType.subhead,
                 )
                 Spacer(Modifier.width(4.dp))
@@ -351,8 +357,9 @@ internal fun ReadinessSection(days: List<DailyMetric>, carriedDay: DailyMetric? 
     val readiness = remember(days, anchorKey) { ReadinessEngine.evaluate(days, today = anchorKey) }
     if (readiness.level == ReadinessEngine.Level.INSUFFICIENT) return
 
-    val overline = carriedDay?.let { carriedCaption(it.day) } ?: "Should you push today?"
-    SectionHeader("Readiness", overline = overline)
+    val overline = carriedDay?.let { carriedCaption(it.day) }
+        ?: stringResource(R.string.today_readiness_overline)
+    SectionHeader(stringResource(R.string.today_readiness), overline = overline)
     NoopCard {
         Column(verticalArrangement = Arrangement.spacedBy(Metrics.space12)) {
             // Headline row: level dot + headline, then the ACWR load read-out.
@@ -372,7 +379,10 @@ internal fun ReadinessSection(days: List<DailyMetric>, carriedDay: DailyMetric? 
                 )
                 readiness.acwr?.let { acwr ->
                     Text(
-                        "load ${String.format(Locale.US, "%.2f", acwr)}",
+                        stringResource(
+                            R.string.today_readiness_load,
+                            String.format(Locale.US, "%.2f", acwr),
+                        ),
                         style = NoopType.captionNumber,
                         color = Palette.textTertiary,
                     )

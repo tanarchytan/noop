@@ -132,4 +132,8 @@
     <string name="power_saving_pct">%1$d %%</string>
     <string name="power_saving_hrv_pause">HFV-Erfassung im Energiesparmodus pausieren</string>
     <string name="power_saving_hrv_pause_desc">Solange der Android-Energiesparmodus aktiv ist, wird der dauerhafte HFV-Hintergrundstream gestoppt (der größte Live-Verbraucher). Beim Öffnen eines Live-Bildschirms wird weiterhin die Herzfrequenz angezeigt, und er wird automatisch reaktiviert, wenn der Energiesparmodus endet.</string>
+
+    <!-- Shared words, defined once in values/strings.xml. -->
+    <string name="common_cancel">Abbrechen</string>
+    <string name="common_today">Heute</string>
 </resources>

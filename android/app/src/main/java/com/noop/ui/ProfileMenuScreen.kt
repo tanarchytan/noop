@@ -1,5 +1,6 @@
 package com.noop.ui
 
+import android.app.Activity
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
@@ -19,6 +20,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Straighten
 import androidx.compose.material.icons.outlined.AccountCircle
 import androidx.compose.material.icons.outlined.Person
@@ -402,6 +405,29 @@ fun ProfileMenuScreen(vm: AppViewModel) {
             }
         }
 
+        ProfileSection(
+            icon = Icons.Filled.Language,
+            title = "Language",
+            blurb = "The language NOOP's own screens are shown in. Your data, units and metric names are unaffected. Screens not yet translated stay in English.",
+        ) {
+            Column {
+                val currentTag = NoopLocale.current(context).tag
+                NoopLocale.SUPPORTED.forEachIndexed { index, option ->
+                    if (index > 0) RowDivider()
+                    LanguageRow(
+                        label = option.label,
+                        selected = option.tag == currentTag,
+                        onSelect = {
+                            if (option.tag != currentTag) {
+                                NoopLocale.set(context, option.tag)
+                                (context as? Activity)?.recreate()
+                            }
+                        },
+                    )
+                }
+            }
+        }
+
         // --- Calibration milestones ---
         val allDays by vm.recentDays.collectAsStateWithLifecycle()
         val bankedNights = remember(allDays) {
@@ -461,6 +487,35 @@ private fun ProfileSection(
             }
             Text(blurb, style = NoopType.subhead, color = Palette.textSecondary)
             content()
+        }
+    }
+}
+
+/** One language choice. Tapping it persists the tag and recreates the activity so resources reload. */
+@Composable
+private fun LanguageRow(label: String, selected: Boolean, onSelect: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 44.dp)
+            .clickable(onClick = onSelect)
+            .padding(vertical = Metrics.space4),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(Metrics.space16),
+    ) {
+        Text(
+            label,
+            style = NoopType.body,
+            color = if (selected) Palette.textPrimary else Palette.textSecondary,
+            modifier = Modifier.weight(1f),
+        )
+        if (selected) {
+            Icon(
+                Icons.Filled.Check,
+                contentDescription = null,
+                tint = Palette.accent,
+                modifier = Modifier.size(Metrics.iconSmall),
+            )
         }
     }
 }

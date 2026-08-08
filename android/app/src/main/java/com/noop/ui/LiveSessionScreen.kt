@@ -46,12 +46,14 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
+import com.noop.R
 import com.noop.analytics.LiveSessionEngine
 import com.noop.analytics.RecoveryScorer
 import kotlinx.coroutines.delay
@@ -197,8 +199,8 @@ private fun LiveSessionBody(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(Metrics.space10),
         ) {
-            Text("Live Session", style = NoopType.title1, color = Palette.textPrimary)
-            StatePill("BETA", tone = StrandTone.Accent, showsDot = false)
+            Text(stringResource(R.string.live_session_title), style = NoopType.title1, color = Palette.textPrimary)
+            StatePill(stringResource(R.string.live_beta), tone = StrandTone.Accent, showsDot = false)
         }
 
         Spacer(Modifier.weight(1f))
@@ -217,8 +219,8 @@ private fun LiveSessionBody(
         // The one line of copy. STALE says so honestly (coaching paused, nothing accrues); otherwise the
         // guarding promise — the whole design is that this screen has nothing to watch.
         Text(
-            if (stale) "Signal lost — coaching paused."
-            else "Guarding your session. Silence means you're on track.",
+            if (stale) stringResource(R.string.live_signal_lost)
+            else stringResource(R.string.live_guarding),
             style = NoopType.subhead,
             color = if (stale) Palette.textTertiary else Palette.textSecondary,
             textAlign = TextAlign.Center,
@@ -250,7 +252,7 @@ private fun LiveSessionBody(
             colors = ButtonDefaults.buttonColors(
                 containerColor = Palette.statusCritical, contentColor = Palette.surfaceBase,
             ),
-        ) { Text("End session", style = NoopType.headline) }
+        ) { Text(stringResource(R.string.live_end_session), style = NoopType.headline) }
     }
 }
 
@@ -289,16 +291,17 @@ private fun GuardianRing(
     val breathing = !stale && settled && position == LiveSessionEngine.Position.IN_BAND && !reduced
 
     val stateLabel = when {
-        stale -> "Signal lost, coaching paused"
-        position == LiveSessionEngine.Position.ABOVE -> "Above today's band"
-        position == LiveSessionEngine.Position.BELOW -> "Below today's band"
-        else -> "In today's band"
+        stale -> stringResource(R.string.live_state_stale)
+        position == LiveSessionEngine.Position.ABOVE -> stringResource(R.string.live_state_above)
+        position == LiveSessionEngine.Position.BELOW -> stringResource(R.string.live_state_below)
+        else -> stringResource(R.string.live_state_in_band)
     }
+    val ringLabel = stringResource(R.string.live_ring_cd, stateLabel)
     Box(
         modifier = Modifier
             .size(260.dp)
             .pointerInput(Unit) { detectTapGestures(onLongPress = { onLongPress() }) }
-            .semantics { contentDescription = "Session ring. $stateLabel. Long-press to show heart rate." },
+            .semantics { contentDescription = ringLabel },
         contentAlignment = Alignment.Center,
     ) {
         if (breathing) {
@@ -416,16 +419,16 @@ private fun LiveSessionSummary(
             horizontalArrangement = Arrangement.spacedBy(Metrics.space10),
         ) {
             Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(Metrics.space2)) {
-                Overline("Live Session", color = teal)
-                Text("Session summary", style = NoopType.title1, color = Palette.textPrimary)
+                Overline(stringResource(R.string.live_session_title), color = teal)
+                Text(stringResource(R.string.live_session_summary), style = NoopType.title1, color = Palette.textPrimary)
             }
-            StatePill("BETA", tone = StrandTone.Accent, showsDot = false)
+            StatePill(stringResource(R.string.live_beta), tone = StrandTone.Accent, showsDot = false)
         }
 
         // The stale auto-end declares itself — an unexplained early end would read as a bug.
         if (snap.endedAutomatically) {
             Text(
-                "The strap signal was gone for 10 minutes, so the session ended itself.",
+                stringResource(R.string.live_auto_ended),
                 style = NoopType.footnote,
                 color = Palette.statusWarning,
             )
@@ -438,7 +441,7 @@ private fun LiveSessionSummary(
             color = Palette.textPrimary,
         )
         Text(
-            "Guarded for ${elapsedClock(snap.elapsedSec.toLong())}",
+            stringResource(R.string.live_guarded_for, elapsedClock(snap.elapsedSec.toLong())),
             style = NoopType.subhead,
             color = Palette.textSecondary,
         )
@@ -446,15 +449,15 @@ private fun LiveSessionSummary(
         // Where the time went — the three accrued buckets, on the shared StatTile.
         Row(horizontalArrangement = Arrangement.spacedBy(Metrics.gap), modifier = Modifier.fillMaxWidth()) {
             StatTile(
-                modifier = Modifier.weight(1f), label = "In band",
+                modifier = Modifier.weight(1f), label = stringResource(R.string.live_in_band),
                 value = elapsedClock(inBandSec.toLong()), accent = teal,
             )
             StatTile(
-                modifier = Modifier.weight(1f), label = "Below",
+                modifier = Modifier.weight(1f), label = stringResource(R.string.live_below),
                 value = elapsedClock(snap.belowSec.toLong()), accent = Palette.textSecondary,
             )
             StatTile(
-                modifier = Modifier.weight(1f), label = "Above",
+                modifier = Modifier.weight(1f), label = stringResource(R.string.live_above),
                 value = elapsedClock(snap.aboveSec.toLong()), accent = Palette.statusCritical,
             )
         }
@@ -468,9 +471,13 @@ private fun LiveSessionSummary(
 
         // The streak line — only once the rows have loaded (no placeholder number, ever).
         guardedCount?.let { n ->
-            val sessions = "$n session${if (n == 1) "" else "s"} guarded"
-            val run = if (streakDays >= 2) " · $streakDays days in a row" else ""
-            Text(sessions + run, style = NoopType.subhead, color = teal)
+            val sessions = if (n == 1) stringResource(R.string.live_n_session_guarded, n)
+            else stringResource(R.string.live_n_sessions_guarded, n)
+            Text(
+                if (streakDays >= 2) stringResource(R.string.live_streak_suffix, sessions, streakDays) else sessions,
+                style = NoopType.subhead,
+                color = teal,
+            )
         }
 
         Spacer(Modifier.height(Metrics.space12))
@@ -482,31 +489,35 @@ private fun LiveSessionSummary(
             colors = ButtonDefaults.buttonColors(
                 containerColor = Palette.accent, contentColor = Palette.surfaceBase,
             ),
-        ) { Text("Done", style = NoopType.headline) }
+        ) { Text(stringResource(R.string.live_done), style = NoopType.headline) }
     }
 }
 
-// MARK: - Pure copy helpers (Context-free, JVM-testable — same style as the runner's verdict/streak)
+// MARK: - Copy helpers (the wording lives in strings_workouts.xml; the branching stays here)
 
 /**
  * The one Charge sentence the session screen shows before settling to silence, flavoured per the
  * session's opening Charge (the same value that gated the band). Null Charge says so honestly — the
  * engine coaches to its middle-of-the-road default band, and we never invent a percentage.
  */
+@Composable
 internal fun liveSessionChargeSentence(charge: Double?): String {
-    if (charge == null) return "No Charge yet today — guarding a middle-of-the-road band."
+    if (charge == null) return stringResource(R.string.live_charge_none)
     val pct = charge.roundToInt()
     return when {
-        pct < RecoveryScorer.bandRedMax -> "Today's ceiling is lower — Charge is $pct%."
-        pct < RecoveryScorer.bandYellowMax -> "A middling day — Charge is $pct%, so the band sits mid-range."
-        else -> "Plenty in the tank — Charge is $pct%, so today's ceiling is higher."
+        pct < RecoveryScorer.bandRedMax -> stringResource(R.string.live_charge_low, pct)
+        pct < RecoveryScorer.bandYellowMax -> stringResource(R.string.live_charge_mid, pct)
+        else -> stringResource(R.string.live_charge_high, pct)
     }
 }
 
 /** The summary's cue-count line. Zero cues is the headline case (silence IS the coaching). */
+@Composable
 internal fun liveSessionCueLine(pushCount: Int, easeCount: Int): String {
-    if (pushCount == 0 && easeCount == 0) return "No buzzes sent."
-    val push = "$pushCount push nudge${if (pushCount == 1) "" else "s"}"
-    val ease = "$easeCount ease-off${if (easeCount == 1) "" else "s"}"
-    return "$push · $ease"
+    if (pushCount == 0 && easeCount == 0) return stringResource(R.string.live_no_buzzes)
+    val push = if (pushCount == 1) stringResource(R.string.live_push_nudge, pushCount)
+    else stringResource(R.string.live_push_nudges, pushCount)
+    val ease = if (easeCount == 1) stringResource(R.string.live_ease_off, easeCount)
+    else stringResource(R.string.live_ease_offs, easeCount)
+    return stringResource(R.string.live_cue_line, push, ease)
 }

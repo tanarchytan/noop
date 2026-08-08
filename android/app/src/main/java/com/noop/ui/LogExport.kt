@@ -5,6 +5,7 @@ import android.content.Intent
 import android.widget.Toast
 import androidx.core.content.FileProvider
 import com.noop.BuildConfig
+import com.noop.R
 import java.io.File
 
 /**
@@ -105,10 +106,16 @@ object LogExport {
                 putExtra(Intent.EXTRA_SUBJECT, name)
                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
             }
-            context.startActivity(Intent.createChooser(send, "Share debug export"))
+            context.startActivity(
+                Intent.createChooser(send, context.getString(R.string.logexport_share_bundle)),
+            )
             file
         }.onFailure {
-            Toast.makeText(context, "Couldn't export the bundle: ${it.message}", Toast.LENGTH_LONG).show()
+            Toast.makeText(
+                context,
+                context.getString(R.string.logexport_bundle_failed, it.message.toString()),
+                Toast.LENGTH_LONG,
+            ).show()
         }.getOrNull()
 
     /**
@@ -223,12 +230,18 @@ object LogExport {
             val send = Intent(Intent.ACTION_SEND).apply {
                 type = "text/plain"
                 putExtra(Intent.EXTRA_STREAM, fileUri(context, file))
-                putExtra(Intent.EXTRA_SUBJECT, "NOOP strap log")
+                putExtra(Intent.EXTRA_SUBJECT, context.getString(R.string.logexport_strap_log_subject))
                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
             }
-            context.startActivity(Intent.createChooser(send, "Share strap log"))
+            context.startActivity(
+                Intent.createChooser(send, context.getString(R.string.logexport_share_strap_log)),
+            )
         }.onFailure {
-            Toast.makeText(context, "Couldn't share the log: ${it.message}", Toast.LENGTH_LONG).show()
+            Toast.makeText(
+                context,
+                context.getString(R.string.logexport_share_failed, it.message.toString()),
+                Toast.LENGTH_LONG,
+            ).show()
         }
     }
 }

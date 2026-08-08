@@ -40,12 +40,14 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.health.connect.client.HealthConnectClient
 import androidx.health.connect.client.PermissionController
+import com.noop.R
 import com.noop.data.ImportSummary
 import com.noop.ingest.AppleHealthImporter
 import com.noop.ingest.HealthConnectImporter
@@ -164,7 +166,7 @@ fun DataSourcesScreen(vm: AppViewModel, onOpenAppleHealth: () -> Unit = {}) {
             runImport { HealthConnectImporter.import(context, vm.repo, ProfileStore.from(context).heightCm,
                 onBodyMeasurements = { w, h -> ProfileStore.from(context).applyMeasured(w, h) }) }
         } else {
-            Toast.makeText(context, "Health Connect access not granted.", Toast.LENGTH_LONG).show()
+            Toast.makeText(context, context.getString(R.string.datasources_hc_read_denied), Toast.LENGTH_LONG).show()
         }
     }
 
@@ -196,7 +198,7 @@ fun DataSourcesScreen(vm: AppViewModel, onOpenAppleHealth: () -> Unit = {}) {
             vm.writebackHealthConnectNow()
         } else {
             vm.setHcWriteback(false)
-            Toast.makeText(context, "Health Connect write access not granted.", Toast.LENGTH_LONG).show()
+            Toast.makeText(context, context.getString(R.string.datasources_hc_write_denied), Toast.LENGTH_LONG).show()
         }
     }
 
@@ -226,8 +228,8 @@ fun DataSourcesScreen(vm: AppViewModel, onOpenAppleHealth: () -> Unit = {}) {
     // cards now compose + get accessibility-walked on scroll — this list of 11 source cards is long. The
     // confirm dialogs below the scaffold are untouched.
     LazyScreenScaffold(
-        title = "Data Sources",
-        subtitle = "Everything stays on this phone. Bring your history in once, then it's yours.",
+        title = stringResource(R.string.nav_data_sources),
+        subtitle = stringResource(R.string.datasources_subtitle),
     ) {
         // The one-line answer to "where does my data come from", naming only the sources that hold any.
         item {
@@ -245,15 +247,14 @@ fun DataSourcesScreen(vm: AppViewModel, onOpenAppleHealth: () -> Unit = {}) {
         // --- WHOOP data (cached history) ---
         item {
         SourceCard(
-            title = "WHOOP History",
+            title = stringResource(R.string.datasources_whoop_history),
             icon = Icons.Filled.MonitorHeart,
-            subtitle = "Recovery, strain, sleep and workouts, stored locally. Import a full " +
-                "WHOOP data export (.zip) from app.whoop.com → Data Management and it " +
-                "backfills your whole history in about a minute. Working now on Android.",
+            subtitle = stringResource(R.string.datasources_whoop_history_subtitle),
         ) {
             val hasWhoop = (whoopDays ?: 0) > 0 || (whoopWorkouts ?: 0) > 0 || whoopHasHr
             StatePill(
-                title = if (hasWhoop) "Stored on this phone" else "Nothing here yet",
+                title = if (hasWhoop) stringResource(R.string.datasources_stored_here)
+                else stringResource(R.string.datasources_nothing_here_yet),
                 tone = if (hasWhoop) StrandTone.Positive else StrandTone.Neutral,
                 showsDot = true,
             )
@@ -261,13 +262,14 @@ fun DataSourcesScreen(vm: AppViewModel, onOpenAppleHealth: () -> Unit = {}) {
             // The stored span, so the card reads "data from X to Y" once history is present.
             if (whoopFirstDay != null && whoopLastDay != null) {
                 Text(
-                    "History from $whoopFirstDay to $whoopLastDay",
+                    stringResource(R.string.datasources_history_span, whoopFirstDay!!, whoopLastDay!!),
                     style = NoopType.footnote,
                     color = Palette.textTertiary,
                 )
             }
             BackupButton(
-                label = if (hasWhoop) "Replace WHOOP export (.zip)…" else "Import WHOOP export (.zip)",
+                label = if (hasWhoop) stringResource(R.string.datasources_replace_whoop_export)
+                else stringResource(R.string.datasources_import_whoop_export),
                 icon = Icons.Filled.FileUpload,
                 enabled = !busy,
                 modifier = Modifier.fillMaxWidth(),
@@ -276,7 +278,7 @@ fun DataSourcesScreen(vm: AppViewModel, onOpenAppleHealth: () -> Unit = {}) {
             // the other sources intact. Shown only when there is something to remove; a confirm dialog gates it.
             if (hasWhoop) {
                 BackupButton(
-                    label = "Remove WHOOP history",
+                    label = stringResource(R.string.datasources_remove_whoop_history),
                     icon = Icons.Filled.DeleteOutline,
                     enabled = !busy,
                     tint = Palette.statusCritical,
@@ -289,22 +291,21 @@ fun DataSourcesScreen(vm: AppViewModel, onOpenAppleHealth: () -> Unit = {}) {
         // --- Apple Health ---
         item {
         SourceCard(
-            title = "Apple Health",
+            title = stringResource(R.string.nav_apple_health),
             icon = Icons.Filled.FavoriteBorder,
             tint = Palette.metricCyan,
-            subtitle = "Import HR, HRV, sleep, SpO₂ and steps from an Apple Health export. On " +
-                "an iPhone: Health app → tap your photo → Export All Health Data, then " +
-                "import the .zip here. Working now on Android.",
+            subtitle = stringResource(R.string.datasources_apple_subtitle),
         ) {
             val hasApple = (appleDays ?: 0) > 0 || (appleWorkouts ?: 0) > 0
             StatePill(
-                title = if (hasApple) "Imported" else "Nothing imported",
+                title = if (hasApple) stringResource(R.string.datasources_imported)
+                else stringResource(R.string.datasources_nothing_imported),
                 tone = if (hasApple) StrandTone.Accent else StrandTone.Neutral,
                 showsDot = true,
             )
             CountLine(countDetail(appleDays, appleWorkouts, "workouts"))
             BackupButton(
-                label = "Import Apple Health export…",
+                label = stringResource(R.string.datasources_import_apple_export),
                 icon = Icons.Filled.FileUpload,
                 enabled = !busy,
                 tint = Palette.metricCyan,
@@ -314,7 +315,7 @@ fun DataSourcesScreen(vm: AppViewModel, onOpenAppleHealth: () -> Unit = {}) {
             // HERE now — this button drills into AppleHealthScreen. Always shown so the view is openable
             // even before the first import.
             BackupButton(
-                label = "View Apple Health data",
+                label = stringResource(R.string.datasources_view_apple_data),
                 icon = Icons.Filled.MonitorHeart,
                 enabled = true,
                 tint = Palette.metricCyan,
@@ -325,7 +326,7 @@ fun DataSourcesScreen(vm: AppViewModel, onOpenAppleHealth: () -> Unit = {}) {
             // the Swift card. Shown only once there's something to remove; a confirm dialog gates it.
             if (hasApple) {
                 BackupButton(
-                    label = "Remove imported data",
+                    label = stringResource(R.string.datasources_remove_imported_data),
                     icon = Icons.Filled.DeleteOutline,
                     enabled = !busy,
                     tint = Palette.statusCritical,
@@ -338,20 +339,20 @@ fun DataSourcesScreen(vm: AppViewModel, onOpenAppleHealth: () -> Unit = {}) {
         // --- Health Connect (native Android health data) ---
         item {
         SourceCard(
-            title = "Health Connect",
+            title = stringResource(R.string.datasources_health_connect),
             icon = Icons.Filled.MonitorHeart,
-            subtitle = "Pull steps, heart rate, HRV, sleep, SpO₂, weight and workouts straight from " +
-                "Android's Health Connect. No file needed. On-device; it never overwrites richer " +
-                "WHOOP data, and writes nothing unless you opt in to sharing back below.",
+            subtitle = stringResource(R.string.datasources_health_connect_subtitle),
         ) {
             val hasHc = (hcDays ?: 0) > 0 || (hcWorkouts ?: 0) > 0
             if (hasHc) {
-                StatePill(title = "Imported", tone = StrandTone.Accent, showsDot = true)
+                StatePill(title = stringResource(R.string.datasources_imported), tone = StrandTone.Accent, showsDot = true)
                 CountLine(countDetail(hcDays, hcWorkouts, "workouts"))
             }
             if (healthConnectAvailable) {
+                val autoSyncCd = stringResource(R.string.datasources_auto_sync_cd)
+                val writebackCd = stringResource(R.string.datasources_writeback_cd)
                 BackupButton(
-                    label = "Import from Health Connect",
+                    label = stringResource(R.string.datasources_import_from_hc),
                     icon = Icons.Filled.FileUpload,
                     enabled = !busy,
                     modifier = Modifier.fillMaxWidth(),
@@ -366,11 +367,9 @@ fun DataSourcesScreen(vm: AppViewModel, onOpenAppleHealth: () -> Unit = {}) {
                     horizontalArrangement = Arrangement.spacedBy(Metrics.space16),
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
-                        Text("Auto-sync periodically", style = NoopType.subhead, color = Palette.textPrimary)
+                        Text(stringResource(R.string.datasources_auto_sync), style = NoopType.subhead, color = Palette.textPrimary)
                         Text(
-                            "Re-pull new Health Connect data (e.g. Samsung Health → Health Connect) each " +
-                                "time you open NOOP, if it's been longer than the interval below. " +
-                                "Read-only; never overwrites strap data.",
+                            stringResource(R.string.datasources_auto_sync_detail),
                             style = NoopType.footnote,
                             color = Palette.textTertiary,
                         )
@@ -390,7 +389,7 @@ fun DataSourcesScreen(vm: AppViewModel, onOpenAppleHealth: () -> Unit = {}) {
                             uncheckedBorderColor = Palette.hairline,
                         ),
                         modifier = Modifier.semantics {
-                            contentDescription = "Auto-sync Health Connect periodically"
+                            contentDescription = autoSyncCd
                         },
                     )
                 }
@@ -400,7 +399,7 @@ fun DataSourcesScreen(vm: AppViewModel, onOpenAppleHealth: () -> Unit = {}) {
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(Metrics.space12),
                     ) {
-                        Text("Every", style = NoopType.footnote, color = Palette.textSecondary)
+                        Text(stringResource(R.string.datasources_every), style = NoopType.footnote, color = Palette.textSecondary)
                         SegmentedPillControl(
                             items = listOf(6, 12, 24),
                             selection = hcSyncHours,
@@ -409,8 +408,11 @@ fun DataSourcesScreen(vm: AppViewModel, onOpenAppleHealth: () -> Unit = {}) {
                         )
                     }
                     Text(
-                        "Last sync: " + if (hcLastSync == 0L) "not yet"
-                        else DateUtils.getRelativeTimeSpanString(hcLastSync).toString(),
+                        stringResource(
+                            R.string.datasources_last_sync,
+                            if (hcLastSync == 0L) stringResource(R.string.datasources_last_sync_never)
+                            else DateUtils.getRelativeTimeSpanString(hcLastSync).toString(),
+                        ),
                         style = NoopType.footnote,
                         color = Palette.textTertiary,
                     )
@@ -423,12 +425,9 @@ fun DataSourcesScreen(vm: AppViewModel, onOpenAppleHealth: () -> Unit = {}) {
                     horizontalArrangement = Arrangement.spacedBy(Metrics.space16),
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
-                        Text("Share back to Health Connect", style = NoopType.subhead, color = Palette.textPrimary)
+                        Text(stringResource(R.string.datasources_writeback), style = NoopType.subhead, color = Palette.textPrimary)
                         Text(
-                            "Write the metrics NOOP computes from your strap (resting HR, HRV, SpO₂, " +
-                                "respiratory rate, heart rate, steps, active energy and sleep) into " +
-                                "Health Connect so other apps can use them. Only NOOP's own values are " +
-                                "shared. Imported data is never echoed back.",
+                            stringResource(R.string.datasources_writeback_detail),
                             style = NoopType.footnote,
                             color = Palette.textTertiary,
                         )
@@ -448,12 +447,12 @@ fun DataSourcesScreen(vm: AppViewModel, onOpenAppleHealth: () -> Unit = {}) {
                             uncheckedBorderColor = Palette.hairline,
                         ),
                         modifier = Modifier.semantics {
-                            contentDescription = "Share computed metrics back to Health Connect"
+                            contentDescription = writebackCd
                         },
                     )
                 }
             } else {
-                RoadmapNote("Health Connect isn't set up on this device. Install it from Google Play, then return here to import.")
+                RoadmapNote(stringResource(R.string.datasources_hc_unavailable))
             }
         }
         }
@@ -467,9 +466,9 @@ fun DataSourcesScreen(vm: AppViewModel, onOpenAppleHealth: () -> Unit = {}) {
     // re-counts so the card flips back to "Nothing imported", and toasts the result.
     if (confirmDeleteApple) {
         NoopConfirmDialog(
-            title = "Remove Apple Health imported data?",
-            text = "This permanently deletes everything imported from Apple Health: heart rate, HRV, sleep, steps, workouts and more. Your live strap data is untouched. This can't be undone.",
-            confirmLabel = "Remove",
+            title = stringResource(R.string.datasources_remove_apple_title),
+            text = stringResource(R.string.datasources_remove_apple_text),
+            confirmLabel = stringResource(R.string.datasources_remove),
             destructive = true,
             onConfirm = {
                 confirmDeleteApple = false
@@ -482,7 +481,7 @@ fun DataSourcesScreen(vm: AppViewModel, onOpenAppleHealth: () -> Unit = {}) {
                     refreshCounts()
                     vm.loadWorkouts()
                     busy = false
-                    Toast.makeText(context, "Removed Apple Health imported data.", Toast.LENGTH_LONG).show()
+                    Toast.makeText(context, context.getString(R.string.datasources_removed_apple), Toast.LENGTH_LONG).show()
                 }
             },
             onDismiss = { confirmDeleteApple = false },
@@ -493,11 +492,9 @@ fun DataSourcesScreen(vm: AppViewModel, onOpenAppleHealth: () -> Unit = {}) {
     // flips back to empty, reloads workouts, and toasts. Other sources are untouched.
     if (confirmDeleteWhoop) {
         NoopConfirmDialog(
-            title = "Remove all WHOOP history?",
-            text = "This permanently deletes every day, workout and sample stored under WHOOP on this " +
-                "phone — imported history and anything synced from a strap. Apple Health and Health " +
-                "Connect are untouched. This can't be undone.",
-            confirmLabel = "Remove",
+            title = stringResource(R.string.datasources_remove_whoop_title),
+            text = stringResource(R.string.datasources_remove_whoop_text),
+            confirmLabel = stringResource(R.string.datasources_remove),
             destructive = true,
             onConfirm = {
                 confirmDeleteWhoop = false
@@ -515,7 +512,7 @@ fun DataSourcesScreen(vm: AppViewModel, onOpenAppleHealth: () -> Unit = {}) {
                     refreshCounts()
                     vm.loadWorkouts()
                     busy = false
-                    Toast.makeText(context, "Removed stored WHOOP history.", Toast.LENGTH_LONG).show()
+                    Toast.makeText(context, context.getString(R.string.datasources_removed_whoop), Toast.LENGTH_LONG).show()
                 }
             },
             onDismiss = { confirmDeleteWhoop = false },

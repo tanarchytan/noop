@@ -1,0 +1,286 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <!-- InsightsScreen -->
+    <string name="insights_title">Insights</string>
+    <string name="insights_subtitle">Interrogate what affects what.</string>
+    <string name="insights_what_moves_you_overline">What moves you ›</string>
+    <string name="insights_what_moves_you_blurb">Ranked, lag-aware: which of your habits actually move your Charge, plus your personal alcohol/caffeine dose-response.</string>
+    <string name="insights_what_moves_you_a11y">What moves you. Ranked patterns in your own data, and your dose-response.</string>
+    <string name="insights_prefilled_from_last_night">Pre-filled from last night. Tap to confirm or change.</string>
+    <string name="insights_reading_journal">Reading your journal and outcomes…</string>
+    <string name="insights_no_journal_title">Insights read your journal and outcomes</string>
+    <string name="insights_no_journal_body">Log behaviours above. After a few days of answers, NOOP ranks how each one moves your recovery, HRV and sleep. Importing a WHOOP export (which includes its journal) backfills history instantly.</string>
+
+    <!-- Insights: outcome names - the segmented control and every sentence -->
+    <string name="insights_outcome_charge">Charge</string>
+    <string name="insights_outcome_hrv">HRV</string>
+    <string name="insights_outcome_rest">Rest</string>
+    <string name="insights_outcome_rhr">RHR</string>
+    <string name="insights_outcome_resting_hr">Resting HR</string>
+
+    <!-- Insights: Activity Cost -->
+    <string name="insights_activity_cost">Activity Cost</string>
+    <string name="insights_activity_cost_overline">What each activity costs your recovery</string>
+    <string name="insights_activity_cost_empty">Tag a few sessions of the same activity and NOOP will learn its personal recovery cost.</string>
+    <string name="insights_pill_solid">SOLID</string>
+    <string name="insights_pill_building">BUILDING</string>
+    <string name="insights_activity_next_morning">Next morning</string>
+    <string name="insights_activity_charge_pts">Charge · %1$s pts</string>
+    <string name="insights_activity_rest_baseline">Rest baseline</string>
+    <string name="insights_activity_untouched_days">untouched days</string>
+    <string name="insights_activity_bounce_back">Bounce back</string>
+    <string name="insights_activity_to_baseline">to baseline</string>
+    <string name="insights_activity_not_within_7d">not within 7d</string>
+    <string name="insights_activity_sessions">Sessions</string>
+    <string name="insights_caption_solid">solid</string>
+    <string name="insights_caption_building">building</string>
+
+    <!-- Insights: Behaviour Effects -->
+    <string name="insights_behaviour_effects">Behaviour Effects</string>
+    <string name="insights_what_moves_your">What moves your %1$s</string>
+    <string name="insights_behaviour_no_overlap">Not enough overlap between your journal answers and %1$s to measure an effect yet. Keep logging. Effects need days both with and without each behaviour.</string>
+    <string name="insights_pill_significant">SIGNIFICANT</string>
+    <string name="insights_pill_exploratory">EXPLORATORY</string>
+    <string name="insights_with">With</string>
+    <string name="insights_without">Without</string>
+    <string name="insights_n_count">n = %1$d</string>
+    <string name="insights_effect_size">Effect size</string>
+    <string name="insights_cohens_d">d = %1$s</string>
+    <string name="insights_effect_no_difference">On days you logged %1$s, your %2$s was no different.</string>
+    <string name="insights_effect_sentence">On days you logged %1$s, your %2$s averaged %3$s, %4$s than the %5$s on days you didn\'t.</string>
+    <string name="insights_direction_higher">higher</string>
+    <string name="insights_direction_lower">lower</string>
+    <string name="insights_magnitude_negligible">negligible</string>
+    <string name="insights_magnitude_small">small</string>
+    <string name="insights_magnitude_moderate">moderate</string>
+    <string name="insights_magnitude_large">large</string>
+
+    <!-- Insights: Personal Experiment -->
+    <string name="insights_personal_experiment">Personal Experiment</string>
+    <string name="insights_experiment_overline">N-of-1 protocol</string>
+    <string name="insights_experiment_setup">Setup</string>
+    <string name="insights_experiment_complete">COMPLETE</string>
+    <string name="insights_experiment_day_of">DAY %1$d/%2$d</string>
+    <string name="insights_experiment_run_title">Run a clean personal test</string>
+    <string name="insights_pill_local_only">LOCAL ONLY</string>
+    <string name="insights_experiment_run_blurb">Pick one behaviour you log, one outcome, and a short window. NOOP compares the days you log the behaviour against your behaviour-free days before the start.</string>
+    <string name="insights_experiment_needs_behaviour">Log at least one behaviour above before starting an experiment.</string>
+    <string name="insights_field_behaviour">Behaviour</string>
+    <string name="insights_field_outcome">Outcome</string>
+    <string name="insights_field_window">Window</string>
+    <string name="insights_window_7d">7d</string>
+    <string name="insights_window_14d">14d</string>
+    <string name="insights_window_28d">28d</string>
+    <string name="insights_experiment_start">Start experiment</string>
+    <string name="insights_experiment_behaviour_a11y">Experiment behaviour: %1$s</string>
+    <string name="insights_experiment_started">Started %1$s · testing %2$s</string>
+    <string name="insights_experiment_needs_days">Collect a few logged intervention days before reading the effect. Baseline and imported metrics stay in place.</string>
+    <string name="insights_experiment_flat">%1$s is flat against baseline on logged intervention days.</string>
+    <string name="insights_experiment_reading">%1$s is %2$s %3$s than baseline on days you logged this behaviour.</string>
+    <string name="insights_direction_better">better</string>
+    <string name="insights_direction_worse">worse</string>
+    <string name="insights_measure_baseline">Baseline</string>
+    <string name="insights_days_without_it">%1$d days without it</string>
+    <string name="insights_measure_intervention">Intervention</string>
+    <string name="insights_logged_days">%1$d logged days</string>
+    <string name="insights_measure_change">Change</string>
+    <string name="insights_delta_needs_baseline">needs baseline + logged days</string>
+    <string name="insights_delta_vs_baseline">vs behaviour-free baseline</string>
+    <string name="insights_measure_compliance">Compliance</string>
+    <string name="insights_logged_today">logged today</string>
+    <string name="insights_not_logged_today">not logged today</string>
+    <string name="insights_experiment_progress_a11y">Experiment progress %1$d of %2$d days</string>
+    <string name="insights_experiment_days_of">%1$d of %2$d days</string>
+    <string name="insights_signal_stronger">STRONGER SIGNAL</string>
+    <string name="insights_signal_early">EARLY SIGNAL</string>
+    <string name="insights_signal_low">LOW SIGNAL</string>
+    <string name="insights_mark_done">Mark done</string>
+    <string name="insights_mark_done_a11y">Mark done today</string>
+    <string name="insights_skip">Skip</string>
+    <string name="insights_skip_a11y">Skip today</string>
+    <string name="insights_end">End</string>
+    <string name="insights_end_a11y">End experiment</string>
+
+    <!-- Insights: Metric Relationships -->
+    <string name="insights_metric_relationships">Metric Relationships</string>
+    <string name="insights_pearson_r">Pearson r</string>
+    <string name="insights_relationships_empty">Not enough overlapping history to correlate your metrics yet.</string>
+    <string name="insights_r_value">r = %1$s</string>
+    <string name="insights_p_significant">p &lt; 0.05</string>
+    <string name="insights_p_ns">n.s.</string>
+    <string name="insights_rel_hrv_charge">HRV ↔ Charge</string>
+    <string name="insights_rel_hrv_charge_blurb">Heart-rate variability as the engine behind your charge score.</string>
+    <string name="insights_rel_rest_charge">Rest ↔ Charge</string>
+    <string name="insights_rel_rest_charge_blurb">How closely a good night tracks next-morning charge.</string>
+    <string name="insights_rel_rhr_charge">Resting HR ↔ Charge</string>
+    <string name="insights_rel_rhr_charge_blurb">A lower resting heart rate usually means a higher charge.</string>
+    <string name="insights_rel_charge_next_day">Charge → Next-day charge</string>
+    <string name="insights_rel_charge_next_day_blurb">How much one day\'s charge carries into the next.</string>
+    <string name="insights_relationship_sentence">%1$s %2$s relationship (r = %3$s, n = %4$d).</string>
+    <string name="insights_direction_positive">positive</string>
+    <string name="insights_direction_negative">negative</string>
+    <string name="insights_direction_flat">flat</string>
+
+    <!-- Correlations - the shared correlation-strength phrase (Insights, Mind) -->
+    <string name="insights_strength_negligible">No</string>
+    <string name="insights_strength_weak">A weak</string>
+    <string name="insights_strength_moderate">A moderate</string>
+    <string name="insights_strength_strong">A strong</string>
+    <string name="insights_strength_very_strong">A very strong</string>
+
+    <!-- InsightsHubScreen -->
+    <string name="insights_hub_subtitle">Patterns in your own data: association, not cause.</string>
+    <string name="insights_ranked_your_data">Ranked · your data</string>
+    <string name="insights_movers_no_overlap">Not enough overlap between your journal answers and %1$s yet. Keep logging. Each behaviour needs days both with and without it before NOOP can read its effect.</string>
+    <string name="insights_how_to_read">How to read this</string>
+    <string name="insights_how_to_read_body">Everything here is a pattern in your own logged days: an association with an effect size and confidence, never a cause or a diagnosis. Population patterns are shown as “typical” and are always overridden by your own data once you have enough of it. Approximations, not WHOOP’s scores; not a medical device.</string>
+    <string name="insights_confidence_solid">Solid</string>
+    <string name="insights_confidence_building">Building</string>
+    <string name="insights_confidence_calibrating">Calibrating</string>
+
+    <!-- Insights Hub: dose-response -->
+    <string name="insights_dose_response">Dose-response</string>
+    <string name="insights_dose_response_overline">Personal curve · prior-shrunk</string>
+    <string name="insights_dose_response_empty">Log alcohol or late caffeine with an amount and NOOP fits a personal dose curve: how much each extra unit tends to move your numbers. Until then it shows typical patterns, clearly labelled as not yet yours.</string>
+    <string name="insights_alcohol">Alcohol</string>
+    <string name="insights_caffeine">Caffeine</string>
+    <string name="insights_dose_unit_drink">drink</string>
+    <string name="insights_dose_unit_later_step">later step</string>
+    <string name="insights_dose_label_drink">drink</string>
+    <string name="insights_dose_label_late_caffeine">late-caffeine</string>
+    <string name="insights_dose_prior_dominated">Based mostly on typical patterns, not yet yours. Log a few more %1$s days and this becomes yours.</string>
+    <string name="insights_dose_contradicts_prior">In your data so far, this doesn’t move your %1$s the way it typically does.</string>
+    <string name="insights_dose_timing_proxy">“Dose” here is timing (later in the day = stronger), not milligrams.</string>
+    <string name="insights_dose_curve_a11y">Dose-response curve. Each extra %1$s lines up with about %2$s on %3$s, %4$s</string>
+    <string name="insights_dose_basis_typical">typical patterns.</string>
+    <string name="insights_dose_basis_yours">your own data.</string>
+    <string name="insights_forecast_tonight">Tonight’s forecast</string>
+    <string name="insights_forecast_timing">Timing forecast</string>
+    <string name="insights_dose_time_am">AM</string>
+    <string name="insights_dose_time_noon">Noon</string>
+    <string name="insights_dose_time_afternoon">2pm+</string>
+    <string name="insights_dose_time_evening">Eve</string>
+    <string name="insights_dose_no_extra">no extra</string>
+    <string name="insights_dose_plus_drinks">%1$d+ drinks</string>
+    <string name="insights_dose_drinks">%1$d drinks</string>
+    <string name="insights_forecast_no_extra">No extra tonight. Your %1$s forecast stays where it is.</string>
+    <string name="insights_forecast_basis_typical">based on typical patterns</string>
+    <string name="insights_forecast_basis_yours">based on %1$d of your %2$s days</string>
+    <string name="insights_forecast_sentence">A %1$s tonight tends to line up with about %2$s %3$s on tomorrow’s %4$s for you, %5$s.</string>
+    <string name="insights_dose_per_extra">Per extra %1$s</string>
+    <string name="insights_dose_typical">typical</string>
+    <string name="insights_dose_your_data">your data</string>
+    <string name="insights_dose_tomorrows">Tomorrow’s %1$s</string>
+    <string name="insights_dose_projected">projected · %1$s</string>
+    <string name="insights_dose_needs_recent_day">needs a recent day</string>
+
+    <!-- CompareScreen -->
+    <string name="compare_title">Compare</string>
+    <string name="compare_subtitle">Overlay signals, draw conclusions.</string>
+    <string name="compare_metrics">Metrics</string>
+    <string name="compare_metrics_overline">Overlay 2-4 signals</string>
+    <string name="compare_range_w">W</string>
+    <string name="compare_range_m">M</string>
+    <string name="compare_range_3m">3M</string>
+    <string name="compare_range_6m">6M</string>
+    <string name="compare_range_1y">1Y</string>
+    <string name="compare_range_all">ALL</string>
+    <string name="compare_phrase_week">the last 7 days</string>
+    <string name="compare_phrase_month">30 days</string>
+    <string name="compare_phrase_quarter">3 months</string>
+    <string name="compare_phrase_half">6 months</string>
+    <string name="compare_phrase_year">1 year</string>
+    <string name="compare_phrase_all">all history</string>
+    <string name="compare_reading">reading</string>
+    <string name="compare_readings">readings</string>
+    <string name="compare_range_caption">%1$d %2$s across %3$d · %4$s</string>
+    <string name="compare_range_caption_widened">%1$s · sparse widened</string>
+    <string name="compare_add_metric_a11y">Add a metric to compare</string>
+    <string name="compare_add_metric">Add metric</string>
+    <string name="compare_max_four">Max 4</string>
+    <string name="compare_remove_metric_a11y">Remove %1$s</string>
+    <string name="compare_nothing_selected">Nothing selected yet.</string>
+    <string name="compare_pick_two">Pick at least two metrics above to overlay them and read how they move together.</string>
+    <string name="compare_needs_history_title">Compare needs at least two metrics with history</string>
+    <string name="compare_needs_history_body">Import your WHOOP export in Data Sources first.</string>
+    <string name="compare_reading_history">Reading your history…</string>
+    <string name="compare_silent_joiner">" and "</string>
+    <string name="compare_silent_series_one">No readings for %1$s in this window, so it is not drawn.</string>
+    <string name="compare_silent_series_many">No readings for %1$s in this window, so they are not drawn.</string>
+
+    <!-- Compare: overlay chart -->
+    <string name="compare_overlay">Overlay</string>
+    <string name="compare_series_count">%1$d series</string>
+    <string name="compare_normalized_overlay">Normalized overlay</string>
+    <string name="compare_normalized_within">Each line min-max normalized within %1$s</string>
+    <string name="compare_normalized_widened">Each line min-max normalized · sparse series widened past %1$s</string>
+    <string name="compare_axis_low">low</string>
+    <string name="compare_axis_high">high</string>
+
+    <!-- Compare: pairwise correlations -->
+    <string name="compare_how_they_move">How They Move Together</string>
+    <string name="compare_pearson_r">Pearson r · %1$s</string>
+    <string name="compare_pair_count_one">%1$d pair</string>
+    <string name="compare_pair_count_many">%1$d pairs</string>
+    <string name="compare_no_overlap">Not enough overlapping days between these metrics in %1$s. Widen the range.</string>
+    <string name="compare_pair_title">%1$s ↔ %2$s</string>
+    <string name="compare_pair_footnote">%1$d overlapping days · %2$s %3$s correlation</string>
+    <string name="compare_insight_head">%1$s ↔ %2$s: r = %3$s (%4$s %5$s) over %6$d shared days.</string>
+    <string name="compare_insight_no_relationship">%1$s No clear relationship - they move largely independently.</string>
+    <string name="compare_insight_link">%1$s When %2$s rises, %3$s %4$s - a %5$s %6$s link.</string>
+    <string name="compare_verb_tends_to_rise">tends to rise</string>
+    <string name="compare_verb_tends_to_fall">tends to fall</string>
+    <string name="compare_strength_negligible">negligible</string>
+    <string name="compare_strength_weak">weak</string>
+    <string name="compare_strength_moderate">moderate</string>
+    <string name="compare_strength_strong">strong</string>
+    <string name="compare_strength_very_strong">very strong</string>
+    <string name="compare_direction_positive">positive</string>
+    <string name="compare_direction_negative">negative</string>
+
+    <!-- Compare: metric catalog - category headers -->
+    <string name="compare_category_heart">Heart</string>
+    <string name="compare_category_charge">Charge</string>
+    <string name="compare_category_rest">Rest</string>
+    <string name="compare_category_effort">Effort</string>
+    <string name="compare_category_health">Health</string>
+    <string name="compare_category_nutrition">Nutrition</string>
+    <string name="compare_category_mind">Mind</string>
+
+    <!-- Compare: metric catalog - titles -->
+    <string name="compare_metric_avg_hr">Average Heart Rate</string>
+    <string name="compare_metric_max_hr">Max Heart Rate</string>
+    <string name="compare_metric_energy_kcal">Calories</string>
+    <string name="compare_metric_vo2max">VO₂ Max</string>
+    <string name="compare_metric_fitness_age">Fitness Age</string>
+    <string name="compare_metric_vo2max_est">VO₂ Max (estimated)</string>
+    <string name="compare_metric_vitality">Vitality</string>
+    <string name="compare_metric_body_age">Body Age</string>
+    <string name="compare_metric_recovery">Charge</string>
+    <string name="compare_metric_hrv">Heart Rate Variability</string>
+    <string name="compare_metric_rhr">Resting Heart Rate</string>
+    <string name="compare_metric_resp_rate">Respiratory Rate</string>
+    <string name="compare_metric_spo2">SpO₂</string>
+    <string name="compare_metric_skin_temp">Skin Temperature</string>
+    <string name="compare_metric_sleep_performance">Rest</string>
+    <string name="compare_metric_sleep_total_min">Asleep Time</string>
+    <string name="compare_metric_sleep_efficiency">Sleep Efficiency</string>
+    <string name="compare_metric_sleep_deep_min">Deep (SWS) Sleep</string>
+    <string name="compare_metric_sleep_rem_min">REM Sleep</string>
+    <string name="compare_metric_sleep_light_min">Light Sleep</string>
+    <string name="compare_metric_strain">Effort</string>
+    <string name="compare_metric_steps">Steps</string>
+    <string name="compare_metric_steps_est">Steps (estimated)</string>
+    <string name="compare_metric_active_kcal">Active Energy</string>
+    <string name="compare_metric_weight">Weight</string>
+    <string name="compare_metric_body_fat">Body Fat</string>
+    <string name="compare_metric_lean_mass">Lean Body Mass</string>
+    <string name="compare_metric_bmi">BMI</string>
+    <string name="compare_metric_bmi_note">From Health Connect this is derived from your weight and profile height.</string>
+    <string name="compare_metric_calories_in">Calories In</string>
+    <string name="compare_metric_protein_g">Protein</string>
+    <string name="compare_metric_carbs_g">Carbs</string>
+    <string name="compare_metric_fat_g">Fat</string>
+    <string name="compare_metric_mood">Mood</string>
+</resources>

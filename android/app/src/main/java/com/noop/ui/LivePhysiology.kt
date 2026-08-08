@@ -1,5 +1,6 @@
 package com.noop.ui
 
+import androidx.annotation.StringRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -16,10 +17,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import kotlin.math.roundToInt
 import kotlin.math.sqrt
+import com.noop.R
 import com.noop.ble.LiveState
 
 /**
@@ -42,24 +45,24 @@ internal fun MaxHrZoneCard(hrMax: Int, zone5Bpm: Int, coachingOn: Boolean) {
                 // inline, "≥ 168 bpm" was the one figure too wide for its half and truncated mid-word.
                 StatTile(
                     modifier = Modifier.weight(1f),
-                    label = "Max HR",
+                    label = stringResource(R.string.vitals_live_max_hr),
                     value = "$hrMax",
                     caption = "bpm",
                     accent = Palette.textPrimary,
                 )
                 StatTile(
                     modifier = Modifier.weight(1f),
-                    label = "Top zone",
+                    label = stringResource(R.string.vitals_live_top_zone),
                     value = "≥ $zone5Bpm",
                     caption = "bpm",
                     accent = if (coachingOn) Palette.accent else Palette.textTertiary,
                 )
             }
             Text(
-                if (coachingOn)
-                    "Strap buzzes when you climb into Zone 5 (≥ $zone5Bpm bpm). Manage it in Automations → Haptic coaching."
-                else
-                    "Turn on HR-zone coaching in Automations for a wrist buzz when you reach Zone 5 (≥ $zone5Bpm bpm).",
+                stringResource(
+                    if (coachingOn) R.string.vitals_live_coaching_on else R.string.vitals_live_coaching_off,
+                    zone5Bpm,
+                ),
                 style = NoopType.footnote,
                 color = Palette.textTertiary,
                 modifier = Modifier.fillMaxWidth(),
@@ -81,8 +84,11 @@ internal fun PhysiologyStack(live: LiveState, activeConnection: Boolean) {
     Column(verticalArrangement = Arrangement.spacedBy(Metrics.space16)) {
         Row(verticalAlignment = Alignment.Top, modifier = Modifier.fillMaxWidth()) {
             Column(modifier = Modifier.weight(1f)) {
-                Overline("Live Physiology")
-                Text(connectionModeDetail(live, activeConnection), style = NoopType.headline, color = Palette.textPrimary)
+                Overline(stringResource(R.string.vitals_live_physiology))
+                Text(
+                    stringResource(connectionModeDetail(live, activeConnection)),
+                    style = NoopType.headline, color = Palette.textPrimary,
+                )
             }
             if (rmssd != null) {
                 Column(horizontalAlignment = Alignment.End) {
@@ -98,12 +104,14 @@ internal fun PhysiologyStack(live: LiveState, activeConnection: Boolean) {
             // stream. Mirrors the macOS liveProofMetric(offline:).
             LiveProofMetric(
                 Modifier.weight(1f), "R-R",
-                if (activeConnection) (live.rr.lastOrNull()?.let { "$it ms" } ?: "—") else "Offline",
+                if (activeConnection) (live.rr.lastOrNull()?.let { "$it ms" } ?: "—")
+                else stringResource(R.string.vitals_live_offline),
                 Palette.metricCyan, offline = !activeConnection,
             )
             LiveProofMetric(
-                Modifier.weight(1f), "Event",
-                if (activeConnection) (live.lastEvent ?: "—") else "Offline",
+                Modifier.weight(1f), stringResource(R.string.vitals_live_event),
+                if (activeConnection) (live.lastEvent ?: "—")
+                else stringResource(R.string.vitals_live_offline),
                 Palette.statusWarning, offline = !activeConnection,
             )
         }
@@ -148,8 +156,11 @@ private fun RRStrip(rrRecent: List<Int>) {
             }
         }
         Text(
-            if (values.isEmpty()) "Waiting for R-R intervals."
-            else "Recent intervals: " + values.takeLast(5).joinToString(" · ") + " ms",
+            if (values.isEmpty()) stringResource(R.string.vitals_live_waiting_rr)
+            else stringResource(
+                R.string.vitals_live_recent_intervals,
+                values.takeLast(5).joinToString(" · "),
+            ),
             style = NoopType.footnote,
             color = Palette.textTertiary,
             maxLines = 1,
@@ -190,11 +201,12 @@ private fun LiveProofMetric(modifier: Modifier, label: String, value: String, ti
  *  WHOOP encrypted bond, so `bonded`/`activeConnection` never trip. Twin of the iOS LiveView.ringStreaming. */
 private fun ringStreaming(live: LiveState): Boolean = live.connected && live.streamingLiveHR
 
-private fun connectionModeDetail(live: LiveState, activeConnection: Boolean): String = when {
-    activeConnection && live.encryptedBond -> "Full strap stream is active."
-    activeConnection || ringStreaming(live) -> "Heart rate stream is active."
-    live.connected -> "Radio connected, stream not yet trusted."
-    else -> "No live stream."
+@StringRes
+private fun connectionModeDetail(live: LiveState, activeConnection: Boolean): Int = when {
+    activeConnection && live.encryptedBond -> R.string.vitals_live_mode_full
+    activeConnection || ringStreaming(live) -> R.string.vitals_live_mode_hr
+    live.connected -> R.string.vitals_live_mode_untrusted
+    else -> R.string.vitals_live_mode_none
 }
 
 /** A "feel" RMSSD over the recent R-R buffer — time-gap-unaware on purpose (a live indicator, not a

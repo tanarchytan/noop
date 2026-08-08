@@ -1,5 +1,6 @@
 package com.noop.ui
 
+import androidx.annotation.StringRes
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -37,10 +38,12 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.noop.R
 import com.noop.analytics.DoseCurvePoint
 import com.noop.analytics.DoseResponse
 import com.noop.analytics.DoseResponseEngine
@@ -96,11 +99,18 @@ fun InsightsHubScreen(vm: AppViewModel) {
     // PERF: lazy scaffold — each section (and its standalone Spacer, a real child of the eager
     // `spacedBy(20.dp)` Column) becomes one `item { }`, so the LazyColumn's matching `spacedBy(20.dp)`
     // reproduces identical spacing and only on-screen sections compose + are semantics-walked.
-    LazyScreenScaffold(title = "Insights", subtitle = "Patterns in your own data: association, not cause.") {
+    LazyScreenScaffold(
+        title = stringResource(R.string.insights_title),
+        subtitle = stringResource(R.string.insights_hub_subtitle),
+    ) {
         if (!state.loaded) {
             item {
             NoopCard {
-                Text("Reading your journal and outcomes…", style = NoopType.subhead, color = Palette.textTertiary)
+                Text(
+                    stringResource(R.string.insights_reading_journal),
+                    style = NoopType.subhead,
+                    color = Palette.textTertiary,
+                )
             }
             }
             return@LazyScreenScaffold
@@ -120,12 +130,9 @@ fun InsightsHubScreen(vm: AppViewModel) {
         item {
         NoopCard {
             Column(verticalArrangement = Arrangement.spacedBy(Metrics.space6)) {
-                Overline("How to read this", color = Palette.textTertiary)
+                Overline(stringResource(R.string.insights_how_to_read), color = Palette.textTertiary)
                 Text(
-                    "Everything here is a pattern in your own logged days: an association with an " +
-                        "effect size and confidence, never a cause or a diagnosis. Population patterns " +
-                        "are shown as “typical” and are always overridden by your own data once " +
-                        "you have enough of it. Approximations, not WHOOP’s scores; not a medical device.",
+                    stringResource(R.string.insights_how_to_read_body),
                     style = NoopType.footnote,
                     color = Palette.textTertiary,
                 )
@@ -146,23 +153,23 @@ private fun MoversSection(
     Column(verticalArrangement = Arrangement.spacedBy(Metrics.gap)) {
         // Header then the outcome selector on its own row below it — on a ~360dp phone the pill
         // control can't share a row with the weighted header without compressing (matches macOS).
+        val labels = HashMap<InsightsOutcome, String>()
+        for (o in InsightsOutcome.entries) labels[o] = stringResource(o.labelRes)
         SectionHeader(
-            "What moves your ${outcome.outcomeName.lowercase(Locale.US)}",
-            overline = "Ranked · your data",
+            stringResource(R.string.insights_what_moves_your, outcome.lowerName()),
+            overline = stringResource(R.string.insights_ranked_your_data),
         )
         SegmentedPillControl(
             items = InsightsOutcome.entries.toList(),
             selection = outcome,
-            label = { it.label },
+            label = { labels.getValue(it) },
             onSelect = onOutcome,
         )
 
         if (ranked.isEmpty()) {
             NoopCard {
                 Text(
-                    "Not enough overlap between your journal answers and " +
-                        "${outcome.outcomeName.lowercase(Locale.US)} yet. Keep logging. Each behaviour " +
-                        "needs days both with and without it before NOOP can read its effect.",
+                    stringResource(R.string.insights_movers_no_overlap, outcome.lowerName()),
                     style = NoopType.subhead,
                     color = Palette.textTertiary,
                 )
@@ -229,18 +236,18 @@ private fun MoverCard(r: RankedEffect, outcome: InsightsOutcome) {
             Row(horizontalArrangement = Arrangement.spacedBy(Metrics.gap)) {
                 StatTile(
                     modifier = Modifier.weight(1f),
-                    label = "With",
+                    label = stringResource(R.string.insights_with),
                     value = outcome.format(e.meanWith),
-                    caption = "n = ${e.nWith}",
+                    caption = stringResource(R.string.insights_n_count, e.nWith),
                     accent = tintColor,
                     delta = deltaText,
                     deltaColor = tintColor,
                 )
                 StatTile(
                     modifier = Modifier.weight(1f),
-                    label = "Without",
+                    label = stringResource(R.string.insights_without),
                     value = outcome.format(e.meanWithout),
-                    caption = "n = ${e.nWithout}",
+                    caption = stringResource(R.string.insights_n_count, e.nWithout),
                     accent = Palette.textPrimary,
                 )
             }
@@ -248,9 +255,9 @@ private fun MoverCard(r: RankedEffect, outcome: InsightsOutcome) {
             HorizontalDivider(color = Palette.hairline)
 
             Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Overline("Effect size", modifier = Modifier.weight(1f))
+                Overline(stringResource(R.string.insights_effect_size), modifier = Modifier.weight(1f))
                 Text(
-                    String.format(Locale.US, "d = %.2f", e.cohensD),
+                    stringResource(R.string.insights_cohens_d, String.format(Locale.US, "%.2f", e.cohensD)),
                     style = NoopType.captionNumber,
                     color = tintColor,
                 )
@@ -266,13 +273,14 @@ private fun MoverCard(r: RankedEffect, outcome: InsightsOutcome) {
 @Composable
 private fun DoseSection(cards: List<DoseCardData>) {
     Column(verticalArrangement = Arrangement.spacedBy(Metrics.gap)) {
-        SectionHeader("Dose-response", overline = "Personal curve · prior-shrunk")
+        SectionHeader(
+            stringResource(R.string.insights_dose_response),
+            overline = stringResource(R.string.insights_dose_response_overline),
+        )
         if (cards.isEmpty()) {
             NoopCard {
                 Text(
-                    "Log alcohol or late caffeine with an amount and NOOP fits a personal dose curve: " +
-                        "how much each extra unit tends to move your numbers. Until then it shows " +
-                        "typical patterns, clearly labelled as not yet yours.",
+                    stringResource(R.string.insights_dose_response_empty),
                     style = NoopType.subhead,
                     color = Palette.textSecondary,
                 )
@@ -299,12 +307,18 @@ private fun DoseResponseCard(card: DoseCardData) {
             Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Icon(card.icon, contentDescription = null, tint = domain.color, modifier = Modifier.size(Metrics.iconSmall))
                 Spacer(Modifier.width(Metrics.space8))
-                Text(card.title, style = NoopType.headline, color = Palette.textPrimary, modifier = Modifier.weight(1f))
+                Text(
+                    stringResource(card.titleRes),
+                    style = NoopType.headline,
+                    color = Palette.textPrimary,
+                    modifier = Modifier.weight(1f),
+                )
                 ConfidencePill(r.confidence)
             }
 
             Text(r.sentence(), style = NoopType.body, color = Palette.textSecondary)
 
+            val curveA11y = curveDescription(card, r)
             // The prior-shrunk curve.
             DoseCurveChart(
                 points = r.curve,
@@ -312,25 +326,30 @@ private fun DoseResponseCard(card: DoseCardData) {
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(132.dp)
-                    .clearAndSetSemantics { contentDescription = curveDescription(card, r) },
+                    .clearAndSetSemantics { contentDescription = curveA11y },
             )
 
             if (r.priorDominated) {
                 HonestyBanner(
-                    "Based mostly on typical patterns, not yet yours. Log a few more " +
-                        "${card.unitLabel.lowercase(Locale.US)} days and this becomes yours.",
+                    stringResource(
+                        R.string.insights_dose_prior_dominated,
+                        stringResource(card.unitLabelRes).lowercase(Locale.US),
+                    ),
                     accent = Palette.textTertiary,
                 )
             } else if (r.contradictsPrior) {
                 HonestyBanner(
-                    "In your data so far, this doesn’t move your ${card.outcomeName} the way it typically does.",
+                    stringResource(
+                        R.string.insights_dose_contradicts_prior,
+                        stringResource(card.outcomeNameRes),
+                    ),
                     accent = Palette.statusPositive,
                 )
             }
 
             if (card.timingProxy) {
                 Text(
-                    "“Dose” here is timing (later in the day = stronger), not milligrams.",
+                    stringResource(R.string.insights_dose_timing_proxy),
                     style = NoopType.footnote,
                     color = Palette.textTertiary,
                 )
@@ -354,16 +373,18 @@ private fun DamageForecast(
     val fromDose = 1
     val delta = r.delta(fromDose, previewDose)
     val projected = card.latestOutcome?.let { max(0.0, min(card.outcomeCeiling, it + delta)) }
-    val stepLabel = if (previewDose <= 1) "no extra" else "$previewDose${card.dosePlusSuffix(previewDose)}"
+    val stepLabel = doseStepLabel(card, previewDose)
+    val choiceLabels = HashMap<Int, String>()
+    for (d in card.doseChoices) choiceLabels[d] = doseChoiceLabel(card, d)
 
     Column(verticalArrangement = Arrangement.spacedBy(Metrics.gap)) {
         // Overline then the dose stepper on its own row — the choices (0…max+) overflow a ~360dp
         // phone if they share a row with the overline (matches the macOS fix).
-        Overline(card.forecastOverline, modifier = Modifier.fillMaxWidth())
+        Overline(stringResource(card.forecastOverlineRes), modifier = Modifier.fillMaxWidth())
         SegmentedPillControl(
             items = card.doseChoices,
             selection = previewDose,
-            label = { card.doseChoiceLabel(it) },
+            label = { choiceLabels.getValue(it) },
             onSelect = onPreviewDose,
         )
 
@@ -376,20 +397,53 @@ private fun DamageForecast(
         Row(horizontalArrangement = Arrangement.spacedBy(Metrics.gap)) {
             StatTile(
                 modifier = Modifier.weight(1f),
-                label = "Per extra ${card.unitNoun}",
+                label = stringResource(R.string.insights_dose_per_extra, stringResource(card.unitNounRes)),
                 value = signed(r.perUnit, card.outcomeSuffix),
-                caption = if (r.priorDominated) "typical" else "your data",
+                caption = stringResource(
+                    if (r.priorDominated) {
+                        R.string.insights_dose_typical
+                    } else {
+                        R.string.insights_dose_your_data
+                    },
+                ),
                 accent = if (r.perUnit < 0) Palette.statusCritical else Palette.statusPositive,
             )
             StatTile(
                 modifier = Modifier.weight(1f),
-                label = "Tomorrow’s ${card.outcomeName}",
+                label = stringResource(R.string.insights_dose_tomorrows, stringResource(card.outcomeNameRes)),
                 value = projected?.let { "${it.roundToInt()}${card.outcomeSuffix}" } ?: "—",
-                caption = if (projected != null) "projected · $stepLabel" else "needs a recent day",
+                caption = if (projected != null) {
+                    stringResource(R.string.insights_dose_projected, stepLabel)
+                } else {
+                    stringResource(R.string.insights_dose_needs_recent_day)
+                },
                 accent = domain.color,
             )
         }
     }
+}
+
+/** The dose stepper's segment caption: numeric for alcohol, time-of-day for caffeine. */
+@Composable
+private fun doseChoiceLabel(card: DoseCardData, d: Int): String = when (card.behavior) {
+    DosedBehavior.ALCOHOL -> if (d >= DoseResponseEngine.maxCurveDose) "$d+" else "$d"
+    DosedBehavior.CAFFEINE -> stringResource(
+        when (d) {
+            0 -> R.string.insights_dose_time_am
+            1 -> R.string.insights_dose_time_noon
+            2 -> R.string.insights_dose_time_afternoon
+            else -> R.string.insights_dose_time_evening
+        },
+    )
+}
+
+/** The previewed step as the forecast words it ("no extra" / "3+ drinks" / "2"). */
+@Composable
+private fun doseStepLabel(card: DoseCardData, dose: Int): String = when {
+    dose <= 1 -> stringResource(R.string.insights_dose_no_extra)
+    card.behavior != DosedBehavior.ALCOHOL -> "$dose"
+    dose >= DoseResponseEngine.maxCurveDose -> stringResource(R.string.insights_dose_plus_drinks, dose)
+    else -> stringResource(R.string.insights_dose_drinks, dose)
 }
 
 @Composable
@@ -411,12 +465,12 @@ private fun HonestyBanner(text: String, accent: Color) {
 /** The confidence-lifecycle pill: Solid (positive/gold) / Building (accent) / Calibrating (neutral). */
 @Composable
 private fun ConfidencePill(c: ScoreConfidence) {
-    val (label, tone) = when (c) {
-        ScoreConfidence.SOLID -> "Solid" to StrandTone.Positive
-        ScoreConfidence.BUILDING -> "Building" to StrandTone.Accent
-        ScoreConfidence.CALIBRATING -> "Calibrating" to StrandTone.Neutral
+    val (labelRes, tone) = when (c) {
+        ScoreConfidence.SOLID -> R.string.insights_confidence_solid to StrandTone.Positive
+        ScoreConfidence.BUILDING -> R.string.insights_confidence_building to StrandTone.Accent
+        ScoreConfidence.CALIBRATING -> R.string.insights_confidence_calibrating to StrandTone.Neutral
     }
-    StatePill(label, tone = tone, showsDot = false)
+    StatePill(stringResource(labelRes), tone = tone, showsDot = false)
 }
 
 // MARK: - Dose curve chart
@@ -482,23 +536,39 @@ private fun DoseCurveChart(points: List<DoseCurvePoint>, accent: Color, modifier
 // MARK: - Outcome
 
 internal enum class InsightsOutcome(
-    val label: String,
+    @StringRes val labelRes: Int,
+    /** The engine spelling; [nameRes] is what the user reads. */
     val outcomeName: String,
+    @StringRes val nameRes: Int,
     val key: String,
     val higherIsBetter: Boolean,
     val domain: DomainTheme,
     val pick: (DailyMetric) -> Double?,
     val format: (Double) -> String,
 ) {
-    Recovery("Charge", "Charge", "recovery", true, DomainTheme.Charge, { it.recovery }, { "${it.roundToInt()}%" }),
-    Hrv("HRV", "HRV", "hrv", true, DomainTheme.Rest, { it.avgHrv }, { "${it.roundToInt()} ms" }),
+    Recovery(
+        R.string.insights_outcome_charge, "Charge", R.string.insights_outcome_charge,
+        "recovery", true, DomainTheme.Charge, { it.recovery }, { "${it.roundToInt()}%" },
+    ),
+    Hrv(
+        R.string.insights_outcome_hrv, "HRV", R.string.insights_outcome_hrv,
+        "hrv", true, DomainTheme.Rest, { it.avgHrv }, { "${it.roundToInt()} ms" },
+    ),
     // Efficiency is stored as a 0..1 fraction; lift it to the 0..100 scale the other outcomes use.
     Sleep(
-        "Rest", "Rest", "sleep_performance", true, DomainTheme.Rest,
+        R.string.insights_outcome_rest, "Rest", R.string.insights_outcome_rest,
+        "sleep_performance", true, DomainTheme.Rest,
         { row -> row.efficiency?.let { if (it <= 1.0) it * 100.0 else it } }, { "${it.roundToInt()}%" },
     ),
-    Rhr("RHR", "Resting HR", "rhr", false, DomainTheme.Stress, { it.restingHr?.toDouble() }, { "${it.roundToInt()} bpm" }),
+    Rhr(
+        R.string.insights_outcome_rhr, "Resting HR", R.string.insights_outcome_resting_hr,
+        "rhr", false, DomainTheme.Stress, { it.restingHr?.toDouble() }, { "${it.roundToInt()} bpm" },
+    ),
 }
+
+/** The selected outcome's display name, lowercased the way every hub sentence uses it. */
+@Composable
+private fun InsightsOutcome.lowerName(): String = stringResource(nameRes).lowercase(Locale.US)
 
 // MARK: - Dose card view-data
 
@@ -508,33 +578,41 @@ internal data class DoseCardData(
     val latestOutcome: Double?,
 ) {
     val id: String get() = behavior.raw
+    /** The engine spelling ("Charge" / "HRV"); [outcomeNameRes] is what the user reads. */
     val outcomeName: String get() = response.outcome
-    val title: String get() = if (behavior == DosedBehavior.ALCOHOL) "Alcohol" else "Caffeine"
+    @get:StringRes
+    val outcomeNameRes: Int
+        get() = if (outcomeName == "HRV") R.string.insights_outcome_hrv else R.string.insights_outcome_charge
+    @get:StringRes
+    val titleRes: Int
+        get() = if (behavior == DosedBehavior.ALCOHOL) R.string.insights_alcohol else R.string.insights_caffeine
     val icon get() = if (behavior == DosedBehavior.ALCOHOL) Icons.Filled.LocalBar else Icons.Filled.Coffee
-    val unitNoun: String get() = if (behavior == DosedBehavior.ALCOHOL) "drink" else "later step"
-    val unitLabel: String get() = if (behavior == DosedBehavior.ALCOHOL) "drink" else "late-caffeine"
+    @get:StringRes
+    val unitNounRes: Int
+        get() = if (behavior == DosedBehavior.ALCOHOL) {
+            R.string.insights_dose_unit_drink
+        } else {
+            R.string.insights_dose_unit_later_step
+        }
+    @get:StringRes
+    val unitLabelRes: Int
+        get() = if (behavior == DosedBehavior.ALCOHOL) {
+            R.string.insights_dose_label_drink
+        } else {
+            R.string.insights_dose_label_late_caffeine
+        }
     val timingProxy: Boolean get() = behavior == DosedBehavior.CAFFEINE
     val outcomeSuffix: String get() = if (outcomeName == "HRV") " ms" else "%"
     val outcomeCeiling: Double get() = if (outcomeName == "HRV") 400.0 else 100.0
-    val forecastOverline: String
-        get() = if (behavior == DosedBehavior.ALCOHOL) "Tonight’s forecast" else "Timing forecast"
+    @get:StringRes
+    val forecastOverlineRes: Int
+        get() = if (behavior == DosedBehavior.ALCOHOL) {
+            R.string.insights_forecast_tonight
+        } else {
+            R.string.insights_forecast_timing
+        }
 
     val doseChoices: List<Int> get() = (0..DoseResponseEngine.maxCurveDose).toList()
-
-    fun doseChoiceLabel(d: Int): String = when (behavior) {
-        DosedBehavior.ALCOHOL -> if (d >= DoseResponseEngine.maxCurveDose) "$d+" else "$d"
-        DosedBehavior.CAFFEINE -> when (d) {
-            0 -> "AM"
-            1 -> "Noon"
-            2 -> "2pm+"
-            else -> "Eve"
-        }
-    }
-
-    fun dosePlusSuffix(d: Int): String =
-        if (behavior == DosedBehavior.ALCOHOL) {
-            if (d >= DoseResponseEngine.maxCurveDose) "+ drinks" else " drinks"
-        } else ""
 }
 
 // MARK: - View-model
@@ -632,25 +710,49 @@ internal class InsightsHubViewModel {
 
 // MARK: - Copy helpers
 
+@Composable
 private fun forecastSentence(card: DoseCardData, previewDose: Int, delta: Double, stepLabel: String): String {
+    val outcomeLower = stringResource(card.outcomeNameRes).lowercase(Locale.US)
     if (previewDose <= 1) {
-        return "No extra tonight. Your ${card.outcomeName.lowercase(Locale.US)} forecast stays where it is."
+        return stringResource(R.string.insights_forecast_no_extra, outcomeLower)
     }
     val mag = abs(delta).roundToInt()
-    val dir = if (delta <= 0) "lower" else "higher"
+    val dir = stringResource(
+        if (delta <= 0) R.string.insights_direction_lower else R.string.insights_direction_higher,
+    )
     val basis = if (card.response.priorDominated) {
-        "based on typical patterns"
+        stringResource(R.string.insights_forecast_basis_typical)
     } else {
-        "based on ${card.response.nUser} of your ${card.unitLabel.lowercase(Locale.US)} days"
+        stringResource(
+            R.string.insights_forecast_basis_yours,
+            card.response.nUser,
+            stringResource(card.unitLabelRes).lowercase(Locale.US),
+        )
     }
-    return "A $stepLabel tonight tends to line up with about $mag${card.outcomeSuffix} $dir on " +
-        "tomorrow’s ${card.outcomeName.lowercase(Locale.US)} for you, $basis."
+    return stringResource(
+        R.string.insights_forecast_sentence,
+        stepLabel,
+        "$mag${card.outcomeSuffix}",
+        dir,
+        outcomeLower,
+        basis,
+    )
 }
 
-private fun curveDescription(card: DoseCardData, r: DoseResponse): String =
-    "Dose-response curve. Each extra ${card.unitNoun} lines up with about " +
-        "${signed(r.perUnit, card.outcomeSuffix)} on ${card.outcomeName}, " +
-        if (r.priorDominated) "typical patterns." else "your own data."
+@Composable
+private fun curveDescription(card: DoseCardData, r: DoseResponse): String = stringResource(
+    R.string.insights_dose_curve_a11y,
+    stringResource(card.unitNounRes),
+    signed(r.perUnit, card.outcomeSuffix),
+    stringResource(card.outcomeNameRes),
+    stringResource(
+        if (r.priorDominated) {
+            R.string.insights_dose_basis_typical
+        } else {
+            R.string.insights_dose_basis_yours
+        },
+    ),
+)
 
 private fun signed(v: Double, suffix: String): String {
     val mag = abs(v)
@@ -660,9 +762,12 @@ private fun signed(v: Double, suffix: String): String {
     return "$sign$body$suffix"
 }
 
-private fun effectMagnitudeWord(d: Double): String = when {
-    abs(d) < 0.2 -> "negligible"
-    abs(d) < 0.5 -> "small"
-    abs(d) < 0.8 -> "moderate"
-    else -> "large"
-}
+@Composable
+private fun effectMagnitudeWord(d: Double): String = stringResource(
+    when {
+        abs(d) < 0.2 -> R.string.insights_magnitude_negligible
+        abs(d) < 0.5 -> R.string.insights_magnitude_small
+        abs(d) < 0.8 -> R.string.insights_magnitude_moderate
+        else -> R.string.insights_magnitude_large
+    },
+)

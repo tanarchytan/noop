@@ -36,14 +36,26 @@ class FirstRunFlowStructureTest {
 
         val onboarding = File(ui, "OnboardingScreen.kt").readText()
         assertFalse("stale terms comments must stay deleted", onboarding.contains("Terms clickwrap"))
-        assertTrue("first CTA must begin setup", onboarding.contains("Bluetooth(\"Begin setup\")"))
-        assertTrue("welcome title changed", onboarding.contains("title = \"Welcome to NOOP\""))
-        assertTrue("ownership line changed", onboarding.contains("subtitle = \"Your wearables. Your data.\""))
-        assertTrue("wearable card added", onboarding.contains("title = \"Connect your wearable\""))
+        // The copy moved to string resources; the wording is still pinned, now where it lives.
+        val devicesRes = File(app, "src/main/res/values/strings_devices.xml").readText()
         assertTrue(
-            "wearable card copy changed",
-            onboarding.contains("message = \"NOOP uses Bluetooth to find and connect to your nearby devices.\""),
+            "first CTA must begin setup",
+            onboarding.contains("Bluetooth(R.string.onboarding_cta_begin)") &&
+                devicesRes.contains("<string name=\"onboarding_cta_begin\">Begin setup</string>"),
         )
+        mapOf(
+            "onboarding_welcome_title" to "Welcome to NOOP",
+            "onboarding_welcome_subtitle" to "Your wearables. Your data.",
+            "onboarding_bluetooth_card_title" to "Connect your wearable",
+            "onboarding_bluetooth_card_body"
+                to "NOOP uses Bluetooth to find and connect to your nearby devices.",
+        ).forEach { (key, copy) ->
+            assertTrue(
+                "welcome copy changed: $key = \"$copy\"",
+                devicesRes.contains("<string name=\"$key\">$copy</string>"),
+            )
+            assertTrue("welcome step must render $key", onboarding.contains("R.string.$key"))
+        }
         assertTrue("first Back action must be hidden", onboarding.contains("if (canGoBack) {"))
         assertTrue(
             "first CTA must span the footer",
@@ -55,16 +67,25 @@ class FirstRunFlowStructureTest {
     fun notificationStepUsesConciseGenericCopy() {
         val app = appDir()
         assumeTrue("Android app sources unavailable", app != null)
+        // The wording is pinned in the resource file it moved to, and the screen is pinned to the keys,
+        // so neither the copy nor the wiring can drift without this failing.
         val onboarding = File(app, "src/main/java/com/noop/ui/OnboardingScreen.kt").readText()
-
-        listOf(
-            "title = \"Notifications\"",
-            "subtitle = \"Get connection status and wrist alerts.\"",
-            "title = \"Stay connected\"",
-            "message = \"A quiet notification keeps NOOP connected. Your data stays current.\"",
-            "Checkline(\"Strain nudges and smart alarms appear here.\")",
-            "Checkline(\"When asked, allow notifications.\")",
-        ).forEach { assertTrue("missing approved notification copy: $it", onboarding.contains(it)) }
+        val res = File(app, "src/main/res/values/strings_devices.xml").readText()
+        mapOf(
+            "onboarding_notifications_title" to "Notifications",
+            "onboarding_notifications_subtitle" to "Get connection status and wrist alerts.",
+            "onboarding_notifications_card_title" to "Stay connected",
+            "onboarding_notifications_card_body"
+                to "A quiet notification keeps NOOP connected. Your data stays current.",
+            "onboarding_notifications_check_alerts" to "Strain nudges and smart alarms appear here.",
+            "onboarding_notifications_check_allow" to "When asked, allow notifications.",
+        ).forEach { (key, copy) ->
+            assertTrue(
+                "missing approved notification copy: $key = \"$copy\"",
+                res.contains("<string name=\"$key\">$copy</string>"),
+            )
+            assertTrue("notification step must render $key", onboarding.contains("R.string.$key"))
+        }
 
         assertFalse(onboarding.contains("When Android asks"))
         assertFalse(onboarding.contains("Stay in the loop"))

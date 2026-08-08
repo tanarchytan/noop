@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Hydration -->
+    <string name="hydration_title">Hydration</string>
+    <string name="hydration_subtitle">Your fluid intake today, on this phone only.</string>
+    <string name="hydration_sip">Sip</string>
+    <string name="hydration_cup">Cup</string>
+    <string name="hydration_bottle">Bottle</string>
+    <string name="hydration_custom_amount">Custom amount</string>
+    <string name="hydration_container_sizes">Sip %1$d ml · Cup %2$d ml · Bottle %3$d ml</string>
+    <string name="hydration_last_7_days">Last 7 days</string>
+    <string name="hydration_empty_today">No drinks logged yet. Tap Sip, Cup or Bottle to start.</string>
+    <string name="hydration_logged_today">Logged today</string>
+    <string name="hydration_undo_last">Undo last (%1$d ml)</string>
+    <string name="hydration_clear_today">Clear today</string>
+    <string name="hydration_goal_disclaimer">A simple goal that adjusts to your effort. General wellness guidance, not medical advice.</string>
+    <string name="hydration_log_container">Log %1$s</string>
+    <string name="hydration_no_history">No history yet.</string>
+    <string name="hydration_no_history_7d">No drinks logged in the last 7 days.</string>
+    <string name="hydration_millilitres">Millilitres (ml)</string>
+    <string name="hydration_custom_hint">Enter any amount from 1 to %1$d ml.</string>
+    <string name="hydration_log">Log</string>
+</resources>

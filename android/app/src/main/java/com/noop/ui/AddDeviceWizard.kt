@@ -46,12 +46,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.noop.R
 import com.noop.ble.ExperimentalBrand
 import com.noop.ble.OuraLiveSource
 import com.noop.ble.WhoopBleClient
@@ -206,13 +208,14 @@ fun AddDeviceWizard(
         }
     }
 
+    val deviceFallback = stringResource(R.string.wizard_device_fallback)
     val confirmAdvertisedName = run {
-        pickedWhoop?.let { return@run it.name?.takeIf { n -> n.isNotBlank() } ?: (type?.title ?: "Device") }
-        type?.title ?: "Device"
+        pickedWhoop?.let { return@run it.name?.takeIf { n -> n.isNotBlank() } ?: (type?.title ?: deviceFallback) }
+        type?.title ?: deviceFallback
     }
     val confirmName = nameDraft.trim().ifEmpty { confirmAdvertisedName }
     // The generic Confirm step is only ever reached by a WHOOP type now (Oura confirms in its own flow).
-    val confirmBrand = if (type?.isWhoop == true) "WHOOP" else "Device"
+    val confirmBrand = if (type?.isWhoop == true) "WHOOP" else deviceFallback
     val confirmRssi = pickedWhoop?.rssi ?: -70
 
     fun finishAdd(makeActive: Boolean) {
@@ -329,7 +332,7 @@ fun AddDeviceWizard(
                     IconButton(onClick = { goBack() }, modifier = Modifier.size(28.dp)) {
                         Icon(
                             Icons.AutoMirrored.Filled.KeyboardArrowLeft,
-                            contentDescription = "Back",
+                            contentDescription = stringResource(R.string.wizard_back),
                             tint = Palette.textSecondary,
                             modifier = Modifier.size(22.dp),
                         )
@@ -343,7 +346,12 @@ fun AddDeviceWizard(
                     }
                 }
                 IconButton(onClick = { stopAllScans(); onClose() }, modifier = Modifier.size(28.dp)) {
-                    Icon(Icons.Filled.Close, contentDescription = "Close", tint = Palette.textTertiary, modifier = Modifier.size(20.dp))
+                    Icon(
+                        Icons.Filled.Close,
+                        contentDescription = stringResource(R.string.wizard_close),
+                        tint = Palette.textTertiary,
+                        modifier = Modifier.size(20.dp),
+                    )
                 }
             }
         },
@@ -443,12 +451,12 @@ fun AddDeviceWizard(
     // After adding, offer to make the new device active.
     if (askMakeActive) {
         NoopConfirmDialog(
-            title = "Make this your active device?",
-            text = "Make $confirmName your active device now? It will provide your live data. You can change this any time.",
-            confirmLabel = "Make active",
+            title = stringResource(R.string.wizard_make_active_title),
+            text = stringResource(R.string.wizard_make_active_text, confirmName),
+            confirmLabel = stringResource(R.string.wizard_make_active),
             onConfirm = { askMakeActive = false; finishAdd(makeActive = true) },
             onDismiss = { askMakeActive = false; finishAdd(makeActive = false) },
-            cancelLabel = "Not now",
+            cancelLabel = stringResource(R.string.wizard_not_now),
         )
     }
 
@@ -456,9 +464,9 @@ fun AddDeviceWizard(
     // moves to the honest Adopting progress, then registers the ring. Mirrors the macOS adopt confirm.
     if (ouraConfirmAdopt) {
         NoopConfirmDialog(
-            title = "Take over this ring?",
-            text = "NOOP will install its own key on the ring and become its owner. The Oura app will no longer control this ring. This is intended and it cannot be undone from NOOP.",
-            confirmLabel = "Take over",
+            title = stringResource(R.string.wizard_take_over_title),
+            text = stringResource(R.string.wizard_take_over_text),
+            confirmLabel = stringResource(R.string.wizard_take_over_confirm),
             destructive = true,
             onConfirm = {
                 ouraConfirmAdopt = false
@@ -487,35 +495,43 @@ fun AddDeviceWizard(
     }
 }
 
+@Composable
 private fun headerTitle(step: WizardStep, type: DeviceType?): String = when (step) {
-    WizardStep.Type -> "Add a device"
-    WizardStep.Prep -> type?.title ?: "Add a device"
-    WizardStep.Pick -> "Pick your device"
-    WizardStep.Confirm -> "Name & confirm"
+    WizardStep.Type -> stringResource(R.string.wizard_title_add_device)
+    WizardStep.Prep -> type?.title ?: stringResource(R.string.wizard_title_add_device)
+    WizardStep.Pick -> stringResource(R.string.wizard_title_pick_device)
+    WizardStep.Confirm -> stringResource(R.string.wizard_title_name_confirm)
 }
 
+@Composable
 private fun headerSubtitle(step: WizardStep): String? = when (step) {
-    WizardStep.Type -> "What are you adding?"
-    WizardStep.Prep -> "Get it ready, then scan."
-    WizardStep.Pick -> "Tap the one that's yours."
+    WizardStep.Type -> stringResource(R.string.wizard_subtitle_type)
+    WizardStep.Prep -> stringResource(R.string.wizard_subtitle_prep)
+    WizardStep.Pick -> stringResource(R.string.wizard_subtitle_pick)
     WizardStep.Confirm -> null
 }
 
 // MARK: - Oura header titles (the adopt sub-flow's own steps)
 
+@Composable
 private fun ouraHeaderTitle(step: OuraStep, advanced: Boolean): String = when (step) {
-    OuraStep.Gate -> if (advanced) "Advanced: use your own key" else "Oura ring"
-    OuraStep.Prep -> "Get your ring ready"
-    OuraStep.Pick -> "Pick the ring"
-    OuraStep.Confirm -> "Your ring"
-    OuraStep.Adopting -> "Taking over your ring"
-    OuraStep.Failed -> "Could not take over"
+    OuraStep.Gate ->
+        if (advanced) stringResource(R.string.wizard_oura_title_advanced) else DeviceType.Oura.title
+    OuraStep.Prep -> stringResource(R.string.wizard_oura_title_prep)
+    OuraStep.Pick -> stringResource(R.string.wizard_oura_title_pick)
+    OuraStep.Confirm -> stringResource(R.string.wizard_oura_title_confirm)
+    OuraStep.Adopting -> stringResource(R.string.wizard_oura_title_adopting)
+    OuraStep.Failed -> stringResource(R.string.wizard_oura_title_failed)
 }
 
+@Composable
 private fun ouraHeaderSubtitle(step: OuraStep, advanced: Boolean): String? = when (step) {
-    OuraStep.Gate -> if (advanced) "Power users only." else "Take it over locally. Beta."
-    OuraStep.Prep -> "Reset it in the Oura app first."
-    OuraStep.Pick -> "Tap the one that's yours."
+    OuraStep.Gate ->
+        stringResource(
+            if (advanced) R.string.wizard_oura_subtitle_advanced else R.string.wizard_oura_subtitle_gate,
+        )
+    OuraStep.Prep -> stringResource(R.string.wizard_oura_subtitle_prep)
+    OuraStep.Pick -> stringResource(R.string.wizard_subtitle_pick)
     OuraStep.Confirm -> null
     OuraStep.Adopting -> null
     OuraStep.Failed -> null
@@ -526,15 +542,23 @@ private fun ouraHeaderSubtitle(step: OuraStep, advanced: Boolean): String? = whe
 @Composable
 private fun TypeStep(onPick: (DeviceType) -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(Metrics.space10)) {
-        TypeRow(Icons.Filled.Watch, DeviceType.Whoop.title, "4.0, 5.0 or MG. NOOP works out which it is") {
+        TypeRow(
+            Icons.Filled.Watch,
+            DeviceType.Whoop.title,
+            stringResource(R.string.wizard_type_whoop_subtitle),
+        ) {
             onPick(DeviceType.Whoop)
         }
 
         // EXPERIMENTAL tier - clearly labelled, opt-in, best-effort. Honest about what it can actually
         // read; never fabricates data.
-        Overline("Experimental", modifier = Modifier.padding(top = 8.dp))
+        Overline(stringResource(R.string.wizard_experimental), modifier = Modifier.padding(top = 8.dp))
         ExperimentalTierNote()
-        TypeRow(Icons.Filled.Circle, DeviceType.Oura.title, "Take over your ring locally. Beta. This replaces the Oura app.") {
+        TypeRow(
+            Icons.Filled.Circle,
+            DeviceType.Oura.title,
+            stringResource(R.string.wizard_type_oura_subtitle),
+        ) {
             onPick(DeviceType.Oura)
         }
     }
@@ -555,8 +579,7 @@ private fun ExperimentalTierNote() {
     ) {
         Icon(Icons.Filled.Science, contentDescription = null, tint = Palette.statusWarning, modifier = Modifier.size(18.dp))
         Text(
-            "Experimental, best-effort support. We're still testing these, so they might not connect on " +
-                "every device. They never make up data, and they'll tell you honestly when live isn't possible.",
+            stringResource(R.string.wizard_experimental_note),
             style = NoopType.footnote,
             color = Palette.statusWarning,
         )
@@ -565,13 +588,14 @@ private fun ExperimentalTierNote() {
 
 @Composable
 private fun TypeRow(icon: ImageVector, title: String, subtitle: String, onClick: () -> Unit) {
+    val rowLabel = stringResource(R.string.wizard_type_row_a11y, title, subtitle)
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(14.dp))
             .frostedCardSurface(cornerRadius = 14.dp)
             .clickable(onClick = onClick)
-            .semantics { contentDescription = "$title. $subtitle" }
+            .semantics { contentDescription = rowLabel }
             .padding(16.dp),
         horizontalArrangement = Arrangement.spacedBy(Metrics.space14),
         verticalAlignment = Alignment.CenterVertically,
@@ -615,14 +639,12 @@ private fun OnePhoneWarningCard() {
         )
         Column(verticalArrangement = Arrangement.spacedBy(Metrics.space4)) {
             Text(
-                "One phone at a time",
+                stringResource(R.string.wizard_one_phone_title),
                 style = NoopType.headline,
                 color = Palette.statusWarning,
             )
             Text(
-                "A WHOOP strap bonds to a single device. While it's connected to NOOP it won't stream " +
-                    "to the official WHOOP app, and the other way round. It's reversible: pair it in the " +
-                    "other app whenever you want it back.",
+                stringResource(R.string.wizard_one_phone_body),
                 style = NoopType.footnote,
                 color = Palette.statusWarning,
             )
@@ -634,6 +656,7 @@ private fun OnePhoneWarningCard() {
 
 @Composable
 private fun PrepStep(type: DeviceType, onScan: () -> Unit) {
+    val scanLabel = stringResource(R.string.wizard_scan_for_a11y, type.title)
     Column(verticalArrangement = Arrangement.spacedBy(Metrics.space16)) {
         Row(horizontalArrangement = Arrangement.spacedBy(Metrics.space14), verticalAlignment = Alignment.CenterVertically) {
             Icon(
@@ -659,7 +682,7 @@ private fun PrepStep(type: DeviceType, onScan: () -> Unit) {
             ) {
                 Icon(Icons.Filled.Science, contentDescription = null, tint = Palette.statusWarning, modifier = Modifier.size(18.dp))
                 Text(
-                    "WHOOP 4.0 is fully supported. 5.0 / MG support is newer and still experimental.",
+                    stringResource(R.string.wizard_whoop_support_note),
                     style = NoopType.footnote,
                     color = Palette.statusWarning,
                 )
@@ -697,33 +720,33 @@ private fun PrepStep(type: DeviceType, onScan: () -> Unit) {
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(12.dp))
                 .background(Palette.accent)
-                .semantics { contentDescription = "Scan for ${type.title}" },
+                .semantics { contentDescription = scanLabel },
         ) {
-            Text("Scan", style = NoopType.headline, color = Palette.goldDeepText)
+            Text(stringResource(R.string.wizard_scan), style = NoopType.headline, color = Palette.goldDeepText)
         }
     }
 }
 
-/** Type-specific "get it ready" guidance - the point of the branching wizard. US English copy. */
+/** Type-specific "get it ready" guidance - the point of the branching wizard. */
+@Composable
 private fun prepInstructions(type: DeviceType): List<String> = when (type) {
     DeviceType.Whoop -> listOf(
-        "Put your WHOOP on your wrist and make sure it's awake.",
-        "A strap bonds to one device at a time, so unpair it from the official WHOOP app first.",
-        "NOOP will look for it nearby and work out whether it is a 4.0, a 5.0 or an MG.",
+        stringResource(R.string.wizard_prep_whoop_wear),
+        stringResource(R.string.wizard_prep_whoop_unpair),
+        stringResource(R.string.wizard_prep_whoop_detect),
     )
     // Oura runs the factory-reset-and-adopt prep inside OuraFlow (ouraPrepInstructions), so this generic
     // branch is unreached for Oura; kept for the exhaustive when.
-    DeviceType.Oura -> ouraPrepInstructions
+    DeviceType.Oura -> ouraPrepInstructions()
 }
 
-/** The factory-reset prep checklist for the Oura adopt flow (Step B of the onboarding UX spec). No
- *  em-dashes; matches the iOS copy. */
-private val ouraPrepInstructions: List<String> = listOf(
-    "Open the official Oura app and remove this ring (Oura calls it \"factory reset\" or \"unpair and " +
-        "reset\"). This wipes the ring's owner so NOOP can take it over.",
-    "Keep the ring on the charger or on your finger so it stays awake.",
-    "Make sure the Oura app is fully closed. A ring answers one owner at a time.",
-    "When the ring is reset and waking, tap Scan below.",
+/** The factory-reset prep checklist for the Oura adopt flow (Step B of the onboarding UX spec). */
+@Composable
+private fun ouraPrepInstructions(): List<String> = listOf(
+    stringResource(R.string.wizard_oura_prep_reset),
+    stringResource(R.string.wizard_oura_prep_awake),
+    stringResource(R.string.wizard_oura_prep_close_app),
+    stringResource(R.string.wizard_oura_prep_scan),
 )
 
 // MARK: - Step 3 - pick from the live scan
@@ -802,13 +825,13 @@ private fun OuraGateStep(
     onUseFileImport: () -> Unit,
     onAdvanced: () -> Unit,
 ) {
+    val consentLabel = stringResource(R.string.wizard_oura_consent_a11y)
+    val continueLabel = stringResource(R.string.wizard_continue)
     Column(verticalArrangement = Arrangement.spacedBy(Metrics.space16)) {
         // Beta banner (amber heads-up pattern).
         OuraAmberPanel(
-            "Beta. Read this first.",
-            "Local Oura support is new and we cannot test every ring here. It may not connect on your " +
-                "ring, and it can change between updates. NOOP never makes up a number. If something does " +
-                "not work, it will tell you plainly.",
+            stringResource(R.string.wizard_oura_beta_title),
+            stringResource(R.string.wizard_oura_beta_body),
         )
 
         // What you get / what you lose, two stacked sections on a frosted card.
@@ -820,25 +843,22 @@ private fun OuraGateStep(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(Metrics.space14),
         ) {
-            Overline("What you get")
+            Overline(stringResource(R.string.wizard_oura_what_you_get))
             OuraBulletList(
                 listOf(
-                    "Your ring talks to NOOP only, fully offline, no Oura account.",
-                    "Live heart rate, and HRV when the ring can measure it.",
-                    "Overnight sleep staging, resting heart rate, skin-temperature trend, motion and " +
-                        "battery, read straight off the ring.",
-                    "NOOP's own Charge, Effort and Rest, computed on your device from published methods.",
+                    stringResource(R.string.wizard_oura_get_offline),
+                    stringResource(R.string.wizard_oura_get_live),
+                    stringResource(R.string.wizard_oura_get_overnight),
+                    stringResource(R.string.wizard_oura_get_scores),
                 ),
             )
-            Overline("What you lose")
+            Overline(stringResource(R.string.wizard_oura_what_you_lose))
             OuraBulletList(
                 listOf(
-                    "The Oura app and your Oura account stop working with this ring. This is the point. " +
-                        "You are replacing Oura.",
-                    "Oura's own Readiness and Sleep scores. NOOP does not copy them. It computes its own.",
-                    "Anything that needs Oura's cloud (web dashboard, Oura's coaching, shared circles).",
-                    "Likely your Oura warranty and support, because the ring is no longer paired to Oura. " +
-                        "Treat this as permanent.",
+                    stringResource(R.string.wizard_oura_lose_app),
+                    stringResource(R.string.wizard_oura_lose_scores),
+                    stringResource(R.string.wizard_oura_lose_cloud),
+                    stringResource(R.string.wizard_oura_lose_warranty),
                 ),
             )
         }
@@ -850,10 +870,7 @@ private fun OuraGateStep(
                 .clip(RoundedCornerShape(12.dp))
                 .background(Palette.statusCritical.copy(alpha = 0.10f))
                 .clickable { onConsent(!consent) }
-                .semantics {
-                    contentDescription =
-                        "I understand this disconnects the ring from Oura and that NOOP cannot undo it for me."
-                }
+                .semantics { contentDescription = consentLabel }
                 .padding(12.dp),
             horizontalArrangement = Arrangement.spacedBy(Metrics.space10),
             verticalAlignment = Alignment.Top,
@@ -865,8 +882,7 @@ private fun OuraGateStep(
                 modifier = Modifier.size(20.dp),
             )
             Text(
-                "I understand this disconnects the ring from Oura and that NOOP cannot undo it for me. To " +
-                    "go back to Oura I would factory-reset the ring again and set it up in the Oura app.",
+                stringResource(R.string.wizard_oura_consent),
                 style = NoopType.footnote,
                 color = Palette.statusCritical,
             )
@@ -880,21 +896,21 @@ private fun OuraGateStep(
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(12.dp))
                 .background(if (consent) Palette.accent else Palette.surfaceInset)
-                .semantics { contentDescription = "Continue" },
+                .semantics { contentDescription = continueLabel },
         ) {
             Text(
-                "Continue",
+                continueLabel,
                 style = NoopType.headline,
                 color = if (consent) Palette.goldDeepText else Palette.textTertiary,
             )
         }
         // Secondary: keep the Oura app (non-destructive file import) - always one tap away.
         TextButton(onClick = onUseFileImport, modifier = Modifier.fillMaxWidth()) {
-            Text("Keep the Oura app instead (import a file)", style = NoopType.subhead, color = Palette.accent)
+            Text(stringResource(R.string.wizard_oura_keep_app), style = NoopType.subhead, color = Palette.accent)
         }
         // Tertiary: Advanced power-user key path.
         TextButton(onClick = onAdvanced, modifier = Modifier.fillMaxWidth()) {
-            Text("Advanced: I already have my ring's key", style = NoopType.footnote, color = Palette.accent)
+            Text(stringResource(R.string.wizard_oura_advanced_link), style = NoopType.footnote, color = Palette.accent)
         }
     }
 }
@@ -909,15 +925,14 @@ private fun OuraAdvancedKeyStep(
 ) {
     val parsed = parseHexKey(keyDraft)
     val showError = keyDraft.isNotBlank() && parsed == null
+    val keyLabel = stringResource(R.string.wizard_oura_key_a11y)
+    val scanRing = stringResource(R.string.wizard_oura_scan_ring)
     Column(verticalArrangement = Arrangement.spacedBy(Metrics.space16)) {
         OuraAmberPanel(
-            "For power users.",
-            "If you extracted your ring's 16-byte key from a previous Oura setup, NOOP can talk to the " +
-                "ring with that key WITHOUT resetting it, so the Oura app keeps working too. NOOP does not " +
-                "extract keys for you and cannot help you find one. If you do not know what this means, go " +
-                "back and use the standard setup or file import.",
+            stringResource(R.string.wizard_oura_advanced_title),
+            stringResource(R.string.wizard_oura_advanced_body),
         )
-        Overline("Ring key (32 hex characters)")
+        Overline(stringResource(R.string.wizard_oura_key_label))
         OutlinedTextField(
             value = keyDraft,
             onValueChange = { onKeyDraft(it) },
@@ -929,13 +944,17 @@ private fun OuraAdvancedKeyStep(
             colors = wizardFieldColors(),
             modifier = Modifier
                 .fillMaxWidth()
-                .semantics { contentDescription = "Ring key, 32 hex characters" },
+                .semantics { contentDescription = keyLabel },
         )
         if (showError) {
-            Text("That is not a 32-character hex key.", style = NoopType.footnote, color = Palette.statusCritical)
+            Text(
+                stringResource(R.string.wizard_oura_key_error),
+                style = NoopType.footnote,
+                color = Palette.statusCritical,
+            )
         }
         Text(
-            "NOOP stores this key only on this device, in the same place it stores your paired bands.",
+            stringResource(R.string.wizard_oura_key_storage),
             style = NoopType.footnote,
             color = Palette.textTertiary,
         )
@@ -946,10 +965,10 @@ private fun OuraAdvancedKeyStep(
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(12.dp))
                 .background(if (parsed != null) Palette.accent else Palette.surfaceInset)
-                .semantics { contentDescription = "Scan for your ring" },
+                .semantics { contentDescription = scanRing },
         ) {
             Text(
-                "Scan for your ring",
+                scanRing,
                 style = NoopType.headline,
                 color = if (parsed != null) Palette.goldDeepText else Palette.textTertiary,
             )
@@ -961,6 +980,7 @@ private fun OuraAdvancedKeyStep(
 
 @Composable
 private fun OuraPrepStep(advanced: Boolean, onScan: () -> Unit) {
+    val scanRing = stringResource(R.string.wizard_oura_scan_ring)
     Column(verticalArrangement = Arrangement.spacedBy(Metrics.space16)) {
         Column(
             modifier = Modifier
@@ -970,7 +990,7 @@ private fun OuraPrepStep(advanced: Boolean, onScan: () -> Unit) {
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(Metrics.space12),
         ) {
-            ouraPrepInstructions.forEach { line ->
+            ouraPrepInstructions().forEach { line ->
                 Row(horizontalArrangement = Arrangement.spacedBy(Metrics.space10), verticalAlignment = Alignment.Top) {
                     Icon(Icons.Filled.Check, contentDescription = null, tint = Palette.accent, modifier = Modifier.size(18.dp))
                     Text(line, style = NoopType.body, color = Palette.textSecondary)
@@ -981,9 +1001,8 @@ private fun OuraPrepStep(advanced: Boolean, onScan: () -> Unit) {
         // does not reset the ring, so it skips the "force-quit Oura" framing).
         if (!advanced) {
             OuraAmberPanel(
-                "A ring talks to one owner at a time.",
-                "If the Oura app is still running it will hold the ring and adoption will fail. Force-quit " +
-                    "Oura, then scan.",
+                stringResource(R.string.wizard_oura_single_owner_title),
+                stringResource(R.string.wizard_oura_single_owner_body),
             )
         }
         TextButton(
@@ -992,9 +1011,9 @@ private fun OuraPrepStep(advanced: Boolean, onScan: () -> Unit) {
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(12.dp))
                 .background(Palette.accent)
-                .semantics { contentDescription = "Scan for your ring" },
+                .semantics { contentDescription = scanRing },
         ) {
-            Text("Scan for your ring", style = NoopType.headline, color = Palette.goldDeepText)
+            Text(scanRing, style = NoopType.headline, color = Palette.goldDeepText)
         }
     }
 }
@@ -1012,13 +1031,13 @@ private fun OuraPickStep(
     Column(verticalArrangement = Arrangement.spacedBy(Metrics.gap)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             StatePill(
-                if (scanning) "Searching…" else "Idle",
+                if (scanning) stringResource(R.string.wizard_searching) else stringResource(R.string.wizard_idle),
                 tone = if (scanning) StrandTone.Accent else StrandTone.Neutral,
                 pulsing = scanning,
             )
             Spacer(Modifier.weight(1f))
             TextButton(onClick = onRescan) {
-                Text("Rescan", style = NoopType.subhead, color = Palette.accent)
+                Text(stringResource(R.string.wizard_rescan), style = NoopType.subhead, color = Palette.accent)
             }
         }
         if (discovered.isEmpty()) {
@@ -1031,10 +1050,9 @@ private fun OuraPickStep(
                 verticalArrangement = Arrangement.spacedBy(Metrics.space10),
             ) {
                 CircularProgressIndicator(color = Palette.accent, modifier = Modifier.size(22.dp))
-                Text("Searching…", style = NoopType.body, color = Palette.textPrimary)
+                Text(stringResource(R.string.wizard_searching), style = NoopType.body, color = Palette.textPrimary)
                 Text(
-                    "Not showing up? Make sure you reset the ring in the Oura app and force-quit it, then " +
-                        "tap Rescan. A ring still owned by Oura will not list here.",
+                    stringResource(R.string.wizard_oura_not_showing),
                     style = NoopType.subhead,
                     color = Palette.textSecondary,
                 )
@@ -1065,6 +1083,9 @@ private fun OuraConfirmStep(
     onName: (String) -> Unit,
     onAdopt: () -> Unit,
 ) {
+    val nameLabel = stringResource(R.string.wizard_device_name)
+    val connectLabel = stringResource(R.string.wizard_oura_connect)
+    val takeOverLabel = stringResource(R.string.wizard_oura_take_over)
     Column(verticalArrangement = Arrangement.spacedBy(Metrics.space16)) {
         // The identified ring: gen name + per-gen capability checklist + a Beta pill.
         Column(
@@ -1078,7 +1099,7 @@ private fun OuraConfirmStep(
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Metrics.space10)) {
                 Icon(Icons.Filled.Circle, contentDescription = null, tint = Palette.accent, modifier = Modifier.size(24.dp))
                 Text(gen.displayName, style = NoopType.headline, color = Palette.textPrimary, modifier = Modifier.weight(1f))
-                StatePill("Beta", tone = StrandTone.Warning, showsDot = false)
+                StatePill(stringResource(R.string.wizard_beta), tone = StrandTone.Warning, showsDot = false)
             }
             // Per-gen capability checklist: tick for supported, dash for not-available, * for an estimate.
             ouraCapabilityRows(gen).forEach { (mark, label) ->
@@ -1088,20 +1109,20 @@ private fun OuraConfirmStep(
                 }
             }
             Text(
-                "Beta. * is an on-device estimate.",
+                stringResource(R.string.wizard_oura_estimate_note),
                 style = NoopType.footnote,
                 color = Palette.textTertiary,
             )
         }
 
-        Overline("Name")
+        Overline(stringResource(R.string.wizard_name))
         OutlinedTextField(
             value = name,
             onValueChange = onName,
             singleLine = true,
             placeholder = { Text("Oura ring", style = NoopType.body, color = Palette.textTertiary) },
             colors = wizardFieldColors(),
-            modifier = Modifier.fillMaxWidth().semantics { contentDescription = "Device name" },
+            modifier = Modifier.fillMaxWidth().semantics { contentDescription = nameLabel },
         )
 
         // The adopt action. The destructive (key-install) path is red; the Advanced key path is not
@@ -1113,13 +1134,12 @@ private fun OuraConfirmStep(
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(12.dp))
                     .background(Palette.accent)
-                    .semantics { contentDescription = "Connect to this ring" },
+                    .semantics { contentDescription = connectLabel },
             ) {
-                Text("Connect to this ring", style = NoopType.headline, color = Palette.goldDeepText)
+                Text(connectLabel, style = NoopType.headline, color = Palette.goldDeepText)
             }
             Text(
-                "Both NOOP and the Oura app can use a ring you own by key, but only one can hold the " +
-                    "Bluetooth link at a time.",
+                stringResource(R.string.wizard_oura_connect_note),
                 style = NoopType.footnote,
                 color = Palette.textTertiary,
             )
@@ -1130,9 +1150,9 @@ private fun OuraConfirmStep(
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(12.dp))
                     .background(Palette.statusCritical.copy(alpha = 0.16f))
-                    .semantics { contentDescription = "Take over this ring" },
+                    .semantics { contentDescription = takeOverLabel },
             ) {
-                Text("Take over this ring", style = NoopType.headline, color = Palette.statusCritical)
+                Text(takeOverLabel, style = NoopType.headline, color = Palette.statusCritical)
             }
         }
     }
@@ -1152,11 +1172,14 @@ private fun OuraAdoptingStep() {
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Metrics.space12)) {
             CircularProgressIndicator(color = Palette.accent, modifier = Modifier.size(22.dp))
-            Text("Taking over your ring", style = NoopType.headline, color = Palette.textPrimary)
+            Text(
+                stringResource(R.string.wizard_oura_title_adopting),
+                style = NoopType.headline,
+                color = Palette.textPrimary,
+            )
         }
         Text(
-            "Installing NOOP's key and confirming the ring answers only to NOOP. Keep the ring close and " +
-                "do not open the Oura app.",
+            stringResource(R.string.wizard_oura_adopting_body),
             style = NoopType.subhead,
             color = Palette.textSecondary,
         )
@@ -1175,20 +1198,21 @@ private fun OuraFailedStep(reason: String?, onTryAgain: () -> Unit, onUseFileImp
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(Metrics.space12),
     ) {
-        Text("We could not take over this ring.", style = NoopType.headline, color = Palette.textPrimary)
+        Text(
+            stringResource(R.string.wizard_oura_failed_title),
+            style = NoopType.headline,
+            color = Palette.textPrimary,
+        )
         // Surface the live adopt-failure reason when the source reported one; otherwise the static help.
         // Mirrors the Swift wizard's `model.ouraNeedsPairing ?? <static fallback>`.
         Text(
-            reason ?: "The most common cause is the ring was not fully reset in the Oura app, or the Oura " +
-                "app is still running. Reset the ring again, force-quit Oura, then try once more. If it keeps " +
-                "failing, your ring may be a generation NOOP cannot adopt yet. You can still use file import.",
+            reason ?: stringResource(R.string.wizard_oura_failed_body),
             style = NoopType.subhead,
             color = Palette.textSecondary,
         )
         // Honest recovery reassurance (Swift parity): a failed adopt never bricks the ring.
         Text(
-            "The ring is not bricked. To go back to where you started, factory-reset it again and set it " +
-                "up in the Oura app.",
+            stringResource(R.string.wizard_oura_failed_recovery),
             style = NoopType.subhead,
             color = Palette.textSecondary,
         )
@@ -1200,7 +1224,7 @@ private fun OuraFailedStep(reason: String?, onTryAgain: () -> Unit, onUseFileImp
                     .clip(RoundedCornerShape(12.dp))
                     .background(Palette.accent),
             ) {
-                Text("Try again", style = NoopType.headline, color = Palette.goldDeepText)
+                Text(stringResource(R.string.wizard_try_again), style = NoopType.headline, color = Palette.goldDeepText)
             }
             TextButton(
                 onClick = onUseFileImport,
@@ -1209,7 +1233,7 @@ private fun OuraFailedStep(reason: String?, onTryAgain: () -> Unit, onUseFileImp
                     .clip(RoundedCornerShape(12.dp))
                     .background(Palette.surfaceInset),
             ) {
-                Text("Use file import", style = NoopType.headline, color = Palette.accent)
+                Text(stringResource(R.string.wizard_use_file_import), style = NoopType.headline, color = Palette.accent)
             }
         }
     }
@@ -1257,19 +1281,20 @@ private fun OuraBulletList(lines: List<String>) {
  * carries the same set with the extra caveat that decoding is least proven. Mirrors the macOS capability
  * matrix; no Oura Readiness/Sleep score or absolute SpO2 % ever comes off the ring.
  */
+@Composable
 private fun ouraCapabilityRows(gen: OuraRingGen): List<Pair<String, String>> {
     val live = if (gen == OuraRingGen.GEN5) "*" else "✓"   // newer rings: live HR is best-effort
     val firm = if (gen == OuraRingGen.GEN5) "*" else "✓"   // resting HR / sleep / battery
     return listOf(
-        live to "Live heart rate",
-        "*" to "HRV (rMSSD)",
-        firm to "Resting heart rate",
-        firm to "Sleep staging",
-        "*" to "Skin-temperature trend",
-        "*" to "Steps / motion",
-        firm to "Battery",
-        "-" to "SpO₂ (blood oxygen %)",
-        "-" to "Oura Readiness / Sleep score",
+        live to stringResource(R.string.wizard_cap_live_hr),
+        "*" to stringResource(R.string.wizard_cap_hrv),
+        firm to stringResource(R.string.wizard_cap_resting_hr),
+        firm to stringResource(R.string.wizard_cap_sleep_staging),
+        "*" to stringResource(R.string.wizard_cap_skin_temp),
+        "*" to stringResource(R.string.wizard_cap_steps),
+        firm to stringResource(R.string.wizard_cap_battery),
+        "-" to stringResource(R.string.wizard_cap_spo2),
+        "-" to stringResource(R.string.wizard_cap_oura_score),
     )
 }
 
@@ -1298,13 +1323,13 @@ private fun PickList(
     Column(verticalArrangement = Arrangement.spacedBy(Metrics.gap)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             StatePill(
-                if (searching) "Searching…" else "Idle",
+                if (searching) stringResource(R.string.wizard_searching) else stringResource(R.string.wizard_idle),
                 tone = if (searching) StrandTone.Accent else StrandTone.Neutral,
                 pulsing = searching,
             )
             Spacer(Modifier.weight(1f))
             TextButton(onClick = onRescan) {
-                Text("Rescan", style = NoopType.subhead, color = Palette.accent)
+                Text(stringResource(R.string.wizard_rescan), style = NoopType.subhead, color = Palette.accent)
             }
         }
         if (isEmpty) {
@@ -1317,9 +1342,9 @@ private fun PickList(
                 verticalArrangement = Arrangement.spacedBy(Metrics.space10),
             ) {
                 CircularProgressIndicator(color = Palette.accent, modifier = Modifier.size(22.dp))
-                Text("Searching…", style = NoopType.body, color = Palette.textPrimary)
+                Text(stringResource(R.string.wizard_searching), style = NoopType.body, color = Palette.textPrimary)
                 Text(
-                    "Make sure it's awake and not connected elsewhere.",
+                    stringResource(R.string.wizard_pick_hint),
                     style = NoopType.subhead,
                     color = Palette.textSecondary,
                 )
@@ -1332,13 +1357,14 @@ private fun PickList(
 
 @Composable
 private fun DiscoveredRow(name: String, subtitle: String, rssi: Int, onTap: () -> Unit) {
+    val rowLabel = stringResource(R.string.wizard_discovered_a11y, name, SignalBars.level(rssi))
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
             .frostedCardSurface(cornerRadius = 12.dp)
             .clickable(onClick = onTap)
-            .semantics { contentDescription = "$name, signal ${SignalBars.level(rssi)} of 4" }
+            .semantics { contentDescription = rowLabel }
             .padding(14.dp),
         horizontalArrangement = Arrangement.spacedBy(Metrics.space12),
         verticalAlignment = Alignment.CenterVertically,
@@ -1368,6 +1394,7 @@ private fun ConfirmStep(
     onName: (String) -> Unit,
     onAdd: () -> Unit,
 ) {
+    val nameLabel = stringResource(R.string.wizard_device_name)
     Column(verticalArrangement = Arrangement.spacedBy(Metrics.space16)) {
         Row(
             modifier = Modifier
@@ -1385,16 +1412,16 @@ private fun ConfirmStep(
             }
         }
 
-        Overline("Name")
+        Overline(stringResource(R.string.wizard_name))
         OutlinedTextField(
             value = name,
             onValueChange = onName,
             singleLine = true,
-            placeholder = { Text("Device name", style = NoopType.body, color = Palette.textTertiary) },
+            placeholder = { Text(nameLabel, style = NoopType.body, color = Palette.textTertiary) },
             colors = wizardFieldColors(),
             modifier = Modifier
                 .fillMaxWidth()
-                .semantics { contentDescription = "Device name" },
+                .semantics { contentDescription = nameLabel },
         )
 
         TextButton(
@@ -1406,7 +1433,7 @@ private fun ConfirmStep(
                 .background(if (name.trim().isNotEmpty()) Palette.accent else Palette.surfaceInset),
         ) {
             Text(
-                "Add",
+                stringResource(R.string.wizard_add),
                 style = NoopType.headline,
                 color = if (name.trim().isNotEmpty()) Palette.goldDeepText else Palette.textTertiary,
             )

@@ -1,5 +1,6 @@
 package com.noop.ui
 
+import androidx.annotation.StringRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -26,12 +27,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.noop.R
 import com.noop.analytics.FitnessAgeEngine
 import com.noop.analytics.FitnessAgeReadiness
 import com.noop.analytics.FitnessReadinessItem
@@ -122,16 +125,17 @@ private fun rememberFitnessReadiness(days: List<DailyMetric>, profile: ProfileSt
 /** The not-ready card's lead: a concrete countdown of nights-of-wear still needed (from the shared
  * [FitnessAgeEngine.nightsUntilReady]), noting the profile basics only when actually missing. Copy is kept
  * WORD-FOR-WORD identical to the iOS `fitnessReadyLead` (HealthView) so the two platforms match. */
+@Composable
 private fun fitnessReadyLead(rhrDays: Int, hasAge: Boolean, hasSex: Boolean): String {
     val remaining = FitnessAgeEngine.nightsUntilReady(rhrDays)
     val needsBasics = !hasAge || !hasSex
     return when {
-        remaining == 0 && !needsBasics -> "A few more days and we can show your Fitness Age."
-        remaining == 0 && needsBasics  -> "Add your age and sex below and we can show your Fitness Age."
-        remaining == 1 && !needsBasics -> "1 more night of wear and we can show your Fitness Age."
-        remaining == 1 && needsBasics  -> "1 more night of wear, plus your age and sex below, and we can show your Fitness Age."
-        !needsBasics -> "$remaining more nights of wear and we can show your Fitness Age."
-        else         -> "$remaining more nights of wear, plus your age and sex below, and we can show your Fitness Age."
+        remaining == 0 && !needsBasics -> stringResource(R.string.vitals_fitness_lead_days)
+        remaining == 0 && needsBasics  -> stringResource(R.string.vitals_fitness_lead_basics)
+        remaining == 1 && !needsBasics -> stringResource(R.string.vitals_fitness_lead_one_night)
+        remaining == 1 && needsBasics  -> stringResource(R.string.vitals_fitness_lead_one_night_basics)
+        !needsBasics -> stringResource(R.string.vitals_fitness_lead_nights, remaining)
+        else         -> stringResource(R.string.vitals_fitness_lead_nights_basics, remaining)
     }
 }
 
@@ -155,13 +159,14 @@ private fun FitnessReadinessCard(
         .filter { it.role == FitnessReadinessRole.UNLOCKS_VO2MAX }
         .sortedBy { if (headed) readinessSortKey(it) else 0 }
 
+    val leadText = if (lead.isBlank()) stringResource(R.string.vitals_fitness_lead_days) else lead
     NoopCard(tint = if (headed) Palette.chargeColor else null) {
         Column(verticalArrangement = Arrangement.spacedBy(Metrics.space16)) {
             if (headed) {
                 Column(verticalArrangement = Arrangement.spacedBy(Metrics.space4)) {
                     Row(verticalAlignment = Alignment.Top) {
                         Text(
-                            lead.ifBlank { "A few more days and we can show your Fitness Age." },
+                            leadText,
                             style = NoopType.headline,
                             color = Palette.textPrimary,
                             modifier = Modifier.weight(1f),
@@ -179,7 +184,7 @@ private fun FitnessReadinessCard(
                                 IconButton(onClick = onRefresh, modifier = Modifier.size(28.dp)) {
                                     Icon(
                                         Icons.Filled.Refresh,
-                                        contentDescription = "Refresh Fitness Age now",
+                                        contentDescription = stringResource(R.string.vitals_fitness_refresh),
                                         tint = Palette.accent,
                                     )
                                 }
@@ -187,19 +192,18 @@ private fun FitnessReadinessCard(
                         }
                     }
                     Text(
-                        "It compares your resting heart rate and recent activity against people your age. " +
-                            "Wear your strap for a full week and it appears here.",
+                        stringResource(R.string.vitals_fitness_explainer),
                         style = NoopType.subhead,
                         color = Palette.textSecondary,
                     )
                 }
             }
 
-            ReadinessGroup(title = "Drives your Fitness Age", items = drivesAge)
-            ReadinessGroup(title = "Unlocks your VO₂max", items = unlocksVo2)
+            ReadinessGroup(title = stringResource(R.string.vitals_fitness_drives), items = drivesAge)
+            ReadinessGroup(title = stringResource(R.string.vitals_fitness_unlocks), items = unlocksVo2)
 
             Text(
-                "Weight, height and waist add a VO₂max estimate. They don't change the Fitness Age itself.",
+                stringResource(R.string.vitals_fitness_extras),
                 style = NoopType.footnote,
                 color = Palette.textTertiary,
             )
@@ -290,7 +294,7 @@ internal fun mergeStepsReadings(
 
 private data class VitalDetailModel(
     val key: String,
-    val title: String,
+    @StringRes val title: Int,
     val unit: String,
     val color: Color,
     val readings: List<VitalReading>,
@@ -340,17 +344,18 @@ fun VitalDetailScreen(vm: AppViewModel, key: String) {
     // reading -> that reading (trend to follow); two+ -> the trend. Pre-load falls through to trend.
     val loadedPoints = if (seriesLoaded) (detail?.points?.size ?: 0) else -1
     ScreenScaffold(
-        title = detail?.title ?: "Vital Signs",
+        title = if (detail != null) stringResource(detail.title) else stringResource(R.string.vitals_title),
         subtitle = when {
-            key == "fitness_age" && loadedPoints == 0 -> "What your Fitness Age still needs."
-            loadedPoints == 1 -> "Your latest reading — trend to follow."
-            else -> "Historical trend from cached daily metrics."
+            key == "fitness_age" && loadedPoints == 0 ->
+                stringResource(R.string.vitals_subtitle_fitness_age_pending)
+            loadedPoints == 1 -> stringResource(R.string.vitals_subtitle_single)
+            else -> stringResource(R.string.vitals_subtitle_trend)
         },
     ) {
         if (isSeriesBacked && !seriesLoaded) {
             DataPendingNote(
-                title = "Loading…",
-                body = "Fetching this metric's history.",
+                title = stringResource(R.string.vitals_loading_title),
+                body = stringResource(R.string.vitals_loading_body),
             )
             return@ScreenScaffold
         }
@@ -372,8 +377,10 @@ fun VitalDetailScreen(vm: AppViewModel, key: String) {
                             refreshTick++
                             Toast.makeText(
                                 context,
-                                if (wrote) "Fitness Age updated."
-                                else "Not enough wear yet — keep your strap on overnight.",
+                                context.getString(
+                                    if (wrote) R.string.vitals_fitness_updated
+                                    else R.string.vitals_fitness_not_enough_wear,
+                                ),
                                 Toast.LENGTH_SHORT,
                             ).show()
                         }
@@ -390,20 +397,19 @@ fun VitalDetailScreen(vm: AppViewModel, key: String) {
                 val one = detail.points.last()   // size 1: the single reading (last == the latest)
                 NoopCard {
                     Column(verticalArrangement = Arrangement.spacedBy(Metrics.space8)) {
-                        Overline("Latest")
+                        Overline(stringResource(R.string.vitals_latest))
                         Text(
                             text = "${detail.format(one.second)} ${detail.unit}".trim(),
                             style = NoopType.chartValueLarge,
                             color = detail.color,
                         )
                         Text(
-                            text = "as of ${one.first}",
+                            text = stringResource(R.string.vitals_as_of, one.first),
                             style = NoopType.footnote,
                             color = Palette.textTertiary,
                         )
                         Text(
-                            text = "One reading so far — your trend chart fills in here once a second " +
-                                "reading lands.",
+                            text = stringResource(R.string.vitals_single_reading_note),
                             style = NoopType.subhead,
                             color = Palette.textSecondary,
                         )
@@ -412,8 +418,8 @@ fun VitalDetailScreen(vm: AppViewModel, key: String) {
                 return@ScreenScaffold
             }
             DataPendingNote(
-                title = "Not enough history yet",
-                body = "This vital needs at least two historical readings before NOOP can chart it.",
+                title = stringResource(R.string.vitals_no_history_title),
+                body = stringResource(R.string.vitals_no_history_body),
             )
             return@ScreenScaffold
         }
@@ -430,8 +436,8 @@ fun VitalDetailScreen(vm: AppViewModel, key: String) {
         val filteredPoints = filteredReadings.map { it.day to it.value }
         if (filteredPoints.size < 2) {
             DataPendingNote(
-                title = "Not enough history in this range",
-                body = "Try a longer interval like 3M, 6M, 1Y, or ALL to see this vital’s trend.",
+                title = stringResource(R.string.vitals_no_history_range_title),
+                body = stringResource(R.string.vitals_no_history_range_body),
             )
             return@ScreenScaffold
         }
@@ -442,19 +448,23 @@ fun VitalDetailScreen(vm: AppViewModel, key: String) {
         val max = values.maxOrNull()
         val avg = RustScores.mean(values)
 
-        SectionHeader(detail.title, overline = "Vital Signs", trailing = "${filteredReadings.size} readings")
+        SectionHeader(
+            stringResource(detail.title),
+            overline = stringResource(R.string.vitals_title),
+            trailing = stringResource(R.string.vitals_readings_count, filteredReadings.size),
+        )
         NoopCard {
             Column(verticalArrangement = Arrangement.spacedBy(Metrics.space12)) {
                 Row(verticalAlignment = Alignment.Top) {
                     Column(modifier = Modifier.weight(1f)) {
-                        Overline("Latest")
+                        Overline(stringResource(R.string.vitals_latest))
                         Text(
                             text = UnitFormatter.withUnit(detail.format(latest.second), detail.unit),
                             style = NoopType.chartValueLarge,
                             color = detail.color,
                         )
                         Text(
-                            text = "as of ${latest.first}",
+                            text = stringResource(R.string.vitals_as_of, latest.first),
                             style = NoopType.footnote,
                             color = Palette.textTertiary,
                         )
@@ -463,13 +473,13 @@ fun VitalDetailScreen(vm: AppViewModel, key: String) {
                 SegmentedPillControl(
                     items = VitalDetailRange.entries,
                     selection = effectiveRange,
-                    label = { it.label },
+                    label = { context.getString(it.label) },
                     onSelect = { range = it },
                     enabled = { it in unlockedRanges },
                 )
                 if (unlockedRanges.size < VitalDetailRange.entries.size) {
                     Text(
-                        "Longer ranges unlock as more history builds.",
+                        stringResource(R.string.vitals_ranges_unlock),
                         style = NoopType.footnote,
                         color = Palette.textTertiary,
                     )
@@ -489,9 +499,9 @@ fun VitalDetailScreen(vm: AppViewModel, key: String) {
                 )
                 Row(modifier = Modifier.fillMaxWidth()) {
                     listOf(
-                        "Min" to min,
-                        "Avg" to avg,
-                        "Max" to max,
+                        stringResource(R.string.vitals_min) to min,
+                        stringResource(R.string.vitals_avg) to avg,
+                        stringResource(R.string.vitals_max) to max,
                     ).forEach { (label, metric) ->
                         Column(modifier = Modifier.weight(1f)) {
                             Overline(label, color = Palette.textTertiary)
@@ -505,7 +515,7 @@ fun VitalDetailScreen(vm: AppViewModel, key: String) {
                 }
                 if (detail.key == "spo2") {
                     Text(
-                        "A wellness estimate from your strap's sleep readings, not a medical device.",
+                        stringResource(R.string.vitals_spo2_disclaimer),
                         style = NoopType.footnote,
                         color = Palette.textTertiary,
                     )
@@ -536,7 +546,7 @@ private fun HrvReadinessCard(days: List<DailyMetric>) {
     val word = hrvReadinessWord(read.tier) ?: return
     InsightCard(
         modifier = Modifier.fillMaxWidth(),
-        category = "HRV readiness",
+        category = stringResource(R.string.vitals_hrv_readiness),
         status = word,
         detail = hrvReadinessDetail(read),
         statusColor = hrvReadinessColor(read.tier),
@@ -606,7 +616,7 @@ private fun VitalReadingsTable(rows: List<VitalReadingRow>) {
     if (rows.isEmpty()) return
     NoopCard {
         Column(verticalArrangement = Arrangement.spacedBy(Metrics.space10)) {
-            Overline("Readings")
+            Overline(stringResource(R.string.vitals_readings))
             // Slim column header naming the three columns — SAME weights as the data rows below so each
             // label sits over its column. Swift twin (MetricExplorerView.readingsTable) mirrors this.
             Row(
@@ -614,18 +624,18 @@ private fun VitalReadingsTable(rows: List<VitalReadingRow>) {
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
-                    "Date",
+                    stringResource(R.string.vitals_col_date),
                     style = NoopType.footnote,
                     color = Palette.textSecondary,
                     modifier = Modifier.weight(1f),
                 )
                 Text(
-                    "Value",
+                    stringResource(R.string.vitals_col_value),
                     style = NoopType.footnote,
                     color = Palette.textSecondary,
                 )
                 Text(
-                    "Source",
+                    stringResource(R.string.vitals_col_source),
                     style = NoopType.footnote,
                     color = Palette.textSecondary,
                     textAlign = TextAlign.End,
@@ -669,13 +679,13 @@ private fun VitalReadingsTable(rows: List<VitalReadingRow>) {
     }
 }
 
-internal enum class VitalDetailRange(val label: String, val days: Long?) {
-    WEEK("W", 7),
-    MONTH("M", 30),
-    THREE_MONTH("3M", 90),
-    SIX_MONTH("6M", 180),
-    YEAR("1Y", 365),
-    ALL("ALL", null),
+internal enum class VitalDetailRange(@StringRes val label: Int, val days: Long?) {
+    WEEK(R.string.vitals_range_w, 7),
+    MONTH(R.string.vitals_range_m, 30),
+    THREE_MONTH(R.string.vitals_range_3m, 90),
+    SIX_MONTH(R.string.vitals_range_6m, 180),
+    YEAR(R.string.vitals_range_1y, 365),
+    ALL(R.string.vitals_range_all, null),
 }
 
 /** Days spanned by a vital's history: last point's day minus first point's day in epoch days (0 for
@@ -764,7 +774,7 @@ private fun buildVitalDetail(
     return when (key) {
     "resp" -> VitalDetailModel(
         key = key,
-        title = "Respiratory Rate",
+        title = R.string.vitals_metric_resp,
         unit = "rpm",
         color = Palette.metricCyan,
         readings = days.mapNotNull { row -> row.respRateBpm?.let { VitalReading(row.day, it, row.deviceId) } },
@@ -772,7 +782,7 @@ private fun buildVitalDetail(
     )
     "spo2" -> VitalDetailModel(
         key = key,
-        title = "SpO₂",
+        title = R.string.vitals_metric_spo2,
         unit = "%",
         color = Palette.metricCyan,
         readings = days.mapNotNull { row -> row.spo2Pct?.let { VitalReading(row.day, it, row.deviceId) } },
@@ -780,7 +790,7 @@ private fun buildVitalDetail(
     )
     "rhr" -> VitalDetailModel(
         key = key,
-        title = "Resting Heart Rate",
+        title = R.string.vitals_metric_rhr,
         unit = "bpm",
         color = Palette.metricRose,
         readings = days.mapNotNull { row -> row.restingHr?.toDouble()?.let { VitalReading(row.day, it, row.deviceId) } },
@@ -788,7 +798,7 @@ private fun buildVitalDetail(
     )
     "hrv" -> VitalDetailModel(
         key = key,
-        title = "Heart Rate Variability",
+        title = R.string.vitals_metric_hrv,
         unit = "ms",
         color = Palette.metricPurple,
         readings = days.mapNotNull { row -> row.avgHrv?.let { VitalReading(row.day, it, row.deviceId) } },
@@ -809,7 +819,7 @@ private fun buildVitalDetail(
         }
         VitalDetailModel(
             key = key,
-            title = "Skin Temperature",
+            title = R.string.vitals_metric_skin_temp,
             unit = unit,
             color = Palette.metricAmber,
             readings = days.mapNotNull { row ->
@@ -831,7 +841,7 @@ private fun buildVitalDetail(
 private suspend fun buildSeriesVitalDetail(vm: AppViewModel, key: String): VitalDetailModel? = when (key) {
     "fitness_age" -> VitalDetailModel(
         key = key,
-        title = "Fitness Age",
+        title = R.string.vitals_metric_fitness_age,
         unit = "yrs",
         color = Palette.chargeColor,
         readings = vm.repo.metricSeriesComputedUnion("fitness_age", "0000-01-01", "9999-12-31")
@@ -840,7 +850,7 @@ private suspend fun buildSeriesVitalDetail(vm: AppViewModel, key: String): Vital
     )
     "vitality" -> VitalDetailModel(
         key = key,
-        title = "Vitality",
+        title = R.string.vitals_metric_vitality,
         unit = "",
         color = Palette.metricPurple,
         readings = vm.repo.metricSeriesComputedUnion("vitality", "0000-01-01", "9999-12-31")
@@ -870,7 +880,7 @@ private suspend fun buildSeriesVitalDetail(vm: AppViewModel, key: String): Vital
             .points.associateBy({ it.day }, { VitalReading(it.day, it.value, it.source) })
         VitalDetailModel(
             key = key,
-            title = "Steps",
+            title = R.string.vitals_metric_steps,
             unit = "steps",
             color = Palette.metricCyan,
             readings = mergeStepsReadings(real, imported, est),
@@ -889,7 +899,7 @@ private suspend fun buildSeriesVitalDetail(vm: AppViewModel, key: String): Vital
             .points.associateBy({ it.day }, { VitalReading(it.day, it.value, it.source) })
         VitalDetailModel(
             key = key,
-            title = "Active Energy",
+            title = R.string.vitals_metric_active_energy,
             unit = "kcal",
             color = Palette.metricAmber,
             readings = (imported.keys + est.keys).toSortedSet().mapNotNull { imported[it] ?: est[it] },

@@ -28,6 +28,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.draw.drawWithContent
@@ -37,6 +38,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.noop.R
 import com.noop.analytics.Sport
 import com.noop.analytics.WorkoutSport
 import java.util.Locale
@@ -89,12 +91,12 @@ fun StartWorkoutSheet(vm: AppViewModel, onDismiss: () -> Unit) {
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Start a workout") },
+        title = { Text(stringResource(R.string.workouts_start_sheet_title)) },
         text = {
             Column {
                 OutlinedTextField(
                     value = query, onValueChange = { query = it },
-                    label = { Text("Search sport") }, singleLine = true,
+                    label = { Text(stringResource(R.string.workouts_search_sport)) }, singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
                 Column(
@@ -103,13 +105,13 @@ fun StartWorkoutSheet(vm: AppViewModel, onDismiss: () -> Unit) {
                         .verticalScroll(sportScroll),
                 ) {
                     if (recents.isNotEmpty()) {
-                        Overline("Recent", modifier = Modifier.padding(top = 6.dp))
+                        Overline(stringResource(R.string.workouts_recent), modifier = Modifier.padding(top = 6.dp))
                         recents.forEach { sp ->
                             StartSportRow(sp, isSelected = sp == selected) {
                                 selected = sp; gpsOn = sp.isDistanceSport
                             }
                         }
-                        Overline("All activities", modifier = Modifier.padding(top = 6.dp))
+                        Overline(stringResource(R.string.workouts_all_activities), modifier = Modifier.padding(top = 6.dp))
                     }
                     filtered.forEach { sp ->
                         StartSportRow(sp, isSelected = sp == selected) {
@@ -121,7 +123,7 @@ fun StartWorkoutSheet(vm: AppViewModel, onDismiss: () -> Unit) {
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
                 ) {
-                    Text("Track GPS route", style = NoopType.body, color = Palette.textPrimary)
+                    Text(stringResource(R.string.workouts_track_gps), style = NoopType.body, color = Palette.textPrimary)
                     Spacer(Modifier.weight(1f))
                     Switch(checked = gpsOn, onCheckedChange = { gpsOn = it })
                 }
@@ -139,11 +141,11 @@ fun StartWorkoutSheet(vm: AppViewModel, onDismiss: () -> Unit) {
                     showLiveWorkout = true
                 }
             }) {
-                Text("Start ${selected.name}")
+                Text(stringResource(R.string.workouts_start_named, selected.name))
             }
         },
         dismissButton = {
-            OutlinedButton(onClick = onDismiss) { Text("Cancel") }
+            OutlinedButton(onClick = onDismiss) { Text(stringResource(R.string.common_cancel)) }
         },
     )
 }
@@ -163,7 +165,7 @@ private fun StartSportRow(sp: Sport, isSelected: Boolean, onPick: () -> Unit) {
         )
         if (sp.isDistanceSport) {
             Spacer(Modifier.width(6.dp))
-            Text("· GPS", style = NoopType.footnote, color = Palette.textTertiary)
+            Text(stringResource(R.string.workouts_gps_tag), style = NoopType.footnote, color = Palette.textTertiary)
         }
     }
 }
@@ -202,7 +204,10 @@ fun WorkoutStartSection(vm: AppViewModel) {
         val elapsedS = ((nowMs - w.startMs) / 1000).coerceAtLeast(0)
         NoopCard {
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-                Text("● ${w.sport.name.uppercase()}", style = NoopType.overline, color = Palette.statusCritical)
+                Text(
+                    stringResource(R.string.workouts_active_sport, w.sport.name.uppercase()),
+                    style = NoopType.overline, color = Palette.statusCritical,
+                )
                 Spacer(Modifier.width(10.dp))
                 Text(
                     String.format(Locale.US, "%d:%02d", elapsedS / 60, elapsedS % 60),
@@ -214,7 +219,7 @@ fun WorkoutStartSection(vm: AppViewModel) {
                     onClick = { showLiveWorkout = true },
                     contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp),
                     colors = ButtonDefaults.outlinedButtonColors(contentColor = Palette.accent),
-                ) { Text("Open", style = NoopType.captionNumber) }
+                ) { Text(stringResource(R.string.workouts_open), style = NoopType.captionNumber) }
                 Spacer(Modifier.width(8.dp))
                 Button(
                     onClick = { vm.endWorkout() },
@@ -222,7 +227,7 @@ fun WorkoutStartSection(vm: AppViewModel) {
                     colors = ButtonDefaults.buttonColors(
                         containerColor = Palette.statusCritical, contentColor = Palette.surfaceBase,
                     ),
-                ) { Text("End", style = NoopType.captionNumber) }
+                ) { Text(stringResource(R.string.workouts_end), style = NoopType.captionNumber) }
             }
         }
     } else if (live.bonded) {
@@ -233,7 +238,7 @@ fun WorkoutStartSection(vm: AppViewModel) {
             colors = ButtonDefaults.buttonColors(
                 containerColor = Palette.accent, contentColor = Palette.surfaceBase,
             ),
-        ) { Text("Start workout", style = NoopType.captionNumber) }
+        ) { Text(stringResource(R.string.workouts_start_workout), style = NoopType.captionNumber) }
     }
 
     if (showSportPicker) {

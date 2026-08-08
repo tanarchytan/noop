@@ -8,40 +8,49 @@ import org.xmlpull.v1.XmlPullParser
 import java.io.File
 
 /**
- * #694 — smoke test for the German (de) string-resource pass. Parses the default English
- * `values/strings.xml` and the `values-de/strings.xml` off the source tree and pins the contract
- * the localization layer must keep:
+ * The translation contract, across every locale dir and every `strings*.xml` in it, not the one file.
  *
- *  - every nav / action string the app externalized has a German translation (no missing key falls
- *    back to English silently);
- *  - no German value is blank (an empty <string> renders as nothing on screen);
- *  - the German nav labels are actually translated where they should be (a spot-check on a few terms
- *    that MUST differ from English, so the file can't be an accidental English copy);
- *  - the app_name brand is deliberately NOT re-declared in German (it stays the single English value).
+ * Scope matters here: this gate used to read `values/strings.xml` alone, which was the whole of the
+ * externalized app. The UI extraction moves ~3,500 strings into per-area `strings_<area>.xml`, so a
+ * single-file check would keep passing while covering a few percent of the screens.
  *
- * Runs on the plain JVM (no Robolectric) via the real XmlPullParser already on the test classpath
- * (net.sf.kxml2), locating the res files relative to the Gradle `user.dir` exactly like
- * DecoderOracleTest does. Skips (rather than fails) if the tree layout can't be found, so it never
- * blocks an out-of-tree runner.
+ * What it FAILS on, and why each is a real defect rather than unfinished work:
+ *  - a blank translation — renders as nothing on screen, worse than falling back to English;
+ *  - an ORPHAN translated key with no English source — a rename left the translation behind, so the
+ *    string silently reverted to English in every locale and nothing said so;
+ *  - `app_name` redeclared — the brand stays one English value;
+ *  - a nav label that is not actually translated, so a locale file cannot be an English copy.
+ *
+ * What it REPORTS but does not fail: keys with no translation yet. A missing key falls back to English,
+ * which is correct behaviour while a locale is being filled in. The coverage figure is printed so the
+ * gap is visible instead of implied.
  */
 class GermanLocalizationTest {
 
-    private fun resFile(rel: String): File? {
+    private fun resDir(): File? {
         val userDir = File(System.getProperty("user.dir"))
-        // Gradle runs unit tests with the module dir (android/app) or the repo root as user.dir.
         return listOf(
-            File(userDir, "src/main/res/$rel"),
-            File(userDir, "android/app/src/main/res/$rel"),
-            File(userDir, "app/src/main/res/$rel"),
+            File(userDir, "src/main/res"),
+            File(userDir, "android/app/src/main/res"),
+            File(userDir, "app/src/main/res"),
         ).firstOrNull { it.exists() }
+    }
+
+    /** Every `strings*.xml` under one `values*` dir, merged. Android merges them at build time too. */
+    private fun parseLocale(res: File, dir: String): Map<String, String> {
+        val d = File(res, dir)
+        if (!d.exists()) return emptyMap()
+        val out = LinkedHashMap<String, String>()
+        d.listFiles { f -> f.name.startsWith("strings") && f.name.endsWith(".xml") }
+            ?.sortedBy { it.name }
+            ?.forEach { out.putAll(parseStrings(it)) }
+        return out
     }
 
     /** Parse a strings.xml into name -> value (translatable string elements only). */
     private fun parseStrings(file: File): Map<String, String> {
         val out = LinkedHashMap<String, String>()
-        // Construct kXML2's KXmlParser directly (the testImplementation dep). We avoid
-        // XmlPullParserFactory.newInstance() because android.jar ships a *stub* factory whose
-        // newInstance() throws "Stub!" on the JVM unit-test classpath (see AppleHealthImporterToleranceTest).
+        // kXML2 directly: android.jar ships a stub XmlPullParserFactory that throws on the JVM classpath.
         val parser = Class.forName("org.kxml2.io.KXmlParser")
             .getDeclaredConstructor().newInstance() as XmlPullParser
         file.inputStream().use { input ->
@@ -59,40 +68,46 @@ class GermanLocalizationTest {
         return out
     }
 
+    private fun localeDirs(res: File): List<String> =
+        res.listFiles { f -> f.isDirectory && f.name.startsWith("values-") }
+            ?.map { it.name }?.sorted() ?: emptyList()
+
     @Test
-    fun germanResourcesResolveForEveryLocalizedKey() {
-        val enFile = resFile("values/strings.xml")
-        val deFile = resFile("values-de/strings.xml")
-        assumeTrue(
-            "strings.xml not found from user.dir=${System.getProperty("user.dir")}, skipping",
-            enFile != null && deFile != null,
-        )
-        val en = parseStrings(enFile!!)
-        val de = parseStrings(deFile!!)
+    fun everyTranslationIsWellFormedAndCoverageIsReported() {
+        val res = resDir()
+        assumeTrue("res/ not found from user.dir=${System.getProperty("user.dir")}", res != null)
+        val en = parseLocale(res!!, "values")
+        assertTrue("no English strings found", en.isNotEmpty())
 
-        // The keys the app externalized (nav + more-group + quick actions) MUST all be translated.
-        // widget_* is UI copy too; app_name is the brand and is intentionally English-only.
-        val mustTranslate = en.keys.filter { it != "app_name" }
-        val missing = mustTranslate.filter { it !in de }
-        assertTrue("German is missing translations for: $missing", missing.isEmpty())
+        for (dir in localeDirs(res)) {
+            val loc = parseLocale(res, dir)
+            if (loc.isEmpty()) continue
 
-        // No German value may be blank (an empty <string> shows as nothing on screen).
-        val blank = de.filterValues { it.isBlank() }.keys
-        assertTrue("German has blank values for: $blank", blank.isEmpty())
+            val blank = loc.filterValues { it.isBlank() }.keys
+            assertTrue("$dir has blank values for: $blank", blank.isEmpty())
 
-        // app_name is NOT re-declared in German — it stays the one English brand value.
-        assertFalse("app_name must not be redeclared in values-de", "app_name" in de)
+            // A translation whose English key no longer exists: the source was renamed or deleted and
+            // this one stayed, so the string fell back to English everywhere with nothing reporting it.
+            val orphans = loc.keys.filter { it !in en }
+            assertTrue("$dir translates keys that no longer exist in English: $orphans", orphans.isEmpty())
+
+            assertFalse("app_name must not be redeclared in $dir", "app_name" in loc)
+
+            val translatable = en.keys.count { it != "app_name" }
+            val covered = en.keys.count { it != "app_name" && it in loc }
+            println("i18n $dir: $covered / $translatable keys (${covered * 100 / translatable}%)")
+        }
     }
 
     @Test
     fun germanNavLabelsAreActuallyTranslated() {
-        val enFile = resFile("values/strings.xml")
-        val deFile = resFile("values-de/strings.xml")
-        assumeTrue("strings.xml not found, skipping", enFile != null && deFile != null)
-        val en = parseStrings(enFile!!)
-        val de = parseStrings(deFile!!)
+        val res = resDir()
+        assumeTrue("res/ not found", res != null)
+        val en = parseLocale(res!!, "values")
+        val de = parseLocale(res, "values-de")
+        assumeTrue("no German strings", de.isNotEmpty())
 
-        // A spot-check on terms that MUST differ from English, so a stray English copy can't pass.
+        // Spot-check terms that MUST differ, so a locale file cannot be an accidental English copy.
         val differs = mapOf(
             "nav_today" to "Heute",
             "nav_sleep" to "Schlaf",

@@ -22,10 +22,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.noop.R
 
 // MARK: - Today card actions
 
@@ -45,15 +47,16 @@ internal fun LiveSessionEntryCard(onOpen: () -> Unit) {
     }
     val teal = Palette.metricCyan
     val title = when {
-        running -> "Session running"
-        summaryWaiting -> "Session ended"
-        else -> "Start session"
+        running -> stringResource(R.string.today_session_running)
+        summaryWaiting -> stringResource(R.string.today_session_ended)
+        else -> stringResource(R.string.today_session_start)
     }
     val detail = when {
-        running -> "Guarding — silence means you're on track."
-        summaryWaiting -> "See the summary of your last session."
-        else -> "Strap-guided effort session. It only buzzes when you drift off today's band."
+        running -> stringResource(R.string.today_session_running_detail)
+        summaryWaiting -> stringResource(R.string.today_session_ended_detail)
+        else -> stringResource(R.string.today_session_start_detail)
     }
+    val cardDescription = stringResource(R.string.today_session_a11y, title, detail)
 
     // liquidPress on the whole tappable card (same interactionSource on clickable + press), matching the
     // workout-in-progress card above. Merged semantics so TalkBack reads one Button, not four stops.
@@ -64,7 +67,7 @@ internal fun LiveSessionEntryCard(onOpen: () -> Unit) {
             .liquidPress(interaction)
             .clickable(interactionSource = interaction, indication = null, onClick = onOpen)
             .semantics(mergeDescendants = true) {
-                contentDescription = "$title, beta. $detail"
+                contentDescription = cardDescription
             },
     ) {
         Row(
@@ -84,7 +87,11 @@ internal fun LiveSessionEntryCard(onOpen: () -> Unit) {
                     horizontalArrangement = Arrangement.spacedBy(Metrics.space8),
                 ) {
                     Text(title, style = NoopType.headline, color = Palette.textPrimary)
-                    StatePill("BETA", tone = StrandTone.Accent, showsDot = false)
+                    StatePill(
+                        stringResource(R.string.today_beta),
+                        tone = StrandTone.Accent,
+                        showsDot = false,
+                    )
                 }
                 Text(detail, style = NoopType.footnote, color = Palette.textTertiary)
             }
@@ -104,6 +111,7 @@ internal fun LiveSessionEntryCard(onOpen: () -> Unit) {
 @Composable
 internal fun QuickActionDisc(onClick: () -> Unit) {
     val interaction = remember { MutableInteractionSource() }
+    val quickActions = stringResource(R.string.today_quick_actions)
     Box(
         modifier = Modifier
             // 34dp to sit level with the heart / avatar / battery ring in the liquid header cluster.
@@ -117,7 +125,7 @@ internal fun QuickActionDisc(onClick: () -> Unit) {
                 indication = null,
                 onClick = onClick,
             )
-            .semantics { contentDescription = "Quick actions" },
+            .semantics { contentDescription = quickActions },
         contentAlignment = Alignment.Center,
     ) {
         Icon(

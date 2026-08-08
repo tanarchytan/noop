@@ -51,7 +51,9 @@ import androidx.compose.foundation.gestures.calculatePan
 import androidx.compose.foundation.gestures.calculateZoom
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
@@ -59,6 +61,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.noop.R
 import com.noop.analytics.RustScores
 import com.noop.analytics.StrainScorer
 import com.noop.data.DailyMetric
@@ -199,7 +202,9 @@ internal fun HeartRateTrendCard(
         }.getOrDefault(emptyList())
     }
     val selectedLabel = relativeDayLabel(
-        selectedDay, today = "Today", yesterday = "Yesterday",
+        selectedDay,
+        today = stringResource(R.string.common_today),
+        yesterday = stringResource(R.string.today_yesterday),
         other = selectedDay.format(DateTimeFormatter.ofPattern("d MMM", Locale.US)),
         now = today,
     )
@@ -221,21 +226,21 @@ internal fun HeartRateTrendCard(
     // too-narrow rolling window (say 1h with no recent offload) is never a dead end — the user widens it
     // or steps back to Today, and the message says which window came up empty.
     if (winBuckets.size < 2) {
-        SectionHeader("Heart Rate", overline = selectedLabel)
+        SectionHeader(stringResource(R.string.today_hr_title), overline = selectedLabel)
         NoopCard {
             Column(verticalArrangement = Arrangement.spacedBy(Metrics.space10)) {
-                Overline("Beats per minute")
+                Overline(stringResource(R.string.today_hr_beats_per_minute))
                 if (selectedDay == today) {
                     HrWindowPills(hrWindow) { hrWindowOrdinal = it.ordinal }
                 }
                 Text(
                     when {
                         selectedDay != today ->
-                            "No heart rate for this day. Step back to a day the strap was worn."
+                            stringResource(R.string.today_hr_empty_past_day)
                         hrWindow != HrWindow.TODAY && buckets.size >= 2 ->
-                            "No heart rate in the last ${hrWindow.label}. Try a wider window or Today."
+                            stringResource(R.string.today_hr_empty_window, hrWindow.label)
                         else ->
-                            "Calibrating , no heart rate banked yet today. Your curve fills in as the strap offloads."
+                            stringResource(R.string.today_hr_empty_calibrating)
                     },
                     style = NoopType.footnote,
                     color = Palette.textTertiary,
@@ -279,20 +284,23 @@ internal fun HeartRateTrendCard(
     }
     val visTimestamps = remember(visBuckets) { visBuckets.map { it.bucket } }
 
-    SectionHeader("Heart Rate", overline = selectedLabel)
+    SectionHeader(stringResource(R.string.today_hr_title), overline = selectedLabel)
     NoopCard {
         Column(verticalArrangement = Arrangement.spacedBy(Metrics.space12)) {
             // Header, mirrors the macOS ChartCard (title + subtitle, trailing read-out).
             Row(verticalAlignment = Alignment.Top) {
                 Column(modifier = Modifier.weight(1f)) {
-                    Overline("Beats per minute")
+                    Overline(stringResource(R.string.today_hr_beats_per_minute))
                     // the buckets stay the same 5-minute means whatever the window (view-only
                     // narrowing, no re-read), so the resolution half of the label never changes — only
                     // the span half tells the truth about what's on screen.
                     val subtitle = when {
-                        selectedDay != today -> "5-minute average | selected day"
-                        hrWindow == HrWindow.TODAY -> "5-minute average | since midnight"
-                        else -> "5-minute average | last ${hrWindow.label}"
+                        selectedDay != today ->
+                            stringResource(R.string.today_hr_subtitle_selected_day)
+                        hrWindow == HrWindow.TODAY ->
+                            stringResource(R.string.today_hr_subtitle_since_midnight)
+                        else ->
+                            stringResource(R.string.today_hr_subtitle_last_window, hrWindow.label)
                     }
                     Text(
                         subtitle,
@@ -378,7 +386,11 @@ internal fun HeartRateTrendCard(
                     .background(Palette.hairline),
             )
             Row(modifier = Modifier.fillMaxWidth()) {
-                listOf("Min" to min, "Avg" to avg, "Max" to max).forEach { (label, value) ->
+                listOf(
+                    stringResource(R.string.trends_min) to min,
+                    stringResource(R.string.trends_avg) to avg,
+                    stringResource(R.string.trends_max) to max,
+                ).forEach { (label, value) ->
                     Column(modifier = Modifier.weight(1f)) {
                         Overline(label, color = Palette.textTertiary)
                         Text("$value bpm", style = NoopType.bodyNumber, color = Palette.textPrimary)
@@ -392,19 +404,24 @@ internal fun HeartRateTrendCard(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
-                    if (hrZoom == null) "Pinch to zoom · drag to pan" else "Zoomed in · drag to pan",
+                    if (hrZoom == null) {
+                        stringResource(R.string.timeline_pinch_to_zoom)
+                    } else {
+                        stringResource(R.string.timeline_zoomed_in)
+                    },
                     style = NoopType.footnote,
                     color = Palette.textTertiary,
                     modifier = Modifier.weight(1f),
                 )
                 if (hrZoom != null) {
+                    val resetLabel = stringResource(R.string.today_hr_reset_zoom_a11y)
                     Text(
-                        "Reset",
+                        stringResource(R.string.timeline_reset),
                         style = NoopType.footnote,
                         color = Palette.accent,
                         modifier = Modifier
                             .clip(RoundedCornerShape(50))
-                            .clickable(onClickLabel = "Reset the heart rate zoom") { hrZoom = null }
+                            .clickable(onClickLabel = resetLabel) { hrZoom = null }
                             .padding(horizontal = 6.dp, vertical = 2.dp),
                     )
                 }
@@ -601,6 +618,7 @@ private fun OverviewHRChart(
     var plotW by remember { mutableStateOf(0f) }
     var plotH by remember { mutableStateOf(0f) }
     val density = LocalDensity.current
+    val context = LocalContext.current
 
     // The band the marker pills take at the top of the plot. The curve is inset by it and the pills
     // sit in it, so a peak at the top of the day is not drawn under a pill.
@@ -662,11 +680,34 @@ private fun OverviewHRChart(
     // small decorative pills) are announced. Only mentions the layers actually present.
     val markerDescription = remember(sleep, recovery, strain, workouts, effortScale) {
         buildList {
-            add("24-hour heart rate")
-            if (sleep != null) add("sleep band ${hrHoursMinutes((sleep.effectiveEndTs - sleep.effectiveStartTs).toInt())}")
-            if (recovery != null) add("${recovery.roundToInt()} percent Charge at wake")
-            if (strain != null) add("${UnitFormatter.effortDisplay(strain, effortScale)} Effort now")
-            if (workouts.isNotEmpty()) add("${workouts.size} workout${if (workouts.size == 1) "" else "s"} marked")
+            add(context.getString(R.string.today_hr_marker_a11y_base))
+            if (sleep != null) {
+                add(
+                    context.getString(
+                        R.string.today_hr_marker_a11y_sleep,
+                        hrHoursMinutes((sleep.effectiveEndTs - sleep.effectiveStartTs).toInt()),
+                    ),
+                )
+            }
+            if (recovery != null) {
+                add(context.getString(R.string.today_hr_marker_a11y_charge, recovery.roundToInt()))
+            }
+            if (strain != null) {
+                add(
+                    context.getString(
+                        R.string.today_hr_marker_a11y_effort,
+                        UnitFormatter.effortDisplay(strain, effortScale),
+                    ),
+                )
+            }
+            if (workouts.isNotEmpty()) {
+                val marked = if (workouts.size == 1) {
+                    R.string.today_hr_marker_a11y_workout_one
+                } else {
+                    R.string.today_hr_marker_a11y_workouts_other
+                }
+                add(context.getString(marked, workouts.size))
+            }
         }.joinToString(", ")
     }
 
@@ -782,6 +823,19 @@ private fun OverviewHRChart(
             // 3) Marker labels + sport glyphs, positioned composables (crisp text/icons vs Canvas).
             // The pills are placed together so two markers that land on the same stretch of the axis
             // take separate lanes instead of printing over each other.
+            val chargeMarkerText = if (recovery != null) {
+                stringResource(R.string.today_hr_marker_charge, recovery.roundToInt())
+            } else {
+                ""
+            }
+            val effortMarkerText = if (strain != null) {
+                stringResource(
+                    R.string.today_hr_marker_effort,
+                    UnitFormatter.effortDisplay(strain, effortScale),
+                )
+            } else {
+                ""
+            }
             HrMarkerPills(
                 markers = buildList {
                     if (sleepStartX != null && (sleepEndX ?: 0f) > sleepStartX) {
@@ -800,7 +854,7 @@ private fun OverviewHRChart(
                             HrMarker(
                                 key = "charge",
                                 anchorX = chargeX,
-                                text = "${recovery.roundToInt()}% Charge",
+                                text = chargeMarkerText,
                                 color = Palette.recoveryColor(recovery),
                             ),
                         )
@@ -811,7 +865,7 @@ private fun OverviewHRChart(
                                 key = "effort",
                                 anchorX = effortX,
                                 alignEnd = true,
-                                text = "${UnitFormatter.effortDisplay(strain, effortScale)} Effort",
+                                text = effortMarkerText,
                                 color = Palette.effortTint(strain / StrainScorer.maxStrain),
                             ),
                         )

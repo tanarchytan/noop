@@ -1,5 +1,7 @@
 package com.noop.ui
 
+import androidx.annotation.StringRes
+import com.noop.R
 import com.noop.analytics.RustScores
 import uniffi.whoop_ffi.CorrelationStrength
 
@@ -42,6 +44,17 @@ internal object CorrelationEngine {
     fun strength(r: Double): CorrelationStrength = RustScores.correlationStrength(r)
 
     /** The band as a sentence-opening noun phrase, as Insights and Mind word it. */
+    @StringRes
+    fun strengthPhraseRes(r: Double): Int = when (strength(r)) {
+        CorrelationStrength.NEGLIGIBLE -> R.string.insights_strength_negligible
+        CorrelationStrength.WEAK -> R.string.insights_strength_weak
+        CorrelationStrength.MODERATE -> R.string.insights_strength_moderate
+        CorrelationStrength.STRONG -> R.string.insights_strength_strong
+        CorrelationStrength.VERY_STRONG -> R.string.insights_strength_very_strong
+    }
+
+    /** The same wording for a caller that cannot reach resources yet; delete once every
+     *  correlation surface reads [strengthPhraseRes]. */
     fun strengthPhrase(r: Double): String = when (strength(r)) {
         CorrelationStrength.NEGLIGIBLE -> "No"
         CorrelationStrength.WEAK -> "A weak"

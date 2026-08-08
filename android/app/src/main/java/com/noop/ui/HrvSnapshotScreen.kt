@@ -1,5 +1,6 @@
 package com.noop.ui
 
+import androidx.annotation.StringRes
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
@@ -45,12 +46,14 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.noop.R
 import com.noop.analytics.HrvAnalyzerTrace
 import com.noop.analytics.HrvResult
 import com.noop.analytics.RustScores
@@ -153,28 +156,31 @@ fun HrvSnapshotScreen(
     // items. Conditional sections use `if (cond) { item {} }` so a hidden result/hint adds no row. Order +
     // spacing identical (LazyColumn reproduces the eager `spacedBy(20.dp)`).
     LazyScreenScaffold(
-        title = "HRV Reading",
-        subtitle = "A still, seated snapshot of your heart-rate variability",
+        title = stringResource(R.string.hrv_title),
+        subtitle = stringResource(R.string.hrv_subtitle),
     ) {
         // Status row.
         item {
         Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             when (phase) {
-                HrvPhase.Idle -> StatePill("Ready", tone = StrandTone.Neutral)
-                HrvPhase.Capturing -> StatePill("Capturing", tone = StrandTone.Accent, pulsing = true)
-                HrvPhase.Done -> StatePill("Reading complete", tone = StrandTone.Positive)
+                HrvPhase.Idle ->
+                    StatePill(stringResource(R.string.hrv_state_ready), tone = StrandTone.Neutral)
+                HrvPhase.Capturing ->
+                    StatePill(stringResource(R.string.hrv_state_capturing), tone = StrandTone.Accent, pulsing = true)
+                HrvPhase.Done ->
+                    StatePill(stringResource(R.string.hrv_state_complete), tone = StrandTone.Positive)
             }
             Spacer(Modifier.width(Metrics.space8))
             if (bonded) {
-                StatePill("Strap live", tone = StrandTone.Positive)
+                StatePill(stringResource(R.string.hrv_strap_live), tone = StrandTone.Positive)
             } else {
-                StatePill("Not connected", tone = StrandTone.Warning)
+                StatePill(stringResource(R.string.hrv_not_connected), tone = StrandTone.Warning)
             }
             Spacer(Modifier.weight(1f))
             IconButton(onClick = onClose) {
                 Icon(
                     Icons.Filled.Close,
-                    contentDescription = "Close HRV reading",
+                    contentDescription = stringResource(R.string.hrv_close),
                     tint = Palette.textTertiary,
                 )
             }
@@ -205,13 +211,13 @@ fun HrvSnapshotScreen(
                         value = dialValue(phase, runningRmssd, result),
                         unit = if (phase == HrvPhase.Idle) "RMSSD" else "MS RMSSD",
                         sub = if (phase == HrvPhase.Capturing) {
-                            "${secondsRemaining}s left · ${captureBuffer.value.size} beats"
+                            stringResource(R.string.hrv_capture_sub, secondsRemaining, captureBuffer.value.size)
                         } else null,
                     )
                 }
 
                 Text(
-                    text = instruction(phase, bonded, result),
+                    text = stringResource(instruction(phase, bonded, result)),
                     style = NoopType.subhead,
                     color = if (phase == HrvPhase.Capturing) Palette.restBright else Palette.textSecondary,
                     textAlign = TextAlign.Center,
@@ -252,7 +258,7 @@ fun HrvSnapshotScreen(
                 } else {
                     Icon(Icons.Filled.MonitorHeart, contentDescription = null, modifier = Modifier.padding(end = 6.dp))
                 }
-                Text(primaryLabel(phase), style = NoopType.headline)
+                Text(stringResource(primaryLabel(phase)), style = NoopType.headline)
             }
 
             val r = result
@@ -278,7 +284,10 @@ fun HrvSnapshotScreen(
                     colors = ButtonDefaults.outlinedButtonColors(contentColor = Palette.accent),
                 ) {
                     Icon(Icons.Filled.Download, contentDescription = null, modifier = Modifier.padding(end = 6.dp))
-                    Text(if (saved) "Saved" else "Save", style = NoopType.body)
+                    Text(
+                        stringResource(if (saved) R.string.hrv_saved else R.string.hrv_save),
+                        style = NoopType.body,
+                    )
                 }
             }
         }
@@ -296,11 +305,9 @@ fun HrvSnapshotScreen(
         item {
         NoopCard(tint = Palette.restColor) {
             Column(verticalArrangement = Arrangement.spacedBy(Metrics.space8)) {
-                Overline("How this is measured")
+                Overline(stringResource(R.string.hrv_how_measured))
                 Text(
-                    "A 60-second snapshot of your beat-to-beat (R-R) intervals from the strap, cleaned " +
-                        "(range and ectopic-beat filtering) before computing RMSSD the same way your " +
-                        "overnight HRV is computed.",
+                    stringResource(R.string.hrv_how_measured_body),
                     style = NoopType.footnote, color = Palette.textTertiary,
                 )
                 Text(
@@ -330,7 +337,7 @@ private fun CaptureDial(fraction: Float, value: String, unit: String, sub: Strin
         label = "hrvDial",
     )
     val a11y = when {
-        sub != null -> "Capturing. $value milliseconds RMSSD so far. $sub."
+        sub != null -> stringResource(R.string.hrv_dial_capturing, value, sub)
         else -> "$value $unit"
     }
     Box(
@@ -389,7 +396,7 @@ private fun CaptureDial(fraction: Float, value: String, unit: String, sub: Strin
 private fun ResultCard(result: HrvResult) {
     NoopCard(padding = 18.dp, tint = Palette.restColor) {
         Column(verticalArrangement = Arrangement.spacedBy(Metrics.space14)) {
-            Overline("Your reading")
+            Overline(stringResource(R.string.hrv_your_reading))
 
             if (result.rmssd == null) {
                 Row(
@@ -398,8 +405,12 @@ private fun ResultCard(result: HrvResult) {
                 ) {
                     Icon(Icons.Filled.WarningAmber, contentDescription = null, tint = Palette.statusWarning)
                     Text(
-                        "Not enough clean beats - sit still and try again. ${result.nClean} of " +
-                            "${result.nInput} beats survived filtering (need ${RustScores.hrvCleanCfg.minBeats}).",
+                        stringResource(
+                            R.string.hrv_not_enough_beats,
+                            result.nClean,
+                            result.nInput,
+                            RustScores.hrvCleanCfg.minBeats,
+                        ),
                         style = NoopType.footnote, color = Palette.textSecondary,
                     )
                 }
@@ -421,16 +432,16 @@ private fun ResultCard(result: HrvResult) {
                     )
                     StatTile(
                         modifier = Modifier.weight(1f),
-                        label = "Mean HR",
+                        label = stringResource(R.string.hrv_stat_mean_hr),
                         value = formatHrv(meanHr(result.meanNN), "%.0f"),
                         caption = "bpm",
                         accent = Palette.metricRose,
                     )
                     StatTile(
                         modifier = Modifier.weight(1f),
-                        label = "Beats",
+                        label = stringResource(R.string.hrv_stat_beats),
                         value = "${result.nClean}",
-                        caption = "used",
+                        caption = stringResource(R.string.hrv_stat_beats_caption),
                         accent = Palette.metricCyan,
                     )
                 }
@@ -454,8 +465,7 @@ private fun NotBondedHint() {
     ) {
         Icon(Icons.Filled.MonitorHeart, contentDescription = null, tint = Palette.statusWarning)
         Text(
-            "An HRV reading needs the live R-R stream. Open the Live screen and connect your strap, " +
-                "then come back.",
+            stringResource(R.string.hrv_not_bonded_hint),
             style = NoopType.footnote, color = Palette.textSecondary,
         )
     }
@@ -488,24 +498,26 @@ private fun dialValue(phase: HrvPhase, runningRmssd: Double?, result: HrvResult?
         HrvPhase.Done -> result?.rmssd?.let { String.format(Locale.US, "%.0f", it) } ?: "—"
     }
 
-private fun primaryLabel(phase: HrvPhase): String = when (phase) {
-    HrvPhase.Idle -> "Take an HRV reading"
-    HrvPhase.Capturing -> "Cancel"
-    HrvPhase.Done -> "Take another reading"
+@StringRes
+private fun primaryLabel(phase: HrvPhase): Int = when (phase) {
+    HrvPhase.Idle -> R.string.hrv_primary_idle
+    HrvPhase.Capturing -> R.string.common_cancel
+    HrvPhase.Done -> R.string.hrv_primary_done
 }
 
-private fun instruction(phase: HrvPhase, bonded: Boolean, result: HrvResult?): String =
+@StringRes
+private fun instruction(phase: HrvPhase, bonded: Boolean, result: HrvResult?): Int =
     when (phase) {
         HrvPhase.Idle -> if (bonded) {
-            "Sit still and breathe normally. Tap below to take a 60-second reading."
+            R.string.hrv_instruction_idle
         } else {
-            "Connect your strap on the Live screen to take a reading."
+            R.string.hrv_instruction_not_bonded
         }
-        HrvPhase.Capturing -> "Sit still, breathe normally. Keep your wrist relaxed and steady."
+        HrvPhase.Capturing -> R.string.hrv_instruction_capturing
         HrvPhase.Done -> if (result != null && result.rmssd == null) {
-            "Not enough clean beats - sit still and try again."
+            R.string.hrv_instruction_failed
         } else {
-            "Done. Save this reading to keep it in your trends."
+            R.string.hrv_instruction_done
         }
     }
 

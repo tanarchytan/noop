@@ -36,9 +36,11 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import com.noop.R
 import com.noop.analytics.BaselineState
 import com.noop.analytics.Baselines
 import com.noop.analytics.CalibrationMilestones
@@ -78,13 +80,17 @@ internal fun ChargeBreakdownSheet(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
-                    "What shaped your Charge",
+                    stringResource(R.string.today_charge_breakdown_title),
                     style = NoopType.headline,
                     color = Palette.textPrimary,
                     modifier = Modifier.weight(1f),
                 )
                 IconButton(onClick = onClose) {
-                    Icon(Icons.Filled.Close, contentDescription = "Close", tint = Palette.textSecondary)
+                    Icon(
+                        Icons.Filled.Close,
+                        contentDescription = stringResource(R.string.today_close),
+                        tint = Palette.textSecondary,
+                    )
                 }
             }
             Column(
@@ -131,13 +137,19 @@ internal fun RecoveryDriversSection(
     if (drivers.isEmpty()) return
 
     val tier = remember(days, readDay) { chargeConfidenceTier(days, readDay) }
-    val overline = carriedDay?.let { "Charge · ${carriedCaption(it.day)}" } ?: "Charge"
+    val overline = carriedDay
+        ?.let { stringResource(R.string.today_overline_charge_carried, carriedCaption(it.day)) }
+        ?: stringResource(R.string.today_overline_charge)
 
     Column(verticalArrangement = Arrangement.spacedBy(Metrics.gap)) {
         // Header row: section title + the SURFACED confidence pill (dot + tier tag) on the right.
         Row(verticalAlignment = Alignment.Top) {
             Box(modifier = Modifier.weight(1f)) {
-                SectionHeader("What shaped it", overline = overline, trailing = "vs your baseline")
+                SectionHeader(
+                    stringResource(R.string.today_what_shaped_it),
+                    overline = overline,
+                    trailing = stringResource(R.string.today_vs_your_baseline),
+                )
             }
             ChargeConfidencePill(tier)
         }
@@ -145,8 +157,7 @@ internal fun RecoveryDriversSection(
             Column(verticalArrangement = Arrangement.spacedBy(Metrics.space16)) {
                 drivers.forEach { DriverRow(it) }
                 Text(
-                    "Each line is how many points that signal moved Charge versus sitting at your " +
-                        "on-device baseline. Approximate, not medical advice.",
+                    stringResource(R.string.today_drivers_footnote),
                     style = NoopType.footnote,
                     color = Palette.textTertiary,
                 )
@@ -160,9 +171,10 @@ internal fun RecoveryDriversSection(
 @Composable
 private fun ChargeConfidencePill(tier: ScoreConfidence) {
     val (label, tone) = when (tier) {
-        ScoreConfidence.SOLID -> "SOLID" to StrandTone.Accent
-        ScoreConfidence.BUILDING -> "BUILDING" to StrandTone.Warning
-        ScoreConfidence.CALIBRATING -> "CALIBRATING" to StrandTone.Neutral
+        ScoreConfidence.SOLID -> stringResource(R.string.today_confidence_solid) to StrandTone.Accent
+        ScoreConfidence.BUILDING -> stringResource(R.string.today_confidence_building) to StrandTone.Warning
+        ScoreConfidence.CALIBRATING ->
+            stringResource(R.string.today_confidence_calibrating) to StrandTone.Neutral
     }
     StatePill(title = label, tone = tone)
 }
@@ -179,14 +191,18 @@ private fun DriverRow(driver: ChargeDriver) {
         else -> Palette.textTertiary
     }
     val signed = if (driver.deltaPoints > 0) "+${driver.deltaPoints}" else "${driver.deltaPoints}"
+    val rowDescription = stringResource(
+        R.string.today_driver_row_a11y,
+        driver.label,
+        driver.valueText,
+        driver.baselineText,
+        signed,
+        driver.verdict,
+    )
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(Metrics.space12),
-        modifier = Modifier.semantics {
-            contentDescription =
-                "${driver.label}, ${driver.valueText}, ${driver.baselineText}, " +
-                    "$signed points, ${driver.verdict}"
-        },
+        modifier = Modifier.semantics { contentDescription = rowDescription },
     ) {
         // Signed-point delta chip with a direction glyph.
         Row(
@@ -205,7 +221,11 @@ private fun DriverRow(driver: ChargeDriver) {
                     modifier = Modifier.size(14.dp),
                 )
             }
-            Text("$signed pts", style = NoopType.captionNumber, color = tone)
+            Text(
+                stringResource(R.string.today_driver_delta_pts, signed),
+                style = NoopType.captionNumber,
+                color = tone,
+            )
         }
         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(Metrics.space2)) {
             Text(driver.label, style = NoopType.headline, color = Palette.textPrimary)
@@ -239,13 +259,19 @@ internal fun RecoveryContributorsSection(day: DailyMetric?, carriedDay: DailyMet
     val resp = cd?.respRateBpm
     if (hrv == null && rhr == null && sleepMin == null && resp == null) return
 
-    val overline = carriedDay?.let { "Recovery · ${carriedCaption(it.day)}" } ?: "Recovery"
-    SectionHeader("Contributors", overline = overline, trailing = "What drove Charge")
+    val overline = carriedDay
+        ?.let { stringResource(R.string.today_overline_recovery_carried, carriedCaption(it.day)) }
+        ?: stringResource(R.string.today_overline_recovery)
+    SectionHeader(
+        stringResource(R.string.today_contributors),
+        overline = overline,
+        trailing = stringResource(R.string.today_contributors_trailing),
+    )
     NoopCard {
         Column(verticalArrangement = Arrangement.spacedBy(Metrics.space16)) {
             // HRV, higher is better; map a typical 20–120 ms span. Teal (its biometric hue; iOS metricCyan).
             ContributorBar(
-                label = "HRV",
+                label = stringResource(R.string.today_metric_hrv),
                 readout = hrv?.let { "${it.roundToInt()} ms" } ?: NO_DATA,
                 fraction = hrv?.let { ((it - 20.0) / 100.0) },
                 color = Palette.metricCyan,
@@ -253,28 +279,27 @@ internal fun RecoveryContributorsSection(day: DailyMetric?, carriedDay: DailyMet
             // Resting HR, lower is better, so invert a typical 40–80 bpm span. Charge/recovery world (iOS
             // chargeColor, the recovery contributor reads on the WHOOP-green Charge world, not gold).
             ContributorBar(
-                label = "Resting HR",
+                label = stringResource(R.string.today_metric_resting_hr),
                 readout = rhr?.let { "${it.roundToInt()} bpm" } ?: NO_DATA,
                 fraction = rhr?.let { 1.0 - ((it - 40.0) / 40.0) },
                 color = Palette.chargeColor,
             )
             // Sleep, hours in bed against an 8h target. Blue (sleep world).
             ContributorBar(
-                label = "Sleep",
+                label = stringResource(R.string.today_metric_sleep),
                 readout = sleepMin?.let { sleepValue(cd) } ?: NO_DATA,
                 fraction = sleepMin?.let { (it / 60.0) / 8.0 },
                 color = Palette.sleepLight,
             )
             // Respiratory, stability around a typical 12–20 rpm span. Deep blue (sleep world).
             ContributorBar(
-                label = "Respiratory",
+                label = stringResource(R.string.today_metric_respiratory),
                 readout = resp?.let { String.format(Locale.US, "%.1f rpm", it) } ?: NO_DATA,
                 fraction = resp?.let { 1.0 - ((it - 12.0) / 8.0) },
                 color = Palette.sleepDeep,
             )
             Text(
-                "Baselines learned on-device over 14 days. Bars are an approximate read of each " +
-                    "signal against a typical adult range, not medical advice.",
+                stringResource(R.string.today_contributors_footnote),
                 style = NoopType.footnote,
                 color = Palette.textTertiary,
             )
@@ -590,9 +615,13 @@ internal fun CalibrationMilestonesCard(progress: List<CalibrationMilestones.Prog
                     modifier = Modifier.size(Metrics.iconSmall),
                 )
                 Column(verticalArrangement = Arrangement.spacedBy(Metrics.space2)) {
-                    Text("Calibration milestones", style = NoopType.headline, color = Palette.textPrimary)
                     Text(
-                        "Wear the strap overnight to unlock each one.",
+                        stringResource(R.string.today_calibration_milestones),
+                        style = NoopType.headline,
+                        color = Palette.textPrimary,
+                    )
+                    Text(
+                        stringResource(R.string.today_calibration_milestones_sub),
                         style = NoopType.subhead,
                         color = Palette.textSecondary,
                     )
@@ -608,13 +637,27 @@ internal fun CalibrationMilestonesCard(progress: List<CalibrationMilestones.Prog
 private fun CalibrationMilestoneRow(p: CalibrationMilestones.Progress) {
     val m = p.milestone
     val banked = (m.nights - p.remaining).coerceAtLeast(0)
-    val nightsWord = if (p.remaining == 1) "night" else "nights"
+    val nightsWord = if (p.remaining == 1) {
+        stringResource(R.string.today_milestone_night_one)
+    } else {
+        stringResource(R.string.today_milestone_nights_other)
+    }
+    val nightsToGo = stringResource(R.string.today_milestone_nights_to_go, p.remaining, nightsWord)
+    val doneDescription = stringResource(R.string.today_milestone_unlocked_a11y, m.title)
+    val activeDescription = stringResource(
+        R.string.today_milestone_active_a11y,
+        m.title, banked, m.nights, p.remaining, nightsWord, m.unlocks,
+    )
+    val lockedDescription = stringResource(
+        R.string.today_milestone_locked_a11y,
+        m.title, banked, m.nights, p.remaining, nightsWord,
+    )
     when (p.state) {
         // A cleared milestone: a compact green check + "Unlocked", no progress bar (it's full by definition).
         CalibrationMilestones.State.DONE -> Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .semantics { contentDescription = "${m.title} unlocked" },
+                .semantics { contentDescription = doneDescription },
             horizontalArrangement = Arrangement.spacedBy(Metrics.space8),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -625,17 +668,18 @@ private fun CalibrationMilestoneRow(p: CalibrationMilestones.Progress) {
                 modifier = Modifier.size(Metrics.iconSmall),
             )
             Text(m.title, style = NoopType.subhead, color = Palette.textSecondary, modifier = Modifier.weight(1f))
-            Text("Unlocked", style = NoopType.footnote, color = Palette.statusPositive)
+            Text(
+                stringResource(R.string.today_milestone_unlocked),
+                style = NoopType.footnote,
+                color = Palette.statusPositive,
+            )
         }
 
         // The live countdown: accent open-lock, "N nights to go", an accent bar, and what it unlocks.
         CalibrationMilestones.State.ACTIVE -> Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .semantics {
-                    contentDescription =
-                        "${m.title}, $banked of ${m.nights} nights, ${p.remaining} $nightsWord to go. ${m.unlocks}"
-                },
+                .semantics { contentDescription = activeDescription },
             verticalArrangement = Arrangement.spacedBy(Metrics.space6),
         ) {
             Row(
@@ -649,7 +693,7 @@ private fun CalibrationMilestoneRow(p: CalibrationMilestones.Progress) {
                     modifier = Modifier.size(Metrics.iconSmall),
                 )
                 Text(m.title, style = NoopType.headline, color = Palette.textPrimary, modifier = Modifier.weight(1f))
-                Text("${p.remaining} $nightsWord to go", style = NoopType.footnote, color = Palette.accent)
+                Text(nightsToGo, style = NoopType.footnote, color = Palette.accent)
             }
             LinearProgressIndicator(
                 progress = { p.fraction.toFloat() },
@@ -662,16 +706,18 @@ private fun CalibrationMilestoneRow(p: CalibrationMilestones.Progress) {
                     .fillMaxWidth()
                     .height(Metrics.progressHeight),
             )
-            Text("$banked/${m.nights} nights · ${m.unlocks}", style = NoopType.footnote, color = Palette.textSecondary)
+            Text(
+                stringResource(R.string.today_milestone_progress, banked, m.nights, m.unlocks),
+                style = NoopType.footnote,
+                color = Palette.textSecondary,
+            )
         }
 
         // Still ahead: a muted closed-lock, dimmed bar, and the raw gap — no unlocks copy (keeps it quiet).
         CalibrationMilestones.State.LOCKED -> Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .semantics {
-                    contentDescription = "${m.title}, $banked of ${m.nights} nights, ${p.remaining} $nightsWord to go"
-                },
+                .semantics { contentDescription = lockedDescription },
             verticalArrangement = Arrangement.spacedBy(Metrics.space6),
         ) {
             Row(
@@ -685,7 +731,7 @@ private fun CalibrationMilestoneRow(p: CalibrationMilestones.Progress) {
                     modifier = Modifier.size(Metrics.iconSmall),
                 )
                 Text(m.title, style = NoopType.subhead, color = Palette.textSecondary, modifier = Modifier.weight(1f))
-                Text("${p.remaining} $nightsWord to go", style = NoopType.footnote, color = Palette.textTertiary)
+                Text(nightsToGo, style = NoopType.footnote, color = Palette.textTertiary)
             }
             LinearProgressIndicator(
                 progress = { p.fraction.toFloat() },

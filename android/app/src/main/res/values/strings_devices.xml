@@ -1,0 +1,281 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- AddDeviceWizard - dialog shell -->
+    <string name="wizard_back">Back</string>
+    <string name="wizard_close">Close</string>
+    <string name="wizard_title_add_device">Add a device</string>
+    <string name="wizard_title_pick_device">Pick your device</string>
+    <string name="wizard_title_name_confirm">Name &amp; confirm</string>
+    <string name="wizard_subtitle_type">What are you adding?</string>
+    <string name="wizard_subtitle_prep">Get it ready, then scan.</string>
+    <string name="wizard_subtitle_pick">Tap the one that\'s yours.</string>
+
+    <!-- AddDeviceWizard - step 1, device type -->
+    <string name="wizard_type_whoop_subtitle">4.0, 5.0 or MG. NOOP works out which it is</string>
+    <string name="wizard_experimental">Experimental</string>
+    <string name="wizard_experimental_note">Experimental, best-effort support. We\'re still testing these, so they might not connect on every device. They never make up data, and they\'ll tell you honestly when live isn\'t possible.</string>
+    <string name="wizard_type_oura_subtitle">Take over your ring locally. Beta. This replaces the Oura app.</string>
+    <string name="wizard_type_row_a11y">%1$s. %2$s</string>
+
+    <!-- AddDeviceWizard - step 2, prep -->
+    <string name="wizard_one_phone_title">One phone at a time</string>
+    <string name="wizard_one_phone_body">A WHOOP strap bonds to a single device. While it\'s connected to NOOP it won\'t stream to the official WHOOP app, and the other way round. It\'s reversible: pair it in the other app whenever you want it back.</string>
+    <string name="wizard_whoop_support_note">WHOOP 4.0 is fully supported. 5.0 / MG support is newer and still experimental.</string>
+    <string name="wizard_prep_whoop_wear">Put your WHOOP on your wrist and make sure it\'s awake.</string>
+    <string name="wizard_prep_whoop_unpair">A strap bonds to one device at a time, so unpair it from the official WHOOP app first.</string>
+    <string name="wizard_prep_whoop_detect">NOOP will look for it nearby and work out whether it is a 4.0, a 5.0 or an MG.</string>
+    <string name="wizard_scan">Scan</string>
+    <string name="wizard_scan_for_a11y">Scan for %1$s</string>
+
+    <!-- AddDeviceWizard - step 3, pick from the live scan -->
+    <string name="wizard_searching">Searching…</string>
+    <string name="wizard_idle">Idle</string>
+    <string name="wizard_rescan">Rescan</string>
+    <string name="wizard_pick_hint">Make sure it\'s awake and not connected elsewhere.</string>
+    <string name="wizard_discovered_a11y">%1$s, signal %2$d of 4</string>
+
+    <!-- AddDeviceWizard - step 4, name and confirm -->
+    <string name="wizard_name">Name</string>
+    <string name="wizard_device_name">Device name</string>
+    <string name="wizard_device_fallback">Device</string>
+    <string name="wizard_add">Add</string>
+    <string name="wizard_make_active_title">Make this your active device?</string>
+    <string name="wizard_make_active_text">Make %1$s your active device now? It will provide your live data. You can change this any time.</string>
+    <string name="wizard_make_active">Make active</string>
+    <string name="wizard_not_now">Not now</string>
+
+    <!-- AddDeviceWizard - Oura adopt flow, step titles -->
+    <string name="wizard_oura_title_advanced">Advanced: use your own key</string>
+    <string name="wizard_oura_title_prep">Get your ring ready</string>
+    <string name="wizard_oura_title_pick">Pick the ring</string>
+    <string name="wizard_oura_title_confirm">Your ring</string>
+    <string name="wizard_oura_title_adopting">Taking over your ring</string>
+    <string name="wizard_oura_title_failed">Could not take over</string>
+    <string name="wizard_oura_subtitle_advanced">Power users only.</string>
+    <string name="wizard_oura_subtitle_gate">Take it over locally. Beta.</string>
+    <string name="wizard_oura_subtitle_prep">Reset it in the Oura app first.</string>
+
+    <!-- AddDeviceWizard - Oura step A, the gate -->
+    <string name="wizard_oura_beta_title">Beta. Read this first.</string>
+    <string name="wizard_oura_beta_body">Local Oura support is new and we cannot test every ring here. It may not connect on your ring, and it can change between updates. NOOP never makes up a number. If something does not work, it will tell you plainly.</string>
+    <string name="wizard_oura_what_you_get">What you get</string>
+    <string name="wizard_oura_get_offline">Your ring talks to NOOP only, fully offline, no Oura account.</string>
+    <string name="wizard_oura_get_live">Live heart rate, and HRV when the ring can measure it.</string>
+    <string name="wizard_oura_get_overnight">Overnight sleep staging, resting heart rate, skin-temperature trend, motion and battery, read straight off the ring.</string>
+    <string name="wizard_oura_get_scores">NOOP\'s own Charge, Effort and Rest, computed on your device from published methods.</string>
+    <string name="wizard_oura_what_you_lose">What you lose</string>
+    <string name="wizard_oura_lose_app">The Oura app and your Oura account stop working with this ring. This is the point. You are replacing Oura.</string>
+    <string name="wizard_oura_lose_scores">Oura\'s own Readiness and Sleep scores. NOOP does not copy them. It computes its own.</string>
+    <string name="wizard_oura_lose_cloud">Anything that needs Oura\'s cloud (web dashboard, Oura\'s coaching, shared circles).</string>
+    <string name="wizard_oura_lose_warranty">Likely your Oura warranty and support, because the ring is no longer paired to Oura. Treat this as permanent.</string>
+    <string name="wizard_oura_consent_a11y">I understand this disconnects the ring from Oura and that NOOP cannot undo it for me.</string>
+    <string name="wizard_oura_consent">I understand this disconnects the ring from Oura and that NOOP cannot undo it for me. To go back to Oura I would factory-reset the ring again and set it up in the Oura app.</string>
+    <string name="wizard_continue">Continue</string>
+    <string name="wizard_oura_keep_app">Keep the Oura app instead (import a file)</string>
+    <string name="wizard_oura_advanced_link">Advanced: I already have my ring\'s key</string>
+
+    <!-- AddDeviceWizard - Oura step B-Alt, the advanced key path -->
+    <string name="wizard_oura_advanced_title">For power users.</string>
+    <string name="wizard_oura_advanced_body">If you extracted your ring\'s 16-byte key from a previous Oura setup, NOOP can talk to the ring with that key WITHOUT resetting it, so the Oura app keeps working too. NOOP does not extract keys for you and cannot help you find one. If you do not know what this means, go back and use the standard setup or file import.</string>
+    <string name="wizard_oura_key_label">Ring key (32 hex characters)</string>
+    <string name="wizard_oura_key_a11y">Ring key, 32 hex characters</string>
+    <string name="wizard_oura_key_error">That is not a 32-character hex key.</string>
+    <string name="wizard_oura_key_storage">NOOP stores this key only on this device, in the same place it stores your paired bands.</string>
+    <string name="wizard_oura_scan_ring">Scan for your ring</string>
+
+    <!-- AddDeviceWizard - Oura step B, factory-reset prep -->
+    <string name="wizard_oura_prep_reset">Open the official Oura app and remove this ring (Oura calls it \"factory reset\" or \"unpair and reset\"). This wipes the ring\'s owner so NOOP can take it over.</string>
+    <string name="wizard_oura_prep_awake">Keep the ring on the charger or on your finger so it stays awake.</string>
+    <string name="wizard_oura_prep_close_app">Make sure the Oura app is fully closed. A ring answers one owner at a time.</string>
+    <string name="wizard_oura_prep_scan">When the ring is reset and waking, tap Scan below.</string>
+    <string name="wizard_oura_single_owner_title">A ring talks to one owner at a time.</string>
+    <string name="wizard_oura_single_owner_body">If the Oura app is still running it will hold the ring and adoption will fail. Force-quit Oura, then scan.</string>
+
+    <!-- AddDeviceWizard - Oura step C, pick the ring -->
+    <string name="wizard_oura_not_showing">Not showing up? Make sure you reset the ring in the Oura app and force-quit it, then tap Rescan. A ring still owned by Oura will not list here.</string>
+
+    <!-- AddDeviceWizard - Oura step D, confirm and adopt -->
+    <string name="wizard_beta">Beta</string>
+    <string name="wizard_cap_live_hr">Live heart rate</string>
+    <string name="wizard_cap_hrv">HRV (rMSSD)</string>
+    <string name="wizard_cap_resting_hr">Resting heart rate</string>
+    <string name="wizard_cap_sleep_staging">Sleep staging</string>
+    <string name="wizard_cap_skin_temp">Skin-temperature trend</string>
+    <string name="wizard_cap_steps">Steps / motion</string>
+    <string name="wizard_cap_battery">Battery</string>
+    <string name="wizard_cap_spo2" formatted="false">SpO₂ (blood oxygen %)</string>
+    <string name="wizard_cap_oura_score">Oura Readiness / Sleep score</string>
+    <string name="wizard_oura_estimate_note">Beta. * is an on-device estimate.</string>
+    <string name="wizard_oura_connect">Connect to this ring</string>
+    <string name="wizard_oura_connect_note">Both NOOP and the Oura app can use a ring you own by key, but only one can hold the Bluetooth link at a time.</string>
+    <string name="wizard_oura_take_over">Take over this ring</string>
+    <string name="wizard_take_over_title">Take over this ring?</string>
+    <string name="wizard_take_over_text">NOOP will install its own key on the ring and become its owner. The Oura app will no longer control this ring. This is intended and it cannot be undone from NOOP.</string>
+    <string name="wizard_take_over_confirm">Take over</string>
+
+    <!-- AddDeviceWizard - Oura step E, adopting and the honest failure -->
+    <string name="wizard_oura_adopting_body">Installing NOOP\'s key and confirming the ring answers only to NOOP. Keep the ring close and do not open the Oura app.</string>
+    <string name="wizard_oura_failed_title">We could not take over this ring.</string>
+    <string name="wizard_oura_failed_body">The most common cause is the ring was not fully reset in the Oura app, or the Oura app is still running. Reset the ring again, force-quit Oura, then try once more. If it keeps failing, your ring may be a generation NOOP cannot adopt yet. You can still use file import.</string>
+    <string name="wizard_oura_failed_recovery">The ring is not bricked. To go back to where you started, factory-reset it again and set it up in the Oura app.</string>
+    <string name="wizard_try_again">Try again</string>
+    <string name="wizard_use_file_import">Use file import</string>
+
+    <!-- DevicesScreen -->
+    <string name="devices_title">Devices</string>
+    <string name="devices_subtitle">Pair and manage the bands NOOP reads from.</string>
+    <string name="devices_pending_title">Getting your devices ready</string>
+    <string name="devices_pending_body">NOOP is opening your on-device data. Your paired bands will appear here in a moment.</string>
+
+    <!-- DevicesScreen - sync -->
+    <string name="devices_sync">Sync</string>
+    <string name="devices_sync_overline">Strap history</string>
+    <string name="devices_sync_connected">Connected</string>
+    <string name="devices_sync_pairing">Pairing…</string>
+    <string name="devices_sync_offline">Offline</string>
+    <string name="devices_sync_no_strap">No strap connected</string>
+    <string name="devices_sync_history_synced">History synced</string>
+    <string name="devices_sync_ready">Ready to sync</string>
+    <string name="devices_syncing">Syncing…</string>
+    <string name="devices_sync_now">Sync now</string>
+    <string name="devices_sync_a11y_ready">Sync now. Pulls your strap\'s stored history immediately, without waiting for the next automatic sync.</string>
+    <string name="devices_sync_a11y_in_progress">Sync now. A sync is already in progress.</string>
+    <string name="devices_sync_a11y_connect_first">Sync now. Connect your strap first.</string>
+    <string name="devices_sync_help_backfilling">Pulling your strap\'s stored history. This drains oldest-first; a deep backlog now continues automatically across passes instead of waiting between syncs.</string>
+    <string name="devices_sync_help_offline">Connect your strap to sync its stored history. Until then, only imported data shows here.</string>
+    <string name="devices_sync_help_pairing">Finishing the pairing handshake. Sync now becomes available once the strap is paired.</string>
+    <string name="devices_sync_help_ready">Syncs your strap\'s stored history right away, instead of waiting for the next automatic sync.</string>
+
+    <!-- DevicesScreen - device card -->
+    <string name="devices_actions_a11y">Device actions for %1$s</string>
+    <string name="devices_beta">Beta</string>
+    <string name="devices_oura_local_note">Paired locally. NOOP owns this ring while it holds the key. If you reset it again or set it up in the Oura app, NOOP no longer owns it and you would re-add it to take it over.</string>
+    <string name="devices_battery">Battery</string>
+    <string name="devices_battery_a11y">%1$s %2$d%%</string>
+    <string name="devices_removed_header">Removed</string>
+    <string name="devices_add_device">Add a device</string>
+
+    <!-- DevicesScreen - actions menu -->
+    <string name="devices_menu_disconnect">Disconnect</string>
+    <string name="devices_menu_reconnect">Reconnect</string>
+    <string name="devices_make_active">Make active</string>
+    <string name="devices_rename">Rename</string>
+    <string name="devices_menu_restart">Restart strap…</string>
+    <string name="devices_menu_wrist">Wrist…</string>
+    <string name="devices_remove">Remove</string>
+    <string name="devices_menu_delete_device">Delete device…</string>
+    <string name="devices_toast_reconnecting">Reconnecting…</string>
+    <string name="devices_toast_disconnecting">Disconnecting</string>
+
+    <!-- DevicesScreen - confirms -->
+    <string name="devices_switch_title">Make this your active strap?</string>
+    <string name="devices_switch_text">Make %1$s your active strap? From now on it provides your live data. %2$s\'s history stays exactly as it is. Only new days come from %3$s.</string>
+    <string name="devices_current_strap_fallback">Your current strap</string>
+    <string name="devices_remove_title">Remove this device?</string>
+    <string name="devices_remove_text">Remove %1$s? NOOP will stop connecting to it. Its recorded data is kept and you can re-add it any time.</string>
+    <string name="devices_restart_title">Restart this strap?</string>
+    <string name="devices_restart_text">Restart %1$s? It disconnects for about 30 seconds while it reboots, then reconnects on its own. Your recorded data is kept.</string>
+    <string name="devices_restart_confirm">Restart</string>
+    <string name="devices_delete_title">Delete this device?</string>
+    <string name="devices_delete_text">This permanently removes %1$s and all of its recorded data. This can\'t be undone.</string>
+    <string name="devices_delete_confirm">Delete device</string>
+
+    <!-- DevicesScreen - dialogs -->
+    <string name="devices_wrist_title">Which wrist?</string>
+    <string name="devices_wrist_left">Left</string>
+    <string name="devices_wrist_right">Right</string>
+    <string name="devices_wrist_last_sent">"%1$s  ·  last sent"</string>
+    <string name="devices_toast_wrist_left">Wrist set to left</string>
+    <string name="devices_toast_wrist_right">Wrist set to right</string>
+    <string name="devices_rename_title">Rename device</string>
+    <string name="devices_name_placeholder">Name</string>
+    <string name="devices_device_name">Device name</string>
+    <string name="devices_save">Save</string>
+    <string name="devices_pick_active_title">Pick a new active strap</string>
+    <string name="devices_pick_active_body">You removed your active strap. Choose which paired band provides your live data, or leave none active and pair one later.</string>
+    <string name="devices_pick_active_leave_none">Leave none active</string>
+
+    <!-- OnboardingScreen - shell -->
+    <string name="onboarding_cta_begin">Begin setup</string>
+    <string name="onboarding_cta_continue">Continue</string>
+    <string name="onboarding_cta_save_continue">Save &amp; continue</string>
+    <string name="onboarding_cta_enter">Enter NOOP</string>
+    <string name="onboarding_progress">%1$d / %2$d</string>
+    <string name="onboarding_back">Back</string>
+
+    <!-- OnboardingScreen - Bluetooth -->
+    <string name="onboarding_welcome_title">Welcome to NOOP</string>
+    <string name="onboarding_welcome_subtitle">Your wearables. Your data.</string>
+    <string name="onboarding_bluetooth_card_title">Connect your wearable</string>
+    <string name="onboarding_bluetooth_card_body">NOOP uses Bluetooth to find and connect to your nearby devices.</string>
+
+    <!-- OnboardingScreen - Connect -->
+    <string name="onboarding_connect_title">Find your strap</string>
+    <string name="onboarding_connect_subtitle_bonded">Bonded. You can keep going.</string>
+    <string name="onboarding_connect_subtitle_ready">Pick your band from the list below. NOOP starts looking as soon as this step appears.</string>
+    <string name="onboarding_connect_subtitle_no_permission">Allow Bluetooth on the previous step to find your strap, or keep going and connect later.</string>
+    <string name="onboarding_state_bonded_streaming">Bonded · streaming</string>
+    <string name="onboarding_state_live_hr">Live HR · not fully paired</string>
+    <string name="onboarding_state_connected_pairing">Connected · pairing</string>
+    <string name="onboarding_state_searching">Searching</string>
+    <string name="onboarding_state_ready">Ready to scan</string>
+    <string name="onboarding_connect_card_title">This can run while you finish setup</string>
+    <string name="onboarding_connect_card_body">If the strap is nearby, NOOP will keep the BLE link alive in the background. You can continue through profile and import while it bonds.</string>
+    <string name="onboarding_connect_no_whoop">No WHOOP? You can still continue. Add your WHOOP (or the experimental Oura ring) later under Devices, or import from WHOOP, Apple Health, Oura, Fitbit, Garmin and more under Data Sources. You can do either any time.</string>
+
+    <!-- OnboardingScreen - Bonded -->
+    <string name="onboarding_bonded_title">You\'re connected.</string>
+    <string name="onboarding_bonded_battery">Your strap is bonded · %1$d%% battery.</string>
+    <string name="onboarding_bonded_ready">Your strap is bonded and ready to stream.</string>
+
+    <!-- OnboardingScreen - Profile -->
+    <string name="onboarding_profile_title">About you</string>
+    <string name="onboarding_profile_subtitle">So your zones, calories and on-device scoring start from the right numbers.</string>
+    <string name="onboarding_birthday">Birthday</string>
+    <string name="onboarding_birthday_a11y">Birthday, %1$d years old</string>
+    <string name="onboarding_sex">Sex</string>
+    <string name="onboarding_sex_male">Male</string>
+    <string name="onboarding_sex_female">Female</string>
+    <string name="onboarding_sex_other">Other</string>
+    <string name="onboarding_units">Units</string>
+    <string name="onboarding_units_metric">Metric</string>
+    <string name="onboarding_units_imperial">Imperial</string>
+    <string name="onboarding_weight">Weight</string>
+    <string name="onboarding_height">Height</string>
+    <string name="onboarding_hr_max">Estimated max heart rate · %1$d bpm</string>
+    <string name="onboarding_hr_max_a11y">Estimated max heart rate %1$d bpm</string>
+
+    <!-- OnboardingScreen - Import -->
+    <string name="onboarding_import_title">Bring your history</string>
+    <string name="onboarding_import_subtitle">Optional: import now, or skip and return to Data Sources later.</string>
+    <string name="onboarding_import_card_title">History fills the dashboard immediately</string>
+    <string name="onboarding_import_card_body">A WHOOP export backfills recovery, strain, sleep and workouts. Health Connect can add steps, HR, HRV, sleep and weight from Android sources.</string>
+    <string name="onboarding_import_whoop">Import WHOOP export (.zip)</string>
+    <string name="onboarding_import_health_connect">Import from Health Connect</string>
+    <string name="onboarding_import_apple_health">Import Apple Health export</string>
+    <string name="onboarding_importing">Importing…</string>
+    <string name="onboarding_health_connect_denied">Health Connect access not granted.</string>
+    <string name="onboarding_health_connect_unavailable">Health Connect is not available on this device.</string>
+
+    <!-- OnboardingScreen - Notifications -->
+    <string name="onboarding_notifications_title">Notifications</string>
+    <string name="onboarding_notifications_subtitle">Get connection status and wrist alerts.</string>
+    <string name="onboarding_notifications_card_title">Stay connected</string>
+    <string name="onboarding_notifications_card_body">A quiet notification keeps NOOP connected. Your data stays current.</string>
+    <string name="onboarding_notifications_check_alerts">Strain nudges and smart alarms appear here.</string>
+    <string name="onboarding_notifications_check_allow">When asked, allow notifications.</string>
+
+    <!-- OnboardingScreen - Appearance -->
+    <string name="onboarding_appearance_title">Make it yours</string>
+    <string name="onboarding_appearance_subtitle">NOOP follows your system by default, or pick Light or Dark. You can change this any time in Settings → Appearance.</string>
+    <string name="onboarding_theme_light">Light</string>
+    <string name="onboarding_theme_dark">Dark</string>
+    <string name="onboarding_theme">Theme</string>
+    <string name="onboarding_appearance_system">Following your phone\'s light/dark setting.</string>
+    <string name="onboarding_appearance_light">Deep blue accent on warm paper.</string>
+    <string name="onboarding_appearance_dark">Deep blue accent on a dark blue-grey canvas.</string>
+
+    <!-- OnboardingScreen - Done -->
+    <string name="onboarding_done_title">Your thread starts here.</string>
+    <string name="onboarding_done_body">Every beat, every night, every day, woven into one quiet picture of you. Welcome to NOOP.</string>
+</resources>

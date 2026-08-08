@@ -42,6 +42,11 @@ import kotlinx.coroutines.withContext
  */
 class MainActivity : ComponentActivity() {
 
+    /** Applies the chosen UI language before any resource is read. A null tag follows the system. */
+    override fun attachBaseContext(newBase: Context) {
+        super.attachBaseContext(NoopLocale.wrap(newBase))
+    }
+
     private val permissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
             // Permission results flow back into the BLE client's own runtime checks;

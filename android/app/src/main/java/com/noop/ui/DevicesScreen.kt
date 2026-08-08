@@ -1,6 +1,7 @@
 package com.noop.ui
 
 import android.widget.Toast
+import androidx.annotation.StringRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -58,10 +59,12 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.noop.R
 import com.noop.analytics.RustScores
 import com.noop.ble.LiveState
 import com.noop.ble.SourceCoordinator
@@ -131,7 +134,7 @@ fun DevicesScreen(
     val removedDevices = all.filter { it.status == DeviceStatus.archived.name }
     val currentActiveName =
         all.firstOrNull { it.status == DeviceStatus.active.name }?.let { displayName(it) }
-            ?: "Your current strap"
+            ?: stringResource(R.string.devices_current_strap_fallback)
 
     // PERF : lazy scaffold — each device card is virtualized via `items(...)` (each was a direct
     // child of the eager `spacedBy(20.dp)` column, so the LazyColumn's matching spacing is identical) and
@@ -140,15 +143,15 @@ fun DevicesScreen(
     // No topBackground: the scaffold paints the theme canvas (Palette.surfaceBase) so the device cards
     // read the same in both schemes.
     LazyScreenScaffold(
-        title = "Devices",
-        subtitle = "Pair and manage the bands NOOP reads from.",
+        title = stringResource(R.string.devices_title),
+        subtitle = stringResource(R.string.devices_subtitle),
     ) {
         if (devices == null) {
             // The registry resolves a beat after launch. Show a calm pending note in that brief window.
             item {
             DataPendingNote(
-                title = "Getting your devices ready",
-                body = "NOOP is opening your on-device data. Your paired bands will appear here in a moment.",
+                title = stringResource(R.string.devices_pending_title),
+                body = stringResource(R.string.devices_pending_body),
             )
             }
             return@LazyScreenScaffold
@@ -199,10 +202,24 @@ fun DevicesScreen(
                 // Manual connect and disconnect for the WHOOP. A short toast confirms the tap, since the link
                 // state only changes a few seconds later.
                 onConnect = if (device.brand.equals("WHOOP", ignoreCase = true)) {
-                    { Toast.makeText(context, "Reconnecting…", Toast.LENGTH_SHORT).show(); viewModel.connect() }
+                    {
+                        Toast.makeText(
+                            context,
+                            context.getString(R.string.devices_toast_reconnecting),
+                            Toast.LENGTH_SHORT,
+                        ).show()
+                        viewModel.connect()
+                    }
                 } else null,
                 onDisconnect = if (device.brand.equals("WHOOP", ignoreCase = true)) {
-                    { Toast.makeText(context, "Disconnecting", Toast.LENGTH_SHORT).show(); viewModel.disconnect() }
+                    {
+                        Toast.makeText(
+                            context,
+                            context.getString(R.string.devices_toast_disconnecting),
+                            Toast.LENGTH_SHORT,
+                        ).show()
+                        viewModel.disconnect()
+                    }
                 } else null,
                 // Restart is offered only for a live-connected WHOOP that is NOT a 4.0: the strap-log
                 // analysis on showed no safe frame reboots a 4.0 (empty bodies are ignored; any
@@ -229,7 +246,9 @@ fun DevicesScreen(
         item { AddDeviceButton(onClick = { showAddWizard = true }) }
 
         if (removedDevices.isNotEmpty()) {
-            item { Overline("Removed", modifier = Modifier.padding(top = 4.dp)) }
+            item {
+                Overline(stringResource(R.string.devices_removed_header), modifier = Modifier.padding(top = 4.dp))
+            }
             items(removedDevices) { device ->
                 DeviceCard(
                     device = device,
@@ -261,10 +280,14 @@ fun DevicesScreen(
     // --- Switch confirm ---
     switchTarget?.let { device ->
         NoopConfirmDialog(
-            title = "Make this your active strap?",
-            text = "Make ${displayName(device)} your active strap? From now on it provides your live data. " +
-                "$currentActiveName's history stays exactly as it is. Only new days come from ${displayName(device)}.",
-            confirmLabel = "Make active",
+            title = stringResource(R.string.devices_switch_title),
+            text = stringResource(
+                R.string.devices_switch_text,
+                displayName(device),
+                currentActiveName,
+                displayName(device),
+            ),
+            confirmLabel = stringResource(R.string.devices_make_active),
             onConfirm = {
                 scope.launch { viewModel.setActiveDevice(device.id); reload() }
                 switchTarget = null
@@ -293,10 +316,9 @@ fun DevicesScreen(
     // --- Remove confirm ---
     removeTarget?.let { device ->
         NoopConfirmDialog(
-            title = "Remove this device?",
-            text = "Remove ${displayName(device)}? NOOP will stop connecting to it. Its recorded data is " +
-                "kept and you can re-add it any time.",
-            confirmLabel = "Remove",
+            title = stringResource(R.string.devices_remove_title),
+            text = stringResource(R.string.devices_remove_text, displayName(device)),
+            confirmLabel = stringResource(R.string.devices_remove),
             destructive = true,
             onConfirm = {
                 val wasActive = device.status == DeviceStatus.active.name
@@ -318,10 +340,9 @@ fun DevicesScreen(
     // --- Restart strap confirm ---
     rebootTarget?.let { device ->
         NoopConfirmDialog(
-            title = "Restart this strap?",
-            text = "Restart ${displayName(device)}? It disconnects for about 30 seconds while it " +
-                "reboots, then reconnects on its own. Your recorded data is kept.",
-            confirmLabel = "Restart",
+            title = stringResource(R.string.devices_restart_title),
+            text = stringResource(R.string.devices_restart_text, displayName(device)),
+            confirmLabel = stringResource(R.string.devices_restart_confirm),
             destructive = false,
             onConfirm = { viewModel.rebootStrap(); rebootTarget = null },
             onDismiss = { rebootTarget = null },
@@ -334,7 +355,8 @@ fun DevicesScreen(
             current = NoopPrefs.strapWristRight(context),
             onPick = { right ->
                 viewModel.selectWrist(right)
-                Toast.makeText(context, "Wrist set to ${if (right) "right" else "left"}", Toast.LENGTH_SHORT).show()
+                val toast = if (right) R.string.devices_toast_wrist_right else R.string.devices_toast_wrist_left
+                Toast.makeText(context, context.getString(toast), Toast.LENGTH_SHORT).show()
                 wristTarget = null
             },
             onDismiss = { wristTarget = null },
@@ -353,10 +375,9 @@ fun DevicesScreen(
     // --- Second, strongly-worded delete-device confirm (from the Removed card's secondary control) ---
     deleteDeviceTarget?.let { device ->
         NoopConfirmDialog(
-            title = "Delete this device?",
-            text = "This permanently removes ${displayName(device)} and all of its recorded data. This " +
-                "can't be undone.",
-            confirmLabel = "Delete device",
+            title = stringResource(R.string.devices_delete_title),
+            text = stringResource(R.string.devices_delete_text, displayName(device)),
+            confirmLabel = stringResource(R.string.devices_delete_confirm),
             destructive = true,
             onConfirm = {
                 scope.launch { viewModel.deletePairedDevice(device.id); reload() }
@@ -445,7 +466,7 @@ private fun DeviceCard(
         .clickable(
             interactionSource = interaction,
             indication = null,
-            onClickLabel = "Device actions for ${displayName(device)}",
+            onClickLabel = stringResource(R.string.devices_actions_a11y, displayName(device)),
         ) { menuOpen = true }
 
     // The ACTIVE device is the hero: the shared frosted surface at the wider hero radius with an accent
@@ -471,7 +492,7 @@ private fun DeviceCard(
                 }
                 // Locally-adopted Oura is Beta: a non-dot Beta chip sits beside the usual state pill.
                 if (device.sourceKind == SourceKind.oura.name) {
-                    StatePill("Beta", tone = StrandTone.Warning, showsDot = false)
+                    StatePill(stringResource(R.string.devices_beta), tone = StrandTone.Warning, showsDot = false)
                     Spacer(Modifier.width(Metrics.space6))
                 }
                 StatePill(device, isActive, isLiveConnected, bondRefused, isReconnecting, isCharging)
@@ -564,12 +585,13 @@ private fun DeviceCard(
  * accent, and the trailing %. Used for the strap's own charge and, under it, the pack's.
  */
 @Composable
-private fun BatteryBar(pct: Int, label: String = "Battery") {
+private fun BatteryBar(pct: Int, label: String = stringResource(R.string.devices_battery)) {
     val clamped = pct.coerceIn(0, 100)
+    val barLabel = stringResource(R.string.devices_battery_a11y, label, clamped)
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(Metrics.space10),
-        modifier = Modifier.semantics { contentDescription = "$label $clamped%" },
+        modifier = Modifier.semantics { contentDescription = barLabel },
     ) {
         Text(label, style = NoopType.footnote, color = Palette.textTertiary)
         LinearProgressIndicator(
@@ -683,24 +705,33 @@ private fun DeviceActionsMenu(
     onRebootProbe: (() -> Unit)? = null,
     onSetWrist: (() -> Unit)? = null,
 ) {
+    val menuLabel = stringResource(R.string.devices_actions_a11y, displayName(device))
     Box {
         IconButton(
             onClick = { onOpenChange(true) },
             modifier = Modifier
                 .size(32.dp)
-                .semantics { contentDescription = "Device actions for ${displayName(device)}" },
+                .semantics { contentDescription = menuLabel },
         ) {
             Icon(Icons.Filled.MoreVert, contentDescription = null, tint = Palette.textSecondary, modifier = Modifier.size(20.dp))
         }
         DropdownMenu(expanded = open, onDismissRequest = { onOpenChange(false) }) {
             if (device.status == DeviceStatus.archived.name) {
                 if (onReAdd != null) {
-                    MenuItem("Make active", Icons.Filled.Bolt) { onOpenChange(false); onReAdd() }
+                    MenuItem(stringResource(R.string.devices_make_active), Icons.Filled.Bolt) {
+                        onOpenChange(false); onReAdd()
+                    }
                 }
-                MenuItem("Rename", Icons.Filled.Edit) { onOpenChange(false); onRename() }
+                MenuItem(stringResource(R.string.devices_rename), Icons.Filled.Edit) {
+                    onOpenChange(false); onRename()
+                }
                 if (onDeleteDevice != null) {
                     HorizontalDivider(color = Palette.hairline)
-                    MenuItem("Delete device…", Icons.Filled.Delete, destructive = true) {
+                    MenuItem(
+                        stringResource(R.string.devices_menu_delete_device),
+                        Icons.Filled.Delete,
+                        destructive = true,
+                    ) {
                         onOpenChange(false); onDeleteDevice()
                     }
                 }
@@ -710,20 +741,30 @@ private fun DeviceActionsMenu(
                 // reconnect left stuck. Shown first as the obvious recovery action.
                 if (onConnect != null) {
                     if (isLiveConnected) {
-                        MenuItem("Disconnect", Icons.Filled.Close) { onOpenChange(false); onDisconnect?.invoke() }
+                        MenuItem(stringResource(R.string.devices_menu_disconnect), Icons.Filled.Close) {
+                            onOpenChange(false); onDisconnect?.invoke()
+                        }
                     } else {
-                        MenuItem("Reconnect", Icons.Filled.Refresh) { onOpenChange(false); onConnect() }
+                        MenuItem(stringResource(R.string.devices_menu_reconnect), Icons.Filled.Refresh) {
+                            onOpenChange(false); onConnect()
+                        }
                     }
                     HorizontalDivider(color = Palette.hairline)
                 }
                 if (!isActive) {
-                    MenuItem("Make active", Icons.Filled.Bolt) { onOpenChange(false); onMakeActive() }
+                    MenuItem(stringResource(R.string.devices_make_active), Icons.Filled.Bolt) {
+                        onOpenChange(false); onMakeActive()
+                    }
                 }
-                MenuItem("Rename", Icons.Filled.Edit) { onOpenChange(false); onRename() }
+                MenuItem(stringResource(R.string.devices_rename), Icons.Filled.Edit) {
+                    onOpenChange(false); onRename()
+                }
                 // Restart the strap — only for the live-connected WHOOP (the reboot travels over the active
                 // BLE link). Confirmation-gated by the parent.
                 if (isLiveConnected && SourceCoordinator.isWhoop(device) && onReboot != null) {
-                    MenuItem("Restart strap…", Icons.Filled.Refresh) { onOpenChange(false); onReboot() }
+                    MenuItem(stringResource(R.string.devices_menu_restart), Icons.Filled.Refresh) {
+                        onOpenChange(false); onReboot()
+                    }
                 }
                 // 4.0 reboot probe (RE): only present when the parent passed a closure (Test Centre →
                 // Connection on + a live WHOOP 4.0). Finds the real reboot frame the 4.0 accepts.
@@ -733,11 +774,17 @@ private fun DeviceActionsMenu(
                 // Which wrist the strap is worn on — a persistent strap-config write, so it is offered only for the
                 // live-connected 5/MG and picked in a dialog by the parent.
                 if (onSetWrist != null) {
-                    MenuItem("Wrist…", Icons.Filled.SwapHoriz) { onOpenChange(false); onSetWrist() }
+                    MenuItem(stringResource(R.string.devices_menu_wrist), Icons.Filled.SwapHoriz) {
+                        onOpenChange(false); onSetWrist()
+                    }
                 }
                 if (onRemove != null) {
                     HorizontalDivider(color = Palette.hairline)
-                    MenuItem("Remove", Icons.Filled.RemoveCircleOutline, destructive = true) {
+                    MenuItem(
+                        stringResource(R.string.devices_remove),
+                        Icons.Filled.RemoveCircleOutline,
+                        destructive = true,
+                    ) {
                         onOpenChange(false); onRemove()
                     }
                 }
@@ -766,14 +813,15 @@ private fun AddDeviceButton(onClick: () -> Unit) {
     // Routed through the unified NoopButton (Design Reset) so the add affordance is the crisp
     // filled-accent-blue / white-label primary the iOS DevicesView uses (`NoopButton(... kind:.primary,
     // fullWidth: true)`) — no hand-rolled gold-text fill, no glow.
+    val label = stringResource(R.string.devices_add_device)
     NoopButton(
-        text = "Add a device",
+        text = label,
         leadingIcon = Icons.Filled.Add,
         kind = NoopButtonKind.Primary,
         fullWidth = true,
         modifier = Modifier
             .padding(top = 4.dp)
-            .semantics { contentDescription = "Add a device" },
+            .semantics { contentDescription = label },
         onClick = onClick,
     )
 }
@@ -791,13 +839,19 @@ private fun WristDialog(
     AlertDialog(
         onDismissRequest = onDismiss,
         containerColor = Palette.surfaceOverlay,
-        title = { Text("Which wrist?", style = NoopType.title2, color = Palette.textPrimary) },
+        title = {
+            Text(stringResource(R.string.devices_wrist_title), style = NoopType.title2, color = Palette.textPrimary)
+        },
         text = {
+            val sides = listOf(
+                false to stringResource(R.string.devices_wrist_left),
+                true to stringResource(R.string.devices_wrist_right),
+            )
             Column(verticalArrangement = Arrangement.spacedBy(Metrics.space12)) {
-                listOf(false to "Left", true to "Right").forEach { (right, label) ->
+                sides.forEach { (right, label) ->
                     TextButton(onClick = { onPick(right) }, modifier = Modifier.fillMaxWidth()) {
                         Text(
-                            if (current == right) "$label  ·  last sent" else label,
+                            if (current == right) stringResource(R.string.devices_wrist_last_sent, label) else label,
                             style = NoopType.body,
                             color = Palette.accent,
                             modifier = Modifier.fillMaxWidth(),
@@ -809,7 +863,7 @@ private fun WristDialog(
         confirmButton = {},
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel", style = NoopType.body, color = Palette.textSecondary)
+                Text(stringResource(R.string.common_cancel), style = NoopType.body, color = Palette.textSecondary)
             }
         },
     )
@@ -859,25 +913,34 @@ private fun RenameDialog(
     AlertDialog(
         onDismissRequest = onDismiss,
         containerColor = Palette.surfaceOverlay,
-        title = { Text("Rename device", style = NoopType.title2, color = Palette.textPrimary) },
+        title = {
+            Text(stringResource(R.string.devices_rename_title), style = NoopType.title2, color = Palette.textPrimary)
+        },
         text = {
+            val fieldLabel = stringResource(R.string.devices_device_name)
             OutlinedTextField(
                 value = draft,
                 onValueChange = { draft = it },
                 singleLine = true,
-                placeholder = { Text("Name", style = NoopType.body, color = Palette.textTertiary) },
+                placeholder = {
+                    Text(
+                        stringResource(R.string.devices_name_placeholder),
+                        style = NoopType.body,
+                        color = Palette.textTertiary,
+                    )
+                },
                 colors = devicesFieldColors(),
-                modifier = Modifier.fillMaxWidth().semantics { contentDescription = "Device name" },
+                modifier = Modifier.fillMaxWidth().semantics { contentDescription = fieldLabel },
             )
         },
         confirmButton = {
             TextButton(onClick = { onSave(draft) }) {
-                Text("Save", style = NoopType.body, color = Palette.accent)
+                Text(stringResource(R.string.devices_save), style = NoopType.body, color = Palette.accent)
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel", style = NoopType.body, color = Palette.textSecondary)
+                Text(stringResource(R.string.common_cancel), style = NoopType.body, color = Palette.textSecondary)
             }
         },
     )
@@ -892,12 +955,17 @@ private fun PickActiveDialog(
     AlertDialog(
         onDismissRequest = onLeaveNone,
         containerColor = Palette.surfaceOverlay,
-        title = { Text("Pick a new active strap", style = NoopType.title2, color = Palette.textPrimary) },
+        title = {
+            Text(
+                stringResource(R.string.devices_pick_active_title),
+                style = NoopType.title2,
+                color = Palette.textPrimary,
+            )
+        },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(Metrics.space4)) {
                 Text(
-                    "You removed your active strap. Choose which paired band provides your live data, or " +
-                        "leave none active and pair one later.",
+                    stringResource(R.string.devices_pick_active_body),
                     style = NoopType.subhead,
                     color = Palette.textSecondary,
                 )
@@ -919,7 +987,11 @@ private fun PickActiveDialog(
         confirmButton = {},
         dismissButton = {
             TextButton(onClick = onLeaveNone) {
-                Text("Leave none active", style = NoopType.body, color = Palette.textSecondary)
+                Text(
+                    stringResource(R.string.devices_pick_active_leave_none),
+                    style = NoopType.body,
+                    color = Palette.textSecondary,
+                )
             }
         },
     )
@@ -1036,8 +1108,7 @@ private fun OuraLocalStateNote() {
     ) {
         Icon(Icons.Filled.Info, contentDescription = null, tint = Palette.statusWarning, modifier = Modifier.size(14.dp))
         Text(
-            "Paired locally. NOOP owns this ring while it holds the key. If you reset it again or set it " +
-                "up in the Oura app, NOOP no longer owns it and you would re-add it to take it over.",
+            stringResource(R.string.devices_oura_local_note),
             style = NoopType.caption,
             color = Palette.statusWarning,
         )
@@ -1068,9 +1139,13 @@ private fun SyncStatusSection(vm: AppViewModel, onSyncNow: () -> Unit) {
     val canSync = live.connected && live.bonded && !live.backfilling
     Column(verticalArrangement = Arrangement.spacedBy(Metrics.gap)) {
         SectionHeader(
-            "Sync",
-            overline = "Strap history",
-            trailing = if (live.connected) (if (live.bonded) "Connected" else "Pairing…") else "Offline",
+            stringResource(R.string.devices_sync),
+            overline = stringResource(R.string.devices_sync_overline),
+            trailing = when {
+                !live.connected -> stringResource(R.string.devices_sync_offline)
+                live.bonded -> stringResource(R.string.devices_sync_connected)
+                else -> stringResource(R.string.devices_sync_pairing)
+            },
         )
 
         NoopCard(tint = Palette.chargeColor) {
@@ -1078,7 +1153,7 @@ private fun SyncStatusSection(vm: AppViewModel, onSyncNow: () -> Unit) {
                 when {
                     live.backfilling -> SyncingHistoryNote(chunks = live.syncChunksThisSession)
                     !live.connected -> StatePill(
-                        title = "No strap connected",
+                        title = stringResource(R.string.devices_sync_no_strap),
                         tone = StrandTone.Neutral,
                         showsDot = false,
                     )
@@ -1086,7 +1161,10 @@ private fun SyncStatusSection(vm: AppViewModel, onSyncNow: () -> Unit) {
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(Metrics.space8),
                     ) {
-                        StatePill(title = "History synced", tone = StrandTone.Positive)
+                        StatePill(
+                            title = stringResource(R.string.devices_sync_history_synced),
+                            tone = StrandTone.Positive,
+                        )
                         Text(
                             relativeAgo(live.lastSyncAt!!),
                             style = NoopType.footnote,
@@ -1094,34 +1172,34 @@ private fun SyncStatusSection(vm: AppViewModel, onSyncNow: () -> Unit) {
                         )
                     }
                     else -> StatePill(
-                        title = if (live.bonded) "Ready to sync" else "Pairing…",
+                        title = stringResource(
+                            if (live.bonded) R.string.devices_sync_ready else R.string.devices_sync_pairing,
+                        ),
                         tone = StrandTone.Accent,
                         showsDot = true,
                         pulsing = !live.bonded,
                     )
                 }
 
+                val syncLabel = when {
+                    canSync -> stringResource(R.string.devices_sync_a11y_ready)
+                    live.backfilling -> stringResource(R.string.devices_sync_a11y_in_progress)
+                    else -> stringResource(R.string.devices_sync_a11y_connect_first)
+                }
                 NoopButton(
-                    text = if (live.backfilling) "Syncing…" else "Sync now",
+                    text = stringResource(
+                        if (live.backfilling) R.string.devices_syncing else R.string.devices_sync_now,
+                    ),
                     leadingIcon = Icons.Filled.Sync,
                     kind = NoopButtonKind.Secondary,
                     fullWidth = true,
                     enabled = canSync,
-                    modifier = Modifier.semantics {
-                        contentDescription = if (canSync) {
-                            "Sync now. Pulls your strap's stored history immediately, without waiting " +
-                                "for the next automatic sync."
-                        } else if (live.backfilling) {
-                            "Sync now. A sync is already in progress."
-                        } else {
-                            "Sync now. Connect your strap first."
-                        }
-                    },
+                    modifier = Modifier.semantics { contentDescription = syncLabel },
                     onClick = onSyncNow,
                 )
 
                 Text(
-                    syncHelperText(live),
+                    stringResource(syncHelperText(live)),
                     style = NoopType.footnote,
                     color = Palette.textTertiary,
                 )
@@ -1131,13 +1209,12 @@ private fun SyncStatusSection(vm: AppViewModel, onSyncNow: () -> Unit) {
 }
 
 /** The helper line below the Sync-now button: explains the current state (syncing / offline / pairing /
- * ready). */
-private fun syncHelperText(live: LiveState): String = when {
-    live.backfilling -> "Pulling your strap's stored history. This drains oldest-first; a deep backlog " +
-        "now continues automatically across passes instead of waiting between syncs."
-    !live.connected -> "Connect your strap to sync its stored history. Until then, only imported data " +
-        "shows here."
-    !live.bonded -> "Finishing the pairing handshake. Sync now becomes available once the strap is paired."
-    else -> "Syncs your strap's stored history right away, instead of waiting for the next automatic sync."
+ * ready). Returns the resource id; the caller resolves it. */
+@StringRes
+private fun syncHelperText(live: LiveState): Int = when {
+    live.backfilling -> R.string.devices_sync_help_backfilling
+    !live.connected -> R.string.devices_sync_help_offline
+    !live.bonded -> R.string.devices_sync_help_pairing
+    else -> R.string.devices_sync_help_ready
 }
 

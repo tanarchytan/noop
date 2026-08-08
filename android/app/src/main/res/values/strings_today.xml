@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <!-- TodayRecovery: the Charge breakdown sheet -->
+    <string name="today_charge_breakdown_title">What shaped your Charge</string>
+    <string name="today_close">Close</string>
+
+    <!-- TodayRecovery: "What shaped it" driver rows -->
+    <string name="today_overline_charge">Charge</string>
+    <string name="today_overline_charge_carried">Charge · %1$s</string>
+    <string name="today_what_shaped_it">What shaped it</string>
+    <string name="today_vs_your_baseline">vs your baseline</string>
+    <string name="today_confidence_solid">SOLID</string>
+    <string name="today_confidence_building">BUILDING</string>
+    <string name="today_confidence_calibrating">CALIBRATING</string>
+    <string name="today_driver_row_a11y">%1$s, %2$s, %3$s, %4$s points, %5$s</string>
+    <string name="today_driver_delta_pts">%1$s pts</string>
+    <string name="today_drivers_footnote">Each line is how many points that signal moved Charge versus sitting at your on-device baseline. Approximate, not medical advice.</string>
+
+    <!-- TodayRecovery: Contributors bars -->
+    <string name="today_overline_recovery">Recovery</string>
+    <string name="today_overline_recovery_carried">Recovery · %1$s</string>
+    <string name="today_contributors">Contributors</string>
+    <string name="today_contributors_trailing">What drove Charge</string>
+    <string name="today_contributors_footnote">Baselines learned on-device over 14 days. Bars are an approximate read of each signal against a typical adult range, not medical advice.</string>
+
+    <!-- Metric names shared by the Contributors bars and the Key Metrics grid -->
+    <string name="today_metric_hrv">HRV</string>
+    <string name="today_metric_resting_hr">Resting HR</string>
+    <string name="today_metric_rest_hr_short">Rest HR</string>
+    <string name="today_metric_sleep">Sleep</string>
+    <string name="today_metric_respiratory">Respiratory</string>
+    <string name="today_metric_resp_short">Resp</string>
+    <string name="today_metric_steps">Steps</string>
+    <string name="today_metric_weight">Weight</string>
+    <string name="today_metric_calories">Calories</string>
+
+    <!-- TodayRecovery: calibration milestone timeline -->
+    <string name="today_calibration_milestones">Calibration milestones</string>
+    <string name="today_calibration_milestones_sub">Wear the strap overnight to unlock each one.</string>
+    <string name="today_milestone_night_one">night</string>
+    <string name="today_milestone_nights_other">nights</string>
+    <string name="today_milestone_unlocked">Unlocked</string>
+    <string name="today_milestone_unlocked_a11y">%1$s unlocked</string>
+    <string name="today_milestone_nights_to_go">%1$d %2$s to go</string>
+    <string name="today_milestone_active_a11y">%1$s, %2$d of %3$d nights, %4$d %5$s to go. %6$s</string>
+    <string name="today_milestone_locked_a11y">%1$s, %2$d of %3$d nights, %4$d %5$s to go</string>
+    <string name="today_milestone_progress">%1$d/%2$d nights · %3$s</string>
+
+    <!-- TodayMetrics: Key Metrics grid expander -->
+    <string name="today_show_fewer">Show fewer</string>
+    <string name="today_show_all_metrics">Show all metrics (%1$d)</string>
+
+    <!-- TodayMetrics: Readiness card -->
+    <string name="today_readiness">Readiness</string>
+    <string name="today_readiness_overline">Should you push today?</string>
+    <string name="today_readiness_load">load %1$s</string>
+
+    <!-- TodayHeartRate: the 24h heart-rate trend card -->
+    <string name="today_hr_title">Heart Rate</string>
+    <string name="today_hr_beats_per_minute">Beats per minute</string>
+    <string name="today_yesterday">Yesterday</string>
+    <string name="today_hr_empty_past_day">No heart rate for this day. Step back to a day the strap was worn.</string>
+    <string name="today_hr_empty_window">No heart rate in the last %1$s. Try a wider window or Today.</string>
+    <string name="today_hr_empty_calibrating">Calibrating , no heart rate banked yet today. Your curve fills in as the strap offloads.</string>
+    <string name="today_hr_subtitle_selected_day">5-minute average | selected day</string>
+    <string name="today_hr_subtitle_since_midnight">5-minute average | since midnight</string>
+    <string name="today_hr_subtitle_last_window">5-minute average | last %1$s</string>
+    <string name="today_hr_reset_zoom_a11y">Reset the heart rate zoom</string>
+    <string name="today_hr_marker_a11y_base">24-hour heart rate</string>
+    <string name="today_hr_marker_a11y_sleep">sleep band %1$s</string>
+    <string name="today_hr_marker_a11y_charge">%1$d percent Charge at wake</string>
+    <string name="today_hr_marker_a11y_effort">%1$s Effort now</string>
+    <string name="today_hr_marker_a11y_workout_one">%1$d workout marked</string>
+    <string name="today_hr_marker_a11y_workouts_other">%1$d workouts marked</string>
+    <string name="today_hr_marker_charge">%1$d%% Charge</string>
+    <string name="today_hr_marker_effort">%1$s Effort</string>
+
+    <!-- TodayActions: the Live Session entry card and the quick-action disc -->
+    <string name="today_session_running">Session running</string>
+    <string name="today_session_ended">Session ended</string>
+    <string name="today_session_start">Start session</string>
+    <string name="today_session_running_detail">Guarding — silence means you\'re on track.</string>
+    <string name="today_session_ended_detail">See the summary of your last session.</string>
+    <string name="today_session_start_detail">Strap-guided effort session. It only buzzes when you drift off today\'s band.</string>
+    <string name="today_session_a11y">%1$s, beta. %2$s</string>
+    <string name="today_beta">BETA</string>
+    <string name="today_quick_actions">Quick actions</string>
+</resources>

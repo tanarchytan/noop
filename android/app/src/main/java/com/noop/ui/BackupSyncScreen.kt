@@ -40,10 +40,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import com.noop.R
 import com.noop.data.DataBackup
 import com.noop.data.WhoopRepository
 import com.noop.ingest.WhoopCsvExporter
@@ -144,7 +146,7 @@ fun BackupSyncScreen(repo: WhoopRepository) {
                     // would still ack and trim the strap PAST records we can't store, discarding real history.
                     // Relaunching the process re-opens Room against the restored file. Do it automatically
                     // rather than trust the user to read a toast.
-                    Toast.makeText(context, "Backup restored — restarting NOOP…", Toast.LENGTH_LONG).show()
+                    Toast.makeText(context, context.getString(R.string.backup_restored_restarting), Toast.LENGTH_LONG).show()
                     // NonCancellable: this coroutine runs in the screen's scope, which is cancelled the
                     // instant the user navigates away. The restart is a data-safety guarantee (the DB is
                     // already swapped), so it must complete even if the composition leaves — otherwise the
@@ -174,7 +176,7 @@ fun BackupSyncScreen(repo: WhoopRepository) {
         ActivityResultContracts.OpenDocument(),
     ) { uri ->
         if (uri == null) return@rememberLauncherForActivityResult
-        pendingRestore = "the selected file" to uri
+        pendingRestore = context.getString(R.string.backup_the_selected_file) to uri
     }
 
     // Export a portable copy (moved here from Settings): a one-off .noopbak to any location, and the
@@ -191,11 +193,17 @@ fun BackupSyncScreen(repo: WhoopRepository) {
                 onSuccess = {
                     Toast.makeText(
                         context,
-                        "Backup exported. Copy it to another phone and use Restore there.",
+                        context.getString(R.string.backup_exported),
                         Toast.LENGTH_LONG,
                     ).show()
                 },
-                onFailure = { e -> Toast.makeText(context, "Backup problem: ${e.message}", Toast.LENGTH_LONG).show() },
+                onFailure = { e ->
+                    Toast.makeText(
+                        context,
+                        context.getString(R.string.backup_export_problem, e.message.toString()),
+                        Toast.LENGTH_LONG,
+                    ).show()
+                },
             )
         }
     }
@@ -210,43 +218,47 @@ fun BackupSyncScreen(repo: WhoopRepository) {
                 onSuccess = { msg ->
                     Toast.makeText(
                         context,
-                        "$msg Re-import it via Data sources -> WHOOP import, on Android or Mac.",
+                        context.getString(R.string.backup_csv_exported, msg),
                         Toast.LENGTH_LONG,
                     ).show()
                 },
-                onFailure = { e -> Toast.makeText(context, "CSV export problem: ${e.message}", Toast.LENGTH_LONG).show() },
+                onFailure = { e ->
+                    Toast.makeText(
+                        context,
+                        context.getString(R.string.backup_csv_problem, e.message.toString()),
+                        Toast.LENGTH_LONG,
+                    ).show()
+                },
             )
         }
     }
 
     LazyScreenScaffold(
-        title = "Backup & Sync",
-        subtitle = "Save a full backup to a folder you choose - point it at Google Drive / Dropbox for off-device sync.",
+        title = stringResource(R.string.nav_backup_sync),
+        subtitle = stringResource(R.string.backup_subtitle),
     ) {
         // 1 · Destination folder
         item {
             NoopCard(padding = 20.dp) {
                 Column(verticalArrangement = Arrangement.spacedBy(Metrics.space10)) {
-                    Text("Backup location", style = NoopType.headline, color = Palette.textPrimary)
+                    Text(stringResource(R.string.backup_location), style = NoopType.headline, color = Palette.textPrimary)
                     Text(
-                        "Backups are saved to ${BackupSync.backupDir().path}",
+                        stringResource(R.string.backup_location_path, BackupSync.backupDir().path),
                         style = NoopType.footnote, color = Palette.textTertiary,
                     )
                     Text(
-                        "Point a sync app (FolderSync / Autosync) or a desktop Drive / Dropbox client at that " +
-                            "folder for off-device backup — NOOP only writes the local file.",
+                        stringResource(R.string.backup_location_hint),
                         style = NoopType.caption, color = Palette.accent,
                     )
                     if (hasAccess) {
-                        Text("✓ File access granted", style = NoopType.footnote, color = Palette.accent)
+                        Text(stringResource(R.string.backup_file_access_granted), style = NoopType.footnote, color = Palette.accent)
                     } else {
                         Text(
-                            "NOOP needs file access to write backups to that folder. Grant it once — it survives " +
-                                "reinstalls (unlike the old folder-picker, whose access was lost on every update).",
+                            stringResource(R.string.backup_file_access_needed),
                             style = NoopType.footnote, color = Palette.textTertiary,
                         )
                         NoopButton(
-                            text = "Allow file access",
+                            text = stringResource(R.string.backup_allow_file_access),
                             leadingIcon = Icons.Filled.FolderOpen,
                             kind = NoopButtonKind.Secondary,
                             enabled = !busy,
@@ -266,10 +278,9 @@ fun BackupSyncScreen(repo: WhoopRepository) {
                             modifier = Modifier.weight(1f),
                             verticalArrangement = Arrangement.spacedBy(Metrics.space2),
                         ) {
-                            Text("Daily auto-backup", style = NoopType.body, color = Palette.textPrimary)
+                            Text(stringResource(R.string.backup_daily_auto), style = NoopType.body, color = Palette.textPrimary)
                             Text(
-                                "Writes a fresh dated backup to your folder once a day at the time below, keeping " +
-                                    "the latest $keep. Off by default - flip it on if you want it.",
+                                stringResource(R.string.backup_daily_auto_detail, keep),
                                 style = NoopType.footnote, color = Palette.textTertiary,
                             )
                         }
@@ -298,10 +309,9 @@ fun BackupSyncScreen(repo: WhoopRepository) {
                             modifier = Modifier.weight(1f),
                             verticalArrangement = Arrangement.spacedBy(Metrics.space2),
                         ) {
-                            Text("Keep last snapshots", style = NoopType.body, color = Palette.textPrimary)
+                            Text(stringResource(R.string.backup_keep_last), style = NoopType.body, color = Palette.textPrimary)
                             Text(
-                                "Older backups beyond this many are pruned, oldest first (≈ that many days of " +
-                                    "daily backups). For recovery: if data ever corrupts, grab the newest snapshot.",
+                                stringResource(R.string.backup_keep_last_detail),
                                 style = NoopType.footnote, color = Palette.textTertiary,
                             )
                         }
@@ -343,16 +353,16 @@ fun BackupSyncScreen(repo: WhoopRepository) {
                             modifier = Modifier.weight(1f),
                             verticalArrangement = Arrangement.spacedBy(Metrics.space2),
                         ) {
-                            Text("Backup time", style = NoopType.body, color = Palette.textPrimary)
+                            Text(stringResource(R.string.backup_time), style = NoopType.body, color = Palette.textPrimary)
                             Text(
-                                "Roughly when the daily backup runs (best-effort — the system may slide it a little).",
+                                stringResource(R.string.backup_time_detail),
                                 style = NoopType.footnote, color = Palette.textTertiary,
                             )
                         }
                         Spacer(Modifier.width(Metrics.space16))
                         TimeChip(
                             minutes = backupMinute,
-                            accessibilityLabel = "Daily backup time",
+                            accessibilityLabel = stringResource(R.string.backup_time_label),
                             onPicked = { m ->
                                 backupMinute = m
                                 BackupSyncPrefs.setBackupMinute(context, m)
@@ -362,14 +372,15 @@ fun BackupSyncScreen(repo: WhoopRepository) {
                     }
                     Text(
                         if (lastMs > 0L) {
-                            "Last backup: ${DateUtils.getRelativeTimeSpanString(lastMs)}"
+                            stringResource(R.string.backup_last, DateUtils.getRelativeTimeSpanString(lastMs).toString())
                         } else {
-                            "No backup yet."
+                            stringResource(R.string.backup_none_yet)
                         },
                         style = NoopType.caption, color = Palette.textTertiary,
                     )
                     NoopButton(
-                        text = if (busy) "Working…" else "Back up now",
+                        text = if (busy) stringResource(R.string.backup_working)
+                        else stringResource(R.string.backup_now),
                         leadingIcon = Icons.Filled.CloudUpload,
                         fullWidth = true,
                         enabled = hasAccess && !busy,
@@ -382,9 +393,9 @@ fun BackupSyncScreen(repo: WhoopRepository) {
                                 Toast.makeText(
                                     context,
                                     if (ok) {
-                                        "Backed up to ${BackupSync.backupDir().name}."
+                                        context.getString(R.string.backup_done, BackupSync.backupDir().name)
                                     } else {
-                                        "Backup failed - grant file access and try again."
+                                        context.getString(R.string.backup_failed_no_access)
                                     },
                                     Toast.LENGTH_LONG,
                                 ).show()
@@ -399,14 +410,13 @@ fun BackupSyncScreen(repo: WhoopRepository) {
         item {
             NoopCard(padding = 20.dp) {
                 Column(verticalArrangement = Arrangement.spacedBy(Metrics.space10)) {
-                    Text("Restore", style = NoopType.headline, color = Palette.textPrimary)
+                    Text(stringResource(R.string.backup_restore), style = NoopType.headline, color = Palette.textPrimary)
                     Text(
-                        "Replace this device's data with one of your backups. This overwrites current data, " +
-                            "so back up first if unsure.",
+                        stringResource(R.string.backup_restore_detail),
                         style = NoopType.footnote, color = Palette.textTertiary,
                     )
                     NoopButton(
-                        text = "Restore from a backup…",
+                        text = stringResource(R.string.backup_restore_action),
                         leadingIcon = Icons.Filled.Restore,
                         kind = NoopButtonKind.Secondary,
                         enabled = !busy,
@@ -438,15 +448,15 @@ fun BackupSyncScreen(repo: WhoopRepository) {
         item {
             NoopCard(padding = 20.dp) {
                 Column(verticalArrangement = Arrangement.spacedBy(Metrics.space10)) {
-                    Text("Export a copy", style = NoopType.headline, color = Palette.textPrimary)
+                    Text(stringResource(R.string.backup_export_copy), style = NoopType.headline, color = Palette.textPrimary)
                     Text(
-                        "Save a one-off file to move your data to another phone or share it. The .noopbak is the " +
-                            "lossless restore file; the CSV is a WHOOP-format zip that re-imports on Android or Mac.",
+                        stringResource(R.string.backup_export_copy_detail),
                         style = NoopType.footnote, color = Palette.textTertiary,
                     )
                     Row(horizontalArrangement = Arrangement.spacedBy(Metrics.space12)) {
                         NoopButton(
-                            text = if (busy) "Working…" else "Export backup file…",
+                            text = if (busy) stringResource(R.string.backup_working)
+                            else stringResource(R.string.backup_export_file),
                             kind = NoopButtonKind.Secondary,
                             enabled = !busy,
                             modifier = Modifier.weight(1f),
@@ -456,7 +466,7 @@ fun BackupSyncScreen(repo: WhoopRepository) {
                             },
                         )
                         NoopButton(
-                            text = "Export CSV…",
+                            text = stringResource(R.string.backup_export_csv),
                             kind = NoopButtonKind.Secondary,
                             enabled = !busy,
                             modifier = Modifier.weight(1f),
@@ -477,12 +487,12 @@ fun BackupSyncScreen(repo: WhoopRepository) {
             onDismissRequest = { showSnapshotPicker = false },
             containerColor = Palette.surfaceOverlay,
             title = {
-                Text("Choose a backup", style = NoopType.title2, color = Palette.textPrimary)
+                Text(stringResource(R.string.backup_choose), style = NoopType.title2, color = Palette.textPrimary)
             },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(Metrics.space4)) {
                     Text(
-                        "Newest first. Restoring replaces this device's data.",
+                        stringResource(R.string.backup_choose_hint),
                         style = NoopType.footnote, color = Palette.textSecondary,
                     )
                     snapshots.forEach { snap ->
@@ -504,7 +514,7 @@ fun BackupSyncScreen(repo: WhoopRepository) {
                                 .clickable {
                                     showSnapshotPicker = false
                                     pendingRestore = if (snap.timeMs > 0L) {
-                                        "the backup from $whenLabel"
+                                        context.getString(R.string.backup_the_backup_from, whenLabel)
                                     } else {
                                         snap.name
                                     } to Uri.fromFile(snap.file)
@@ -522,12 +532,12 @@ fun BackupSyncScreen(repo: WhoopRepository) {
                     showSnapshotPicker = false
                     pickRestoreFile.launch(RESTORE_MIME_TYPES)
                 }) {
-                    Text("Pick a file…", style = NoopType.body, color = Palette.accent)
+                    Text(stringResource(R.string.backup_pick_a_file), style = NoopType.body, color = Palette.accent)
                 }
             },
             confirmButton = {
                 TextButton(onClick = { showSnapshotPicker = false }) {
-                    Text("Cancel", style = NoopType.body, color = Palette.textSecondary)
+                    Text(stringResource(R.string.common_cancel), style = NoopType.body, color = Palette.textSecondary)
                 }
             },
         )
@@ -536,9 +546,9 @@ fun BackupSyncScreen(repo: WhoopRepository) {
     // Explicit in-app confirm BEFORE any destructive restore call, on every restore path.
     pendingRestore?.let { (label, uri) ->
         NoopConfirmDialog(
-            title = "Replace all current data?",
-            text = "Replace all current data with $label? This cannot be undone.",
-            confirmLabel = "Replace",
+            title = stringResource(R.string.backup_replace_title),
+            text = stringResource(R.string.backup_replace_text, label),
+            confirmLabel = stringResource(R.string.backup_replace_action),
             destructive = true,
             onConfirm = {
                 pendingRestore = null
@@ -553,12 +563,12 @@ fun BackupSyncScreen(repo: WhoopRepository) {
         AlertDialog(
             onDismissRequest = {},
             confirmButton = {},
-            title = { Text("Restoring backup") },
+            title = { Text(stringResource(R.string.backup_restoring_title)) },
             text = {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     CircularProgressIndicator(modifier = Modifier.size(22.dp))
                     Spacer(Modifier.width(14.dp))
-                    Text("Merging your data and restarting. A large backup can take a moment.")
+                    Text(stringResource(R.string.backup_restoring_body))
                 }
             },
         )
@@ -569,8 +579,8 @@ fun BackupSyncScreen(repo: WhoopRepository) {
     restoreError?.let { msg ->
         AlertDialog(
             onDismissRequest = { restoreError = null },
-            confirmButton = { TextButton(onClick = { restoreError = null }) { Text("OK") } },
-            title = { Text("Restore failed") },
+            confirmButton = { TextButton(onClick = { restoreError = null }) { Text(stringResource(R.string.backup_ok)) } },
+            title = { Text(stringResource(R.string.backup_restore_failed)) },
             text = { Text(msg) },
         )
     }
