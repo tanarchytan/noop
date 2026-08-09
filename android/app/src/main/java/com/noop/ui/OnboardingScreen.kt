@@ -3,6 +3,7 @@ package com.noop.ui
 import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Build
+import android.content.Intent
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -39,6 +40,7 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.FileUpload
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.MonitorHeart
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Palette
@@ -74,6 +76,7 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.noop.R
 import com.noop.ble.WhoopModel
+import com.noop.data.DataBackup
 import com.noop.data.DeviceStatus
 import com.noop.data.ImportSummary
 import com.noop.data.PairedDeviceRow
@@ -82,6 +85,8 @@ import com.noop.ingest.AppleHealthImporter
 import com.noop.ingest.HealthConnectImporter
 import com.noop.ingest.WhoopCsvImporter
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -691,6 +696,42 @@ private fun ImportStep(viewModel: AppViewModel) {
         ActivityResultContracts.OpenDocument(),
     ) { uri -> if (uri != null) runImport { AppleHealthImporter.importExport(context, uri, viewModel.repo) } }
 
+    // A .noopbak REPLACES the store rather than merging, so it restarts the process on success — the
+    // same contract as Backup & Sync's restore. Nothing is at risk here: this store is brand new.
+    val restoreLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument(),
+    ) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        busy = true
+        status = context.getString(R.string.onboarding_restoring)
+        scope.launch {
+            val result = withContext(Dispatchers.IO) { DataBackup.importFrom(context, uri) }
+            busy = false
+            when (result) {
+                is DataBackup.ImportResult.NeedsRestart -> {
+                    Toast.makeText(
+                        context,
+                        context.getString(R.string.backup_restored_restarting),
+                        Toast.LENGTH_LONG,
+                    ).show()
+                    withContext(NonCancellable) {
+                        delay(800)
+                        val ctx = context.applicationContext
+                        ctx.packageManager.getLaunchIntentForPackage(ctx.packageName)
+                            ?.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+                            ?.let { ctx.startActivity(it) }
+                        Runtime.getRuntime().exit(0)
+                    }
+                }
+                is DataBackup.ImportResult.Failed -> {
+                    status = result.message
+                    Toast.makeText(context, result.message, Toast.LENGTH_LONG).show()
+                }
+                else -> status = context.getString(R.string.onboarding_restore_done)
+            }
+        }
+    }
+
     val hcPermissionLauncher = rememberLauncherForActivityResult(
         PermissionController.createRequestPermissionResultContract(),
     ) { granted ->
@@ -756,6 +797,13 @@ private fun ImportStep(viewModel: AppViewModel) {
                         icon = Icons.Filled.FavoriteBorder,
                         enabled = !busy,
                     ) { appleImportLauncher.launch(arrayOf("*/*")) }
+                    // A new phone is when people restore, and this step is the only import surface they
+                    // meet before the dashboard. Without it a .noopbak is reachable only from More.
+                    OnboardingActionButton(
+                        label = stringResource(R.string.onboarding_restore_backup),
+                        icon = Icons.Filled.History,
+                        enabled = !busy,
+                    ) { restoreLauncher.launch(arrayOf("*/*")) }
                 }
             }
 
