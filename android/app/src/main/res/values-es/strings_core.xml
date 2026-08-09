@@ -32,7 +32,7 @@
     <string name="core_caption_last_night">Anoche · %1$s</string>
     <string name="core_caption_latest_sleep">Último sueño · %1$s</string>
     <string name="core_state_calibrating">Calibrando</string>
-    <string name="core_state_calibrating_detail">Creando tu línea base. Unos %1$d %2$s más hasta que tus puntuaciones sean personales.</string>
+    <string name="core_state_calibrating_detail">Creando tu línea base. Unas %1$d %2$s más hasta que tus puntuaciones sean personales.</string>
     <string name="core_state_carried_detail">El de esta noche llega cuando duermas con la banda puesta.</string>
     <string name="core_state_carried_stale_detail">Esta es tu última sesión puntuada. Lleva la banda por la noche para tener una puntuación nueva.</string>
     <string name="core_state_needs_strap">Necesita la banda</string>
