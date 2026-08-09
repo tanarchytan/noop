@@ -23,11 +23,13 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.noop.R
 import com.noop.analytics.RustScores
 import com.noop.data.DailyMetric
 import java.util.Locale
@@ -46,11 +48,11 @@ private val sleepStressMedium: Color get() = Palette.statusPositive
 private val sleepStressHigh: Color get() = Palette.statusWarning
 
 /** The legend, highest band first, as the reference prints it. */
-private val sleepStressLegend: List<Pair<String, Color>>
+private val sleepStressLegend: List<Pair<Int, Color>>
     get() = listOf(
-        "HIGH" to sleepStressHigh,
-        "MEDIUM" to sleepStressMedium,
-        "LOW" to sleepStressLow,
+        R.string.sleep_stress_high to sleepStressHigh,
+        R.string.sleep_stress_medium to sleepStressMedium,
+        R.string.sleep_stress_low to sleepStressLow,
     )
 
 /**
@@ -84,21 +86,22 @@ internal data class SleepStressNight(
  */
 @Composable
 internal fun SleepTimeInBedCard(nights: List<SleepScheduleNight>, slots: List<NightSlot>) {
-    SleepTrendShell(title = "TIME IN BED", onOpen = null) {
+    SleepTrendShell(title = stringResource(R.string.sleep_time_in_bed), onOpen = null) {
         // Two nights that HAPPENED; a gap slot holds its place on the axis but is not a night.
         if (nights.count { it.bedHour != null } < 2 || nights.size != slots.size) {
-            InsetChartPlaceholder(message = "Not enough nights yet.")
+            InsetChartPlaceholder(message = stringResource(R.string.sleep_not_enough_nights))
             return@SleepTrendShell
         }
         val barColor = Palette.restColor
         // The consistency chart's own span, off the same nights, so one bar height means one duration
         // on both cards.
         val span = scheduleHourSpan(nights)
+        val chartDescription = stringResource(R.string.sleep_time_in_bed_a11y, nights.size)
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(TIME_IN_BED_CHART_HEIGHT)
-                .semantics { contentDescription = "Time in bed over the last ${nights.size} nights" }
+                .semantics { contentDescription = chartDescription }
                 .drawBehind {
                     val yMin = span.start
                     val range = span.endInclusive - span.start
@@ -166,9 +169,9 @@ internal fun SleepTimeInBedCard(nights: List<SleepScheduleNight>, slots: List<Ni
 internal fun SleepPerformanceTrendCard(series: List<Double?>, dates: List<String>, onOpenDetail: () -> Unit) {
     val week = series.takeLast(SLEEP_TREND_NIGHTS)
     val read = week.filterNotNull()
-    SleepTrendShell(title = "SLEEP PERFORMANCE", onOpen = onOpenDetail) {
+    SleepTrendShell(title = stringResource(R.string.sleep_performance), onOpen = onOpenDetail) {
         if (read.isEmpty()) {
-            InsetChartPlaceholder(message = "Not enough nights yet.")
+            InsetChartPlaceholder(message = stringResource(R.string.sleep_not_enough_nights))
             return@SleepTrendShell
         }
         WeekBarChart(
@@ -182,9 +185,9 @@ internal fun SleepPerformanceTrendCard(series: List<Double?>, dates: List<String
         // The footer describes the nights that HAPPENED, so a gap neither averages in nor wins "Latest".
         ChartCardFooter(
             listOf(
-                "Latest" to pctValue(read.lastOrNull()),
-                "Week avg" to pctValue(RustScores.mean(read)),
-                "Best" to pctValue(read.maxOrNull()),
+                stringResource(R.string.sleep_footer_latest) to pctValue(read.lastOrNull()),
+                stringResource(R.string.sleep_footer_week_avg) to pctValue(RustScores.mean(read)),
+                stringResource(R.string.sleep_footer_best) to pctValue(read.maxOrNull()),
             ),
         )
     }
@@ -201,15 +204,17 @@ private const val SLEEP_PERFORMANCE_SCALE_MAX = 100.0
 internal fun SleepEfficiencyTrendCard(series: List<Double?>, dates: List<String>, onOpenDetail: () -> Unit) {
     val week = series.takeLast(SLEEP_TREND_NIGHTS)
     val read = week.filterNotNull()
-    SleepTrendShell(title = "SLEEP EFFICIENCY", onOpen = onOpenDetail) {
+    SleepTrendShell(title = stringResource(R.string.sleep_efficiency), onOpen = onOpenDetail) {
         if (read.size < 2) {
-            InsetChartPlaceholder(message = "Not enough nights yet.")
+            InsetChartPlaceholder(message = stringResource(R.string.sleep_not_enough_nights))
             return@SleepTrendShell
         }
         // The same week primitive HOURS VS. NEEDED draws with: a point sits at the centre of the slot
         // its own day label sits under, instead of running plot edge to plot edge past both of them.
         WeekLineChart(
-            series = WeekLineSeries("Sleep efficiency", week, Palette.statusPositive),
+            series = WeekLineSeries(
+                stringResource(R.string.sleep_series_efficiency), week, Palette.statusPositive,
+            ),
             dayLabels = dates.takeLast(week.size).map(::trendDayLabel),
             format = { pctValue(it) },
             height = Metrics.compactChartHeight,
@@ -217,9 +222,9 @@ internal fun SleepEfficiencyTrendCard(series: List<Double?>, dates: List<String>
         // The footer describes the nights that HAPPENED, so a gap neither averages in nor wins "Latest".
         ChartCardFooter(
             listOf(
-                "Latest" to pctValue(read.lastOrNull()),
-                "Week avg" to pctValue(RustScores.mean(read)),
-                "Best" to pctValue(read.maxOrNull()),
+                stringResource(R.string.sleep_footer_latest) to pctValue(read.lastOrNull()),
+                stringResource(R.string.sleep_footer_week_avg) to pctValue(RustScores.mean(read)),
+                stringResource(R.string.sleep_footer_best) to pctValue(read.maxOrNull()),
             ),
         )
     }
@@ -234,14 +239,18 @@ internal fun SleepEfficiencyTrendCard(series: List<Double?>, dates: List<String>
 internal fun SleepHoursVsNeededCard(hours: List<Double?>, needHours: List<Double>, dates: List<String>) {
     val week = hours.takeLast(SLEEP_TREND_NIGHTS)
     val need = needHours.takeLast(SLEEP_TREND_NIGHTS)
-    SleepTrendShell(title = "HOURS VS. NEEDED", onOpen = null) {
+    SleepTrendShell(title = stringResource(R.string.sleep_hours_vs_needed), onOpen = null) {
         if (week.count { it != null } < 2) {
-            InsetChartPlaceholder(message = "Not enough nights yet.")
+            InsetChartPlaceholder(message = stringResource(R.string.sleep_not_enough_nights))
             return@SleepTrendShell
         }
         WeekDualLineChart(
-            primary = WeekLineSeries("Hours of sleep", week, Palette.textSecondary),
-            secondary = WeekLineSeries("Sleep needed", need, Palette.restColor),
+            primary = WeekLineSeries(
+                stringResource(R.string.sleep_series_hours), week, Palette.textSecondary,
+            ),
+            secondary = WeekLineSeries(
+                stringResource(R.string.sleep_series_needed), need, Palette.restColor,
+            ),
             dayLabels = dates.takeLast(week.size).map(::trendDayLabel),
             format = { hoursText(it) },
             height = Metrics.compactChartHeight,
@@ -261,15 +270,15 @@ internal fun SleepRestorativeCard(rows: List<DailyMetric>, dates: List<String>) 
         val row = byDay[day]
         listOf((row?.remMin ?: 0.0) / MINUTES_PER_HOUR, (row?.deepMin ?: 0.0) / MINUTES_PER_HOUR)
     }
-    SleepTrendShell(title = "RESTORATIVE SLEEP", onOpen = null) {
+    SleepTrendShell(title = stringResource(R.string.sleep_restorative), onOpen = null) {
         if (stacks.none { stack -> stack.any { it > 0.0 } }) {
-            InsetChartPlaceholder(message = "No staged nights yet.")
+            InsetChartPlaceholder(message = stringResource(R.string.sleep_no_staged_nights))
             return@SleepTrendShell
         }
         WeekStackedBarChart(
             segments = listOf(
-                WeekStackSegment("REM", stageColor("rem")),
-                WeekStackSegment("Deep", stageColor("deep")),
+                WeekStackSegment(stringResource(R.string.sleep_stage_rem), stageColor("rem")),
+                WeekStackSegment(stringResource(R.string.sleep_stage_deep), stageColor("deep")),
             ),
             dayValues = stacks,
             dayLabels = week.map(::trendDayLabel),
@@ -294,12 +303,17 @@ private fun hoursText(hours: Double): String = String.format(Locale.US, "%.1f", 
 internal fun SleepStressCard(nights: List<SleepStressNight>) {
     // No chevron: sleep stress has no metric detail sheet, and a chevron that opens nothing is worse
     // than none.
-    SleepTrendShell(title = "SLEEP STRESS", onOpen = null) {
+    SleepTrendShell(title = stringResource(R.string.sleep_stress_title), onOpen = null) {
         val scaleMinutes = nights.maxOfOrNull { it.scoredMinutes } ?: 0L
         if (nights.isEmpty() || scaleMinutes <= 0L) {
-            InsetChartPlaceholder(message = "No scored sleep stress yet.")
+            InsetChartPlaceholder(message = stringResource(R.string.sleep_stress_none))
             return@SleepTrendShell
         }
+        val chartDescription = sleepStressDescription(
+            nights,
+            stringResource(R.string.sleep_stress_a11y_header, nights.size),
+            stringResource(R.string.sleep_stress_a11y_night),
+        )
         SleepStressLegend()
         Row(modifier = Modifier.fillMaxWidth()) {
             nights.forEach { night ->
@@ -318,7 +332,7 @@ internal fun SleepStressCard(nights: List<SleepStressNight>) {
             modifier = Modifier
                 .fillMaxWidth()
                 .height(SLEEP_STRESS_CHART_HEIGHT)
-                .semantics { contentDescription = sleepStressDescription(nights) }
+                .semantics { contentDescription = chartDescription }
                 .drawBehind {
                     val step = size.width / nights.size
                     val barW = (step * 0.34f).coerceAtLeast(4f)
@@ -369,20 +383,25 @@ private fun SleepStressLegend() {
                 modifier = Modifier.padding(horizontal = Metrics.space10),
             ) {
                 Box(modifier = Modifier.size(Metrics.legendSwatch).background(color))
-                Text(word, style = NoopType.footnote, color = Palette.textSecondary)
+                Text(stringResource(word), style = NoopType.footnote, color = Palette.textSecondary)
             }
         }
     }
 }
 
-/** The whole card as one sentence, so the chart is not silent to a screen reader. */
-internal fun sleepStressDescription(nights: List<SleepStressNight>): String =
-    "Sleep stress over the last ${nights.size} nights. " +
-        nights.joinToString("; ") { "${it.label} ${durationText(it.highMinutes.toDouble())} high" }
+/** The whole card as one sentence, so the chart is not silent to a screen reader. [header] and
+ *  [nightFormat] arrive resolved, so this stays callable without a Context. */
+internal fun sleepStressDescription(
+    nights: List<SleepStressNight>,
+    header: String,
+    nightFormat: String,
+): String = header + " " +
+    nights.joinToString("; ") { nightFormat.format(it.label, durationText(it.highMinutes.toDouble())) }
 
 /** The weekly cards' common frame: an uppercase title, an optional chevron, then the body. */
 @Composable
 private fun SleepTrendShell(title: String, onOpen: (() -> Unit)?, body: @Composable () -> Unit) {
+    val openLabel = stringResource(R.string.sleep_open_full_history)
     NoopCard(padding = Metrics.cardPadding, tint = Palette.restColor) {
         Column(verticalArrangement = Arrangement.spacedBy(Metrics.space14)) {
             Row(
@@ -391,7 +410,7 @@ private fun SleepTrendShell(title: String, onOpen: (() -> Unit)?, body: @Composa
                 } else {
                     Modifier
                         .fillMaxWidth()
-                        .clickable(onClickLabel = "Open the full history", onClick = onOpen)
+                        .clickable(onClickLabel = openLabel, onClick = onOpen)
                 },
                 verticalAlignment = Alignment.CenterVertically,
             ) {
@@ -400,7 +419,7 @@ private fun SleepTrendShell(title: String, onOpen: (() -> Unit)?, body: @Composa
                 if (onOpen != null) {
                     Icon(
                         Icons.Filled.ChevronRight,
-                        contentDescription = "Open the full history",
+                        contentDescription = openLabel,
                         tint = Palette.textTertiary,
                         modifier = Modifier.size(Metrics.iconSmall),
                     )

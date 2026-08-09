@@ -6,6 +6,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import com.noop.R
 import org.json.JSONArray
 import org.json.JSONObject
 import java.util.UUID
@@ -121,7 +122,11 @@ object TodayCardDismissal {
 //
 // First-run seeding: posts the current What's New (AppChangelog.releases.first) once, tracking
 // `lastSeededWhatsNewVersion` so the same version is never double-posted across launches.
-class UpdateStore private constructor(private val prefs: SharedPreferences) {
+class UpdateStore private constructor(
+    /** Application context, held only to resolve the seeded item's title/message from resources. */
+    private val appContext: Context,
+    private val prefs: SharedPreferences,
+) {
 
     /** The inbox, in insertion order. Snapshot state — every `Palette`-style read recomposes on
      *  mutation. Newest-first ordering is derived at read time ([sortedItems]). */
@@ -242,8 +247,8 @@ class UpdateStore private constructor(private val prefs: SharedPreferences) {
         post(
             UpdateItem(
                 kind = UpdateKind.WHATS_NEW,
-                title = if (title.isEmpty()) "What's new in NOOP $version" else title,
-                message = "NOOP $version is here — tap to read what's new.",
+                title = if (title.isEmpty()) appContext.getString(R.string.updates_seed_title, version) else title,
+                message = appContext.getString(R.string.updates_seed_message, version),
             ),
         )
     }
@@ -284,9 +289,9 @@ class UpdateStore private constructor(private val prefs: SharedPreferences) {
          *  the UI observes. Matches the `ProfileStore.from` / `SmartAlarmStore.from` accessor shape. */
         fun from(context: Context): UpdateStore =
             instance ?: synchronized(this) {
-                instance ?: UpdateStore(
-                    context.applicationContext.getSharedPreferences(FILE, Context.MODE_PRIVATE),
-                ).also { instance = it }
+                instance ?: context.applicationContext.let { app ->
+                    UpdateStore(app, app.getSharedPreferences(FILE, Context.MODE_PRIVATE))
+                }.also { instance = it }
             }
     }
 }

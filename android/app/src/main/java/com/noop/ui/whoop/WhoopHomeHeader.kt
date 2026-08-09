@@ -30,11 +30,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
+import com.noop.R
 import com.noop.ui.DayPagerBar
 import com.noop.ui.Metrics
 import com.noop.ui.NoopType
@@ -120,12 +122,13 @@ internal fun WhoopHomeTopBar(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(Metrics.space8),
     ) {
+        val profileLabel = stringResource(R.string.nav_profile)
         Box(
             modifier = Modifier
                 .size(Metrics.iconButton)
                 .clip(CircleShape)
-                .clickable(onClickLabel = "Profile", onClick = onOpenProfile)
-                .semantics { contentDescription = "Profile" },
+                .clickable(onClickLabel = profileLabel, onClick = onOpenProfile)
+                .semantics { contentDescription = profileLabel },
             contentAlignment = Alignment.Center,
         ) {
             ProfileAvatar(size = Metrics.iconButton)
@@ -150,12 +153,16 @@ private fun WhoopStrapChip(connected: Boolean, batteryPct: Double?, onClick: () 
     Box(
         modifier = Modifier
             .clip(RoundedCornerShape(Metrics.cornerPill))
-            .clickable(onClickLabel = "Strap", onClick = onClick),
+            .clickable(onClickLabel = stringResource(R.string.whoopskin_strap), onClick = onClick),
     ) {
         if (pct != null) {
             StatePill(title = "$pct%", tone = batteryPillTone(pct), icon = Icons.Filled.Watch)
         } else {
-            StatePill(title = "No strap", tone = StrandTone.Neutral, icon = Icons.Filled.Watch)
+            StatePill(
+                title = stringResource(R.string.whoopskin_no_strap),
+                tone = StrandTone.Neutral,
+                icon = Icons.Filled.Watch,
+            )
         }
     }
 }

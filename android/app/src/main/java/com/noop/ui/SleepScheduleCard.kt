@@ -24,11 +24,13 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.noop.R
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
@@ -110,12 +112,17 @@ internal fun SleepScheduleCard(
     val bandColor = Palette.metricPurple
     val gridColor = Palette.hairline
     val labelArgb = Palette.textTertiary.toArgb()
+    val chartDescription = stringResource(R.string.sleep_schedule_a11y, nights.size)
 
     NoopCard(padding = Metrics.cardPadding, tint = Palette.restColor) {
         Column(verticalArrangement = Arrangement.spacedBy(Metrics.space14)) {
             Row(verticalAlignment = Alignment.Top) {
                 Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(Metrics.space2)) {
-                    Text("SLEEP CONSISTENCY", style = NoopType.overline, color = Palette.textTertiary)
+                    Text(
+                        stringResource(R.string.sleep_consistency_title),
+                        style = NoopType.overline,
+                        color = Palette.textTertiary,
+                    )
                     Text(
                         pctValue(score),
                         style = NoopType.tileValueLarge,
@@ -124,14 +131,15 @@ internal fun SleepScheduleCard(
                         overflow = TextOverflow.Ellipsis,
                     )
                     Text(
-                        typicalScore?.let { "${pctValue(it)} typical" } ?: "no typical yet",
+                        typicalScore?.let { stringResource(R.string.sleep_typical_value, pctValue(it)) }
+                            ?: stringResource(R.string.sleep_no_typical_yet),
                         style = NoopType.footnote,
                         color = Palette.textSecondary,
                     )
                 }
                 if (bands.any { it != null }) {
                     Text(
-                        "- - -  Habitual window",
+                        stringResource(R.string.sleep_habitual_window),
                         style = NoopType.footnote,
                         color = Palette.textSecondary,
                         modifier = Modifier.padding(top = Metrics.space6),
@@ -143,7 +151,7 @@ internal fun SleepScheduleCard(
                     .fillMaxWidth()
                     .height(SCHEDULE_CHART_HEIGHT)
                     .clip(androidx.compose.foundation.shape.RoundedCornerShape(Metrics.cornerSm))
-                    .semantics { contentDescription = "Nightly bed and wake times over ${nights.size} nights" }
+                    .semantics { contentDescription = chartDescription }
                     .drawBehind {
                         val chartW = size.width - SCHEDULE_Y_GUTTER_PX
                         val chartH = size.height

@@ -1,10 +1,13 @@
 package com.noop.analytics
 
+import com.noop.R
 import com.noop.ui.TemperatureUnit
 import com.noop.ui.chargeDriverRows
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.io.File
+import java.util.Locale
 
 /**
  * FROZEN golden vectors for the Charge "What shaped it" driver rows: every expected value below is a
@@ -21,6 +24,80 @@ import org.junit.Test
  * apart, which is why the wrong one survived this long.
  */
 class ChargeDriversGoldenTest {
+
+    // ── the copy ─────────────────────────────────────────────────────────────
+    //
+    // The rows now carry resource ids, so the vectors below read their English out of
+    // strings_core.xml: the ids pin WHICH key each row picks, and the file pins what that key says.
+
+    /** Every `<string name="x">y</string>` in the app's strings_core.xml, apostrophes unescaped. */
+    private val core: Map<String, String> = run {
+        val userDir = File(System.getProperty("user.dir") ?: ".")
+        val res = listOf(userDir, File(userDir, "app"), File(userDir, "android/app"))
+            .map { File(it, "src/main/res/values/strings_core.xml") }
+            .firstOrNull { it.isFile }
+            ?: error("strings_core.xml not found from ${userDir.absolutePath}")
+        Regex("""<string name="([^"]+)">(.*?)</string>""", RegexOption.DOT_MATCHES_ALL)
+            .findAll(res.readText())
+            .associate { it.groupValues[1] to it.groupValues[2].replace("\\'", "'") }
+    }
+
+    /** Resource id to resource name, for every key a driver row can pick. */
+    private val names: Map<Int, String> = mapOf(
+        R.string.charge_driver_hrv to "charge_driver_hrv",
+        R.string.charge_driver_resting_hr to "charge_driver_resting_hr",
+        R.string.charge_driver_sleep to "charge_driver_sleep",
+        R.string.charge_driver_respiratory to "charge_driver_respiratory",
+        R.string.charge_driver_skin_temp to "charge_driver_skin_temp",
+        R.string.charge_driver_recovery_index to "charge_driver_recovery_index",
+        R.string.charge_driver_activity_balance to "charge_driver_activity_balance",
+        R.string.charge_driver_effort_yesterday to "charge_driver_effort_yesterday",
+        R.string.charge_driver_baseline to "charge_driver_baseline",
+        R.string.charge_driver_vs_baseline to "charge_driver_vs_baseline",
+        R.string.charge_driver_overnight to "charge_driver_overnight",
+        R.string.charge_verdict_at_baseline to "charge_verdict_at_baseline",
+        R.string.charge_verdict_above_supporting to "charge_verdict_above_supporting",
+        R.string.charge_verdict_below_limiting to "charge_verdict_below_limiting",
+        R.string.charge_verdict_below_supporting to "charge_verdict_below_supporting",
+        R.string.charge_verdict_above_limiting to "charge_verdict_above_limiting",
+        R.string.charge_verdict_sleep_supporting to "charge_verdict_sleep_supporting",
+        R.string.charge_verdict_sleep_neutral to "charge_verdict_sleep_neutral",
+        R.string.charge_verdict_sleep_limiting to "charge_verdict_sleep_limiting",
+        R.string.charge_verdict_index_supporting to "charge_verdict_index_supporting",
+        R.string.charge_verdict_index_neutral to "charge_verdict_index_neutral",
+        R.string.charge_verdict_index_limiting to "charge_verdict_index_limiting",
+        R.string.charge_verdict_activity_supporting to "charge_verdict_activity_supporting",
+        R.string.charge_verdict_activity_neutral to "charge_verdict_activity_neutral",
+        R.string.charge_verdict_activity_limiting to "charge_verdict_activity_limiting",
+        R.string.charge_verdict_skin_temp_warm to "charge_verdict_skin_temp_warm",
+        R.string.charge_verdict_skin_temp_cool to "charge_verdict_skin_temp_cool",
+        R.string.charge_verdict_skin_temp_near to "charge_verdict_skin_temp_near",
+    )
+
+    private fun english(id: Int): String {
+        val name = names[id] ?: error("driver row picked an unpinned resource id $id")
+        return core[name] ?: error("strings_core.xml has no <string name=\"$name\">")
+    }
+
+    /** A row's value or baseline: the bare figure, or the phrase its resource wraps it in. */
+    private fun wrap(id: Int?, value: String): String =
+        if (id == null) value else String.format(Locale.US, english(id), value)
+
+    /**
+     * 28 distinct ids, so a resource id the app never resolved to a real number (every key reading 0)
+     * collapses this map and fails here rather than making every vector below agree by accident.
+     */
+    @Test fun everyDriverResourceIsDistinctAndPresent() {
+        assertEquals(28, names.size)
+        names.values.forEach { assertTrue("strings_core.xml is missing $it", core.containsKey(it)) }
+    }
+
+    /** House style, now checked where the wording lives rather than on the row that renders it. */
+    @Test fun noDriverCopyCarriesAnEmDash() {
+        names.values.forEach {
+            assertTrue("$it must not contain an em-dash", !core.getValue(it).contains('—'))
+        }
+    }
 
     // ── the seam ─────────────────────────────────────────────────────────────
 
@@ -43,7 +120,15 @@ class ChargeDriversGoldenTest {
         hrvBaseline = hrvBaseline, rhrBaseline = rhrBaseline, respBaseline = respBaseline,
         sleepPerf = sleepPerf, skinTempDev = skinTempDev, recoveryIndexSlope = recoveryIndexSlope,
         effortBaseline = effortBaseline, priorDayEffort = priorDayEffort,
-    ).map { "${it.label}|${it.deltaPoints}|${it.valueText}|${it.baselineText}|${it.verdict}" }
+    ).map {
+        listOf(
+            english(it.labelRes),
+            "${it.deltaPoints}",
+            wrap(it.valueRes, it.valueText),
+            wrap(it.baselineRes, it.baselineValue),
+            english(it.verdictRes),
+        ).joinToString("|")
+    }
 
     /** A usable baseline with a given mean and Gaussian sigma (spread is internal abs-dev units). */
     private fun bl(mean: Double, sigma: Double): BaselineState =

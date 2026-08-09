@@ -23,10 +23,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.noop.R
 import com.noop.analytics.DaytimeStress
 import com.noop.ui.AppViewModel
 import com.noop.ui.BevelGauge
@@ -85,15 +87,14 @@ fun WhoopStressMonitorScreen(
     }
 
     LazyScreenScaffold(
-        title = "Stress Monitor",
-        subtitle = "Autonomic load from heart rate and HRV.",
+        title = stringResource(R.string.whoopskin_stress_monitor),
+        subtitle = stringResource(R.string.whoopskin_stress_monitor_subtitle),
     ) {
         if (dayIso == null) {
             item {
                 DataPendingNote(
-                    title = "No stress history yet",
-                    body = "Wear your strap through the day, or import a WHOOP export in Data " +
-                        "Sources, and your stress reads here.",
+                    title = stringResource(R.string.whoopskin_stress_empty_title),
+                    body = stringResource(R.string.whoopskin_stress_empty_body),
                 )
             }
             return@LazyScreenScaffold
@@ -126,30 +127,28 @@ private fun StressHeroCard(score: Double?) {
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(Metrics.space12),
         ) {
-            Overline("Stress", modifier = Modifier.fillMaxWidth())
+            Overline(stringResource(R.string.nav_stress), modifier = Modifier.fillMaxWidth())
             if (score == null) {
                 InsetChartPlaceholder(
-                    message = "Not enough resting heart rate or HRV to score this day.",
+                    message = stringResource(R.string.whoopskin_stress_no_score_day),
                     height = Metrics.compactChartHeight,
                 )
             } else {
                 val fraction = (score / STRESS_SCALE_MAX).coerceIn(0.0, 1.0)
                 val shown = stressText(score)
                 val ceiling = STRESS_SCALE_MAX.toInt()
+                val spoken = stringResource(R.string.whoopskin_stress_gauge_a11y, shown, ceiling)
                 BevelGauge(
                     fraction = fraction,
                     stops = Palette.stressGradientStops,
                     tipColor = Palette.sample(Palette.stressGradientStops, fraction.toFloat()),
                     numberText = shown,
-                    captionText = "of $ceiling",
-                    modifier = Modifier.semantics {
-                        contentDescription = "Stress $shown of $ceiling"
-                    },
+                    captionText = stringResource(R.string.whoopskin_stress_of_ceiling, ceiling),
+                    modifier = Modifier.semantics { contentDescription = spoken },
                 )
             }
             Text(
-                "Scored from how today's resting heart rate and HRV sit against your own recent " +
-                    "baseline. A wellness estimate, not a medical reading.",
+                stringResource(R.string.whoopskin_stress_hero_footnote),
                 style = NoopType.footnote,
                 color = Palette.textTertiary,
                 textAlign = TextAlign.Center,
@@ -167,12 +166,19 @@ private fun StressDayCard(read: DaytimeStress.Result?) {
         Column(verticalArrangement = Arrangement.spacedBy(Metrics.space12)) {
             val scored = read?.scored.orEmpty()
             Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Overline("Through the day", modifier = Modifier.weight(1f))
+                Overline(
+                    stringResource(R.string.whoopskin_stress_through_the_day),
+                    modifier = Modifier.weight(1f),
+                )
                 val peak = read?.peak
                 val peakLevel = peak?.level
                 if (peak != null && peakLevel != null) {
                     Text(
-                        "peak ${stressText(peakLevel)} · ${stressHourLabel(peak.hour)}",
+                        stringResource(
+                            R.string.whoopskin_stress_peak,
+                            stressText(peakLevel),
+                            stressHourLabel(peak.hour),
+                        ),
                         style = NoopType.captionNumber,
                         color = Palette.stressBright,
                     )
@@ -180,11 +186,11 @@ private fun StressDayCard(read: DaytimeStress.Result?) {
             }
             when {
                 read == null -> InsetChartPlaceholder(
-                    message = "Reading this day's heart rate…",
+                    message = stringResource(R.string.whoopskin_stress_reading_day),
                     height = Metrics.compactChartHeight,
                 )
                 scored.size < 2 -> InsetChartPlaceholder(
-                    message = "Not enough scored hours to draw this day.",
+                    message = stringResource(R.string.whoopskin_stress_not_enough_hours),
                     height = Metrics.compactChartHeight,
                 )
                 else -> {
@@ -200,8 +206,7 @@ private fun StressDayCard(read: DaytimeStress.Result?) {
                 }
             }
             Text(
-                "Each point is one waking hour, scored against the day's own calm hours. Hours " +
-                    "without enough data are left out rather than filled in.",
+                stringResource(R.string.whoopskin_stress_day_footnote),
                 style = NoopType.footnote,
                 color = Palette.textTertiary,
             )
@@ -243,7 +248,7 @@ private fun TimeInBandCard(read: DaytimeStress.Result?) {
 
     NoopCard(tint = Palette.stressColor) {
         Column(verticalArrangement = Arrangement.spacedBy(Metrics.space14)) {
-            Overline("Time in band")
+            Overline(stringResource(R.string.whoopskin_stress_time_in_band))
             SegmentBar(
                 segments = listOf(
                     Palette.stressDeep to low.toFloat(),
@@ -256,12 +261,21 @@ private fun TimeInBandCard(read: DaytimeStress.Result?) {
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(Metrics.space12),
             ) {
-                BandTotal("Low", low, Palette.stressDeep, Modifier.weight(1f))
-                BandTotal("Medium", medium, Palette.stressColor, Modifier.weight(1f))
-                BandTotal("High", high, Palette.stressBright, Modifier.weight(1f))
+                BandTotal(
+                    stringResource(R.string.whoopskin_band_low), low,
+                    Palette.stressDeep, Modifier.weight(1f),
+                )
+                BandTotal(
+                    stringResource(R.string.whoopskin_band_medium), medium,
+                    Palette.stressColor, Modifier.weight(1f),
+                )
+                BandTotal(
+                    stringResource(R.string.whoopskin_band_high), high,
+                    Palette.stressBright, Modifier.weight(1f),
+                )
             }
             Text(
-                "Minutes come from whoop-rs's own banding of each scored hour.",
+                stringResource(R.string.whoopskin_stress_band_footnote),
                 style = NoopType.footnote,
                 color = Palette.textTertiary,
             )
@@ -272,7 +286,9 @@ private fun TimeInBandCard(read: DaytimeStress.Result?) {
 /** One band's total: the duration above its swatch and word. */
 @Composable
 private fun BandTotal(label: String, minutes: Long, color: Color, modifier: Modifier = Modifier) {
-    val spoken = "$label ${durationText(minutes.toDouble())}"
+    val spoken = stringResource(
+        R.string.whoopskin_stress_band_a11y, label, durationText(minutes.toDouble()),
+    )
     Column(
         modifier = modifier.semantics(mergeDescendants = true) { contentDescription = spoken },
         verticalArrangement = Arrangement.spacedBy(Metrics.space4),
@@ -304,14 +320,17 @@ private fun BandTotal(label: String, minutes: Long, color: Color, modifier: Modi
 @Composable
 private fun SessionsSection(onBreathe: () -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(Metrics.gap)) {
-        SectionHeader("Sessions", overline = "Guided")
+        SectionHeader(
+            stringResource(R.string.whoopskin_sessions),
+            overline = stringResource(R.string.whoopskin_guided),
+        )
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(Metrics.gap),
         ) {
             GalleryCard(
-                title = "Increase relaxation",
-                subtitle = "Guided breathing",
+                title = stringResource(R.string.whoopskin_increase_relaxation),
+                subtitle = stringResource(R.string.whoopskin_guided_breathing),
                 icon = Icons.Filled.Air,
                 tint = Palette.restColor,
                 onClick = onBreathe,

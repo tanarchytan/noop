@@ -45,10 +45,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.noop.R
 
 // MARK: - Updates inbox
 //
@@ -89,8 +91,8 @@ fun UpdatesInboxScreen(
     ) {
         // Header — "INBOX" overline + "Updates" title + a live subtitle.
         Column(verticalArrangement = Arrangement.spacedBy(Metrics.space4)) {
-            Overline("Inbox", color = Palette.textTertiary)
-            Text("Updates", style = NoopType.title1, color = Palette.textPrimary)
+            Overline(stringResource(R.string.updates_overline_inbox), color = Palette.textTertiary)
+            Text(stringResource(R.string.updates_title), style = NoopType.title1, color = Palette.textPrimary)
             Text(subtitle(store), style = NoopType.caption, color = Palette.textSecondary)
         }
 
@@ -99,7 +101,7 @@ fun UpdatesInboxScreen(
         } else {
             if (unread.isNotEmpty()) {
                 InboxSection(
-                    label = "New",
+                    label = stringResource(R.string.updates_section_new),
                     items = unread,
                     onTap = { handleTap(it, store, onDeepLink, onClose) },
                     onRestore = { handleRestore(it, store, onRestore, onClose) },
@@ -109,7 +111,7 @@ fun UpdatesInboxScreen(
             }
             if (read.isNotEmpty()) {
                 InboxSection(
-                    label = "Earlier",
+                    label = stringResource(R.string.updates_section_earlier),
                     items = read,
                     onTap = { handleTap(it, store, onDeepLink, onClose) },
                     onRestore = { handleRestore(it, store, onRestore, onClose) },
@@ -134,7 +136,7 @@ fun UpdatesInboxScreen(
                         modifier = Modifier.size(Metrics.iconSmall),
                     )
                     Spacer(Modifier.width(Metrics.space6))
-                    Text("Clear all", style = NoopType.subhead, color = Palette.textSecondary)
+                    Text(stringResource(R.string.updates_clear_all), style = NoopType.subhead, color = Palette.textSecondary)
                 }
                 Spacer(Modifier.weight(1f))
                 Button(
@@ -157,17 +159,19 @@ fun UpdatesInboxScreen(
                         modifier = Modifier.size(Metrics.iconSmall),
                     )
                     Spacer(Modifier.width(Metrics.space6))
-                    Text("Mark all read", style = NoopType.subhead)
+                    Text(stringResource(R.string.updates_mark_all_read), style = NoopType.subhead)
                 }
             }
         }
     }
 }
 
+@Composable
 private fun subtitle(store: UpdateStore): String {
-    if (store.items.isEmpty()) return "What's new in the app and your data"
+    if (store.items.isEmpty()) return stringResource(R.string.updates_subtitle_empty)
     val n = store.unreadCount
-    return if (n == 0) "All caught up" else "$n unread"
+    return if (n == 0) stringResource(R.string.updates_all_caught_up)
+    else stringResource(R.string.updates_unread_count, n)
 }
 
 @Composable
@@ -270,7 +274,7 @@ private fun SwipeBackground(direction: SwipeToDismissBoxValue) {
                     tint = contentColor,
                     modifier = Modifier.size(Metrics.iconSmall),
                 )
-                Text("Mark read", style = NoopType.subhead, color = contentColor)
+                Text(stringResource(R.string.updates_mark_read), style = NoopType.subhead, color = contentColor)
             }
         }
     }
@@ -283,6 +287,11 @@ private fun UpdateRow(
     onRestore: () -> Unit,
 ) {
     val tint = kindTint(item.kind)
+    // The row's spoken label: stringResource can't be called inside the semantics lambda, so resolve here.
+    val rowLabel = stringResource(
+        if (item.read) R.string.updates_row_a11y else R.string.updates_row_a11y_unread,
+        item.title, item.message,
+    )
     NoopCard(
         // Unread rows carry the kind's colour wash; read rows sit on the plain navy fill.
         tint = if (item.read) null else tint,
@@ -293,13 +302,7 @@ private fun UpdateRow(
                 indication = null,
                 onClick = onTap,
             )
-            .semantics {
-                contentDescription = if (item.read) {
-                    "${item.title}. ${item.message}"
-                } else {
-                    "Unread. ${item.title}. ${item.message}"
-                }
-            },
+            .semantics { contentDescription = rowLabel },
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(Metrics.space10)) {
             Row(
@@ -354,7 +357,7 @@ private fun UpdateRow(
                             modifier = Modifier.size(Metrics.iconSmall),
                         )
                         Spacer(Modifier.width(Metrics.space6))
-                        Text("Restore to Today", style = NoopType.subhead, color = Palette.accent)
+                        Text(stringResource(R.string.updates_restore_to_today), style = NoopType.subhead, color = Palette.accent)
                     }
                 }
             }
@@ -377,9 +380,9 @@ private fun EmptyInboxState() {
             tint = Palette.textTertiary,
             modifier = Modifier.size(34.dp),
         )
-        Text("You're all caught up.", style = NoopType.headline, color = Palette.textPrimary)
+        Text(stringResource(R.string.updates_empty_title), style = NoopType.headline, color = Palette.textPrimary)
         Text(
-            "New release notes and fresh data will land here.",
+            stringResource(R.string.updates_empty_body),
             style = NoopType.subhead,
             color = Palette.textSecondary,
         )

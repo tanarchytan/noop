@@ -4,6 +4,7 @@ import android.text.format.DateUtils
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.annotation.StringRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -233,13 +234,15 @@ fun DataSourcesScreen(vm: AppViewModel, onOpenAppleHealth: () -> Unit = {}) {
     ) {
         // The one-line answer to "where does my data come from", naming only the sources that hold any.
         item {
+            val sources = syncedFromSources(
+                hasWhoop = (whoopDays ?: 0) > 0 || (whoopWorkouts ?: 0) > 0 || whoopHasHr,
+                hasApple = (appleDays ?: 0) > 0 || (appleWorkouts ?: 0) > 0,
+                hasHealthConnect = (hcDays ?: 0) > 0 || (hcWorkouts ?: 0) > 0,
+                hasXiaomi = false,
+            )
             Text(
-                syncedFromSummary(
-                    hasWhoop = (whoopDays ?: 0) > 0 || (whoopWorkouts ?: 0) > 0 || whoopHasHr,
-                    hasApple = (appleDays ?: 0) > 0 || (appleWorkouts ?: 0) > 0,
-                    hasHealthConnect = (hcDays ?: 0) > 0 || (hcWorkouts ?: 0) > 0,
-                    hasXiaomi = false,
-                ),
+                if (sources.isEmpty()) stringResource(R.string.core_no_sources_yet)
+                else stringResource(R.string.core_synced_from, sources.joinToString(", ")),
                 style = NoopType.subhead,
                 color = Palette.textSecondary,
             )
@@ -258,7 +261,7 @@ fun DataSourcesScreen(vm: AppViewModel, onOpenAppleHealth: () -> Unit = {}) {
                 tone = if (hasWhoop) StrandTone.Positive else StrandTone.Neutral,
                 showsDot = true,
             )
-            CountLine(countDetail(whoopDays, whoopWorkouts, "workouts stored"))
+            CountLine(whoopDays, whoopWorkouts, R.string.core_workouts_stored)
             // The stored span, so the card reads "data from X to Y" once history is present.
             if (whoopFirstDay != null && whoopLastDay != null) {
                 Text(
@@ -303,7 +306,7 @@ fun DataSourcesScreen(vm: AppViewModel, onOpenAppleHealth: () -> Unit = {}) {
                 tone = if (hasApple) StrandTone.Accent else StrandTone.Neutral,
                 showsDot = true,
             )
-            CountLine(countDetail(appleDays, appleWorkouts, "workouts"))
+            CountLine(appleDays, appleWorkouts, R.string.core_workouts)
             BackupButton(
                 label = stringResource(R.string.datasources_import_apple_export),
                 icon = Icons.Filled.FileUpload,
@@ -346,7 +349,7 @@ fun DataSourcesScreen(vm: AppViewModel, onOpenAppleHealth: () -> Unit = {}) {
             val hasHc = (hcDays ?: 0) > 0 || (hcWorkouts ?: 0) > 0
             if (hasHc) {
                 StatePill(title = stringResource(R.string.datasources_imported), tone = StrandTone.Accent, showsDot = true)
-                CountLine(countDetail(hcDays, hcWorkouts, "workouts"))
+                CountLine(hcDays, hcWorkouts, R.string.core_workouts)
             }
             if (healthConnectAvailable) {
                 val autoSyncCd = stringResource(R.string.datasources_auto_sync_cd)
@@ -562,10 +565,21 @@ private fun SourceCard(
 
 // MARK: - "N days · N workouts stored" footnote line
 
-/** The stored-count line. Its text is [countDetail]'s, the one place that phrasing is decided. */
+/** The stored-count line. Its figures are [countDetail]'s, the one place that phrasing is decided. */
 @Composable
-private fun CountLine(text: String) {
-    Text(text, style = NoopType.captionNumber, color = Palette.textSecondary)
+private fun CountLine(days: Int?, workouts: Int?, @StringRes workoutLabel: Int) {
+    val figures = countDetail(days, workouts)
+    Text(
+        if (figures == null) stringResource(R.string.core_counting)
+        else stringResource(
+            R.string.core_count_detail,
+            figures.first,
+            figures.second,
+            stringResource(workoutLabel),
+        ),
+        style = NoopType.captionNumber,
+        color = Palette.textSecondary,
+    )
 }
 
 @Composable

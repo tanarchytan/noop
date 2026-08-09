@@ -25,8 +25,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.noop.R
 import com.noop.data.JournalEntry
 import java.time.LocalDate
 import java.util.Locale
@@ -190,9 +192,9 @@ fun JournalLogCard(
         // the full row: sharing one with the heading they took the width first and squeezed "Journal" down
         // to an ellipsis on its own line.
         Column(modifier = Modifier.fillMaxWidth()) {
-            Overline("Log")
+            Overline(stringResource(R.string.journal_overline_log))
             Text(
-                "Journal",
+                stringResource(R.string.journal_title),
                 style = NoopType.title2,
                 color = Palette.textPrimary,
                 maxLines = 1,
@@ -206,33 +208,26 @@ fun JournalLogCard(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             if (editing) {
-                JournalChip("Done", selected = true) { editing = false }
+                JournalChip(stringResource(R.string.journal_done), selected = true) { editing = false }
             } else {
-                JournalChip("Edit", selected = false) { editing = true }
+                JournalChip(stringResource(R.string.journal_edit), selected = false) { editing = true }
                 Spacer(Modifier.weight(1f))
                 // Chronological left→right: Yesterday · Today · Tomorrow.
-                JournalChip("Yesterday", selected = dayOffset == 1L) { onDayOffset(1L) }
-                JournalChip("Today", selected = dayOffset == 0L) { onDayOffset(0L) }
-                JournalChip("Tomorrow", selected = dayOffset == -1L) { onDayOffset(-1L) }
+                JournalChip(stringResource(R.string.journal_yesterday), selected = dayOffset == 1L) { onDayOffset(1L) }
+                JournalChip(stringResource(R.string.common_today), selected = dayOffset == 0L) { onDayOffset(0L) }
+                JournalChip(stringResource(R.string.journal_tomorrow), selected = dayOffset == -1L) { onDayOffset(-1L) }
             }
         }
         NoopCard {
             Column(verticalArrangement = Arrangement.spacedBy(Metrics.space10)) {
                 Text(
-                    when {
-                        editing ->
-                            "Rename, regroup, or remove an item to tidy your list. Renaming keeps the " +
-                                "original question behind the scenes, so a WHOOP import still lines up. " +
-                                "Custom items are deleted; built-in ones are hidden and can be restored below."
-                        dayOffset == -1L ->
-                            "Logging ahead for tomorrow: today's activities inform tomorrow's " +
-                                "recovery, just as yesterday's are reflected in today's. Tomorrow's " +
-                                "answers line up with tomorrow's morning."
-                        else ->
-                            "Answers are about the night and day leading into this morning, the " +
-                                "same attribution a WHOOP export uses, so logged and imported days " +
-                                "line up."
-                    },
+                    stringResource(
+                        when {
+                            editing -> R.string.journal_editing_help
+                            dayOffset == -1L -> R.string.journal_tomorrow_help
+                            else -> R.string.journal_today_help
+                        },
+                    ),
                     style = NoopType.footnote,
                     color = Palette.textTertiary,
                 )
@@ -296,7 +291,7 @@ private fun JournalGroupBlock(
             modifier = Modifier.fillMaxWidth().clickable { collapsed = !collapsed },
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(group.title.uppercase(), style = NoopType.overline, color = Palette.textTertiary)
+            Text(stringResource(group.title).uppercase(), style = NoopType.overline, color = Palette.textTertiary)
             Spacer(Modifier.width(6.dp))
             Text("${items.size}", style = NoopType.caption, color = Palette.textTertiary)
             Spacer(Modifier.weight(1f))
@@ -315,7 +310,7 @@ private fun JournalGroupBlock(
                         modifier = Modifier.weight(1f),
                     )
                     when {
-                        item.hidden -> JournalChip("Restore", selected = false) { onRestoreQuestion(item.canonical) }
+                        item.hidden -> JournalChip(stringResource(R.string.journal_restore), selected = false) { onRestoreQuestion(item.canonical) }
                         editing -> JournalItemEditControls(
                             item = item,
                             onStartRename = { onStartRename(item) },
@@ -330,11 +325,11 @@ private fun JournalGroupBlock(
                             onClear = { onClear(item.canonical) },
                         )
                         else -> {
-                            JournalChip("Yes", selected = answers[item.canonical] == true) {
+                            JournalChip(stringResource(R.string.journal_yes), selected = answers[item.canonical] == true) {
                                 if (answers[item.canonical] == true) onClear(item.canonical) else onAnswer(item.canonical, true)
                             }
                             Spacer(Modifier.width(6.dp))
-                            JournalChip("No", selected = answers[item.canonical] == false) {
+                            JournalChip(stringResource(R.string.journal_no), selected = answers[item.canonical] == false) {
                                 if (answers[item.canonical] == false) onClear(item.canonical) else onAnswer(item.canonical, false)
                             }
                         }
@@ -403,15 +398,22 @@ private fun JournalItemEditControls(
                 modifier = Modifier.clickable { menuOpen = true }.padding(horizontal = 8.dp))
             androidx.compose.material3.DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
                 androidx.compose.material3.DropdownMenuItem(
-                    text = { Text("Rename…") },
+                    text = { Text(stringResource(R.string.journal_rename_menu)) },
                     onClick = { menuOpen = false; onStartRename() },
                 )
                 androidx.compose.material3.DropdownMenuItem(
-                    text = { Text("Group…") },
+                    text = { Text(stringResource(R.string.journal_group_menu)) },
                     onClick = { menuOpen = false; groupMenuOpen = true },
                 )
                 androidx.compose.material3.DropdownMenuItem(
-                    text = { Text(if (item.kind.isNumeric) "Change to Yes/No" else "Change to Number") },
+                    text = {
+                        Text(
+                            stringResource(
+                                if (item.kind.isNumeric) R.string.journal_change_to_bool
+                                else R.string.journal_change_to_numeric,
+                            ),
+                        )
+                    },
                     onClick = {
                         menuOpen = false
                         onSetKind(if (item.kind.isNumeric) JournalKind.Bool else JournalKind.Numeric(null))
@@ -421,7 +423,7 @@ private fun JournalItemEditControls(
             androidx.compose.material3.DropdownMenu(expanded = groupMenuOpen, onDismissRequest = { groupMenuOpen = false }) {
                 JournalGroup.displayOrder.forEach { g ->
                     androidx.compose.material3.DropdownMenuItem(
-                        text = { Text(g.title) },
+                        text = { Text(stringResource(g.title)) },
                         onClick = { groupMenuOpen = false; onSetGroup(g) },
                     )
                 }
@@ -441,25 +443,37 @@ private fun JournalRenameDialog(
     var draft by remember { mutableStateOf(item.displayName ?: item.canonical) }
     androidx.compose.material3.AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Rename item") },
+        title = { Text(stringResource(R.string.journal_rename_title)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(Metrics.space8)) {
                 OutlinedTextField(
                     value = draft,
                     onValueChange = { draft = it },
-                    placeholder = { Text("Display name") },
+                    placeholder = { Text(stringResource(R.string.journal_display_name)) },
                     singleLine = true,
                     colors = journalFieldColors(),
                 )
                 Text(
-                    "History stays under the original question so WHOOP imports still line up.",
+                    stringResource(R.string.journal_rename_note),
                     style = NoopType.footnote,
                     color = Palette.textTertiary,
                 )
             }
         },
-        confirmButton = { Text("Save", color = Palette.accent, modifier = Modifier.clickable { onSave(draft) }.padding(8.dp)) },
-        dismissButton = { Text("Cancel", color = Palette.textSecondary, modifier = Modifier.clickable { onDismiss() }.padding(8.dp)) },
+        confirmButton = {
+            Text(
+                stringResource(R.string.journal_save),
+                color = Palette.accent,
+                modifier = Modifier.clickable { onSave(draft) }.padding(8.dp),
+            )
+        },
+        dismissButton = {
+            Text(
+                stringResource(R.string.common_cancel),
+                color = Palette.textSecondary,
+                modifier = Modifier.clickable { onDismiss() }.padding(8.dp),
+            )
+        },
     )
 }
 
@@ -475,7 +489,13 @@ private fun JournalAddRow(onAddCustom: (String, JournalKind, JournalGroup) -> Un
             OutlinedTextField(
                 value = draft,
                 onValueChange = { draft = it },
-                placeholder = { Text("Add a custom item…", style = NoopType.body, color = Palette.textTertiary) },
+                placeholder = {
+                    Text(
+                        stringResource(R.string.journal_add_placeholder),
+                        style = NoopType.body,
+                        color = Palette.textTertiary,
+                    )
+                },
                 singleLine = true,
                 textStyle = NoopType.body,
                 colors = journalFieldColors(),
@@ -483,9 +503,12 @@ private fun JournalAddRow(onAddCustom: (String, JournalKind, JournalGroup) -> Un
                 modifier = Modifier.weight(1f),
             )
             Spacer(Modifier.width(8.dp))
-            JournalChip(if (numeric) "Number" else "Yes/No", selected = numeric) { numeric = !numeric }
+            JournalChip(
+                stringResource(if (numeric) R.string.journal_kind_number else R.string.journal_kind_bool),
+                selected = numeric,
+            ) { numeric = !numeric }
             Spacer(Modifier.width(8.dp))
-            JournalChip("Add", selected = draft.isNotBlank()) {
+            JournalChip(stringResource(R.string.journal_add), selected = draft.isNotBlank()) {
                 val t = draft.trim()
                 if (t.isNotEmpty()) {
                     onAddCustom(t, if (numeric) JournalKind.Numeric(null) else JournalKind.Bool, group)
@@ -494,12 +517,15 @@ private fun JournalAddRow(onAddCustom: (String, JournalKind, JournalGroup) -> Un
             }
         }
         Box {
-            Text("Group: ${group.title}", style = NoopType.footnote, color = Palette.textSecondary,
-                modifier = Modifier.clickable { groupMenu = true })
+            Text(
+                stringResource(R.string.journal_group_prefix, stringResource(group.title)),
+                style = NoopType.footnote, color = Palette.textSecondary,
+                modifier = Modifier.clickable { groupMenu = true },
+            )
             androidx.compose.material3.DropdownMenu(expanded = groupMenu, onDismissRequest = { groupMenu = false }) {
                 JournalGroup.displayOrder.forEach { g ->
                     androidx.compose.material3.DropdownMenuItem(
-                        text = { Text(g.title) },
+                        text = { Text(stringResource(g.title)) },
                         onClick = { groupMenu = false; group = g },
                     )
                 }
@@ -543,7 +569,7 @@ private fun JournalChip(label: String, selected: Boolean, onClick: () -> Unit) {
 private fun JournalRemoveButton(isCustom: Boolean, onClick: () -> Unit) {
     val shape = RoundedCornerShape(50)
     Text(
-        if (isCustom) "Delete" else "Hide",
+        stringResource(if (isCustom) R.string.journal_delete else R.string.journal_hide),
         style = NoopType.caption,
         color = Palette.statusCritical,
         modifier = Modifier

@@ -36,11 +36,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.noop.R
 import java.time.LocalDate
 import java.util.Calendar
 
@@ -65,6 +67,8 @@ internal fun SleepNightHeader(
     val canGoNewer = offset > 0
     var showDatePicker by remember { mutableStateOf(false) }
     val blockShape = RoundedCornerShape(Metrics.cornerSm)
+    val pickDateLabel = stringResource(R.string.sleep_pick_night_date)
+    val editLabel = stringResource(R.string.sleep_edit_time_in_bed)
 
     Column(verticalArrangement = Arrangement.spacedBy(Metrics.space8)) {
         Row(
@@ -75,7 +79,7 @@ internal fun SleepNightHeader(
             IconButton(onClick = { if (canGoOlder) onNavigate(offset + 1) }, enabled = canGoOlder) {
                 Icon(
                     Icons.Filled.ChevronLeft,
-                    contentDescription = "Previous night",
+                    contentDescription = stringResource(R.string.sleep_prev_night),
                     tint = if (canGoOlder) Palette.accent else Palette.textTertiary,
                 )
             }
@@ -85,7 +89,7 @@ internal fun SleepNightHeader(
                     .clip(blockShape)
                     .background(Palette.surfaceInset)
                     .border(Metrics.divider, Palette.hairline, blockShape)
-                    .clickable(enabled = onPickNightDate != null, onClickLabel = "Pick night date") {
+                    .clickable(enabled = onPickNightDate != null, onClickLabel = pickDateLabel) {
                         showDatePicker = true
                     }
                     .padding(Metrics.selectorPadding),
@@ -111,14 +115,16 @@ internal fun SleepNightHeader(
             IconButton(onClick = { if (canGoNewer) onNavigate(offset - 1) }, enabled = canGoNewer) {
                 Icon(
                     Icons.Filled.ChevronRight,
-                    contentDescription = "Next night",
+                    contentDescription = stringResource(R.string.sleep_next_night),
                     tint = if (canGoNewer) Palette.accent else Palette.textTertiary,
                 )
             }
         }
         Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Text(
-                if (offset == 0) "Last Night's Sleep" else "That Night's Sleep",
+                stringResource(
+                    if (offset == 0) R.string.sleep_header_last_night else R.string.sleep_header_that_night,
+                ),
                 style = NoopType.title2,
                 color = Palette.textPrimary,
                 modifier = Modifier.weight(1f),
@@ -129,11 +135,15 @@ internal fun SleepNightHeader(
                 Row(
                     modifier = Modifier
                         .clip(RoundedCornerShape(Metrics.cornerSm))
-                        .clickable(onClickLabel = "Edit time in bed", onClick = onEdit)
+                        .clickable(onClickLabel = editLabel, onClick = onEdit)
                         .padding(horizontal = Metrics.space10, vertical = Metrics.space8),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Text("EDIT", style = NoopType.overline, color = Palette.textPrimary)
+                    Text(
+                        stringResource(R.string.sleep_edit),
+                        style = NoopType.overline,
+                        color = Palette.textPrimary,
+                    )
                     Spacer(Modifier.width(Metrics.space6))
                     Icon(
                         Icons.Filled.Edit,
@@ -145,7 +155,7 @@ internal fun SleepNightHeader(
                 IconButton(onClick = onAddNap) {
                     Icon(
                         Icons.Filled.Add,
-                        contentDescription = "Add a nap",
+                        contentDescription = stringResource(R.string.sleep_add_nap),
                         tint = Palette.textTertiary,
                         modifier = Modifier.size(Metrics.iconSmall),
                     )
@@ -155,7 +165,7 @@ internal fun SleepNightHeader(
         // When the older-night arrow is disabled a greyed chevron reads as broken, so say why instead.
         if (!canGoOlder) {
             Text(
-                "No earlier night stored yet. Earlier nights sync in the morning.",
+                stringResource(R.string.sleep_no_earlier_night),
                 style = NoopType.footnote,
                 color = Palette.textTertiary,
                 textAlign = TextAlign.Center,
@@ -189,10 +199,11 @@ internal fun SleepNightHeader(
 }
 
 /** "Last night" / "1 night ago" / "N nights ago" for the browse position. */
+@Composable
 internal fun nightOffsetLabel(offset: Int): String = when (offset) {
-    0 -> "Last night"
-    1 -> "1 night ago"
-    else -> "$offset nights ago"
+    0 -> stringResource(R.string.sleep_offset_last_night)
+    1 -> stringResource(R.string.sleep_offset_one_night_ago)
+    else -> stringResource(R.string.sleep_offset_nights_ago, offset)
 }
 
 /**
@@ -204,19 +215,28 @@ internal fun nightOffsetLabel(offset: Int): String = when (offset) {
 internal fun SleepWindowRow(onsetTs: Long, wakeTs: Long) {
     val asleep = clockTimeLabel(onsetTs)
     val woke = clockTimeLabel(wakeTs)
+    val rowDescription = stringResource(R.string.sleep_window_a11y, asleep, woke)
     NoopCard(
         modifier = Modifier.semantics(mergeDescendants = true) {
-            contentDescription = "Fell asleep at $asleep, woke at $woke"
+            contentDescription = rowDescription
         },
         padding = Metrics.space14,
         tint = Palette.restColor,
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            SleepTime(icon = Icons.Filled.Bedtime, label = "Asleep", value = asleep)
+            SleepTime(
+                icon = Icons.Filled.Bedtime,
+                label = stringResource(R.string.sleep_asleep),
+                value = asleep,
+            )
             Spacer(Modifier.width(Metrics.space12))
             Box(modifier = Modifier.height(30.dp).width(Metrics.divider).background(Palette.hairline))
             Spacer(Modifier.width(Metrics.space12))
-            SleepTime(icon = Icons.Filled.WbSunny, label = "Woke", value = woke)
+            SleepTime(
+                icon = Icons.Filled.WbSunny,
+                label = stringResource(R.string.sleep_woke),
+                value = woke,
+            )
             Spacer(Modifier.weight(1f))
         }
     }

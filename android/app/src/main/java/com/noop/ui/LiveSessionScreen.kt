@@ -436,7 +436,7 @@ private fun LiveSessionSummary(
 
         // The one plain-English verdict (pure helper, honest tiers — see LiveSessionRunner.kt).
         Text(
-            liveSessionVerdict(inBandSec, snap.belowSec, snap.aboveSec),
+            stringResource(liveSessionVerdict(inBandSec, snap.belowSec, snap.aboveSec)),
             style = NoopType.title2,
             color = Palette.textPrimary,
         )

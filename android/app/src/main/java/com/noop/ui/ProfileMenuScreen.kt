@@ -5,6 +5,7 @@ import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.annotation.StringRes
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -39,6 +40,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
@@ -49,6 +51,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.noop.R
 import com.noop.analytics.CalibrationMilestones
 import com.noop.analytics.RustScores
 
@@ -102,14 +105,19 @@ fun ProfileMenuScreen(vm: AppViewModel) {
                 ProfileAvatarStore.setAvatarFromUri(context, uri)
             }
             if (!ok) {
-                Toast.makeText(context, "Couldn't use that photo. Try another.", Toast.LENGTH_LONG).show()
+                Toast.makeText(context, R.string.profile_avatar_error, Toast.LENGTH_LONG).show()
             }
         }
     }
 
+    val profileTitle = stringResource(R.string.profile_title)
+    val photoLabel = stringResource(R.string.profile_photo_a11y)
+    val weightLabel = stringResource(R.string.profile_weight)
+    val heightLabel = stringResource(R.string.profile_height)
+
     ScreenScaffold(
-        title = "Profile",
-        subtitle = "Your body profile and how NOOP shows units. All on this phone.",
+        title = profileTitle,
+        subtitle = stringResource(R.string.profile_subtitle),
     ) {
         // Read the revision counter so every profile write recomposes this subtree.
         @Suppress("UNUSED_VARIABLE") val tick = rev
@@ -120,10 +128,14 @@ fun ProfileMenuScreen(vm: AppViewModel) {
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(Metrics.space16),
         ) {
-            ProfileAvatar(size = 72.dp, contentDescription = "Profile photo")
+            ProfileAvatar(size = 72.dp, contentDescription = photoLabel)
             Column(verticalArrangement = Arrangement.spacedBy(Metrics.space4)) {
-                Text("Profile", style = NoopType.title2, color = Palette.textPrimary)
-                Text("Age ${profile.age}", style = NoopType.subhead, color = Palette.textSecondary)
+                Text(profileTitle, style = NoopType.title2, color = Palette.textPrimary)
+                Text(
+                    stringResource(R.string.profile_age, profile.age),
+                    style = NoopType.subhead,
+                    color = Palette.textSecondary,
+                )
             }
         }
 
@@ -134,22 +146,25 @@ fun ProfileMenuScreen(vm: AppViewModel) {
         // update the instant a photo is set or cleared.
         ProfileSection(
             icon = Icons.Outlined.AccountCircle,
-            title = "Profile photo",
-            blurb = "Optional. Add a photo for the avatar in the top-left. Stored only on this phone. NOOP is offline, so it's never uploaded.",
+            title = stringResource(R.string.profile_photo_title),
+            blurb = stringResource(R.string.profile_photo_blurb),
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth().padding(vertical = Metrics.space4),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(Metrics.space16),
             ) {
-                ProfileAvatar(size = 64.dp, contentDescription = "Profile photo")
+                ProfileAvatar(size = 64.dp, contentDescription = photoLabel)
                 Column(
                     modifier = Modifier.weight(1f),
                     verticalArrangement = Arrangement.spacedBy(Metrics.space8),
                 ) {
                     Row(horizontalArrangement = Arrangement.spacedBy(Metrics.space12)) {
                         NoopButton(
-                            text = if (ProfileAvatarStore.hasAvatar) "Change photo" else "Choose photo",
+                            text = stringResource(
+                                if (ProfileAvatarStore.hasAvatar) R.string.profile_change_photo
+                                else R.string.profile_choose_photo,
+                            ),
                             kind = NoopButtonKind.Secondary,
                             modifier = Modifier.weight(1f),
                             onClick = {
@@ -160,7 +175,7 @@ fun ProfileMenuScreen(vm: AppViewModel) {
                         )
                         if (ProfileAvatarStore.hasAvatar) {
                             NoopButton(
-                                text = "Remove photo",
+                                text = stringResource(R.string.profile_remove_photo),
                                 kind = NoopButtonKind.Tertiary,
                                 modifier = Modifier.weight(1f),
                                 onClick = { ProfileAvatarStore.clearAvatar(context) },
@@ -174,46 +189,46 @@ fun ProfileMenuScreen(vm: AppViewModel) {
         // --- Profile (body numbers) ---
         ProfileSection(
             icon = Icons.Outlined.Person,
-            title = "Profile",
-            blurb = "These power your heart-rate zones, calorie estimates and recovery baselines. Keep them accurate.",
+            title = profileTitle,
+            blurb = stringResource(R.string.profile_body_blurb),
         ) {
             Column {
-                FormRow(label = "Birthday") {
+                FormRow(label = stringResource(R.string.profile_birthday)) {
                     BirthdayPickerField(
                         dobMillis = profile.dateOfBirthMillis,
-                        accessibility = "Birthday, ${profile.age} years old",
+                        accessibility = stringResource(R.string.profile_birthday_a11y, profile.age),
                         onPick = { mutate { profile.dateOfBirthMillis = it } },
                     )
                 }
                 RowDivider()
-                FormRow(label = "Sex") {
+                FormRow(label = stringResource(R.string.profile_sex)) {
                     SegmentedPillControl(
                         items = SEX_OPTIONS,
                         selection = SEX_OPTIONS.firstOrNull { it.tag == profile.sex } ?: SEX_OPTIONS[0],
-                        label = { it.label },
+                        label = { context.getString(it.label) },
                         onSelect = { mutate { profile.sex = it.tag } },
                     )
                 }
                 RowDivider()
-                FormRow(label = "Weight") {
+                FormRow(label = weightLabel) {
                     WheelPickerField(
                         // Full re-labelled string (e.g. "74.5 kg" / "164.2 lb"); unit folded into value.
                         value = UnitFormatter.massFromKilograms(profile.weightKg, unitSystem),
-                        accessibility = "Weight",
+                        accessibility = weightLabel,
                         options = weightOptions,
                         selectedIndex = weightSteps.indices.minByOrNull { kotlin.math.abs(weightSteps[it] - profile.weightKg) } ?: 0,
-                        dialogTitle = "Weight",
+                        dialogTitle = weightLabel,
                         onSelected = { mutate { profile.weightKg = weightSteps[it] } },
                     )
                 }
                 RowDivider()
-                FormRow(label = "Height") {
+                FormRow(label = heightLabel) {
                     WheelPickerField(
                         value = UnitFormatter.heightFromCentimeters(profile.heightCm, unitSystem),
-                        accessibility = "Height",
+                        accessibility = heightLabel,
                         options = heightOptions,
                         selectedIndex = heightSteps.indices.minByOrNull { kotlin.math.abs(heightSteps[it] - profile.heightCm) } ?: 0,
-                        dialogTitle = "Height",
+                        dialogTitle = heightLabel,
                         onSelected = { mutate { profile.heightCm = heightSteps[it].toDouble() } },
                     )
                 }
@@ -222,17 +237,19 @@ fun ProfileMenuScreen(vm: AppViewModel) {
                 // estimate. Unset (0) by design — the headline Fitness Age never needs it — so it shows
                 // "Add" until entered, then steps like Height (inches in imperial, cm in metric).
                 // First tap from unset seeds a typical adult waist rather than 1 cm.
-                FormRow(label = "Waist (optional)") {
+                FormRow(label = stringResource(R.string.profile_waist)) {
                     Column(horizontalAlignment = Alignment.End) {
                         val hasWaist = profile.waistCm > 0.0
+                        val addWord = stringResource(R.string.profile_add)
+                        val waistUnsetLabel = stringResource(R.string.profile_waist_a11y_unset)
                         if (unitSystem == UnitSystem.IMPERIAL) {
                             val totalInches = UnitFormatter.cmToInches(profile.waistCm).roundToInt()
                             StepperField(
-                                value = if (hasWaist) "%d″".format(totalInches) else "Add",
+                                value = if (hasWaist) "%d″".format(totalInches) else addWord,
                                 accessibility = if (hasWaist) {
-                                    "Waist, $totalInches inches"
+                                    stringResource(R.string.profile_waist_a11y_inches, totalInches)
                                 } else {
-                                    "Waist, not set. Optional: adds your VO₂max estimate"
+                                    waistUnsetLabel
                                 },
                                 valueColor = if (hasWaist) Palette.textPrimary else Palette.textTertiary,
                                 onMinus = { mutate { profile.waistCm = waistInchesStep(profile.waistCm, up = false) } },
@@ -240,12 +257,12 @@ fun ProfileMenuScreen(vm: AppViewModel) {
                             )
                         } else {
                             StepperField(
-                                value = if (hasWaist) "%.0f".format(profile.waistCm) else "Add",
+                                value = if (hasWaist) "%.0f".format(profile.waistCm) else addWord,
                                 unit = if (hasWaist) "cm" else null,
                                 accessibility = if (hasWaist) {
-                                    "Waist in centimetres"
+                                    stringResource(R.string.profile_waist_a11y_cm)
                                 } else {
-                                    "Waist, not set. Optional: adds your VO₂max estimate"
+                                    waistUnsetLabel
                                 },
                                 valueColor = if (hasWaist) Palette.textPrimary else Palette.textTertiary,
                                 onMinus = { mutate { profile.waistCm = waistCmStep(profile.waistCm, up = false) } },
@@ -254,22 +271,29 @@ fun ProfileMenuScreen(vm: AppViewModel) {
                         }
                         Spacer(Modifier.height(Metrics.space6))
                         Text(
-                            text = if (hasWaist) "Adds your VO₂max estimate" else "Optional · adds your VO₂max estimate",
+                            text = stringResource(
+                                if (hasWaist) R.string.profile_waist_adds_vo2
+                                else R.string.profile_waist_optional_vo2,
+                            ),
                             style = NoopType.footnote,
                             color = if (hasWaist) Palette.accent else Palette.textTertiary,
                         )
                     }
                 }
                 RowDivider()
-                FormRow(label = "Max heart rate") {
+                FormRow(label = stringResource(R.string.profile_max_hr)) {
                     Column(horizontalAlignment = Alignment.End) {
                         StepperField(
-                            value = if (profile.hrMaxOverride > 0) profile.hrMaxOverride.toString() else "Auto",
+                            value = if (profile.hrMaxOverride > 0) {
+                                profile.hrMaxOverride.toString()
+                            } else {
+                                stringResource(R.string.profile_auto)
+                            },
                             unit = "bpm",
                             accessibility = if (profile.hrMaxOverride == 0) {
-                                "Max heart rate override, automatic"
+                                stringResource(R.string.profile_max_hr_a11y_auto)
                             } else {
-                                "Max heart rate override, ${profile.hrMaxOverride} bpm"
+                                stringResource(R.string.profile_max_hr_a11y, profile.hrMaxOverride)
                             },
                             valueColor = if (profile.hrMaxOverride > 0) Palette.textPrimary else Palette.textTertiary,
                             onMinus = { mutate { profile.hrMaxOverride -= 1 } },
@@ -278,9 +302,9 @@ fun ProfileMenuScreen(vm: AppViewModel) {
                         Spacer(Modifier.height(Metrics.space6))
                         Text(
                             text = if (profile.hrMaxOverride > 0) {
-                                "Manual override"
+                                stringResource(R.string.profile_max_hr_manual)
                             } else {
-                                "Auto · ${profile.hrMaxAuto} bpm (Tanaka)"
+                                stringResource(R.string.profile_max_hr_auto, profile.hrMaxAuto)
                             },
                             style = NoopType.footnote,
                             color = if (profile.hrMaxOverride > 0) Palette.accent else Palette.textTertiary,
@@ -292,17 +316,17 @@ fun ProfileMenuScreen(vm: AppViewModel) {
                 // 1.0 = raw pass-through until the true 5/MG tick rate is known. The divisor goes
                 // up to 30 because a 5/MG motion counter can overcount by ~24×; the stepper uses a
                 // variable increment (fine near 1.0, coarse up top) so high values stay reachable.
-                FormRow(label = "Step calibration") {
+                FormRow(label = stringResource(R.string.profile_step_calibration)) {
+                    val ticks = "%.1f".format(profile.stepTicksPerStep)
                     StepperField(
-                        value = "%.1f".format(profile.stepTicksPerStep),
-                        accessibility = "Step calibration, %.1f counter ticks per step"
-                            .format(profile.stepTicksPerStep),
+                        value = ticks,
+                        accessibility = stringResource(R.string.profile_step_calibration_a11y, ticks),
                         onMinus = { mutate { profile.stepTicksPerStep = ProfileStore.steppedStepScale(profile.stepTicksPerStep, up = false) } },
                         onPlus = { mutate { profile.stepTicksPerStep = ProfileStore.steppedStepScale(profile.stepTicksPerStep, up = true) } },
                     )
                 }
                 Text(
-                    "Counter ticks per step. Leave at 1.0 unless your steps run high. On a WHOOP 5/MG they can run very high (10× or more), so this goes up to 30. Walk a known 1,000 steps and divide NOOP's count by the real count to get your value.",
+                    stringResource(R.string.profile_step_calibration_note),
                     style = NoopType.footnote,
                     color = Palette.textTertiary,
                 )
@@ -312,11 +336,16 @@ fun ProfileMenuScreen(vm: AppViewModel) {
                 // motion and calibrates that to the phone. Opens the explainer + fit + comparison + manual
                 // override screen. Mirrors the macOS Profile "Steps estimate" row.
                 val stepsSummary = when {
-                    profile.stepsManualCoefficient > 0 -> "Manual"
-                    profile.stepsCalibrationCoefficient > 0 ->
-                        "Auto · ${StepsCalibrationFormat.confidenceLabel(profile.stepsCalibrationConfidence)} confidence"
-                    else -> "Not calibrated"
+                    profile.stepsManualCoefficient > 0 -> stringResource(R.string.profile_steps_manual)
+                    profile.stepsCalibrationCoefficient > 0 -> stringResource(
+                        R.string.profile_steps_auto,
+                        stringResource(
+                            StepsCalibrationFormat.confidenceLabelRes(profile.stepsCalibrationConfidence),
+                        ),
+                    )
+                    else -> stringResource(R.string.profile_steps_not_calibrated)
                 }
+                val stepsRowLabel = stringResource(R.string.profile_steps_row_a11y, stepsSummary)
                 val stepsRowInteraction = remember { MutableInteractionSource() }
                 Row(
                     modifier = Modifier
@@ -328,15 +357,17 @@ fun ProfileMenuScreen(vm: AppViewModel) {
                             interactionSource = stepsRowInteraction,
                             indication = null,
                         ) { showStepsCalibration = true }
-                        .semantics {
-                            contentDescription =
-                                "Steps estimate calibration. $stepsSummary. Opens the calibration screen."
-                        }
+                        .semantics { contentDescription = stepsRowLabel }
                         .padding(vertical = Metrics.space4),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(Metrics.space16),
                 ) {
-                    Text("Steps estimate", style = NoopType.body, color = Palette.textPrimary, modifier = Modifier.weight(1f))
+                    Text(
+                        stringResource(R.string.profile_steps_estimate),
+                        style = NoopType.body,
+                        color = Palette.textPrimary,
+                        modifier = Modifier.weight(1f),
+                    )
                     Text(
                         stepsSummary,
                         style = NoopType.footnote,
@@ -350,7 +381,7 @@ fun ProfileMenuScreen(vm: AppViewModel) {
                     )
                 }
                 Text(
-                    "For a WHOOP 4.0, which sends no step count: NOOP estimates steps from motion, calibrated to your phone. Tap to see how close it is and adjust it.",
+                    stringResource(R.string.profile_steps_note),
                     style = NoopType.footnote,
                     color = Palette.textTertiary,
                 )
@@ -362,20 +393,23 @@ fun ProfileMenuScreen(vm: AppViewModel) {
         // stored changes; NOOP keeps everything in SI and converts at the point of display.
         ProfileSection(
             icon = Icons.Filled.Straighten,
-            title = "Units",
-            blurb = "Choose how distances, weights, heights, temperatures and Effort are shown. Your data is always stored the same way. This only changes the display.",
+            title = stringResource(R.string.profile_units_title),
+            blurb = stringResource(R.string.profile_units_blurb),
         ) {
             Column {
-                FormRow(label = "Measurement system") {
+                val metricLabel = stringResource(R.string.profile_metric)
+                val imperialLabel = stringResource(R.string.profile_imperial)
+                val matchLabel = stringResource(R.string.profile_temperature_match)
+                FormRow(label = stringResource(R.string.profile_measurement_system)) {
                     SegmentedPillControl(
                         items = listOf(UnitSystem.METRIC, UnitSystem.IMPERIAL),
                         selection = unitSystem,
-                        label = { if (it == UnitSystem.METRIC) "Metric" else "Imperial" },
+                        label = { if (it == UnitSystem.METRIC) metricLabel else imperialLabel },
                         onSelect = { NoopPrefs.setUnitSystem(context, it) },
                     )
                 }
                 RowDivider()
-                FormRow(label = "Temperature") {
+                FormRow(label = stringResource(R.string.profile_temperature)) {
                     // Three-way: "Match" follows the system above; °C / °F pin it explicitly. Stored as an
                     // empty string ("match") or the TemperatureUnit raw value.
                     SegmentedPillControl(
@@ -385,7 +419,7 @@ fun ProfileMenuScreen(vm: AppViewModel) {
                             when (it) {
                                 TemperatureUnit.CELSIUS.raw -> "°C"
                                 TemperatureUnit.FAHRENHEIT.raw -> "°F"
-                                else -> "Match"
+                                else -> matchLabel
                             }
                         },
                         onSelect = { NoopPrefs.setTemperatureUnit(context, TemperatureUnit.fromRaw(it)) },
@@ -394,7 +428,7 @@ fun ProfileMenuScreen(vm: AppViewModel) {
                 RowDivider()
                 // Effort scale — NOOP's native 0–100 Effort or WHOOP's 0–21 Day Strain axis.
                 // Display-only; the stored value never changes, so a flip just re-labels every read-out.
-                FormRow(label = "Effort scale") {
+                FormRow(label = stringResource(R.string.profile_effort_scale)) {
                     SegmentedPillControl(
                         items = listOf(EffortScale.HUNDRED, EffortScale.WHOOP),
                         selection = effortScale,
@@ -407,8 +441,8 @@ fun ProfileMenuScreen(vm: AppViewModel) {
 
         ProfileSection(
             icon = Icons.Filled.Language,
-            title = "Language",
-            blurb = "The language NOOP's own screens are shown in. Your data, units and metric names are unaffected. Screens not yet translated stay in English.",
+            title = stringResource(R.string.profile_language_title),
+            blurb = stringResource(R.string.profile_language_blurb),
         ) {
             Column {
                 val currentTag = NoopLocale.current(context).tag
@@ -476,7 +510,7 @@ private fun ProfileSection(
     NoopCard(padding = 20.dp, tint = Palette.accent) {
         Column(verticalArrangement = Arrangement.spacedBy(Metrics.space16)) {
             Column(verticalArrangement = Arrangement.spacedBy(Metrics.space2)) {
-                Overline("Settings")
+                Overline(stringResource(R.string.nav_settings))
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(Metrics.space10),
@@ -544,12 +578,12 @@ private fun FormRow(label: String, control: @Composable () -> Unit) {
 
 // MARK: - Sex options (mirrors SettingsScreen's private copy)
 
-private data class SexOption(val tag: String, val label: String)
+private data class SexOption(val tag: String, @StringRes val label: Int)
 
 private val SEX_OPTIONS = listOf(
-    SexOption("male", "Male"),
-    SexOption("female", "Female"),
-    SexOption("nonbinary", "Non-binary"),
+    SexOption("male", R.string.profile_sex_male),
+    SexOption("female", R.string.profile_sex_female),
+    SexOption("nonbinary", R.string.profile_sex_nonbinary),
 )
 
 // MARK: - Waist stepper (optional VO₂max input; mirrors SettingsScreen's private copy)

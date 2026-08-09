@@ -32,12 +32,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.noop.R
 import com.noop.analytics.DaytimeStress
 import com.noop.analytics.RustScores
 import com.noop.ui.AppViewModel
@@ -112,15 +114,14 @@ fun WhoopHealthScreen(
     }
 
     LazyScreenScaffold(
-        title = "Health",
-        subtitle = "Your vital signs and today's stress load.",
+        title = stringResource(R.string.nav_health),
+        subtitle = stringResource(R.string.whoopskin_health_subtitle),
     ) {
         if (days.isEmpty()) {
             item {
                 DataPendingNote(
-                    title = "No biometrics yet",
-                    body = "Wear your strap overnight, or import a WHOOP export in Data Sources, " +
-                        "and your vitals appear here.",
+                    title = stringResource(R.string.whoopskin_health_empty_title),
+                    body = stringResource(R.string.whoopskin_health_empty_body),
                 )
             }
             return@LazyScreenScaffold
@@ -143,7 +144,7 @@ private fun HealthMonitorSummaryCard(
 ) {
     NoopCard(tint = Palette.accent) {
         Column(verticalArrangement = Arrangement.spacedBy(Metrics.space16)) {
-            NoopCardHeader("Health Monitor", onClick = onOpen)
+            NoopCardHeader(stringResource(R.string.whoopskin_health_monitor), onClick = onOpen)
             Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
                 vitals.forEachIndexed { index, vital ->
                     if (index > 0) ColumnRule()
@@ -167,7 +168,7 @@ private fun HealthMonitorSummaryCard(
 @Composable
 internal fun HealthRollUpPill(roll: HealthRollUp) {
     StatePill(
-        title = roll.title,
+        title = stringResource(R.string.whoopskin_health_rollup, roll.inRange, roll.read),
         // All clear is a POSITIVE state, not an interactive affordance. On Accent it was drawn in the
         // chrome colour, which in light put "5/5 metrics within range" into the same narrow red band
         // as the heart-rate hue and the critical swatch beside it.
@@ -183,8 +184,10 @@ internal fun HealthRollUpPill(roll: HealthRollUp) {
  */
 @Composable
 private fun VitalSummaryColumn(vital: HealthVital, modifier: Modifier = Modifier) {
+    val spoken = healthVitalSpoken(vital)
+    val short = stringResource(vital.short)
     Column(
-        modifier = modifier.semantics(mergeDescendants = true) { contentDescription = vital.spoken },
+        modifier = modifier.semantics(mergeDescendants = true) { contentDescription = spoken },
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(Metrics.space6),
     ) {
@@ -195,7 +198,7 @@ private fun VitalSummaryColumn(vital: HealthVital, modifier: Modifier = Modifier
             modifier = Modifier.size(Metrics.iconSmall),
         )
         Text(
-            vital.short.uppercase(),
+            short.uppercase(),
             style = NoopType.overline,
             color = Palette.textPrimary,
             textAlign = TextAlign.Center,
@@ -234,15 +237,14 @@ private fun ColumnRule() {
 private fun StressMonitorSummaryCard(score: Double?, read: DaytimeStress.Result?, onOpen: () -> Unit) {
     NoopCard(tint = Palette.stressColor) {
         Column(verticalArrangement = Arrangement.spacedBy(Metrics.space16)) {
-            NoopCardHeader("Stress Monitor", onClick = onOpen)
+            NoopCardHeader(stringResource(R.string.whoopskin_stress_monitor), onClick = onOpen)
             val levels = read?.scored?.mapNotNull { it.level }.orEmpty()
             if (score == null) {
                 InsetChartPlaceholder(
-                    message = if (read == null) {
-                        "Reading today's heart rate…"
-                    } else {
-                        "Not enough resting heart rate or HRV to score today."
-                    },
+                    message = stringResource(
+                        if (read == null) R.string.whoopskin_stress_reading_today
+                        else R.string.whoopskin_stress_no_score_today,
+                    ),
                     height = Metrics.motionStripHeight + Metrics.sectionGap,
                 )
             } else {
@@ -255,7 +257,7 @@ private fun StressMonitorSummaryCard(score: Double?, read: DaytimeStress.Result?
                         modifier = Modifier.weight(1f),
                         verticalArrangement = Arrangement.spacedBy(Metrics.space4),
                     ) {
-                        Overline("Today's stress")
+                        Overline(stringResource(R.string.whoopskin_todays_stress))
                         Text(
                             String.format(Locale.US, "%.1f", score),
                             style = NoopType.number(26f, FontWeight.Bold),
@@ -300,10 +302,7 @@ private fun HealthDisclaimer() {
     Column(verticalArrangement = Arrangement.spacedBy(Metrics.space12)) {
         HorizontalDivider(color = Palette.hairline)
         Text(
-            "Health Monitor and Stress Monitor are not medical devices and cannot diagnose or " +
-                "manage a medical condition. They give wellness estimates, never medical advice. " +
-                "Always consult your doctor about a health concern, and never delay or change " +
-                "medical care because of what you read here.",
+            stringResource(R.string.whoopskin_health_disclaimer),
             style = NoopType.footnote,
             color = Palette.textTertiary,
         )

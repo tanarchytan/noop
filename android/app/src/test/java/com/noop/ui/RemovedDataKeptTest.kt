@@ -1,5 +1,6 @@
 package com.noop.ui
 
+import com.noop.R
 import com.noop.data.DailyMetric
 import com.noop.data.DeviceStatus
 import com.noop.data.PairedDeviceRow
@@ -12,6 +13,7 @@ import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.io.File
 import java.lang.reflect.Proxy
 
 /**
@@ -47,18 +49,34 @@ class RemovedDataKeptTest {
         return WhoopRepository(dao)
     }
 
-    /** The exact strings the removed card shows. Named here so a copy change has to face this test. */
+    /** The exact strings the removed card shows: the keys it picks, and what strings_core.xml says
+     *  they are. Named here so a copy change has to face this test. */
     @Test
     fun theRemovedCardPromisesTheDataIsKept() {
         val removed = row(strap, DeviceStatus.archived, addedAt = 1L)
-        assertEquals("Removed · data kept", lastSeenLine(removed, isLiveConnected = false))
+        assertEquals(R.string.devices2_last_seen_removed, lastSeenLine(removed, isLiveConnected = false))
         assertEquals(
-            "Removed",
+            R.string.devices2_pill_removed,
             devicePillState(
                 isArchived = true, isActive = false, isReconnecting = false,
                 bondRefused = false, isLiveConnected = false,
             ).label,
         )
+        val core = coreStrings()
+        assertEquals("Removed · data kept", core["devices2_last_seen_removed"])
+        assertEquals("Removed", core["devices2_pill_removed"])
+    }
+
+    /** Every `<string name="x">y</string>` in the app's strings_core.xml. */
+    private fun coreStrings(): Map<String, String> {
+        val userDir = File(System.getProperty("user.dir") ?: ".")
+        val res = listOf(userDir, File(userDir, "app"), File(userDir, "android/app"))
+            .map { File(it, "src/main/res/values/strings_core.xml") }
+            .firstOrNull { it.isFile }
+            ?: error("strings_core.xml not found from ${userDir.absolutePath}")
+        return Regex("""<string name="([^"]+)">(.*?)</string>""", RegexOption.DOT_MATCHES_ALL)
+            .findAll(res.readText())
+            .associate { it.groupValues[1] to it.groupValues[2] }
     }
 
     /** And the promise holds: archiving a strap that owns N days leaves all N visible. */

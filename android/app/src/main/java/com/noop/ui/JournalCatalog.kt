@@ -1,6 +1,8 @@
 package com.noop.ui
 
 import android.content.Context
+import androidx.annotation.StringRes
+import com.noop.R
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -26,15 +28,15 @@ sealed class JournalKind {
 /**
  * A user-visible grouping for related journal items (display + organisation only, never a scoring
  * change). Mirrors macOS `JournalGroup` value-for-value. The enum name is the stable persisted key;
- * [title] is the display label.
+ * [title] is the display label's string resource, resolved at the composable.
  */
-enum class JournalGroup(val title: String) {
-    Supplements("Supplements"),
-    Nutrition("Nutrition"),
-    Lifestyle("Lifestyle"),
-    Health("Health"),
-    Behaviour("Behaviour"),
-    Other("Other");
+enum class JournalGroup(@StringRes val title: Int) {
+    Supplements(R.string.journal_group_supplements),
+    Nutrition(R.string.journal_group_nutrition),
+    Lifestyle(R.string.journal_group_lifestyle),
+    Health(R.string.journal_group_health),
+    Behaviour(R.string.journal_group_behaviour),
+    Other(R.string.journal_group_other);
 
     companion object {
         /** Fixed display order (matches macOS). Empty groups hide outside edit mode. */

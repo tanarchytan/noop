@@ -39,6 +39,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
@@ -49,6 +50,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.repeatOnLifecycle
+import com.noop.R
 import com.noop.analytics.IllnessSignalEngine
 import com.noop.analytics.RustScores
 import com.noop.analytics.SpotHrvReading
@@ -141,8 +143,8 @@ fun WhoopHealthMonitorScreen(
     var showHrvSnapshot by remember { mutableStateOf(false) }
 
     LazyScreenScaffold(
-        title = "Health Monitor",
-        subtitle = "Live heart rate and your body's vital signs.",
+        title = stringResource(R.string.whoopskin_health_monitor),
+        subtitle = stringResource(R.string.whoopskin_health_monitor_subtitle),
     ) {
         item { HeartRateHero(vm, zoneSet) }
         // The day's banked heart rate with its own window pills, sleep band and workout glyphs; the
@@ -161,9 +163,8 @@ fun WhoopHealthMonitorScreen(
         if (vitals.all { it.value == null }) {
             item {
                 DataPendingNote(
-                    title = "Vitals are still building",
-                    body = "SpO₂, respiratory rate and skin temperature are sleep-window readings; " +
-                        "resting HR and HRV land once a night is analysed.",
+                    title = stringResource(R.string.whoopskin_vitals_building_title),
+                    body = stringResource(R.string.whoopskin_vitals_building_body),
                 )
             }
         }
@@ -238,23 +239,24 @@ internal fun HeartRateHero(vm: AppViewModel, zoneSet: HrZoneSetInfo) {
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(Metrics.space6),
             ) {
-                Overline("Heart rate", modifier = Modifier.weight(1f))
+                Overline(stringResource(R.string.whoopskin_heart_rate), modifier = Modifier.weight(1f))
                 // Beats off the same reading the badge reads, so a still heart and "Live" cannot disagree.
                 BeatingHeart(bpm = hr, tint = tint)
                 StatePill(
-                    title = if (hr != null) "Live" else "Idle",
+                    title = stringResource(
+                        if (hr != null) R.string.whoopskin_live else R.string.whoopskin_idle,
+                    ),
                     tone = if (hr != null) StrandTone.Accent else StrandTone.Neutral,
                     showsDot = true,
                     pulsing = hr != null,
                 )
             }
             if (hr != null) {
+                val spokenHr = stringResource(R.string.whoopskin_heart_rate_a11y, hr)
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .semantics(mergeDescendants = true) {
-                            contentDescription = "Heart rate $hr beats per minute"
-                        },
+                        .semantics(mergeDescendants = true) { contentDescription = spokenHr },
                     verticalAlignment = Alignment.Bottom,
                     horizontalArrangement = Arrangement.spacedBy(Metrics.space6),
                 ) {
@@ -274,17 +276,22 @@ internal fun HeartRateHero(vm: AppViewModel, zoneSet: HrZoneSetInfo) {
             } else {
                 // No reading is said in words. A dash set at display size draws as a solid bar, and a
                 // unit with nothing in front of it claims a measurement that was never taken.
+                val spokenNone = stringResource(R.string.whoopskin_heart_rate_a11y_none)
                 Text(
-                    "No reading yet",
+                    stringResource(R.string.whoopskin_vital_no_reading),
                     style = NoopType.title2,
                     color = Palette.textTertiary,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .semantics { contentDescription = "Heart rate, no live reading" },
+                        .semantics { contentDescription = spokenNone },
                 )
             }
             Text(
-                zone?.let { if (it > 0) "Zone $it" else "Below zone 1" } ?: "Awaiting the strap",
+                when {
+                    zone == null -> stringResource(R.string.whoopskin_hr_awaiting_strap)
+                    zone > 0 -> stringResource(R.string.whoopskin_hr_zone, zone)
+                    else -> stringResource(R.string.whoopskin_hr_below_zone_1)
+                },
                 style = NoopType.captionNumber,
                 color = Palette.textSecondary,
             )
@@ -301,8 +308,10 @@ internal fun HeartRateHero(vm: AppViewModel, zoneSet: HrZoneSetInfo) {
                 )
             }
             Text(
-                if (trace.size >= 2) "The trace holds the last few minutes of streamed beats and resets when you leave."
-                else "The trace draws once the strap is streaming, and resets when you leave.",
+                stringResource(
+                    if (trace.size >= 2) R.string.whoopskin_hr_trace_live
+                    else R.string.whoopskin_hr_trace_waiting,
+                ),
                 style = NoopType.footnote,
                 color = Palette.textTertiary,
             )
@@ -420,7 +429,10 @@ private fun zoneNumberIn(set: HrZoneSetInfo, bpm: Double): Int {
 @Composable
 private fun VitalGrid(vitals: List<HealthVital>, onVitalClick: (String) -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(Metrics.gap)) {
-        SectionHeader("Vital Signs", overline = "Latest readings")
+        SectionHeader(
+            stringResource(R.string.nav_vital_signs),
+            overline = stringResource(R.string.whoopskin_latest_readings),
+        )
         vitals.chunked(2).forEach { pair ->
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -439,11 +451,14 @@ private fun VitalGrid(vitals: List<HealthVital>, onVitalClick: (String) -> Unit)
 @Composable
 private fun VitalCard(vital: HealthVital, modifier: Modifier = Modifier, onClick: () -> Unit) {
     val accent = healthVitalColor(vital.key)
+    val label = stringResource(vital.label)
+    val spoken = healthVitalSpoken(vital)
+    val asOf = healthAsOfLabel(vital.asOfDay) ?: stringResource(R.string.whoopskin_vital_no_reading)
     NoopCard(
         modifier = modifier
             .height(Metrics.tileHeight + Metrics.space24)
-            .clickable(onClickLabel = vital.label, onClick = onClick)
-            .semantics(mergeDescendants = true) { contentDescription = vital.spoken },
+            .clickable(onClickLabel = label, onClick = onClick)
+            .semantics(mergeDescendants = true) { contentDescription = spoken },
         padding = Metrics.space14,
         tint = accent,
     ) {
@@ -458,7 +473,7 @@ private fun VitalCard(vital: HealthVital, modifier: Modifier = Modifier, onClick
                     tint = Palette.textSecondary,
                     modifier = Modifier.size(Metrics.iconSmall),
                 )
-                Overline(vital.label, modifier = Modifier.weight(1f))
+                Overline(label, modifier = Modifier.weight(1f))
             }
             Spacer(Modifier.weight(1f))
             Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(Metrics.space4)) {
@@ -478,7 +493,7 @@ private fun VitalCard(vital: HealthVital, modifier: Modifier = Modifier, onClick
                 }
             }
             Text(
-                vital.asOf ?: "No reading yet",
+                asOf,
                 style = NoopType.footnote,
                 color = Palette.textTertiary,
                 maxLines = 1,
@@ -512,7 +527,10 @@ private fun HrvSnapshotButton(enabled: Boolean, onClick: () -> Unit) {
             contentDescription = null,
             modifier = Modifier.size(Metrics.iconSmall).padding(end = Metrics.space4),
         )
-        Text("Take an HRV reading", style = NoopType.captionNumber, maxLines = 1, softWrap = false)
+        Text(
+            stringResource(R.string.whoopskin_take_hrv_reading),
+            style = NoopType.captionNumber, maxLines = 1, softWrap = false,
+        )
     }
 }
 
@@ -546,7 +564,10 @@ private fun SkinTempSuite(
     // section title with nothing under it.
     if (heads == null && cycle == null && !offersOptIn && bodyClock == null && !showsRhythmAge) return
     Column(verticalArrangement = Arrangement.spacedBy(Metrics.gap)) {
-        NoopCardHeader("Body signals", color = Palette.textSecondary)
+        NoopCardHeader(
+            stringResource(R.string.whoopskin_body_signals),
+            color = Palette.textSecondary,
+        )
         heads?.let { HeadsUpCard(result = it, distance = signals.illnessDistance) }
         cycle?.let { CycleAwarenessCard(result = it, onTurnOff = onTurnOffCycle) }
         if (offersOptIn) CycleAwarenessOptInCard(onEnable = onEnableCycle)

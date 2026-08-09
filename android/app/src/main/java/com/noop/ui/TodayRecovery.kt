@@ -1,5 +1,6 @@
 package com.noop.ui
 
+import androidx.annotation.StringRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -138,7 +139,12 @@ internal fun RecoveryDriversSection(
 
     val tier = remember(days, readDay) { chargeConfidenceTier(days, readDay) }
     val overline = carriedDay
-        ?.let { stringResource(R.string.today_overline_charge_carried, carriedCaption(it.day)) }
+        ?.let {
+            stringResource(
+                R.string.today_overline_charge_carried,
+                stringResource(carriedCaption(it.day), lastChargeDateLabel(it.day)),
+            )
+        }
         ?: stringResource(R.string.today_overline_charge)
 
     Column(verticalArrangement = Arrangement.spacedBy(Metrics.gap)) {
@@ -191,13 +197,17 @@ private fun DriverRow(driver: ChargeDriver) {
         else -> Palette.textTertiary
     }
     val signed = if (driver.deltaPoints > 0) "+${driver.deltaPoints}" else "${driver.deltaPoints}"
+    val label = stringResource(driver.labelRes)
+    val valueText = driver.valueLabel()
+    val baselineText = driver.baselineLabel()
+    val verdict = stringResource(driver.verdictRes)
     val rowDescription = stringResource(
         R.string.today_driver_row_a11y,
-        driver.label,
-        driver.valueText,
-        driver.baselineText,
+        label,
+        valueText,
+        baselineText,
         signed,
-        driver.verdict,
+        verdict,
     )
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -228,12 +238,12 @@ private fun DriverRow(driver: ChargeDriver) {
             )
         }
         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(Metrics.space2)) {
-            Text(driver.label, style = NoopType.headline, color = Palette.textPrimary)
-            Text(driver.verdict, style = NoopType.footnote, color = Palette.textSecondary)
+            Text(label, style = NoopType.headline, color = Palette.textPrimary)
+            Text(verdict, style = NoopType.footnote, color = Palette.textSecondary)
         }
         Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(Metrics.space2)) {
-            Text(driver.valueText, style = NoopType.captionNumber, color = Palette.textPrimary)
-            Text(driver.baselineText, style = NoopType.footnote, color = Palette.textTertiary)
+            Text(valueText, style = NoopType.captionNumber, color = Palette.textPrimary)
+            Text(baselineText, style = NoopType.footnote, color = Palette.textTertiary)
         }
     }
 }
@@ -260,7 +270,12 @@ internal fun RecoveryContributorsSection(day: DailyMetric?, carriedDay: DailyMet
     if (hrv == null && rhr == null && sleepMin == null && resp == null) return
 
     val overline = carriedDay
-        ?.let { stringResource(R.string.today_overline_recovery_carried, carriedCaption(it.day)) }
+        ?.let {
+            stringResource(
+                R.string.today_overline_recovery_carried,
+                stringResource(carriedCaption(it.day), lastChargeDateLabel(it.day)),
+            )
+        }
         ?: stringResource(R.string.today_overline_recovery)
     SectionHeader(
         stringResource(R.string.today_contributors),
@@ -497,11 +512,12 @@ internal fun freshRestScore(
 /** The carried recovery caption stamp, keyed on that scored day's own date and its recency. Within the
  *  freshness cap it reads "Last night · <date>"; once the carried day is older than the cap it reads
  *  "Latest sleep · <date>" so a weeks-old import is never surfaced as "Last night". Shared by every carried
- *  recovery read-out so the prior-day provenance reads identically. Mirrors iOS carriedCaption. */
-internal fun carriedCaption(priorDayKey: String, today: String = LocalDate.now().toString()): String {
-    val prefix = if (isCarryStale(priorDayKey, today)) "Latest sleep" else "Last night"
-    return "$prefix · ${lastChargeDateLabel(priorDayKey)}"
-}
+ *  recovery read-out so the prior-day provenance reads identically. Its one format argument is
+ *  [lastChargeDateLabel] of the same key. Mirrors iOS carriedCaption. */
+@StringRes
+internal fun carriedCaption(priorDayKey: String, today: String = LocalDate.now().toString()): Int =
+    if (isCarryStale(priorDayKey, today)) R.string.core_caption_latest_sleep
+    else R.string.core_caption_last_night
 
 // ════════════════════════════════════════════════════════════════════════════════════════════════════
 // Explainability layer, COMPONENTS 2, 3, 4 (spec: 2026-06-20-sleep-guidance-explainability.md)
@@ -509,8 +525,8 @@ internal fun carriedCaption(priorDayKey: String, today: String = LocalDate.now()
 // "No bare number without a STATE, a REASON, and a NEXT STEP." Every uncertain or derived read-out on
 // Today gets a clear state, a plain-English reason and a next step, and we NEVER fabricate a number:
 // calibrating / needs-strap show NO value, carried values are always stamped with their date, and the
-// provenance badge reflects the REAL per-day merge winner. The copy here is VERBATIM and must match the
-// Swift today lane word-for-word (ScoreState / RecordingState). No em-dashes anywhere.
+// provenance badge reflects the REAL per-day merge winner. The states name a resource key and
+// strings_core.xml holds the wording, which must still match the Swift today lane word-for-word.
 // ════════════════════════════════════════════════════════════════════════════════════════════════════
 
 // ── COMPONENT 2, explained score states ─────────────────────────────────────────────────────────────
@@ -519,8 +535,8 @@ internal fun carriedCaption(priorDayKey: String, today: String = LocalDate.now()
  * The honest state of one score/tile on Today, one state per score, never a bare blank. Derived from
  * baseline readiness + data presence + the carry-over, so a tile that has no own value for the day
  * still says WHY and WHAT to do, and shows no fabricated number. Mirrors Swift `ScoreState` 1:1 (same
- * three cases, same [title] / [detail] copy). [Scored] carries the real value the tile renders normally;
- * the other three are the no-own-number states this layer explains.
+ * three cases, same [titleRes] / [detailRes] copy). [Scored] carries the real value the tile renders
+ * normally; the other three are the no-own-number states this layer explains.
  */
 sealed class ScoreState {
     /** Today's own value exists, the tile renders the number as usual; this layer adds nothing. */
@@ -539,31 +555,48 @@ sealed class ScoreState {
     /** No data for today at all, strap not worn / not connected / not synced. Shows NO number. */
     object NeedsStrap : ScoreState()
 
-    /** The status title shown in the tile's state slot. VERBATIM, mirror Swift exactly. */
-    val title: String
+    /** The status title's resource, null on a scored tile (which shows its own number instead).
+     *  A carried title takes [CarriedLastNight.dateLabel] as its one format argument. */
+    @get:StringRes
+    val titleRes: Int?
         get() = when (this) {
-            is Scored -> ""
-            is Calibrating -> "Calibrating"
-            is CarriedLastNight -> if (stale) "Latest sleep · $dateLabel" else "Last night · $dateLabel"
-            NeedsStrap -> "Needs the strap"
+            is Scored -> null
+            is Calibrating -> R.string.core_state_calibrating
+            is CarriedLastNight ->
+                if (stale) R.string.core_caption_latest_sleep else R.string.core_caption_last_night
+            NeedsStrap -> R.string.core_state_needs_strap
         }
 
-    /** The one-line plain-English what-to-do. VERBATIM, mirror Swift exactly. The night(s) plural in
-     *  the calibrating copy follows [nightsRemaining]. */
-    val detail: String
+    /** The one-line plain-English what-to-do, null on a scored tile. A fresh post-rollover carry says
+     *  tonight's score is on its way; a stale carry says the number is from that earlier session. */
+    @get:StringRes
+    val detailRes: Int?
         get() = when (this) {
-            is Scored -> ""
-            is Calibrating -> {
-                val nights = if (nightsRemaining == 1) "night" else "nights"
-                "Building your baseline. About $nightsRemaining more $nights until your scores are personal."
-            }
+            is Scored -> null
+            is Calibrating -> R.string.core_state_calibrating_detail
             is CarriedLastNight ->
-                // A fresh post-rollover carry tells you tonight's score is on its way; a stale carry (an
-                // older import) instead explains the number is from that earlier session, not today.
-                if (stale) "This is your last scored session. Wear the strap overnight for a fresh score."
-                else "Tonight's lands after you sleep with the strap on."
-            NeedsStrap -> "No data for today. Was your strap worn and connected overnight?"
+                if (stale) R.string.core_state_carried_stale_detail else R.string.core_state_carried_detail
+            NeedsStrap -> R.string.core_state_needs_strap_detail
         }
+
+    /** The title as drawn; a carried state stamps its own date so it never reads as today's. */
+    @Composable
+    fun titleText(): String {
+        val res = titleRes ?: return ""
+        return if (this is CarriedLastNight) stringResource(res, dateLabel) else stringResource(res)
+    }
+
+    /** The detail as drawn; the night(s) plural in the calibrating copy follows [nightsRemaining]. */
+    @Composable
+    fun detailText(): String {
+        val res = detailRes ?: return ""
+        if (this !is Calibrating) return stringResource(res)
+        val nights = stringResource(
+            if (nightsRemaining == 1) R.string.today_milestone_night_one
+            else R.string.today_milestone_nights_other,
+        )
+        return stringResource(res, nightsRemaining, nights)
+    }
 }
 
 /**
@@ -762,22 +795,24 @@ sealed class RecordingState {
      *  experimental on 5.0. Surfaced from `LiveState.historySyncExperimental`, overriding the resolver. */
     object HistoryExperimental : RecordingState()
 
-    /** The chip's status word. VERBATIM, mirror Swift exactly. */
-    val title: String
+    /** The chip's status word. [LastSynced] takes [LastSynced.minutesAgo] as its format argument. */
+    @get:StringRes
+    val titleRes: Int
         get() = when (this) {
-            Recording -> "Recording"
-            is LastSynced -> "Last synced ${minutesAgo}m ago"
-            NotRecording -> "Not recording"
-            HistoryExperimental -> "Connected"
+            Recording -> R.string.core_recording
+            is LastSynced -> R.string.core_last_synced
+            NotRecording -> R.string.core_not_recording
+            HistoryExperimental -> R.string.core_connected
         }
 
-    /** The chip's one-line detail. VERBATIM, mirror Swift exactly. */
-    val detail: String
+    /** The chip's one-line detail. */
+    @get:StringRes
+    val detailRes: Int
         get() = when (this) {
-            Recording -> "Your strap is connected and saving data."
-            is LastSynced -> "Reconnect to pull the latest."
-            NotRecording -> "Strap not connected. Tap to connect."
-            HistoryExperimental -> "History sync is experimental on 5.0."
+            Recording -> R.string.core_recording_detail
+            is LastSynced -> R.string.core_last_synced_detail
+            NotRecording -> R.string.core_not_recording_detail
+            HistoryExperimental -> R.string.core_connected_detail
         }
 
     /** Chip hue: live recording reads positive (gold/green dot), a stale-but-recent sync reads neutral,

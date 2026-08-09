@@ -1,5 +1,6 @@
 package com.noop.analytics
 
+import com.noop.R
 import com.noop.ui.TemperatureUnit
 import com.noop.ui.chargeDriverRows
 import org.junit.Assert.assertEquals
@@ -34,26 +35,35 @@ class ChargeDriversTest {
         )
         // All five present terms produce one row each (order is biggest-mover-first, asserted below).
         assertEquals(
-            setOf("Heart rate variability", "Resting heart rate", "Respiratory rate", "Sleep quality", "Skin temperature"),
-            drivers.map { it.label }.toSet(),
+            setOf(
+                R.string.charge_driver_hrv, R.string.charge_driver_resting_hr,
+                R.string.charge_driver_respiratory, R.string.charge_driver_sleep,
+                R.string.charge_driver_skin_temp,
+            ),
+            drivers.map { it.labelRes }.toSet(),
         )
         // Rows are sorted biggest-mover-first, matching the Swift twin.
         val magnitudes = drivers.map { kotlin.math.abs(it.deltaPoints) }
         assertEquals(magnitudes.sortedDescending(), magnitudes)
-        // Every row carries a non-blank value + verdict (never fabricated-empty). HRV / resting HR /
-        // respiration name a learned baseline; Sleep + Skin temp intentionally carry an empty baseline
+        // Every row carries a non-blank value + a verdict key (never fabricated-empty). HRV / resting HR /
+        // respiration name a learned baseline; Sleep + Skin temp intentionally carry no baseline figure
         // (no learned per-night baseline), exactly as the Swift twin does.
         drivers.forEach {
             assertTrue(it.valueText.isNotBlank())
-            assertTrue(it.verdict.isNotBlank())
+            assertTrue(it.verdictRes != 0)
         }
-        listOf("Heart rate variability", "Resting heart rate", "Respiratory rate").forEach { label ->
-            assertTrue(drivers.first { it.label == label }.baselineText.isNotBlank())
+        listOf(
+            R.string.charge_driver_hrv, R.string.charge_driver_resting_hr, R.string.charge_driver_respiratory,
+        ).forEach { label ->
+            val row = drivers.first { it.labelRes == label }
+            assertTrue(row.baselineValue.isNotBlank())
+            assertEquals(R.string.charge_driver_baseline, row.baselineRes)
         }
         // The HRV row names the night's value + the personal baseline it was scored against.
-        val hrv = drivers.first { it.label == "Heart rate variability" }
+        val hrv = drivers.first { it.labelRes == R.string.charge_driver_hrv }
         assertEquals("62 ms", hrv.valueText)
-        assertEquals("50 ms baseline", hrv.baselineText)
+        assertEquals("50 ms", hrv.baselineValue)
+        assertEquals(R.string.charge_driver_baseline, hrv.baselineRes)
     }
 
     @Test fun missingInputYieldsNoRowNotAFakeZero() {
@@ -65,12 +75,12 @@ class ChargeDriversTest {
             rhrBaseline = null, respBaseline = null,
             sleepPerf = 0.85, skinTempDev = null,
         )
-        val labels = drivers.map { it.label }
-        assertTrue(labels.contains("Heart rate variability"))
-        assertTrue(labels.contains("Sleep quality"))
-        assertFalse(labels.contains("Resting heart rate"))
-        assertFalse(labels.contains("Respiratory rate"))
-        assertFalse(labels.contains("Skin temperature"))
+        val labels = drivers.map { it.labelRes }
+        assertTrue(labels.contains(R.string.charge_driver_hrv))
+        assertTrue(labels.contains(R.string.charge_driver_sleep))
+        assertFalse(labels.contains(R.string.charge_driver_resting_hr))
+        assertFalse(labels.contains(R.string.charge_driver_respiratory))
+        assertFalse(labels.contains(R.string.charge_driver_skin_temp))
     }
 
     @Test fun deltaSignTracksDirection() {
@@ -82,12 +92,12 @@ class ChargeDriversTest {
             rhrBaseline = baseline(55.0, 3.0),
             respBaseline = null, sleepPerf = null, skinTempDev = null,
         )
-        val hrv = drivers.first { it.label == "Heart rate variability" }
-        val rhr = drivers.first { it.label == "Resting heart rate" }
+        val hrv = drivers.first { it.labelRes == R.string.charge_driver_hrv }
+        val rhr = drivers.first { it.labelRes == R.string.charge_driver_resting_hr }
         assertTrue("HRV above baseline should lift Charge", hrv.deltaPoints > 0)
         assertTrue("Elevated resting HR should pull Charge down", rhr.deltaPoints < 0)
-        assertTrue(hrv.verdict.contains("supporting recovery"))
-        assertTrue(rhr.verdict.contains("limiting recovery"))
+        assertEquals(R.string.charge_verdict_above_supporting, hrv.verdictRes)
+        assertEquals(R.string.charge_verdict_above_limiting, rhr.verdictRes)
     }
 
     @Test fun skinTempIsARelativeDeviationNeverAbsolute() {
@@ -98,10 +108,10 @@ class ChargeDriversTest {
             rhrBaseline = baseline(55.0, 3.0),
             respBaseline = null, sleepPerf = null, skinTempDev = 0.4,
         )
-        val skin = drivers.first { it.label == "Skin temperature" }
+        val skin = drivers.first { it.labelRes == R.string.charge_driver_skin_temp }
         // The sign carries the deviation; the reference it is measured against is the baseline line.
         assertTrue("skin temp must read as a +/- deviation", skin.valueText.contains("+0.4"))
-        assertEquals("vs baseline", skin.baselineText)
+        assertEquals(R.string.charge_driver_vs_baseline, skin.baselineRes)
         // The symmetric penalty never lifts Charge.
         assertTrue(skin.deltaPoints <= 0)
     }
@@ -117,12 +127,12 @@ class ChargeDriversTest {
             effortBaseline = baseline(40.0, 15.0),
             priorDayEffort = 75.0,                     // a hard day yesterday -> limits recovery
         )
-        val ri = drivers.first { it.label == "Recovery index" }
-        val ab = drivers.first { it.label == "Activity balance" }
+        val ri = drivers.first { it.labelRes == R.string.charge_driver_recovery_index }
+        val ab = drivers.first { it.labelRes == R.string.charge_driver_activity_balance }
         assertTrue("a declining overnight HR should lift Charge", ri.deltaPoints > 0)
-        assertTrue(ri.verdict.contains("supporting recovery"))
+        assertEquals(R.string.charge_verdict_index_supporting, ri.verdictRes)
         assertTrue("a harder-than-normal day yesterday should pull Charge down", ab.deltaPoints < 0)
-        assertTrue(ab.verdict.contains("limiting recovery"))
+        assertEquals(R.string.charge_verdict_activity_limiting, ab.verdictRes)
     }
 
     @Test fun ouraTermsDropTheirRowsWhenInputMissing() {
@@ -137,9 +147,9 @@ class ChargeDriversTest {
             recoveryIndexSlope = null,
             effortBaseline = null, priorDayEffort = 75.0,
         )
-        val labels = drivers.map { it.label }
-        assertFalse(labels.contains("Recovery index"))
-        assertFalse(labels.contains("Activity balance"))
+        val labels = drivers.map { it.labelRes }
+        assertFalse(labels.contains(R.string.charge_driver_recovery_index))
+        assertFalse(labels.contains(R.string.charge_driver_activity_balance))
     }
 
     @Test fun coldStartYieldsEmptyDrivers() {
@@ -156,6 +166,8 @@ class ChargeDriversTest {
         assertTrue(drivers.isEmpty())
     }
 
+    /** The figures Kotlin still formats. The words moved to strings_core.xml, and
+     *  `ChargeDriversGoldenTest.noDriverCopyCarriesAnEmDash` checks them there. */
     @Test fun noRowCarriesAnEmDash() {
         val drivers = chargeDriverRows(
         tempUnit = TemperatureUnit.CELSIUS,
@@ -166,7 +178,7 @@ class ChargeDriversTest {
             sleepPerf = 0.9, skinTempDev = -0.5,
         )
         drivers.forEach { d ->
-            val all = "${d.label}${d.valueText}${d.baselineText}${d.verdict}"
+            val all = "${d.valueText}${d.baselineValue}"
             assertFalse("driver row must not contain an em-dash", all.contains("\u2014"))
         }
     }

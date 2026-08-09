@@ -1,5 +1,9 @@
 package com.noop.ui
 
+import androidx.annotation.StringRes
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.res.stringResource
+import com.noop.R
 import com.noop.analytics.BaselineState
 import com.noop.analytics.RustScores
 import uniffi.whoop_ffi.DriverKind
@@ -16,20 +20,42 @@ import kotlin.math.roundToInt
 /**
  * One driver row behind the Charge (recovery) score, ready to render.
  *
- * @property label short signal name, e.g. "Resting heart rate".
+ * @property labelRes short signal name, e.g. "Resting heart rate".
  * @property deltaPoints signed contribution to the 0-100 Charge score versus this signal sitting at
  *   the personal baseline (positive = lifted Charge, negative = pulled it down).
- * @property valueText the night's value, formatted with its unit, e.g. "58 bpm".
- * @property baselineText the personal baseline it was scored against, e.g. "61 bpm baseline". Empty
- *   for a term with no learned baseline.
- * @property verdict short plain-English read, e.g. "below baseline, supporting recovery".
+ * @property valueText the night's value with its unit, e.g. "58 bpm"; [valueRes] words it when the row
+ *   reads as a phrase rather than a bare figure.
+ * @property baselineValue the personal baseline it was scored against, e.g. "61 bpm", worded by
+ *   [baselineRes]. Both are empty/null for a term with no learned baseline.
+ * @property verdictRes short plain-English read, e.g. "below baseline, supporting recovery".
  */
 data class ChargeDriver(
-    val label: String,
+    @StringRes val labelRes: Int,
     val deltaPoints: Int,
     val valueText: String,
-    val baselineText: String,
-    val verdict: String,
+    @StringRes val valueRes: Int? = null,
+    val baselineValue: String = "",
+    @StringRes val baselineRes: Int? = null,
+    @StringRes val verdictRes: Int,
+)
+
+/** The row's value as drawn: the bare figure, or the phrase its resource wraps it in. */
+@Composable
+internal fun ChargeDriver.valueLabel(): String =
+    valueRes?.let { stringResource(it, valueText) } ?: valueText
+
+/** The row's reference line as drawn: empty when the term has no learned baseline to name. */
+@Composable
+internal fun ChargeDriver.baselineLabel(): String =
+    baselineRes?.let { stringResource(it, baselineValue) } ?: baselineValue
+
+/** One term's drawn text: its name, the night's value, and the reference printed under it. */
+private class DriverText(
+    @StringRes val label: Int,
+    val value: String,
+    @StringRes val valueRes: Int? = null,
+    val baseline: String = "",
+    @StringRes val baselineRes: Int? = null,
 )
 
 /**
@@ -71,98 +97,115 @@ internal fun chargeDriverRows(
     if (rows.isEmpty()) return emptyList()
 
     // Name, value and baseline for every term that HAS an input, keyed the way whoop-rs names it.
-    val text = HashMap<DriverKind, Triple<String, String, String>>()
-    text[DriverKind.HRV] = Triple(
-        "Heart rate variability",
-        "${hrv.roundToInt()} ms",
-        "${hrvBaseline.baseline.roundToInt()} ms baseline",
+    val text = HashMap<DriverKind, DriverText>()
+    text[DriverKind.HRV] = DriverText(
+        label = R.string.charge_driver_hrv,
+        value = "${hrv.roundToInt()} ms",
+        baseline = "${hrvBaseline.baseline.roundToInt()} ms",
+        baselineRes = R.string.charge_driver_baseline,
     )
     if (rhrBaseline != null) {
-        text[DriverKind.RESTING_HR] = Triple(
-            "Resting heart rate",
-            "${rhr.roundToInt()} bpm",
-            "${rhrBaseline.baseline.roundToInt()} bpm baseline",
+        text[DriverKind.RESTING_HR] = DriverText(
+            label = R.string.charge_driver_resting_hr,
+            value = "${rhr.roundToInt()} bpm",
+            baseline = "${rhrBaseline.baseline.roundToInt()} bpm",
+            baselineRes = R.string.charge_driver_baseline,
         )
     }
     if (sleepPerf != null) {
         // Centred on a fixed "good night", not a learned baseline, so there is nothing to name.
-        text[DriverKind.SLEEP] = Triple("Sleep quality", "${(sleepPerf * 100.0).roundToInt()}%", "")
+        text[DriverKind.SLEEP] = DriverText(
+            label = R.string.charge_driver_sleep,
+            value = "${(sleepPerf * 100.0).roundToInt()}%",
+        )
     }
     if (resp != null && respBaseline != null) {
-        text[DriverKind.RESPIRATORY] = Triple(
-            "Respiratory rate",
-            String.format(Locale.US, "%.1f br/min", resp),
-            String.format(Locale.US, "%.1f br/min baseline", respBaseline.baseline),
+        text[DriverKind.RESPIRATORY] = DriverText(
+            label = R.string.charge_driver_respiratory,
+            value = String.format(Locale.US, "%.1f br/min", resp),
+            baseline = String.format(Locale.US, "%.1f br/min", respBaseline.baseline),
+            baselineRes = R.string.charge_driver_baseline,
         )
     }
     if (skinTempDev != null) {
         // A deviation already; its reference is the personal baseline, which sits at zero. The
         // reference goes in the baseline slot so the value stays short enough for the row's label.
-        text[DriverKind.SKIN_TEMP] = Triple(
-            "Skin temperature",
-            UnitFormatter.temperatureDeltaFromCelsius(skinTempDev, tempUnit),
-            "vs baseline",
+        text[DriverKind.SKIN_TEMP] = DriverText(
+            label = R.string.charge_driver_skin_temp,
+            value = UnitFormatter.temperatureDeltaFromCelsius(skinTempDev, tempUnit),
+            baselineRes = R.string.charge_driver_vs_baseline,
         )
     }
     if (recoveryIndexSlope != null) {
-        text[DriverKind.RECOVERY_INDEX] = Triple(
-            "Recovery index",
-            String.format(Locale.US, "%+.1f bpm/hr", recoveryIndexSlope),
-            "overnight",
+        text[DriverKind.RECOVERY_INDEX] = DriverText(
+            label = R.string.charge_driver_recovery_index,
+            value = String.format(Locale.US, "%+.1f bpm/hr", recoveryIndexSlope),
+            baselineRes = R.string.charge_driver_overnight,
         )
     }
     if (priorDayEffort != null && effortBaseline != null) {
-        text[DriverKind.ACTIVITY_BALANCE] = Triple(
-            "Activity balance",
-            "${priorDayEffort.roundToInt()} effort yesterday",
-            "${effortBaseline.baseline.roundToInt()} baseline",
+        text[DriverKind.ACTIVITY_BALANCE] = DriverText(
+            label = R.string.charge_driver_activity_balance,
+            value = "${priorDayEffort.roundToInt()}",
+            valueRes = R.string.charge_driver_effort_yesterday,
+            baseline = "${effortBaseline.baseline.roundToInt()}",
+            baselineRes = R.string.charge_driver_baseline,
         )
     }
 
     return rows.mapNotNull { row ->
-        val (label, valueText, baselineText) = text[row.kind] ?: return@mapNotNull null
+        val t = text[row.kind] ?: return@mapNotNull null
         ChargeDriver(
-            label = label,
+            labelRes = t.label,
             deltaPoints = row.deltaPoints.roundToInt(),
-            valueText = valueText,
-            baselineText = baselineText,
-            verdict = verdictSentence(row.kind, row.verdict),
+            valueText = t.value,
+            valueRes = t.valueRes,
+            baselineValue = t.baseline,
+            baselineRes = t.baselineRes,
+            verdictRes = verdictSentence(row.kind, row.verdict),
         )
     }
 }
 
 /** The three sentences a single-sided driver reads as: on the good side, at baseline, on the bad side. */
-private fun sentences(kind: DriverKind): Triple<String, String, String> = when (kind) {
+private fun sentences(kind: DriverKind): Triple<Int, Int, Int> = when (kind) {
     DriverKind.HRV -> Triple(
-        "above baseline, supporting recovery", "at baseline", "below baseline, limiting recovery",
+        R.string.charge_verdict_above_supporting,
+        R.string.charge_verdict_at_baseline,
+        R.string.charge_verdict_below_limiting,
     )
     DriverKind.SLEEP -> Triple(
-        "a strong night, supporting recovery", "a typical night", "below a good night, limiting recovery",
+        R.string.charge_verdict_sleep_supporting,
+        R.string.charge_verdict_sleep_neutral,
+        R.string.charge_verdict_sleep_limiting,
     )
     DriverKind.RECOVERY_INDEX -> Triple(
-        "resting HR fell through the night, supporting recovery",
-        "resting HR held flat overnight",
-        "resting HR rose overnight, limiting recovery",
+        R.string.charge_verdict_index_supporting,
+        R.string.charge_verdict_index_neutral,
+        R.string.charge_verdict_index_limiting,
     )
     DriverKind.ACTIVITY_BALANCE -> Triple(
-        "a lighter day yesterday, supporting recovery",
-        "a typical day yesterday",
-        "a harder day yesterday, limiting recovery",
+        R.string.charge_verdict_activity_supporting,
+        R.string.charge_verdict_activity_neutral,
+        R.string.charge_verdict_activity_limiting,
     )
     // Resting HR and respiration are both "lower is better", so they share their wording.
     else -> Triple(
-        "below baseline, supporting recovery", "at baseline", "above baseline, limiting recovery",
+        R.string.charge_verdict_below_supporting,
+        R.string.charge_verdict_at_baseline,
+        R.string.charge_verdict_above_limiting,
     )
 }
 
 /** The plain-English read for a row: whoop-rs picked the direction, this picks the words for it. */
-private fun verdictSentence(kind: DriverKind, verdict: DriverVerdict): String {
+@StringRes
+private fun verdictSentence(kind: DriverKind, verdict: DriverVerdict): Int {
     if (kind == DriverKind.SKIN_TEMP) {
         // Symmetric term: only whoop-rs's side matters, and inside its band neither side is named.
         return when (verdict) {
-            DriverVerdict.LIMITING_HIGH -> "warmer than baseline, limiting recovery"
-            DriverVerdict.LIMITING_LOW -> "cooler than baseline, limiting recovery"
-            else -> "near baseline"
+            DriverVerdict.LIMITING_HIGH -> R.string.charge_verdict_skin_temp_warm
+            DriverVerdict.LIMITING_LOW -> R.string.charge_verdict_skin_temp_cool
+            else -> R.string.charge_verdict_skin_temp_near
         }
     }
     val (good, flat, bad) = sentences(kind)

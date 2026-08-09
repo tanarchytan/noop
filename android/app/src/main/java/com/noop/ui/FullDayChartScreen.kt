@@ -1,6 +1,7 @@
 package com.noop.ui
 
 import androidx.activity.compose.BackHandler
+import androidx.annotation.StringRes
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -50,19 +51,19 @@ private const val TIMELINE_PILL_CORNER_PERCENT = 50
 // per-second rows (WhoopDao.hrSamples, same COALESCE). The chart's pinch/pan reports the new window and
 // we re-read at the new resolution. Mirrors macOS FullDayChartView + OverviewHRChart's zoom binding.
 
-private enum class TimelineMetric(val title: String) {
-    Hr("Heart Rate"),
+private enum class TimelineMetric(@StringRes val title: Int) {
+    Hr(R.string.trends2_timeline_hr),
     // this trace is a rolling rMSSD over the RR series, NOT the raw RR interval it used to plot.
     // The honest title says exactly what the curve is (windowed rMSSD), not a bare "HRV".
-    Hrv("rMSSD (5 min)"),
-    Spo2("SpO₂"),
-    SkinTemp("Skin Temp"),
-    Respiration("Respiration"),
-    Motion("Motion"),
+    Hrv(R.string.trends2_timeline_hrv),
+    Spo2(R.string.trends2_metric_spo2),
+    SkinTemp(R.string.trends2_timeline_skin_temp),
+    Respiration(R.string.trends2_timeline_respiration),
+    Motion(R.string.trends2_timeline_motion),
     // the strap's OWN band sleep_state track (0 wake/1 still/2 asleep/3 up), shown as a distinct
     // stepped track alongside the derived hypnogram. This is the band's REPORTED state, NOT a stage NOOP
     // trusts as truth — the pill names it "Band Sleep State" so it can't be mistaken for the derived stages.
-    BandSleepState("Band Sleep State"),
+    BandSleepState(R.string.trends2_timeline_band_sleep_state),
 }
 
 @Composable
@@ -187,7 +188,7 @@ fun FullDayChartScreen(vm: AppViewModel, onBack: () -> Unit) {
             SegmentedPillControl(
                 items = TimelineMetric.entries.toList(),
                 selection = metric,
-                label = { it.title },
+                label = { context.getString(it.title) },
                 onSelect = { metric = it; window = null },
             )
         }
@@ -233,7 +234,7 @@ fun FullDayChartScreen(vm: AppViewModel, onBack: () -> Unit) {
             Column(verticalArrangement = Arrangement.spacedBy(Metrics.space12)) {
                 Row(verticalAlignment = Alignment.Top) {
                     Column(modifier = Modifier.weight(1f)) {
-                        Overline(metric.title)
+                        Overline(stringResource(metric.title))
                         Text(resolutionSubtitle(points, isRaw, bucketSeconds),
                             style = NoopType.footnote, color = Palette.textTertiary)
                     }
@@ -297,7 +298,7 @@ private fun EmptyTimelineState(metric: TimelineMetric, ownedOnly: Boolean) {
         verticalArrangement = Arrangement.spacedBy(Metrics.space6),
         modifier = Modifier.padding(horizontal = Metrics.space24),
     ) {
-        Text(stringResource(R.string.timeline_empty_metric, metric.title.lowercase(Locale.US)),
+        Text(stringResource(R.string.timeline_empty_metric, stringResource(metric.title).lowercase(Locale.US)),
             style = NoopType.body, color = Palette.textSecondary)
         Text(
             if (ownedOnly) stringResource(R.string.timeline_nothing_offloaded)
@@ -407,11 +408,16 @@ fun downsampleTimeline(points: List<TimelinePoint>, bucketSeconds: Long): List<T
 
 // MARK: - Presentation
 
+@Composable
 private fun resolutionSubtitle(points: List<TimelinePoint>, isRaw: Boolean, bucketSeconds: Long): String {
-    if (points.isEmpty()) return "—"
-    if (isRaw) return "Raw · per second"
+    if (points.isEmpty()) return EM_DASH
+    if (isRaw) return stringResource(R.string.trends2_timeline_raw)
     val m = bucketSeconds / 60
-    return if (m >= 1) "$m-minute average" else "${bucketSeconds}-second average"
+    return if (m >= 1) {
+        stringResource(R.string.trends2_timeline_minute_average, m)
+    } else {
+        stringResource(R.string.trends2_timeline_second_average, bucketSeconds)
+    }
 }
 
 private fun metricColor(metric: TimelineMetric): Color = when (metric) {
@@ -430,6 +436,7 @@ private fun unitSuffix(metric: TimelineMetric, tempUnit: TemperatureUnit): Strin
     else -> ""
 }
 
+@Composable
 private fun formatValue(metric: TimelineMetric, v: Double): String = when (metric) {
     TimelineMetric.Hr, TimelineMetric.Respiration, TimelineMetric.Hrv -> v.toInt().toString()
     // `v` already arrives in the displayed unit — callers read from `displayPoints`, which converts skin
@@ -440,10 +447,10 @@ private fun formatValue(metric: TimelineMetric, v: Double): String = when (metri
     // bucket-averaged fractional value (when zoomed out) rounds to the nearest code — honest for a readout
     // label; the track itself plots the numeric code. Names the BAND's reported state, never a derived stage.
     TimelineMetric.BandSleepState -> when (Math.round(v).toInt()) {
-        0 -> "wake"
-        1 -> "still"
-        2 -> "asleep"
-        3 -> "up"
+        0 -> stringResource(R.string.trends2_timeline_state_wake)
+        1 -> stringResource(R.string.trends2_timeline_state_still)
+        2 -> stringResource(R.string.trends2_timeline_state_asleep)
+        3 -> stringResource(R.string.trends2_timeline_state_up)
         else -> Math.round(v).toInt().toString()
     }
 }
@@ -489,8 +496,9 @@ internal fun landTargetDayStart(
 }
 
 /** "Today" / "Yesterday" / "Wed 18 Jun" label for the Deep Timeline day stepper. */
+@Composable
 private fun dayLabel(dayStartSec: Long, todayStart: Long): String = when (dayStartSec) {
-    todayStart -> "Today"
-    todayStart - 86_400 -> "Yesterday"
+    todayStart -> stringResource(R.string.common_today)
+    todayStart - 86_400 -> stringResource(R.string.trends2_yesterday)
     else -> java.text.SimpleDateFormat("EEE d MMM", Locale.US).format(java.util.Date(dayStartSec * 1000))
 }

@@ -547,7 +547,7 @@ private fun HrvReadinessCard(days: List<DailyMetric>) {
     InsightCard(
         modifier = Modifier.fillMaxWidth(),
         category = stringResource(R.string.vitals_hrv_readiness),
-        status = word,
+        status = stringResource(word),
         detail = hrvReadinessDetail(read),
         statusColor = hrvReadinessColor(read.tier),
         tint = null,

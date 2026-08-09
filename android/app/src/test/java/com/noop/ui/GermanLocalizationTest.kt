@@ -68,6 +68,11 @@ class GermanLocalizationTest {
         return out
     }
 
+    /** The positional format args a string declares, as `1:d`, `2:s` — a set, so order may differ. */
+    private fun formatArgs(value: String): Set<String> =
+        Regex("%(\\d+)\\$[.\\d]*([a-zA-Z])").findAll(value)
+            .map { "${it.groupValues[1]}:${it.groupValues[2]}" }.toSet()
+
     private fun localeDirs(res: File): List<String> =
         res.listFiles { f -> f.isDirectory && f.name.startsWith("values-") }
             ?.map { it.name }?.sorted() ?: emptyList()
@@ -92,6 +97,20 @@ class GermanLocalizationTest {
             assertTrue("$dir translates keys that no longer exist in English: $orphans", orphans.isEmpty())
 
             assertFalse("app_name must not be redeclared in $dir", "app_name" in loc)
+
+            // Format args must match the English source EXACTLY. A translation carrying an argument the
+            // caller does not pass throws IllegalFormatException when that screen draws — a crash, not a
+            // typo, and one no amount of reading the file catches. The SET is compared, not the order:
+            // reordering is the reason the args are numbered.
+            for ((key, value) in loc) {
+                val source = en[key] ?: continue
+                val expected = formatArgs(source)
+                val actual = formatArgs(value)
+                assertTrue(
+                    "$dir/$key has format args $actual but English has $expected — this crashes at draw",
+                    expected == actual,
+                )
+            }
 
             val translatable = en.keys.count { it != "app_name" }
             val covered = en.keys.count { it != "app_name" && it in loc }

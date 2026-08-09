@@ -1,0 +1,189 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- WhoopRecoveryScreen -->
+    <string name="whoopskin_recovery_subtitle_carried">Your last scored night, carried until tonight scores.</string>
+    <string name="whoopskin_recovery_subtitle">How recovered your body is today.</string>
+    <string name="whoopskin_recovery_empty_title">No Recovery score yet</string>
+    <string name="whoopskin_recovery_empty_body">Wear the strap overnight, or import your WHOOP history, and Recovery fills in.</string>
+    <string name="whoopskin_recovery_last_scored">Last scored · %1$s</string>
+    <string name="whoopskin_recovery_readiness">Readiness</string>
+    <string name="whoopskin_recovery_driver_verdict">%1$s %2$s.</string>
+    <string name="whoopskin_recovery_readiness_detail">What today\'s Charge asks of you.</string>
+    <string name="whoopskin_recovery_what_shaped_it">What shaped it</string>
+    <string name="whoopskin_confidence_solid">SOLID</string>
+    <string name="whoopskin_confidence_building">BUILDING</string>
+    <string name="whoopskin_confidence_calibrating">CALIBRATING</string>
+    <string name="whoopskin_recovery_driver_point">%1$s pt</string>
+    <string name="whoopskin_recovery_driver_points">%1$s pts</string>
+    <string name="whoopskin_recovery_drivers_footnote">Each line is how many points that signal moved Recovery against your on-device baseline. A wellness estimate, not medical advice.</string>
+    <string name="whoopskin_recovery_card_hrv">Heart Rate Variability</string>
+    <string name="whoopskin_recovery_series_hrv">Heart rate variability</string>
+    <string name="whoopskin_recovery_card_rhr">Resting Heart Rate</string>
+    <string name="whoopskin_recovery_series_rhr">Resting heart rate</string>
+    <string name="whoopskin_recovery_card_resp">Respiratory Rate</string>
+    <string name="whoopskin_recovery_series_resp">Respiratory rate</string>
+    <string name="whoopskin_recovery_card_sleep">Sleep Performance</string>
+
+    <!-- Shared by the Recovery and Strain pages -->
+    <string name="whoopskin_weekly_trends">Weekly Trends</string>
+
+    <!-- WhoopHealthData: the five vitals, how they band, and the day a reading was taken -->
+    <string name="whoopskin_vital_resp">Respiratory rate</string>
+    <string name="whoopskin_vital_resp_short">Resp</string>
+    <string name="whoopskin_vital_spo2">SpO₂</string>
+    <string name="whoopskin_vital_rhr">Resting HR</string>
+    <string name="whoopskin_vital_rhr_short">RHR</string>
+    <string name="whoopskin_vital_hrv">HRV</string>
+    <string name="whoopskin_vital_skin">Skin temp</string>
+    <string name="whoopskin_vital_skin_from_baseline">Skin temp (from baseline)</string>
+    <string name="whoopskin_vital_skin_short">Temp</string>
+    <string name="whoopskin_vital_no_reading">No reading yet</string>
+    <string name="whoopskin_vital_in_your_range">In your range</string>
+    <string name="whoopskin_vital_off_baseline">Off your baseline</string>
+    <string name="whoopskin_vital_in_typical">In typical range</string>
+    <string name="whoopskin_vital_outside_typical">Outside typical range</string>
+    <string name="whoopskin_vital_spoken">%1$s %2$s, %3$s</string>
+    <string name="whoopskin_vital_spoken_empty">%1$s, no reading</string>
+    <string name="whoopskin_health_rollup">%1$d/%2$d metrics within range</string>
+    <string name="whoopskin_health_as_of">as of %1$s</string>
+    <string name="whoopskin_today_lowercase">today</string>
+    <string name="whoopskin_yesterday_lowercase">yesterday</string>
+    <string name="whoopskin_yesterday">Yesterday</string>
+    <string name="whoopskin_hour_am">%1$d am</string>
+    <string name="whoopskin_hour_pm">%1$d pm</string>
+
+    <!-- WhoopStressMonitorScreen -->
+    <string name="whoopskin_stress_monitor">Stress Monitor</string>
+    <string name="whoopskin_stress_monitor_subtitle">Autonomic load from heart rate and HRV.</string>
+    <string name="whoopskin_stress_empty_title">No stress history yet</string>
+    <string name="whoopskin_stress_empty_body">Wear your strap through the day, or import a WHOOP export in Data Sources, and your stress reads here.</string>
+    <string name="whoopskin_stress_no_score_day">Not enough resting heart rate or HRV to score this day.</string>
+    <string name="whoopskin_stress_of_ceiling">of %1$d</string>
+    <string name="whoopskin_stress_gauge_a11y">Stress %1$s of %2$d</string>
+    <string name="whoopskin_stress_hero_footnote">Scored from how today\'s resting heart rate and HRV sit against your own recent baseline. A wellness estimate, not a medical reading.</string>
+    <string name="whoopskin_stress_through_the_day">Through the day</string>
+    <string name="whoopskin_stress_peak">peak %1$s · %2$s</string>
+    <string name="whoopskin_stress_reading_day">Reading this day\'s heart rate…</string>
+    <string name="whoopskin_stress_not_enough_hours">Not enough scored hours to draw this day.</string>
+    <string name="whoopskin_stress_day_footnote">Each point is one waking hour, scored against the day\'s own calm hours. Hours without enough data are left out rather than filled in.</string>
+    <string name="whoopskin_stress_time_in_band">Time in band</string>
+    <string name="whoopskin_band_low">Low</string>
+    <string name="whoopskin_band_medium">Medium</string>
+    <string name="whoopskin_band_high">High</string>
+    <string name="whoopskin_stress_band_a11y">%1$s %2$s</string>
+    <string name="whoopskin_stress_band_footnote">Minutes come from whoop-rs\'s own banding of each scored hour.</string>
+    <string name="whoopskin_sessions">Sessions</string>
+    <string name="whoopskin_guided">Guided</string>
+    <string name="whoopskin_increase_relaxation">Increase relaxation</string>
+    <string name="whoopskin_guided_breathing">Guided breathing</string>
+
+    <!-- WhoopHealthMonitorScreen -->
+    <string name="whoopskin_health_monitor">Health Monitor</string>
+    <string name="whoopskin_health_monitor_subtitle">Live heart rate and your body\'s vital signs.</string>
+    <string name="whoopskin_vitals_building_title">Vitals are still building</string>
+    <string name="whoopskin_vitals_building_body">SpO₂, respiratory rate and skin temperature are sleep-window readings; resting HR and HRV land once a night is analysed.</string>
+    <string name="whoopskin_heart_rate">Heart rate</string>
+    <string name="whoopskin_live">Live</string>
+    <string name="whoopskin_idle">Idle</string>
+    <string name="whoopskin_heart_rate_a11y">Heart rate %1$d beats per minute</string>
+    <string name="whoopskin_heart_rate_a11y_none">Heart rate, no live reading</string>
+    <string name="whoopskin_hr_zone">Zone %1$d</string>
+    <string name="whoopskin_hr_below_zone_1">Below zone 1</string>
+    <string name="whoopskin_hr_awaiting_strap">Awaiting the strap</string>
+    <string name="whoopskin_hr_trace_live">The trace holds the last few minutes of streamed beats and resets when you leave.</string>
+    <string name="whoopskin_hr_trace_waiting">The trace draws once the strap is streaming, and resets when you leave.</string>
+    <string name="whoopskin_latest_readings">Latest readings</string>
+    <string name="whoopskin_take_hrv_reading">Take an HRV reading</string>
+    <string name="whoopskin_body_signals">Body signals</string>
+
+    <!-- WhoopHealthScreen -->
+    <string name="whoopskin_health_subtitle">Your vital signs and today\'s stress load.</string>
+    <string name="whoopskin_health_empty_title">No biometrics yet</string>
+    <string name="whoopskin_health_empty_body">Wear your strap overnight, or import a WHOOP export in Data Sources, and your vitals appear here.</string>
+    <string name="whoopskin_stress_reading_today">Reading today\'s heart rate…</string>
+    <string name="whoopskin_stress_no_score_today">Not enough resting heart rate or HRV to score today.</string>
+    <string name="whoopskin_todays_stress">Today\'s stress</string>
+    <string name="whoopskin_health_disclaimer">Health Monitor and Stress Monitor are not medical devices and cannot diagnose or manage a medical condition. They give wellness estimates, never medical advice. Always consult your doctor about a health concern, and never delay or change medical care because of what you read here.</string>
+
+    <!-- WhoopHomeScreen -->
+    <string name="whoopskin_my_day">My Day</string>
+    <string name="whoopskin_key_metrics">Key metrics</string>
+    <string name="whoopskin_customise_my_key_metrics">Customise my key metrics</string>
+    <string name="whoopskin_my_dashboard">My Dashboard</string>
+    <string name="whoopskin_customise_my_dashboard">Customise my dashboard</string>
+    <string name="whoopskin_customise">CUSTOMISE</string>
+    <string name="whoopskin_calibrating">Calibrating</string>
+    <string name="whoopskin_of_count">%1$d of %2$d</string>
+    <string name="whoopskin_of_max">of %1$d</string>
+
+    <!-- WhoopHomeDayCards -->
+    <string name="whoopskin_home_health_monitor">Health monitor</string>
+    <string name="whoopskin_no_readings_yet">No readings yet</string>
+    <string name="whoopskin_home_stress_monitor">Stress monitor</string>
+    <string name="whoopskin_autonomic_load">Autonomic load</string>
+    <string name="whoopskin_tonights_sleep">Tonight\'s sleep</string>
+    <string name="whoopskin_wake_alarm">Wake alarm</string>
+    <string name="whoopskin_alarm_off">Off</string>
+    <string name="whoopskin_change_alarm">Change alarm</string>
+    <string name="whoopskin_set_alarm">Set alarm</string>
+    <string name="whoopskin_todays_activities">Today\'s activities</string>
+    <string name="whoopskin_nothing_logged">Nothing logged for this day.</string>
+    <string name="whoopskin_my_journal">My journal</string>
+    <string name="whoopskin_journal_blurb">Log the behaviours behind a night, then read what they moved.</string>
+    <string name="whoopskin_behaviour_insights">Behaviour insights</string>
+
+    <!-- WhoopProfileHighlights -->
+    <string name="whoopskin_profile_no_readings">No readings in this range yet</string>
+    <string name="whoopskin_profile_notable_stats">Notable stats</string>
+    <string name="whoopskin_profile_peak">Peak %1$s</string>
+    <string name="whoopskin_profile_max">Max %1$s</string>
+    <string name="whoopskin_profile_lowest">Lowest %1$s</string>
+    <string name="whoopskin_profile_highest">Highest %1$s</string>
+    <string name="whoopskin_profile_longest">Longest %1$s</string>
+
+    <!-- WhoopStrainScreen + WhoopStrainCards -->
+    <string name="whoopskin_strain_today_vs_window">Today vs. last %1$d days</string>
+    <string name="whoopskin_hr_zones_1_3">HR Zones 1-3</string>
+    <string name="whoopskin_hr_zones_4_5">HR Zones 4-5</string>
+    <string name="whoopskin_strain_zones_1_3">Heart rate zones 1-3</string>
+    <string name="whoopskin_strain_zones_4_5">Heart rate zones 4-5</string>
+    <string name="whoopskin_steps">Steps</string>
+    <string name="whoopskin_calories">Calories</string>
+    <string name="whoopskin_strain_window_avg">%1$d-day avg %2$s</string>
+    <string name="whoopskin_strain_none_today">No Effort scored yet today.</string>
+    <string name="whoopskin_strain_none_this_week">No Effort scored this week yet.</string>
+
+    <!-- WhoopCustomizeSheet + WhoopCustomizeRows -->
+    <string name="whoopskin_add_to_my_dashboard">Add to my dashboard</string>
+    <string name="whoopskin_add_to_my_key_metrics">Add to my key metrics</string>
+    <string name="whoopskin_save">Save</string>
+    <string name="whoopskin_reset">Reset</string>
+    <string name="whoopskin_move_up">Move %1$s up</string>
+    <string name="whoopskin_move_down">Move %1$s down</string>
+    <string name="whoopskin_remove_item">Remove %1$s</string>
+    <string name="whoopskin_add_item">Add %1$s</string>
+    <string name="whoopskin_add_at_least_one">Add at least one to save.</string>
+    <string name="whoopskin_customise_dashboard">Customise dashboard</string>
+    <string name="whoopskin_customise_key_metrics">Customise key metrics</string>
+
+    <!-- WhoopProfileScreen -->
+    <string name="whoopskin_profile_subtitle">Your highs and lows across every day this phone has recorded.</string>
+    <string name="whoopskin_profile_photo">Profile photo</string>
+    <string name="whoopskin_data_highlights">Data highlights</string>
+    <string name="whoopskin_body_profile_units">Body profile &amp; units</string>
+    <string name="whoopskin_body_profile_blurb">Birthday, sex, weight, height, max heart rate and how NOOP shows units. All of it stays on this phone.</string>
+
+    <!-- WhoopHomeHeader -->
+    <string name="whoopskin_strap">Strap</string>
+    <string name="whoopskin_no_strap">No strap</string>
+
+    <!-- WhoopHomeDashboard -->
+    <string name="whoopskin_dashboard_hr_zones_1_3">HR zones 1-3</string>
+    <string name="whoopskin_dashboard_hr_zones_4_5">HR zones 4-5</string>
+
+    <!-- WhoopHomeTrend -->
+    <string name="whoopskin_strain_and_recovery">Strain &amp; recovery</string>
+
+    <!-- WhoopMoreScreen -->
+    <string name="whoopskin_version_note">Version %1$s (build %2$d)</string>
+</resources>

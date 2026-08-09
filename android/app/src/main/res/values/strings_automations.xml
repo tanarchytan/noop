@@ -1,0 +1,201 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- AutomationsScreen -->
+    <string name="automations_subtitle">Make the strap do things: tap to act, walk away to lock, train by feel.</string>
+    <string name="automations_overline">Automation</string>
+    <string name="automations_double_tap_title">Double-tap</string>
+    <string name="automations_double_tap_blurb">Double-tap the strap to trigger an action on this device. (The strap exposes a single double-tap gesture.)</string>
+    <string name="automations_when_i_double_tap">When I double-tap</string>
+    <string name="automations_choose_double_tap">Choose double-tap action</string>
+    <string name="automations_test_action">Test action</string>
+    <string name="automations_strap_bonded">Strap bonded</string>
+    <string name="automations_not_connected">Not connected</string>
+    <string name="automations_haptic_title">Haptic coaching</string>
+    <string name="automations_haptic_blurb">Train by feel. The strap buzzes so you don\'t have to watch a screen.</string>
+    <string name="automations_zone_coaching">HR-zone coaching</string>
+    <string name="automations_zone_coaching_detail">A triple-buzz when you climb into your top zone (Zone 5, ≥ %1$d bpm), a cue to ease off. Max HR comes from Settings.</string>
+    <string name="automations_recovery_buzz">Recovery buzz</string>
+    <string name="automations_recovery_buzz_detail">Also buzz once when your heart rate drops back to Zone 1, a cue that you\'ve recovered.</string>
+    <string name="automations_inactivity_title">Inactivity reminder</string>
+    <string name="automations_inactivity_blurb">A gentle wrist buzz when you\'ve been sitting too long, a nudge to get up and move. Inferred from the strap\'s motion on each history sync, so it lags real time by a sync or two.</string>
+    <string name="automations_inactivity_enable">Enable inactivity reminder</string>
+    <string name="automations_inactivity_enable_detail">Buzzes after you\'ve been sitting past your threshold.</string>
+    <string name="automations_inactivity_notifications_off">Notifications are off, so this can\'t buzz yet. Turn on the master switch in Settings → Notifications to let it through.</string>
+    <string name="automations_inactivity_sitting_for">Sitting for</string>
+    <string name="automations_inactivity_sitting_for_help">Minutes seated before the first nudge.</string>
+    <string name="automations_inactivity_renudge">Re-nudge every</string>
+    <string name="automations_inactivity_renudge_help">If you\'re still seated, buzz again this often.</string>
+    <string name="automations_inactivity_buzz_strength">Buzz strength</string>
+    <string name="automations_inactivity_buzz_strength_help">How strong the buzz is.</string>
+    <string name="automations_inactivity_active_hours">Only during active hours</string>
+    <string name="automations_inactivity_active_hours_help">Only nudge during your active hours.</string>
+    <string name="automations_from">From</string>
+    <string name="automations_to">to</string>
+    <string name="automations_active_hours_start">Active hours start</string>
+    <string name="automations_active_hours_end">Active hours end</string>
+    <string name="automations_nap_title">Nap detection</string>
+    <string name="automations_nap_blurb">Spots a likely daytime nap from the strap\'s motion and heart rate on each history sync, then asks you to confirm it. Inferred and approximate: NOOP never adds a nap to your sleep without your OK.</string>
+    <string name="automations_nap_detect">Detect short naps</string>
+    <string name="automations_nap_detect_detail">When a sync shows a quiet, settled stretch in the day, NOOP offers it here for you to keep or skip.</string>
+    <string name="automations_nap_empty">No naps to review. Detected naps show up here after a history sync.</string>
+    <string name="automations_nap_window">%1$s-%2$s · ~%3$d min</string>
+    <string name="automations_nap_detail_hr">Quiet and settled, mean HR ~%1$d bpm.</string>
+    <string name="automations_nap_detail">Quiet and settled.</string>
+    <string name="automations_nap_keep">Keep this nap</string>
+    <string name="automations_nap_skip">Skip this nap</string>
+    <string name="automations_illness_title">Illness early-warning</string>
+    <string name="automations_illness_blurb">Watches your resting HR, HRV, skin temperature and respiration against your own 28-day baseline. On-device and approximate: informational only, not a diagnosis.</string>
+    <string name="automations_illness_toggle">Watch for early-illness signs</string>
+    <string name="automations_illness_detail">Needs at least 14 days of history. When two or more signals drift together you get a banner on Today and a notification, at most once a day.</string>
+    <string name="automations_battery_title">Battery alerts</string>
+    <string name="automations_battery_blurb">A heads-up when the strap battery gets low so you can recharge before bed, and a note when it\'s finished charging.</string>
+    <string name="automations_battery_toggle">Notify on low and full battery</string>
+    <string name="automations_battery_detail" formatted="false">Sends a notification when the strap drops to 15% or reaches a full charge, at most once per charge cycle.</string>
+    <string name="automations_battery_predictive">Predictive runtime warning</string>
+    <string name="automations_battery_predictive_detail" formatted="false">An early \"recharge tonight\" heads-up when the strap has about a day of estimated runtime left, at most once per discharge cycle. Turn off to keep only the 15% warning.</string>
+    <string name="automations_stepper_decrease">Decrease %1$s</string>
+    <string name="automations_stepper_increase">Increase %1$s</string>
+
+    <!-- Per-weekday wake-time overrides (AutomationsScreen, reused by SmartAlarmScreen) -->
+    <string name="alarm_per_day_wake_time">Per-day wake time</string>
+    <string name="alarm_reset">Reset</string>
+    <string name="alarm_day_wake_time">%1$s wake time</string>
+    <string name="alarm_per_day_help">Each day uses the time above unless you set a different one here.</string>
+
+    <!-- SmartAlarmScreen -->
+    <string name="alarm_subtitle">Your wake window, the strap wake-alarm, and the evening wind-down reminder, in one place.</string>
+    <string name="alarm_guaranteed_wake">Guaranteed wake</string>
+    <string name="alarm_backup_set_for">A backup alarm is set for %1$s. It fires even if Bluetooth drops, the strap isn\'t worn, or NOOP is closed.</string>
+    <string name="alarm_off">Off</string>
+    <string name="alarm_off_help">Turn on the smart alarm to wake inside a window you choose.</string>
+    <string name="alarm_card_title">Wake alarm</string>
+    <string name="alarm_wake_smart">Wake me with a smart alarm</string>
+    <string name="alarm_wake_smart_help">A guaranteed OS alarm is set for the end of your window; the strap stream can move it earlier if you\'re sleeping lightly.</string>
+    <string name="alarm_no_exact_permission">NOOP doesn\'t have permission to set exact alarms, so your wake isn\'t guaranteed. Tap to allow it in system settings.</string>
+    <string name="alarm_wake_no_earlier">Wake me no earlier than</string>
+    <string name="alarm_wake_no_earlier_help">The earliest NOOP will wake you.</string>
+    <string name="alarm_earliest_wake_a11y">Earliest wake time</string>
+    <string name="alarm_window_length">Window length</string>
+    <string name="alarm_window_length_help">The guaranteed alarm fires this long after your earliest time.</string>
+    <string name="alarm_buzz_strap">Buzz %1$s</string>
+    <string name="alarm_buzz_strap_help_bonded">Also arms your %1$s to buzz at your earliest wake time, so the strap wakes you first and the phone alarm is the guaranteed backup.</string>
+    <string name="alarm_buzz_strap_help_unbonded">Connect your strap to use this. It arms the strap to buzz at your earliest wake time as a gentler first wake-up.</string>
+    <string name="alarm_overline_morning">Morning</string>
+    <string name="alarm_strap_title">Strap wake-alarm</string>
+    <string name="alarm_strap_toggle">Wake me with a strap buzz</string>
+    <string name="alarm_strap_toggle_help">Arms the strap to buzz at your wake time, even if NOOP is closed. Sends the exact alarm command the official app sends, confirmed buzzing on a real WHOOP 4.0. Keep a backup alarm for anything you truly can\'t miss.</string>
+    <string name="alarm_wake_at">Wake at</string>
+    <string name="alarm_strap_wake_time_a11y">Strap alarm wake time</string>
+    <string name="alarm_strap_5mg_experimental_off">Your WHOOP 5/MG won\'t arm this until Experimental mode is on (Settings → Experimental). Right now your wake time is saved but the strap is NOT armed.</string>
+    <string name="alarm_strap_5mg_armed">Armed on the strap itself with the experimental 5/MG command. A strap-driven wake is still unconfirmed on 5/MG on our side (confirmed only on WHOOP 4.0), so keep a backup alarm for anything you truly can\'t miss.</string>
+    <string name="alarm_strap_connect_hint">Connect your strap to arm this; it\'s set on the strap\'s own firmware alarm. Confirmed working on WHOOP 4.0; still experimental on 5.0 and MG. Keep a backup alarm for anything you truly can\'t miss.</string>
+    <string name="alarm_strap_armed">Armed on the strap itself, so it can buzz at your wake time even if your phone is asleep or NOOP is closed. Sends the exact alarm command the official app sends, confirmed buzzing on a real WHOOP 4.0. Keep a backup alarm for anything you truly can\'t miss.</string>
+    <string name="alarm_overline_evening">Evening</string>
+    <string name="alarm_wind_down_title">Wind-down nudge</string>
+    <string name="alarm_wind_down_toggle">Remind me to wind down</string>
+    <string name="alarm_wind_down_help">A gentle evening notification, timed from your wake time and usual sleep need, so you can settle in time. It\'s a suggestion, not an alarm.</string>
+    <string name="alarm_explain_title">How the smart wake works</string>
+    <string name="alarm_explain_body_1">While you\'re inside the window, NOOP watches your live heart rate from the strap. Deep sleep sits near your nightly low and stays steady; when your heart rate lifts above that (a sign you\'re sleeping more lightly or starting to stir), NOOP wakes you a little early so you come up from a lighter phase.</string>
+    <string name="alarm_explain_body_2">This is a coarse cue from heart rate, not a clinical sleep-stage reading. If the strap isn\'t streaming (Bluetooth off, not worn, app killed), no early wake happens and the guaranteed alarm at the window\'s end still wakes you.</string>
+    <string name="alarm_window_minutes">%1$d min</string>
+    <string name="alarm_shorten_window">Shorten window</string>
+    <string name="alarm_lengthen_window">Lengthen window</string>
+
+    <!-- JournalCatalog: group display labels (the enum name stays the persisted key) -->
+    <string name="journal_group_supplements">Supplements</string>
+    <string name="journal_group_nutrition">Nutrition</string>
+    <string name="journal_group_lifestyle">Lifestyle</string>
+    <string name="journal_group_health">Health</string>
+    <string name="journal_group_behaviour">Behaviour</string>
+    <string name="journal_group_other">Other</string>
+
+    <!-- JournalLog -->
+    <string name="journal_overline_log">Log</string>
+    <string name="journal_title">Journal</string>
+    <string name="journal_done">Done</string>
+    <string name="journal_edit">Edit</string>
+    <string name="journal_yesterday">Yesterday</string>
+    <string name="journal_tomorrow">Tomorrow</string>
+    <string name="journal_editing_help">Rename, regroup, or remove an item to tidy your list. Renaming keeps the original question behind the scenes, so a WHOOP import still lines up. Custom items are deleted; built-in ones are hidden and can be restored below.</string>
+    <string name="journal_tomorrow_help">Logging ahead for tomorrow: today\'s activities inform tomorrow\'s recovery, just as yesterday\'s are reflected in today\'s. Tomorrow\'s answers line up with tomorrow\'s morning.</string>
+    <string name="journal_today_help">Answers are about the night and day leading into this morning, the same attribution a WHOOP export uses, so logged and imported days line up.</string>
+    <string name="journal_restore">Restore</string>
+    <string name="journal_yes">Yes</string>
+    <string name="journal_no">No</string>
+    <string name="journal_rename_menu">Rename…</string>
+    <string name="journal_group_menu">Group…</string>
+    <string name="journal_change_to_bool">Change to Yes/No</string>
+    <string name="journal_change_to_numeric">Change to Number</string>
+    <string name="journal_rename_title">Rename item</string>
+    <string name="journal_display_name">Display name</string>
+    <string name="journal_rename_note">History stays under the original question so WHOOP imports still line up.</string>
+    <string name="journal_save">Save</string>
+    <string name="journal_add_placeholder">Add a custom item…</string>
+    <string name="journal_kind_number">Number</string>
+    <string name="journal_kind_bool">Yes/No</string>
+    <string name="journal_add">Add</string>
+    <string name="journal_group_prefix">Group: %1$s</string>
+    <string name="journal_delete">Delete</string>
+    <string name="journal_hide">Hide</string>
+
+    <!-- IntervalsScreen -->
+    <string name="intervals_title">Interval Timer</string>
+    <string name="intervals_subtitle">Silent haptic HIIT - the strap buzzes the transitions</string>
+    <string name="intervals_phase_work">WORK</string>
+    <string name="intervals_phase_rest">REST</string>
+    <string name="intervals_phase_done">DONE</string>
+    <string name="intervals_buzz_cues_on">Buzz cues on</string>
+    <string name="intervals_connect_for_buzz">Connect strap for buzz cues</string>
+    <string name="intervals_running">Running</string>
+    <string name="intervals_complete">Complete</string>
+    <string name="intervals_paused">Paused</string>
+    <string name="intervals_round">Round</string>
+    <string name="intervals_session_done">SESSION DONE</string>
+    <string name="intervals_seconds">SECONDS</string>
+    <string name="intervals_pause">Pause</string>
+    <string name="intervals_restart">Restart</string>
+    <string name="intervals_start">Start</string>
+    <string name="intervals_reset">Reset</string>
+    <string name="intervals_bond_hint">Bond your strap on the Live screen to feel the transitions hands-free.</string>
+    <string name="intervals_overline_session">Session</string>
+    <string name="intervals_elapsed_of_total">%1$s / %2$s</string>
+    <string name="intervals_work">Work</string>
+    <string name="intervals_rest">Rest</string>
+    <string name="intervals_rounds">Rounds</string>
+    <string name="intervals_remaining">Remaining</string>
+    <string name="intervals_overline_configure">Configure</string>
+    <string name="intervals_unit_sec">sec</string>
+    <string name="intervals_range_step_unit">%1$d - %2$d %3$s · step %4$d</string>
+    <string name="intervals_range_step">%1$d - %2$d · step %3$d</string>
+    <string name="intervals_pause_to_change">Pause to change work, rest, or rounds.</string>
+    <string name="intervals_stepper_decrease">Decrease %1$s</string>
+    <string name="intervals_stepper_increase">Increase %1$s</string>
+
+    <!-- UpdatesInboxScreen -->
+    <string name="updates_overline_inbox">Inbox</string>
+    <string name="updates_title">Updates</string>
+    <string name="updates_subtitle_empty">What\'s new in the app and your data</string>
+    <string name="updates_all_caught_up">All caught up</string>
+    <string name="updates_unread_count">%1$d unread</string>
+    <string name="updates_section_new">New</string>
+    <string name="updates_section_earlier">Earlier</string>
+    <string name="updates_clear_all">Clear all</string>
+    <string name="updates_mark_all_read">Mark all read</string>
+    <string name="updates_mark_read">Mark read</string>
+    <string name="updates_row_a11y">%1$s. %2$s</string>
+    <string name="updates_row_a11y_unread">Unread. %1$s. %2$s</string>
+    <string name="updates_restore_to_today">Restore to Today</string>
+    <string name="updates_empty_title">You\'re all caught up.</string>
+    <string name="updates_empty_body">New release notes and fresh data will land here.</string>
+
+    <!-- WhatsNewSheet -->
+    <string name="updates_whats_new">What\'s new</string>
+    <string name="updates_whats_new_version">NOOP %1$s</string>
+    <string name="updates_release_notes">Release notes</string>
+    <string name="updates_what_to_expect">What to expect</string>
+    <string name="updates_got_it">Got it</string>
+
+    <!-- UpdateStore: the first-run release-note inbox item -->
+    <string name="updates_seed_title">What\'s new in NOOP %1$s</string>
+    <string name="updates_seed_message">NOOP %1$s is here — tap to read what\'s new.</string>
+</resources>

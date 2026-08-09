@@ -19,8 +19,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import com.noop.R
 import com.noop.ui.CloseButton
 import com.noop.ui.Metrics
 import com.noop.ui.NoopButton
@@ -51,7 +53,11 @@ internal fun CustomizeSheetTopBar(
         ) {
             CloseButton(onClick = onClose)
             if (onReset != null) {
-                NoopButton(text = "Reset", kind = NoopButtonKind.Tertiary, onClick = onReset)
+                NoopButton(
+                    text = stringResource(R.string.whoopskin_reset),
+                    kind = NoopButtonKind.Tertiary,
+                    onClick = onReset,
+                )
             } else {
                 Spacer(Modifier.size(Metrics.iconButton))
             }

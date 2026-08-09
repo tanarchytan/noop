@@ -1,5 +1,6 @@
 package com.noop.ui.whoop
 
+import androidx.annotation.StringRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -21,7 +22,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
+import com.noop.R
 import com.noop.analytics.RangeReport
 import com.noop.analytics.ReportMetric
 import com.noop.ui.EffortScale
@@ -64,9 +67,13 @@ internal data class WhoopProfileStat(
     val unit: String?,
 )
 
-/** One hero ring: an extreme, the arc fraction that draws it, its ramp colour and its formatter. */
+/**
+ * One hero ring: an extreme, the arc fraction that draws it, its ramp colour and its formatter.
+ * [fillKey] is the ring's fill memory and stays out of the title, which translates.
+ */
 private data class ProfileRing(
     val title: String,
+    val fillKey: String,
     val fraction: Float,
     val value: Double,
     val color: Color,
@@ -99,11 +106,11 @@ internal fun WhoopProfileHighlightsCard(
             Text(range.longName, style = NoopType.footnote, color = Palette.textTertiary)
 
             if (rings.isEmpty() && stats.isEmpty()) {
-                InsetChartPlaceholder("No readings in this range yet")
+                InsetChartPlaceholder(stringResource(R.string.whoopskin_profile_no_readings))
             } else {
                 if (rings.isNotEmpty()) ProfileRingRow(rings)
                 if (stats.isNotEmpty()) {
-                    ProfileRuleLabel("Notable stats")
+                    ProfileRuleLabel(stringResource(R.string.whoopskin_profile_notable_stats))
                     ProfileStatList(stats)
                 }
             }
@@ -115,12 +122,14 @@ internal fun WhoopProfileHighlightsCard(
  * The peak rings for the range. A metric with no reading in range has no stat and no ring. Sleep
  * performance carries no engine extreme, so it has no honest ring here and is absent.
  */
+@Composable
 private fun profileRings(report: RangeReport, scale: EffortScale): List<ProfileRing> {
     val rings = mutableListOf<ProfileRing>()
     report.stat(ReportMetric.RECOVERY)?.let { stat ->
         val peak = stat.max.value
         rings += ProfileRing(
-            title = "Peak ${ReportMetric.RECOVERY.label}",
+            title = stringResource(R.string.whoopskin_profile_peak, ReportMetric.RECOVERY.label),
+            fillKey = "profile.recovery",
             fraction = (peak / SCORE_AXIS_MAX).toFloat(),
             value = peak,
             color = Palette.recoveryColor(peak),
@@ -130,7 +139,8 @@ private fun profileRings(report: RangeReport, scale: EffortScale): List<ProfileR
     report.stat(ReportMetric.STRAIN)?.let { stat ->
         val peak = stat.max.value
         rings += ProfileRing(
-            title = "Max ${ReportMetric.STRAIN.label}",
+            title = stringResource(R.string.whoopskin_profile_max, ReportMetric.STRAIN.label),
+            fillKey = "profile.strain",
             fraction = (peak / SCORE_AXIS_MAX).toFloat(),
             value = peak,
             // Stored on the 0-100 axis; the display scale only changes how the number is written.
@@ -145,39 +155,43 @@ private fun profileRings(report: RangeReport, scale: EffortScale): List<ProfileR
  * The notable-stats rows, in WHOOP's order, for the extremes the engine carries. A metric with no
  * reading in range is simply absent.
  */
+@Composable
 internal fun whoopProfileNotableStats(report: RangeReport): List<WhoopProfileStat> {
     val stats = mutableListOf<WhoopProfileStat>()
+    val lowest = R.string.whoopskin_profile_lowest
+    val highest = R.string.whoopskin_profile_highest
     report.stat(ReportMetric.RESTING_HR)?.let { stat ->
-        stats += profileExtremeStat(Icons.Outlined.MonitorHeart, "Lowest", stat.metric, stat.min.value)
-        stats += profileExtremeStat(Icons.Outlined.MonitorHeart, "Highest", stat.metric, stat.max.value)
+        stats += profileExtremeStat(Icons.Outlined.MonitorHeart, lowest, stat.metric, stat.min.value)
+        stats += profileExtremeStat(Icons.Outlined.MonitorHeart, highest, stat.metric, stat.max.value)
     }
     report.stat(ReportMetric.HRV)?.let { stat ->
-        stats += profileExtremeStat(Icons.Filled.GraphicEq, "Lowest", stat.metric, stat.min.value)
-        stats += profileExtremeStat(Icons.Filled.GraphicEq, "Highest", stat.metric, stat.max.value)
+        stats += profileExtremeStat(Icons.Filled.GraphicEq, lowest, stat.metric, stat.min.value)
+        stats += profileExtremeStat(Icons.Filled.GraphicEq, highest, stat.metric, stat.max.value)
     }
     report.stat(ReportMetric.SLEEP_HOURS)?.let { stat ->
         stats += WhoopProfileStat(
             icon = Icons.Filled.Bedtime,
-            label = "Longest ${stat.metric.label}",
+            label = stringResource(R.string.whoopskin_profile_longest, stat.metric.label),
             value = profileSleepText(stat.max.value),
             unit = null,
         )
     }
     report.stat(ReportMetric.RECOVERY)?.let { stat ->
-        stats += profileExtremeStat(Icons.Filled.Spa, "Lowest", stat.metric, stat.min.value)
+        stats += profileExtremeStat(Icons.Filled.Spa, lowest, stat.metric, stat.min.value)
     }
     return stats
 }
 
 /** One extreme as a row: the engine's own metric name and unit, its value written out. */
+@Composable
 private fun profileExtremeStat(
     icon: ImageVector,
-    superlative: String,
+    @StringRes superlative: Int,
     metric: ReportMetric,
     value: Double,
 ): WhoopProfileStat = WhoopProfileStat(
     icon = icon,
-    label = "$superlative ${metric.label}",
+    label = stringResource(superlative, metric.label),
     value = formatLineValue(value),
     unit = metric.unit.ifEmpty { null },
 )
@@ -204,7 +218,7 @@ private fun ProfileRingRow(rings: List<ProfileRing>) {
                     color = ring.color,
                     diameter = PROFILE_RING_DIAMETER,
                     lineWidth = PROFILE_RING_DIAMETER * PROFILE_RING_STROKE_FRACTION,
-                    fillKey = "profile.${ring.title}",
+                    fillKey = ring.fillKey,
                     format = ring.format,
                 )
                 Text(

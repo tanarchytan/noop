@@ -22,10 +22,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.noop.BuildConfig
+import com.noop.R
 
 // MARK: - About (minimal) — reached from the More menu
 //
@@ -40,8 +42,8 @@ private const val GITHUB_LABEL = "github.com/tanarchytan/noop"
 fun AboutScreen() {
     val context = LocalContext.current
     ScreenScaffold(
-        title = "About",
-        subtitle = "NOOP: all your data, none of the cloud.",
+        title = stringResource(R.string.about_title),
+        subtitle = stringResource(R.string.about_subtitle),
     ) {
         NoopCard(padding = 20.dp, tint = Palette.accent) {
             Column(verticalArrangement = Arrangement.spacedBy(Metrics.space16)) {
@@ -49,12 +51,13 @@ fun AboutScreen() {
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(Metrics.space10),
                 ) {
-                    Text("NOOP", style = NoopType.title2, color = Palette.textPrimary)
+                    Text(stringResource(R.string.app_name), style = NoopType.title2, color = Palette.textPrimary)
                     StatePill("v${BuildConfig.VERSION_NAME}", tone = StrandTone.Neutral, showsDot = false)
                 }
 
                 // Project home — NOOP's code, releases and issues live on GitHub.
                 val projectHomeInteraction = remember { MutableInteractionSource() }
+                val sourceLabel = stringResource(R.string.about_source_github_a11y, GITHUB_LABEL)
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -74,10 +77,10 @@ fun AboutScreen() {
                             }
                         }
                         .padding(horizontal = Metrics.space14, vertical = 12.dp)
-                        .semantics { contentDescription = "Project source on GitHub, $GITHUB_LABEL" },
+                        .semantics { contentDescription = sourceLabel },
                 ) {
                     Column(verticalArrangement = Arrangement.spacedBy(Metrics.space2)) {
-                        Text("Source on GitHub", style = NoopType.body, color = Palette.textPrimary)
+                        Text(stringResource(R.string.about_source_github), style = NoopType.body, color = Palette.textPrimary)
                         Text(GITHUB_LABEL, style = NoopType.caption, color = Palette.textTertiary)
                     }
                 }

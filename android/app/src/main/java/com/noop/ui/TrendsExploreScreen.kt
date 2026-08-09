@@ -1,5 +1,6 @@
 package com.noop.ui
 
+import androidx.annotation.StringRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -37,6 +38,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -74,13 +76,17 @@ import kotlin.math.roundToInt
 
 // MARK: - Window range (W / M / 3M / 6M / 1Y / ALL)
 
-private enum class ExploreRange(val days: Int?, val label: String, val windowName: String) {
-    Week(7, "W", "week"),
-    Month(30, "M", "month"),
-    Quarter(90, "3M", "quarter"),
-    Half(180, "6M", "6 months"),
-    Year(365, "1Y", "year"),
-    All(null, "ALL", "all time");
+private enum class ExploreRange(
+    val days: Int?,
+    @StringRes val label: Int,
+    @StringRes val windowName: Int,
+) {
+    Week(7, R.string.trends2_range_week, R.string.trends2_window_week),
+    Month(30, R.string.trends2_range_month, R.string.trends2_window_month),
+    Quarter(90, R.string.trends2_range_quarter, R.string.trends2_window_quarter),
+    Half(180, R.string.trends2_range_half, R.string.trends2_window_6_months),
+    Year(365, R.string.trends2_range_year, R.string.trends2_window_year),
+    All(null, R.string.trends2_range_all, R.string.trends2_window_all_time);
 
     /** This range plus every larger range, ascending , the auto-widen search order. */
     val widening: List<ExploreRange>
@@ -102,12 +108,15 @@ private enum class ExploreRange(val days: Int?, val label: String, val windowNam
  */
 private data class MetricSpec(
     val key: String,
-    val title: String,
+    @StringRes val titleRes: Int?,
     val unit: String,
     val category: String,
     val accent: Color,
     val higherIsBetter: Boolean?,
     val decimals: Int = 0,
+    /** A metricSeries key discovered at runtime has no name of its own in the catalog, so it carries
+     *  its prettified key here and leaves [titleRes] null. */
+    val rawTitle: String? = null,
     val dailyPick: ((DailyMetric) -> Double?)? = null,
     val seriesKey: String? = null,
     /** Source (deviceId) the [seriesKey] lives under when it is NOT the strap's own , e.g. the
@@ -115,9 +124,8 @@ private data class MetricSpec(
      *  parity with the macOS MetricCatalog, whose descriptors carry key+source). */
     val seriesSource: String? = null,
     /** A short, plain-English one-liner (the Explore header subtitle / catalog blurb). Only the
-     *  three headline scores , Charge / Effort / Rest , carry one today; everything else is null.
-     *  Mirrors macOS `MetricDescriptor.description`. */
-    val description: String? = null,
+     *  three headline scores , Charge / Effort / Rest , carry one today; everything else is null. */
+    @StringRes val description: Int? = null,
     /** Effort display scale , only meaningful for the "strain" column, where it converts the
      *  stored 0–100 value + unit onto WHOOP's 0–21 axis. Default 0–100 leaves every other column alone. */
     val effortScale: EffortScale = EffortScale.HUNDRED,
@@ -137,50 +145,54 @@ private data class MetricSpec(
     }
 }
 
+/** The metric's display name: its catalog resource, or the prettified key it was discovered under. */
+@Composable
+private fun MetricSpec.title(): String = titleRes?.let { stringResource(it) } ?: rawTitle.orEmpty()
+
 /** The built-in DailyMetric-backed metrics, in the macOS ordering (Charge first). */
 private val builtInMetrics: List<MetricSpec> = listOf(
     MetricSpec(
-        key = "recovery", title = "Charge", unit = "%", category = "Charge",
+        key = "recovery", titleRes = R.string.trends_charge, unit = "%", category = "Charge",
         accent = Palette.accent, higherIsBetter = true, decimals = 0,
         dailyPick = { it.recovery },
-        description = "How recovered you are, led by HRV versus your personal baseline.",
+        description = R.string.trends2_desc_charge,
     ),
     MetricSpec(
-        key = "strain", title = "Effort", unit = "/100", category = "Effort",
+        key = "strain", titleRes = R.string.trends_effort, unit = "/100", category = "Effort",
         accent = Palette.strain066, higherIsBetter = null, decimals = 1,
         dailyPick = { it.strain },
-        description = "Cardiovascular load for the day, on a 0-100 scale (was 0-21).",
+        description = R.string.trends2_desc_effort,
     ),
     MetricSpec(
-        key = "hrv", title = "HRV", unit = "ms", category = "Charge",
+        key = "hrv", titleRes = R.string.trends2_metric_hrv, unit = "ms", category = "Charge",
         accent = Palette.metricPurple, higherIsBetter = true, decimals = 0,
         dailyPick = { it.avgHrv },
     ),
     MetricSpec(
-        key = "rhr", title = "Resting HR", unit = "bpm", category = "Charge",
+        key = "rhr", titleRes = R.string.trends2_metric_resting_hr, unit = "bpm", category = "Charge",
         accent = Palette.metricRose, higherIsBetter = false, decimals = 0,
         dailyPick = { it.restingHr?.toDouble() },
     ),
     MetricSpec(
-        key = "sleep", title = "Sleep", unit = "h", category = "Rest",
+        key = "sleep", titleRes = R.string.trends2_metric_sleep, unit = "h", category = "Rest",
         // Rest-score accent rides the reset accent token (iOS metricAccent maps every Rest metric ,
         // sleep_performance / sleep_total_min , to StrandPalette.accent), not a stray metric hue.
         accent = Palette.accent, higherIsBetter = true, decimals = 1,
         dailyPick = { it.totalSleepMin?.let { m -> m / 60.0 } },
-        description = "How restorative your sleep was, duration, efficiency, deep+REM, timing.",
+        description = R.string.trends2_desc_rest,
     ),
     MetricSpec(
-        key = "efficiency", title = "Sleep Efficiency", unit = "%", category = "Rest",
+        key = "efficiency", titleRes = R.string.trends2_metric_sleep_efficiency, unit = "%", category = "Rest",
         accent = Palette.accent, higherIsBetter = true, decimals = 0,
         dailyPick = { it.efficiency },
     ),
     MetricSpec(
-        key = "spo2", title = "SpO₂", unit = "%", category = "Health",
+        key = "spo2", titleRes = R.string.trends2_metric_spo2, unit = "%", category = "Health",
         accent = Palette.metricCyan, higherIsBetter = true, decimals = 0,
         dailyPick = { it.spo2Pct },
     ),
     MetricSpec(
-        key = "resp", title = "Respiratory Rate", unit = "rpm", category = "Health",
+        key = "resp", titleRes = R.string.trends2_metric_respiratory_rate, unit = "rpm", category = "Health",
         accent = Palette.accent, higherIsBetter = null, decimals = 1,
         dailyPick = { it.respRateBpm },
     ),
@@ -194,19 +206,19 @@ private val knownSeriesMetrics: Map<String, MetricSpec> = mapOf(
     // the Compare screen exposes it, but Explore's picker didn't , iOS MetricCatalog has had both. Series-
     // backed (no DailyMetric column), "Heart" category, parity. (Strap-only per-second HR lives in the
     // Deep Timeline; this surfaces the per-day avg/max for imported sources.)
-    "avg_hr" to MetricSpec("avg_hr", "Average Heart Rate", "bpm", "Heart",
+    "avg_hr" to MetricSpec("avg_hr", R.string.trends2_metric_avg_hr, "bpm", "Heart",
         Palette.metricRose, null, 0),
-    "max_hr" to MetricSpec("max_hr", "Max Heart Rate", "bpm", "Heart",
+    "max_hr" to MetricSpec("max_hr", R.string.trends2_metric_max_hr, "bpm", "Heart",
         Palette.metricRose, null, 0),
-    "calories_in" to MetricSpec("calories_in", "Calories In", "kcal", "Nutrition",
+    "calories_in" to MetricSpec("calories_in", R.string.trends2_metric_calories_in, "kcal", "Nutrition",
         Palette.metricAmber, null, 0),
-    "protein_g" to MetricSpec("protein_g", "Protein", "g", "Nutrition",
+    "protein_g" to MetricSpec("protein_g", R.string.trends2_metric_protein, "g", "Nutrition",
         Palette.metricCyan, null, 0),
-    "carbs_g" to MetricSpec("carbs_g", "Carbs", "g", "Nutrition",
+    "carbs_g" to MetricSpec("carbs_g", R.string.trends2_metric_carbs, "g", "Nutrition",
         Palette.metricCyan, null, 0),
-    "fat_g" to MetricSpec("fat_g", "Fat", "g", "Nutrition",
+    "fat_g" to MetricSpec("fat_g", R.string.trends2_metric_fat, "g", "Nutrition",
         Palette.metricCyan, null, 0),
-    "mood" to MetricSpec("mood", "Mood", "/5", "Mind",
+    "mood" to MetricSpec("mood", R.string.trends2_metric_mood, "/5", "Mind",
         Palette.metricPurple, true, 0),
 )
 
@@ -294,7 +306,8 @@ fun TrendsExploreScreen(vm: AppViewModel) {
                 val known = knownSeriesMetrics[k]
                 known?.copy(seriesKey = k, seriesSource = src) ?: MetricSpec(
                     key = k,
-                    title = k.replace('_', ' ').replaceFirstChar { c -> c.uppercase() },
+                    titleRes = null,
+                    rawTitle = k.replace('_', ' ').replaceFirstChar { c -> c.uppercase() },
                     unit = "",
                     category = "Other",
                     accent = Palette.metricCyan,
@@ -309,7 +322,8 @@ fun TrendsExploreScreen(vm: AppViewModel) {
 
     // Effort display scale , carried on the selected spec so the Effort column's value + unit
     // follow the toggle through every read-out (hero, footer stats, Y-axis). Display-only.
-    val effortScale = UnitPrefs.effortScale(LocalContext.current)
+    val context = LocalContext.current
+    val effortScale = UnitPrefs.effortScale(context)
 
     var selectedKey by remember { mutableStateOf(builtInMetrics.first().key) }
     var range by remember { mutableStateOf(ExploreRange.Month) }
@@ -411,7 +425,7 @@ fun TrendsExploreScreen(vm: AppViewModel) {
             // null for every other metric, so only the scores show a subtitle here.
             selected.description?.let { blurb ->
                 Text(
-                    blurb,
+                    stringResource(blurb),
                     style = NoopType.footnote,
                     color = Palette.textTertiary,
                     modifier = Modifier.fillMaxWidth(),
@@ -420,7 +434,7 @@ fun TrendsExploreScreen(vm: AppViewModel) {
             SegmentedPillControl(
                 items = ExploreRange.entries.toList(),
                 selection = range,
-                label = { it.label },
+                label = { context.getString(it.label) },
                 onSelect = { range = it },
             )
         }
@@ -522,13 +536,14 @@ private fun MetricDropdown(
             horizontalArrangement = Arrangement.spacedBy(Metrics.space10),
         ) {
             Box(modifier = Modifier.size(10.dp).clip(CircleShape).background(selected.accent))
+            val selectedTitle = selected.title()
             Column(modifier = Modifier.weight(1f)) {
                 // A metric whose name IS its category (Charge, Effort, Rest) would print the word
                 // twice in one row, so the eyebrow only appears when it says something else.
-                if (!selected.category.equals(selected.title, ignoreCase = true)) {
+                if (!selected.category.equals(selectedTitle, ignoreCase = true)) {
                     Overline(selected.category, color = Palette.textTertiary)
                 }
-                Text(selected.title, style = NoopType.headline, color = Palette.textPrimary)
+                Text(selectedTitle, style = NoopType.headline, color = Palette.textPrimary)
             }
             Icon(
                 if (expanded) Icons.Filled.ArrowDropUp else Icons.Filled.ArrowDropDown,
@@ -573,7 +588,7 @@ private fun MetricDropdown(
                             ) {
                                 Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(metric.accent))
                                 Text(
-                                    metric.title,
+                                    metric.title(),
                                     style = NoopType.body,
                                     color = if (isSelected) Palette.accent else Palette.textPrimary,
                                     modifier = Modifier.weight(1f),
@@ -611,20 +626,20 @@ private fun HeroChartCard(
     fellBack: Boolean,
 ) {
     val heroValue = latest?.let { metric.format(it.value) } ?: EM_DASH
-    val asOf = latest?.let { "as of ${it.day}" } ?: "no readings yet"
+    val asOf = latest?.let { stringResource(R.string.trends2_explore_as_of, it.day) }
+        ?: stringResource(R.string.trends2_explore_no_readings)
     // The range bar above already prints the authoritative reading-count caption; the hero only
     // names its window so the count isn't doubled in one card height.
-    val subtitle = if (fellBack) {
-        "Trailing ${effectiveRange.windowName}"
-    } else {
-        "Trailing ${range.windowName}"
-    }
+    val subtitle = stringResource(
+        R.string.trends2_explore_trailing,
+        stringResource(if (fellBack) effectiveRange.windowName else range.windowName),
+    )
     // Wash the hero card in the metric's domain world (Charge green / Effort amber / Rest indigo).
     NoopCard(tint = domainTint(metric.category)) {
         Column(verticalArrangement = Arrangement.spacedBy(Metrics.gap)) {
             Row(verticalAlignment = Alignment.Top) {
                 Column(modifier = Modifier.weight(1f)) {
-                    Overline(metric.title)
+                    Overline(metric.title())
                     Text(subtitle, style = NoopType.footnote, color = Palette.textTertiary)
                 }
                 Column(horizontalAlignment = Alignment.End) {
@@ -718,7 +733,7 @@ private fun HeroChartCard(
                 ) {
                     Text(
                         if (windowed.isEmpty()) {
-                            stringResource(R.string.explore_empty_metric, metric.title.lowercase())
+                            stringResource(R.string.explore_empty_metric, metric.title().lowercase())
                         } else {
                             stringResource(R.string.explore_single_reading)
                         },
@@ -730,7 +745,7 @@ private fun HeroChartCard(
 
             // Footer chips, mirroring the macOS ChartFooter (Window / Points / Latest).
             Row(horizontalArrangement = Arrangement.spacedBy(Metrics.sectionGap)) {
-                ChartFootItem(stringResource(R.string.explore_chart_window), effectiveRange.label)
+                ChartFootItem(stringResource(R.string.explore_chart_window), stringResource(effectiveRange.label))
                 ChartFootItem(stringResource(R.string.explore_chart_points), "${windowed.size}")
                 ChartFootItem(stringResource(R.string.explore_latest), heroValue)
             }
@@ -782,10 +797,11 @@ private fun StatRow(
         if (!hasDelta || delta == 0.0 || better == null) Palette.textTertiary
         else if ((delta > 0) == better) Palette.statusPositive else Palette.statusCritical
     }
+    val windowName = stringResource(effectiveRange.windowName)
     val deltaCaption = when {
-        hasDelta -> stringResource(R.string.explore_vs_prev_window, effectiveRange.windowName)
+        hasDelta -> stringResource(R.string.explore_vs_prev_window, windowName)
         effectiveRange == ExploreRange.All -> stringResource(R.string.explore_all_history)
-        else -> stringResource(R.string.explore_no_prior_window, effectiveRange.windowName)
+        else -> stringResource(R.string.explore_no_prior_window, windowName)
     }
 
     Column(verticalArrangement = Arrangement.spacedBy(Metrics.gap)) {
@@ -858,6 +874,7 @@ private fun signed(metric: MetricSpec, delta: Double): String {
     return sign + metric.format(abs(delta))
 }
 
+@Composable
 private fun rangeCaption(
     series: List<SeriesPoint>,
     windowed: List<SeriesPoint>,
@@ -865,10 +882,10 @@ private fun rangeCaption(
     effectiveRange: ExploreRange,
     fellBack: Boolean,
 ): String {
+    val readings = pluralStringResource(R.plurals.trends2_readings, windowed.size, windowed.size)
+    val window = stringResource(if (fellBack) effectiveRange.windowName else range.windowName)
+    val template = if (fellBack) R.string.trends2_caption_widened else R.string.trends2_caption_window
+    val caption = stringResource(template, readings, window)
     // Nothing to count reads as nothing, not as a lone placeholder glyph under the range pills.
-    if (series.isEmpty()) return ""
-    val n = windowed.size
-    val unit = if (n == 1) "reading" else "readings"
-    return if (fellBack) "$n $unit · sparse, widened to ${effectiveRange.windowName}"
-    else "$n $unit · ${range.windowName}"
+    return if (series.isEmpty()) "" else caption
 }

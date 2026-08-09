@@ -1,5 +1,6 @@
 package com.noop.ui.whoop
 
+import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -18,9 +19,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.noop.R
 import com.noop.ui.ChargeDriver
 import com.noop.ui.UnitPrefs
 import com.noop.analytics.RustScores
@@ -44,8 +47,10 @@ import com.noop.ui.StrandTone
 import com.noop.ui.WeekBarChart
 import com.noop.ui.WeekLineChart
 import com.noop.ui.WeekLineSeries
+import com.noop.ui.baselineLabel
 import com.noop.ui.logicalDayKeyNow
 import com.noop.ui.resolveTodayRow
+import com.noop.ui.valueLabel
 import com.noop.ui.widgetAnchorRow
 import uniffi.whoop_ffi.RecoveryState
 import java.time.LocalDate
@@ -90,11 +95,11 @@ fun WhoopRecoveryScreen(
     val week = remember(days, dayKey, anchor) { recoveryWeek(days, dayKey, anchor?.day) }
 
     ScreenScaffold(
-        title = "Recovery",
+        title = stringResource(R.string.nav_recovery),
         subtitle = if (carriedFrom != null) {
-            "Your last scored night, carried until tonight scores."
+            stringResource(R.string.whoopskin_recovery_subtitle_carried)
         } else {
-            "How recovered your body is today."
+            stringResource(R.string.whoopskin_recovery_subtitle)
         },
     ) {
         RecoveryHeroBlock(
@@ -119,25 +124,35 @@ private fun RecoveryHeroBlock(
 ) {
     if (score == null) {
         DataPendingNote(
-            title = "No Recovery score yet",
-            body = "Wear the strap overnight, or import your WHOOP history, and Recovery fills in.",
+            title = stringResource(R.string.whoopskin_recovery_empty_title),
+            body = stringResource(R.string.whoopskin_recovery_empty_body),
         )
         return
     }
     val word = chargeReadinessWord(RustScores.state(score))
-    val verdict = topDriver?.let { "${it.label} ${it.verdict}." }
+    val verdict = topDriver?.let {
+        stringResource(
+            R.string.whoopskin_recovery_driver_verdict,
+            stringResource(it.labelRes),
+            stringResource(it.verdictRes),
+        )
+    }
     Column(
         modifier = Modifier.fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(Metrics.space12),
     ) {
         RecoveryRing(score = score)
-        if (carriedFrom != null) Overline("Last scored · ${recoveryDayStamp(carriedFrom)}")
+        if (carriedFrom != null) {
+            Overline(
+                stringResource(R.string.whoopskin_recovery_last_scored, recoveryDayStamp(carriedFrom)),
+            )
+        }
         InsightCard(
             modifier = Modifier.fillMaxWidth(),
-            category = "Readiness",
+            category = stringResource(R.string.whoopskin_recovery_readiness),
             status = word,
-            detail = verdict ?: "What today's Charge asks of you.",
+            detail = verdict ?: stringResource(R.string.whoopskin_recovery_readiness_detail),
             statusColor = Palette.recoveryColor(score),
             tint = null,
         )
@@ -160,24 +175,26 @@ private fun RecoveryDriversCard(read: RecoveryDayRead) {
     NoopCard {
         Column(verticalArrangement = Arrangement.spacedBy(Metrics.space16)) {
             NoopCardHeader(
-                title = "What shaped it",
+                title = stringResource(R.string.whoopskin_recovery_what_shaped_it),
                 trailing = {
-                    StatePill(title = confidenceLabel(read.confidence), tone = confidenceTone(read.confidence))
+                    StatePill(
+                        title = stringResource(confidenceLabel(read.confidence)),
+                        tone = confidenceTone(read.confidence),
+                    )
                 },
             )
             read.drivers.forEach { driver ->
                 MetricRow(
-                    icon = driverIcon(driver.label),
-                    label = driver.label,
-                    value = driver.valueText,
+                    icon = driverIcon(driver.labelRes),
+                    label = stringResource(driver.labelRes),
+                    value = driver.valueLabel(),
                     trend = driverTrendText(driver.deltaPoints),
                     trendColor = driverTrendColor(driver.deltaPoints),
-                    comparison = driver.baselineText.takeIf { it.isNotBlank() },
+                    comparison = driver.baselineLabel().takeIf { it.isNotBlank() },
                 )
             }
             Text(
-                "Each line is how many points that signal moved Recovery against your on-device " +
-                    "baseline. A wellness estimate, not medical advice.",
+                stringResource(R.string.whoopskin_recovery_drivers_footnote),
                 style = NoopType.footnote,
                 color = Palette.textTertiary,
             )
@@ -193,7 +210,7 @@ private fun RecoveryWeeklyTrends(
     onOpenVital: ((String) -> Unit)?,
     onOpenSleep: (() -> Unit)?,
 ) {
-    SectionHeader("Weekly Trends")
+    SectionHeader(stringResource(R.string.whoopskin_weekly_trends))
     if (week.recovery.any { it != null }) {
         RecoveryTrendCard("Recovery", onOpenTrends) {
             BandedWeekBarChart(
@@ -208,9 +225,16 @@ private fun RecoveryWeeklyTrends(
         }
     }
     if (week.hrv.any { it != null }) {
-        RecoveryTrendCard("Heart Rate Variability", vitalOpener(onOpenVital, "hrv")) {
+        RecoveryTrendCard(
+            stringResource(R.string.whoopskin_recovery_card_hrv),
+            vitalOpener(onOpenVital, "hrv"),
+        ) {
             WeekLineChart(
-                series = WeekLineSeries("Heart rate variability", week.hrv, Palette.metricCyan),
+                series = WeekLineSeries(
+                    stringResource(R.string.whoopskin_recovery_series_hrv),
+                    week.hrv,
+                    Palette.metricCyan,
+                ),
                 dayLabels = week.labels,
                 format = { wholeText(it) },
                 highlightIndex = week.highlightIndex,
@@ -219,9 +243,16 @@ private fun RecoveryWeeklyTrends(
         }
     }
     if (week.restingHr.any { it != null }) {
-        RecoveryTrendCard("Resting Heart Rate", vitalOpener(onOpenVital, "rhr")) {
+        RecoveryTrendCard(
+            stringResource(R.string.whoopskin_recovery_card_rhr),
+            vitalOpener(onOpenVital, "rhr"),
+        ) {
             WeekLineChart(
-                series = WeekLineSeries("Resting heart rate", week.restingHr, Palette.metricRose),
+                series = WeekLineSeries(
+                    stringResource(R.string.whoopskin_recovery_series_rhr),
+                    week.restingHr,
+                    Palette.metricRose,
+                ),
                 dayLabels = week.labels,
                 format = { wholeText(it) },
                 highlightIndex = week.highlightIndex,
@@ -230,9 +261,16 @@ private fun RecoveryWeeklyTrends(
         }
     }
     if (week.respiratory.any { it != null }) {
-        RecoveryTrendCard("Respiratory Rate", vitalOpener(onOpenVital, "resp")) {
+        RecoveryTrendCard(
+            stringResource(R.string.whoopskin_recovery_card_resp),
+            vitalOpener(onOpenVital, "resp"),
+        ) {
             WeekLineChart(
-                series = WeekLineSeries("Respiratory rate", week.respiratory, Palette.accent),
+                series = WeekLineSeries(
+                    stringResource(R.string.whoopskin_recovery_series_resp),
+                    week.respiratory,
+                    Palette.accent,
+                ),
                 dayLabels = week.labels,
                 format = { tenthText(it) },
                 highlightIndex = week.highlightIndex,
@@ -241,7 +279,7 @@ private fun RecoveryWeeklyTrends(
         }
     }
     if (week.sleepPerformance.any { it != null }) {
-        RecoveryTrendCard("Sleep Performance", onOpenSleep) {
+        RecoveryTrendCard(stringResource(R.string.whoopskin_recovery_card_sleep), onOpenSleep) {
             WeekBarChart(
                 values = week.sleepPerformance,
                 dayLabels = week.labels,
@@ -278,22 +316,27 @@ private fun wholeText(value: Double): String = "${value.roundToInt()}"
 
 private fun tenthText(value: Double): String = String.format(Locale.US, "%.1f", value)
 
-/** A leading glyph per driver signal. Presentation only; an unknown label simply has no icon. */
-private fun driverIcon(label: String): ImageVector? = when (label) {
-    "Heart rate variability" -> Icons.Filled.MonitorHeart
-    "Resting heart rate" -> Icons.Filled.FavoriteBorder
-    "Sleep quality" -> Icons.Filled.Bedtime
-    "Respiratory rate" -> Icons.Filled.Air
-    "Skin temperature" -> Icons.Filled.Thermostat
-    "Recovery index" -> Icons.AutoMirrored.Filled.ShowChart
-    "Activity balance" -> Icons.Filled.FitnessCenter
+/** A leading glyph per driver signal, keyed on the row's resource so it survives translation. */
+private fun driverIcon(@StringRes label: Int): ImageVector? = when (label) {
+    R.string.charge_driver_hrv -> Icons.Filled.MonitorHeart
+    R.string.charge_driver_resting_hr -> Icons.Filled.FavoriteBorder
+    R.string.charge_driver_sleep -> Icons.Filled.Bedtime
+    R.string.charge_driver_respiratory -> Icons.Filled.Air
+    R.string.charge_driver_skin_temp -> Icons.Filled.Thermostat
+    R.string.charge_driver_recovery_index -> Icons.AutoMirrored.Filled.ShowChart
+    R.string.charge_driver_activity_balance -> Icons.Filled.FitnessCenter
     else -> null
 }
 
 /** The chip text for a driver's signed point swing; the sign is what draws its direction triangle. */
+@Composable
 private fun driverTrendText(points: Int): String {
-    val unit = if (points == 1 || points == -1) "pt" else "pts"
-    return if (points > 0) "+$points $unit" else "$points $unit"
+    val signed = if (points > 0) "+$points" else "$points"
+    return stringResource(
+        if (points == 1 || points == -1) R.string.whoopskin_recovery_driver_point
+        else R.string.whoopskin_recovery_driver_points,
+        signed,
+    )
 }
 
 /** Lifted Recovery reads positive, held it back reads critical, no swing stays neutral. */
@@ -303,10 +346,11 @@ private fun driverTrendColor(points: Int): Color = when {
     else -> Palette.textTertiary
 }
 
-private fun confidenceLabel(tier: ScoreConfidence): String = when (tier) {
-    ScoreConfidence.SOLID -> "SOLID"
-    ScoreConfidence.BUILDING -> "BUILDING"
-    ScoreConfidence.CALIBRATING -> "CALIBRATING"
+@StringRes
+private fun confidenceLabel(tier: ScoreConfidence): Int = when (tier) {
+    ScoreConfidence.SOLID -> R.string.whoopskin_confidence_solid
+    ScoreConfidence.BUILDING -> R.string.whoopskin_confidence_building
+    ScoreConfidence.CALIBRATING -> R.string.whoopskin_confidence_calibrating
 }
 
 private fun confidenceTone(tier: ScoreConfidence): StrandTone = when (tier) {

@@ -22,7 +22,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.noop.R
 
 // MARK: - WhatsNewSheet (ported from Strand/Screens/WhatsNewView.swift)
 //
@@ -91,9 +93,12 @@ private fun Header(onClose: () -> Unit) {
             modifier = Modifier.weight(1f),
             verticalArrangement = Arrangement.spacedBy(Metrics.space4),
         ) {
-            Overline("What's new", color = Palette.textTertiary)
-            Text("NOOP ${AppChangelog.CURRENT_VERSION}", style = NoopType.display(26f), color = Palette.textPrimary)
-            Text("Release notes", style = NoopType.caption, color = Palette.textSecondary)
+            Overline(stringResource(R.string.updates_whats_new), color = Palette.textTertiary)
+            Text(
+                stringResource(R.string.updates_whats_new_version, AppChangelog.CURRENT_VERSION),
+                style = NoopType.display(26f), color = Palette.textPrimary,
+            )
+            Text(stringResource(R.string.updates_release_notes), style = NoopType.caption, color = Palette.textSecondary)
         }
         CloseButton(onClick = onClose)
     }
@@ -105,7 +110,7 @@ private fun Header(onClose: () -> Unit) {
 private fun ExpectationsCard() {
     NoopCard(padding = 20.dp, tint = Palette.accent) {
         Column(verticalArrangement = Arrangement.spacedBy(Metrics.space14)) {
-            Overline("What to expect")
+            Overline(stringResource(R.string.updates_what_to_expect))
             AppChangelog.expectations.forEach { e ->
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -195,7 +200,7 @@ private fun Footer(onClose: () -> Unit) {
                 contentColor = Palette.surfaceBase,
             ),
         ) {
-            Text("Got it", style = NoopType.captionNumber)
+            Text(stringResource(R.string.updates_got_it), style = NoopType.captionNumber)
         }
     }
 }

@@ -33,8 +33,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.noop.R
 import com.noop.ble.PuffinExperiment
 
 /**
@@ -75,8 +77,8 @@ fun SmartAlarmScreen(vm: AppViewModel) {
     LazyScreenScaffold(
         // "Alarms" because this screen now holds the phone Wake Window, the strap's firmware
         // wake-alarm (moved here from Automations), and the wind-down reminder, so the broader title fits.
-        title = "Alarms",
-        subtitle = "Your wake window, the strap wake-alarm, and the evening wind-down reminder, in one place.",
+        title = stringResource(R.string.nav_alarms),
+        subtitle = stringResource(R.string.alarm_subtitle),
     ) {
         // The guaranteed-wake card always shows so the safety promise is the first thing read.
         item { WindowCard(enabled = enabled, targetMinutes = targetMinutes, windowMinutes = windowMinutes) }
@@ -84,8 +86,8 @@ fun SmartAlarmScreen(vm: AppViewModel) {
         item {
         AlarmSettingsCard {
             ToggleRowLocal(
-                label = "Wake me with a smart alarm",
-                help = "A guaranteed OS alarm is set for the end of your window; the strap stream can move it earlier if you're sleeping lightly.",
+                label = stringResource(R.string.alarm_wake_smart),
+                help = stringResource(R.string.alarm_wake_smart_help),
                 checked = enabled,
                 onChange = { want ->
                     if (want && !vm.canScheduleExactAlarms()) {
@@ -104,8 +106,7 @@ fun SmartAlarmScreen(vm: AppViewModel) {
             if (enabled && !canSchedule) {
                 RowDividerLocal()
                 Text(
-                    "NOOP doesn't have permission to set exact alarms, so your wake isn't guaranteed. " +
-                        "Tap to allow it in system settings.",
+                    stringResource(R.string.alarm_no_exact_permission),
                     style = NoopType.footnote,
                     color = Palette.statusWarning,
                     modifier = Modifier
@@ -121,13 +122,16 @@ fun SmartAlarmScreen(vm: AppViewModel) {
                 RowDividerLocal()
                 Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(Metrics.space2)) {
-                        Text("Wake me no earlier than", style = NoopType.body, color = Palette.textPrimary)
-                        Text("The earliest NOOP will wake you.", style = NoopType.footnote, color = Palette.textTertiary)
+                        Text(stringResource(R.string.alarm_wake_no_earlier), style = NoopType.body, color = Palette.textPrimary)
+                        Text(
+                            stringResource(R.string.alarm_wake_no_earlier_help),
+                            style = NoopType.footnote, color = Palette.textTertiary,
+                        )
                     }
                     Spacer(Modifier.width(Metrics.space16))
                     TimeChip(
                         minutes = targetMinutes,
-                        accessibilityLabel = "Earliest wake time",
+                        accessibilityLabel = stringResource(R.string.alarm_earliest_wake_a11y),
                         onPicked = { vm.setPhoneAlarmTargetMinutes(it) },
                     )
                 }
@@ -135,9 +139,9 @@ fun SmartAlarmScreen(vm: AppViewModel) {
                 RowDividerLocal()
                 Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(Metrics.space2)) {
-                        Text("Window length", style = NoopType.body, color = Palette.textPrimary)
+                        Text(stringResource(R.string.alarm_window_length), style = NoopType.body, color = Palette.textPrimary)
                         Text(
-                            "The guaranteed alarm fires this long after your earliest time.",
+                            stringResource(R.string.alarm_window_length_help),
                             style = NoopType.footnote, color = Palette.textTertiary,
                         )
                     }
@@ -154,11 +158,11 @@ fun SmartAlarmScreen(vm: AppViewModel) {
             // label + copy name the CONNECTED strap generation (strapName), not a hardcoded "WHOOP 4".
             RowDividerLocal()
             ToggleRowLocal(
-                label = "Buzz $strapName",
+                label = stringResource(R.string.alarm_buzz_strap, strapName),
                 help = if (bonded)
-                    "Also arms your $strapName to buzz at your earliest wake time, so the strap wakes you first and the phone alarm is the guaranteed backup."
+                    stringResource(R.string.alarm_buzz_strap_help_bonded, strapName)
                 else
-                    "Connect your strap to use this. It arms the strap to buzz at your earliest wake time as a gentler first wake-up.",
+                    stringResource(R.string.alarm_buzz_strap_help_unbonded),
                 checked = buzzWhoop4,
                 onChange = { vm.setBuzzWhoop4Enabled(it) },
             )
@@ -202,30 +206,30 @@ private fun StrapAlarmCard(vm: AppViewModel) {
     NoopCard(padding = 20.dp, tint = if (smartAlarm) Palette.accent else null) {
         Column(verticalArrangement = Arrangement.spacedBy(Metrics.space16)) {
             Column(verticalArrangement = Arrangement.spacedBy(Metrics.space2)) {
-                Overline("Morning")
+                Overline(stringResource(R.string.alarm_overline_morning))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(Icons.Filled.Alarm, contentDescription = null, tint = Palette.accent)
                     Spacer(Modifier.width(Metrics.space10))
-                    Text("Strap wake-alarm", style = NoopType.title2, color = Palette.textPrimary)
+                    Text(stringResource(R.string.alarm_strap_title), style = NoopType.title2, color = Palette.textPrimary)
                 }
             }
             // Truth-sync: the WHOOP 4.0 alarm payload was captured from the official app and
             // confirmed buzzing on a real 4.0 by the capture author, so the copy no longer calls the
             // 4.0 path experimental. The 5/MG Experimental-gate branch below is deliberately untouched.
             ToggleRowLocal(
-                label = "Wake me with a strap buzz",
-                help = "Arms the strap to buzz at your wake time, even if NOOP is closed. Sends the exact alarm command the official app sends, confirmed buzzing on a real WHOOP 4.0. Keep a backup alarm for anything you truly can't miss.",
+                label = stringResource(R.string.alarm_strap_toggle),
+                help = stringResource(R.string.alarm_strap_toggle_help),
                 checked = smartAlarm,
                 onChange = { vm.setSmartAlarmEnabled(it) },
             )
             if (smartAlarm) {
                 RowDividerLocal()
                 Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    Text("Wake at", style = NoopType.body, color = Palette.textPrimary)
+                    Text(stringResource(R.string.alarm_wake_at), style = NoopType.body, color = Palette.textPrimary)
                     Spacer(Modifier.weight(1f))
                     TimeChip(
                         minutes = alarmMinutes,
-                        accessibilityLabel = "Strap alarm wake time",
+                        accessibilityLabel = stringResource(R.string.alarm_strap_wake_time_a11y),
                         onPicked = { vm.setSmartAlarmMinutes(it) },
                     )
                 }
@@ -245,29 +249,26 @@ private fun StrapAlarmCard(vm: AppViewModel) {
                 RowDividerLocal()
                 if (live.whoop5Detected && !experimentalOn) {
                     Text(
-                        "Your WHOOP 5/MG won't arm this until Experimental mode is on (Settings → " +
-                            "Experimental). Right now your wake time is saved but the strap is NOT armed.",
+                        stringResource(R.string.alarm_strap_5mg_experimental_off),
                         style = NoopType.footnote, color = Palette.statusWarning,
                     )
                 } else if (live.whoop5Detected) {
                     // 5/MG with Experimental ON: the strap IS armed (experimental rev-4 payload) but a
                     // strap-driven wake has NEVER been captured on 5/MG, so the "confirmed on 4.0" copy must
-                    // NOT show here (honesty). Byte-identical wording to the Swift SmartAlarmView twin.
+                    // NOT show here (honesty).
                     Text(
-                        if (live.bonded)
-                            "Armed on the strap itself with the experimental 5/MG command. A strap-driven wake is still unconfirmed on 5/MG on our side (confirmed only on WHOOP 4.0), so keep a backup alarm for anything you truly can't miss."
-                        else
-                            "Connect your strap to arm this; it's set on the strap's own firmware alarm. Confirmed working on WHOOP 4.0; still experimental on 5.0 and MG. Keep a backup alarm for anything you truly can't miss.",
+                        stringResource(
+                            if (live.bonded) R.string.alarm_strap_5mg_armed
+                            else R.string.alarm_strap_connect_hint,
+                        ),
                         style = NoopType.footnote, color = Palette.textTertiary,
                     )
                 } else {
                     Text(
-                        if (live.bonded)
-                            // Truth-sync: confirmed buzzing on a real WHOOP 4.0; byte-identical
-                            // wording to the Swift SmartAlarmView.
-                            "Armed on the strap itself, so it can buzz at your wake time even if your phone is asleep or NOOP is closed. Sends the exact alarm command the official app sends, confirmed buzzing on a real WHOOP 4.0. Keep a backup alarm for anything you truly can't miss."
-                        else
-                            "Connect your strap to arm this; it's set on the strap's own firmware alarm. Confirmed working on WHOOP 4.0; still experimental on 5.0 and MG. Keep a backup alarm for anything you truly can't miss.",
+                        stringResource(
+                            if (live.bonded) R.string.alarm_strap_armed
+                            else R.string.alarm_strap_connect_hint,
+                        ),
                         style = NoopType.footnote, color = Palette.textTertiary,
                     )
                 }
@@ -296,7 +297,7 @@ private fun WindowCard(enabled: Boolean, targetMinutes: Int, windowMinutes: Int)
             Icon(Icons.Filled.Shield, contentDescription = null, tint = DomainTheme.Rest.color)
             Spacer(Modifier.width(Metrics.space12))
             Column(verticalArrangement = Arrangement.spacedBy(Metrics.space4)) {
-                Overline("Guaranteed wake")
+                Overline(stringResource(R.string.alarm_guaranteed_wake))
                 if (enabled) {
                     Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(Metrics.space8)) {
                         Text(hhmm(targetMinutes), style = NoopType.number(28f), color = DomainTheme.Rest.color)
@@ -304,13 +305,13 @@ private fun WindowCard(enabled: Boolean, targetMinutes: Int, windowMinutes: Int)
                         Text(hhmm(deadline), style = NoopType.number(28f), color = DomainTheme.Rest.bright)
                     }
                     Text(
-                        "A backup alarm is set for ${hhmm(deadline)}. It fires even if Bluetooth drops, the strap isn't worn, or NOOP is closed.",
+                        stringResource(R.string.alarm_backup_set_for, hhmm(deadline)),
                         style = NoopType.footnote, color = Palette.textSecondary,
                     )
                 } else {
-                    Text("Off", style = NoopType.title2, color = Palette.textSecondary)
+                    Text(stringResource(R.string.alarm_off), style = NoopType.title2, color = Palette.textSecondary)
                     Text(
-                        "Turn on the smart alarm to wake inside a window you choose.",
+                        stringResource(R.string.alarm_off_help),
                         style = NoopType.footnote, color = Palette.textTertiary,
                     )
                 }
@@ -326,7 +327,7 @@ private fun AlarmSettingsCard(content: @Composable () -> Unit) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Filled.Alarm, contentDescription = null, tint = Palette.accent)
                 Spacer(Modifier.width(Metrics.space10))
-                Text("Wake alarm", style = NoopType.headline, color = Palette.textPrimary)
+                Text(stringResource(R.string.alarm_card_title), style = NoopType.headline, color = Palette.textPrimary)
             }
             content()
         }
@@ -340,16 +341,16 @@ private fun WindDownCard(vm: AppViewModel) {
     NoopCard(padding = 20.dp, tint = if (enabled) DomainTheme.Rest.color else null) {
         Column(verticalArrangement = Arrangement.spacedBy(Metrics.space16)) {
             Column(verticalArrangement = Arrangement.spacedBy(Metrics.space2)) {
-                Overline("Evening")
+                Overline(stringResource(R.string.alarm_overline_evening))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(Icons.Filled.Bedtime, contentDescription = null, tint = DomainTheme.Rest.color)
                     Spacer(Modifier.width(Metrics.space10))
-                    Text("Wind-down nudge", style = NoopType.title2, color = Palette.textPrimary)
+                    Text(stringResource(R.string.alarm_wind_down_title), style = NoopType.title2, color = Palette.textPrimary)
                 }
             }
             ToggleRowLocal(
-                label = "Remind me to wind down",
-                help = "A gentle evening notification, timed from your wake time and usual sleep need, so you can settle in time. It's a suggestion, not an alarm.",
+                label = stringResource(R.string.alarm_wind_down_toggle),
+                help = stringResource(R.string.alarm_wind_down_help),
                 checked = enabled,
                 onChange = { vm.setWindDownEnabled(it) },
             )
@@ -364,19 +365,14 @@ private fun ExplanationCard() {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Filled.Bedtime, contentDescription = null, tint = Palette.accent)
                 Spacer(Modifier.width(Metrics.space10))
-                Text("How the smart wake works", style = NoopType.headline, color = Palette.textPrimary)
+                Text(stringResource(R.string.alarm_explain_title), style = NoopType.headline, color = Palette.textPrimary)
             }
             Text(
-                "While you're inside the window, NOOP watches your live heart rate from the strap. Deep " +
-                    "sleep sits near your nightly low and stays steady; when your heart rate lifts above " +
-                    "that (a sign you're sleeping more lightly or starting to stir), NOOP wakes you a " +
-                    "little early so you come up from a lighter phase.",
+                stringResource(R.string.alarm_explain_body_1),
                 style = NoopType.footnote, color = Palette.textSecondary,
             )
             Text(
-                "This is a coarse cue from heart rate, not a clinical sleep-stage reading. If the strap " +
-                    "isn't streaming (Bluetooth off, not worn, app killed), no early wake happens and the " +
-                    "guaranteed alarm at the window's end still wakes you.",
+                stringResource(R.string.alarm_explain_body_2),
                 style = NoopType.footnote, color = Palette.textTertiary,
             )
         }
@@ -391,9 +387,20 @@ private fun WindowStepper(windowMinutes: Int, onChange: (Int) -> Unit) {
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(Metrics.space8),
     ) {
-        StepperButton(symbol = "−", onClick = { onChange((windowMinutes - 5).coerceAtLeast(5)) }, label = "Shorten window")
-        Text("$windowMinutes min", style = NoopType.bodyNumber, color = Palette.textPrimary)
-        StepperButton(symbol = "+", onClick = { onChange((windowMinutes + 5).coerceAtMost(60)) }, label = "Lengthen window")
+        StepperButton(
+            symbol = "−",
+            onClick = { onChange((windowMinutes - 5).coerceAtLeast(5)) },
+            label = stringResource(R.string.alarm_shorten_window),
+        )
+        Text(
+            stringResource(R.string.alarm_window_minutes, windowMinutes),
+            style = NoopType.bodyNumber, color = Palette.textPrimary,
+        )
+        StepperButton(
+            symbol = "+",
+            onClick = { onChange((windowMinutes + 5).coerceAtMost(60)) },
+            label = stringResource(R.string.alarm_lengthen_window),
+        )
     }
 }
 

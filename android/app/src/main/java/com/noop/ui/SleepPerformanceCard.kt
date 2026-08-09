@@ -19,10 +19,12 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.noop.R
 import com.noop.analytics.RustScores
 
 private val SLEEP_VESSEL_DIAMETER: Dp = 184.dp
@@ -59,7 +61,11 @@ internal fun SleepPerformanceCard(score: Double?, asleepMin: Double?, drivers: L
         ) {
             if (score != null) {
                 SleepScoreVessel(score)
-                Text("SLEEP PERFORMANCE", style = NoopType.overline, color = Palette.textSecondary)
+                Text(
+                    stringResource(R.string.sleep_performance),
+                    style = NoopType.overline,
+                    color = Palette.textSecondary,
+                )
             } else {
                 // No 0-100 score: lead with hours slept, the same count-up the scored hero rolls.
                 Column(
@@ -73,7 +79,11 @@ internal fun SleepPerformanceCard(score: Double?, asleepMin: Double?, drivers: L
                         style = NoopType.number(46f),
                         color = Palette.restBright,
                     )
-                    Text("ASLEEP LAST NIGHT", style = NoopType.overline, color = Palette.textSecondary)
+                    Text(
+                        stringResource(R.string.sleep_asleep_last_night),
+                        style = NoopType.overline,
+                        color = Palette.textSecondary,
+                    )
                 }
             }
             if (drivers.isNotEmpty()) {
@@ -111,12 +121,11 @@ private fun SleepScoreVessel(score: Double) {
 @Composable
 private fun SleepDriverRow(driver: SleepDriver) {
     val pct = driver.percent
+    val rowDescription = stringResource(R.string.sleep_driver_a11y, driver.label, pctValue(pct))
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .semantics(mergeDescendants = true) {
-                contentDescription = "${driver.label}: ${pctValue(pct)}"
-            },
+            .semantics(mergeDescendants = true) { contentDescription = rowDescription },
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
@@ -176,11 +185,14 @@ private fun SleepDriverStrip(percent: Double?, higherIsBetter: Boolean) {
 private fun driverTierColor(tier: Int): Color =
     Palette.sample(Palette.recoveryStops, RustScores.sleepDriverTierPosition(tier).toFloat())
 
-private fun driverTierWord(tier: Int): String = when (tier) {
-    0 -> "Poor"
-    1 -> "Sufficient"
-    else -> "Optimal"
-}
+@Composable
+private fun driverTierWord(tier: Int): String = stringResource(
+    when (tier) {
+        0 -> R.string.sleep_tier_poor
+        1 -> R.string.sleep_tier_sufficient
+        else -> R.string.sleep_tier_optimal
+    },
+)
 
 /** The legend the strips are read against: one swatch and word per tier. */
 @Composable

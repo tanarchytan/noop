@@ -1,6 +1,8 @@
 package com.noop.ui
 
 import android.content.Context
+import androidx.annotation.StringRes
+import com.noop.R
 import com.noop.analytics.LiveSessionEngine
 import com.noop.data.LiveSessionRow
 import com.noop.protocol.LiveSessionHaptics
@@ -260,18 +262,19 @@ object LiveSessionPrefs {
  * classified second says so rather than judging; under a scoreable minute it refuses to judge; ~70%+
  * in-band is a clean match; then the dominant miss names itself. Never a number dressed up as praise.
  */
-internal fun liveSessionVerdict(inBandSec: Double, belowSec: Double, aboveSec: Double): String {
+@StringRes
+internal fun liveSessionVerdict(inBandSec: Double, belowSec: Double, aboveSec: Double): Int {
     val total = inBandSec + belowSec + aboveSec
     // The buckets and the guarded wall clock are different quantities: a session can run for a while
     // with no heart rate to place in a band, and the summary says so instead of judging nothing.
-    if (total <= 0.0) return "No heart rate reached the session, so nothing could be scored."
-    if (total < 60.0) return "Too short to judge."
+    if (total <= 0.0) return R.string.core_live_verdict_nothing_scored
+    if (total < 60.0) return R.string.core_live_verdict_too_short
     val share = inBandSec / total
     return when {
-        share >= 0.70 -> "On track. You matched what today could pay for."
-        share >= 0.45 -> "Mixed. In the band about half the time."
-        belowSec >= aboveSec -> "Easy day. You sat under the band most of the way."
-        else -> "Hot. You ran above today's ceiling most of the way."
+        share >= 0.70 -> R.string.core_live_verdict_on_track
+        share >= 0.45 -> R.string.core_live_verdict_mixed
+        belowSec >= aboveSec -> R.string.core_live_verdict_easy
+        else -> R.string.core_live_verdict_hot
     }
 }
 

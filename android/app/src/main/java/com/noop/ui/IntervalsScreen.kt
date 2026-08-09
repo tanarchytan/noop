@@ -1,5 +1,6 @@
 package com.noop.ui
 
+import androidx.annotation.StringRes
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -40,12 +41,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.noop.R
 import kotlinx.coroutines.delay
 import java.util.Locale
 import kotlin.math.max
@@ -59,10 +62,10 @@ import kotlin.math.min
 // seconds of every phase, and a long 5-loop buzz when the whole session finishes.
 // With no strap bonded it still works as a big glanceable visual timer (no haptics).
 
-private enum class IntervalPhase(val label: String) {
-    Work("WORK"),
-    Rest("REST"),
-    Done("DONE"),
+private enum class IntervalPhase(@StringRes val label: Int) {
+    Work(R.string.intervals_phase_work),
+    Rest(R.string.intervals_phase_rest),
+    Done(R.string.intervals_phase_done),
 }
 
 /**
@@ -203,22 +206,22 @@ fun IntervalsScreen(vm: AppViewModel) {
     // (the heavy per-second BevelGauge hero) and off-screen cards (config) don't recompose or get
     // semantics-walked. Order/spacing unchanged (LazyColumn reproduces the eager `spacedBy(20.dp)`).
     LazyScreenScaffold(
-        title = "Interval Timer",
-        subtitle = "Silent haptic HIIT - the strap buzzes the transitions",
+        title = stringResource(R.string.intervals_title),
+        subtitle = stringResource(R.string.intervals_subtitle),
     ) {
         // --- Status row ---
         item {
         Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             if (live.bonded) {
-                StatePill("Buzz cues on", tone = StrandTone.Positive)
+                StatePill(stringResource(R.string.intervals_buzz_cues_on), tone = StrandTone.Positive)
             } else {
-                StatePill("Connect strap for buzz cues", tone = StrandTone.Warning)
+                StatePill(stringResource(R.string.intervals_connect_for_buzz), tone = StrandTone.Warning)
             }
             Spacer(Modifier.weight(1f))
             when {
-                running -> StatePill("Running", tone = StrandTone.Accent, pulsing = true)
-                isFinished -> StatePill("Complete", tone = StrandTone.Positive)
-                else -> StatePill("Paused", tone = StrandTone.Neutral, showsDot = false)
+                running -> StatePill(stringResource(R.string.intervals_running), tone = StrandTone.Accent, pulsing = true)
+                isFinished -> StatePill(stringResource(R.string.intervals_complete), tone = StrandTone.Positive)
+                else -> StatePill(stringResource(R.string.intervals_paused), tone = StrandTone.Neutral, showsDot = false)
             }
         }
         }
@@ -241,7 +244,7 @@ fun IntervalsScreen(vm: AppViewModel) {
                         modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        PhaseChip(label = phase.label, color = phaseColor)
+                        PhaseChip(label = stringResource(phase.label), color = phaseColor)
                         Spacer(Modifier.weight(1f))
                         RoundChip(currentRound = min(currentRound, rounds), rounds = rounds)
                     }
@@ -256,7 +259,9 @@ fun IntervalsScreen(vm: AppViewModel) {
                             stops = phaseStops,
                             tipColor = phaseColor,
                             numberText = if (isFinished) "✓" else remaining.toString(),
-                            captionText = if (isFinished) "SESSION DONE" else "SECONDS",
+                            captionText = stringResource(
+                                if (isFinished) R.string.intervals_session_done else R.string.intervals_seconds,
+                            ),
                             diameter = 240.dp,
                             lineWidth = 18.dp,
                         )
@@ -284,7 +289,11 @@ fun IntervalsScreen(vm: AppViewModel) {
                                 modifier = Modifier.padding(end = 6.dp),
                             )
                             Text(
-                                if (running) "Pause" else if (isFinished) "Restart" else "Start",
+                                stringResource(
+                                    if (running) R.string.intervals_pause
+                                    else if (isFinished) R.string.intervals_restart
+                                    else R.string.intervals_start,
+                                ),
                                 style = NoopType.headline,
                             )
                         }
@@ -304,7 +313,7 @@ fun IntervalsScreen(vm: AppViewModel) {
                                 contentDescription = null,
                                 modifier = Modifier.padding(end = 6.dp),
                             )
-                            Text("Reset", style = NoopType.headline)
+                            Text(stringResource(R.string.intervals_reset), style = NoopType.headline)
                         }
                     }
 
@@ -322,7 +331,7 @@ fun IntervalsScreen(vm: AppViewModel) {
                             )
                             Spacer(Modifier.width(Metrics.space6))
                             Text(
-                                "Bond your strap on the Live screen to feel the transitions hands-free.",
+                                stringResource(R.string.intervals_bond_hint),
                                 style = NoopType.footnote,
                                 color = Palette.textTertiary,
                                 textAlign = TextAlign.Center,
@@ -342,10 +351,13 @@ fun IntervalsScreen(vm: AppViewModel) {
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.Bottom,
                 ) {
-                    Overline("Session")
+                    Overline(stringResource(R.string.intervals_overline_session))
                     Spacer(Modifier.weight(1f))
                     Text(
-                        "${timeString(elapsed)} / ${timeString(totalPlanned)}",
+                        stringResource(
+                            R.string.intervals_elapsed_of_total,
+                            timeString(elapsed), timeString(totalPlanned),
+                        ),
                         style = NoopType.bodyNumber,
                         color = Palette.textPrimary,
                     )
@@ -378,11 +390,20 @@ fun IntervalsScreen(vm: AppViewModel) {
                 }
 
                 Row(modifier = Modifier.fillMaxWidth()) {
-                    OverviewStat(Modifier.weight(1f), "Work", "${workSeconds}s", Palette.effortColor)
-                    OverviewStat(Modifier.weight(1f), "Rest", "${restSeconds}s", Palette.restColor)
-                    OverviewStat(Modifier.weight(1f), "Rounds", rounds.toString(), Palette.textPrimary)
                     OverviewStat(
-                        Modifier.weight(1f), "Remaining",
+                        Modifier.weight(1f), stringResource(R.string.intervals_work),
+                        "${workSeconds}s", Palette.effortColor,
+                    )
+                    OverviewStat(
+                        Modifier.weight(1f), stringResource(R.string.intervals_rest),
+                        "${restSeconds}s", Palette.restColor,
+                    )
+                    OverviewStat(
+                        Modifier.weight(1f), stringResource(R.string.intervals_rounds),
+                        rounds.toString(), Palette.textPrimary,
+                    )
+                    OverviewStat(
+                        Modifier.weight(1f), stringResource(R.string.intervals_remaining),
                         timeString(max(0, totalPlanned - elapsed)), Palette.textSecondary,
                     )
                 }
@@ -394,27 +415,28 @@ fun IntervalsScreen(vm: AppViewModel) {
         item {
         NoopCard {
             Column(verticalArrangement = Arrangement.spacedBy(Metrics.space14)) {
-                Overline("Configure")
+                Overline(stringResource(R.string.intervals_overline_configure))
+                val secUnit = stringResource(R.string.intervals_unit_sec)
                 ConfigStepper(
-                    title = "Work", unit = "sec", value = workSeconds,
+                    title = stringResource(R.string.intervals_work), unit = secUnit, value = workSeconds,
                     range = 5..600, step = 5, tint = Palette.effortColor, enabled = !running,
                     onChange = { workSeconds = it },
                 )
                 Divider()
                 ConfigStepper(
-                    title = "Rest", unit = "sec", value = restSeconds,
+                    title = stringResource(R.string.intervals_rest), unit = secUnit, value = restSeconds,
                     range = 5..600, step = 5, tint = Palette.restColor, enabled = !running,
                     onChange = { restSeconds = it },
                 )
                 Divider()
                 ConfigStepper(
-                    title = "Rounds", unit = null, value = rounds,
+                    title = stringResource(R.string.intervals_rounds), unit = null, value = rounds,
                     range = 1..30, step = 1, tint = Palette.textPrimary, enabled = !running,
                     onChange = { rounds = it },
                 )
                 if (running) {
                     Text(
-                        "Pause to change work, rest, or rounds.",
+                        stringResource(R.string.intervals_pause_to_change),
                         style = NoopType.footnote,
                         color = Palette.textTertiary,
                     )
@@ -456,7 +478,7 @@ private fun RoundChip(currentRound: Int, rounds: Int) {
             .border(Metrics.divider, Palette.hairline, shape)
             .padding(horizontal = Metrics.space12, vertical = 7.dp),
     ) {
-        Overline("Round")
+        Overline(stringResource(R.string.intervals_round))
         Spacer(Modifier.width(Metrics.space6))
         Text(currentRound.toString(), style = NoopType.number(18f), color = Palette.textPrimary)
         Spacer(Modifier.width(Metrics.space2))
@@ -503,7 +525,10 @@ private fun ConfigStepper(
         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(Metrics.space2)) {
             Text(title, style = NoopType.headline, color = Palette.textPrimary.copy(alpha = dim))
             Text(
-                "${range.first} - ${range.last}${unit?.let { " $it" } ?: ""} · step $step",
+                if (unit != null)
+                    stringResource(R.string.intervals_range_step_unit, range.first, range.last, unit, step)
+                else
+                    stringResource(R.string.intervals_range_step, range.first, range.last, step),
                 style = NoopType.footnote,
                 color = Palette.textTertiary.copy(alpha = dim),
             )
@@ -528,14 +553,14 @@ private fun ConfigStepper(
         Spacer(Modifier.width(Metrics.space12))
         StepperButton(
             icon = Icons.Filled.Remove,
-            description = "Decrease $title",
+            description = stringResource(R.string.intervals_stepper_decrease, title),
             enabled = enabled && value > range.first,
             tint = tint,
         ) { onChange((value - step).coerceIn(range.first, range.last)) }
         Spacer(Modifier.width(Metrics.space8))
         StepperButton(
             icon = Icons.Filled.Add,
-            description = "Increase $title",
+            description = stringResource(R.string.intervals_stepper_increase, title),
             enabled = enabled && value < range.last,
             tint = tint,
         ) { onChange((value + step).coerceIn(range.first, range.last)) }

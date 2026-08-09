@@ -7,7 +7,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.noop.R
 import com.noop.analytics.Baselines
 import com.noop.analytics.CalendarDay
 import com.noop.analytics.StrainScorer
@@ -122,10 +124,12 @@ internal fun rememberWhoopHomeState(viewModel: AppViewModel, dayOffset: Int): Wh
     val labelDate = remember(dayKey, date) {
         runCatching { LocalDate.parse(dayKey) }.getOrNull() ?: date
     }
-    val title = remember(dayOffset, labelDate) {
+    val todayWord = stringResource(R.string.common_today)
+    val yesterdayWord = stringResource(R.string.whoopskin_yesterday)
+    val title = remember(dayOffset, labelDate, todayWord, yesterdayWord) {
         when (dayOffset) {
-            0 -> "Today"
-            1 -> "Yesterday"
+            0 -> todayWord
+            1 -> yesterdayWord
             else -> labelDate.format(DateTimeFormatter.ofPattern("EEEE", Locale.US))
         }
     }

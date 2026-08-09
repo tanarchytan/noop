@@ -5,6 +5,8 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
+import com.noop.R
 import com.noop.data.DailyMetric
 import com.noop.ui.DualAxisTrendChart
 import com.noop.ui.EffortScale
@@ -50,7 +52,10 @@ internal fun WhoopStrainRecoveryCard(
     if (week.columns.isEmpty()) return
     NoopCard(modifier = modifier) {
         Column(verticalArrangement = Arrangement.spacedBy(Metrics.space12)) {
-            NoopCardHeader("Strain & recovery", onClick = onOpenTrends)
+            NoopCardHeader(
+                stringResource(R.string.whoopskin_strain_and_recovery),
+                onClick = onOpenTrends,
+            )
             DualAxisTrendChart(
                 dayLabels = week.labels,
                 leftName = "Effort",

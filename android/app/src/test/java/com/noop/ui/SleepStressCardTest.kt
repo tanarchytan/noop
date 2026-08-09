@@ -50,6 +50,8 @@ class SleepStressCardTest {
     fun `the chart describes every night by its high time`() {
         val text = sleepStressDescription(
             listOf(night(180, 120, 60, 16.6), night(300, 60, 0, 0.0).copy(label = "Sun")),
+            "Sleep stress over the last 2 nights.",
+            "%1\$s %2\$s high",
         )
         assertTrue("names the span", text.startsWith("Sleep stress over the last 2 nights."))
         assertTrue("carries Saturday's high time", text.contains("Sat 1h 0m high"))

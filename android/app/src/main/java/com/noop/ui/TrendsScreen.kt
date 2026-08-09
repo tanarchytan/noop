@@ -70,7 +70,8 @@ fun TrendsScreen(vm: AppViewModel) {
     val days = fullHistory ?: reactiveDays
 
     // Effort display scale , routes the Effort small-multiple's numbers + unit. Display-only.
-    val effortScale = UnitPrefs.effortScale(LocalContext.current)
+    val context = LocalContext.current
+    val effortScale = UnitPrefs.effortScale(context)
 
     var range by remember { mutableStateOf(TrendsRange.Quarter) }
 
@@ -163,14 +164,14 @@ fun TrendsScreen(vm: AppViewModel) {
                     SegmentedPillControl(
                         items = TrendsRange.entries.toList(),
                         selection = range,
-                        label = { it.label },
+                        label = { context.getString(it.label) },
                         onSelect = { range = it },
                     )
                     Spacer(Modifier.weight(1f))
                     Overline(range.subtitle, color = Palette.textTertiary)
                 }
                 Text(
-                    recovery.caption,
+                    recovery.captionText,
                     style = NoopType.footnote,
                     color = if (recovery.widened) Palette.statusWarning else Palette.textTertiary,
                 )

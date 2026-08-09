@@ -32,9 +32,11 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipRect
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import com.noop.R
 import com.noop.analytics.RustScores
 import java.util.Locale
 import kotlin.math.roundToInt
@@ -98,15 +100,23 @@ internal fun SleepStagesCard(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 TypicalMarkKey()
                 Spacer(Modifier.width(Metrics.space6))
-                Text("TYPICAL", style = NoopType.overline, color = Palette.textTertiary)
+                Text(
+                    stringResource(R.string.sleep_stages_typical),
+                    style = NoopType.overline,
+                    color = Palette.textTertiary,
+                )
                 Spacer(Modifier.weight(1f))
-                Text("DURATION", style = NoopType.overline, color = Palette.textTertiary)
+                Text(
+                    stringResource(R.string.sleep_stages_duration),
+                    style = NoopType.overline,
+                    color = Palette.textTertiary,
+                )
                 Spacer(Modifier.width(Metrics.space8))
                 Text(durationText(inBedMin), style = NoopType.captionNumber, color = Palette.textPrimary)
             }
             if (real == null) {
                 Text(
-                    "No per-epoch stage timeline for this night, so the rows show totals only.",
+                    stringResource(R.string.sleep_stages_no_timeline),
                     style = NoopType.footnote,
                     color = Palette.textTertiary,
                 )
@@ -132,10 +142,15 @@ internal fun SleepStagesCard(
 @Composable
 private fun SleepStagesHeadline(asleepMin: Double, typicalAsleepMin: Double?) {
     Column(verticalArrangement = Arrangement.spacedBy(Metrics.space2)) {
-        Text("HOURS OF SLEEP", style = NoopType.overline, color = Palette.textTertiary)
+        Text(
+            stringResource(R.string.sleep_stages_hours_of_sleep),
+            style = NoopType.overline,
+            color = Palette.textTertiary,
+        )
         Text(durationText(asleepMin), style = NoopType.tileValueLarge, color = Palette.textPrimary, maxLines = 1)
         Text(
-            typicalAsleepMin?.let { "${durationText(it)} typical" } ?: "no typical yet",
+            typicalAsleepMin?.let { stringResource(R.string.sleep_typical_value, durationText(it)) }
+                ?: stringResource(R.string.sleep_no_typical_yet),
             style = NoopType.footnote,
             color = Palette.textSecondary,
         )
@@ -229,6 +244,19 @@ private fun SleepStageRow(
     val typicalFrac = typicalMin
         ?.takeIf { it > 0.0 && total > 0.0 }
         ?.let { (it / total).coerceIn(0.0, 1.0).toFloat() }
+    // [label] stays the row's identifier; this is the name it is READ and PRINTED under.
+    val stageName = stringResource(
+        when (label) {
+            "Light" -> R.string.sleep_stage_light
+            "Deep" -> R.string.sleep_stage_deep
+            "REM" -> R.string.sleep_stage_rem
+            else -> R.string.sleep_stage_awake
+        },
+    )
+    val rowClickLabel = stringResource(R.string.sleep_stage_row_click_label)
+    val rowDescription = percent
+        ?.let { stringResource(R.string.sleep_stage_row_a11y, stageName, durationText(minutes), it) }
+        ?: stringResource(R.string.sleep_stage_row_a11y_no_share, stageName, durationText(minutes))
     Column(
         verticalArrangement = Arrangement.spacedBy(Metrics.space6),
         modifier = Modifier
@@ -236,19 +264,15 @@ private fun SleepStageRow(
             .clip(shape)
             .background(Palette.textPrimary.copy(alpha = 0.045f))
             .then(if (selected) Modifier.border(1.5.dp, Palette.hairlineStrong, shape) else Modifier)
-            .clickable(onClickLabel = "Highlights this stage on the sleep chart", onClick = onTap)
+            .clickable(onClickLabel = rowClickLabel, onClick = onTap)
             .padding(horizontal = Metrics.stageRowPadH, vertical = Metrics.stageRowPadV)
-            .semantics(mergeDescendants = true) {
-                contentDescription = percent
-                    ?.let { "$label: ${durationText(minutes)}, $it percent of the night" }
-                    ?: "$label: ${durationText(minutes)}, share of the night not known"
-            },
+            .semantics(mergeDescendants = true) { contentDescription = rowDescription },
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             SleepStageDot(color = color, filled = selected)
             Spacer(modifier = Modifier.width(Metrics.space8))
             Text(
-                label.uppercase(Locale.getDefault()),
+                stageName.uppercase(Locale.getDefault()),
                 style = NoopType.overline,
                 color = Palette.textPrimary,
                 maxLines = 1,
@@ -273,7 +297,7 @@ private fun SleepStageRow(
         // rather than reading as a stage the night never had.
         if (drawnMin != null && drawnMin.roundToInt() < minutes.roundToInt()) {
             Text(
-                "This night's timeline holds ${durationText(drawnMin)} of it.",
+                stringResource(R.string.sleep_stage_row_timeline_holds, durationText(drawnMin)),
                 style = NoopType.footnote,
                 color = Palette.textTertiary,
             )
@@ -374,7 +398,11 @@ private fun TypicalMarkKey() {
 @Composable
 private fun SleepMotionStrip(epochs: List<Double>) {
     if (epochs.size < 2) {
-        Text("No movement detail for this night.", style = NoopType.footnote, color = Palette.textTertiary)
+        Text(
+            stringResource(R.string.sleep_motion_none),
+            style = NoopType.footnote,
+            color = Palette.textTertiary,
+        )
         return
     }
     val tint = Palette.restColor
@@ -412,13 +440,21 @@ private fun SleepMotionStrip(epochs: List<Double>) {
 @Composable
 private fun SleepStageInsight(selectedStage: String?, stages: Stages, stagePercents: Map<String, Int>) {
     val text = if (selectedStage == null) {
-        "Tap a stage to highlight it across the night."
+        stringResource(R.string.sleep_stage_insight_hint)
     } else {
         // The rows' own apportionment, so the sentence can never disagree with the row above it.
         val minutes = durationText(stageMinutes(stages, selectedStage))
+        val stageName = stringResource(
+            when (selectedStage) {
+                "Light" -> R.string.sleep_stage_light
+                "Deep" -> R.string.sleep_stage_deep
+                "REM" -> R.string.sleep_stage_rem
+                else -> R.string.sleep_stage_awake
+            },
+        )
         stagePercents[selectedStage]
-            ?.let { "$selectedStage tonight: $minutes — $it% of the night." }
-            ?: "$selectedStage tonight: $minutes."
+            ?.let { stringResource(R.string.sleep_stage_insight_pct, stageName, minutes, it) }
+            ?: stringResource(R.string.sleep_stage_insight, stageName, minutes)
     }
     Box(
         modifier = Modifier.fillMaxWidth().height(Metrics.stageInsightHeight),
@@ -439,7 +475,7 @@ private fun SleepStagesFooter(stages: Stages, efficiencyText: String) {
                 .background(Palette.sleepREM),
         )
         Spacer(Modifier.width(Metrics.space10))
-        Text("RESTORATIVE SLEEP", style = NoopType.overline, color = Palette.textPrimary)
+        Text(stringResource(R.string.sleep_restorative), style = NoopType.overline, color = Palette.textPrimary)
         Spacer(Modifier.weight(1f))
         Text(
             durationText(stages.deep + stages.rem),
@@ -455,7 +491,7 @@ private fun SleepStagesFooter(stages: Stages, efficiencyText: String) {
                 .background(Palette.sleepAwake),
         )
         Spacer(Modifier.width(Metrics.space10))
-        Text("SLEEP EFFICIENCY", style = NoopType.overline, color = Palette.textPrimary)
+        Text(stringResource(R.string.sleep_efficiency), style = NoopType.overline, color = Palette.textPrimary)
         Spacer(Modifier.weight(1f))
         Text(efficiencyText, style = NoopType.captionNumber, color = Palette.textPrimary)
     }

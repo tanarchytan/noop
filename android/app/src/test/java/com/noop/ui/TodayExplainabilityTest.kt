@@ -1,11 +1,14 @@
 package com.noop.ui
 
+import com.noop.R
 import com.noop.analytics.FusionSource
 import com.noop.data.DailyMetric
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.io.File
+import java.util.Locale
 
 /**
  * Unit tests for the Today explainability layer (spec: 2026-06-20-sleep-guidance-explainability.md):
@@ -23,6 +26,27 @@ class TodayExplainabilityTest {
     private fun day(key: String, recovery: Double? = null, deviceId: String = "my-whoop") =
         DailyMetric(deviceId = deviceId, day = key, recovery = recovery)
 
+    /**
+     * The copy moved to resources, so a state now names a KEY and the file says what the key reads.
+     * [core] holds every `<string name="x">y</string>` in strings_core.xml; [says] renders one the way
+     * the screen would, so the VERBATIM assertions below still compare finished sentences.
+     */
+    private val core: Map<String, String> = run {
+        val userDir = File(System.getProperty("user.dir") ?: ".")
+        val values = listOf(userDir, File(userDir, "app"), File(userDir, "android/app"))
+            .map { File(it, "src/main/res/values") }
+            .firstOrNull { it.isDirectory }
+            ?: error("res/values not found from ${userDir.absolutePath}")
+        val pattern = Regex("""<string name="([^"]+)">(.*?)</string>""", RegexOption.DOT_MATCHES_ALL)
+        values.listFiles { f -> f.name.startsWith("strings") && f.extension == "xml" }
+            .orEmpty()
+            .flatMap { pattern.findAll(it.readText()).toList() }
+            .associate { it.groupValues[1] to it.groupValues[2].replace("\\'", "'") }
+    }
+
+    private fun says(name: String, vararg args: Any): String =
+        String.format(Locale.US, core[name] ?: error("no string resource named $name"), *args)
+
     // ── COMPONENT 2 — score state ────────────────────────────────────────────────────────────────────
 
     @Test
@@ -37,10 +61,12 @@ class TodayExplainabilityTest {
         // 1 night banked, seed 4 → "about 3 more nights". No fabricated value.
         val state = scoreStateForToday(todayRecovery = null, calibratingNights = 1, carriedDay = null, seed = 4)
         assertEquals(ScoreState.Calibrating(3), state)
-        assertEquals("Calibrating", state.title)
+        assertEquals(R.string.core_state_calibrating, state.titleRes)
+        assertEquals("Calibrating", says("core_state_calibrating"))
+        assertEquals(R.string.core_state_calibrating_detail, state.detailRes)
         assertEquals(
             "Building your baseline. About 3 more nights until your scores are personal.",
-            state.detail,
+            says("core_state_calibrating_detail", 3, core.getValue("today_milestone_nights_other")),
         )
     }
 
@@ -51,7 +77,7 @@ class TodayExplainabilityTest {
         assertEquals(ScoreState.Calibrating(1), state)
         assertEquals(
             "Building your baseline. About 1 more night until your scores are personal.",
-            state.detail,
+            says("core_state_calibrating_detail", 1, core.getValue("today_milestone_night_one")),
         )
     }
 
@@ -70,8 +96,10 @@ class TodayExplainabilityTest {
         val state = scoreStateForToday(todayRecovery = null, calibratingNights = null, carriedDay = prior,
             today = "2026-01-15")
         assertEquals(ScoreState.CarriedLastNight("14 Jan", false), state)
-        assertEquals("Last night · 14 Jan", state.title)
-        assertEquals("Tonight's lands after you sleep with the strap on.", state.detail)
+        assertEquals(R.string.core_caption_last_night, state.titleRes)
+        assertEquals("Last night · 14 Jan", says("core_caption_last_night", "14 Jan"))
+        assertEquals(R.string.core_state_carried_detail, state.detailRes)
+        assertEquals("Tonight's lands after you sleep with the strap on.", says("core_state_carried_detail"))
     }
 
     @Test
@@ -82,17 +110,30 @@ class TodayExplainabilityTest {
         val state = scoreStateForToday(todayRecovery = null, calibratingNights = null, carriedDay = prior,
             today = "2026-02-11")
         assertEquals(ScoreState.CarriedLastNight("14 Jan", true), state)
-        assertEquals("Latest sleep · 14 Jan", state.title)
-        assertEquals("This is your last scored session. Wear the strap overnight for a fresh score.", state.detail)
+        assertEquals(R.string.core_caption_latest_sleep, state.titleRes)
+        assertEquals("Latest sleep · 14 Jan", says("core_caption_latest_sleep", "14 Jan"))
+        assertEquals(R.string.core_state_carried_stale_detail, state.detailRes)
+        assertEquals(
+            "This is your last scored session. Wear the strap overnight for a fresh score.",
+            says("core_state_carried_stale_detail"),
+        )
     }
 
     @Test
     fun carriedCaption_capsLastNightToTwoDays() {
         // Within the cap → "Last night"; older → "Latest sleep". The cap is inclusive at 2 days. (#779)
         assertEquals(false, isCarryStale("2026-01-13", "2026-01-15"))
-        assertEquals("Last night · 13 Jan", carriedCaption("2026-01-13", "2026-01-15"))
+        assertEquals(R.string.core_caption_last_night, carriedCaption("2026-01-13", "2026-01-15"))
+        assertEquals(
+            "Last night · 13 Jan",
+            says("core_caption_last_night", lastChargeDateLabel("2026-01-13")),
+        )
         assertEquals(true, isCarryStale("2026-01-12", "2026-01-15"))
-        assertEquals("Latest sleep · 12 Jan", carriedCaption("2026-01-12", "2026-01-15"))
+        assertEquals(R.string.core_caption_latest_sleep, carriedCaption("2026-01-12", "2026-01-15"))
+        assertEquals(
+            "Latest sleep · 12 Jan",
+            says("core_caption_latest_sleep", lastChargeDateLabel("2026-01-12")),
+        )
         // An unparseable key never reads stale (never over-claims).
         assertEquals(false, isCarryStale("not-a-date", "2026-01-15"))
     }
@@ -101,8 +142,13 @@ class TodayExplainabilityTest {
     fun scoreState_needsStrap_whenNothingToShow() {
         val state = scoreStateForToday(todayRecovery = null, calibratingNights = null, carriedDay = null)
         assertEquals(ScoreState.NeedsStrap, state)
-        assertEquals("Needs the strap", state.title)
-        assertEquals("No data for today. Was your strap worn and connected overnight?", state.detail)
+        assertEquals(R.string.core_state_needs_strap, state.titleRes)
+        assertEquals("Needs the strap", says("core_state_needs_strap"))
+        assertEquals(R.string.core_state_needs_strap_detail, state.detailRes)
+        assertEquals(
+            "No data for today. Was your strap worn and connected overnight?",
+            says("core_state_needs_strap_detail"),
+        )
     }
 
     @Test
@@ -119,8 +165,10 @@ class TodayExplainabilityTest {
         val calibrating = scoreStateForToday(todayRecovery = null, calibratingNights = 0, carriedDay = null, seed = 4)
         val needsStrap = scoreStateForToday(todayRecovery = null, calibratingNights = null, carriedDay = null)
         // No "%" or other number sneaks into the title.
-        assertTrue(!calibrating.title.contains("%"))
-        assertTrue(!needsStrap.title.contains("%"))
+        assertTrue(!says("core_state_calibrating").contains("%"))
+        assertTrue(!says("core_state_needs_strap").contains("%"))
+        assertEquals(R.string.core_state_calibrating, calibrating.titleRes)
+        assertEquals(R.string.core_state_needs_strap, needsStrap.titleRes)
     }
 
     // ── COMPONENT 3 — recording state ────────────────────────────────────────────────────────────────
@@ -129,8 +177,10 @@ class TodayExplainabilityTest {
     fun recording_whenConnectedAndLiveHr() {
         val state = recordingStateFor(connected = true, liveHeartRate = 58, lastSyncAtSec = null, nowSec = 1_000_000)
         assertEquals(RecordingState.Recording, state)
-        assertEquals("Recording", state.title)
-        assertEquals("Your strap is connected and saving data.", state.detail)
+        assertEquals(R.string.core_recording, state.titleRes)
+        assertEquals("Recording", says("core_recording"))
+        assertEquals(R.string.core_recording_detail, state.detailRes)
+        assertEquals("Your strap is connected and saving data.", says("core_recording_detail"))
         assertEquals(StrandTone.Positive, state.tone)
     }
 
@@ -147,8 +197,10 @@ class TodayExplainabilityTest {
         val now = 1_000_000L
         val state = recordingStateFor(connected = false, liveHeartRate = null, lastSyncAtSec = now - 540, nowSec = now)
         assertEquals(RecordingState.LastSynced(9), state)
-        assertEquals("Last synced 9m ago", state.title)
-        assertEquals("Reconnect to pull the latest.", state.detail)
+        assertEquals(R.string.core_last_synced, state.titleRes)
+        assertEquals("Last synced 9m ago", says("core_last_synced", 9))
+        assertEquals(R.string.core_last_synced_detail, state.detailRes)
+        assertEquals("Reconnect to pull the latest.", says("core_last_synced_detail"))
         assertEquals(StrandTone.Neutral, state.tone)
     }
 
@@ -160,7 +212,7 @@ class TodayExplainabilityTest {
         val now = 1_000_000L
         val state = recordingStateFor(connected = false, liveHeartRate = null, lastSyncAtSec = now - 30, nowSec = now)
         assertEquals(RecordingState.LastSynced(1), state)
-        assertEquals("Last synced 1m ago", state.title)
+        assertEquals("Last synced 1m ago", says("core_last_synced", 1))
     }
 
     @Test
@@ -169,7 +221,7 @@ class TodayExplainabilityTest {
         val now = 1_000_000L
         val state = recordingStateFor(connected = false, liveHeartRate = null, lastSyncAtSec = now - 481, nowSec = now)
         assertEquals(RecordingState.LastSynced(9), state)
-        assertEquals("Last synced 9m ago", state.title)
+        assertEquals("Last synced 9m ago", says("core_last_synced", 9))
         // 1 second ago still rounds up to a whole minute.
         val oneSecond = recordingStateFor(connected = false, liveHeartRate = null, lastSyncAtSec = now - 1, nowSec = now)
         assertEquals(RecordingState.LastSynced(1), oneSecond)
@@ -181,7 +233,7 @@ class TodayExplainabilityTest {
         val now = 1_000_000L
         val state = recordingStateFor(connected = false, liveHeartRate = null, lastSyncAtSec = now, nowSec = now)
         assertEquals(RecordingState.LastSynced(0), state)
-        assertEquals("Last synced 0m ago", state.title)
+        assertEquals("Last synced 0m ago", says("core_last_synced", 0))
     }
 
     @Test
@@ -191,15 +243,17 @@ class TodayExplainabilityTest {
         val now = 1_000_000L
         val state = recordingStateFor(connected = false, liveHeartRate = null, lastSyncAtSec = now + 30, nowSec = now)
         assertEquals(RecordingState.LastSynced(0), state)
-        assertEquals("Last synced 0m ago", state.title)
+        assertEquals("Last synced 0m ago", says("core_last_synced", 0))
     }
 
     @Test
     fun notRecording_whenNoConnectionAndNoSync() {
         val state = recordingStateFor(connected = false, liveHeartRate = null, lastSyncAtSec = null, nowSec = 1_000_000)
         assertEquals(RecordingState.NotRecording, state)
-        assertEquals("Not recording", state.title)
-        assertEquals("Strap not connected. Tap to connect.", state.detail)
+        assertEquals(R.string.core_not_recording, state.titleRes)
+        assertEquals("Not recording", says("core_not_recording"))
+        assertEquals(R.string.core_not_recording_detail, state.detailRes)
+        assertEquals("Strap not connected. Tap to connect.", says("core_not_recording_detail"))
         assertEquals(StrandTone.Critical, state.tone)
     }
 

@@ -31,11 +31,13 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.noop.R
 import com.noop.analytics.Baselines
 import com.noop.analytics.ReadinessEngine
 import com.noop.analytics.RecoveryScorer
@@ -166,7 +168,7 @@ fun CoupledScreen(
     // No topBackground: the scaffold takes its opaque path and paints Palette.surfaceBase, so the canvas
     // follows the theme in both light and dark.
     ScreenScaffold(
-        title = "Day",
+        title = stringResource(R.string.coupled_title),
         subtitle = subtitleToday(),
     ) {
         HeroCard(
@@ -195,7 +197,7 @@ fun CoupledScreen(
             // The brief quotes the footer with the brand word, but the hard legal / anonymity rule wins over
             // the illustrative copy: this keeps the exact intent without the branding word. Byte-identical to
             // the Swift footer caption.
-            "A classic one-glance read of NOOP's own scores. Same data, different lens.",
+            stringResource(R.string.coupled_footer),
             style = NoopType.footnote,
             color = Palette.textTertiary,
             modifier = Modifier.padding(top = 4.dp),
@@ -235,10 +237,10 @@ private fun HeroCard(
     onTap: () -> Unit,
 ) {
     val a11y = when {
-        recovery != null -> "Recovery ${recovery.roundToInt()} percent. See what shaped your Charge"
+        recovery != null -> stringResource(R.string.coupled_a11y_recovery, recovery.roundToInt())
         calibrationNights != null ->
-            "Recovery calibrating, $calibrationNights of ${Baselines.minNightsSeed} nights"
-        else -> "Recovery, no data yet"
+            stringResource(R.string.coupled_a11y_calibrating, calibrationNights, Baselines.minNightsSeed)
+        else -> stringResource(R.string.coupled_a11y_no_data)
     }
     // The whole hero is the breakdown's tap target. The SAME interactionSource drives the clickable and
     // the press, so the card settles inward on press.
@@ -251,7 +253,7 @@ private fun HeroCard(
             .clickable(
                 interactionSource = interaction,
                 indication = null,
-                onClickLabel = "See what shaped your Charge",
+                onClickLabel = stringResource(R.string.coupled_open_breakdown),
                 onClick = onTap,
             )
             .semantics { contentDescription = a11y },
@@ -281,13 +283,16 @@ private fun HeroCard(
             // the baseline seeds. Nothing when today's own score is showing.
             if (isCarrying && carriedDay != null) {
                 Text(
-                    carriedCaption(carriedDay.day, today = todayKey),
+                    stringResource(
+                        carriedCaption(carriedDay.day, today = todayKey),
+                        lastChargeDateLabel(carriedDay.day),
+                    ),
                     style = NoopType.footnote,
                     color = Palette.textTertiary,
                 )
             } else if (recovery == null && calibrationNights != null) {
                 Text(
-                    "Calibrating, $calibrationNights of ${Baselines.minNightsSeed} nights",
+                    stringResource(R.string.coupled_calibrating, calibrationNights, Baselines.minNightsSeed),
                     style = NoopType.footnote,
                     color = Palette.textTertiary,
                 )
@@ -304,9 +309,9 @@ private fun HeroLabels(recovery: Double?, readinessLevel: ReadinessEngine.Level)
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(Metrics.space4),
     ) {
-        Text("RECOVERY", style = NoopType.overline, color = sampled)
+        Text(stringResource(R.string.coupled_recovery), style = NoopType.overline, color = sampled)
         val word = readinessWord(readinessLevel)
-        if (word != null) ReadinessPill(word = word, level = readinessLevel)
+        if (word != null) ReadinessPill(word = stringResource(word), level = readinessLevel)
     }
 }
 
@@ -363,7 +368,12 @@ private fun StrainCard(dayStrain21: Double?, recovery: Double?, calories: Double
                         diameter = EFFORT_RING_DIAMETER,
                         showsLabel = false,
                     )
-                    Text("No effort yet", style = NoopType.footnote, color = Palette.textTertiary, modifier = Modifier.padding(top = Metrics.space6))
+                    Text(
+                        stringResource(R.string.coupled_no_effort),
+                        style = NoopType.footnote,
+                        color = Palette.textTertiary,
+                        modifier = Modifier.padding(top = Metrics.space6),
+                    )
                 }
             }
 
@@ -372,10 +382,18 @@ private fun StrainCard(dayStrain21: Double?, recovery: Double?, calories: Double
                 modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.spacedBy(Metrics.space14),
             ) {
-                HeroStat("Day Strain", dayStrain21?.let { String.format(Locale.US, "%.1f", it) } ?: COUPLED_NO_DATA, Palette.effortColor)
-                HeroStat("Optimal", optimalStrainRangeText(recovery), Palette.chargeColor)
-                HeroStat("Calories", calories?.let { "${it.roundToInt()} kcal" } ?: COUPLED_NO_DATA, Palette.metricAmber)
-                HeroStat("Workouts", workouts.toString(), Palette.textPrimary)
+                HeroStat(
+                    stringResource(R.string.coupled_day_strain),
+                    dayStrain21?.let { String.format(Locale.US, "%.1f", it) } ?: COUPLED_NO_DATA,
+                    Palette.effortColor,
+                )
+                HeroStat(stringResource(R.string.coupled_optimal), optimalStrainRangeText(recovery), Palette.chargeColor)
+                HeroStat(
+                    stringResource(R.string.coupled_calories),
+                    calories?.let { "${it.roundToInt()} kcal" } ?: COUPLED_NO_DATA,
+                    Palette.metricAmber,
+                )
+                HeroStat(stringResource(R.string.coupled_workouts), workouts.toString(), Palette.textPrimary)
             }
         }
     }
@@ -413,7 +431,7 @@ private fun SleepCard(
             .clickable(
                 interactionSource = interaction,
                 indication = null,
-                onClickLabel = "Open Sleep",
+                onClickLabel = stringResource(R.string.coupled_open_sleep),
                 onClick = onOpenSleep,
             )
             .liquidPress(interaction),
@@ -438,12 +456,24 @@ private fun SleepCard(
                 modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.spacedBy(Metrics.space4),
             ) {
-                Text("SLEEP PERFORMANCE", style = NoopType.overline, color = Palette.textSecondary)
+                Text(stringResource(R.string.coupled_sleep_performance), style = NoopType.overline, color = Palette.textSecondary)
                 if (asleepMin != null && asleepMin > 0) {
-                    Text("${hoursMinutes(asleepMin)} slept", style = NoopType.headline, color = Palette.textPrimary)
-                    Text("${hoursMinutes(needMin)} needed", style = NoopType.subhead, color = Palette.textSecondary)
+                    Text(
+                        stringResource(R.string.coupled_slept, hoursMinutes(asleepMin)),
+                        style = NoopType.headline,
+                        color = Palette.textPrimary,
+                    )
+                    Text(
+                        stringResource(R.string.coupled_needed, hoursMinutes(needMin)),
+                        style = NoopType.subhead,
+                        color = Palette.textSecondary,
+                    )
                 } else {
-                    Text("No sleep tracked last night", style = NoopType.subhead, color = Palette.textSecondary)
+                    Text(
+                        stringResource(R.string.coupled_no_sleep),
+                        style = NoopType.subhead,
+                        color = Palette.textSecondary,
+                    )
                 }
                 if (bedWakeSpan != null) {
                     Text(bedWakeSpan, style = NoopType.footnote, color = Palette.textTertiary)
@@ -463,8 +493,11 @@ private fun SleepCard(
 // MARK: - Pure helpers (byte-identical formatting to the Swift CoupledView)
 
 /** The header subtitle "Today, d MMM". */
-private fun subtitleToday(): String =
-    "Today, " + SimpleDateFormat("d MMM", Locale.getDefault()).format(Date())
+@Composable
+private fun subtitleToday(): String = stringResource(
+    R.string.coupled_subtitle,
+    SimpleDateFormat("d MMM", Locale.getDefault()).format(Date()),
+)
 
 /** "6h 42m" from a minutes count, for the slept-vs-needed read. Mirrors CoupledView.hoursMinutes EXACTLY. */
 internal fun hoursMinutes(minutes: Double): String {

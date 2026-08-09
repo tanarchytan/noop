@@ -8,6 +8,7 @@ import com.noop.ai.AiCoach
 import com.noop.ai.AiKeyStore
 import com.noop.ai.AiProvider
 import com.noop.ai.ChatMsg
+import com.noop.R
 import com.noop.data.WhoopDatabase
 import com.noop.data.WhoopRepository
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -280,7 +281,7 @@ class CoachViewModel(app: Application) : AndroidViewModel(app) {
                 )
                 _messages.value = _messages.value + ChatMsg(role = "assistant", text = reply)
             } catch (e: Exception) {
-                _error.value = e.message ?: "Something went wrong. Please try again."
+                _error.value = e.message ?: appCtx.getString(R.string.coach_error_generic)
             } finally {
                 _sending.value = false
             }

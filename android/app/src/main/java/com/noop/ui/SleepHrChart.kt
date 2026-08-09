@@ -19,9 +19,11 @@ import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
+import com.noop.R
 import kotlin.math.ceil
 import kotlin.math.floor
 import kotlin.math.roundToInt
@@ -172,7 +174,7 @@ internal fun SleepHrChart(
     }
     if (inWindow.size < 2) {
         Text(
-            "No heart-rate detail for this night.",
+            stringResource(R.string.sleep_hr_none),
             style = NoopType.footnote,
             color = Palette.textTertiary,
         )
@@ -196,9 +198,26 @@ internal fun SleepHrChart(
     val gridColor = Palette.hairline
     val boundColor = Palette.textTertiary
     val labelArgb = Palette.textTertiary.toArgb()
-    val readOut = "Heart rate from ${clockTimeLabel(onsetTs)} to ${clockTimeLabel(wakeTs)}, " +
-        "$axisLo to $axisHi beats per minute" +
-        (selectedStage?.let { ", $it highlighted" } ?: "")
+    // The selected row's own name, so the read-out says which stage is banded.
+    val stageNameRes = when (selectedStage) {
+        "Light" -> R.string.sleep_stage_light
+        "Deep" -> R.string.sleep_stage_deep
+        "REM" -> R.string.sleep_stage_rem
+        "Awake" -> R.string.sleep_stage_awake
+        else -> null
+    }
+    val readOut = if (stageNameRes == null) {
+        stringResource(
+            R.string.sleep_hr_a11y,
+            clockTimeLabel(onsetTs), clockTimeLabel(wakeTs), axisLo, axisHi,
+        )
+    } else {
+        stringResource(
+            R.string.sleep_hr_a11y_stage,
+            clockTimeLabel(onsetTs), clockTimeLabel(wakeTs), axisLo, axisHi,
+            stringResource(stageNameRes),
+        )
+    }
 
     Column(verticalArrangement = Arrangement.spacedBy(Metrics.space6)) {
         Canvas(

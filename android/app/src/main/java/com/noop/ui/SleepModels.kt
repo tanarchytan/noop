@@ -1,6 +1,9 @@
 package com.noop.ui
 
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
+import com.noop.R
 import com.noop.analytics.AnalyticsEngine
 import com.noop.analytics.RustScores
 import com.noop.analytics.SleepDebt
@@ -645,17 +648,19 @@ internal fun pctValue(v: Double?): String = v?.let { "${it.roundToInt()}%" } ?: 
 // MARK: - Sleep-debt ledger formatting
 
 /** Plain-English read of the running balance over the window. */
+@Composable
 internal fun debtRead(ledger: SleepDebtLedger): String {
     val nights = ledger.nightCount
-    val span = "the last $nights night${if (nights == 1) "" else "s"}"
-    if (ledger.magnitudeMin < SleepDebt.ON_TARGET_BAND_MIN) {
-        return "You're roughly on top of your sleep across $span. Slept minutes balance out against your need."
-    }
+    val span = stringResource(
+        if (nights == 1) R.string.sleep_debt_span_one else R.string.sleep_debt_span_many,
+        nights,
+    )
     val mag = durationText(ledger.magnitudeMin)
-    return if (ledger.isDebt) {
-        "You've banked about $mag of sleep debt over $span. Surplus nights count back against it. An earlier night or two would clear it."
-    } else {
-        "You're carrying about $mag of surplus over $span. You've slept past your need on balance. Nicely ahead."
+    return when {
+        ledger.magnitudeMin < SleepDebt.ON_TARGET_BAND_MIN ->
+            stringResource(R.string.sleep_debt_on_target, span)
+        ledger.isDebt -> stringResource(R.string.sleep_debt_in_debt, mag, span)
+        else -> stringResource(R.string.sleep_debt_surplus, mag, span)
     }
 }
 

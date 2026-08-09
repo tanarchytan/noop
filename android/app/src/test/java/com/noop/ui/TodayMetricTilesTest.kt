@@ -1,5 +1,6 @@
 package com.noop.ui
 
+import com.noop.R
 import com.noop.data.AppleDaily
 import com.noop.data.DailyMetric
 import org.junit.Assert.assertEquals
@@ -7,6 +8,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.io.File
 
 /**
  * Unit tests for the Today Weight + Steps tile fallback logic (issues #107, #150). The Calories tile
@@ -19,6 +21,27 @@ import org.junit.Test
  *     the Steps tile's fallback when the strap (e.g. a WHOOP 4.0) didn't bank an on-device count.
  */
 class TodayMetricTilesTest {
+
+    /** Every `<string name="x">y</string>` in the app's strings_core.xml: the caption and hint copy
+     *  moved there, so the helpers name a key and the file says what the key reads. */
+    private val core: Map<String, String> = run {
+        val userDir = File(System.getProperty("user.dir") ?: ".")
+        val res = listOf(userDir, File(userDir, "app"), File(userDir, "android/app"))
+            .map { File(it, "src/main/res/values/strings_core.xml") }
+            .firstOrNull { it.isFile }
+            ?: error("strings_core.xml not found from ${userDir.absolutePath}")
+        Regex("""<string name="([^"]+)">(.*?)</string>""", RegexOption.DOT_MATCHES_ALL)
+            .findAll(res.readText())
+            .associate { it.groupValues[1] to it.groupValues[2].replace("\\'", "'") }
+    }
+
+    @Test
+    fun theWeightCaptionAndBuildingHintCopyIsStillWhatItWas() {
+        assertEquals("latest", core["core_weight_latest"])
+        assertEquals("from profile", core["core_weight_from_profile"])
+        assertEquals("Building, wear it tonight", core["core_building_wear_tonight"])
+        assertEquals("Building, moves as you do", core["core_building_moves_as_you_do"])
+    }
 
     private fun appleDay(day: String, weightKg: Double?) =
         AppleDaily(deviceId = "apple-health", day = day, weightKg = weightKg)
@@ -66,7 +89,7 @@ class TodayMetricTilesTest {
     fun weightTile_usesLatestReading_metric() {
         val t = weightTile(latestWeightKg = 74.5, profileWeightKg = 90.0, system = UnitSystem.METRIC)
         assertEquals("74.5 kg", t.value)
-        assertEquals("latest", t.caption)
+        assertEquals(R.string.core_weight_latest, t.caption)
     }
 
     @Test
@@ -74,14 +97,14 @@ class TodayMetricTilesTest {
         val t = weightTile(latestWeightKg = 100.0, profileWeightKg = 90.0, system = UnitSystem.IMPERIAL)
         // 100 kg * 2.20462 = 220.462 lb
         assertEquals("220.5 lb", t.value)
-        assertEquals("latest", t.caption)
+        assertEquals(R.string.core_weight_latest, t.caption)
     }
 
     @Test
     fun weightTile_fallsBackToProfile_withHonestCaption() {
         val t = weightTile(latestWeightKg = null, profileWeightKg = 75.0, system = UnitSystem.METRIC)
         assertEquals("75.0 kg", t.value)
-        assertEquals("from profile", t.caption)
+        assertEquals(R.string.core_weight_from_profile, t.caption)
     }
 
     @Test
@@ -89,7 +112,7 @@ class TodayMetricTilesTest {
         val t = weightTile(latestWeightKg = null, profileWeightKg = 75.0, system = UnitSystem.IMPERIAL)
         // 75 kg * 2.20462 = 165.3465 lb
         assertEquals("165.3 lb", t.value)
-        assertEquals("from profile", t.caption)
+        assertEquals(R.string.core_weight_from_profile, t.caption)
     }
 
     // MARK: stepsForDay — Today Steps-tile fallback to imported Apple Health / Health Connect (#150)
@@ -129,12 +152,12 @@ class TodayMetricTilesTest {
 
     @Test
     fun buildingHint_rest_today_isTheWearItTonightCopy() {
-        assertEquals("Building, wear it tonight", buildingHint(KeyMetric.REST, isToday = true))
+        assertEquals(R.string.core_building_wear_tonight, buildingHint(KeyMetric.REST, isToday = true))
     }
 
     @Test
     fun buildingHint_effort_today_isTheMovesAsYouDoCopy() {
-        assertEquals("Building, moves as you do", buildingHint(KeyMetric.EFFORT, isToday = true))
+        assertEquals(R.string.core_building_moves_as_you_do, buildingHint(KeyMetric.EFFORT, isToday = true))
     }
 
     @Test
@@ -149,19 +172,19 @@ class TodayMetricTilesTest {
     @Test
     fun buildingHint_charge_today_isTheWearItTonightCopy() {
         // H10: a cold-start Charge (no score, not calibrating, nothing carried) reads "building", not blank.
-        assertEquals("Building, wear it tonight", buildingHint(KeyMetric.CHARGE, isToday = true))
+        assertEquals(R.string.core_building_wear_tonight, buildingHint(KeyMetric.CHARGE, isToday = true))
     }
 
     @Test
     fun buildingHint_bloodOxygen_today_buildsLikeTheOtherOvernightVitals() {
         // H10: the overnight SpO₂ fills in from sleep, like Rest.
-        assertEquals("Building, wear it tonight", buildingHint(KeyMetric.BLOOD_OXYGEN, isToday = true))
+        assertEquals(R.string.core_building_wear_tonight, buildingHint(KeyMetric.BLOOD_OXYGEN, isToday = true))
     }
 
     @Test
     fun buildingHint_steps_today_movesAsYouDo() {
         // H10: on-device steps accrue across the day, like Effort.
-        assertEquals("Building, moves as you do", buildingHint(KeyMetric.STEPS, isToday = true))
+        assertEquals(R.string.core_building_moves_as_you_do, buildingHint(KeyMetric.STEPS, isToday = true))
     }
 
     @Test
@@ -184,7 +207,12 @@ class TodayMetricTilesTest {
     fun buildingHint_copy_hasNoEmDash() {
         // House style: user-facing strings carry no em-dashes (the #1 AI tell).
         for (m in listOf(KeyMetric.REST, KeyMetric.EFFORT, KeyMetric.CHARGE, KeyMetric.BLOOD_OXYGEN, KeyMetric.STEPS)) {
-            val hint = buildingHint(m, isToday = true)!!
+            val key = if (buildingHint(m, isToday = true) == R.string.core_building_wear_tonight) {
+                "core_building_wear_tonight"
+            } else {
+                "core_building_moves_as_you_do"
+            }
+            val hint = core.getValue(key)
             assert(!hint.contains('—')) { "buildingHint($m) must not contain an em-dash: $hint" }
         }
     }

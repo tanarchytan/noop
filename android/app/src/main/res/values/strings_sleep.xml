@@ -1,0 +1,178 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Sleep: shared across the tab's cards -->
+    <string name="sleep_stage_awake">Awake</string>
+    <string name="sleep_stage_light">Light</string>
+    <string name="sleep_stage_deep">Deep</string>
+    <string name="sleep_stage_rem">REM</string>
+    <string name="sleep_typical_value">%1$s typical</string>
+    <string name="sleep_no_typical_yet">no typical yet</string>
+    <string name="sleep_performance">SLEEP PERFORMANCE</string>
+    <string name="sleep_efficiency">SLEEP EFFICIENCY</string>
+    <string name="sleep_restorative">RESTORATIVE SLEEP</string>
+    <string name="sleep_hours_vs_needed">HOURS VS. NEEDED</string>
+    <string name="sleep_not_enough_nights">Not enough nights yet.</string>
+
+    <!-- SleepNightScreen -->
+    <string name="sleep_subtitle">Last night, read in two seconds.</string>
+    <string name="sleep_journal_prompt_title">Good morning!</string>
+    <string name="sleep_journal_prompt_body">Your night data is in. Logging how you felt helps NOOP learn what drives your best recovery.</string>
+    <string name="sleep_journal_prompt_open">Open Journal</string>
+    <string name="sleep_journal_prompt_later">Maybe later</string>
+    <string name="sleep_edit_time_invalid">That time can\'t be saved (it lands in the future or ends before it starts).</string>
+    <string name="sleep_driver_hours_vs_needed">Hours vs. needed</string>
+    <string name="sleep_driver_consistency">Sleep consistency</string>
+    <string name="sleep_driver_efficiency">Sleep efficiency</string>
+    <string name="sleep_driver_high_stress">High sleep stress</string>
+    <string name="sleep_no_stage_data">No stage data recorded for this night.</string>
+    <string name="sleep_weekly_trends">Weekly trends</string>
+    <string name="sleep_last_7_nights">Last 7 nights</string>
+
+    <!-- SleepNightHeader -->
+    <string name="sleep_prev_night">Previous night</string>
+    <string name="sleep_next_night">Next night</string>
+    <string name="sleep_pick_night_date">Pick night date</string>
+    <string name="sleep_offset_last_night">Last night</string>
+    <string name="sleep_offset_one_night_ago">1 night ago</string>
+    <string name="sleep_offset_nights_ago">%1$d nights ago</string>
+    <string name="sleep_header_last_night">Last Night\'s Sleep</string>
+    <string name="sleep_header_that_night">That Night\'s Sleep</string>
+    <string name="sleep_edit_time_in_bed">Edit time in bed</string>
+    <string name="sleep_edit">EDIT</string>
+    <string name="sleep_add_nap">Add a nap</string>
+    <string name="sleep_no_earlier_night">No earlier night stored yet. Earlier nights sync in the morning.</string>
+    <string name="sleep_window_a11y">Fell asleep at %1$s, woke at %2$s</string>
+    <string name="sleep_asleep">Asleep</string>
+    <string name="sleep_woke">Woke</string>
+
+    <!-- SleepStagesCard -->
+    <string name="sleep_stages_hours_of_sleep">HOURS OF SLEEP</string>
+    <string name="sleep_stages_typical">TYPICAL</string>
+    <string name="sleep_stages_duration">DURATION</string>
+    <string name="sleep_stages_no_timeline">No per-epoch stage timeline for this night, so the rows show totals only.</string>
+    <string name="sleep_stage_row_click_label">Highlights this stage on the sleep chart</string>
+    <string name="sleep_stage_row_a11y">%1$s: %2$s, %3$d percent of the night</string>
+    <string name="sleep_stage_row_a11y_no_share">%1$s: %2$s, share of the night not known</string>
+    <string name="sleep_stage_row_timeline_holds">This night\'s timeline holds %1$s of it.</string>
+    <string name="sleep_motion_none">No movement detail for this night.</string>
+    <string name="sleep_stage_insight_hint">Tap a stage to highlight it across the night.</string>
+    <string name="sleep_stage_insight_pct">%1$s tonight: %2$s — %3$d%% of the night.</string>
+    <string name="sleep_stage_insight">%1$s tonight: %2$s.</string>
+
+    <!-- SleepHrChart -->
+    <string name="sleep_hr_none">No heart-rate detail for this night.</string>
+    <string name="sleep_hr_a11y">Heart rate from %1$s to %2$s, %3$d to %4$d beats per minute</string>
+    <string name="sleep_hr_a11y_stage">Heart rate from %1$s to %2$s, %3$d to %4$d beats per minute, %5$s highlighted</string>
+
+    <!-- SleepNeedCard -->
+    <string name="sleep_need_no_pair">No night with both an asleep total and a need to set it against yet.</string>
+    <string name="sleep_need_no_nights">No nights with sleep data yet. Your balance fills in as you wear the strap to bed.</string>
+    <string name="sleep_need_baseline">Baseline need</string>
+    <string name="sleep_need_balance">Sleep balance</string>
+    <string name="sleep_need_bar_a11y">Asleep %1$s against a need of %2$s</string>
+    <string name="sleep_need_asleep">ASLEEP %1$s</string>
+    <string name="sleep_need_needed">NEEDED %1$s</string>
+    <string name="sleep_need_row_a11y">%1$s %2$s</string>
+    <string name="sleep_need_strip_a11y">Per-night sleep balance: %1$d nights, net %2$s</string>
+
+    <!-- SleepModels: the sleep-debt ledger read -->
+    <string name="sleep_debt_span_one">the last %1$d night</string>
+    <string name="sleep_debt_span_many">the last %1$d nights</string>
+    <string name="sleep_debt_on_target">You\'re roughly on top of your sleep across %1$s. Slept minutes balance out against your need.</string>
+    <string name="sleep_debt_in_debt">You\'ve banked about %1$s of sleep debt over %2$s. Surplus nights count back against it. An earlier night or two would clear it.</string>
+    <string name="sleep_debt_surplus">You\'re carrying about %1$s of surplus over %2$s. You\'ve slept past your need on balance. Nicely ahead.</string>
+
+    <!-- SleepScheduleCard -->
+    <string name="sleep_consistency_title">SLEEP CONSISTENCY</string>
+    <string name="sleep_habitual_window">- - -  Habitual window</string>
+    <string name="sleep_schedule_a11y">Nightly bed and wake times over %1$d nights</string>
+
+    <!-- SleepPerformanceCard -->
+    <string name="sleep_asleep_last_night">ASLEEP LAST NIGHT</string>
+    <string name="sleep_driver_a11y">%1$s: %2$s</string>
+    <string name="sleep_tier_poor">Poor</string>
+    <string name="sleep_tier_sufficient">Sufficient</string>
+    <string name="sleep_tier_optimal">Optimal</string>
+
+    <!-- SleepTrendCards -->
+    <string name="sleep_open_full_history">Open the full history</string>
+    <string name="sleep_time_in_bed">TIME IN BED</string>
+    <string name="sleep_time_in_bed_a11y">Time in bed over the last %1$d nights</string>
+    <string name="sleep_footer_latest">Latest</string>
+    <string name="sleep_footer_week_avg">Week avg</string>
+    <string name="sleep_footer_best">Best</string>
+    <string name="sleep_series_efficiency">Sleep efficiency</string>
+    <string name="sleep_series_hours">Hours of sleep</string>
+    <string name="sleep_series_needed">Sleep needed</string>
+    <string name="sleep_no_staged_nights">No staged nights yet.</string>
+    <string name="sleep_stress_title">SLEEP STRESS</string>
+    <string name="sleep_stress_none">No scored sleep stress yet.</string>
+    <string name="sleep_stress_high">HIGH</string>
+    <string name="sleep_stress_medium">MEDIUM</string>
+    <string name="sleep_stress_low">LOW</string>
+    <string name="sleep_stress_a11y_header">Sleep stress over the last %1$d nights.</string>
+    <string name="sleep_stress_a11y_night">%1$s %2$s high</string>
+
+    <!-- SleepEditSheet -->
+    <string name="sleep_edit_close">Close</string>
+    <string name="sleep_edit_add_nap_title">ADD A NAP</string>
+    <string name="sleep_edit_title">EDIT TIME IN BED</string>
+    <string name="sleep_edit_time_section">TIME</string>
+    <string name="sleep_edit_bed_time">Bed Time</string>
+    <string name="sleep_edit_wake_time">Wake Time</string>
+    <string name="sleep_edit_chip_date">%1$s date</string>
+    <string name="sleep_edit_chip_time">%1$s of day</string>
+    <string name="sleep_edit_chip_change">Change %1$s</string>
+    <string name="sleep_edit_chip_a11y">%1$s %2$s</string>
+    <string name="sleep_edit_save">SAVE</string>
+    <string name="sleep_edit_delete_sleep">DELETE SLEEP</string>
+    <string name="sleep_edit_move_title">Move this sleep?</string>
+    <string name="sleep_edit_move_body">This moves the night to a time with no recorded data. Stages can\'t be derived there, so it may show as empty until data covers it.</string>
+    <string name="sleep_edit_move_confirm">Move anyway</string>
+    <string name="sleep_edit_delete_title">Delete this sleep session?</string>
+    <string name="sleep_edit_delete_body_edited">Removes this sleep and recomputes the day without it. You can undo for a few seconds after.</string>
+    <string name="sleep_edit_delete_body_detected">Removes this recorded sleep and recomputes the day without it. NOOP won\'t re-detect sleep in this window. You can undo for a few seconds after.</string>
+    <string name="sleep_edit_delete_confirm">Delete</string>
+
+    <!-- SleepNaps -->
+    <string name="sleep_deleted">Sleep deleted.</string>
+    <string name="sleep_deleted_suppressed">Sleep deleted. NOOP won\'t detect sleep between %1$s and %2$s again.</string>
+    <string name="sleep_undo_a11y">Undo sleep deletion</string>
+    <string name="sleep_undo">Undo</string>
+    <string name="sleep_daytime">DAYTIME SLEEP</string>
+    <string name="sleep_no_naps">No naps recorded for this day.</string>
+    <string name="sleep_nap_main">Main sleep</string>
+    <string name="sleep_nap_naps">Nap(s)</string>
+    <string name="sleep_nap_total">Total</string>
+    <string name="sleep_nap_a11y">Nap %1$s, %2$s</string>
+    <string name="sleep_nap_edit">Edit nap times</string>
+    <string name="sleep_nap_edit_edited">Edit nap times (edited)</string>
+
+    <!-- SleepEmptyState -->
+    <string name="sleep_empty_title">No nights here yet</string>
+    <string name="sleep_empty_body">Import your WHOOP export in Data Sources to see every night, your sleep stages and trends straight away.</string>
+
+    <!-- SleepMetricDetail -->
+    <string name="sleep_range_w">W</string>
+    <string name="sleep_range_m">M</string>
+    <string name="sleep_range_3m">3M</string>
+    <string name="sleep_range_6m">6M</string>
+    <string name="sleep_range_1y">1Y</string>
+    <string name="sleep_range_all">ALL</string>
+    <string name="sleep_metric_rest">Rest</string>
+    <string name="sleep_metric_efficiency">Sleep Efficiency</string>
+    <string name="sleep_metric_consistency">Consistency</string>
+    <string name="sleep_metric_hours_vs_needed">Hours vs Needed</string>
+    <string name="sleep_metric_restorative">Restorative</string>
+    <string name="sleep_metric_respiratory">Respiratory Rate</string>
+    <string name="sleep_metric_debt">Sleep Debt</string>
+    <string name="sleep_metric_no_history_title">Not enough history yet</string>
+    <string name="sleep_metric_no_history_body">This metric needs at least two nights of data.</string>
+    <string name="sleep_metric_range_empty">Not enough history in this range. Try 3M, 6M, or ALL.</string>
+    <string name="sleep_metric_overline_nights">Sleep · %1$d nights</string>
+    <string name="sleep_metric_as_of">as of %1$s</string>
+    <string name="sleep_metric_chart_a11y">%1$s trend chart</string>
+    <string name="sleep_metric_min">Min</string>
+    <string name="sleep_metric_avg">Avg</string>
+    <string name="sleep_metric_max">Max</string>
+</resources>

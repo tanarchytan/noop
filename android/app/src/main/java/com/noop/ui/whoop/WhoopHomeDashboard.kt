@@ -8,6 +8,8 @@ import androidx.compose.material.icons.filled.MonitorHeart
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.stringResource
+import com.noop.R
 import com.noop.analytics.VitalBands
 import com.noop.data.DailyMetric
 import com.noop.ui.DashboardCard
@@ -67,10 +69,26 @@ internal fun WhoopDashboardCard(
         // The two zone rows sit outside the customisable registry: DashboardCard lives in a shared file
         // this pass does not edit, so they are appended here and only when the day banked them.
         state.metric?.zone1to3Min?.let {
-            add(WhoopDashboardRow(Icons.Filled.MonitorHeart, "HR zones 1-3", durationText(it), zoneComparison(state.previousDay?.zone1to3Min, state.previousDay), null))
+            add(
+                WhoopDashboardRow(
+                    Icons.Filled.MonitorHeart,
+                    stringResource(R.string.whoopskin_dashboard_hr_zones_1_3),
+                    durationText(it),
+                    zoneComparison(state.previousDay?.zone1to3Min, state.previousDay),
+                    null,
+                ),
+            )
         }
         state.metric?.zone4to5Min?.let {
-            add(WhoopDashboardRow(Icons.Filled.Favorite, "HR zones 4-5", durationText(it), zoneComparison(state.previousDay?.zone4to5Min, state.previousDay), null))
+            add(
+                WhoopDashboardRow(
+                    Icons.Filled.Favorite,
+                    stringResource(R.string.whoopskin_dashboard_hr_zones_4_5),
+                    durationText(it),
+                    zoneComparison(state.previousDay?.zone4to5Min, state.previousDay),
+                    null,
+                ),
+            )
         }
     }
     if (rows.isEmpty()) return

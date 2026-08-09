@@ -1,5 +1,6 @@
 package com.noop.ui
 
+import com.noop.R
 import com.noop.ui.TemperatureUnit
 import com.noop.analytics.ScoreConfidence
 import com.noop.data.DailyMetric
@@ -39,11 +40,11 @@ class RecoveryDriversUiTest {
         val days = scoredHistory()
         val drivers = recoveryChargeDrivers(days, days.last(), TemperatureUnit.CELSIUS)
         assertTrue("a usable baseline should yield driver rows", drivers.isNotEmpty())
-        val labels = drivers.map { it.label }
-        assertTrue(labels.contains("Heart rate variability"))
-        assertTrue(labels.contains("Resting heart rate"))
+        val labels = drivers.map { it.labelRes }
+        assertTrue(labels.contains(R.string.charge_driver_hrv))
+        assertTrue(labels.contains(R.string.charge_driver_resting_hr))
         // Skin-temp was supplied on the scored day, so its row is present.
-        assertTrue(labels.contains("Skin temperature"))
+        assertTrue(labels.contains(R.string.charge_driver_skin_temp))
     }
 
     @Test fun coldStartHistoryProducesNoRows() {
@@ -84,8 +85,8 @@ class RecoveryDriversUiTest {
             efficiency = 0.9, totalSleepMin = 450.0, strain = 55.0,
             recoveryIndexSlope = -3.0, priorDayEffort = 75.0,
         )
-        val labels = recoveryChargeDrivers(past + today, today, TemperatureUnit.CELSIUS).map { it.label }
-        assertTrue(labels.contains("Recovery index"))
-        assertTrue(labels.contains("Activity balance"))
+        val labels = recoveryChargeDrivers(past + today, today, TemperatureUnit.CELSIUS).map { it.labelRes }
+        assertTrue(labels.contains(R.string.charge_driver_recovery_index))
+        assertTrue(labels.contains(R.string.charge_driver_activity_balance))
     }
 }

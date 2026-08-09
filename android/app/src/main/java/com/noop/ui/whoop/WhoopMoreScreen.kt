@@ -143,7 +143,11 @@ private fun MoreEntryRow(icon: ImageVector, title: String, onClick: () -> Unit) 
 @Composable
 private fun MoreVersionNote() {
     Text(
-        "Version ${BuildConfig.VERSION_NAME} (build ${BuildConfig.VERSION_CODE})",
+        stringResource(
+            R.string.whoopskin_version_note,
+            BuildConfig.VERSION_NAME,
+            BuildConfig.VERSION_CODE,
+        ),
         style = NoopType.footnote,
         color = Palette.textTertiary,
         textAlign = TextAlign.Center,

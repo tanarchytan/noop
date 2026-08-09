@@ -14,7 +14,9 @@ import androidx.compose.material.icons.filled.Insights
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
+import com.noop.R
 import com.noop.data.WorkoutRow
 import com.noop.ui.Metrics
 import com.noop.ui.MetricRow
@@ -57,11 +59,18 @@ internal fun WhoopMonitorRow(
     ) {
         NoopCard(modifier = Modifier.weight(1f).fillMaxHeight(), padding = Metrics.space14) {
             Column(verticalArrangement = Arrangement.spacedBy(Metrics.space10)) {
-                NoopCardHeader("Health monitor", onClick = onOpenHealth)
+                NoopCardHeader(
+                    stringResource(R.string.whoopskin_home_health_monitor),
+                    onClick = onOpenHealth,
+                )
                 if (healthRollUp != null) {
                     HealthRollUpPill(healthRollUp)
                 } else {
-                    StatePill(title = "No readings yet", tone = StrandTone.Neutral, fillsWidth = true)
+                    StatePill(
+                        title = stringResource(R.string.whoopskin_no_readings_yet),
+                        tone = StrandTone.Neutral,
+                        fillsWidth = true,
+                    )
                 }
                 if (healthAlert != null) {
                     StatePill(title = healthAlert, tone = StrandTone.Warning, fillsWidth = true)
@@ -70,7 +79,10 @@ internal fun WhoopMonitorRow(
         }
         NoopCard(modifier = Modifier.weight(1f).fillMaxHeight(), padding = Metrics.space14) {
             Column(verticalArrangement = Arrangement.spacedBy(Metrics.space10)) {
-                NoopCardHeader("Stress monitor", onClick = onOpenStress)
+                NoopCardHeader(
+                    stringResource(R.string.whoopskin_home_stress_monitor),
+                    onClick = onOpenStress,
+                )
                 Column(verticalArrangement = Arrangement.spacedBy(Metrics.space2)) {
                     Text(
                         stress?.let { String.format(Locale.US, "%.1f", it) } ?: STRESS_CALIBRATING,
@@ -79,7 +91,7 @@ internal fun WhoopMonitorRow(
                         maxLines = 1,
                     )
                     Text(
-                        "Autonomic load",
+                        stringResource(R.string.whoopskin_autonomic_load),
                         style = NoopType.footnote,
                         color = Palette.textTertiary,
                         maxLines = 1,
@@ -105,15 +117,22 @@ internal fun WhoopTonightSleepCard(
 ) {
     NoopCard(modifier = modifier) {
         Column(verticalArrangement = Arrangement.spacedBy(Metrics.space12)) {
-            NoopCardHeader("Tonight's sleep", onClick = onOpenSleep)
+            NoopCardHeader(stringResource(R.string.whoopskin_tonights_sleep), onClick = onOpenSleep)
             MetricRow(
                 icon = Icons.Filled.Alarm,
-                label = "Wake alarm",
-                value = if (alarmEnabled) hourMinuteOfDay(alarmMinutes) else "Off",
+                label = stringResource(R.string.whoopskin_wake_alarm),
+                value = if (alarmEnabled) {
+                    hourMinuteOfDay(alarmMinutes)
+                } else {
+                    stringResource(R.string.whoopskin_alarm_off)
+                },
                 valueColor = if (alarmEnabled) Palette.textPrimary else Palette.textTertiary,
             )
             NoopButton(
-                text = if (alarmEnabled) "Change alarm" else "Set alarm",
+                text = stringResource(
+                    if (alarmEnabled) R.string.whoopskin_change_alarm
+                    else R.string.whoopskin_set_alarm,
+                ),
                 kind = NoopButtonKind.Secondary,
                 fullWidth = true,
                 onClick = onOpenAlarm,
@@ -131,10 +150,13 @@ internal fun WhoopActivitiesCard(
 ) {
     NoopCard(modifier = modifier) {
         Column(verticalArrangement = Arrangement.spacedBy(Metrics.space10)) {
-            NoopCardHeader("Today's activities", onClick = onOpenWorkouts)
+            NoopCardHeader(
+                stringResource(R.string.whoopskin_todays_activities),
+                onClick = onOpenWorkouts,
+            )
             if (activities.isEmpty()) {
                 Text(
-                    "Nothing logged for this day.",
+                    stringResource(R.string.whoopskin_nothing_logged),
                     style = NoopType.footnote,
                     color = Palette.textTertiary,
                 )
@@ -165,14 +187,14 @@ internal fun WhoopJournalCard(
 ) {
     NoopCard(modifier = modifier) {
         Column(verticalArrangement = Arrangement.spacedBy(Metrics.space12)) {
-            NoopCardHeader("My journal", onClick = onOpenJournal)
+            NoopCardHeader(stringResource(R.string.whoopskin_my_journal), onClick = onOpenJournal)
             Text(
-                "Log the behaviours behind a night, then read what they moved.",
+                stringResource(R.string.whoopskin_journal_blurb),
                 style = NoopType.footnote,
                 color = Palette.textTertiary,
             )
             NoopButton(
-                text = "Behaviour insights",
+                text = stringResource(R.string.whoopskin_behaviour_insights),
                 leadingIcon = Icons.Filled.Insights,
                 kind = NoopButtonKind.Secondary,
                 fullWidth = true,

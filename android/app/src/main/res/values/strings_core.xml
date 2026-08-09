@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <!-- ChargeDriverRows: the signal each "What shaped it" row names -->
+    <string name="charge_driver_hrv">Heart rate variability</string>
+    <string name="charge_driver_resting_hr">Resting heart rate</string>
+    <string name="charge_driver_sleep">Sleep quality</string>
+    <string name="charge_driver_respiratory">Respiratory rate</string>
+    <string name="charge_driver_skin_temp">Skin temperature</string>
+    <string name="charge_driver_recovery_index">Recovery index</string>
+    <string name="charge_driver_activity_balance">Activity balance</string>
+
+    <!-- ChargeDriverRows: a row's value and the reference it was scored against -->
+    <string name="charge_driver_effort_yesterday">%1$s effort yesterday</string>
+    <string name="charge_driver_baseline">%1$s baseline</string>
+    <string name="charge_driver_vs_baseline">vs baseline</string>
+    <string name="charge_driver_overnight">overnight</string>
+
+    <!-- ChargeDriverRows: the sentence a row's direction reads as -->
+    <string name="charge_verdict_at_baseline">at baseline</string>
+    <string name="charge_verdict_above_supporting">above baseline, supporting recovery</string>
+    <string name="charge_verdict_below_limiting">below baseline, limiting recovery</string>
+    <string name="charge_verdict_below_supporting">below baseline, supporting recovery</string>
+    <string name="charge_verdict_above_limiting">above baseline, limiting recovery</string>
+    <string name="charge_verdict_sleep_supporting">a strong night, supporting recovery</string>
+    <string name="charge_verdict_sleep_neutral">a typical night</string>
+    <string name="charge_verdict_sleep_limiting">below a good night, limiting recovery</string>
+    <string name="charge_verdict_index_supporting">resting HR fell through the night, supporting recovery</string>
+    <string name="charge_verdict_index_neutral">resting HR held flat overnight</string>
+    <string name="charge_verdict_index_limiting">resting HR rose overnight, limiting recovery</string>
+    <string name="charge_verdict_activity_supporting">a lighter day yesterday, supporting recovery</string>
+    <string name="charge_verdict_activity_neutral">a typical day yesterday</string>
+    <string name="charge_verdict_activity_limiting">a harder day yesterday, limiting recovery</string>
+    <string name="charge_verdict_skin_temp_warm">warmer than baseline, limiting recovery</string>
+    <string name="charge_verdict_skin_temp_cool">cooler than baseline, limiting recovery</string>
+    <string name="charge_verdict_skin_temp_near">near baseline</string>
+
+    <!-- TodayRecovery: the carried prior-day stamp, shared by every carried read-out -->
+    <string name="core_caption_last_night">Last night · %1$s</string>
+    <string name="core_caption_latest_sleep">Latest sleep · %1$s</string>
+
+    <!-- TodayRecovery: the explained state of one score on Today -->
+    <string name="core_state_calibrating">Calibrating</string>
+    <string name="core_state_calibrating_detail">Building your baseline. About %1$d more %2$s until your scores are personal.</string>
+    <string name="core_state_carried_detail">Tonight\'s lands after you sleep with the strap on.</string>
+    <string name="core_state_carried_stale_detail">This is your last scored session. Wear the strap overnight for a fresh score.</string>
+    <string name="core_state_needs_strap">Needs the strap</string>
+    <string name="core_state_needs_strap_detail">No data for today. Was your strap worn and connected overnight?</string>
+
+    <!-- TodayRecovery: how fresh the strap's data is -->
+    <string name="core_recording">Recording</string>
+    <string name="core_recording_detail">Your strap is connected and saving data.</string>
+    <string name="core_last_synced">Last synced %1$dm ago</string>
+    <string name="core_last_synced_detail">Reconnect to pull the latest.</string>
+    <string name="core_not_recording">Not recording</string>
+    <string name="core_not_recording_detail">Strap not connected. Tap to connect.</string>
+    <string name="core_connected">Connected</string>
+    <string name="core_connected_detail">History sync is experimental on 5.0.</string>
+
+    <!-- TodayMetrics: the one-word readiness read -->
+    <string name="core_readiness_push">Push</string>
+    <string name="core_readiness_maintain">Maintain</string>
+    <string name="core_readiness_rest">Rest</string>
+
+    <!-- TodayMetrics: the Data Sources footer summary -->
+    <string name="core_synced_from">Synced from: %1$s</string>
+    <string name="core_no_sources_yet">No sources yet</string>
+
+    <!-- TodayMetrics: the stored-count line under a source card -->
+    <string name="core_counting">Counting...</string>
+    <string name="core_count_detail">%1$s days · %2$s %3$s</string>
+    <string name="core_workouts_stored">workouts stored</string>
+    <string name="core_workouts">workouts</string>
+
+    <!-- TodayMetrics: the Weight tile's source caption -->
+    <string name="core_weight_latest">latest</string>
+    <string name="core_weight_from_profile">from profile</string>
+
+    <!-- TodayMetrics: the "it is coming, not broken" caption on an unscored tile -->
+    <string name="core_building_wear_tonight">Building, wear it tonight</string>
+    <string name="core_building_moves_as_you_do">Building, moves as you do</string>
+
+    <!-- LiveSessionRunner: the one-line verdict on a finished session -->
+    <string name="core_live_verdict_nothing_scored">No heart rate reached the session, so nothing could be scored.</string>
+    <string name="core_live_verdict_too_short">Too short to judge.</string>
+    <string name="core_live_verdict_on_track">On track. You matched what today could pay for.</string>
+    <string name="core_live_verdict_mixed">Mixed. In the band about half the time.</string>
+    <string name="core_live_verdict_easy">Easy day. You sat under the band most of the way.</string>
+    <string name="core_live_verdict_hot">Hot. You ran above today\'s ceiling most of the way.</string>
+
+    <!-- DevicesScreen: the device card's state pill -->
+    <string name="devices2_pill_removed">Removed</string>
+    <string name="devices2_pill_paired">Paired</string>
+    <string name="devices2_pill_reconnecting">Reconnecting…</string>
+    <string name="devices2_pill_bond_refused">Connected · not paired</string>
+    <string name="devices2_pill_charging_live">Charging · Live</string>
+    <string name="devices2_pill_active_live">Active · Live</string>
+    <string name="devices2_pill_active">Active</string>
+
+    <!-- DevicesScreen: the footnote under a device card -->
+    <string name="devices2_last_seen_removed">Removed · data kept</string>
+    <string name="devices2_last_seen_bond_refused">Connected, but not paired</string>
+    <string name="devices2_last_seen_connected">Connected now</string>
+    <string name="devices2_last_seen">Last seen %1$s</string>
+    <string name="devices2_history_layout">v%1$d history</string>
+</resources>

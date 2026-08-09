@@ -9,7 +9,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.noop.R
 import com.noop.ui.AppViewModel
 import com.noop.ui.Metrics
 import com.noop.ui.NoopCard
@@ -48,13 +50,18 @@ internal fun WhoopProfileScreen(
     val report = remember(days, range, today) { TrendsReportData.report(range, days, today) }
 
     ScreenScaffold(
-        title = "Profile",
-        subtitle = "Your highs and lows across every day this phone has recorded.",
+        title = stringResource(R.string.nav_profile),
+        subtitle = stringResource(R.string.whoopskin_profile_subtitle),
         modifier = modifier,
-        leading = { ProfileAvatar(size = PROFILE_AVATAR_SIZE, contentDescription = "Profile photo") },
+        leading = {
+            ProfileAvatar(
+                size = PROFILE_AVATAR_SIZE,
+                contentDescription = stringResource(R.string.whoopskin_profile_photo),
+            )
+        },
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(Metrics.gap)) {
-            SectionHeader(title = "Data highlights")
+            SectionHeader(title = stringResource(R.string.whoopskin_data_highlights))
             WhoopProfileHighlightsCard(
                 report = report,
                 range = range,
@@ -70,10 +77,12 @@ internal fun WhoopProfileScreen(
 private fun BodyProfileCard(onOpen: () -> Unit) {
     NoopCard(tint = Palette.accent) {
         Column(verticalArrangement = Arrangement.spacedBy(Metrics.space8)) {
-            NoopCardHeader(title = "Body profile & units", onClick = onOpen)
+            NoopCardHeader(
+                title = stringResource(R.string.whoopskin_body_profile_units),
+                onClick = onOpen,
+            )
             Text(
-                "Birthday, sex, weight, height, max heart rate and how NOOP shows units. " +
-                    "All of it stays on this phone.",
+                stringResource(R.string.whoopskin_body_profile_blurb),
                 style = NoopType.subhead,
                 color = Palette.textSecondary,
             )

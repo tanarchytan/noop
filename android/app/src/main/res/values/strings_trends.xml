@@ -1,0 +1,143 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- TrendsCharts: the shared range control, its captions and the trend cards -->
+    <string name="trends2_range_week">W</string>
+    <string name="trends2_range_month">M</string>
+    <string name="trends2_range_quarter">3M</string>
+    <string name="trends2_range_half">6M</string>
+    <string name="trends2_range_year">1Y</string>
+    <string name="trends2_range_all">ALL</string>
+    <string name="trends2_window_week">week</string>
+    <string name="trends2_window_month">month</string>
+    <string name="trends2_window_3_months">3 months</string>
+    <string name="trends2_window_6_months">6 months</string>
+    <string name="trends2_window_year">year</string>
+    <string name="trends2_window_all_history">all history</string>
+    <string name="trends2_trailing_days">Trailing %1$d days</string>
+    <string name="trends2_all_history">All history</string>
+    <plurals name="trends2_readings">
+        <item quantity="one">%1$d reading</item>
+        <item quantity="other">%1$d readings</item>
+    </plurals>
+    <string name="trends2_caption_widened">%1$s · sparse, widened to %2$s</string>
+    <string name="trends2_caption_window">%1$s · %2$s</string>
+    <string name="trends2_history_all">Charge , all history</string>
+    <string name="trends2_history_past_year">Charge , past year</string>
+
+    <!-- Explore: the window names the Explore range control uses on top of the shared ones -->
+    <string name="trends2_window_quarter">quarter</string>
+    <string name="trends2_window_all_time">all time</string>
+    <string name="trends2_explore_trailing">Trailing %1$s</string>
+    <string name="trends2_explore_as_of">as of %1$s</string>
+    <string name="trends2_explore_no_readings">no readings yet</string>
+
+    <!-- Explore: the metric catalog (Charge / Effort / Rest reuse the shared trends_* names) -->
+    <string name="trends2_metric_hrv">HRV</string>
+    <string name="trends2_metric_resting_hr">Resting HR</string>
+    <string name="trends2_metric_sleep">Sleep</string>
+    <string name="trends2_metric_sleep_efficiency">Sleep Efficiency</string>
+    <string name="trends2_metric_spo2">SpO₂</string>
+    <string name="trends2_metric_respiratory_rate">Respiratory Rate</string>
+    <string name="trends2_metric_avg_hr">Average Heart Rate</string>
+    <string name="trends2_metric_max_hr">Max Heart Rate</string>
+    <string name="trends2_metric_calories_in">Calories In</string>
+    <string name="trends2_metric_protein">Protein</string>
+    <string name="trends2_metric_carbs">Carbs</string>
+    <string name="trends2_metric_fat">Fat</string>
+    <string name="trends2_metric_mood">Mood</string>
+    <string name="trends2_desc_charge">How recovered you are, led by HRV versus your personal baseline.</string>
+    <string name="trends2_desc_effort">Cardiovascular load for the day, on a 0-100 scale (was 0-21).</string>
+    <string name="trends2_desc_rest">How restorative your sleep was, duration, efficiency, deep+REM, timing.</string>
+
+    <!-- Deep Timeline: the metric pills, the resolution caption and the band-state read-out -->
+    <string name="trends2_timeline_hr">Heart Rate</string>
+    <string name="trends2_timeline_hrv">rMSSD (5 min)</string>
+    <string name="trends2_timeline_skin_temp">Skin Temp</string>
+    <string name="trends2_timeline_respiration">Respiration</string>
+    <string name="trends2_timeline_motion">Motion</string>
+    <string name="trends2_timeline_band_sleep_state">Band Sleep State</string>
+    <string name="trends2_timeline_raw">Raw · per second</string>
+    <string name="trends2_timeline_minute_average">%1$d-minute average</string>
+    <string name="trends2_timeline_second_average">%1$d-second average</string>
+    <string name="trends2_timeline_state_wake">wake</string>
+    <string name="trends2_timeline_state_still">still</string>
+    <string name="trends2_timeline_state_asleep">asleep</string>
+    <string name="trends2_timeline_state_up">up</string>
+    <string name="trends2_yesterday">Yesterday</string>
+
+    <!-- Trends report: the exported PDF page -->
+    <string name="trends2_report_title">Trends report</string>
+    <plurals name="trends2_report_days">
+        <item quantity="one">%1$d day</item>
+        <item quantity="other">%1$d days</item>
+    </plurals>
+    <string name="trends2_report_summary">SUMMARY</string>
+    <string name="trends2_report_what_changed">What changed</string>
+    <string name="trends2_report_by_the_numbers">BY THE NUMBERS</string>
+    <string name="trends2_report_metrics">Metrics</string>
+    <string name="trends2_report_single_reading">Single reading in range</string>
+    <string name="trends2_report_days_column">DAYS</string>
+    <string name="trends2_report_steady">steady</string>
+    <string name="trends2_report_empty_title">Not enough data in this range yet</string>
+    <string name="trends2_report_empty_body">No workout, stress, recovery, sleep, HRV, resting-HR, strain, respiratory-rate or skin-temp readings fell inside %1$s. Wear your strap a few more days, or pick a wider range, then export again.</string>
+    <string name="trends2_report_legend">How to read this: HRV, Resting HR, Sleep duration, Respiratory rate and Skin temperature are measured from the strap (skin temp is shown as the deviation from your own baseline). Workouts is the count of activities you logged or that were detected. Recovery, Strain and Stress are NOOP\'s own on-device scores, not clinical measures - Recovery is a daily readiness composite (HRV, resting HR, sleep and skin-temp trend), Strain is cardiovascular load derived from heart rate, and Stress is a 0-3 autonomic-load index from resting HR and HRV.</string>
+    <string name="trends2_report_generated">Generated by NOOP on %1$s · all on-device, no account, no cloud.</string>
+    <string name="trends2_report_disclaimer">Informational only - not medical advice.</string>
+    <string name="trends2_report_build_failed">Couldn\'t build the report.</string>
+    <string name="trends2_report_share_failed">Couldn\'t share the report: %1$s</string>
+    <string name="trends2_report_share_subject">NOOP trends report</string>
+    <string name="trends2_report_share_chooser">Share trends report</string>
+
+    <!-- Trends report: the in-app export card -->
+    <string name="trends2_export_overline">Export</string>
+    <string name="trends2_export_title">Trends report (PDF)</string>
+    <string name="trends2_export_blurb">A clean, shareable one-page PDF of your recovery, sleep, HRV, resting heart rate and strain over a date range. Built and saved on your phone - nothing leaves the device.</string>
+    <string name="trends2_export_range">Range</string>
+    <string name="trends2_export_cta">Export PDF</string>
+    <string name="trends2_export_footnote">The share sheet can save the PDF to Files, or send it on.</string>
+
+    <!-- Coupled view -->
+    <string name="coupled_title">Day</string>
+    <string name="coupled_subtitle">Today, %1$s</string>
+    <string name="coupled_a11y_recovery">Recovery %1$d percent. See what shaped your Charge</string>
+    <string name="coupled_a11y_calibrating">Recovery calibrating, %1$d of %2$d nights</string>
+    <string name="coupled_a11y_no_data">Recovery, no data yet</string>
+    <string name="coupled_open_breakdown">See what shaped your Charge</string>
+    <string name="coupled_calibrating">Calibrating, %1$d of %2$d nights</string>
+    <string name="coupled_recovery">RECOVERY</string>
+    <string name="coupled_no_effort">No effort yet</string>
+    <string name="coupled_day_strain">Day Strain</string>
+    <string name="coupled_optimal">Optimal</string>
+    <string name="coupled_calories">Calories</string>
+    <string name="coupled_workouts">Workouts</string>
+    <string name="coupled_open_sleep">Open Sleep</string>
+    <string name="coupled_sleep_performance">SLEEP PERFORMANCE</string>
+    <string name="coupled_slept">%1$s slept</string>
+    <string name="coupled_needed">%1$s needed</string>
+    <string name="coupled_no_sleep">No sleep tracked last night</string>
+    <string name="coupled_footer">A classic one-glance read of NOOP\'s own scores. Same data, different lens.</string>
+
+    <!-- Charts: the spoken summary every chart primitive carries -->
+    <string name="charts_series_no_data">%1$s, no data</string>
+    <string name="charts_series_summary">%1$s, %2$d points, latest %3$s, low %4$s, high %5$s</string>
+    <string name="charts_series_trend">Trend</string>
+    <string name="charts_series_bars">Bars</string>
+    <string name="charts_series_timeline">Timeline</string>
+    <string name="charts_series_weekly_bars">Weekly bars</string>
+    <string name="charts_series_weekly_totals">Weekly totals</string>
+    <string name="charts_breakdown_no_data">Breakdown, no data</string>
+    <string name="charts_breakdown_segments">Breakdown, %1$d segments</string>
+
+    <!-- Weekly digest -->
+    <string name="digest_days_with_data">%1$d/7 days</string>
+    <string name="digest_a11y_days_with_data">%1$d of 7 days had data this week</string>
+    <string name="digest_sleep_steadiness">Sleep steadiness: Rest varied ±%1$s pts night to night.</string>
+    <string name="digest_disclaimer">Informational only, not medical advice.</string>
+    <string name="digest_a11y_row_no_comparison">%1$s: %2$s this week, no comparison.</string>
+    <string name="digest_a11y_row">%1$s: %2$s this week, %3$s %4$s week over week%5$s.</string>
+    <string name="digest_a11y_up">up</string>
+    <string name="digest_a11y_down">down</string>
+    <string name="digest_a11y_unchanged">unchanged</string>
+    <string name="digest_a11y_good_sign">, a good sign</string>
+    <string name="digest_a11y_worth_a_look">, worth a look</string>
+</resources>

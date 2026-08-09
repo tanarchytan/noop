@@ -8,6 +8,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.stringResource
+import com.noop.R
 import com.noop.analytics.StrainScorer
 import com.noop.ui.BandedWeekBarChart
 import com.noop.ui.EffortScale
@@ -52,7 +54,7 @@ internal fun StrainHero(
         verticalArrangement = Arrangement.spacedBy(Metrics.space12),
     ) {
         if (strain == null) {
-            InsetChartPlaceholder(message = "No Effort scored yet today.")
+            InsetChartPlaceholder(message = stringResource(R.string.whoopskin_strain_none_today))
         } else {
             StrainGauge(
                 strain = UnitFormatter.effortValue(strain, effortScale),
@@ -114,7 +116,7 @@ internal fun StrainTrendCard(
 ) {
     StrainWeekCard(title = "Strain", modifier = modifier, onOpen = onOpen) {
         if (week.strain.all { it == null }) {
-            InsetChartPlaceholder(message = "No Effort scored this week yet.")
+            InsetChartPlaceholder(message = stringResource(R.string.whoopskin_strain_none_this_week))
         } else {
             BandedWeekBarChart(
                 values = week.strain,
@@ -162,7 +164,11 @@ internal fun StrainStepsCard(
     onOpen: (() -> Unit)? = null,
 ) {
     if (week.steps.all { it == null }) return
-    StrainWeekCard(title = "Steps", modifier = modifier, onOpen = onOpen) {
+    StrainWeekCard(
+        title = stringResource(R.string.whoopskin_steps),
+        modifier = modifier,
+        onOpen = onOpen,
+    ) {
         WeekBarChart(
             values = week.steps,
             dayLabels = week.labels,
@@ -181,7 +187,11 @@ internal fun StrainCaloriesCard(
     onOpen: (() -> Unit)? = null,
 ) {
     if (week.calories.all { it == null }) return
-    StrainWeekCard(title = "Calories", modifier = modifier, onOpen = onOpen) {
+    StrainWeekCard(
+        title = stringResource(R.string.whoopskin_calories),
+        modifier = modifier,
+        onOpen = onOpen,
+    ) {
         WeekBarChart(
             values = week.calories,
             dayLabels = week.labels,

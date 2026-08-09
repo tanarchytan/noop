@@ -45,6 +45,7 @@ import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.TextMeasurer
@@ -55,6 +56,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.noop.R
 import com.noop.analytics.RustScores
 import java.time.Instant
 import java.time.ZoneId
@@ -70,14 +72,18 @@ import kotlin.math.roundToInt
 
 // MARK: - Accessibility summaries
 
+@Composable
 private fun seriesSummary(values: List<Double>, noun: String): String {
     val clean = values.filter { it.isFinite() }
-    if (clean.isEmpty()) return "$noun, no data"
-    val last = clean.last()
-    val lo = clean.min()
-    val hi = clean.max()
-    return "$noun, ${clean.size} points, latest ${formatLineValue(last)}, " +
-        "low ${formatLineValue(lo)}, high ${formatLineValue(hi)}"
+    if (clean.isEmpty()) return stringResource(R.string.charts_series_no_data, noun)
+    return stringResource(
+        R.string.charts_series_summary,
+        noun,
+        clean.size,
+        formatLineValue(clean.last()),
+        formatLineValue(clean.min()),
+        formatLineValue(clean.max()),
+    )
 }
 
 /**
@@ -222,7 +228,7 @@ fun LineChart(
         Modifier
     }
 
-    val axSummary = seriesSummary(cleanValues, "Trend")
+    val axSummary = seriesSummary(cleanValues, stringResource(R.string.charts_series_trend))
     Box(
         modifier = modifier
             .fillMaxWidth()
@@ -384,7 +390,7 @@ fun BarChart(
     }
     val unselectedColor = remember(color) { color.copy(alpha = StrandAlpha.unselectedBar) }
 
-    val axSummary = seriesSummary(cleanValues, "Bars")
+    val axSummary = seriesSummary(cleanValues, stringResource(R.string.charts_series_bars))
     Box(
         modifier = modifier
             .fillMaxWidth()
@@ -524,7 +530,11 @@ fun SegmentBar(
     modifier: Modifier,
     height: Dp = Metrics.segmentBarHeight,
 ) {
-    val axSummary = if (segments.isEmpty()) "Breakdown, no data" else "Breakdown, ${segments.size} segments"
+    val axSummary = if (segments.isEmpty()) {
+        stringResource(R.string.charts_breakdown_no_data)
+    } else {
+        stringResource(R.string.charts_breakdown_segments, segments.size)
+    }
     Box(modifier = modifier.fillMaxWidth().height(height).clearAndSetSemantics { contentDescription = axSummary }.drawWithCache {
         val w = size.width
         val h = size.height
@@ -731,7 +741,7 @@ fun TimelineChart(
     val axisColor = Palette.textTertiary
     val gridColor = Palette.hairline.copy(alpha = StrandAlpha.subtleLine)
 
-    val axSummary = seriesSummary(vis.map { it.value }, "Timeline")
+    val axSummary = seriesSummary(vis.map { it.value }, stringResource(R.string.charts_series_timeline))
     Box(
         modifier = modifier
             .fillMaxWidth()
@@ -1181,12 +1191,20 @@ internal fun DrawScope.drawSlotLabel(
     drawText(textLayoutResult = layout, color = color, topLeft = at)
 }
 
-/** The whole week as one sentence, so a chart is never silent to a screen reader. */
-private fun weekSummary(noun: String, labels: List<String>, valueAt: (Int) -> String?): String {
+/**
+ * The whole week as one sentence, so a chart is never silent to a screen reader. [noDataFormat] is the
+ * one-argument "no data" template, filled with [noun] when the week holds nothing to read out.
+ */
+private fun weekSummary(
+    noun: String,
+    noDataFormat: String,
+    labels: List<String>,
+    valueAt: (Int) -> String?,
+): String {
     val parts = labels.indices.mapNotNull { i ->
         valueAt(i)?.let { "${labels[i].replace('\n', ' ')} $it" }
     }
-    return if (parts.isEmpty()) "$noun, no data" else "$noun, " + parts.joinToString(", ")
+    return if (parts.isEmpty()) noDataFormat.format(noun) else "$noun, " + parts.joinToString(", ")
 }
 
 /** The slot's plotted values, padded/trimmed to the label count so a short series can't shift the axis. */
@@ -1216,8 +1234,10 @@ fun BandedWeekBarChart(
     val slots = dayLabels.size
     val points = remember(values, slots) { weekPoints(values, slots) }
     val peak = remember(points, axisMax) { axisMax ?: points.filterNotNull().maxOrNull() }
-    val summary = remember(points, dayLabels) {
-        weekSummary("Weekly bars", dayLabels) { i -> points[i]?.let(format) }
+    val noun = stringResource(R.string.charts_series_weekly_bars)
+    val noDataFormat = stringResource(R.string.charts_series_no_data)
+    val summary = remember(points, dayLabels, noun, noDataFormat) {
+        weekSummary(noun, noDataFormat, dayLabels) { i -> points[i]?.let(format) }
     }
     WeekChartFrame(
         dayLabels = dayLabels,
@@ -1337,8 +1357,11 @@ private fun WeekLinePlot(
         val all = series.flatMap { it.values }.filterNotNull()
         if (all.isEmpty()) null else all.min() to all.max()
     }
-    val summary = remember(series, dayLabels) {
-        series.joinToString(". ") { s -> weekSummary(s.name, dayLabels) { i -> s.values[i]?.let(format) } }
+    val noDataFormat = stringResource(R.string.charts_series_no_data)
+    val summary = remember(series, dayLabels, noDataFormat) {
+        series.joinToString(". ") { s ->
+            weekSummary(s.name, noDataFormat, dayLabels) { i -> s.values[i]?.let(format) }
+        }
     }
     val legend: (@Composable () -> Unit)? = if (showsLegend) {
         { ChartLegend(series.map { it.name to it.color }, mark = LegendMark.Ring) }
@@ -1422,8 +1445,10 @@ fun WeekStackedBarChart(
     }
     val totals = remember(stacks) { stacks.map { it.sum() } }
     val peak = remember(totals) { totals.maxOrNull() ?: 0.0 }
-    val summary = remember(totals, dayLabels) {
-        weekSummary("Weekly totals", dayLabels) { i -> totals[i].takeIf { it > 0.0 }?.let(format) }
+    val noun = stringResource(R.string.charts_series_weekly_totals)
+    val noDataFormat = stringResource(R.string.charts_series_no_data)
+    val summary = remember(totals, dayLabels, noun, noDataFormat) {
+        weekSummary(noun, noDataFormat, dayLabels) { i -> totals[i].takeIf { it > 0.0 }?.let(format) }
     }
     WeekChartFrame(
         dayLabels = dayLabels,
@@ -1496,9 +1521,10 @@ fun DualAxisTrendChart(
     val slots = dayLabels.size
     val left = remember(leftValues, slots) { weekPoints(leftValues, slots) }
     val right = remember(rightValues, slots) { weekPoints(rightValues, slots) }
-    val summary = remember(left, right, dayLabels) {
-        weekSummary(leftName, dayLabels) { i -> left[i]?.let(leftFormat) } + ". " +
-            weekSummary(rightName, dayLabels) { i -> right[i]?.let(rightFormat) }
+    val noDataFormat = stringResource(R.string.charts_series_no_data)
+    val summary = remember(left, right, dayLabels, noDataFormat) {
+        weekSummary(leftName, noDataFormat, dayLabels) { i -> left[i]?.let(leftFormat) } + ". " +
+            weekSummary(rightName, noDataFormat, dayLabels) { i -> right[i]?.let(rightFormat) }
     }
     WeekChartFrame(
         dayLabels = dayLabels,

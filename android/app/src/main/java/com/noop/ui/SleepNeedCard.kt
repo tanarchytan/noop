@@ -22,10 +22,12 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.noop.R
 import com.noop.analytics.SleepDebtLedger
 import kotlin.math.abs
 import kotlin.math.max
@@ -54,7 +56,11 @@ internal fun SleepNeedCard(
     NoopCard(padding = Metrics.cardPadding, tint = Palette.restColor) {
         Column(verticalArrangement = Arrangement.spacedBy(Metrics.space14)) {
             Column(verticalArrangement = Arrangement.spacedBy(Metrics.space2)) {
-                Text("HOURS VS. NEEDED", style = NoopType.overline, color = Palette.textTertiary)
+                Text(
+                    stringResource(R.string.sleep_hours_vs_needed),
+                    style = NoopType.overline,
+                    color = Palette.textTertiary,
+                )
                 Text(
                     pctValue(percent),
                     style = NoopType.tileValueLarge,
@@ -63,7 +69,8 @@ internal fun SleepNeedCard(
                     overflow = TextOverflow.Ellipsis,
                 )
                 Text(
-                    typicalPercent?.let { "${pctValue(it)} typical" } ?: "no typical yet",
+                    typicalPercent?.let { stringResource(R.string.sleep_typical_value, pctValue(it)) }
+                        ?: stringResource(R.string.sleep_no_typical_yet),
                     style = NoopType.footnote,
                     color = Palette.textSecondary,
                 )
@@ -72,7 +79,7 @@ internal fun SleepNeedCard(
                 NeedVersusBar(sleptMin = sleptMin, neededMin = neededMin)
             } else {
                 Text(
-                    "No night with both an asleep total and a need to set it against yet.",
+                    stringResource(R.string.sleep_need_no_pair),
                     style = NoopType.footnote,
                     color = Palette.textTertiary,
                 )
@@ -80,14 +87,22 @@ internal fun SleepNeedCard(
             CardHairline()
             if (ledger.nightCount == 0) {
                 Text(
-                    "No nights with sleep data yet. Your balance fills in as you wear the strap to bed.",
+                    stringResource(R.string.sleep_need_no_nights),
                     style = NoopType.subhead,
                     color = Palette.textTertiary,
                 )
             } else {
                 Column(verticalArrangement = Arrangement.spacedBy(Metrics.space12)) {
-                    NeedLedgerRow("Baseline need", durationText(ledger.needMin), Palette.textTertiary)
-                    NeedLedgerRow("Sleep balance", debtSigned(ledger.balanceMin), debtBalanceColor(ledger))
+                    NeedLedgerRow(
+                        stringResource(R.string.sleep_need_baseline),
+                        durationText(ledger.needMin),
+                        Palette.textTertiary,
+                    )
+                    NeedLedgerRow(
+                        stringResource(R.string.sleep_need_balance),
+                        debtSigned(ledger.balanceMin),
+                        debtBalanceColor(ledger),
+                    )
                     Text(debtRead(ledger), style = NoopType.footnote, color = Palette.textSecondary)
                     DebtBalanceStrip(ledger)
                 }
@@ -109,16 +124,16 @@ private fun NeedVersusBar(sleptMin: Double, neededMin: Double) {
     val fillBrush = Brush.horizontalGradient(listOf(Palette.restDeep, Palette.restBright))
     val trackColor = Palette.surfaceInset
     val markColor = Palette.textPrimary
+    val barDescription = stringResource(
+        R.string.sleep_need_bar_a11y, durationText(sleptMin), durationText(neededMin),
+    )
     Column(verticalArrangement = Arrangement.spacedBy(Metrics.space6)) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(NEED_BAR_HEIGHT)
                 .clip(RoundedCornerShape(Metrics.cornerPill))
-                .semantics {
-                    contentDescription =
-                        "Asleep ${durationText(sleptMin)} against a need of ${durationText(neededMin)}"
-                }
+                .semantics { contentDescription = barDescription }
                 .drawBehind {
                     drawRect(color = trackColor, size = size)
                     drawRect(brush = fillBrush, size = Size(size.width * sleptFrac, size.height))
@@ -139,14 +154,14 @@ private fun NeedVersusBar(sleptMin: Double, neededMin: Double) {
         )
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
-                "ASLEEP ${durationText(sleptMin)}",
+                stringResource(R.string.sleep_need_asleep, durationText(sleptMin)),
                 style = NoopType.overline,
                 color = Palette.restBright,
                 maxLines = 1,
                 modifier = Modifier.weight(1f),
             )
             Text(
-                "NEEDED ${durationText(neededMin)}",
+                stringResource(R.string.sleep_need_needed, durationText(neededMin)),
                 style = NoopType.overline,
                 color = Palette.textSecondary,
                 maxLines = 1,
@@ -158,10 +173,11 @@ private fun NeedVersusBar(sleptMin: Double, neededMin: Double) {
 /** One labelled figure under the bars, with the swatch its colour explains. */
 @Composable
 private fun NeedLedgerRow(label: String, value: String, valueColor: Color) {
+    val rowDescription = stringResource(R.string.sleep_need_row_a11y, label, value)
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .semantics(mergeDescendants = true) { contentDescription = "$label $value" },
+            .semantics(mergeDescendants = true) { contentDescription = rowDescription },
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(
@@ -188,14 +204,14 @@ private fun DebtBalanceStrip(ledger: SleepDebtLedger) {
     val surplusColor = Palette.statusPositive
     val deficitColor = Palette.statusCritical
     val centreColor = Palette.hairline
+    val stripDescription = stringResource(
+        R.string.sleep_need_strip_a11y, ledger.nightCount, debtSigned(ledger.balanceMin),
+    )
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .height(DEBT_STRIP_HEIGHT)
-            .semantics {
-                contentDescription =
-                    "Per-night sleep balance: ${ledger.nightCount} nights, net ${debtSigned(ledger.balanceMin)}"
-            }
+            .semantics { contentDescription = stripDescription }
             .drawBehind {
                 val n = max(deltas.size, 1)
                 val slot = size.width / n

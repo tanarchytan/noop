@@ -1,6 +1,10 @@
 package com.noop.ui.whoop
 
+import androidx.annotation.StringRes
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
+import com.noop.R
 import com.noop.analytics.Baselines
 import com.noop.analytics.DaytimeStress
 import com.noop.analytics.RustScores
@@ -58,11 +62,12 @@ private val NO_READING_BAND = VitalBands.Result(VitalBands.Band.NO_DATA, VitalBa
  */
 internal data class HealthVital(
     val key: String,
-    val label: String,
-    val short: String,
+    @StringRes val label: Int,
+    @StringRes val short: Int,
     val unit: String,
     val value: Double?,
-    val asOf: String?,
+    /** The `yyyy-MM-dd` the reading was taken on; the screen words it. */
+    val asOfDay: String?,
     val banding: VitalBands.Result,
     val format: (Double) -> String,
 ) {
@@ -78,17 +83,36 @@ internal data class HealthVital(
         VitalBands.Band.IN_RANGE -> healthVitalColor(key)
         VitalBands.Band.OUT_OF_RANGE -> Palette.statusWarning
     }
+}
 
-    /** Which yardstick judged the reading — your own baseline, or the typical adult range. */
-    val stateCaption: String get() = when {
-        banding.band == VitalBands.Band.NO_DATA -> "No reading yet"
-        banding.basis == VitalBands.Basis.PERSONAL ->
-            if (banding.band == VitalBands.Band.IN_RANGE) "In your range" else "Off your baseline"
-        else ->
-            if (banding.band == VitalBands.Band.IN_RANGE) "In typical range" else "Outside typical range"
-    }
+/** Which yardstick judged the reading — your own baseline, or the typical adult range. */
+@Composable
+internal fun healthVitalStateCaption(vital: HealthVital): String = when {
+    vital.banding.band == VitalBands.Band.NO_DATA ->
+        stringResource(R.string.whoopskin_vital_no_reading)
+    vital.banding.basis == VitalBands.Basis.PERSONAL ->
+        if (vital.banding.band == VitalBands.Band.IN_RANGE) {
+            stringResource(R.string.whoopskin_vital_in_your_range)
+        } else {
+            stringResource(R.string.whoopskin_vital_off_baseline)
+        }
+    else ->
+        if (vital.banding.band == VitalBands.Band.IN_RANGE) {
+            stringResource(R.string.whoopskin_vital_in_typical)
+        } else {
+            stringResource(R.string.whoopskin_vital_outside_typical)
+        }
+}
 
-    val spoken: String get() = formatted?.let { "$label $it, $stateCaption" } ?: "$label, no reading"
+/** What a screen reader says for one vital: its name, the reading, and the range that judged it. */
+@Composable
+internal fun healthVitalSpoken(vital: HealthVital): String {
+    val label = stringResource(vital.label)
+    val reading = vital.formatted
+        ?: return stringResource(R.string.whoopskin_vital_spoken_empty, label)
+    return stringResource(
+        R.string.whoopskin_vital_spoken, label, reading, healthVitalStateCaption(vital),
+    )
 }
 
 /**
@@ -97,7 +121,6 @@ internal data class HealthVital(
  */
 internal data class HealthRollUp(val inRange: Int, val read: Int) {
     val allInRange: Boolean get() = inRange == read
-    val title: String get() = "$inRange/$read metrics within range"
 }
 
 /**
@@ -163,8 +186,11 @@ internal fun latestHealthVitals(
 
     return listOf(
         HealthVital(
-            key = "resp", label = "Respiratory rate", short = "Resp", unit = "rpm",
-            value = resp?.second, asOf = healthAsOfLabel(resp?.first),
+            key = "resp",
+            label = R.string.whoopskin_vital_resp,
+            short = R.string.whoopskin_vital_resp_short,
+            unit = "rpm",
+            value = resp?.second, asOfDay = resp?.first,
             banding = VitalBands.band(
                 resp?.second, history(resp?.first) { it.respRateBpm },
                 RESP_TYPICAL_RPM, Baselines.respCfg,
@@ -174,14 +200,20 @@ internal fun latestHealthVitals(
         // SpO₂ has no MetricCfg and an absolute floor is meaningful regardless of personal history,
         // so it stays population-only — the null cfg is what disables the personal path.
         HealthVital(
-            key = "spo2", label = "SpO₂", short = "SpO₂", unit = "%",
-            value = spo2?.second, asOf = healthAsOfLabel(spo2?.first),
+            key = "spo2",
+            label = R.string.whoopskin_vital_spo2,
+            short = R.string.whoopskin_vital_spo2,
+            unit = "%",
+            value = spo2?.second, asOfDay = spo2?.first,
             banding = VitalBands.band(spo2?.second, emptyList(), SPO2_TYPICAL_PCT, null),
             format = { String.format(Locale.US, "%.0f", it) },
         ),
         HealthVital(
-            key = "rhr", label = "Resting HR", short = "RHR", unit = "bpm",
-            value = rhr?.second, asOf = healthAsOfLabel(rhr?.first),
+            key = "rhr",
+            label = R.string.whoopskin_vital_rhr,
+            short = R.string.whoopskin_vital_rhr_short,
+            unit = "bpm",
+            value = rhr?.second, asOfDay = rhr?.first,
             banding = VitalBands.band(
                 rhr?.second, history(rhr?.first) { it.restingHr?.toDouble() },
                 RHR_TYPICAL_BPM, Baselines.restingHRCfg,
@@ -189,8 +221,11 @@ internal fun latestHealthVitals(
             format = { it.roundToInt().toString() },
         ),
         HealthVital(
-            key = "hrv", label = "HRV", short = "HRV", unit = "ms",
-            value = hrv?.second, asOf = healthAsOfLabel(hrv?.first),
+            key = "hrv",
+            label = R.string.whoopskin_vital_hrv,
+            short = R.string.whoopskin_vital_hrv,
+            unit = "ms",
+            value = hrv?.second, asOfDay = hrv?.first,
             banding = VitalBands.band(
                 hrv?.second, history(hrv?.first) { it.avgHrv },
                 HRV_TYPICAL_MS, Baselines.hrvCfg,
@@ -199,9 +234,14 @@ internal fun latestHealthVitals(
         ),
         HealthVital(
             key = "skin",
-            label = if (skinIsAbsolute) "Skin temp" else "Skin temp (from baseline)",
-            short = "Temp", unit = tempLabel,
-            value = skin?.second, asOf = healthAsOfLabel(skin?.first),
+            label = if (skinIsAbsolute) {
+                R.string.whoopskin_vital_skin
+            } else {
+                R.string.whoopskin_vital_skin_from_baseline
+            },
+            short = R.string.whoopskin_vital_skin_short,
+            unit = tempLabel,
+            value = skin?.second, asOfDay = skin?.first,
             banding = skinBanding,
             format = skinFormat,
         ),
@@ -209,30 +249,43 @@ internal fun latestHealthVitals(
 }
 
 /** "as of today" / "as of 9 Jun" for a reading day; null when there is no reading. */
+@Composable
 internal fun healthAsOfLabel(day: String?): String? {
     if (day.isNullOrBlank()) return null
-    val date = runCatching { LocalDate.parse(day) }.getOrNull() ?: return "as of $day"
-    return "as of " + relativeDayLabel(
-        date, today = "today", yesterday = "yesterday",
-        other = date.format(DateTimeFormatter.ofPattern("d MMM", Locale.US)),
+    val date = runCatching { LocalDate.parse(day) }.getOrNull()
+        ?: return stringResource(R.string.whoopskin_health_as_of, day)
+    return stringResource(
+        R.string.whoopskin_health_as_of,
+        relativeDayLabel(
+            date,
+            today = stringResource(R.string.whoopskin_today_lowercase),
+            yesterday = stringResource(R.string.whoopskin_yesterday_lowercase),
+            other = date.format(DateTimeFormatter.ofPattern("d MMM", Locale.US)),
+        ),
     )
 }
 
 /** "Today" / "Yesterday" / "Wed 16 Jul" for the Stress Monitor's day pager. */
+@Composable
 internal fun stressDayLabel(day: String): String {
     val date = runCatching { LocalDate.parse(day) }.getOrNull() ?: return day
     return relativeDayLabel(
-        date, today = "Today", yesterday = "Yesterday",
+        date,
+        today = stringResource(R.string.common_today),
+        yesterday = stringResource(R.string.whoopskin_yesterday),
         other = date.format(DateTimeFormatter.ofPattern("EEE d MMM", Locale.US)),
     )
 }
 
 /** "6 am" / "2 pm" for an hour-of-day on the local clock. */
+@Composable
 internal fun stressHourLabel(hour: Int): String {
     val h = ((hour % 24) + 24) % 24
-    val suffix = if (h < 12) "am" else "pm"
     val h12 = if (h % 12 == 0) 12 else h % 12
-    return "$h12 $suffix"
+    return stringResource(
+        if (h < 12) R.string.whoopskin_hour_am else R.string.whoopskin_hour_pm,
+        h12,
+    )
 }
 
 /** The wall-clock [start, end) seconds of the local calendar day [dayIso], clipped to [nowSeconds]. */

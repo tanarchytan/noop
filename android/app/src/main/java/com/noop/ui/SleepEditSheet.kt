@@ -34,10 +34,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.noop.R
 import com.noop.analytics.SleepEditGuard
 import com.noop.data.SleepSession
 import java.text.SimpleDateFormat
@@ -79,10 +81,16 @@ internal fun SleepEditSheetContent(
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = onClose) {
-                Icon(Icons.Filled.Close, contentDescription = "Close", tint = Palette.textSecondary)
+                Icon(
+                    Icons.Filled.Close,
+                    contentDescription = stringResource(R.string.sleep_edit_close),
+                    tint = Palette.textSecondary,
+                )
             }
             Text(
-                if (isNew) "ADD A NAP" else "EDIT TIME IN BED",
+                stringResource(
+                    if (isNew) R.string.sleep_edit_add_nap_title else R.string.sleep_edit_title,
+                ),
                 style = NoopType.overline,
                 color = Palette.textPrimary,
                 textAlign = TextAlign.Center,
@@ -92,19 +100,23 @@ internal fun SleepEditSheetContent(
         }
 
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("TIME", style = NoopType.overline, color = Palette.textTertiary)
+            Text(
+                stringResource(R.string.sleep_edit_time_section),
+                style = NoopType.overline,
+                color = Palette.textTertiary,
+            )
             Spacer(Modifier.width(Metrics.space12))
             Box(modifier = Modifier.weight(1f).height(Metrics.divider).background(Palette.hairline))
         }
 
         SleepEditRow(
-            label = "Bed Time",
+            label = stringResource(R.string.sleep_edit_bed_time),
             ts = bedTs,
             onPickDate = { editing = SleepEditField.BedDate },
             onPickTime = { editing = SleepEditField.BedTime },
         )
         SleepEditRow(
-            label = "Wake Time",
+            label = stringResource(R.string.sleep_edit_wake_time),
             ts = wakeTs,
             onPickDate = { editing = SleepEditField.WakeDate },
             onPickTime = { editing = SleepEditField.WakeTime },
@@ -112,7 +124,7 @@ internal fun SleepEditSheetContent(
 
         Spacer(Modifier.height(Metrics.space16))
         SleepEditAction(
-            label = "SAVE",
+            label = stringResource(R.string.sleep_edit_save),
             filled = true,
             onClick = {
                 val coverageStart = minOf(session.startTs, session.effectiveStartTs)
@@ -125,7 +137,11 @@ internal fun SleepEditSheetContent(
             },
         )
         if (!isNew) {
-            SleepEditAction(label = "DELETE SLEEP", filled = false, onClick = { showDeleteConfirm = true })
+            SleepEditAction(
+                label = stringResource(R.string.sleep_edit_delete_sleep),
+                filled = false,
+                onClick = { showDeleteConfirm = true },
+            )
         }
         Spacer(Modifier.height(Metrics.space16))
     }
@@ -155,24 +171,30 @@ internal fun SleepEditSheetContent(
             containerColor = Palette.surfaceRaised,
             titleContentColor = Palette.textPrimary,
             textContentColor = Palette.textSecondary,
-            title = { Text("Move this sleep?", style = NoopType.headline) },
+            title = { Text(stringResource(R.string.sleep_edit_move_title), style = NoopType.headline) },
             text = {
-                Text(
-                    "This moves the night to a time with no recorded data. Stages can't be derived there, " +
-                        "so it may show as empty until data covers it.",
-                    style = NoopType.subhead,
-                )
+                Text(stringResource(R.string.sleep_edit_move_body), style = NoopType.subhead)
             },
             confirmButton = {
                 TextButton(onClick = {
                     onSave(disjoint.first, disjoint.second, wakeMoved)
                     pendingDisjoint = null
                     onClose()
-                }) { Text("Move anyway", style = NoopType.subhead, color = Palette.statusWarning) }
+                }) {
+                    Text(
+                        stringResource(R.string.sleep_edit_move_confirm),
+                        style = NoopType.subhead,
+                        color = Palette.statusWarning,
+                    )
+                }
             },
             dismissButton = {
                 TextButton(onClick = { pendingDisjoint = null }) {
-                    Text("Cancel", style = NoopType.subhead, color = Palette.textSecondary)
+                    Text(
+                        stringResource(R.string.common_cancel),
+                        style = NoopType.subhead,
+                        color = Palette.textSecondary,
+                    )
                 }
             },
         )
@@ -184,18 +206,18 @@ internal fun SleepEditSheetContent(
             containerColor = Palette.surfaceRaised,
             titleContentColor = Palette.textPrimary,
             textContentColor = Palette.textSecondary,
-            title = { Text("Delete this sleep session?", style = NoopType.headline) },
+            title = { Text(stringResource(R.string.sleep_edit_delete_title), style = NoopType.headline) },
             text = {
                 // A detected night is tombstoned so it won't re-detect; a userEdited row writes no
                 // tombstone, so its copy drops that promise.
                 Text(
-                    if (session.userEdited) {
-                        "Removes this sleep and recomputes the day without it. You can undo for a few " +
-                            "seconds after."
-                    } else {
-                        "Removes this recorded sleep and recomputes the day without it. NOOP won't " +
-                            "re-detect sleep in this window. You can undo for a few seconds after."
-                    },
+                    stringResource(
+                        if (session.userEdited) {
+                            R.string.sleep_edit_delete_body_edited
+                        } else {
+                            R.string.sleep_edit_delete_body_detected
+                        },
+                    ),
                     style = NoopType.subhead,
                 )
             },
@@ -204,11 +226,21 @@ internal fun SleepEditSheetContent(
                     showDeleteConfirm = false
                     onDelete()
                     onClose()
-                }) { Text("Delete", style = NoopType.headline, color = Palette.statusCritical) }
+                }) {
+                    Text(
+                        stringResource(R.string.sleep_edit_delete_confirm),
+                        style = NoopType.headline,
+                        color = Palette.statusCritical,
+                    )
+                }
             },
             dismissButton = {
                 TextButton(onClick = { showDeleteConfirm = false }) {
-                    Text("Cancel", style = NoopType.subhead, color = Palette.textTertiary)
+                    Text(
+                        stringResource(R.string.common_cancel),
+                        style = NoopType.subhead,
+                        color = Palette.textTertiary,
+                    )
                 }
             },
         )
@@ -220,22 +252,32 @@ internal fun SleepEditSheetContent(
 private fun SleepEditRow(label: String, ts: Long, onPickDate: () -> Unit, onPickTime: () -> Unit) {
     Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Text(label, style = NoopType.body, color = Palette.textPrimary, modifier = Modifier.weight(1f))
-        SleepEditChip(text = editDateLabel(ts), description = "$label date", onClick = onPickDate)
+        SleepEditChip(
+            text = editDateLabel(ts),
+            description = stringResource(R.string.sleep_edit_chip_date, label),
+            onClick = onPickDate,
+        )
         Spacer(Modifier.width(Metrics.space8))
-        SleepEditChip(text = clockTimeLabel(ts), description = "$label of day", onClick = onPickTime)
+        SleepEditChip(
+            text = clockTimeLabel(ts),
+            description = stringResource(R.string.sleep_edit_chip_time, label),
+            onClick = onPickTime,
+        )
     }
 }
 
 /** A tappable value chip. */
 @Composable
 private fun SleepEditChip(text: String, description: String, onClick: () -> Unit) {
+    val changeLabel = stringResource(R.string.sleep_edit_chip_change, description)
+    val chipDescription = stringResource(R.string.sleep_edit_chip_a11y, description, text)
     Box(
         modifier = Modifier
             .clip(RoundedCornerShape(Metrics.cornerSm))
             .background(Palette.surfaceOverlay)
-            .clickable(onClickLabel = "Change $description", onClick = onClick)
+            .clickable(onClickLabel = changeLabel, onClick = onClick)
             .padding(horizontal = Metrics.space16, vertical = Metrics.space12)
-            .semantics { contentDescription = "$description $text" },
+            .semantics { contentDescription = chipDescription },
     ) {
         Text(text, style = NoopType.captionNumber, color = Palette.textPrimary, maxLines = 1)
     }

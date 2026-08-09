@@ -525,11 +525,17 @@ private fun DeviceCard(
             // with no pack on it shows no gauge rather than a zeroed one.
             packSocPct?.let { BatteryBar(pct = Math.round(it).toInt(), label = "PowerPack") }
 
+            val historySuffix = liveHistoryLayout?.let { version ->
+                historyLayoutLine(version)?.let { " · " + stringResource(it, version) }
+            }.orEmpty()
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    lastSeenLine(device, isLiveConnected, bondRefused) +
+                    stringResource(
+                        lastSeenLine(device, isLiveConnected, bondRefused),
+                        relativeAgo(device.lastSeenAt),
+                    ) +
                         (liveFirmware?.let { " · FW $it" } ?: "") +
-                        (historyLayoutLine(liveHistoryLayout)?.let { " · $it" } ?: ""),
+                        historySuffix,
                     style = NoopType.footnote,
                     color = Palette.textTertiary,
                     modifier = Modifier.weight(1f),
@@ -617,7 +623,7 @@ private fun BatteryBar(pct: Int, label: String = stringResource(R.string.devices
  * silently reorder "Connected · not paired" vs "Active · Live" without a test catching it.
  */
 internal data class DevicePillState(
-    val label: String,
+    @StringRes val label: Int,
     val tone: StrandTone,
     val pulsing: Boolean = false,
     val showsDot: Boolean = true,
@@ -633,19 +639,20 @@ internal fun devicePillState(
      *  the strap's own CHARGING/BATTERY_LEVEL report — never inferred from a pack being nearby. */
     isCharging: Boolean = false,
 ): DevicePillState = when {
-    isArchived -> DevicePillState("Removed", StrandTone.Neutral, showsDot = false)
-    !isActive -> DevicePillState("Paired", StrandTone.Neutral)
+    isArchived -> DevicePillState(R.string.devices2_pill_removed, StrandTone.Neutral, showsDot = false)
+    !isActive -> DevicePillState(R.string.devices2_pill_paired, StrandTone.Neutral)
     // Reboot window : the user's Restart dropped the link and NOOP is auto-reconnecting. Show it
     // as intentional rather than a silent drop to "Active"; clears to "Active · Live" once the link is back.
-    isReconnecting -> DevicePillState("Reconnecting…", StrandTone.Warning, pulsing = true)
+    isReconnecting -> DevicePillState(R.string.devices2_pill_reconnecting, StrandTone.Warning, pulsing = true)
     // BLE-connected but the encrypted bond was refused — no data flows, so this must not read
     // as "Active · Live".
-    bondRefused -> DevicePillState("Connected · not paired", StrandTone.Warning)
+    bondRefused -> DevicePillState(R.string.devices2_pill_bond_refused, StrandTone.Warning)
     // Charging is the more specific live state, so it replaces "Active · Live" rather than sitting
     // beside it; the link is still live either way.
-    isLiveConnected && isCharging -> DevicePillState("Charging · Live", StrandTone.Accent, pulsing = true)
-    isLiveConnected -> DevicePillState("Active · Live", StrandTone.Positive, pulsing = true)
-    else -> DevicePillState("Active", StrandTone.Positive)
+    isLiveConnected && isCharging ->
+        DevicePillState(R.string.devices2_pill_charging_live, StrandTone.Accent, pulsing = true)
+    isLiveConnected -> DevicePillState(R.string.devices2_pill_active_live, StrandTone.Positive, pulsing = true)
+    else -> DevicePillState(R.string.devices2_pill_active, StrandTone.Positive)
 }
 
 /**
@@ -683,7 +690,12 @@ private fun StatePill(
         isLiveConnected = isLiveConnected,
         isCharging = isCharging,
     )
-    StatePill(state.label, tone = state.tone, showsDot = state.showsDot, pulsing = state.pulsing)
+    StatePill(
+        stringResource(state.label),
+        tone = state.tone,
+        showsDot = state.showsDot,
+        pulsing = state.pulsing,
+    )
 }
 
 @Composable
@@ -897,7 +909,7 @@ private fun RebootProbeDialog(
         confirmButton = {},
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel", style = NoopType.body, color = Palette.textSecondary)
+                Text(stringResource(R.string.common_cancel), style = NoopType.body, color = Palette.textSecondary)
             }
         },
     )
@@ -1115,17 +1127,21 @@ private fun OuraLocalStateNote() {
     }
 }
 
-internal fun lastSeenLine(device: PairedDeviceRow, isLiveConnected: Boolean, bondRefused: Boolean = false): String = when {
-    device.status == DeviceStatus.archived.name -> "Removed · data kept"
+/** The card's footnote. The last-seen case takes the relative stamp as its one format argument. */
+@StringRes
+internal fun lastSeenLine(device: PairedDeviceRow, isLiveConnected: Boolean, bondRefused: Boolean = false): Int = when {
+    device.status == DeviceStatus.archived.name -> R.string.devices2_last_seen_removed
     // No "tap ⋯" pointer here — the full how-to-fix guidance is already inline on the card
     // just below, so pointing at the menu would send the user looking for help that's already on screen.
-    bondRefused -> "Connected, but not paired"
-    isLiveConnected -> "Connected now"
-    else -> "Last seen ${relativeAgo(device.lastSeenAt)}"
+    bondRefused -> R.string.devices2_last_seen_bond_refused
+    isLiveConnected -> R.string.devices2_last_seen_connected
+    else -> R.string.devices2_last_seen
 }
 
-internal fun historyLayoutLine(version: Int?): String? =
-    version?.let { "v$it history" }
+/** The observed record-layout suffix, or null when the strap reported no layout to name. */
+@StringRes
+internal fun historyLayoutLine(version: Int?): Int? =
+    version?.let { R.string.devices2_history_layout }
 
 // MARK: - Sync status + "Sync now" — moved here from Health: the strap-history sync control
 // belongs with the devices. Reads only LiveState (connection + backfill + last-sync). The button reaches

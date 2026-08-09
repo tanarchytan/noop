@@ -33,7 +33,9 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.noop.R
 import com.noop.ui.DashboardCard
 import com.noop.ui.DashboardCardPrefs
 import com.noop.ui.KeyMetric
@@ -64,8 +66,8 @@ fun <T> WhoopCustomizeSheet(
     onSave: (List<T>) -> Unit,
     modifier: Modifier = Modifier,
     icon: (T) -> ImageVector? = { null },
-    addSectionTitle: String = "Add to my dashboard",
-    saveLabel: String = "Save",
+    addSectionTitle: String = stringResource(R.string.whoopskin_add_to_my_dashboard),
+    saveLabel: String = stringResource(R.string.whoopskin_save),
     defaults: List<T>? = null,
 ) {
     val selection = rememberCustomizeSelection(all, initial)
@@ -97,19 +99,19 @@ fun <T> WhoopCustomizeSheet(
                         CustomizeItemRow(label = name, icon = icon(item)) {
                             CustomizeRowAction(
                                 icon = Icons.Filled.KeyboardArrowUp,
-                                label = "Move $name up",
+                                label = stringResource(R.string.whoopskin_move_up, name),
                                 enabled = index > 0,
                                 onClick = { selection.move(index, index - 1) },
                             )
                             CustomizeRowAction(
                                 icon = Icons.Filled.KeyboardArrowDown,
-                                label = "Move $name down",
+                                label = stringResource(R.string.whoopskin_move_down, name),
                                 enabled = index < enabled.lastIndex,
                                 onClick = { selection.move(index, index + 1) },
                             )
                             CustomizeRowAction(
                                 icon = Icons.Filled.RemoveCircleOutline,
-                                label = "Remove $name",
+                                label = stringResource(R.string.whoopskin_remove_item, name),
                                 tint = Palette.textTertiary,
                                 onClick = { selection.remove(item) },
                             )
@@ -118,7 +120,7 @@ fun <T> WhoopCustomizeSheet(
                     if (enabled.isEmpty()) {
                         item {
                             Text(
-                                "Add at least one to save.",
+                                stringResource(R.string.whoopskin_add_at_least_one),
                                 style = NoopType.footnote,
                                 color = Palette.textTertiary,
                             )
@@ -131,7 +133,7 @@ fun <T> WhoopCustomizeSheet(
                             CustomizeItemRow(label = name, icon = icon(item)) {
                                 CustomizeRowAction(
                                     icon = Icons.Filled.Add,
-                                    label = "Add $name",
+                                    label = stringResource(R.string.whoopskin_add_item, name),
                                     tint = Palette.accent,
                                     onClick = { selection.add(item) },
                                 )
@@ -176,7 +178,7 @@ fun WhoopDashboardCustomizeSheet(
 ) {
     val context = LocalContext.current
     WhoopCustomizeSheet(
-        title = "Customise dashboard",
+        title = stringResource(R.string.whoopskin_customise_dashboard),
         all = DashboardCard.canonicalOrder,
         initial = initial,
         label = { it.title },
@@ -201,11 +203,11 @@ fun WhoopKeyMetricsCustomizeSheet(
 ) {
     val context = LocalContext.current
     WhoopCustomizeSheet(
-        title = "Customise key metrics",
+        title = stringResource(R.string.whoopskin_customise_key_metrics),
         all = KeyMetric.defaultOrder,
         initial = initial,
         label = { it.title },
-        addSectionTitle = "Add to my key metrics",
+        addSectionTitle = stringResource(R.string.whoopskin_add_to_my_key_metrics),
         defaults = KeyMetric.defaultOrder,
         onClose = onClose,
         onSave = { metrics ->

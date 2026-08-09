@@ -8,7 +8,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.noop.R
 import com.noop.data.DailyMetric
 import com.noop.ui.AppViewModel
 import com.noop.ui.Palette
@@ -53,28 +55,33 @@ fun WhoopStrainScreen(
     // re-resolves it.
     val lines = strainMetricLines(today, stepsAverage, zone1to3Average, zone4to5Average)
 
-    ScreenScaffold(title = "Strain", subtitle = today?.let { clockLabel(it, null) }) {
+    ScreenScaffold(
+        title = stringResource(R.string.nav_strain),
+        subtitle = today?.let { clockLabel(it, null) },
+    ) {
         StrainHero(strain = today?.strain, effortScale = effortScale)
         StrainTodayCard(lines)
         if (lines.any { it.comparison != null }) {
             StatePill(
-                title = "Today vs. last $STRAIN_COMPARISON_DAYS days",
+                title = stringResource(
+                    R.string.whoopskin_strain_today_vs_window, STRAIN_COMPARISON_DAYS,
+                ),
                 tone = StrandTone.Neutral,
                 showsDot = false,
                 fillsWidth = true,
             )
         }
-        SectionHeader(title = "Weekly Trends")
+        SectionHeader(title = stringResource(R.string.whoopskin_weekly_trends))
         StrainTrendCard(week = week, effortScale = effortScale, onOpen = onOpenStrainHistory)
         StrainZoneCard(
-            title = "HR Zones 1-3",
+            title = stringResource(R.string.whoopskin_hr_zones_1_3),
             minutes = week.zone1to3,
             dayLabels = week.labels,
             color = Palette.hrZoneColor(2),
             highlightIndex = week.todayIndex,
         )
         StrainZoneCard(
-            title = "HR Zones 4-5",
+            title = stringResource(R.string.whoopskin_hr_zones_4_5),
             minutes = week.zone4to5,
             dayLabels = week.labels,
             color = Palette.hrZoneColor(5),
@@ -89,6 +96,7 @@ fun WhoopStrainScreen(
  * The day card's lines, in the reference's order. A metric with no reading contributes no line, and a
  * metric with no trailing average carries no comparison caption.
  */
+@Composable
 private fun strainMetricLines(
     today: DailyMetric?,
     stepsAverage: Double?,
@@ -100,7 +108,7 @@ private fun strainMetricLines(
         lines.add(
             StrainMetricLine(
                 icon = Icons.Filled.FavoriteBorder,
-                label = "Heart rate zones 1-3",
+                label = stringResource(R.string.whoopskin_strain_zones_1_3),
                 value = durationText(v),
                 comparison = zone1to3Average?.let { averageCaption(durationText(it)) },
                 iconTint = Palette.hrZoneColor(2),
@@ -111,7 +119,7 @@ private fun strainMetricLines(
         lines.add(
             StrainMetricLine(
                 icon = Icons.Filled.Favorite,
-                label = "Heart rate zones 4-5",
+                label = stringResource(R.string.whoopskin_strain_zones_4_5),
                 value = durationText(v),
                 comparison = zone4to5Average?.let { averageCaption(durationText(it)) },
                 iconTint = Palette.hrZoneColor(5),
@@ -122,7 +130,7 @@ private fun strainMetricLines(
         lines.add(
             StrainMetricLine(
                 icon = Icons.AutoMirrored.Filled.DirectionsRun,
-                label = "Steps",
+                label = stringResource(R.string.whoopskin_steps),
                 value = strainCountText(v.toDouble()),
                 comparison = stepsAverage?.let { averageCaption(strainCountText(it)) },
                 iconTint = Palette.metricCyan,
@@ -133,4 +141,6 @@ private fun strainMetricLines(
 }
 
 /** "30-day avg 1,423" — the grey line under a metric's value. */
-private fun averageCaption(formatted: String): String = "$STRAIN_COMPARISON_DAYS-day avg $formatted"
+@Composable
+private fun averageCaption(formatted: String): String =
+    stringResource(R.string.whoopskin_strain_window_avg, STRAIN_COMPARISON_DAYS, formatted)

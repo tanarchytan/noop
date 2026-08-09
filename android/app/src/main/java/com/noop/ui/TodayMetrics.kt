@@ -1,5 +1,6 @@
 package com.noop.ui
 
+import androidx.annotation.StringRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -357,7 +358,7 @@ internal fun ReadinessSection(days: List<DailyMetric>, carriedDay: DailyMetric? 
     val readiness = remember(days, anchorKey) { ReadinessEngine.evaluate(days, today = anchorKey) }
     if (readiness.level == ReadinessEngine.Level.INSUFFICIENT) return
 
-    val overline = carriedDay?.let { carriedCaption(it.day) }
+    val overline = carriedDay?.let { stringResource(carriedCaption(it.day), lastChargeDateLabel(it.day)) }
         ?: stringResource(R.string.today_readiness_overline)
     SectionHeader(stringResource(R.string.today_readiness), overline = overline)
     NoopCard {
@@ -449,10 +450,11 @@ internal fun ReadinessSection(days: List<DailyMetric>, carriedDay: DailyMetric? 
  * The one-word readiness read on the hero (Push / Maintain / Rest). PURE mapping of the whoop-rs HRV
  * readiness tier; a null tier (still calibrating) returns null and the hero shows no word.
  */
-internal fun hrvReadinessWord(tier: uniffi.whoop_ffi.ReadinessTier?): String? = when (tier) {
-    uniffi.whoop_ffi.ReadinessTier.PRIMED -> "Push"
-    uniffi.whoop_ffi.ReadinessTier.NORMAL -> "Maintain"
-    uniffi.whoop_ffi.ReadinessTier.SUPPRESSED -> "Rest"
+@StringRes
+internal fun hrvReadinessWord(tier: uniffi.whoop_ffi.ReadinessTier?): Int? = when (tier) {
+    uniffi.whoop_ffi.ReadinessTier.PRIMED -> R.string.core_readiness_push
+    uniffi.whoop_ffi.ReadinessTier.NORMAL -> R.string.core_readiness_maintain
+    uniffi.whoop_ffi.ReadinessTier.SUPPRESSED -> R.string.core_readiness_rest
     null -> null
 }
 
@@ -467,28 +469,31 @@ internal fun hrvReadinessColor(tier: uniffi.whoop_ffi.ReadinessTier?): Color = w
 /**
  * Retained for the Coupled screen's readiness pill, which still reads the multi-signal engine.
  */
-internal fun readinessWord(level: ReadinessEngine.Level): String? = when (level) {
-    ReadinessEngine.Level.PRIMED -> "Push"
-    ReadinessEngine.Level.BALANCED -> "Maintain"
-    ReadinessEngine.Level.STRAINED -> "Rest"
-    ReadinessEngine.Level.RUNDOWN -> "Rest"
+@StringRes
+internal fun readinessWord(level: ReadinessEngine.Level): Int? = when (level) {
+    ReadinessEngine.Level.PRIMED -> R.string.core_readiness_push
+    ReadinessEngine.Level.BALANCED -> R.string.core_readiness_maintain
+    ReadinessEngine.Level.STRAINED -> R.string.core_readiness_rest
+    ReadinessEngine.Level.RUNDOWN -> R.string.core_readiness_rest
     ReadinessEngine.Level.INSUFFICIENT -> null
 }
 
 /**
- * S5: the collapsed Data Sources footer summary, "Synced from: WHOOP, Apple Watch", listing only sources
- * with data (Apple Health reads as "Apple Watch", the device the audience knows), or "No sources yet".
- * PURE + unit-tested. Twin of the Swift TodayView.syncedFromSummary, plus the Android-only
- * hasHealthConnect source — Health Connect is named for what it is, never folded under "Apple Watch".
+ * S5: the sources with data behind the collapsed Data Sources footer, in display order and named the
+ * way the audience knows them (Apple Health reads as "Apple Watch"; Health Connect is named for what it
+ * is, never folded under it). Product names, so they read the same in every language; the caller words
+ * the sentence around them. PURE + unit-tested. Twin of the Swift TodayView.syncedFromSummary.
  */
-internal fun syncedFromSummary(hasWhoop: Boolean, hasApple: Boolean, hasHealthConnect: Boolean = false, hasXiaomi: Boolean): String {
-    val names = buildList {
-        if (hasWhoop) add("WHOOP")
-        if (hasApple) add("Apple Watch")
-        if (hasHealthConnect) add("Health Connect")
-        if (hasXiaomi) add("Mi Band")
-    }
-    return if (names.isEmpty()) "No sources yet" else "Synced from: " + names.joinToString(", ")
+internal fun syncedFromSources(
+    hasWhoop: Boolean,
+    hasApple: Boolean,
+    hasHealthConnect: Boolean = false,
+    hasXiaomi: Boolean,
+): List<String> = buildList {
+    if (hasWhoop) add("WHOOP")
+    if (hasApple) add("Apple Watch")
+    if (hasHealthConnect) add("Health Connect")
+    if (hasXiaomi) add("Mi Band")
 }
 
 /** S5: the Key-Metric overflow cap, mirroring TodayView.metricsCollapsedCap (two columns, three rows). */
@@ -586,19 +591,20 @@ internal fun restStageLowConfidence(d: DailyMetric?): Boolean {
  * today-only rule the Charge tile uses. Each call site only reaches here when the value is genuinely
  * absent, so the hint never overwrites a real reading. No em-dashes (house style). Pure + unit-tested.
  */
-internal fun buildingHint(metric: KeyMetric, isToday: Boolean): String? {
+@StringRes
+internal fun buildingHint(metric: KeyMetric, isToday: Boolean): Int? {
     if (!isToday) return null
     return when (metric) {
-        KeyMetric.REST -> "Building, wear it tonight"
-        KeyMetric.EFFORT -> "Building, moves as you do"
+        KeyMetric.REST -> R.string.core_building_wear_tonight
+        KeyMetric.EFFORT -> R.string.core_building_moves_as_you_do
         // H10: an unscored Charge today that ISN'T mid-calibration and has nothing to carry, say what's
         // needed rather than a bare "No Data". (The "Calibrating N of 4" copy still owns the calibrating
         // case at the call site; this only shows once there's genuinely nothing.)
-        KeyMetric.CHARGE -> "Building, wear it tonight"
+        KeyMetric.CHARGE -> R.string.core_building_wear_tonight
         // H10: the overnight blood-oxygen reading builds from sleep, like the other in-sleep vitals.
-        KeyMetric.BLOOD_OXYGEN -> "Building, wear it tonight"
+        KeyMetric.BLOOD_OXYGEN -> R.string.core_building_wear_tonight
         // H10: on-device steps fill in across today as you move (5/MG counter / imported HC).
-        KeyMetric.STEPS -> "Building, moves as you do"
+        KeyMetric.STEPS -> R.string.core_building_moves_as_you_do
         else -> null
     }
 }
@@ -610,7 +616,7 @@ internal fun buildingHint(metric: KeyMetric, isToday: Boolean): String? {
 // the user's profile weight. Kept pure + file-internal so TodayMetricTilesTest is the oracle.
 
 /** The Weight tile's display string and an honest caption ("from profile" only on fallback). */
-internal data class WeightTileText(val value: String, val caption: String?)
+internal data class WeightTileText(val value: String, @StringRes val caption: Int?)
 
 /**
  * The newest body weight across the two Apple-side sources (apple-health + health-connect), or null
@@ -645,9 +651,12 @@ internal fun stepsForDay(apple: List<AppleDaily>, healthConnect: List<AppleDaily
  */
 internal fun weightTile(latestWeightKg: Double?, profileWeightKg: Double, system: UnitSystem): WeightTileText =
     if (latestWeightKg != null) {
-        WeightTileText(UnitFormatter.massFromKilograms(latestWeightKg, system), "latest")
+        WeightTileText(UnitFormatter.massFromKilograms(latestWeightKg, system), R.string.core_weight_latest)
     } else {
-        WeightTileText(UnitFormatter.massFromKilograms(profileWeightKg, system), "from profile")
+        WeightTileText(
+            UnitFormatter.massFromKilograms(profileWeightKg, system),
+            R.string.core_weight_from_profile,
+        )
     }
 
 /** Group-separated integer display from a Double (e.g. 12 345 steps), matching the Apple Health tiles. */
@@ -669,9 +678,10 @@ private val workoutTimeFmt: DateTimeFormatter =
     DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT)
         .withLocale(Locale.getDefault()).withZone(ZoneId.systemDefault())
 
-internal fun countDetail(days: Int?, workouts: Int?, workoutLabel: String): String {
-    if (days == null || workouts == null) return "Counting..."
-    return "${grouped(days)} days · ${grouped(workouts)} $workoutLabel"
+/** The two grouped figures for a source card's stored-count line, or null while either is counting. */
+internal fun countDetail(days: Int?, workouts: Int?): Pair<String, String>? {
+    if (days == null || workouts == null) return null
+    return grouped(days) to grouped(workouts)
 }
 
 /** Same bands as the Settings Strap battery pill, so the % reads the same colour everywhere. */

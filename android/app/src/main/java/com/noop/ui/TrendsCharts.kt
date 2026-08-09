@@ -1,5 +1,6 @@
 package com.noop.ui
 
+import androidx.annotation.StringRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -19,6 +20,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -35,16 +37,18 @@ import kotlin.math.roundToInt
 // MARK: - Range control model (ported from TrendsView.Range)
 
 /** W(7) / M(30) / 3M(90) / 6M(180) / 1Y(365) / ALL. */
-internal enum class TrendsRange(val days: Int?, val label: String, val longName: String) {
-    Week(7, "W", "week"),
-    Month(30, "M", "month"),
-    Quarter(90, "3M", "3 months"),
-    Half(180, "6M", "6 months"),
-    Year(365, "1Y", "year"),
-    All(null, "ALL", "all history");
+internal enum class TrendsRange(val days: Int?, @StringRes val label: Int, @StringRes val longName: Int) {
+    Week(7, R.string.trends2_range_week, R.string.trends2_window_week),
+    Month(30, R.string.trends2_range_month, R.string.trends2_window_month),
+    Quarter(90, R.string.trends2_range_quarter, R.string.trends2_window_3_months),
+    Half(180, R.string.trends2_range_half, R.string.trends2_window_6_months),
+    Year(365, R.string.trends2_range_year, R.string.trends2_window_year),
+    All(null, R.string.trends2_range_all, R.string.trends2_window_all_history);
 
     /** "Trailing 90 days" / "All history" , the card/range subtitle. */
-    val subtitle: String get() = days?.let { "Trailing $it days" } ?: "All history"
+    val subtitle: String
+        @Composable get() = days?.let { stringResource(R.string.trends2_trailing_days, it) }
+            ?: stringResource(R.string.trends2_all_history)
 
     /** This range plus every LARGER range, ascending , the auto-expand search order. */
     val widening: List<TrendsRange>
@@ -54,14 +58,18 @@ internal enum class TrendsRange(val days: Int?, val label: String, val longName:
 // MARK: - Resolved metric (mirrors TrendsView.ResolvedMetric / resolve)
 
 /** A metric's window: its plotted values + the day-string of each point, the range it
- *  resolved to, whether the selection was widened to find data, and the caption to show. */
+ *  resolved to, whether the selection was widened to find data, and the range asked for. */
 internal data class ResolvedMetric(
     val values: List<Double>,
     val dates: List<String>,
     val effective: TrendsRange,
     val widened: Boolean,
-    val caption: String,
-)
+    val selected: TrendsRange,
+) {
+    /** The reading-count line under the range bar; names the widened window when one was needed. */
+    val captionText: String
+        @Composable get() = caption(values.size, effective, selected)
+}
 
 /**
  * Walk the widening order once: take the smallest range ≥ selected whose window holds
@@ -81,7 +89,7 @@ internal fun resolveMetric(
                 dates = pts.map { it.first },
                 effective = r,
                 widened = r != selected,
-                caption = caption(pts.size, r, selected),
+                selected = selected,
             )
         }
     }
@@ -91,7 +99,7 @@ internal fun resolveMetric(
         dates = pts.map { it.first },
         effective = TrendsRange.All,
         widened = TrendsRange.All != selected,
-        caption = caption(pts.size, TrendsRange.All, selected),
+        selected = selected,
     )
 }
 
@@ -122,12 +130,13 @@ private fun windowPoints(
 }
 
 /** Caption text, mirroring TrendsView.caption(count:eff:). */
+@Composable
 private fun caption(count: Int, eff: TrendsRange, selected: TrendsRange): String {
-    val unit = if (count == 1) "reading" else "readings"
+    val readings = pluralStringResource(R.plurals.trends2_readings, count, count)
     return if (eff != selected) {
-        "$count $unit · sparse, widened to ${eff.longName}"
+        stringResource(R.string.trends2_caption_widened, readings, stringResource(eff.longName))
     } else {
-        "$count $unit · ${selected.longName}"
+        stringResource(R.string.trends2_caption_window, readings, stringResource(selected.longName))
     }
 }
 
@@ -406,14 +415,18 @@ internal fun RecoveryHistoryCard(days: List<DailyMetric>, range: TrendsRange) {
         days.takeLast(span).mapNotNull { it.recovery }
     }
     val title = if (range == TrendsRange.All && days.size > 365) {
-        "Charge , all history"
+        stringResource(R.string.trends2_history_all)
     } else {
-        "Charge , past year"
+        stringResource(R.string.trends2_history_past_year)
     }
 
     NoopCard(tint = Palette.chargeColor) {
         Column(verticalArrangement = Arrangement.spacedBy(Metrics.space12)) {
-            SectionHeader(title, overline = stringResource(R.string.trends_calendar), trailing = "${recovery.size} days")
+            SectionHeader(
+                title,
+                overline = stringResource(R.string.trends_calendar),
+                trailing = stringResource(R.string.explore_n_days, recovery.size),
+            )
             if (recovery.size >= 2) {
                 BarChart(
                     values = recovery,

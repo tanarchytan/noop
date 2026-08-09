@@ -38,12 +38,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.noop.R
 import com.noop.analytics.Baselines
 import com.noop.ui.AppViewModel
 import com.noop.ui.AutoWorkoutNudgeCard
@@ -228,7 +230,11 @@ fun WhoopHomeScreen(
                     onOpenStress = onOpenStress,
                 )
             }
-            item { WhoopSectionRow("My Day") { QuickActionDisc(onClick = onQuickActions) } }
+            item {
+                WhoopSectionRow(stringResource(R.string.whoopskin_my_day)) {
+                    QuickActionDisc(onClick = onQuickActions)
+                }
+            }
             // A session is a now-thing, so the entry is today-only; a running one keeps it regardless.
             if (state.isToday && (liveSessionsEnabled || liveSession != null)) {
                 item {
@@ -260,9 +266,9 @@ fun WhoopHomeScreen(
             }
             item { WhoopJournalCard(onOpenJournal) }
             item {
-                WhoopSectionRow("Key metrics") {
+                WhoopSectionRow(stringResource(R.string.whoopskin_key_metrics)) {
                     WhoopCustomiseAction(
-                        label = "Customise my key metrics",
+                        label = stringResource(R.string.whoopskin_customise_my_key_metrics),
                         onClick = { showMetricsEditor = true },
                     )
                 }
@@ -286,9 +292,9 @@ fun WhoopHomeScreen(
                 )
             }
             item {
-                WhoopSectionRow("My Dashboard") {
+                WhoopSectionRow(stringResource(R.string.whoopskin_my_dashboard)) {
                     WhoopCustomiseAction(
-                        label = "Customise my dashboard",
+                        label = stringResource(R.string.whoopskin_customise_my_dashboard),
                         onClick = { showEditor = true },
                     )
                 }
@@ -367,7 +373,11 @@ private fun WhoopCustomiseAction(label: String, onClick: () -> Unit) {
     ) {
         Icon(Icons.Filled.Tune, contentDescription = null, modifier = Modifier.size(Metrics.iconSmall))
         Spacer(Modifier.width(Metrics.space4))
-        Text("CUSTOMISE", style = NoopType.overline, color = Palette.accent)
+        Text(
+            stringResource(R.string.whoopskin_customise),
+            style = NoopType.overline,
+            color = Palette.accent,
+        )
     }
 }
 
@@ -397,8 +407,8 @@ private fun WhoopScoreStateNote(state: WhoopHomeState) {
         modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(Metrics.space2),
     ) {
-        Text(score.title, style = NoopType.subhead, color = Palette.textPrimary)
-        Text(score.detail, style = NoopType.footnote, color = Palette.textTertiary)
+        Text(score.titleText(), style = NoopType.subhead, color = Palette.textPrimary)
+        Text(score.detailText(), style = NoopType.footnote, color = Palette.textTertiary)
     }
 }
 
@@ -432,8 +442,14 @@ private fun whoopHeroRings(
             fraction = charge?.div(SCORE_MAX),
             tint = Palette.recoveryColor(charge ?: 0.0),
             format = { it.roundToInt().toString() },
-            emptyTitle = if (state.calibratingNights != null) "Calibrating" else NO_DATA,
-            emptyDetail = state.calibratingNights?.let { "$it of ${Baselines.minNightsSeed}" },
+            emptyTitle = if (state.calibratingNights != null) {
+                stringResource(R.string.whoopskin_calibrating)
+            } else {
+                NO_DATA
+            },
+            emptyDetail = state.calibratingNights?.let {
+                stringResource(R.string.whoopskin_of_count, it, Baselines.minNightsSeed)
+            },
             unit = PERCENT,
             onClick = onOpenRecovery,
         ),
@@ -446,7 +462,7 @@ private fun whoopHeroRings(
             // to a whole here printed 71 on the ring for the 70.8 both of those show.
             format = { value -> String.format(Locale.US, "%.1f", value) },
             emptyTitle = NO_DATA,
-            caption = "of ${effortMax.roundToInt()}",
+            caption = stringResource(R.string.whoopskin_of_max, effortMax.roundToInt()),
             onClick = onOpenStrain,
         ),
     )

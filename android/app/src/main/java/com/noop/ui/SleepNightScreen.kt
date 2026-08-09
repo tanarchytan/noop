@@ -26,7 +26,9 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.noop.R
 import com.noop.analytics.AnalyticsEngine
 import com.noop.analytics.DaytimeStress
 import com.noop.analytics.SleepEditGuard
@@ -163,9 +165,13 @@ fun SleepNightScreen(
                 modifier = Modifier.fillMaxWidth().padding(Metrics.space24),
                 verticalArrangement = Arrangement.spacedBy(Metrics.space16),
             ) {
-                Text("Good morning!", style = NoopType.title2, color = Palette.textPrimary)
                 Text(
-                    "Your night data is in. Logging how you felt helps NOOP learn what drives your best recovery.",
+                    stringResource(R.string.sleep_journal_prompt_title),
+                    style = NoopType.title2,
+                    color = Palette.textPrimary,
+                )
+                Text(
+                    stringResource(R.string.sleep_journal_prompt_body),
                     style = NoopType.subhead,
                     color = Palette.textSecondary,
                 )
@@ -174,13 +180,21 @@ fun SleepNightScreen(
                     modifier = Modifier.fillMaxWidth(),
                     colors = ButtonDefaults.buttonColors(containerColor = Palette.accent),
                 ) {
-                    Text("Open Journal", style = NoopType.headline, color = Palette.surfaceBase)
+                    Text(
+                        stringResource(R.string.sleep_journal_prompt_open),
+                        style = NoopType.headline,
+                        color = Palette.surfaceBase,
+                    )
                 }
                 TextButton(
                     onClick = { showJournalPrompt = false },
                     modifier = Modifier.fillMaxWidth(),
                 ) {
-                    Text("Maybe later", style = NoopType.subhead, color = Palette.textTertiary)
+                    Text(
+                        stringResource(R.string.sleep_journal_prompt_later),
+                        style = NoopType.subhead,
+                        color = Palette.textTertiary,
+                    )
                 }
             }
         }
@@ -304,7 +318,7 @@ fun SleepNightScreen(
             // The clamp refused a future or inverted window. Never drop an edit silently.
             Toast.makeText(
                 context,
-                "That time can't be saved (it lands in the future or ends before it starts).",
+                context.getString(R.string.sleep_edit_time_invalid),
                 Toast.LENGTH_SHORT,
             ).show()
         }
@@ -349,8 +363,8 @@ fun SleepNightScreen(
     }
 
     LazyScreenScaffold(
-        title = "Sleep",
-        subtitle = "Last night, read in two seconds.",
+        title = stringResource(R.string.nav_sleep),
+        subtitle = stringResource(R.string.sleep_subtitle),
     ) {
         // The transient UNDO banner after a suppressing delete — restores the deleted row into its original
         // namespace and lifts the tombstone.
@@ -392,11 +406,20 @@ fun SleepNightScreen(
                     // The fourth driver is the freshest night's high-stress share, straight off
                     // whoop-rs `sleep_stress`; its 0 is the good end, so its strip reads mirrored.
                     drivers = listOf(
-                        SleepDriver("Hours vs. needed", scored?.hoursVsNeeded?.latest),
-                        SleepDriver("Sleep consistency", scored?.consistency?.latest),
-                        SleepDriver("Sleep efficiency", scored?.efficiency?.latest),
                         SleepDriver(
-                            "High sleep stress",
+                            stringResource(R.string.sleep_driver_hours_vs_needed),
+                            scored?.hoursVsNeeded?.latest,
+                        ),
+                        SleepDriver(
+                            stringResource(R.string.sleep_driver_consistency),
+                            scored?.consistency?.latest,
+                        ),
+                        SleepDriver(
+                            stringResource(R.string.sleep_driver_efficiency),
+                            scored?.efficiency?.latest,
+                        ),
+                        SleepDriver(
+                            stringResource(R.string.sleep_driver_high_stress),
                             weekStress.lastOrNull()?.highSharePct,
                             higherIsBetter = false,
                         ),
@@ -433,7 +456,7 @@ fun SleepNightScreen(
                     // another night's timeline.
                     NoopCard(tint = Palette.restColor) {
                         Text(
-                            "No stage data recorded for this night.",
+                            stringResource(R.string.sleep_no_stage_data),
                             style = NoopType.subhead,
                             color = Palette.textTertiary,
                         )
@@ -501,7 +524,13 @@ fun SleepNightScreen(
                     )
                 }
                 item { Spacer(Modifier.height(Metrics.selectorTopUp)) }
-                item { SectionHeader("Weekly trends", overline = "Sleep", trailing = "Last 7 nights") }
+                item {
+                    SectionHeader(
+                        stringResource(R.string.sleep_weekly_trends),
+                        overline = stringResource(R.string.nav_sleep),
+                        trailing = stringResource(R.string.sleep_last_7_nights),
+                    )
+                }
                 item { Spacer(Modifier.height(Metrics.selectorTopUp)) }
                 item {
                     SleepPerformanceTrendCard(

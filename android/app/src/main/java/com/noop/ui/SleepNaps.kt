@@ -20,8 +20,10 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import com.noop.R
 import com.noop.analytics.SleepStageTotals
 import com.noop.data.SleepSession
 
@@ -35,11 +37,15 @@ internal fun SleepUndoBanner(session: SleepSession, onUndo: () -> Unit) {
     // Branch the copy on userEdited: a hand-edited or added row writes no tombstone, so the
     // "won't detect again" promise applies only to a DETECTED delete.
     val message = if (session.userEdited) {
-        "Sleep deleted."
+        stringResource(R.string.sleep_deleted)
     } else {
-        "Sleep deleted. NOOP won't detect sleep between " +
-            "${clockTimeLabel(session.effectiveStartTs)} and ${clockTimeLabel(session.effectiveEndTs)} again."
+        stringResource(
+            R.string.sleep_deleted_suppressed,
+            clockTimeLabel(session.effectiveStartTs),
+            clockTimeLabel(session.effectiveEndTs),
+        )
     }
+    val undoDescription = stringResource(R.string.sleep_undo_a11y)
     NoopCard(tint = Palette.restColor) {
         Row(
             modifier = Modifier.fillMaxWidth().semantics { contentDescription = message },
@@ -49,9 +55,9 @@ internal fun SleepUndoBanner(session: SleepSession, onUndo: () -> Unit) {
             Text(message, style = NoopType.footnote, color = Palette.textSecondary, modifier = Modifier.weight(1f))
             TextButton(
                 onClick = onUndo,
-                modifier = Modifier.semantics { contentDescription = "Undo sleep deletion" },
+                modifier = Modifier.semantics { contentDescription = undoDescription },
             ) {
-                Text("Undo", style = NoopType.subhead, color = Palette.restColor)
+                Text(stringResource(R.string.sleep_undo), style = NoopType.subhead, color = Palette.restColor)
             }
         }
     }
@@ -72,14 +78,34 @@ internal fun NapsCard(
     val napMin = naps.sumOf { (it.effectiveEndTs - it.effectiveStartTs) / 60.0 }
     NoopCard(padding = Metrics.space14, tint = Palette.restColor) {
         Column(verticalArrangement = Arrangement.spacedBy(Metrics.space12)) {
-            Text("DAYTIME SLEEP", style = NoopType.overline, color = Palette.textTertiary)
+            Text(
+                stringResource(R.string.sleep_daytime),
+                style = NoopType.overline,
+                color = Palette.textTertiary,
+            )
             if (naps.isEmpty()) {
-                Text("No naps recorded for this day.", style = NoopType.caption, color = Palette.textTertiary)
+                Text(
+                    stringResource(R.string.sleep_no_naps),
+                    style = NoopType.caption,
+                    color = Palette.textTertiary,
+                )
             } else {
                 Row(modifier = Modifier.fillMaxWidth()) {
-                    NapSummaryCell("Main sleep", durationText(mainMin), Modifier.weight(1f))
-                    NapSummaryCell("Nap(s)", durationText(napMin), Modifier.weight(1f))
-                    NapSummaryCell("Total", durationText(mainMin + napMin), Modifier.weight(1f))
+                    NapSummaryCell(
+                        stringResource(R.string.sleep_nap_main),
+                        durationText(mainMin),
+                        Modifier.weight(1f),
+                    )
+                    NapSummaryCell(
+                        stringResource(R.string.sleep_nap_naps),
+                        durationText(napMin),
+                        Modifier.weight(1f),
+                    )
+                    NapSummaryCell(
+                        stringResource(R.string.sleep_nap_total),
+                        durationText(mainMin + napMin),
+                        Modifier.weight(1f),
+                    )
                 }
                 naps.forEachIndexed { i, nap ->
                     NapRow(nap, onEditNap)
@@ -99,15 +125,14 @@ internal fun NapsCard(
 internal fun NapRow(nap: SleepSession, onEditNap: (SleepSession) -> Unit) {
     val window = "${clockTimeLabel(nap.effectiveStartTs)} - ${clockTimeLabel(nap.effectiveEndTs)}"
     val durMin = (nap.effectiveEndTs - nap.effectiveStartTs) / 60.0
+    val napDescription = stringResource(R.string.sleep_nap_a11y, window, durationText(durMin))
     Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         // A11Y: the readable label sits on the NON-actionable leading content as one merged node, so the
         // edit button stays individually focusable.
         Row(
             modifier = Modifier
                 .weight(1f)
-                .semantics(mergeDescendants = true) {
-                    contentDescription = "Nap $window, ${durationText(durMin)}"
-                },
+                .semantics(mergeDescendants = true) { contentDescription = napDescription },
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Icon(Icons.Filled.Bedtime, contentDescription = null, tint = Palette.restColor, modifier = Modifier.size(Metrics.iconSmall))
@@ -120,7 +145,9 @@ internal fun NapRow(nap: SleepSession, onEditNap: (SleepSession) -> Unit) {
         IconButton(onClick = { onEditNap(nap) }) {
             Icon(
                 Icons.Filled.Edit,
-                contentDescription = if (nap.userEdited) "Edit nap times (edited)" else "Edit nap times",
+                contentDescription = stringResource(
+                    if (nap.userEdited) R.string.sleep_nap_edit_edited else R.string.sleep_nap_edit,
+                ),
                 tint = Palette.restColor,
                 modifier = Modifier.size(Metrics.iconSmall),
             )

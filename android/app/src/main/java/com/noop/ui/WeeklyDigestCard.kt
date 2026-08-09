@@ -25,10 +25,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import com.noop.R
 import com.noop.analytics.RestScorer
 import com.noop.analytics.StrainScorer
 import com.noop.analytics.WeeklyDigest
@@ -122,16 +124,15 @@ fun WeeklyDigestContent(digest: WeeklyDigest, compact: Boolean = false) {
             verticalAlignment = Alignment.Top,
         ) {
             Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(Metrics.space2)) {
-                Overline("Week in review")
+                Overline(stringResource(R.string.trends_week_in_review))
                 Text(weekRangeLabel(digest), style = NoopType.title2, color = Palette.textPrimary)
             }
+            val daysA11y = stringResource(R.string.digest_a11y_days_with_data, digest.daysWithData)
             Text(
-                "${digest.daysWithData}/7 days",
+                stringResource(R.string.digest_days_with_data, digest.daysWithData),
                 style = NoopType.footnote,
                 color = Palette.textSecondary,
-                modifier = Modifier.semantics {
-                    contentDescription = "${digest.daysWithData} of 7 days had data this week"
-                },
+                modifier = Modifier.semantics { contentDescription = daysA11y },
             )
         }
 
@@ -156,14 +157,14 @@ fun WeeklyDigestContent(digest: WeeklyDigest, compact: Boolean = false) {
             Column(verticalArrangement = Arrangement.spacedBy(Metrics.space6)) {
                 digest.restScoreSD?.let { sd ->
                     Text(
-                        "Sleep steadiness: Rest varied ±${fmt1(sd)} pts night to night.",
+                        stringResource(R.string.digest_sleep_steadiness, fmt1(sd)),
                         style = NoopType.footnote,
                         color = Palette.textTertiary,
                     )
                 }
                 Text(digest.balance.sentence, style = NoopType.footnote, color = Palette.textTertiary)
                 Text(
-                    "Informational only, not medical advice.",
+                    stringResource(R.string.digest_disclaimer),
                     style = NoopType.footnote,
                     color = Palette.textTertiary,
                 )
@@ -191,10 +192,11 @@ private fun FocalRow(line: String) {
 
 @Composable
 private fun MetricRow(s: WeeklyMetricSummary, effortScale: EffortScale) {
+    val a11y = rowAccessibility(s, effortScale)
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .semantics(mergeDescendants = true) { contentDescription = rowAccessibility(s, effortScale) },
+            .semantics(mergeDescendants = true) { contentDescription = a11y },
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(Metrics.space12),
     ) {
@@ -282,20 +284,26 @@ private fun chipTone(s: WeeklyMetricSummary): Color = when {
     else -> Palette.textTertiary
 }
 
+@Composable
 private fun rowAccessibility(s: WeeklyMetricSummary, effortScale: EffortScale): String {
     val mean = meanText(s, effortScale)
-    if (s.weekOverWeek.current.n == 0 || s.weekOverWeek.previous.n == 0) {
-        return "${s.metric.label}: $mean this week, no comparison."
+    val dir = when {
+        s.wowDelta > 0 -> stringResource(R.string.digest_a11y_up)
+        s.wowDelta < 0 -> stringResource(R.string.digest_a11y_down)
+        else -> stringResource(R.string.digest_a11y_unchanged)
     }
-    val dir = if (s.wowDelta > 0) "up" else if (s.wowDelta < 0) "down" else "unchanged"
     // A rough comparison drops the verdict framing too, so VoiceOver/TalkBack matches the neutral chip.
     val frame = when {
         s.isRoughComparison -> ""
-        s.wowGoodness == 1 -> ", a good sign"
-        s.wowGoodness == -1 -> ", worth a look"
+        s.wowGoodness == 1 -> stringResource(R.string.digest_a11y_good_sign)
+        s.wowGoodness == -1 -> stringResource(R.string.digest_a11y_worth_a_look)
         else -> ""
     }
-    return "${s.metric.label}: $mean this week, $dir ${deltaText(s)} week over week$frame."
+    return if (s.weekOverWeek.current.n == 0 || s.weekOverWeek.previous.n == 0) {
+        stringResource(R.string.digest_a11y_row_no_comparison, s.metric.label, mean)
+    } else {
+        stringResource(R.string.digest_a11y_row, s.metric.label, mean, dir, deltaText(s), frame)
+    }
 }
 
 private fun fmt1(x: Double): String = ((x * 10).roundToInt() / 10.0).toString()
