@@ -1,0 +1,202 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Spanish (es). Twin of values/strings_automations.xml, same key order. -->
+    <!-- AutomationsScreen -->
+    <string name="automations_subtitle">Haz que la banda actúe: toca para ejecutar, aléjate para bloquear, entrena por sensaciones.</string>
+    <string name="automations_overline">Automatización</string>
+    <string name="automations_double_tap_title">Doble toque</string>
+    <string name="automations_double_tap_blurb">Toca dos veces la banda para lanzar una acción en este dispositivo. (La banda expone un único gesto de doble toque.)</string>
+    <string name="automations_when_i_double_tap">Cuando toco dos veces</string>
+    <string name="automations_choose_double_tap">Elegir acción de doble toque</string>
+    <string name="automations_test_action">Probar acción</string>
+    <string name="automations_strap_bonded">Banda vinculada</string>
+    <string name="automations_not_connected">Sin conexión</string>
+    <string name="automations_haptic_title">Guía háptica</string>
+    <string name="automations_haptic_blurb">Entrena por sensaciones. La banda vibra para que no tengas que mirar una pantalla.</string>
+    <string name="automations_zone_coaching">Guía por zonas de FC</string>
+    <string name="automations_zone_coaching_detail">Vibra tres veces cuando entras en tu zona más alta (Zona 5, ≥ %1$d bpm), un aviso para aflojar. La FC máxima se toma de Ajustes.</string>
+    <string name="automations_recovery_buzz">Vibración de recuperación</string>
+    <string name="automations_recovery_buzz_detail">Vibra también una vez cuando tu frecuencia cardiaca vuelve a la Zona 1, un aviso de que te has recuperado.</string>
+    <string name="automations_inactivity_title">Recordatorio de inactividad</string>
+    <string name="automations_inactivity_blurb">Una vibración suave en la muñeca cuando llevas demasiado tiempo sentado, un empujón para levantarte y moverte. Se deduce del movimiento de la banda en cada sincronización del historial, así que va por detrás del tiempo real una o dos sincronizaciones.</string>
+    <string name="automations_inactivity_enable">Activar el recordatorio de inactividad</string>
+    <string name="automations_inactivity_enable_detail">Vibra cuando llevas sentado más tiempo que tu umbral.</string>
+    <string name="automations_inactivity_notifications_off">Las notificaciones están desactivadas, así que esto todavía no puede vibrar. Activa el interruptor principal en Ajustes → Notificaciones para dejarlo pasar.</string>
+    <string name="automations_inactivity_sitting_for">Sentado durante</string>
+    <string name="automations_inactivity_sitting_for_help">Minutos sentado antes del primer aviso.</string>
+    <string name="automations_inactivity_renudge">Repetir aviso cada</string>
+    <string name="automations_inactivity_renudge_help">Si sigues sentado, vibra de nuevo con esta frecuencia.</string>
+    <string name="automations_inactivity_buzz_strength">Intensidad de la vibración</string>
+    <string name="automations_inactivity_buzz_strength_help">Cuánta fuerza tiene la vibración.</string>
+    <string name="automations_inactivity_active_hours">Solo durante las horas activas</string>
+    <string name="automations_inactivity_active_hours_help">Avisar solo durante tus horas activas.</string>
+    <string name="automations_from">De</string>
+    <string name="automations_to">a</string>
+    <string name="automations_active_hours_start">Inicio de las horas activas</string>
+    <string name="automations_active_hours_end">Fin de las horas activas</string>
+    <string name="automations_nap_title">Detección de siestas</string>
+    <string name="automations_nap_blurb">Detecta una posible siesta diurna a partir del movimiento y la frecuencia cardiaca de la banda en cada sincronización del historial, y luego te pide que la confirmes. Deducida y aproximada: NOOP nunca añade una siesta a tu sueño sin tu visto bueno.</string>
+    <string name="automations_nap_detect">Detectar siestas cortas</string>
+    <string name="automations_nap_detect_detail">Cuando una sincronización muestra un tramo tranquilo y en calma durante el día, NOOP te lo ofrece aquí para que lo guardes o lo descartes.</string>
+    <string name="automations_nap_empty">No hay siestas que revisar. Las siestas detectadas aparecen aquí tras una sincronización del historial.</string>
+    <string name="automations_nap_window">%1$s-%2$s · ~%3$d min</string>
+    <string name="automations_nap_detail_hr">Tranquilo y en calma, FC media ~%1$d bpm.</string>
+    <string name="automations_nap_detail">Tranquilo y en calma.</string>
+    <string name="automations_nap_keep">Guardar esta siesta</string>
+    <string name="automations_nap_skip">Descartar esta siesta</string>
+    <string name="automations_illness_title">Aviso temprano de enfermedad</string>
+    <string name="automations_illness_blurb">Observa tu FC en reposo, HRV, temperatura de la piel y respiración frente a tu propia línea base de 28 días. En el dispositivo y aproximado: solo informativo, no es un diagnóstico.</string>
+    <string name="automations_illness_toggle">Vigilar señales tempranas de enfermedad</string>
+    <string name="automations_illness_detail">Necesita al menos 14 días de historial. Cuando dos o más señales se desvían a la vez, recibes un aviso en Hoy y una notificación, como mucho una vez al día.</string>
+    <string name="automations_battery_title">Avisos de batería</string>
+    <string name="automations_battery_blurb">Un aviso cuando la batería de la banda baja, para que puedas recargarla antes de dormir, y otro cuando termina de cargarse.</string>
+    <string name="automations_battery_toggle">Notificar con batería baja y completa</string>
+    <string name="automations_battery_detail" formatted="false">Envía una notificación cuando la banda baja al 15% o alcanza la carga completa, como mucho una vez por ciclo de carga.</string>
+    <string name="automations_battery_predictive">Aviso predictivo de autonomía</string>
+    <string name="automations_battery_predictive_detail" formatted="false">Un aviso anticipado de \"recarga esta noche\" cuando a la banda le queda alrededor de un día de autonomía estimada, como mucho una vez por ciclo de descarga. Desactívalo para conservar solo el aviso del 15%.</string>
+    <string name="automations_stepper_decrease">Reducir %1$s</string>
+    <string name="automations_stepper_increase">Aumentar %1$s</string>
+
+    <!-- Per-weekday wake-time overrides (AutomationsScreen, reused by SmartAlarmScreen) -->
+    <string name="alarm_per_day_wake_time">Hora de despertar por día</string>
+    <string name="alarm_reset">Restablecer</string>
+    <string name="alarm_day_wake_time">Hora de despertar del %1$s</string>
+    <string name="alarm_per_day_help">Cada día usa la hora de arriba salvo que aquí fijes otra.</string>
+
+    <!-- SmartAlarmScreen -->
+    <string name="alarm_subtitle">Tu ventana de despertar, la alarma de la banda y el recordatorio nocturno para desconectar, en un solo sitio.</string>
+    <string name="alarm_guaranteed_wake">Despertar garantizado</string>
+    <string name="alarm_backup_set_for">Hay una alarma de respaldo a las %1$s. Suena aunque se caiga el Bluetooth, no lleves la banda puesta o NOOP esté cerrada.</string>
+    <string name="alarm_off">Desactivada</string>
+    <string name="alarm_off_help">Activa la alarma inteligente para despertarte dentro de una ventana que tú elijas.</string>
+    <string name="alarm_card_title">Alarma de despertar</string>
+    <string name="alarm_wake_smart">Despertarme con una alarma inteligente</string>
+    <string name="alarm_wake_smart_help">Se programa una alarma garantizada del sistema para el final de tu ventana; el flujo de la banda puede adelantarla si estás durmiendo de forma ligera.</string>
+    <string name="alarm_no_exact_permission">NOOP no tiene permiso para programar alarmas exactas, así que tu despertar no está garantizado. Toca para concederlo en los ajustes del sistema.</string>
+    <string name="alarm_wake_no_earlier">No despertarme antes de</string>
+    <string name="alarm_wake_no_earlier_help">Lo más pronto que NOOP te despertará.</string>
+    <string name="alarm_earliest_wake_a11y">Hora más temprana de despertar</string>
+    <string name="alarm_window_length">Duración de la ventana</string>
+    <string name="alarm_window_length_help">La alarma garantizada suena este tiempo después de tu hora más temprana.</string>
+    <string name="alarm_buzz_strap">Hacer vibrar %1$s</string>
+    <string name="alarm_buzz_strap_help_bonded">También arma tu %1$s para que vibre a tu hora más temprana de despertar, de modo que la banda te despierte primero y la alarma del teléfono sea el respaldo garantizado.</string>
+    <string name="alarm_buzz_strap_help_unbonded">Conecta tu banda para usar esto. Arma la banda para que vibre a tu hora más temprana de despertar, como un primer despertar más suave.</string>
+    <string name="alarm_overline_morning">Por la mañana</string>
+    <string name="alarm_strap_title">Alarma de despertar de la banda</string>
+    <string name="alarm_strap_toggle">Despertarme con una vibración de la banda</string>
+    <string name="alarm_strap_toggle_help">Arma la banda para que vibre a tu hora de despertar, incluso con NOOP cerrada. Envía exactamente el mismo comando de alarma que envía la app oficial, con vibración confirmada en un WHOOP 4.0 real. Mantén una alarma de respaldo para lo que de verdad no puedas perderte.</string>
+    <string name="alarm_wake_at">Despertar a las</string>
+    <string name="alarm_strap_wake_time_a11y">Hora de despertar de la alarma de la banda</string>
+    <string name="alarm_strap_5mg_experimental_off">Tu WHOOP 5/MG no armará esto hasta que actives el modo Experimental (Ajustes → Experimental). Ahora mismo tu hora de despertar está guardada, pero la banda NO está armada.</string>
+    <string name="alarm_strap_5mg_armed">Armada en la propia banda con el comando experimental para 5/MG. Por nuestra parte, un despertar desde la banda sigue sin confirmarse en 5/MG (solo confirmado en WHOOP 4.0), así que mantén una alarma de respaldo para lo que de verdad no puedas perderte.</string>
+    <string name="alarm_strap_connect_hint">Conecta tu banda para armar esto; se fija en la alarma del propio firmware de la banda. Confirmado en WHOOP 4.0; todavía experimental en 5.0 y MG. Mantén una alarma de respaldo para lo que de verdad no puedas perderte.</string>
+    <string name="alarm_strap_armed">Armada en la propia banda, así puede vibrar a tu hora de despertar aunque el teléfono esté en reposo o NOOP esté cerrada. Envía exactamente el mismo comando de alarma que envía la app oficial, con vibración confirmada en un WHOOP 4.0 real. Mantén una alarma de respaldo para lo que de verdad no puedas perderte.</string>
+    <string name="alarm_overline_evening">Por la noche</string>
+    <string name="alarm_wind_down_title">Aviso para desconectar</string>
+    <string name="alarm_wind_down_toggle">Recordarme que desconecte</string>
+    <string name="alarm_wind_down_help">Una notificación suave por la noche, calculada a partir de tu hora de despertar y tu necesidad de sueño habitual, para que puedas irte calmando a tiempo. Es una sugerencia, no una alarma.</string>
+    <string name="alarm_explain_title">Cómo funciona el despertar inteligente</string>
+    <string name="alarm_explain_body_1">Mientras estás dentro de la ventana, NOOP observa tu frecuencia cardiaca en directo desde la banda. El sueño profundo se sitúa cerca de tu mínimo nocturno y se mantiene estable; cuando tu frecuencia cardiaca sube por encima de eso (señal de que duermes de forma más ligera o de que empiezas a moverte), NOOP te despierta un poco antes para que salgas desde una fase más ligera.</string>
+    <string name="alarm_explain_body_2">Es una señal aproximada a partir de la frecuencia cardiaca, no una lectura clínica de las fases del sueño. Si la banda no está transmitiendo (Bluetooth apagado, banda sin poner, app cerrada), no se produce ningún despertar anticipado y la alarma garantizada del final de la ventana te despierta igualmente.</string>
+    <string name="alarm_window_minutes">%1$d min</string>
+    <string name="alarm_shorten_window">Acortar la ventana</string>
+    <string name="alarm_lengthen_window">Alargar la ventana</string>
+
+    <!-- JournalCatalog: group display labels (the enum name stays the persisted key) -->
+    <string name="journal_group_supplements">Suplementos</string>
+    <string name="journal_group_nutrition">Nutrición</string>
+    <string name="journal_group_lifestyle">Estilo de vida</string>
+    <string name="journal_group_health">Salud</string>
+    <string name="journal_group_behaviour">Comportamiento</string>
+    <string name="journal_group_other">Otros</string>
+
+    <!-- JournalLog -->
+    <string name="journal_overline_log">Registro</string>
+    <string name="journal_title">Diario</string>
+    <string name="journal_done">Listo</string>
+    <string name="journal_edit">Editar</string>
+    <string name="journal_yesterday">Ayer</string>
+    <string name="journal_tomorrow">Mañana</string>
+    <string name="journal_editing_help">Renombra, reagrupa o elimina un elemento para ordenar tu lista. Al renombrar se conserva la pregunta original en segundo plano, así que una importación de WHOOP sigue encajando. Los elementos propios se eliminan; los integrados se ocultan y se pueden restaurar más abajo.</string>
+    <string name="journal_tomorrow_help">Registro por adelantado para mañana: las actividades de hoy influyen en la recuperación de mañana, igual que las de ayer se reflejan en la de hoy. Las respuestas de mañana se corresponden con la mañana de mañana.</string>
+    <string name="journal_today_help">Las respuestas se refieren a la noche y al día que llevan hasta esta mañana, la misma atribución que usa una exportación de WHOOP, así que los días registrados y los importados encajan.</string>
+    <string name="journal_restore">Restaurar</string>
+    <string name="journal_yes">Sí</string>
+    <string name="journal_no">No</string>
+    <string name="journal_rename_menu">Renombrar…</string>
+    <string name="journal_group_menu">Agrupar…</string>
+    <string name="journal_change_to_bool">Cambiar a Sí/No</string>
+    <string name="journal_change_to_numeric">Cambiar a Número</string>
+    <string name="journal_rename_title">Renombrar elemento</string>
+    <string name="journal_display_name">Nombre visible</string>
+    <string name="journal_rename_note">El historial se mantiene bajo la pregunta original para que las importaciones de WHOOP sigan encajando.</string>
+    <string name="journal_save">Guardar</string>
+    <string name="journal_add_placeholder">Añadir un elemento propio…</string>
+    <string name="journal_kind_number">Número</string>
+    <string name="journal_kind_bool">Sí/No</string>
+    <string name="journal_add">Añadir</string>
+    <string name="journal_group_prefix">Grupo: %1$s</string>
+    <string name="journal_delete">Eliminar</string>
+    <string name="journal_hide">Ocultar</string>
+
+    <!-- IntervalsScreen -->
+    <string name="intervals_title">Temporizador de intervalos</string>
+    <string name="intervals_subtitle">HIIT háptico silencioso - la banda vibra en las transiciones</string>
+    <string name="intervals_phase_work">TRABAJO</string>
+    <string name="intervals_phase_rest">DESCANSO</string>
+    <string name="intervals_phase_done">FIN</string>
+    <string name="intervals_buzz_cues_on">Avisos por vibración activados</string>
+    <string name="intervals_connect_for_buzz">Conecta la banda para los avisos por vibración</string>
+    <string name="intervals_running">En marcha</string>
+    <string name="intervals_complete">Completado</string>
+    <string name="intervals_paused">En pausa</string>
+    <string name="intervals_round">Ronda</string>
+    <string name="intervals_session_done">SESIÓN COMPLETADA</string>
+    <string name="intervals_seconds">SEGUNDOS</string>
+    <string name="intervals_pause">Pausar</string>
+    <string name="intervals_restart">Reiniciar</string>
+    <string name="intervals_start">Iniciar</string>
+    <string name="intervals_reset">Restablecer</string>
+    <string name="intervals_bond_hint">Vincula tu banda en la pantalla Live para notar las transiciones sin usar las manos.</string>
+    <string name="intervals_overline_session">Sesión</string>
+    <string name="intervals_elapsed_of_total">%1$s / %2$s</string>
+    <string name="intervals_work">Trabajo</string>
+    <string name="intervals_rest">Descanso</string>
+    <string name="intervals_rounds">Rondas</string>
+    <string name="intervals_remaining">Restante</string>
+    <string name="intervals_overline_configure">Configurar</string>
+    <string name="intervals_unit_sec">s</string>
+    <string name="intervals_range_step_unit">%1$d - %2$d %3$s · paso %4$d</string>
+    <string name="intervals_range_step">%1$d - %2$d · paso %3$d</string>
+    <string name="intervals_pause_to_change">Pausa para cambiar el trabajo, el descanso o las rondas.</string>
+    <string name="intervals_stepper_decrease">Reducir %1$s</string>
+    <string name="intervals_stepper_increase">Aumentar %1$s</string>
+
+    <!-- UpdatesInboxScreen -->
+    <string name="updates_overline_inbox">Bandeja</string>
+    <string name="updates_title">Actualizaciones</string>
+    <string name="updates_subtitle_empty">Qué hay de nuevo en la app y en tus datos</string>
+    <string name="updates_all_caught_up">Todo al día</string>
+    <string name="updates_unread_count">%1$d sin leer</string>
+    <string name="updates_section_new">Nuevas</string>
+    <string name="updates_section_earlier">Anteriores</string>
+    <string name="updates_clear_all">Borrar todo</string>
+    <string name="updates_mark_all_read">Marcar todo como leído</string>
+    <string name="updates_mark_read">Marcar como leído</string>
+    <string name="updates_row_a11y">%1$s. %2$s</string>
+    <string name="updates_row_a11y_unread">Sin leer. %1$s. %2$s</string>
+    <string name="updates_restore_to_today">Restaurar en Hoy</string>
+    <string name="updates_empty_title">Estás al día.</string>
+    <string name="updates_empty_body">Aquí aparecerán las nuevas notas de versión y los datos recientes.</string>
+
+    <!-- WhatsNewSheet -->
+    <string name="updates_whats_new">Novedades</string>
+    <string name="updates_whats_new_version">NOOP %1$s</string>
+    <string name="updates_release_notes">Notas de la versión</string>
+    <string name="updates_what_to_expect">Qué esperar</string>
+    <string name="updates_got_it">Entendido</string>
+
+    <!-- UpdateStore: the first-run release-note inbox item -->
+    <string name="updates_seed_title">Novedades de NOOP %1$s</string>
+    <string name="updates_seed_message">NOOP %1$s ya está aquí: toca para ver las novedades.</string>
+</resources>

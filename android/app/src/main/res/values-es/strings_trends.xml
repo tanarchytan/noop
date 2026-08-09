@@ -1,0 +1,145 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Spanish (es). Twin of values/strings_trends.xml, same key order. Metric names
+         NOOP owns (Charge, Effort, Rest, Recovery, Strain) stay untranslated. -->
+    <!-- TrendsCharts: the shared range control, its captions and the trend cards -->
+    <string name="trends2_range_week">S</string>
+    <string name="trends2_range_month">M</string>
+    <string name="trends2_range_quarter">3M</string>
+    <string name="trends2_range_half">6M</string>
+    <string name="trends2_range_year">1A</string>
+    <string name="trends2_range_all">TODO</string>
+    <string name="trends2_window_week">semana</string>
+    <string name="trends2_window_month">mes</string>
+    <string name="trends2_window_3_months">3 meses</string>
+    <string name="trends2_window_6_months">6 meses</string>
+    <string name="trends2_window_year">año</string>
+    <string name="trends2_window_all_history">todo el historial</string>
+    <string name="trends2_trailing_days">Últimos %1$d días</string>
+    <string name="trends2_all_history">Todo el historial</string>
+    <plurals name="trends2_readings">
+        <item quantity="one">%1$d lectura</item>
+        <item quantity="other">%1$d lecturas</item>
+    </plurals>
+    <string name="trends2_caption_widened">%1$s · pocos datos, ampliado a %2$s</string>
+    <string name="trends2_caption_window">%1$s · %2$s</string>
+    <string name="trends2_history_all">Charge, todo el historial</string>
+    <string name="trends2_history_past_year">Charge, último año</string>
+
+    <!-- Explore: the window names the Explore range control uses on top of the shared ones -->
+    <string name="trends2_window_quarter">trimestre</string>
+    <string name="trends2_window_all_time">todo el historial</string>
+    <string name="trends2_explore_trailing">Periodo: %1$s</string>
+    <string name="trends2_explore_as_of">a fecha de %1$s</string>
+    <string name="trends2_explore_no_readings">aún sin lecturas</string>
+
+    <!-- Explore: the metric catalog (Charge / Effort / Rest reuse the shared trends_* names) -->
+    <string name="trends2_metric_hrv">HRV</string>
+    <string name="trends2_metric_resting_hr">FC en reposo</string>
+    <string name="trends2_metric_sleep">Sueño</string>
+    <string name="trends2_metric_sleep_efficiency">Eficiencia del sueño</string>
+    <string name="trends2_metric_spo2">SpO₂</string>
+    <string name="trends2_metric_respiratory_rate">Frecuencia respiratoria</string>
+    <string name="trends2_metric_avg_hr">Frecuencia cardiaca media</string>
+    <string name="trends2_metric_max_hr">Frecuencia cardiaca máxima</string>
+    <string name="trends2_metric_calories_in">Calorías ingeridas</string>
+    <string name="trends2_metric_protein">Proteínas</string>
+    <string name="trends2_metric_carbs">Carbohidratos</string>
+    <string name="trends2_metric_fat">Grasas</string>
+    <string name="trends2_metric_mood">Ánimo</string>
+    <string name="trends2_desc_charge">Tu nivel de recuperación, guiado por la HRV frente a tu línea base personal.</string>
+    <string name="trends2_desc_effort">Carga cardiovascular del día, en una escala de 0-100 (antes 0-21).</string>
+    <string name="trends2_desc_rest">Cuán reparador fue tu sueño: duración, eficiencia, profundo+REM, horarios.</string>
+
+    <!-- Deep Timeline: the metric pills, the resolution caption and the band-state read-out -->
+    <string name="trends2_timeline_hr">Frecuencia cardiaca</string>
+    <string name="trends2_timeline_hrv">rMSSD (5 min)</string>
+    <string name="trends2_timeline_skin_temp">Temp. de la piel</string>
+    <string name="trends2_timeline_respiration">Respiración</string>
+    <string name="trends2_timeline_motion">Movimiento</string>
+    <string name="trends2_timeline_band_sleep_state">Estado de sueño de la banda</string>
+    <string name="trends2_timeline_raw">Sin procesar · por segundo</string>
+    <string name="trends2_timeline_minute_average">Media de %1$d minutos</string>
+    <string name="trends2_timeline_second_average">Media de %1$d segundos</string>
+    <string name="trends2_timeline_state_wake">despierto</string>
+    <string name="trends2_timeline_state_still">quieto</string>
+    <string name="trends2_timeline_state_asleep">dormido</string>
+    <string name="trends2_timeline_state_up">levantado</string>
+    <string name="trends2_yesterday">Ayer</string>
+
+    <!-- Trends report: the exported PDF page -->
+    <string name="trends2_report_title">Informe de tendencias</string>
+    <plurals name="trends2_report_days">
+        <item quantity="one">%1$d día</item>
+        <item quantity="other">%1$d días</item>
+    </plurals>
+    <string name="trends2_report_summary">RESUMEN</string>
+    <string name="trends2_report_what_changed">Qué ha cambiado</string>
+    <string name="trends2_report_by_the_numbers">EN CIFRAS</string>
+    <string name="trends2_report_metrics">Métricas</string>
+    <string name="trends2_report_single_reading">Una sola lectura en el rango</string>
+    <string name="trends2_report_days_column">DÍAS</string>
+    <string name="trends2_report_steady">estable</string>
+    <string name="trends2_report_empty_title">Aún no hay datos suficientes en este rango</string>
+    <string name="trends2_report_empty_body">No hay lecturas de entrenamiento, estrés, Recovery, sueño, HRV, FC en reposo, Strain, frecuencia respiratoria ni temperatura de la piel dentro de %1$s. Lleva la banda unos días más, o elige un rango más amplio, y vuelve a exportar.</string>
+    <string name="trends2_report_legend">Cómo leer esto: la HRV, la FC en reposo, la duración del sueño, la frecuencia respiratoria y la temperatura de la piel se miden desde la banda (la temperatura de la piel se muestra como la desviación respecto a tu propia línea base). Entrenamientos es el número de actividades que registraste o que se detectaron. Recovery, Strain y Estrés son puntuaciones propias de NOOP calculadas en el dispositivo, no medidas clínicas - Recovery es un compuesto diario de preparación (HRV, FC en reposo, sueño y tendencia de la temperatura de la piel), Strain es la carga cardiovascular derivada de la frecuencia cardiaca, y Estrés es un índice de carga autonómica de 0-3 a partir de la FC en reposo y la HRV.</string>
+    <string name="trends2_report_generated">Generado por NOOP el %1$s · todo en el dispositivo, sin cuenta, sin nube.</string>
+    <string name="trends2_report_disclaimer">Solo informativo - no es consejo médico.</string>
+    <string name="trends2_report_build_failed">No se pudo generar el informe.</string>
+    <string name="trends2_report_share_failed">No se pudo compartir el informe: %1$s</string>
+    <string name="trends2_report_share_subject">Informe de tendencias de NOOP</string>
+    <string name="trends2_report_share_chooser">Compartir informe de tendencias</string>
+
+    <!-- Trends report: the in-app export card -->
+    <string name="trends2_export_overline">Exportar</string>
+    <string name="trends2_export_title">Informe de tendencias (PDF)</string>
+    <string name="trends2_export_blurb">Un PDF de una página, claro y fácil de compartir, con tu Recovery, sueño, HRV, frecuencia cardiaca en reposo y Strain en un rango de fechas. Se genera y se guarda en tu teléfono - nada sale del dispositivo.</string>
+    <string name="trends2_export_range">Rango</string>
+    <string name="trends2_export_cta">Exportar PDF</string>
+    <string name="trends2_export_footnote">Desde el menú de compartir puedes guardar el PDF en Archivos o enviarlo.</string>
+
+    <!-- Coupled view -->
+    <string name="coupled_title">Día</string>
+    <string name="coupled_subtitle">Hoy, %1$s</string>
+    <string name="coupled_a11y_recovery">Recovery %1$d por ciento. Mira qué ha dado forma a tu Charge</string>
+    <string name="coupled_a11y_calibrating">Recovery calibrando, %1$d de %2$d noches</string>
+    <string name="coupled_a11y_no_data">Recovery, aún sin datos</string>
+    <string name="coupled_open_breakdown">Mira qué ha dado forma a tu Charge</string>
+    <string name="coupled_calibrating">Calibrando, %1$d de %2$d noches</string>
+    <string name="coupled_recovery">RECOVERY</string>
+    <string name="coupled_no_effort">Aún sin Effort</string>
+    <string name="coupled_day_strain">Strain del día</string>
+    <string name="coupled_optimal">Óptimo</string>
+    <string name="coupled_calories">Calorías</string>
+    <string name="coupled_workouts">Entrenamientos</string>
+    <string name="coupled_open_sleep">Abrir Sueño</string>
+    <string name="coupled_sleep_performance">RENDIMIENTO DEL SUEÑO</string>
+    <string name="coupled_slept">%1$s de sueño</string>
+    <string name="coupled_needed">%1$s necesarias</string>
+    <string name="coupled_no_sleep">No se registró sueño anoche</string>
+    <string name="coupled_footer">Una lectura clásica, de un vistazo, de las puntuaciones propias de NOOP. Los mismos datos, otra mirada.</string>
+
+    <!-- Charts: the spoken summary every chart primitive carries -->
+    <string name="charts_series_no_data">%1$s, sin datos</string>
+    <string name="charts_series_summary">%1$s, %2$d puntos, último %3$s, mínimo %4$s, máximo %5$s</string>
+    <string name="charts_series_trend">Tendencia</string>
+    <string name="charts_series_bars">Barras</string>
+    <string name="charts_series_timeline">Cronología</string>
+    <string name="charts_series_weekly_bars">Barras semanales</string>
+    <string name="charts_series_weekly_totals">Totales semanales</string>
+    <string name="charts_breakdown_no_data">Desglose, sin datos</string>
+    <string name="charts_breakdown_segments">Desglose, %1$d segmentos</string>
+
+    <!-- Weekly digest -->
+    <string name="digest_days_with_data">%1$d/7 días</string>
+    <string name="digest_a11y_days_with_data">%1$d de 7 días tuvieron datos esta semana</string>
+    <string name="digest_sleep_steadiness">Estabilidad del sueño: Rest varió ±%1$s pts de una noche a otra.</string>
+    <string name="digest_disclaimer">Solo informativo, no es consejo médico.</string>
+    <string name="digest_a11y_row_no_comparison">%1$s: %2$s esta semana, sin comparación.</string>
+    <string name="digest_a11y_row">%1$s: %2$s esta semana, %3$s %4$s respecto a la semana anterior%5$s.</string>
+    <string name="digest_a11y_up">sube</string>
+    <string name="digest_a11y_down">baja</string>
+    <string name="digest_a11y_unchanged">sin cambios</string>
+    <string name="digest_a11y_good_sign">, buena señal</string>
+    <string name="digest_a11y_worth_a_look">, merece un vistazo</string>
+</resources>

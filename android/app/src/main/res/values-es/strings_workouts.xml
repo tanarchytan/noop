@@ -1,0 +1,249 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Spanish (es). Tú, not usted. Effort / Charge / strain / WHOOP / NOOP stay untranslated;
+         HR reads FC. The range words carry their own demonstrative ("esta semana", "este mes") and
+         the range captions carry their own article, so the sentences that embed them stay
+         grammatical for every range. -->
+
+    <!-- WorkoutsScreen -->
+    <string name="workouts_title">Entrenamientos</string>
+    <string name="workouts_subtitle">Cada sesión, hilada con las demás.</string>
+    <string name="workouts_empty_title">Aún no hay entrenamientos</string>
+    <string name="workouts_empty_body">Vienen de tu historial de WHOOP y Apple Health. Impórtalos en Fuentes de datos, o añade uno que hayas registrado en otro sitio.</string>
+    <string name="workouts_add">Añadir entrenamiento</string>
+
+    <!-- WorkoutsScreen: range pill + its caption -->
+    <string name="workouts_range_7d">7D</string>
+    <string name="workouts_range_30d">30D</string>
+    <string name="workouts_range_90d">90D</string>
+    <string name="workouts_range_1y">1A</string>
+    <string name="workouts_range_all">Todo</string>
+    <string name="workouts_range_caption_7d">los últimos 7 días</string>
+    <string name="workouts_range_caption_30d">los últimos 30 días</string>
+    <string name="workouts_range_caption_90d">los últimos 90 días</string>
+    <string name="workouts_range_caption_1y">el último año</string>
+    <string name="workouts_range_caption_all">todo el historial</string>
+    <string name="workouts_range_word_week">esta semana</string>
+    <string name="workouts_range_word_month">este mes</string>
+    <string name="workouts_range_word_quarter">este trimestre</string>
+    <string name="workouts_range_word_year">este año</string>
+    <string name="workouts_range_word_log">todo el registro</string>
+    <string name="workouts_session">sesión</string>
+    <string name="workouts_sessions">sesiones</string>
+    <string name="workouts_range_caption">%1$d %2$s · %3$s</string>
+    <string name="workouts_range_caption_widened">%1$d %2$s · escaso, ampliado hasta %3$s</string>
+    <string name="workouts_range_caption_filtered">%1$s · filtrado</string>
+
+    <!-- WorkoutsScreen: filter bar -->
+    <string name="workouts_all_sports">Todos los deportes</string>
+    <string name="workouts_all_sources">Todas las fuentes</string>
+    <string name="workouts_filter_by_sport">Filtrar por deporte</string>
+    <string name="workouts_filter_by_source">Filtrar por fuente</string>
+    <string name="workouts_filter_menu_cd">%1$s: %2$s</string>
+    <string name="workouts_clear_filters">Borrar filtros</string>
+    <string name="workouts_clear">Borrar</string>
+    <string name="workouts_clear_search">Borrar la búsqueda</string>
+    <string name="workouts_search_sport">Buscar deporte</string>
+
+    <!-- WorkoutsScreen: merge-sport dialog -->
+    <string name="workouts_merge_title">Ponle nombre a la sesión combinada</string>
+    <string name="workouts_merge_body">Estas sesiones aún no tienen etiqueta de deporte. Elige una para la sesión combinada.</string>
+    <string name="workouts_merge">Combinar</string>
+
+    <!-- WorkoutsScreen: Effort hero -->
+    <string name="workouts_typical_effort">Effort típico</string>
+    <string name="workouts_effort_this">Effort de %1$s</string>
+    <string name="workouts_stat_sessions">Sesiones</string>
+    <string name="workouts_stat_active">Activo</string>
+    <string name="workouts_mostly">Sobre todo %1$s (%2$s).</string>
+    <string name="workouts_logged_across">Sesiones registradas en %1$s.</string>
+
+    <!-- WorkoutsScreen: summary tiles -->
+    <string name="workouts_total_workouts">Entrenamientos totales</string>
+    <string name="workouts_total_time">Tiempo total</string>
+    <string name="workouts_caption_active">activo</string>
+    <string name="workouts_total_calories">Calorías totales</string>
+    <string name="workouts_total_distance">Distancia total</string>
+    <string name="workouts_caption_covered">recorrida</string>
+    <string name="workouts_most_active">Más activo</string>
+    <string name="workouts_n_session">%1$d sesión</string>
+    <string name="workouts_n_sessions">%1$d sesiones</string>
+
+    <!-- WorkoutsScreen: activity breakdown -->
+    <string name="workouts_activity_breakdown">Desglose de actividad</string>
+    <string name="workouts_by_sport">Por deporte</string>
+    <string name="workouts_n_sport">%1$d deporte</string>
+    <string name="workouts_n_sports">%1$d deportes</string>
+    <string name="workouts_time">Tiempo</string>
+    <string name="workouts_stat_avg_per_session">Prom./ses</string>
+
+    <!-- WorkoutsScreen: HR zones -->
+    <string name="workouts_hr_zones">Zonas de FC</string>
+    <string name="workouts_hr_zones_lower">Zonas de FC</string>
+    <string name="workouts_whoop_import">Importado de Whoop</string>
+    <string name="workouts_zones_coverage_one">%1$d de %2$d sesión</string>
+    <string name="workouts_zones_coverage">%1$d de %2$d sesiones</string>
+    <string name="workouts_zones_note">Proporción del tiempo por zonas importado, ponderada por duración entre sesiones (aproximada).</string>
+    <string name="workouts_zone_label">Z%1$d</string>
+
+    <!-- WorkoutsScreen: all-sessions table -->
+    <string name="workouts_all_sessions">Todas las sesiones</string>
+    <string name="workouts_log">Registro</string>
+    <string name="workouts_n_total">%1$d en total</string>
+    <string name="workouts_show_more">Mostrar %1$d más (%2$d restantes)</string>
+    <string name="workouts_show_more_cd">Mostrar %1$d sesiones más</string>
+    <string name="workouts_done">Hecho</string>
+    <string name="workouts_select">Seleccionar</string>
+    <string name="workouts_finish_selecting">Terminar selección</string>
+    <string name="workouts_select_cd">Selecciona sesiones para combinar o eliminar</string>
+    <string name="workouts_merge_n">Combinar (%1$d)</string>
+    <string name="workouts_delete_n">Eliminar (%1$d)</string>
+    <string name="workouts_col_date">Fecha</string>
+    <string name="workouts_sport">Deporte</string>
+    <string name="workouts_col_dur">Dur</string>
+    <string name="workouts_col_hr">FC</string>
+    <string name="workouts_row_cd">%1$s, %2$s</string>
+    <string name="workouts_row_cd_imported">%1$s. Importada, no se puede combinar.</string>
+    <string name="workouts_row_cd_selected">%1$s. Seleccionada.</string>
+    <string name="workouts_row_cd_unselected">%1$s. No seleccionada.</string>
+
+    <!-- WorkoutsScreen: source badges -->
+    <string name="workouts_src_detected">Detectado</string>
+    <string name="workouts_src_manual">Manual</string>
+    <string name="workouts_src_lifting">Pesas</string>
+    <string name="workouts_src_file">Archivo</string>
+    <string name="workouts_src_hc">HC</string>
+    <string name="workouts_src_whoop">Whoop</string>
+    <string name="workouts_src_apple">Apple</string>
+
+    <!-- WorkoutsScreen: session detail sheet -->
+    <string name="workouts_detail_duration">Duración</string>
+    <string name="workouts_detail_avg_hr">FC media</string>
+    <string name="workouts_detail_max_hr">FC máx</string>
+    <string name="workouts_detail_calories">Calorías</string>
+    <string name="workouts_detail_distance">Distancia</string>
+    <string name="workouts_detail_steps">Pasos</string>
+    <string name="workouts_n_steps">%1$s pasos</string>
+    <string name="workouts_detail_notes">Notas</string>
+    <string name="workouts_heart_rate">Frecuencia cardíaca</string>
+    <string name="workouts_stat_avg">Prom.</string>
+    <string name="workouts_stat_peak">Pico</string>
+    <string name="workouts_stat_low">Mín</string>
+    <string name="workouts_avg_hr_edited_note">La media de arriba se editó. El gráfico, las zonas y el Effort se mantienen de la sesión grabada.</string>
+    <string name="workouts_from_strap_hr">De la FC de la banda</string>
+    <string name="workouts_zones_imported_note">El reparto por zonas que WHOOP importó para esta sesión.</string>
+    <string name="workouts_zones_derived_note" formatted="false">Tiempo en cada zona de %HRmax, derivado de la frecuencia cardíaca de la banda en esta ventana (aproximado).</string>
+
+    <!-- WorkoutsScreen: heart-rate recovery -->
+    <string name="workouts_hrr_title">Recuperación de la frecuencia cardíaca</string>
+    <string name="workouts_hrr_overline">Tras un esfuerzo de alta intensidad</string>
+    <string name="workouts_hrr_peak">Pico %1$d bpm</string>
+    <string name="workouts_hrr_note">Una caída mayor significa que tu frecuencia cardíaca se asentó más rápido tras el esfuerzo, señal de una recuperación cardiovascular más fuerte.</string>
+    <string name="workouts_recovery_stat_cd">Recuperación %1$s, %2$s</string>
+    <string name="workouts_not_available">no disponible</string>
+
+    <!-- WorkoutsScreen: per-session Effort card -->
+    <string name="workouts_effort">Effort</string>
+    <string name="workouts_this_session">Esta sesión</string>
+    <string name="workouts_session_effort_cd">El Effort de esta sesión, %1$s en la escala %2$s.</string>
+    <string name="workouts_scale_whoop">0 a 21 strain</string>
+    <string name="workouts_scale_effort">0 a 100 Effort</string>
+    <string name="workouts_strain_caption">strain (0-21)</string>
+    <string name="workouts_effort_caption">Effort (0-100)</string>
+    <string name="workouts_session_effort_note">La contribución de esta sesión al Effort del día, tal y como se capturó durante el entrenamiento.</string>
+
+    <!-- WorkoutsScreen: row overflow menu -->
+    <string name="workouts_row_actions">Acciones del entrenamiento</string>
+    <string name="workouts_relabel_as">Reetiquetar como…</string>
+    <string name="workouts_edit_details">Editar detalles…</string>
+    <string name="workouts_dismiss_not_workout">Descartar (no es un entrenamiento)</string>
+    <string name="workouts_edit">Editar…</string>
+    <string name="workouts_delete">Eliminar</string>
+    <string name="workouts_duplicate_as_manual">Duplicar como manual…</string>
+
+    <!-- WorkoutsScreen: manual add/edit dialog -->
+    <string name="workouts_add_workout_title">Añadir entrenamiento</string>
+    <string name="workouts_edit_workout_title">Editar entrenamiento</string>
+    <string name="workouts_field_duration">Duración (minutos)</string>
+    <string name="workouts_field_avg_hr">FC media (bpm, opcional)</string>
+    <string name="workouts_field_calories">Calorías (kcal, opcional)</string>
+    <string name="workouts_manual_invalid">Introduce un deporte, una duración positiva (≤ 24 h) y una FC (25-250) / calorías (0-20.000) válidas.</string>
+    <string name="workouts_avg_hr_typed_note">La FC media se muestra tal y como la escribiste. El gráfico de FC, las zonas y el Effort se mantienen de la sesión grabada.</string>
+    <string name="workouts_add_action">Añadir</string>
+    <string name="workouts_save">Guardar</string>
+    <string name="workouts_started">Inicio</string>
+    <string name="workouts_field_sport_placeholder">p. ej. Correr</string>
+    <string name="workouts_recent">Recientes</string>
+    <string name="workouts_all_activities">Todas las actividades</string>
+    <string name="workouts_gps_tag">· GPS</string>
+
+    <!-- WorkoutStart: start-a-workout sheet + the Workouts-screen start control -->
+    <string name="workouts_start_sheet_title">Iniciar un entrenamiento</string>
+    <string name="workouts_track_gps">Registrar la ruta GPS</string>
+    <string name="workouts_start_named">Iniciar %1$s</string>
+    <string name="workouts_active_sport">● %1$s</string>
+    <string name="workouts_open">Abrir</string>
+    <string name="workouts_end">Terminar</string>
+    <string name="workouts_start_workout">Iniciar entrenamiento</string>
+
+    <!-- AutoWorkoutNudge -->
+    <string name="workouts_nudge_title">Parece un entrenamiento</string>
+    <string name="workouts_nudge_dismiss_cd">Descartar esta sugerencia de entrenamiento</string>
+    <string name="workouts_nudge_save">Guardarlo</string>
+    <string name="workouts_nudge_not_workout">No es un entrenamiento</string>
+    <string name="workouts_nudge_prompt_today">Parece un entrenamiento en torno a las %1$s - %2$s (FC media %3$d, %4$d min). ¿Lo guardas?</string>
+    <string name="workouts_nudge_prompt_yesterday">Parece un entrenamiento ayer en torno a las %1$s - %2$s (FC media %3$d, %4$d min). ¿Lo guardas?</string>
+    <string name="workouts_nudge_prompt_on">Parece un entrenamiento el %1$s en torno a las %2$s - %3$s (FC media %4$d, %5$d min). ¿Lo guardas?</string>
+
+    <!-- LiveWorkoutScreen: the in-exercise overlay -->
+    <string name="live_recording_workout">Grabando entrenamiento</string>
+    <string name="live_effort_building">Effort acumulándose</string>
+    <string name="live_end_workout">Terminar entrenamiento</string>
+    <string name="live_hr_zone">Zona de FC</string>
+    <string name="live_zone_with_name">Zona %1$d · %2$s</string>
+    <string name="live_below_zone_1">Por debajo de la Zona 1</string>
+    <string name="live_zone_band">Zona %1$d: %2$d - %3$d bpm (%4$d - %5$d%% de la FC máx)</string>
+    <string name="live_warming_up">Calentando: sigue moviéndote para entrar en la Zona 1.</string>
+    <string name="live_zone_recovery">Recuperación</string>
+    <string name="live_zone_fat_burn">Quema de grasa</string>
+    <string name="live_zone_aerobic">Aeróbica</string>
+    <string name="live_zone_threshold">Umbral</string>
+    <string name="live_zone_maximum">Máxima</string>
+
+    <!-- LiveSessionScreen: the guardian surface -->
+    <string name="live_session_title">Sesión en vivo</string>
+    <string name="live_beta">BETA</string>
+    <string name="live_signal_lost">Señal perdida — coaching en pausa.</string>
+    <string name="live_guarding">Vigilando tu sesión. El silencio significa que vas bien.</string>
+    <string name="live_end_session">Terminar sesión</string>
+    <string name="live_state_stale">Señal perdida, coaching en pausa</string>
+    <string name="live_state_above">Por encima de la banda de hoy</string>
+    <string name="live_state_below">Por debajo de la banda de hoy</string>
+    <string name="live_state_in_band">Dentro de la banda de hoy</string>
+    <string name="live_ring_cd">Anillo de la sesión. %1$s. Mantén pulsado para ver la frecuencia cardíaca.</string>
+
+    <!-- LiveSessionScreen: end-of-session summary -->
+    <string name="live_session_summary">Resumen de la sesión</string>
+    <string name="live_auto_ended">La señal de la banda estuvo ausente 10 minutos, así que la sesión se terminó sola.</string>
+    <string name="live_guarded_for">Vigilada durante %1$s</string>
+    <string name="live_in_band">En banda</string>
+    <string name="live_below">Por debajo</string>
+    <string name="live_above">Por encima</string>
+    <string name="live_n_session_guarded">%1$d sesión vigilada</string>
+    <string name="live_n_sessions_guarded">%1$d sesiones vigiladas</string>
+    <string name="live_streak_suffix">%1$s · %2$d días seguidos</string>
+    <string name="live_done">Hecho</string>
+
+    <!-- LiveSessionScreen: Charge sentence + cue-count line -->
+    <string name="live_charge_none">Aún no hay Charge hoy — vigilando una banda intermedia.</string>
+    <string name="live_charge_low">El techo de hoy es más bajo — el Charge es del %1$d%%.</string>
+    <string name="live_charge_mid">Un día intermedio — el Charge es del %1$d%%, así que la banda queda en la zona media.</string>
+    <string name="live_charge_high">Queda mucho en el depósito — el Charge es del %1$d%%, así que el techo de hoy es más alto.</string>
+    <string name="live_no_buzzes">No se enviaron vibraciones.</string>
+    <string name="live_push_nudge">%1$d aviso para apretar</string>
+    <string name="live_push_nudges">%1$d avisos para apretar</string>
+    <string name="live_ease_off">%1$d aviso para aflojar</string>
+    <string name="live_ease_offs">%1$d avisos para aflojar</string>
+    <string name="live_cue_line">%1$s · %2$s</string>
+
+</resources>
