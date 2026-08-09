@@ -402,7 +402,7 @@ fun AppRoot(viewModel: AppViewModel = viewModel()) {
                             showUpdatesInbox = true
                         },
                         icon = { Icon(Icons.Filled.Notifications, contentDescription = null) },
-                        label = { Text("Updates", style = NoopType.body) },
+                        label = { Text(stringResource(R.string.updates_title), style = NoopType.body) },
                         badge = {
                             val unread = updateStore.unreadCount
                             if (unread > 0) {

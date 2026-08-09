@@ -103,4 +103,7 @@
     <string name="devices2_last_seen_connected">Connected now</string>
     <string name="devices2_last_seen">Last seen %1$s</string>
     <string name="devices2_history_layout">v%1$d history</string>
+    <!-- Shared wheel-picker accessibility label. -->
+    <string name="core_tap_to_choose">%1$s. Tap to choose.</string>
+    <string name="core_done">Done</string>
 </resources>

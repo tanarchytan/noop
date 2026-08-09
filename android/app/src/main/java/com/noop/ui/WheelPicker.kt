@@ -33,10 +33,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.noop.R
 import kotlin.math.abs
 
 // MARK: - WheelPickerField — a tap-to-open number selector (replaces +/- stepper tap-spamming)
@@ -60,13 +62,15 @@ fun WheelPickerField(
     unit: String? = null,
 ) {
     var open by remember { mutableStateOf(false) }
+    // `semantics` is not a composable scope, so the label resolves here and is captured.
+    val tapToChoose = stringResource(R.string.core_tap_to_choose, accessibility)
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(Metrics.space8),
         modifier = Modifier
             .clip(RoundedCornerShape(8.dp))
             .clickable(enabled = options.isNotEmpty()) { open = true }
-            .semantics { contentDescription = "$accessibility. Tap to choose." },
+            .semantics { contentDescription = tapToChoose },
     ) {
         Text(value, style = NoopType.bodyNumber, color = Palette.textPrimary, modifier = Modifier.widthIn(min = 44.dp))
         if (unit != null) Text(unit, style = NoopType.caption, color = Palette.textTertiary)
@@ -104,13 +108,14 @@ fun BirthdayPickerField(
         java.time.Instant.ofEpochMilli(dobMillis).atZone(zone).toLocalDate()
             .format(java.time.format.DateTimeFormatter.ofPattern("d MMM yyyy", java.util.Locale.getDefault()))
     }
+    val tapToChoose = stringResource(R.string.core_tap_to_choose, accessibility)
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(Metrics.space8),
         modifier = Modifier
             .clip(RoundedCornerShape(8.dp))
             .clickable { open = true }
-            .semantics { contentDescription = "$accessibility. Tap to choose." },
+            .semantics { contentDescription = tapToChoose },
     ) {
         Text(label, style = NoopType.bodyNumber, color = Palette.textPrimary)
         Icon(
@@ -166,12 +171,12 @@ private fun WheelPickerDialog(
         },
         confirmButton = {
             TextButton(onClick = { onConfirm(index.coerceIn(0, options.lastIndex)) }) {
-                Text("Done", style = NoopType.headline, color = Palette.accent)
+                Text(stringResource(R.string.core_done), style = NoopType.headline, color = Palette.accent)
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel", style = NoopType.body, color = Palette.textSecondary)
+                Text(stringResource(R.string.common_cancel), style = NoopType.body, color = Palette.textSecondary)
             }
         },
     )
