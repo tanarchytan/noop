@@ -206,7 +206,7 @@ fun AutomationsScreen(viewModel: AppViewModel) {
                     )
                 }
                 RowDivider()
-                StepperRow(
+                WheelRow(
                     label = stringResource(R.string.automations_inactivity_sitting_for),
                     help = stringResource(R.string.automations_inactivity_sitting_for_help),
                     value = inactivityThreshold, suffix = "min", range = 15..120, step = 15,
@@ -216,7 +216,7 @@ fun AutomationsScreen(viewModel: AppViewModel) {
                     },
                 )
                 RowDivider()
-                StepperRow(
+                WheelRow(
                     label = stringResource(R.string.automations_inactivity_renudge),
                     help = stringResource(R.string.automations_inactivity_renudge_help),
                     value = inactivityReNudge, suffix = "min", range = 15..120, step = 15,
@@ -226,7 +226,7 @@ fun AutomationsScreen(viewModel: AppViewModel) {
                     },
                 )
                 RowDivider()
-                StepperRow(
+                WheelRow(
                     label = stringResource(R.string.automations_inactivity_buzz_strength),
                     help = stringResource(R.string.automations_inactivity_buzz_strength_help),
                     value = inactivityBuzzLoops, suffix = "×", range = 1..4, step = 1,
@@ -604,7 +604,7 @@ private fun smartAlarmWeekdayName(dow: Int): String = when (dow) {
 
 /** A label/help row with a −[value]+ stepper, clamped to [range] and moved by [step]. */
 @Composable
-private fun StepperRow(
+private fun WheelRow(
     label: String,
     help: String,
     value: Int,

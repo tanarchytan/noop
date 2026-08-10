@@ -1338,25 +1338,6 @@ fun LazyScreenScaffold(
     }
 }
 
-// MARK: - Stepper button — the round -/+ control the remaining steppers share.
-
-/** Round −/+ button, shared by the alarm-window and interval steppers. */
-@Composable
-fun StepperButton(symbol: String, onClick: () -> Unit, label: String) {
-    Box(
-        modifier = Modifier
-            .size(30.dp)
-            .clip(RoundedCornerShape(8.dp))
-            .background(Palette.surfaceInset)
-            .border(1.dp, Palette.hairline, RoundedCornerShape(8.dp))
-            .clickable(onClick = onClick)
-            .semantics { contentDescription = label },
-        contentAlignment = Alignment.Center,
-    ) {
-        Text(symbol, style = NoopType.body.copy(fontWeight = FontWeight.SemiBold), color = Palette.textPrimary)
-    }
-}
-
 // MARK: - clickable without ripple, for pill segments
 
 @Composable

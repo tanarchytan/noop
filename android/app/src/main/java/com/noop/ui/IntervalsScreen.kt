@@ -17,11 +17,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.Vibration
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -417,19 +415,19 @@ fun IntervalsScreen(vm: AppViewModel) {
             Column(verticalArrangement = Arrangement.spacedBy(Metrics.space14)) {
                 Overline(stringResource(R.string.intervals_overline_configure))
                 val secUnit = stringResource(R.string.intervals_unit_sec)
-                ConfigStepper(
+                ConfigWheel(
                     title = stringResource(R.string.intervals_work), unit = secUnit, value = workSeconds,
                     range = 5..600, step = 5, tint = Palette.effortColor, enabled = !running,
                     onChange = { workSeconds = it },
                 )
                 Divider()
-                ConfigStepper(
+                ConfigWheel(
                     title = stringResource(R.string.intervals_rest), unit = secUnit, value = restSeconds,
                     range = 5..600, step = 5, tint = Palette.restColor, enabled = !running,
                     onChange = { restSeconds = it },
                 )
                 Divider()
-                ConfigStepper(
+                ConfigWheel(
                     title = stringResource(R.string.intervals_rounds), unit = null, value = rounds,
                     range = 1..30, step = 1, tint = Palette.textPrimary, enabled = !running,
                     onChange = { rounds = it },
@@ -507,7 +505,7 @@ private fun OverviewStat(
 // (dimmed, non-interactive) while a session is running.
 
 @Composable
-private fun ConfigStepper(
+private fun ConfigWheel(
     title: String,
     unit: String?,
     value: Int,
@@ -565,33 +563,6 @@ private fun ConfigStepper(
                 onSelected = { onChange(steps[it].coerceIn(range.first, range.last)) },
             )
         }
-    }
-}
-
-@Composable
-private fun StepperButton(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    description: String,
-    enabled: Boolean,
-    tint: Color,
-    onClick: () -> Unit,
-) {
-    val shape = RoundedCornerShape(10.dp)
-    val content = if (enabled) tint else Palette.textTertiary.copy(alpha = Palette.disabledOpacity)
-    OutlinedButton(
-        onClick = onClick,
-        enabled = enabled,
-        shape = shape,
-        contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp),
-        colors = ButtonDefaults.outlinedButtonColors(
-            contentColor = content,
-            disabledContentColor = Palette.textTertiary.copy(alpha = Palette.disabledOpacity),
-        ),
-        modifier = Modifier
-            .size(40.dp)
-            .semantics { contentDescription = description },
-    ) {
-        Icon(icon, contentDescription = null, modifier = Modifier.size(Metrics.iconSmall))
     }
 }
 

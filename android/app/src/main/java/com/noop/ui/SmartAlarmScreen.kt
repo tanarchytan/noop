@@ -146,7 +146,7 @@ fun SmartAlarmScreen(vm: AppViewModel) {
                         )
                     }
                     Spacer(Modifier.width(Metrics.space16))
-                    WindowStepper(
+                    WindowWheel(
                         windowMinutes = windowMinutes,
                         onChange = { vm.setPhoneAlarmWindowMinutes(it) },
                     )
@@ -387,7 +387,7 @@ private const val ALARM_WINDOW_MAX = 60
 private const val ALARM_WINDOW_STEP = 5
 
 @Composable
-private fun WindowStepper(windowMinutes: Int, onChange: (Int) -> Unit) {
+private fun WindowWheel(windowMinutes: Int, onChange: (Int) -> Unit) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(Metrics.space8),
