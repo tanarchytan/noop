@@ -140,4 +140,6 @@
     <string name="sleep_metric_min">Mín</string>
     <string name="sleep_metric_avg">Prom.</string>
     <string name="sleep_metric_max">Máx</string>
+    <string name="sleep_legend_heart_rate">Frecuencia cardíaca</string>
+    <string name="sleep_legend_movement">Movimiento</string>
 </resources>

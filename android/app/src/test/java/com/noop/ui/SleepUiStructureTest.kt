@@ -79,7 +79,8 @@ class SleepUiStructureTest {
                 "HR_CHART_PAD_MAX_SEC", "HR_TRACE_GAP_STEPS", "HR_AXIS_ROUND_BPM", "HR_AXIS_TICK_BPM",
                 "hrChartWindow", "hrChartBucketSec", "windowFraction", "hrChartSeries",
                 "hrAxisBounds", "hrAxisTicks",
-                "hrTraceRuns", "stageBandsInWindow", "SleepHrChart", "HrBoundLabels",
+                "hrTraceRuns", "stageBandsInWindow", "MOTION_BAND", "EPOCH_SEC", "SleepHrChart",
+                "SleepHrMotionLegend", "LegendKey", "HrBoundLabels",
             ),
             "Charts.kt" to setOf(
                 "LineChart",

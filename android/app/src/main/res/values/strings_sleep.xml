@@ -175,4 +175,6 @@
     <string name="sleep_metric_min">Min</string>
     <string name="sleep_metric_avg">Avg</string>
     <string name="sleep_metric_max">Max</string>
+    <string name="sleep_legend_heart_rate">Heart rate</string>
+    <string name="sleep_legend_movement">Movement</string>
 </resources>

@@ -7,13 +7,16 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -153,10 +156,19 @@ internal fun stageBandsInWindow(
         .filter { (_, width) -> width > 0f }
 }
 
+/** Share of the plot height the movement series may use, measured up from the baseline. Keeping it
+ *  to the lower band stops a self-normalised curve reading as if it had the bpm axis. */
+private const val MOTION_BAND = 0.34f
+
+/** Motion epochs are 30 s wide, counted from onset. */
+private const val EPOCH_SEC = 30L
+
 /**
- * The night's heart rate across the sleep window: a grey trace on a bpm axis, dashed onset / wake bounds
- * with their clock times, and — when a stage row is selected — that stage's runs as coloured bands with
- * the trace recoloured inside them. Null bounds or fewer than two points render an honest note.
+ * The night's heart rate and movement across the sleep window, on one time axis: HR as a rose trace on
+ * the bpm axis, movement as a cyan curve self-normalised into the bottom [MOTION_BAND] (it has no bpm),
+ * dashed onset / wake bounds with their clock times, and — when a stage row is selected — that stage's
+ * runs as bands with the HR trace recoloured inside them. Null bounds or fewer than two HR points
+ * render an honest note; movement is simply absent when the night carries too few epochs.
  */
 @Composable
 internal fun SleepHrChart(
@@ -165,6 +177,7 @@ internal fun SleepHrChart(
     wakeTs: Long?,
     realSegments: List<Pair<String, Float>>,
     selectedStage: String?,
+    motionEpochs: List<Double> = emptyList(),
 ) {
     if (onsetTs == null || wakeTs == null || wakeTs <= onsetTs) return
     val (windowStart, windowEnd) = remember(onsetTs, wakeTs) { hrChartWindow(onsetTs, wakeTs) }
@@ -194,7 +207,9 @@ internal fun SleepHrChart(
 
     val onsetFrac = windowFraction(onsetTs, windowStart, windowSpanSec)
     val wakeFrac = windowFraction(wakeTs, windowStart, windowSpanSec)
-    val traceColor = Palette.textSecondary
+    // Two series on one time axis, so they must not read as one: heart rate rose, movement cyan.
+    val traceColor = Palette.metricRose
+    val motionColor = Palette.metricCyan
     val gridColor = Palette.hairline
     val boundColor = Palette.textTertiary
     val labelArgb = Palette.textTertiary.toArgb()
@@ -277,6 +292,37 @@ internal fun SleepHrChart(
                     if (i == 0) moveTo(px, py) else lineTo(px, py)
                 }
             }
+            // Movement, on the same clock as the HR trace. It has no bpm, so it is self-normalised to
+            // the night's own peak and confined to the bottom MOTION_BAND of the plot — it shares the
+            // time axis and nothing else, and never crosses into the HR trace's range.
+            if (motionEpochs.size >= 2) {
+                val peak = motionEpochs.max()
+                if (peak > 0.0) {
+                    val bandTop = h * (1f - MOTION_BAND)
+                    fun motionPoint(i: Int): Offset {
+                        val ts = onsetTs + i.toLong() * EPOCH_SEC
+                        val frac = (motionEpochs[i] / peak).coerceIn(0.0, 1.0).toFloat()
+                        return Offset(
+                            x(windowFraction(ts, windowStart, windowSpanSec)),
+                            h - frac * (h - bandTop),
+                        )
+                    }
+                    val last = motionEpochs.lastIndex
+                    val area = Path().apply {
+                        moveTo(motionPoint(0).x, h)
+                        for (i in 0..last) motionPoint(i).let { lineTo(it.x, it.y) }
+                        lineTo(motionPoint(last).x, h)
+                        close()
+                    }
+                    drawPath(area, color = motionColor.copy(alpha = 0.18f))
+                    val crest = Path().apply {
+                        motionPoint(0).let { moveTo(it.x, it.y) }
+                        for (i in 1..last) motionPoint(i).let { lineTo(it.x, it.y) }
+                    }
+                    drawPath(crest, color = motionColor.copy(alpha = 0.75f), style = Stroke(width = 1.2f))
+                }
+            }
+
             runs.filter { it.size >= 2 }.forEach { run ->
                 drawPath(pathOf(run), color = traceColor, style = Stroke(width = 1.5f))
             }
@@ -291,6 +337,31 @@ internal fun SleepHrChart(
             }
         }
         HrBoundLabels(onsetTs, wakeTs, onsetFrac, wakeFrac)
+    }
+}
+
+/** Names the two series on the HR chart, so the colours are not the only thing telling them apart. */
+@Composable
+internal fun SleepHrMotionLegend() {
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(Metrics.space12),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        LegendKey(Palette.metricRose, stringResource(R.string.sleep_legend_heart_rate))
+        LegendKey(Palette.metricCyan, stringResource(R.string.sleep_legend_movement))
+    }
+}
+
+@Composable
+private fun LegendKey(color: Color, label: String) {
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(Metrics.space4),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Canvas(modifier = Modifier.size(width = Metrics.space12, height = Metrics.space2)) {
+            drawLine(color, Offset(0f, size.height / 2f), Offset(size.width, size.height / 2f), strokeWidth = size.height)
+        }
+        Text(label, style = NoopType.footnote, color = Palette.textTertiary)
     }
 }
 
