@@ -1338,40 +1338,9 @@ fun LazyScreenScaffold(
     }
 }
 
-// MARK: - Stepper field — tabular value + round −/+ buttons
-//
-// The canonical profile editor used by both Settings and onboarding.
+// MARK: - Stepper button — the round -/+ control the remaining steppers share.
 
-/** Tabular value with round -/+ buttons for profile editing. */
-@Composable
-fun StepperField(
-    value: String,
-    accessibility: String,
-    unit: String? = null,
-    valueColor: Color = Palette.textPrimary,
-    onMinus: () -> Unit,
-    onPlus: () -> Unit,
-) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(Metrics.space8),
-        modifier = Modifier.semantics { contentDescription = accessibility },
-    ) {
-        Text(
-            value,
-            style = NoopType.bodyNumber,
-            color = valueColor,
-            modifier = Modifier.widthIn(min = 44.dp),
-        )
-        if (unit != null) {
-            Text(unit, style = NoopType.caption, color = Palette.textTertiary)
-        }
-        StepperButton(symbol = "−", onClick = onMinus, label = "Decrease $accessibility")
-        StepperButton(symbol = "+", onClick = onPlus, label = "Increase $accessibility")
-    }
-}
-
-/** Round −/+ button used inside [StepperField]. */
+/** Round −/+ button, shared by the alarm-window and interval steppers. */
 @Composable
 fun StepperButton(symbol: String, onClick: () -> Unit, label: String) {
     Box(

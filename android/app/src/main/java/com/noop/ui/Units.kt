@@ -186,6 +186,9 @@ object UnitFormatter {
     /** cm → total inches. */
     fun cmToInches(cm: Double): Double = cm / CENTIMETERS_PER_INCH
 
+    /** total inches → cm. */
+    fun inchesToCm(inches: Double): Double = inches * CENTIMETERS_PER_INCH
+
     /** Decompose a height in CENTIMETRES into whole feet + inches (inches rounded, carried into feet). */
     fun cmToFeetInches(cm: Double): Pair<Int, Int> {
         val totalInches = cmToInches(cm).roundToInt()

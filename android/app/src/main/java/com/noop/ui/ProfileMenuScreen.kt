@@ -93,6 +93,42 @@ fun ProfileMenuScreen(vm: AppViewModel) {
     val weightOptions = remember(unitSystem) { weightSteps.map { UnitFormatter.massFromKilograms(it, unitSystem) } }
     val heightOptions = remember(unitSystem) { heightSteps.map { UnitFormatter.heightFromCentimeters(it.toDouble(), unitSystem) } }
 
+    // Waist steps in whole display units, so an imperial user picks inches and a metric user cm rather
+    // than one list rounded twice. Stored SI either way.
+    val waistSteps = remember(unitSystem) {
+        if (unitSystem == UnitSystem.IMPERIAL) {
+            (WAIST_MIN_IN..WAIST_MAX_IN).map { UnitFormatter.inchesToCm(it.toDouble()) }
+        } else {
+            (WAIST_MIN_CM..WAIST_MAX_CM).map { it.toDouble() }
+        }
+    }
+    val waistOptions = remember(unitSystem) {
+        if (unitSystem == UnitSystem.IMPERIAL) {
+            (WAIST_MIN_IN..WAIST_MAX_IN).map { "%d″".format(it) }
+        } else {
+            (WAIST_MIN_CM..WAIST_MAX_CM).map { "%d cm".format(it) }
+        }
+    }
+    val maxHrSteps = remember { (MAX_HR_MIN..MAX_HR_MAX).toList() }
+    val autoWord = stringResource(R.string.profile_auto)
+    val maxHrOptions = remember(autoWord) { listOf(autoWord) + maxHrSteps.map { "$it bpm" } }
+    // The same variable ladder the stepper walked, enumerated once so the wheel shows every reachable
+    // value instead of making the user climb to 30 one press at a time.
+    val stepScaleSteps = remember {
+        buildList {
+            var v = ProfileStore.steppedStepScale(0.0, up = true)
+            add(v)
+            while (size < 200) {
+                val next = ProfileStore.steppedStepScale(v, up = true)
+                if (next <= v) break
+                add(next); v = next
+            }
+        }
+    }
+    val stepScaleOptions = remember(stepScaleSteps) { stepScaleSteps.map { "%.1f".format(it) } }
+    val maxHrLabel = stringResource(R.string.profile_max_hr)
+    val stepCalibrationLabel = stringResource(R.string.profile_step_calibration)
+
     // Modern Photo Picker for the optional profile photo (no READ_EXTERNAL_STORAGE permission needed).
     // Returns a single image Uri (or null if cancelled); we decode + downscale + persist off the main
     // thread via ProfileAvatarStore, which updates the live avatar everywhere. Stored only on this phone.
@@ -242,33 +278,33 @@ fun ProfileMenuScreen(vm: AppViewModel) {
                         val hasWaist = profile.waistCm > 0.0
                         val addWord = stringResource(R.string.profile_add)
                         val waistUnsetLabel = stringResource(R.string.profile_waist_a11y_unset)
-                        if (unitSystem == UnitSystem.IMPERIAL) {
-                            val totalInches = UnitFormatter.cmToInches(profile.waistCm).roundToInt()
-                            StepperField(
-                                value = if (hasWaist) "%d″".format(totalInches) else addWord,
-                                accessibility = if (hasWaist) {
-                                    stringResource(R.string.profile_waist_a11y_inches, totalInches)
-                                } else {
-                                    waistUnsetLabel
-                                },
-                                valueColor = if (hasWaist) Palette.textPrimary else Palette.textTertiary,
-                                onMinus = { mutate { profile.waistCm = waistInchesStep(profile.waistCm, up = false) } },
-                                onPlus = { mutate { profile.waistCm = waistInchesStep(profile.waistCm, up = true) } },
-                            )
-                        } else {
-                            StepperField(
-                                value = if (hasWaist) "%.0f".format(profile.waistCm) else addWord,
-                                unit = if (hasWaist) "cm" else null,
-                                accessibility = if (hasWaist) {
-                                    stringResource(R.string.profile_waist_a11y_cm)
-                                } else {
-                                    waistUnsetLabel
-                                },
-                                valueColor = if (hasWaist) Palette.textPrimary else Palette.textTertiary,
-                                onMinus = { mutate { profile.waistCm = waistCmStep(profile.waistCm, up = false) } },
-                                onPlus = { mutate { profile.waistCm = waistCmStep(profile.waistCm, up = true) } },
-                            )
-                        }
+                        val waistLabel = stringResource(R.string.profile_waist)
+                        // Unset opens the wheel at a typical adult waist rather than at the range floor.
+                        val waistSeed = if (hasWaist) profile.waistCm else WAIST_SEED_CM
+                        WheelPickerField(
+                            value = if (!hasWaist) addWord
+                            else if (unitSystem == UnitSystem.IMPERIAL) {
+                                "%d″".format(UnitFormatter.cmToInches(profile.waistCm).roundToInt())
+                            } else {
+                                "%.0f".format(profile.waistCm)
+                            },
+                            unit = if (hasWaist && unitSystem == UnitSystem.METRIC) "cm" else null,
+                            accessibility = if (!hasWaist) waistUnsetLabel
+                            else if (unitSystem == UnitSystem.IMPERIAL) {
+                                stringResource(
+                                    R.string.profile_waist_a11y_inches,
+                                    UnitFormatter.cmToInches(profile.waistCm).roundToInt(),
+                                )
+                            } else {
+                                stringResource(R.string.profile_waist_a11y_cm)
+                            },
+                            options = waistOptions,
+                            selectedIndex = waistSteps.indices.minByOrNull {
+                                kotlin.math.abs(waistSteps[it] - waistSeed)
+                            } ?: 0,
+                            dialogTitle = waistLabel,
+                            onSelected = { mutate { profile.waistCm = waistSteps[it] } },
+                        )
                         Spacer(Modifier.height(Metrics.space6))
                         Text(
                             text = stringResource(
@@ -283,21 +319,28 @@ fun ProfileMenuScreen(vm: AppViewModel) {
                 RowDivider()
                 FormRow(label = stringResource(R.string.profile_max_hr)) {
                     Column(horizontalAlignment = Alignment.End) {
-                        StepperField(
+                        // Index 0 is "Auto" (override 0), so the wheel can return to automatic — a
+                        // stepper could only reach it by counting down to the range floor.
+                        WheelPickerField(
                             value = if (profile.hrMaxOverride > 0) {
                                 profile.hrMaxOverride.toString()
                             } else {
                                 stringResource(R.string.profile_auto)
                             },
-                            unit = "bpm",
+                            unit = if (profile.hrMaxOverride > 0) "bpm" else null,
                             accessibility = if (profile.hrMaxOverride == 0) {
                                 stringResource(R.string.profile_max_hr_a11y_auto)
                             } else {
                                 stringResource(R.string.profile_max_hr_a11y, profile.hrMaxOverride)
                             },
-                            valueColor = if (profile.hrMaxOverride > 0) Palette.textPrimary else Palette.textTertiary,
-                            onMinus = { mutate { profile.hrMaxOverride -= 1 } },
-                            onPlus = { mutate { profile.hrMaxOverride += 1 } },
+                            options = maxHrOptions,
+                            selectedIndex = if (profile.hrMaxOverride > 0) {
+                                (profile.hrMaxOverride - MAX_HR_MIN + 1).coerceIn(0, maxHrSteps.size)
+                            } else {
+                                0
+                            },
+                            dialogTitle = maxHrLabel,
+                            onSelected = { mutate { profile.hrMaxOverride = if (it == 0) 0 else maxHrSteps[it - 1] } },
                         )
                         Spacer(Modifier.height(Metrics.space6))
                         Text(
@@ -318,11 +361,15 @@ fun ProfileMenuScreen(vm: AppViewModel) {
                 // variable increment (fine near 1.0, coarse up top) so high values stay reachable.
                 FormRow(label = stringResource(R.string.profile_step_calibration)) {
                     val ticks = "%.1f".format(profile.stepTicksPerStep)
-                    StepperField(
+                    WheelPickerField(
                         value = ticks,
                         accessibility = stringResource(R.string.profile_step_calibration_a11y, ticks),
-                        onMinus = { mutate { profile.stepTicksPerStep = ProfileStore.steppedStepScale(profile.stepTicksPerStep, up = false) } },
-                        onPlus = { mutate { profile.stepTicksPerStep = ProfileStore.steppedStepScale(profile.stepTicksPerStep, up = true) } },
+                        options = stepScaleOptions,
+                        selectedIndex = stepScaleSteps.indices.minByOrNull {
+                            kotlin.math.abs(stepScaleSteps[it] - profile.stepTicksPerStep)
+                        } ?: 0,
+                        dialogTitle = stepCalibrationLabel,
+                        onSelected = { mutate { profile.stepTicksPerStep = stepScaleSteps[it] } },
                     )
                 }
                 Text(
@@ -575,7 +622,6 @@ private fun FormRow(label: String, control: @Composable () -> Unit) {
     }
 }
 
-
 // MARK: - Sex options (mirrors SettingsScreen's private copy)
 
 private data class SexOption(val tag: String, @StringRes val label: Int)
@@ -590,18 +636,12 @@ private val SEX_OPTIONS = listOf(
 
 /** A typical adult waist (cm) used as the first value when stepping up from "unset" (0). ~34". */
 private const val WAIST_SEED_CM = 86.0
+/** Waist wheel bounds, in whole display units. Wide enough to cover any adult, short enough to scroll. */
+private const val WAIST_MIN_CM = 50
+private const val WAIST_MAX_CM = 200
+private const val WAIST_MIN_IN = 20
+private const val WAIST_MAX_IN = 79
+/** Max-HR wheel bounds. Index 0 of the list is Auto, so the wheel can return to automatic. */
+private const val MAX_HR_MIN = 100
+private const val MAX_HR_MAX = 220
 
-/** Step the waist by one centimetre, seeding [WAIST_SEED_CM] when starting from unset (0). */
-private fun waistCmStep(current: Double, up: Boolean): Double {
-    if (current <= 0.0) return if (up) WAIST_SEED_CM else 0.0
-    return (current + if (up) 1.0 else -1.0).coerceAtLeast(WAIST_SEED_CM - 30.0)
-}
-
-/** Step the waist by one inch (entry unit in imperial; stored as cm), seeding [WAIST_SEED_CM] from unset. */
-private fun waistInchesStep(current: Double, up: Boolean): Double {
-    if (current <= 0.0) return if (up) WAIST_SEED_CM else 0.0
-    val inches = UnitFormatter.cmToInches(current).roundToInt()
-    val nextInches = (inches + if (up) 1 else -1)
-    val nextCm = nextInches * UnitFormatter.CENTIMETERS_PER_INCH
-    return nextCm.coerceAtLeast(WAIST_SEED_CM - 30.0)
-}

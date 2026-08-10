@@ -432,10 +432,20 @@ private fun ManualAdjustCard(
     val manual = profile.stepsManualCoefficient
     val effective = if (manual > 0) manual else profile.stepsCalibrationCoefficient
 
-    fun step(delta: Double) {
-        val next = (Math.round((effective + delta) * 10) / 10.0).coerceIn(0.0, stepperMax)
-        profile.stepsManualCoefficient = next
+    fun setCoefficient(value: Double) {
+        profile.stepsManualCoefficient = value.coerceIn(0.0, stepperMax)
         onProfileChanged()
+    }
+
+    // Every reachable coefficient, 0.1 apart. Index 0 of the OPTION list is Auto, so the wheel is one
+    // longer than this and the mapping is offset by one.
+    val coefficientSteps = remember(stepperMax) {
+        val n = (stepperMax / STEPS_COEFFICIENT_STEP).roundToInt()
+        (1..n).map { Math.round(it * STEPS_COEFFICIENT_STEP * 10) / 10.0 }
+    }
+    val autoLabel = stringResource(R.string.profile_auto)
+    val coefficientOptions = remember(coefficientSteps, autoLabel) {
+        listOf(autoLabel) + coefficientSteps.map { String.format(Locale.US, "%.1f", it) }
     }
 
     NoopCard(padding = 20.dp) {
@@ -465,15 +475,24 @@ private fun ManualAdjustCard(
                 )
             }
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
-                StepperField(
+                // Index 0 is Auto (coefficient 0); the rest walk 0.1 up to stepperMax, so a high
+                // coefficient is one scroll rather than dozens of taps.
+                WheelPickerField(
                     value = if (manual > 0) manualValue else autoWord,
                     accessibility = if (manual > 0) {
                         stringResource(R.string.steps_manual_a11y, manualValue)
                     } else {
                         stringResource(R.string.steps_manual_a11y_auto)
                     },
-                    onMinus = { step(-STEPS_COEFFICIENT_STEP) },
-                    onPlus = { step(STEPS_COEFFICIENT_STEP) },
+                    options = coefficientOptions,
+                    selectedIndex = if (manual > 0) {
+                        coefficientSteps.indices.minByOrNull { abs(coefficientSteps[it] - manual) }
+                            ?.plus(1) ?: 0
+                    } else {
+                        0
+                    },
+                    dialogTitle = stringResource(R.string.steps_adjust_manually),
+                    onSelected = { setCoefficient(if (it == 0) 0.0 else coefficientSteps[it - 1]) },
                 )
             }
             // Live preview: a typical recent day re-estimated at the effective (manual or auto) coefficient.
