@@ -44,8 +44,8 @@ import java.util.Locale
 /**
  * AutoWorkoutNudge — the NON-DESTRUCTIVE "looks like a workout" Today card (MVP auto-detect, opt-in).
  *
- * Android twin of iOS `AutoWorkoutCard` (Strand/Screens/AutoWorkoutCard.swift), wired to the byte-parity
- * [AutoWorkoutDetector]. Gated on [NoopPrefs.autoDetectWorkouts] (default OFF) — when off, NOTHING runs
+ * Wired to the pure [AutoWorkoutDetector] and gated on [NoopPrefs.autoDetectWorkouts] (default OFF) —
+ * when off, NOTHING runs
  * and nothing renders. When on, after Today appears (and whenever the data refreshes) it scans the last
  * couple of days of strap HR through the pure detector, excludes any window that OVERLAPS a saved workout
  * (any source) or was previously dismissed, and surfaces ONE card — the most recent candidate:
@@ -58,7 +58,7 @@ import java.util.Locale
  * so it never re-prompts. It NEVER creates a workout without the user tapping Save.
  *
  * Design-Reset compliant: a flat accent-tinted [NoopCard], NoopMetrics tokens, no gold — matching the
- * other Today cards (matches the iOS source exactly).
+ * other Today cards.
  */
 
 /** The strap source the scan + saves use, matching the rest of Today ("my-whoop"). */
@@ -67,16 +67,16 @@ private const val AUTO_DETECT_DEVICE = "my-whoop"
 /** Generic sport label for a saved auto-detected bout — the user can re-label via Workouts → Edit. */
 private const val AUTO_DETECT_SPORT = "Workout"
 
-/** Days of HR history the scan covers — matches the iOS `autoDetectCandidate(daysBack: 2)`. */
+/** Days of HR history the scan covers. */
 private const val AUTO_DETECT_DAYS_BACK = 2L
 
 private val autoNudgeTimeFmt: DateTimeFormatter =
-    // HH:mm in the user's locale/timezone — mirrors the iOS card's short-time DateFormatter.
+    // HH:mm in the user's locale/timezone.
     DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT)
         .withLocale(Locale.getDefault()).withZone(ZoneId.systemDefault())
 
 private val autoNudgeDateFmt: DateTimeFormatter =
-    // Localized MEDIUM date ("23 Jun 2026") for a bout older than yesterday. Mirrors the iOS card.
+    // Localized MEDIUM date ("23 Jun 2026") for a bout older than yesterday.
     DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM)
         .withLocale(Locale.getDefault()).withZone(ZoneId.systemDefault())
 
@@ -114,11 +114,11 @@ fun AutoWorkoutNudgeCard(
 
     // The single surfaced candidate (null = nothing to suggest). Re-scanned whenever the day data grows.
     var candidate by remember { mutableStateOf<AutoWorkoutDetector.DetectedWorkout?>(null) }
-    // Hide immediately on Save/X without waiting for the next reload (mirrors iOS `handledThisSession`).
+    // Hide immediately on Save/X without waiting for the next reload.
     var handledThisSession by remember { mutableStateOf(false) }
 
-    // Re-scan after Today appears / when the data refreshes (days = the recompute trigger; the Android
-    // analog of the iOS refreshSeq). All reads + detection run off the main thread. Mirrors `reload()`.
+    // Re-scan after Today appears / when the data refreshes (days = the recompute trigger). All reads
+    // and detection run off the main thread.
     LaunchedEffect(days, enabled) {
         val next = runCatching { autoDetectCandidate(viewModel, context, days) }.getOrNull()
         // A fresh scan that surfaces a DIFFERENT window resets the session guard so a new bout can show.
@@ -182,9 +182,9 @@ fun AutoWorkoutNudgeCard(
                         // saved via the SAME manual path the Workouts screen uses. buildManualRow is pure.
                         val durMin = ((w.endSec - w.startSec) / 60L).toInt().coerceAtLeast(1)
                         val row = WorkoutEditing.buildManualRow(
-                            // Save under the ACTIVE strap id (what the Workouts union reads),
-                            // mirroring iOS `saveDetectedWorkout`. Not the visibility fix (workoutsUnion
-                            // reads "my-whoop" too) but keeps the id consistent with the list + exclusion.
+                            // Save under the ACTIVE strap id (what the Workouts union reads).
+                            // Not the visibility fix (workoutsUnion reads "my-whoop" too) but keeps
+                            // the id consistent with the list + exclusion.
                             deviceId = viewModel.deviceId,
                             startSeconds = w.startSec,
                             durationMin = durMin,
@@ -220,7 +220,7 @@ fun AutoWorkoutNudgeCard(
 }
 
 /**
- * Pure read + suggestion path mirroring iOS `Repository.autoDetectCandidate(daysBack:)`. Scans the last
+ * Pure read + suggestion path. Scans the last
  * [AUTO_DETECT_DAYS_BACK] days of HR, runs the byte-parity detector, excludes saved + dismissed windows,
  * and returns the MOST RECENT surviving candidate (newest first), or null. Never writes anything.
  */
@@ -236,12 +236,11 @@ private suspend fun autoDetectCandidate(
     val hr = repo.hrSamples(AUTO_DETECT_DEVICE, fromSec, nowSec, limit = 200_000)
     if (hr.size < 2) return null
 
-    // Resting HR: most recent nightly RHR in history, else the detector's own default (60). Byte-faithful
-    // to iOS `days.last(where: { restingHr != nil })?.restingHr`.
+    // Resting HR: most recent nightly RHR in history, else the detector's own default (60).
     val restingHr = days.lastOrNull { it.restingHr != null }?.restingHr
 
     // Exclude EVERY already-saved workout window (any source — strap/manual, Apple Health, Health Connect,
-    // computed "detected" bouts, imported lifting). Matches the iOS `workoutRows()` source union.
+    // computed "detected" bouts, imported lifting) — the same source union the Workouts list reads.
     val computed = repo.computedDeviceId(AUTO_DETECT_DEVICE)
     val saved = (
         repo.workouts(AUTO_DETECT_DEVICE, fromSec, nowSec) +
@@ -279,7 +278,7 @@ private suspend fun autoDetectCandidate(
             savedWorkouts = saved,
         )
     }
-    // Drop anything the user already dismissed, then take the most recent. Mirrors iOS exactly.
+    // Drop anything the user already dismissed, then take the most recent.
     val dismissed = AutoWorkoutPrefs.dismissed(context)
     return candidates
         .filter { AutoWorkoutPrefs.token(it) !in dismissed }

@@ -43,13 +43,13 @@ import java.util.Locale
 /** The metric strip's corner radius as a percentage, so its viewport matches the pill inside it. */
 private const val TIMELINE_PILL_CORNER_PERCENT = 50
 
-// MARK: - Deep Timeline (Android twin of FullDayChartView) —
+// MARK: - Deep Timeline
 //
 // A full-day, full-resolution metric viewer reached from the Explore tab. The hard problem — never
 // drawing ~86k points for a worn 24h — is solved by reading adaptively: day scale → coarse Room HR
 // buckets (WhoopDao.hrBuckets, which already COALESCEs measured + v26 PPG), zoomed-in → raw
 // per-second rows (WhoopDao.hrSamples, same COALESCE). The chart's pinch/pan reports the new window and
-// we re-read at the new resolution. Mirrors macOS FullDayChartView + OverviewHRChart's zoom binding.
+// we re-read at the new resolution.
 
 private enum class TimelineMetric(@StringRes val title: Int) {
     Hr(R.string.trends2_timeline_hr),
@@ -93,7 +93,7 @@ fun FullDayChartScreen(vm: AppViewModel, onBack: () -> Unit) {
     // a continuous left-drag can scroll back to the shown day plus the two before it (a rolling 3-day
     // window), so older HR is reachable by dragging, not only the day-stepper. Deliberately bounded so one
     // drag can't fling through weeks; the reload keys on the visible window so panned-to days load, and a day
-    // with no data falls to the empty state (parity with iOS FullDayChartView.panBounds).
+    // with no data falls to the empty state.
     val panBounds = (dayStartSec - 2 * 86_400)..(dayStartSec + 86_400)
 
     var metric by remember { mutableStateOf(TimelineMetric.Hr) }
@@ -106,8 +106,7 @@ fun FullDayChartScreen(vm: AppViewModel, onBack: () -> Unit) {
     // (and a calibrating 4.0 that has banked raw HR but no scored DailyMetric yet) lands on real data
     // instead of an empty today. The latest SCORED day (DailyMetric) is the first choice; when there is
     // none yet, we fall back to the most recent day that has raw HR (max hrSample.ts for the strap), so a
-    // calibrating 4.0 still opens on the day its banked HR lives rather than a blank today. Mirrors
-    // iOS landOnLatestDayIfNeeded, which already keys on the raw-HR union via repo.latestDataDayStart.
+    // calibrating 4.0 still opens on the day its banked HR lives rather than a blank today.
     LaunchedEffect(recentDays) {
         if (!didLand) {
             // Only mark the one-shot done once we actually have something to key on , so a first compose
@@ -145,7 +144,7 @@ fun FullDayChartScreen(vm: AppViewModel, onBack: () -> Unit) {
     // `points` in the DISPLAYED unit. For every metric but skin temp this is just the raw points;
     // skin temp is the ABSOLUTE per-timestamp °C (skinTempCelsius), so when °F is selected convert with the
     // absolute ×9/5+32 (not a deviation rescale) so the chart line, y-axis AND stats read in °F — the
-    // suffix relabel alone would leave the plotted numbers in Celsius. Mirrors the Swift FullDayChartView.
+    // suffix relabel alone would leave the plotted numbers in Celsius.
     val displayPoints = if (metric == TimelineMetric.SkinTemp && tempUnit == TemperatureUnit.FAHRENHEIT) {
         points.map { TimelinePoint(it.ts, UnitFormatter.celsiusToFahrenheit(it.value)) }
     } else {
@@ -328,7 +327,7 @@ private suspend fun readTimeline(
     to: Long,
     bucket: Long,
 ): List<TimelinePoint> = withContext(Dispatchers.Default) {
-    // PERF parity with macOS Repository.timelineSeries: the Room reads already hop to Room's executor,
+    // PERF: the Room reads already hop to Room's executor,
     // but this function is called from a LaunchedEffect (Main), so the post-read mapping + downsample
     // (up to 200k 1 Hz HR rows on a dense day) would otherwise run on the MAIN thread and beach-ball the
     // UI. Run the whole assembly on Default; the suspend Room queries still execute off-main and only the
@@ -336,7 +335,7 @@ private suspend fun readTimeline(
     val repo = vm.repo
     if (metric == TimelineMetric.Hr) {
         // HR rides the active strap ∪ canonical "my-whoop" union so a re-added strap's live curve and
-        // the canonical import history both render (matches Swift Repository.timelineSeries). [deviceId] is
+        // the canonical import history both render. [deviceId] is
         // already the active strap id; a single-WHOOP install resolves to "my-whoop" ⇒ one id ⇒ same read.
         return@withContext if (bucket <= 1L) {
             runCatching { repo.hrSamplesUnion(from, to, limit = 200_000) }.getOrDefault(emptyList())
@@ -364,7 +363,6 @@ private suspend fun readTimeline(
         TimelineMetric.SkinTemp -> {
             // family-aware raw→°C — 5/MG centidegrees (raw/100), a WHOOP 4.0 v24 raw ADC map.
             // The registry-model-label → family mapping lives in DeviceFamily.forRegistryModel.
-            // Mirrors Swift Repository.timelineRawMetric.
             val model = runCatching { vm.pairedDevices() }.getOrDefault(emptyList())
                 .firstOrNull { it.id == deviceId }?.model
             val family = DeviceFamily.forRegistryModel(model)

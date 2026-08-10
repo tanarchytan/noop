@@ -8,8 +8,7 @@ package com.noop.protocol
  * This is a PURE, platform-agnostic encoder: time-in, pulse-list-out, no I/O and no BLE. The trigger
  * ([com.noop.ble.WhoopBleClient.buzzTimeNow]) walks the list and fires each pulse through the EXISTING
  * maverick notification buzz; only the *schedule* of buzzes is new, the buzz itself is the
- * hardware-confirmed one. Kotlin twin of the Apple `HapticClock.swift`; the two pulse lists are pinned
- * identical by matching unit tests on both platforms (e.g. 3:25 → the same list).
+ * hardware-confirmed one. The emitted pulse list is pinned by unit tests (e.g. 3:25 → one exact list).
  *
  * Reading the buzzes:
  *  - LONG pulse  = one "ten"   in the current digit group
@@ -22,16 +21,14 @@ object HapticClock {
 
     /** One buzz instruction: buzz the wrist for [durationMs], then stay silent for [gapMs]. */
     data class Pulse(val durationMs: Int, val gapMs: Int) {
-        /** Whether this is a "tens" pulse (long buzz) versus a "units" pulse (short). Swift twin:
-         *  `Pulse.isLong`. Lets the trigger weight the buzz without knowing the timing table. */
+        /** Whether this is a "tens" pulse (long buzz) versus a "units" pulse (short). Lets the
+         *  trigger weight the buzz without knowing the timing table. */
         val isLong: Boolean get() = durationMs >= LONG_MS
     }
 
-    // Pulse + gap timing (ms). Kept in lock-step with HapticClock.swift — change both together.
-    // the buzz itself is a fixed hardware pattern, so durationMs+gapMs is only the start-to-start
-    // SPACING between buzzes. The old 250ms intra-gap left near-zero silence between unit taps, so they
-    // blended on the wrist and were "almost impossible to distinguish". Widened gaps (intra-gap most of
-    // all) give clear silence between taps and between digit groups while keeping the sequence practical.
+    // Pulse + gap timing (ms). The buzz itself is a fixed hardware pattern, so durationMs+gapMs is only
+    // the start-to-start SPACING between buzzes. The gaps (intra-gap most of all) are wide enough to keep
+    // clear silence between taps and between digit groups while keeping the sequence practical.
     const val LONG_MS = 550        // a "tens" pulse
     const val SHORT_MS = 200       // a "units" pulse
     const val INTRA_GAP_MS = 450   // silence between two pulses inside one digit group

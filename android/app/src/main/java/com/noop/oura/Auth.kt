@@ -19,7 +19,7 @@ import javax.crypto.spec.SecretKeySpec
 // 16-byte block, "AES/ECB/PKCS5Padding" over that single block appends exactly the 0x10 x16 block
 // we construct here, so PKCS5Padding(block1)[:16] == NoPadding(block1 || 0x10x16)[:16]. This twin
 // builds the explicit 32-byte plaintext and runs "AES/ECB/NoPadding" so the byte layout is pinned
-// and the first-block proof is identical to the Swift port (and to a PKCS5 path). Key is injected,
+// and the first-block proof is identical to a PKCS5 path. Key is injected,
 // NEVER hardcoded.
 //
 // Platform-pure value types (no android.bluetooth). Facts cited

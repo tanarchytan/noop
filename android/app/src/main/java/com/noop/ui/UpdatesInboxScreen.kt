@@ -60,7 +60,7 @@ import com.noop.R
 // row offers "Restore to Today". Everything is on-device and non-clinical — informational, never a
 // verdict.
 //
-// Kotlin port of Strand/Screens/UpdatesInboxView.swift, presented as the content of a ModalBottomSheet
+// Presented as the content of a ModalBottomSheet
 // (the app's sheet idiom — see AppRoot's More / Quick-actions sheets). Tokens only.
 
 /**
@@ -142,8 +142,8 @@ fun UpdatesInboxScreen(
                 Button(
                     onClick = { store.markAllRead() },
                     enabled = store.unreadCount > 0,
-                    // Filled accent PILL, matching the iOS "Mark all read" button (blue in light, gold in
-                    // dark). Icon + label inherit the button's contentColor.
+                    // Filled accent PILL (blue in light, gold in dark).
+                    // Icon + label inherit the button's contentColor.
                     shape = RoundedCornerShape(percent = 50),
                     contentPadding = PaddingValues(horizontal = 18.dp, vertical = 8.dp),
                     colors = ButtonDefaults.buttonColors(
@@ -389,7 +389,7 @@ private fun EmptyInboxState() {
     }
 }
 
-/** The per-kind icon — mirrors the Swift SF Symbol → Material mapping in the spec. */
+/** The per-kind icon. */
 private fun kindIcon(kind: UpdateKind): ImageVector = when (kind) {
     UpdateKind.DISMISSED_CARD -> Icons.Outlined.Layers
     UpdateKind.WHATS_NEW -> Icons.Outlined.AutoAwesome
@@ -397,8 +397,7 @@ private fun kindIcon(kind: UpdateKind): ImageVector = when (kind) {
     UpdateKind.STRAP_ALERT -> Icons.Outlined.Warning
 }
 
-/** A per-kind tint drawn from the domain palette so each row reads in its own colour world.
- *  Mirrors the Swift `UpdateRow.tint`. */
+/** A per-kind tint drawn from the domain palette so each row reads in its own colour world. */
 private fun kindTint(kind: UpdateKind): Color = when (kind) {
     UpdateKind.DISMISSED_CARD -> Palette.textSecondary
     UpdateKind.WHATS_NEW -> Palette.accent

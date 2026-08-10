@@ -1,12 +1,11 @@
 package com.noop.oura
 
-// OuraEvents: the decoded value structs the driver emits. Kotlin twin of
-// OuraEvents.swift. Each carries the record's ringTimestamp (the ring-clock value; the app anchors it
-// to UTC via the 0x42 time-sync / 0x85 RTC events) plus the decoded signal. Pure value types, no
-// android.bluetooth.
+// OuraEvents: the decoded value structs the driver emits. Each carries the record's ringTimestamp
+// (the ring-clock value; the app anchors it to UTC via the 0x42 time-sync / 0x85 RTC events) plus the
+// decoded signal. Pure value types, no android.bluetooth.
 //
-// DIVERGENCE FROM SWIFT: Swift's UInt32 ringTimestamp becomes a Long holding the unsigned 32-bit
-// value (0..0xFFFFFFFF), and Swift's Int64 epoch becomes Long. Values and layouts are identical.
+// UNSIGNED STORAGE: ringTimestamp is a Long holding the unsigned 32-bit value (0..0xFFFFFFFF); an
+// epoch is a Long of unix seconds.
 //
 // Per-sample timestamps inside a record (IBI/temp/HRV/SpO2) walk backward from the event time by each
 // sample's own duration; to stay platform-pure and avoid baking a clock model
@@ -117,7 +116,7 @@ data class OuraTierBSummary(
  * physiologically sane), but NOT independently ground-truth-validated against the Oura app's own
  * numbers. It therefore stays Tier B: emitted only behind `OuraDriver.allowTierB`, and NEVER folded
  * into `OuraStreamMapping`/`Streams`/scoring (steps stay honest - no step count is minted from MET).
- * Kotlin twin of the Swift `OuraActivityInfo` (met as List<Double> keeps structural equality).
+ * `met` is a List<Double> so the data class keeps structural equality.
  */
 data class OuraActivityInfo(val ringTimestamp: Long, val state: Int, val met: List<Double>)
 
@@ -128,8 +127,6 @@ data class OuraActivityInfo(val ringTimestamp: Long, val state: Int, val met: Li
  * record carries up to 6 IBIs). Tier-B events are wrapped in TierB (or ActivityInfo) and only emitted
  * when the driver is configured to allow them; they must never feed scoring without passing a
  * real-capture fixture.
- *
- * Kotlin twin of the Swift `OuraEvent` enum-with-associated-values, modelled as a sealed class.
  */
 sealed class OuraEvent {
     data class Hr(val value: OuraHR) : OuraEvent()

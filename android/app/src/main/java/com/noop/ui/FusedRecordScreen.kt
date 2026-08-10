@@ -504,7 +504,7 @@ private fun ContributorRow(
 
 /**
  * Formats a fused metric's [Double] value for display by its resolver key. Pure + local to this
- * screen, value-for-value with the Swift `FusionFormat`: the engine deals in numbers, the UI owns
+ * screen: the engine deals in numbers, the UI owns
  * units. Sleep/duration keys read as "7h 12m"; temp as "34.1°C"; HR/HRV/steps as integers + unit.
  */
 object FusionFormat {

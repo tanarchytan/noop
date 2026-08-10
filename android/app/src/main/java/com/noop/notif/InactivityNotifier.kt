@@ -13,9 +13,9 @@ import com.noop.ui.NotifPrefs
 import com.noop.ui.appLaunchIntent
 
 /**
- * posts the inactivity (sedentary) wrist nudge as a real system notification, mirroring the iOS
- * `AppModel.postInactivity`. A pocketed phone can't show the strap buzz on screen the way the Mac does,
- * so a wrist buzz the user might miss is ALSO surfaced as a local notification. Called from
+ * posts the inactivity (sedentary) wrist nudge as a real system notification. A pocketed phone can't
+ * show the strap buzz on screen, so a wrist buzz the user might miss is ALSO surfaced as a local
+ * notification. Called from
  * `WhoopBleClient.maybeBuzzInactivity` right after the buzz fires.
  *
  * Gated on the SAME wrist-alerts master ([NotifPrefs.MASTER]) the SedentaryDetector reads, so turning
@@ -28,7 +28,7 @@ object InactivityNotifier {
 
     @SuppressLint("MissingPermission") // guarded by areNotificationsEnabled() + runCatching
     fun onNudged(context: Context, minutes: Int) {
-        // Mirror the iOS master gate: the engine already honours it before buzzing, re-check anyway.
+        // Master gate: the engine already honours it before buzzing, re-check anyway.
         if (!NotifPrefs.getBool(context, NotifPrefs.MASTER, false)) return
         val body = if (minutes > 0) {
             "You've been seated for about $minutes min. Time to move."

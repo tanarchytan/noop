@@ -262,7 +262,7 @@ fun SectionHeader(
     }
 }
 
-// MARK: - StrandTone
+// MARK: - semantic tone → palette colour
 
 enum class StrandTone {
     Neutral, Accent, Positive, Warning, Critical;

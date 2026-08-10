@@ -49,7 +49,7 @@ import kotlin.math.roundToInt
 
 // MARK: - Skin-temperature suite cards (v5 pillar) — Compose twin
 //
-// Kotlin/Compose mirror of Strand/Screens/SkinTempCardsView.swift. Four self-contained,
+// Four self-contained,
 // reusable cards driven entirely by a pure com.noop.analytics engine RESULT passed in
 // (Wave 3 runs the engines in the analytics pass and mounts these in the Health hub):
 //
@@ -402,7 +402,7 @@ fun HeadsUpCard(
  * when a distance is present). null otherwise. The already-unwell state is driven purely by the user's own
  * log and can have a near-zero distance (0-1 present features), giving a misleading "Confidence: slight
  * (distance 0.0)", so it's excluded. The raised path always has >= 2 present features, so its distance is
- * meaningful. The band mirrors iOS exactly. Augment-only, never gates.
+ * meaningful. Augment-only, never gates.
  */
 @Composable
 private fun headsUpConfidenceLine(
@@ -421,7 +421,7 @@ private fun headsUpConfidenceLine(
 /**
  * Maps the parallel Mahalanobis distance to a plain confidence word. Presentation-only: NEVER decides
  * whether the Heads-Up card shows (the engine's level already did). Bands: >= 3.5 strong, >= 2.5
- * moderate, else slight. Identical to the Swift twin (IllnessConfidence.band).
+ * moderate, else slight.
  */
 @StringRes
 private fun illnessConfidenceBand(distance: Double): Int = when {
@@ -430,7 +430,7 @@ private fun illnessConfidenceBand(distance: Double): Int = when {
     else -> R.string.skintemp_conf_slight
 }
 
-/** One-decimal display value for the distance, locale-independent. Mirrors iOS String(format: "%.1f"). */
+/** One-decimal display value for the distance, locale-independent. */
 private fun illnessConfidenceFormatted(distance: Double): String =
     String.format(java.util.Locale.US, "%.1f", distance)
 
@@ -453,7 +453,7 @@ private fun WhyRow(label: String, values: List<String>, tint: Color) {
     }
 }
 
-// MARK: - Derived copy / presentation (mirror the Swift card exactly)
+// MARK: - Derived copy / presentation
 
 @StringRes
 private fun cyclePhaseTitle(phase: CyclePhaseEngine.Phase): Int = when (phase) {

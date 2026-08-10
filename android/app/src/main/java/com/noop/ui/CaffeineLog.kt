@@ -47,7 +47,6 @@ import kotlin.math.roundToInt
 
 // MARK: - Caffeine window — pure persistence helpers + the Insights logging card.
 //
-// Faithful Kotlin twin of Strand/Screens/CaffeineLogCard.swift + the CaffeineLogStore persistence.
 // OPT-IN, manual-first: the user logs a caffeine intake (time + OPTIONAL mg) and NOOP shows a rough,
 // on-device "still active" hint from a ~5–6 h half-life decay. Nothing leaves the device. The decay math
 // + honesty rules live in com.noop.analytics.CaffeineDecay (cross-platform parity). Reuses the journal's
@@ -56,7 +55,7 @@ import kotlin.math.roundToInt
 private const val CAFFEINE_PREFS = "noop_prefs"
 private const val CAFFEINE_KEY = "noop.caffeineIntakes"
 /** Drop intakes older than this many hours on load — well past the decay horizon, so the estimate is
- *  unchanged but the stored blob can't grow without bound. Matches Swift CaffeineLogStore.retentionHours. */
+ *  unchanged but the stored blob can't grow without bound. */
 private const val CAFFEINE_RETENTION_HOURS = 48.0
 
 /** Load the user's logged caffeine intakes, pruning anything past the retention horizon. */
@@ -93,7 +92,7 @@ private fun saveCaffeineIntakes(context: Context, intakes: List<CaffeineIntake>)
 }
 
 /** Sanitise a user-entered mg into a stored value: blank/invalid/negative → null (unknown, not garbage);
- *  absurdly large → clamped. Honest: unknown amount is better than a wrong amount. Mirrors Swift. */
+ *  absurdly large → clamped. Honest: unknown amount is better than a wrong amount. */
 internal fun sanitiseCaffeineMg(input: String?): Double? {
     val v = input?.trim()?.toDoubleOrNull() ?: return null
     if (!v.isFinite() || v <= 0) return null
@@ -135,7 +134,7 @@ internal fun isIntakePastCutoff(intake: CaffeineIntake, bedtimeMinutes: Int): Bo
  * Log a caffeine intake (time + OPTIONAL mg) and see a plain on-device "still active" hint. OPT-IN:
  * shows the empty-state line until the user logs one. Self-contained — owns its own SharedPreferences
  * state, so the host needs no wiring. The estimate is clearly framed as a rough guide, never a health
- * claim. Twin of macOS CaffeineLogCard.
+ * claim.
  */
 @Composable
 fun CaffeineLogCard() {

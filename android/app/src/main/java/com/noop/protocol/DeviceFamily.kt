@@ -37,8 +37,7 @@ enum class DeviceFamily {
          * "WHOOP" predates the wizard and was written identically for 4.0 and 5/MG installs, so
          * it carries no family information; it keeps the prior WHOOP5 fallback, as do
          * null/unknown labels (non-WHOOP imports whose skin temp is already °C) — only a
-         * positively-identified 4.0 changes scale. Mirrors the Swift
-         * `DeviceFamily.forRegistryModel`.
+         * positively-identified 4.0 changes scale.
          */
         fun forRegistryModel(model: String?): DeviceFamily = when (model) {
             "4.0", "WHOOP 4.0" -> WHOOP4

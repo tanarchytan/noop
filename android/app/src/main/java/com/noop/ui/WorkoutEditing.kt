@@ -7,12 +7,11 @@ import kotlin.math.roundToInt
 
 /*
  * WorkoutEditing.kt — pure, Compose-free workout-editing logic (manual add/edit, detected-bout
- * re-label / dismiss). Kotlin mirror of macOS Strand/Data/WorkoutSource.swift, kept free of Room /
- * Compose so the unit test can pin it without an instrumented harness.
+ * re-label / dismiss). Kept free of Room / Compose so the unit test can pin it without an
+ * instrumented harness.
  *
- * Android's WorkoutRow carries deviceId; we still classify on `source` to stay byte-for-byte aligned
- * with the macOS read model (which has no deviceId), so a cache moved between platforms classifies
- * the same way.
+ * WorkoutRow carries deviceId, but classification reads `source` ONLY, never deviceId, so a cache
+ * moved between installs classifies the same way.
  */
 
 /** Origin of a workout row, classified from its stored `source` column. */
@@ -62,7 +61,7 @@ object WorkoutEditing {
     /**
      * Read-time filter: a DETECTED row is hidden when it OVERLAPS any dismissed marker's
      * [startTs, endTs] span. Span-overlap (not an exact-key match) survives the small startTs drift a
-     * bout's boundary can take as more HR arrives, matching the macOS dismissed-span semantics exactly.
+     * bout's boundary can take as more HR arrives.
      * Imported / manual rows are never auto-hidden (the user deletes those outright). Half-open overlap
      * test: `row.start < span.end && span.start < row.end`.
      */
@@ -75,8 +74,8 @@ object WorkoutEditing {
         DismissedWorkout(deviceId = row.deviceId, startTs = row.startTs, endTs = row.endTs)
 
     /**
-     * Filter dismissed detected bouts out of a loaded list. Centralised so every caller agrees,
-     * exactly like macOS Repository.workoutRows applies the span filter once.
+     * Filter dismissed detected bouts out of a loaded list. Centralised so every caller agrees and
+     * the span filter is applied exactly once.
      */
     fun filterDismissed(rows: List<WorkoutRow>, markers: List<DismissedWorkout>): List<WorkoutRow> {
         if (markers.isEmpty()) return rows
@@ -89,8 +88,7 @@ object WorkoutEditing {
     // trace, strain, zones, route), and once imported from Health Connect / Apple Health for the same
     // window (thin — usually just duration + calories). They sit under different deviceIds/sources, so
     // the workout list shows both as separate sessions. Collapse a pair that is clearly the same bout
-    // (overlapping time window + same sport) to a single richer entry. Mirrors macOS WorkoutSource
-    // dedupCrossSource bound-for-bound.
+    // (overlapping time window + same sport) to a single richer entry.
 
     /**
      * Normalised sport key for cross-source matching. Folds the WHOOP camelCase token and a
@@ -101,7 +99,7 @@ object WorkoutEditing {
         displaySport(sport).lowercase().filter { !it.isWhitespace() }
 
     /** The set of [sportKey]s for the named catalogue (Running, Cycling, … Padel, Other). Used ONLY by the
-     *  TRACE path to decide whether a key is a known, non-PII catalogue sport. Mirrors Swift catalogSportKeys. */
+     *  TRACE path to decide whether a key is a known, non-PII catalogue sport. */
     private val catalogSportKeys: Set<String> =
         com.noop.analytics.WorkoutSport.all.map { sportKey(it.name) }.toSet()
 
@@ -112,7 +110,7 @@ object WorkoutEditing {
      * we emit the key ONLY when it matches the named catalogue; any off-catalogue / free-text sport folds to
      * the generic "custom" so genuine user text can never enter a shared bundle. The user-facing
      * [displaySport] is unchanged. "detected"/"Activity" fold to "activity" (a catalogue-independent known
-     * token) and are allowed through. Mirrors Swift WorkoutSource.traceSportKey.
+     * token) and are allowed through.
      */
     fun traceSportKey(sport: String): String {
         val key = sportKey(sport)
@@ -198,7 +196,7 @@ object WorkoutEditing {
     /**
      * Drop every DETECTED row whose window shadows a REAL (non-detected) session in the same list, so
      * the live/manual session and its detected twin never both show. Order-stable; a list with no detected row
-     * (or no real row) passes through unchanged. Runs before [dedupCrossSource]. Mirrors Swift.
+     * (or no real row) passes through unchanged. Runs before [dedupCrossSource].
      */
     fun dropDetectedShadows(rows: List<WorkoutRow>): List<WorkoutRow> {
         val reals = rows.filter { classify(it.source) != WorkoutSource.DETECTED }
@@ -255,7 +253,7 @@ object WorkoutEditing {
         return kept
     }
 
-    /** A short, source-only descriptor of a row for the Workouts test-mode dedup trace. Mirrors Swift. */
+    /** A short, source-only descriptor of a row for the Workouts test-mode dedup trace. */
     fun sourceLabel(row: WorkoutRow): String = when (classify(row.source)) {
         WorkoutSource.WHOOP -> "strap"
         WorkoutSource.APPLE -> "apple"
@@ -268,7 +266,7 @@ object WorkoutEditing {
     /**
      * Diagnostic twin of [dedupCrossSource] for the Workouts & GPS test mode: returns the BYTE-IDENTICAL kept
      * list (the SAME walk, the SAME [preferred] choice) plus a trace line per collapsed pair naming the kept
-     * vs dropped source and their richness. The kept output equals [dedupCrossSource] exactly. Mirrors Swift.
+     * vs dropped source and their richness. The kept output equals [dedupCrossSource] exactly.
      */
     fun dedupCrossSourceTrace(rows: List<WorkoutRow>): Pair<List<WorkoutRow>, List<String>> {
         val lines = ArrayList<String>()
@@ -334,7 +332,6 @@ object WorkoutEditing {
      * average while the HR graph, zones and Effort stay from the recorded session. That mismatch is
      * silent, so the edit sheet surfaces a one-line note. We do NOT re-score from a single number (that
      * would fabricate a strain); this is purely an honest disclosure. False for a fresh add (old == null).
-     * Pure mirror of macOS ManualWorkoutSheet.avgHrEditedNote.
      */
     fun avgHrEdited(built: WorkoutRow, old: WorkoutRow?): Boolean {
         if (old == null) return false
@@ -346,7 +343,6 @@ object WorkoutEditing {
      * Build a retroactive manual workout (source "manual", written under the strap [deviceId] by the
      * caller — where live sessions land). Returns null when the input can't make an honest row.
      * strain/zones stay null: with no captured HR window an APPROXIMATE strain is never fabricated.
-     * Mirrors macOS WorkoutSource.buildManualRow validation bound-for-bound.
      *
      * @param startSeconds workout start, unix seconds.
      * @param nowSeconds wall-clock now (unix seconds); injectable for tests.
@@ -395,7 +391,7 @@ object WorkoutEditing {
 // The Workouts list filters beyond the time range: a SPORT filter (a specific displayed sport, or all),
 // a SOURCE filter (Whoop / Apple / Detected / Manual / Lifting / File, or all), and a free-text SEARCH
 // over the displayed sport name. All three are pure and compose with the time-range window the screen
-// already computes, so the whole screen reads one filtered set. Kotlin mirror of macOS WorkoutFilter.
+// already computes, so the whole screen reads one filtered set.
 
 /**
  * One workout-list filter state. [sport] is a displayed-sport key ([WorkoutEditing.displaySport]), null =
@@ -435,7 +431,7 @@ data class WorkoutFilter(
 // Merge two or more overlapping / adjacent MANUAL or DETECTED sessions into one, keeping the richer
 // captured signals. Imported history (whoop / apple / lifting / activityFile) is read-only and is NEVER
 // merged — the eligibility gate enforces it, and the persistence path (WhoopRepository.mergeWorkouts)
-// only ever writes through the manual-row path. Pure + deterministic, byte-for-byte with macOS WorkoutMerge.
+// only ever writes through the manual-row path. Pure + deterministic.
 
 object WorkoutMerge {
 
@@ -470,7 +466,7 @@ object WorkoutMerge {
      * per-session durations (honest active time, NOT the span); energyKcal = SUM; avgHr = duration-weighted
      * mean of the sessions that carry one; maxHr = max; distanceM = SUM; strain = null (the repo rescores it
      * from strap HR via analyzeRecent, the pattern); zonesJSON = null; routePolyline = null (re-keyed by
-     * the repo); notes = joined. Mirrors macOS WorkoutMerge.merge value-for-value.
+     * the repo); notes = joined.
      */
     fun merge(rows: List<WorkoutRow>, sport: String? = null, strapDeviceId: String = "my-whoop"): WorkoutRow? {
         if (rows.size < 2) return null

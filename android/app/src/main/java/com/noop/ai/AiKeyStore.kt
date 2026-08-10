@@ -10,8 +10,7 @@ import androidx.security.crypto.MasterKey
  *
  * Backed by Jetpack Security [EncryptedSharedPreferences] — values are encrypted with a
  * key held in the Android Keystore (hardware-backed where available). The plaintext API
- * key is never written to disk in the clear. This is the Android counterpart to storing
- * the key in the macOS Keychain.
+ * key is never written to disk in the clear.
  *
  * The selected provider/model are NOT secret and are stored as plain preferences here too
  * for convenience, but the key itself is the only sensitive value.

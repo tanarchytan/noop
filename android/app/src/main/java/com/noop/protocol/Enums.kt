@@ -84,14 +84,13 @@ enum class CommandNumber(val rawValue: Int) {
     TOGGLE_REALTIME_HR(3),
     // REPORT_VERSION_INFO (7): WHOOP 4.0 firmware/version read. The strap answers with the bundled
     // component versions (`fw_harvard` a.b.c.d, `fw_boylston` a.b.c.d). A documented READ command,
-    // separate from the firmware-LOAD opcodes. Mirrors Swift `WhoopCommand.reportVersionInfo`.
+    // separate from the firmware-LOAD opcodes.
     REPORT_VERSION_INFO(7),
     SET_CLOCK(10),
     GET_CLOCK(11),
     SEND_HISTORICAL_DATA(22),
     // The historical-offload trim/ack command. Sent (with response) to confirm one HISTORY_END
     // chunk so the strap may trim it; payload = [0x01] + the verbatim 8-byte HISTORY_END end_data.
-    // Port of Swift `WhoopCommand.historicalDataResult` (whoop_protocol.json: 23 HISTORICAL_DATA_RESULT).
     HISTORICAL_DATA_RESULT(23),
     GET_BATTERY_LEVEL(26),
     // GET_BATTERY_PACK_INFO (151) — the 5.0 battery pack's fuel gauge, read THROUGH the strap. The pack
@@ -106,20 +105,18 @@ enum class CommandNumber(val rawValue: Int) {
     // empty-body frame (no reboot, no disconnect, no COMMAND_RESPONSE), so the correct 4.0 frame
     // still needs an HCI capture. rebootStrap() logs the COMMAND_RESPONSE + a no-disconnect watchdog so a
     // strap log shows which case it hit. User-initiated + confirmation-gated only; never automatic.
-    // Port of Swift WhoopCommand.rebootStrap.
     REBOOT_STRAP(29),
     // POWER_CYCLE_STRAP (32) — a harder restart than REBOOT_STRAP (a full power cycle of the strap SoC
     // vs a warm reboot). Non-destructive: stored data lives in flash and survives, the strap re-advertises
     // after boot. Included ONLY as a gated candidate for the WHOOP 4.0 reboot probe (a real 4.0
     // silently ignores opcode 29/empty, and the correct 4.0 reboot frame is unknown). NOT hardware-confirmed
     // on any family. Sent only via rebootProbe(POWER_CYCLE_32_EMPTY), itself gated behind Test Centre →
-    // Connection + a confirmation. Never sent automatically. Port of Swift WhoopCommand.powerCycleStrap.
+    // Connection + a confirmation. Never sent automatically.
     POWER_CYCLE_STRAP(32),
     GET_DATA_RANGE(34),
     GET_HELLO_HARVARD(35),
     // GET_HELLO (145): WHOOP 5.0/MG hello. The response carries the device name plus `fw_version`
-    // a.b.c.d. Older 4.0 firmware replies "unsupported" (0a03) and is ignored. Mirrors Swift
-    // `WhoopCommand.getHello`.
+    // a.b.c.d. Older 4.0 firmware replies "unsupported" (0a03) and is ignored.
     GET_HELLO(145),
     SEND_R10_R11_REALTIME(63),
     // WHOOP 5.0/MG (device family GOOSE/MAVERICK) one-shot buzz. Gen-4 straps use the legacy
@@ -132,13 +129,12 @@ enum class CommandNumber(val rawValue: Int) {
     // SET_ADVERTISING_NAME_HARVARD (77) — rename the WHOOP 4.0's BLE advertising name on the strap
     // firmware (the name the OS shows in Bluetooth). Payload: [0x00,0x00] + UTF-8 name + [0x00]; the
     // strap reboots to apply. WHOOP 4.0 only (a 5/MG uses puffin framing + a different config path).
-    // Port of Swift WhoopCommand.setAdvertisingNameHarvard.
     SET_ADVERTISING_NAME(77),
     RUN_HAPTICS_PATTERN(79),
     GET_ALL_HAPTICS_PATTERN(80),
     // SET_CONFIG / SET_FF_VALUE (0x78) — write one persistent feature flag. The 5/MG "enable R22
     // packets" sequence (Whoop5Config) sends 15 of these to switch on the deep biometric streams.
-    // Reversible; gated behind the deep-data opt-in; iOS/Android only.
+    // Reversible; gated behind the deep-data opt-in.
     SET_CONFIG(120),
     // SET_DEVICE_CONFIG (0x77) — write one persistent DEVICE-config value (distinct from the
     // feature-flag SET_CONFIG/0x78). Used for the "Broadcast HR" flag whoop_live_hr_in_adv_ind_pkt,
@@ -167,15 +163,14 @@ enum class CommandNumber(val rawValue: Int) {
  *
  * The definitive fix is still an HCI capture of the official app rebooting a 4.0 (exactly how the alarm
  * frame was pinned, from a capture). This probe is the interim way to find the frame when a 4.0
- * is in hand. Twin of Swift `RebootProbeVariant` (Commands.swift); the [logTag] strings are byte-identical
- * across platforms so a strap log reads the same either side.
+ * is in hand.
  */
 enum class RebootProbeVariant(
     val command: CommandNumber,
     val payload: ByteArray,
     /** Short menu label, e.g. "A · REBOOT_STRAP(29) empty". */
     val menuLabel: String,
-    /** Tag written to the strap log so each attempt is correlatable (byte-identical to Swift). */
+    /** Tag written to the strap log so each attempt is correlatable. */
     val logTag: String,
 ) {
     // A — opcode 29 REBOOT_STRAP, empty body: NOOP's current production frame (ignored on 4.0).

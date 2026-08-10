@@ -52,7 +52,7 @@ import java.util.Locale
 import kotlin.math.max
 import kotlin.math.min
 
-// MARK: - IntervalsScreen (ported from Strand/Screens/IntervalTimerView.swift)
+// MARK: - IntervalsScreen
 //
 // Silent haptic HIIT interval timer. Train hands-free: the strap buzzes every
 // transition so you never have to look at the screen. Strong triple-buzz at the
@@ -77,7 +77,7 @@ private enum class IntervalPhase(@StringRes val label: Int) {
 fun IntervalsScreen(vm: AppViewModel) {
     val live by vm.live.collectAsStateWithLifecycle()
 
-    // Config (persisted only in-view), mirroring the macOS defaults.
+    // Config (persisted only in-view).
     var workSeconds by remember { mutableIntStateOf(30) }
     var restSeconds by remember { mutableIntStateOf(15) }
     var rounds by remember { mutableIntStateOf(8) }
@@ -103,8 +103,8 @@ fun IntervalsScreen(vm: AppViewModel) {
         elapsed = 0
     }
 
-    // Editing config while paused snaps the run state back to a clean start, matching
-    // the macOS onChange handlers. While running, config is locked (steppers disabled).
+    // Editing config while paused snaps the run state back to a clean start. While
+    // running, config is locked (steppers disabled).
     LaunchedEffect(workSeconds, restSeconds, rounds) {
         if (currentRound > rounds) currentRound = rounds
         if (!running) resetToStart()

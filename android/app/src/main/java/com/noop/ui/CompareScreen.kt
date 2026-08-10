@@ -61,24 +61,23 @@ import kotlin.math.abs
 
 // MARK: - Compare
 //
-// The "overlay metrics & draw conclusions" screen, ported from
-// Strand/Screens/CompareView.swift. Pick 2–4 metrics from the catalog, choose a time
+// The "overlay metrics & draw conclusions" screen. Pick 2–4 metrics from the catalog, choose a time
 // window, and read them on a single normalized overlay chart (each metric min–max
 // scaled to 0–1 within the window so different units share an axis). Below, every pair
 // of selected metrics gets a live Pearson-r correlation read-out with a plain-English
 // conclusion.
 //
-// Data sourcing on Android: macOS reads every metric from the generic `metricSeries`
-// long-format store via repo.series(key, source). We mirror that exactly — and, for
+// Data sourcing: every metric reads from the generic `metricSeries` long-format store via
+// repo.series(key, source). And for
 // the core daily metrics that also live as columns on the cached `DailyMetric` rows
 // (recovery, strain, HRV, RHR, sleep splits, SpO₂, respiration, skin-temp), we fall
 // back to deriving the series from repo.days(deviceId) when metricSeries is empty. That
 // keeps the screen showing REAL on-device data rather than an empty state when only the
 // daily cache (not the generic importer) has populated. Apple-Health body metrics
 // (weight/body-fat/etc.) come from metricSeries only — when no importer has run they
-// auto-widen to ALL and then show the macOS "no data, widen the range" contract.
+// auto-widen to ALL and then show the "no data, widen the range" contract.
 
-// MARK: - Metric catalog (ported from Strand/Data/MetricCatalog.swift)
+// MARK: - Metric catalog
 
 /** One interrogable metric: how to fetch it (key+source), how to label/format it. */
 data class CompareMetric(
@@ -90,7 +89,7 @@ data class CompareMetric(
     val decimals: Int,
     // Optional honesty note shown in the metric picker (e.g. BMI is derived from the profile height
     // when it comes from Health Connect, since Health Connect carries no measured BMI record). The
-    // parity-locked title stays identical to the iOS MetricCatalog; the caveat lives here instead.
+    // title is left alone; the caveat lives in this note instead.
     @StringRes val noteRes: Int? = null,
 ) {
     val id: String get() = "$source:$key"
@@ -178,7 +177,6 @@ private object CompareCatalog {
             noteRes = R.string.compare_metric_bmi_note,
         ),
         // Nutrition (imported from a food-tracker CSV — calories-in next to calories-out).
-        // Mirrors the macOS MetricCatalog entries exactly (same keys + sources, v2.2.0 parity).
         CompareMetric(
             "calories_in", R.string.compare_metric_calories_in, "Nutrition", "kcal",
             NutritionCsvImporter.SOURCE_ID, 0,
@@ -221,7 +219,7 @@ private object CompareCatalog {
 
 // MARK: - Range control (shared spec — W / M / 3M / 6M / 1Y / ALL)
 
-/** The canonical Strand range window. [days] == null means ALL of history. */
+/** The canonical range window. [days] == null means ALL of history. */
 private enum class CompareRange(
     @StringRes val labelRes: Int,
     val days: Int?,
@@ -368,7 +366,7 @@ fun CompareScreen(vm: AppViewModel) {
     var loadedOnce by remember { mutableStateOf(false) }
 
     // Load the full history for any selected metric not yet fetched, whenever the
-    // selection set or the daily cache changes. Mirrors macOS `.task(id: selectionKey)`.
+    // selection set or the daily cache changes.
     val selectionKey = selected.joinToString("|") { it.id }
     LaunchedEffect(selectionKey, days) {
         for (metric in selected) {
@@ -384,7 +382,7 @@ fun CompareScreen(vm: AppViewModel) {
         loadedOnce = true
     }
 
-    // ── Windowing (RELATIVE to each series' latest point, per macOS slice()).
+    // ── Windowing (RELATIVE to each series' latest point).
     fun slice(full: List<Pair<String, Double>>, r: CompareRange): List<Pair<String, Double>> {
         val n = r.days ?: return full
         val lastDay = full.lastOrNull()?.first ?: return emptyList()
@@ -566,8 +564,8 @@ fun CompareScreen(vm: AppViewModel) {
 // MARK: - Series loading
 
 /**
- * Load the full history for [metric] (ascending by day). Mirrors macOS
- * repo.resolvedSeries(key, source): resolves across compatible sources freshest-wins —
+ * Load the full history for [metric] (ascending by day). repo.resolvedSeries(key, source) resolves
+ * across compatible sources freshest-wins —
  * imported WHOOP > NOOP-computed > declared-compatible Apple Health — and gap-fills from the
  * DailyMetric columns for the days the long-format metricSeries doesn't carry, so the screen shows
  * real on-device data even when only the daily cache (not the generic importer) has populated.
@@ -577,7 +575,7 @@ private suspend fun loadFullSeries(
     metric: CompareMetric,
     @Suppress("UNUSED_PARAMETER") cachedDays: List<DailyMetric>,
 ): List<Pair<String, Double>> {
-    // Wide window covering all of history (the macOS days = 4000 default).
+    // Wide window covering all of history (4000 days).
     val to = todayDay(1)
     val from = todayDay(-4000)
     return vm.repo.resolvedSeries(metric.key, metric.source, from, to).values
@@ -810,7 +808,7 @@ private fun OverlaySection(
                         .height(Metrics.chartHeight),
                 )
 
-                // Endpoint axis labels (low / high), mirroring the normalized macOS y-axis.
+                // Endpoint axis labels (low / high) for the normalized y-axis.
                 Row(modifier = Modifier.fillMaxWidth()) {
                     Text(
                         stringResource(R.string.compare_axis_low),
@@ -1170,7 +1168,7 @@ private fun correlationColor(r: Double): Color {
     return base.copy(alpha = 0.55f + 0.45f * abs(r).coerceAtMost(1.0).toFloat())
 }
 
-// MARK: - Empty-state note (replaces the macOS ComingSoon placeholder inline)
+// MARK: - Empty-state note
 
 @Composable
 private fun EmptyNote(text: String) {

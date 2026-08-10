@@ -43,13 +43,11 @@ import kotlin.math.roundToInt
  * Intelligence — NOOP's own Charge / Effort / Rest scores, presented with the
  * WHOOP-model explanation so the read-out is legible rather than a black box.
  *
- * Ports macOS Strand/Screens/IntelligenceView.swift. The macOS build runs an
- * on-device IntelligenceEngine that recomputes these scores from the strap's raw
- * streams (HR, R-R, accelerometer) using the WHOOP model shape. That raw-compute
- * port is later work on Android; until it lands this screen reads the cached
- * `DailyMetric` values the strap/store already provide and shows the same model
- * explainer + per-day breakdown — matching the macOS sparse-data contract of
- * surfacing real data with an honest note, never a fabricated score.
+ * This screen does NOT recompute the scores. Deriving them on-device from the
+ * strap's raw streams (HR, R-R, accelerometer) is later work; until it lands this
+ * screen reads the cached `DailyMetric` values the strap/store already provide and
+ * shows the model explainer + per-day breakdown — holding the sparse-data contract
+ * of surfacing real data with an honest note, never a fabricated score.
  */
 @Composable
 fun IntelligenceScreen(vm: AppViewModel) {
@@ -72,7 +70,7 @@ fun IntelligenceScreen(vm: AppViewModel) {
     val context = LocalContext.current
     val effortScale = UnitPrefs.effortScale(context)
 
-    // Newest first for the per-day list (macOS ForEach renders most-recent at top).
+    // Newest first for the per-day list (most-recent at top).
     val ordered = remember(days) { days.reversed() }
 
     // Evening forecast of tomorrow-morning Charge from tonight's known levers. `days` is
@@ -315,7 +313,7 @@ private fun EmptyNote() {
 // MARK: - Model weighting breakdown
 //
 // Makes the Charge formula concrete: the five weighted inputs plus the 0–100
-// Effort scale. Pure presentation of the model the macOS engine uses — no per-day
+// Effort scale. Pure presentation of the model — no per-day
 // data, so it's always legible even before any day is scored.
 
 @Composable

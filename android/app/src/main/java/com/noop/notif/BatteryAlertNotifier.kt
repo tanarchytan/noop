@@ -88,9 +88,8 @@ object BatteryAlertNotifier {
      * [com.noop.analytics.BatteryEstimator.runtimeAlert] (fire ≤24 h, re-arm ≥36 h — a runtime
      * threshold gives the same warning lead time on a 4.0 and a 5.0/MG, which a fixed SoC line
      * can't) and post at most one notification per discharge cycle. The 15% SoC alert stays as the
-     * safety net for straps with no usable estimate (null skips here). Same gating discipline as
-     * persisted flag advances even when delivery is deferred; no-ops when battery alerts are
-     * off. iOS/macOS twin: BatteryNotifier.onRuntimeEstimate.
+     * safety net for straps with no usable estimate (null skips here). Same gating discipline: the
+     * persisted flag advances even when delivery is deferred; no-ops when battery alerts are off.
      */
     @SuppressLint("MissingPermission") // guarded by areNotificationsEnabled() + runCatching
     fun onRuntimeEstimate(context: Context, remainingHours: Double?, charging: Boolean?) {

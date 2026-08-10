@@ -54,9 +54,8 @@ import kotlin.math.abs
 import kotlin.math.roundToInt
 
 /**
- * The full 14-day metric grid, mirroring the macOS LazyVGrid order:
- * Charge, Effort, Rest, HRV, Resting HR, SpO₂, Respiratory,
- * Steps, Weight, Calories. Each tile is fixed-height for complete rows.
+ * The full 14-day metric grid, in default order: Charge, Effort, Rest, HRV, Resting HR, SpO₂,
+ * Respiratory, Steps, Weight, Calories. Each tile is fixed-height for complete rows.
  */
 @Composable
 internal fun MetricGrid(
@@ -66,7 +65,7 @@ internal fun MetricGrid(
     carriedDay: DailyMetric? = null,
     // PER-FIELD SpO₂ carry (see lastSpo2Row): carriedDay is recovery-gated and lands on rows whose
     // spo2Pct is null (computed rows never carry one), so the SpO₂ tile falls through to the
-    // last row that actually has a reading. Mirrors iOS TodayView.lastSpo2Day (carriedVital's per-field fallback).
+    // last row that actually has a reading.
     spo2CarryDay: DailyMetric? = null,
     unitSystem: UnitSystem = UnitSystem.METRIC,
     effortScale: EffortScale = EffortScale.HUNDRED,
@@ -193,12 +192,12 @@ internal fun MetricGrid(
     // Resolve the enabled tiles to their descriptors, dropping any unknown key defensively.
     val allTiles = enabledMetrics.mapNotNull { descriptors[it] }
     // S5: slice from the FRONT of the saved order so a pinned/selected tile is never dropped or reordered
-    //; only the tail folds behind the expander. Mirrors the iOS visibleKeyMetrics prefix(cap).
+    //; only the tail folds behind the expander.
     val hasOverflow = allTiles.size > METRICS_COLLAPSED_CAP
     val tiles = if (metricsExpanded || !hasOverflow) allTiles else allTiles.take(METRICS_COLLAPSED_CAP)
 
-    // iOS `keyMetricsSection` LazyVGrid: 3 columns, spacing 8. Build from rows so tile heights tile uniformly
-    // and a partial last row pads with empty weight so the columns stay aligned.
+    // 3 columns, spacing 8. Build from rows so tile heights tile uniformly and a partial last row
+    // pads with empty weight so the columns stay aligned.
     Column(verticalArrangement = Arrangement.spacedBy(Metrics.space8)) {
         tiles.chunked(3).forEach { rowTiles ->
             Row(horizontalArrangement = Arrangement.spacedBy(Metrics.space8)) {
@@ -206,7 +205,7 @@ internal fun MetricGrid(
                 repeat(3 - rowTiles.size) { Spacer(Modifier.weight(1f)) }
             }
         }
-        // S5: the "Show all metrics" / "Show fewer" expander — a centered link like iOS. Toggles visibility
+        // S5: the "Show all metrics" / "Show fewer" expander, a centered link. Toggles visibility
         // only, never WHICH tiles are enabled or their order (that stays the editor's job).
         if (hasOverflow) {
             val hidden = allTiles.size - METRICS_COLLAPSED_CAP
@@ -336,13 +335,13 @@ internal suspend fun WhoopRepository.workoutsAllSources(
             workouts("health-connect", from, to)
     )
 
-// MARK: - Readiness card (ported from TodayView.swift readinessSection)
+// MARK: - Readiness card
 //
 // On-device training-readiness synthesis. Calls the analytics ReadinessEngine over the
-// view model's day history and renders the macOS card: a colored level dot + headline,
-// an optional acute:chronic "load X.XX" read-out, the plain-English summary, then one
-// row per driving signal (a small flag-colored dot + label + detail). The whole card is
-// suppressed until there is enough history (level == INSUFFICIENT), matching macOS.
+// view model's day history and renders: a colored level dot + headline, an optional
+// acute:chronic "load X.XX" read-out, the plain-English summary, then one row per driving
+// signal (a small flag-colored dot + label + detail). The whole card is suppressed until
+// there is enough history (level == INSUFFICIENT).
 
 @Composable
 internal fun ReadinessSection(days: List<DailyMetric>, carriedDay: DailyMetric? = null) {
@@ -430,7 +429,8 @@ internal fun ReadinessSection(days: List<DailyMetric>, carriedDay: DailyMetric? 
                                 style = NoopType.caption,
                                 color = Palette.textTertiary,
                             )
-                            // The numbers behind the read (e.g. "48 vs 55 ms"), as a small mono caption,                             // mirrors the macOS readiness card and the "load X.XX" numeric readout above.
+                            // The numbers behind the read (e.g. "48 vs 55 ms"), as a small mono
+                            // caption, matching the "load X.XX" numeric readout above.
                             signal.evidence?.let { evidence ->
                                 Text(
                                     evidence,
@@ -482,7 +482,7 @@ internal fun readinessWord(level: ReadinessEngine.Level): Int? = when (level) {
  * S5: the sources with data behind the collapsed Data Sources footer, in display order and named the
  * way the audience knows them (Apple Health reads as "Apple Watch"; Health Connect is named for what it
  * is, never folded under it). Product names, so they read the same in every language; the caller words
- * the sentence around them. PURE + unit-tested. Twin of the Swift TodayView.syncedFromSummary.
+ * the sentence around them. PURE + unit-tested.
  */
 internal fun syncedFromSources(
     hasWhoop: Boolean,
@@ -516,11 +516,11 @@ private fun flagColor(flag: ReadinessEngine.Flag): Color = when (flag) {
     ReadinessEngine.Flag.BAD -> Palette.metricRose
 }
 
-// MARK: - Illness banner (ported from HealthAlertBanner.swift)
+// MARK: - Illness banner
 
 @Composable
 internal fun IllnessBanner(message: String) {
-    // Frosted Bevel warning card (amber tint), matches the Swift HealthAlertBanner.
+    // Frosted Bevel warning card (amber tint).
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -560,7 +560,7 @@ internal fun sleepValue(d: DailyMetric?): String {
  * rather than faking stages or tanking the Rest score. Reads only the day's banked stage figures
  * (efficiency is the engine's 0..1 fraction; restorative = deep+REM), so it's the SAME decision the
  * daily pass made into `restConfidence`. Returns false for a missing day, a calibrating/building base
- * tier, or any night the core deems SOLID. Pure + unit-tested. Mirrors the iOS Sleep H9 badge gate.
+ * tier, or any night the core deems SOLID. Pure + unit-tested.
  */
 internal fun restStageLowConfidence(d: DailyMetric?): Boolean {
     val asleepMin = d?.totalSleepMin ?: return false
@@ -636,7 +636,7 @@ internal fun latestWeightKg(apple: List<AppleDaily>, healthConnect: List<AppleDa
  * official WHOOP app) but doesn't expose them to NOOP, so on a 4.0 the tile shows imported steps
  * rather than "No Data". On-device WHOOP 5/MG steps (DailyMetric.steps) still take precedence at the
  * call site. When both sources report the same day, the larger (most-complete) total wins so we never
- * sum and double-count. Mirrors the macOS TodayView, which already falls back to imported steps.
+ * sum and double-count.
  */
 internal fun stepsForDay(apple: List<AppleDaily>, healthConnect: List<AppleDaily>, dayKey: String): Int? =
     (apple + healthConnect)
@@ -721,5 +721,4 @@ private fun grouped(value: Int): String =
 // A Today-local dialog (no new nav destination, another lane owns the nav graph) for choosing which
 // Key-Metric tiles show on the Control Center and in what order. Display-only: it edits the persisted
 // `today.keyMetrics` layout, never any stored metric. A switch hides/shows a tile and the up/down arrows
-// reorder it, explicit arrows rather than drag so it behaves the same on every device. Mirrors the macOS
-// KeyMetricsEditorSheet.
+// reorder it, explicit arrows rather than drag so it behaves the same on every device.

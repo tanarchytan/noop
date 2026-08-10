@@ -59,8 +59,7 @@ import kotlin.math.roundToInt
  * : whether the cycle-awareness OPT-IN invitation should be offered for a profile with this [sex]
  * value. Cycle phase is read from the menstrual skin-temperature shift, so the invitation is NOT offered
  * for a male profile; "female"/"nonbinary" (and any unrecognised value, default-show rather than hide)
- * qualify. Pure so it's unit-tested directly; mirrors the iOS SkinTempSection.cycleOptInApplies
- * (`profile.sex.lowercased != "male"`). ProfileStore.sex is "male" | "female" | "nonbinary".
+ * qualify. Pure so it's unit-tested directly. ProfileStore.sex is "male" | "female" | "nonbinary".
  */
 internal fun cycleOptInApplies(sex: String): Boolean = sex.lowercase(Locale.US) != "male"
 
@@ -123,8 +122,7 @@ private fun rememberFitnessReadiness(days: List<DailyMetric>, profile: ProfileSt
 }
 
 /** The not-ready card's lead: a concrete countdown of nights-of-wear still needed (from the shared
- * [FitnessAgeEngine.nightsUntilReady]), noting the profile basics only when actually missing. Copy is kept
- * WORD-FOR-WORD identical to the iOS `fitnessReadyLead` (HealthView) so the two platforms match. */
+ * [FitnessAgeEngine.nightsUntilReady]), noting the profile basics only when actually missing. */
 @Composable
 private fun fitnessReadyLead(rhrDays: Int, hasAge: Boolean, hasSex: Boolean): String {
     val remaining = FitnessAgeEngine.nightsUntilReady(rhrDays)
@@ -308,7 +306,7 @@ private data class VitalDetailModel(
 /** Metric-detail keys that are NOT plain DailyMetric columns but series the engines/importers persist
  * (Fitness Age + Vitality under the computed strap, Steps estimate, Apple active energy). Each Today
  * dashboard card taps through to ITS OWN focused trend here (2026-07-03), so these load their
- * series from the repo on demand rather than off the cached `days` columns. Mirrors iOS metricDetail. */
+ * series from the repo on demand rather than off the cached `days` columns. */
 private val SERIES_BACKED_VITAL_KEYS = setOf("fitness_age", "vitality", "steps_est", "active_kcal")
 
 @Composable
@@ -391,8 +389,8 @@ fun VitalDetailScreen(vm: AppViewModel, key: String) {
             // ANY metric with exactly ONE reading: the Today card already shows this value, so the generic
             // "Not enough history yet" note read as a contradiction on tap-through — only the TREND CHART
             // needs a second point. Show the value + when the chart fills in, never a no-data dead end.
-            // Matches iOS, which renders the value hero at a single point. First hit on Fitness Age, then
-            // Vitality — both weekly-ish computed scores that sit at one reading for a while.
+            // First hit on Fitness Age, then Vitality — both weekly-ish computed scores that sit at
+            // one reading for a while.
             if (detail != null && detail.points.size == 1) {
                 val one = detail.points.last()   // size 1: the single reading (last == the latest)
                 NoopCard {
@@ -618,7 +616,7 @@ private fun VitalReadingsTable(rows: List<VitalReadingRow>) {
         Column(verticalArrangement = Arrangement.spacedBy(Metrics.space10)) {
             Overline(stringResource(R.string.vitals_readings))
             // Slim column header naming the three columns — SAME weights as the data rows below so each
-            // label sits over its column. Swift twin (MetricExplorerView.readingsTable) mirrors this.
+            // label sits over its column.
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
@@ -705,8 +703,8 @@ internal fun vitalHistorySpanDays(points: List<Pair<String, Double>>): Long {
  * user still learns the longer views exist; W staying unconditional means nobody is ever stranded
  * with zero ranges. */
 /**
- * The range the chips + caption actually describe, resolved NON-DESTRUCTIVELY (Swift parity with
- * MetricExplorerView.coercedSelection). A locked selection renders as the largest unlocked range with
+ * The range the chips + caption actually describe, resolved NON-DESTRUCTIVELY.
+ * A locked selection renders as the largest unlocked range with
  * a real finite window that is <= the selection, else WEEK. NOT ALL: coercing a locked default to ALL
  * would jump a calibrating user to the everything view. An unlocked selection is used verbatim, so the
  * chip un-coerces on its own once history grows.
@@ -726,7 +724,7 @@ internal fun unlockedVitalRanges(spanDays: Long): List<VitalDetailRange> {
         val previousWindow = ranges[i - 1].days ?: break
         if (spanDays > previousWindow) unlocked += ranges[i] else break
     }
-    // ALL is never gated (Swift parity): a calibrating user can always see their full history,
+    // ALL is never gated: a calibrating user can always see their full history,
     // even when it happens to draw the same points as a shorter window.
     val all = ranges.last()
     if (all.days == null && all !in unlocked) unlocked += all
@@ -864,8 +862,7 @@ private suspend fun buildSeriesVitalDetail(vm: AppViewModel, key: String): Vital
         // detail read the estimate ALONE, so a WHOOP 5.0 with a real count saw the estimate history —
         // clamped flat at StepsEstimateEngine.MAX_DAILY_STEPS = 60,000 when the motion fit over-shoots —
         // instead of its real steps. Resolve per day with the SAME precedence so the graph + Readings
-        // match the card. iOS already routes this detail through the real "steps" metric (not the
-        // estimate); this brings Android to parity. Real strap steps live in DailyMetric.steps; imported
+        // match the card. Real strap steps live in DailyMetric.steps; imported
         // steps in AppleDaily; the estimate in the "steps_est" series — three disjoint stores, so the
         // per-day `?:` chain never double-counts.
         val real = vm.repo.resolvedSeries("steps", "my-whoop", "0000-00-00", "9999-99-99")

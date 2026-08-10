@@ -26,20 +26,15 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.noop.R
 
-// MARK: - WhatsNewSheet (ported from Strand/Screens/WhatsNewView.swift)
+// MARK: - WhatsNewSheet
 //
 // A proper in-app changelog, shown automatically after an update and reachable any time
 // from Settings. It also restates, up top, what NOOP is and what to expect, so people who
 // never open GitHub still understand the experimental footing and the WHOOP 5/MG status.
 //
-// macOS parity notes:
-//  - macOS rendered a fixed 560×640 panel with a header / scroll / footer split and a
-//    hairline divider between each region. On phone the panel is presented full-screen
-//    (the integration step wraps this in a Dialog/overlay), so we fill the surface and let
-//    the body scroll. The header → divider → scroll → divider → "Got it" footer order is
-//    preserved exactly, as is the "WHAT TO EXPECT" card then one card per release.
-//  - The xmark.circle.fill close glyph maps to Icons.Filled.Close; the borderedProminent
-//    "Got it" maps to a Palette.accent Material Button.
+// Layout: the panel is presented full-screen (the caller wraps this in a Dialog/overlay),
+// so we fill the surface and let the body scroll. The order is header → divider → scroll →
+// divider → "Got it" footer, with a "WHAT TO EXPECT" card then one card per release.
 
 @Composable
 fun WhatsNewSheet(onClose: () -> Unit) {
@@ -205,7 +200,7 @@ private fun Footer(onClose: () -> Unit) {
     }
 }
 
-// MARK: - Hairline divider (mirrors the macOS Divider().overlay(hairline))
+// MARK: - Hairline divider
 
 @Composable
 private fun Hairline() {

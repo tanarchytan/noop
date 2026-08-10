@@ -93,10 +93,9 @@ import androidx.navigation.compose.rememberNavController
 
 // MARK: - Navigation model
 //
-// The macOS app's sidebar holds many sections; on Android (mirroring the iOS RootTabView) we surface
-// them through a unified floating "glass" bottom bar (Home · Health · Sleep · More) for the everyday
-// screens, with a "More" sheet that lists the full grouped set — so every destination is one tap away
-// without a global hamburger/drawer. Destinations are grouped exactly as the sidebar groups them.
+// Every section is reached through a unified floating "glass" bottom bar (Home · Health · Sleep ·
+// More) for the everyday screens, with a "More" page that lists the full grouped set — so every
+// destination is one tap away without a global hamburger/drawer.
 // Routes whose screens belong to later waves point at a ComingSoon placeholder so the app compiles today.
 
 /** A single drawer destination: stable route, display title (localized via [titleRes]), sidebar icon. */
@@ -167,8 +166,8 @@ internal enum class Destination(
     // The body-profile + units editor, pushed from the Profile page own row.
     BodyProfile("body_profile", R.string.nav_profile, Icons.Filled.Person),
 
-    // The "More" tab: its own navigated page (mirroring the iOS More tab) that hosts the full
-    // grouped destination list. It is NOT itself one of those rows — it is the door to them.
+    // The "More" tab: its own navigated page hosting the full grouped destination list.
+    // It is NOT itself one of those rows — it is the door to them.
     More("more", R.string.nav_more, Icons.Filled.MoreHoriz);
 
     companion object {
@@ -184,7 +183,7 @@ internal enum class Destination(
 
 /**
  * App shell: a single [Scaffold] with a floating [GlassBottomBar] (Home · Health · Sleep · More)
- * driving one [NavHost], mirroring the iOS RootTabView. There is NO global toolbar and no nav drawer
+ * driving one [NavHost]. There is NO global toolbar and no nav drawer
  * — every screen self-titles via [ScreenScaffold], and the "More" sheet (opened from the bar) reaches
  * every destination the bar does not carry. A single [AppViewModel] is created here and
  * shared with every screen, so the BLE connection and cached metrics stay app-wide singletons.
@@ -208,11 +207,10 @@ fun AppRoot(viewModel: AppViewModel = viewModel()) {
         Scaffold(
             containerColor = Palette.surfaceBase,
             bottomBar = {
-                // One unified "glass" bar: four evenly-spaced tabs — Home · Health · Sleep · More
-                // (matches the iOS FloatingTabBar). The quick-action "+" lives in the Today header's
-                // top-right (balancing the avatar), so the bar is clean tabs only. "More" navigates to
-                // its own page (mirroring the iOS More tab) that reaches every grouped destination, so no
-                // destination is lost without the drawer.
+                // One unified "glass" bar: four evenly-spaced tabs — Home · Health · Sleep · More.
+                // The quick-action "+" lives in the Today header's top-right (balancing the avatar), so
+                // the bar is clean tabs only. "More" navigates to its own page that reaches every
+                // grouped destination, so no destination is lost without the drawer.
                 GlassBottomBar(
                     current = current,
                     onTabSelected = { dest ->
@@ -287,7 +285,7 @@ fun AppRoot(viewModel: AppViewModel = viewModel()) {
                 composable(Destination.CoupledView.route) {
                     CoupledScreen(
                         vm = viewModel,
-                        // Tapping Sleep in the coupled read opens the full Sleep screen (iOS parity).
+                        // Tapping Sleep in the coupled read opens the full Sleep screen.
                         onOpenSleep = { nav.navigateTopLevel(Destination.Sleep.route) },
                     )
                 }
@@ -363,8 +361,8 @@ fun AppRoot(viewModel: AppViewModel = viewModel()) {
                 }
                 // The body-profile + units editor keeps its own route: the Profile page is its only door.
                 composable(Destination.BodyProfile.route) { ProfileMenuScreen(viewModel) }
-                // The "More" page — the iOS More tab's twin: a navigated ScreenScaffold page hosting the
-                // full grouped destination list (was a pull-up sheet). A row navigates top-level.
+                // The "More" page: a navigated ScreenScaffold page hosting the full grouped
+                // destination list. A row navigates top-level.
                 composable(Destination.More.route) {
                     WhoopMoreScreen(onNavigate = { route ->
                         if (route in tabRoutes) nav.navigateTopLevel(route) else nav.navigate(route)
@@ -392,9 +390,9 @@ fun AppRoot(viewModel: AppViewModel = viewModel()) {
                         modifier = Modifier.padding(start = 16.dp, top = 4.dp, bottom = 6.dp),
                         color = Palette.textTertiary,
                     )
-                    // Updates inbox — relocated here off the Today header (the liquid Today header mirrors iOS,
-                    // which has no notifications bell). The feature is fully intact and one tap away: this row
-                    // opens the same inbox sheet, showing the unread count as a trailing badge.
+                    // Updates inbox — lives here rather than on the Today header, which carries no
+                    // notifications bell. This row opens the same inbox sheet, showing the unread
+                    // count as a trailing badge.
                     NavigationDrawerItem(
                         selected = false,
                         onClick = {
@@ -444,13 +442,12 @@ fun AppRoot(viewModel: AppViewModel = viewModel()) {
         }
 
         // The Updates inbox (opened by the Today header bell). Presented here so it has the nav for
-        // deep-links — a row's "trends" key switches the bottom tab, mirroring the iOS NavRouter route.
+        // deep-links — a row's "trends" key switches the bottom tab.
         if (showUpdatesInbox) {
             ModalBottomSheet(
                 onDismissRequest = { showUpdatesInbox = false },
-                // Open full-height (no half-pull) so it reads like the iOS Updates sheet, and use the
-                // BEIGE surfaceBase so the white NoopCards POP — surfaceRaised made white cards sit on a
-                // white sheet (no contrast), which is why the Android inbox looked flat vs iOS.
+                // Open full-height (no half-pull), and use the BEIGE surfaceBase so the white
+                // NoopCards POP — surfaceRaised puts white cards on a white sheet, with no contrast.
                 sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
                 containerColor = Palette.surfaceBase,
                 contentColor = Palette.textPrimary,
@@ -481,9 +478,9 @@ fun AppRoot(viewModel: AppViewModel = viewModel()) {
 
 // MARK: - Glass bottom bar
 //
-// The signature bar, ported from iOS's FloatingTabBar: ONE rounded "glass" island holding four
-// evenly-spaced inline slots — Home · Health · Sleep · More. The quick-action "+" now lives in the
-// Today header's top-right (it left the bar to balance the avatar), so the bar is clean tabs only.
+// The signature bar: ONE rounded "glass" island holding four evenly-spaced inline slots — Home ·
+// Health · Sleep · More. The quick-action "+" lives in the Today header's top-right (balancing the
+// avatar), so the bar is clean tabs only.
 // The "glass" feel is a translucent raised surface with a low elevation and a subtle hairline border
 // — frosted, not a hard opaque slab and not a glow. Each nav slot is an icon over a small label;
 // active = gold accent, inactive = textSecondary. All routing is unchanged: the four tabs switch the
@@ -528,8 +525,7 @@ private fun GlassBottomBar(
         modifier = Modifier
             .fillMaxWidth()
             // Clear the gesture-nav bar (home indicator) first, then add breathing room so the capsule
-            // floats free of the bottom edge rather than jamming against it — iOS clears the home-indicator
-            // safe area + 4pt; here navigationBarsPadding + 12dp gives the same lift.
+            // floats free of the bottom edge rather than jamming against it: navigationBarsPadding + 12dp.
             .navigationBarsPadding()
             .padding(horizontal = 22.dp)
             .padding(top = 4.dp, bottom = Metrics.space12),
@@ -591,7 +587,7 @@ private fun GlassBottomBar(
 }
 
 /** One nav slot: an icon over a small label. Active = gold accent (semibold), inactive = textSecondary.
- * No selection pill, no glow — just the colour swap, matching the iOS bar. */
+ * No selection pill, no glow — just the colour swap. */
 @Composable
 private fun BarSlot(
     icon: ImageVector,

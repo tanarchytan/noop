@@ -74,7 +74,7 @@ internal data class ResolvedMetric(
 /**
  * Walk the widening order once: take the smallest range ≥ selected whose window holds
  * ≥1 non-null point for [value]; if none do, fall back to ALL. Windows are taken
- * relative to the LATEST recorded day, exactly like the macOS `days(for:)`.
+ * as trailing calendar days ending on the phone's date, never as the last N rows.
  */
 internal fun resolveMetric(
     days: List<DailyMetric>,
@@ -129,7 +129,7 @@ private fun windowPoints(
     return sliced.mapNotNull { d -> value(d)?.let { d.day to it } }
 }
 
-/** Caption text, mirroring TrendsView.caption(count:eff:). */
+/** Caption text: the reading count, naming the widened window when one was needed. */
 @Composable
 private fun caption(count: Int, eff: TrendsRange, selected: TrendsRange): String {
     val readings = pluralStringResource(R.plurals.trends2_readings, count, count)
@@ -143,8 +143,8 @@ private fun caption(count: Int, eff: TrendsRange, selected: TrendsRange): String
 // MARK: - ChartCard , the uniform fixed-height trend card
 //
 // A NoopCard holding a header (overline-styled title + caption + trailing read-out), a
-// fixed-height LineChart, and a divided footer of labelled stats. Mirrors the macOS
-// ChartCard used across Trends so every card is Metrics.chartHeight-class and identical.
+// fixed-height LineChart, and a divided footer of labelled stats. Every Trends card routes
+// through it, so they all share the one Metrics.chartHeight geometry.
 
 @Composable
 internal fun ChartCard(
@@ -163,9 +163,9 @@ internal fun ChartCard(
     change: Double? = null,
     higherIsBetter: Boolean? = null,
     changeFmt: (Double) -> String = { "${it.roundToInt()}" },
-    // Fraction of the plot height left empty above the peak , the Android stand-in for the iOS
-    // hero's `valueRange: 0...106` padded ceiling, so the peak + now-cap halo clear the top
-    // gridline. 0 keeps the curve filling the full height (the small multiples). (parity)
+    // Fraction of the plot height left empty above the peak, a padded ceiling so the peak and the
+    // now-cap halo clear the top gridline. 0 keeps the curve filling the full height (the small
+    // multiples).
     chartHeadroom: Float = 0f,
     // The hero card only: its trailing readout becomes a small ring filled to [headlineValue] (0..100)
     // instead of the plain text figure. Every small-multiple card leaves this false.
@@ -188,7 +188,7 @@ internal fun ChartCard(
                     // same sampled charge tint as the plain figure it replaces.
                     HeadlineVessel(value = headlineValue, tint = Palette.recoveryColor(headlineValue))
                 } else if (trailing != null) {
-                    // Neutral 15pt readout (matches iOS TrendsView) , not the 22sp tinted figure.
+                    // Neutral 15pt readout, not the 22sp tinted figure.
                     Text(trailing, style = NoopType.bodyNumber, color = Palette.textPrimary)
                 }
             }
@@ -286,9 +286,8 @@ private fun ChartWithAxes(
             // strokePx/topPad/bottomPad) so the dot lands exactly on the line's final sample.
             //
             // headroom leaves the top fraction of the card empty and pins the plotting Box to the
-            // bottom , the Android stand-in for the iOS hero's `valueRange: 0...106` (LineChart has
-            // no value-domain hook, so we shrink its drawing box instead). Both LineChart and the
-            // GlowEndCap fill this same Box, so the cap stays on the line.
+            // bottom (LineChart has no value-domain hook, so we shrink its drawing box instead).
+            // Both LineChart and the GlowEndCap fill this same Box, so the cap stays on the line.
             val plotHeight = Metrics.chartHeight * (1f - headroom.coerceIn(0f, 0.5f))
             Box(
                 modifier = Modifier
@@ -393,13 +392,12 @@ private fun ChartFooter(items: List<Pair<String, String>>) {
     }
 }
 
-// MARK: - Recovery history strip (stands in for the macOS YearHeatStrip)
+// MARK: - Recovery history strip (the calendar-grid stand-in)
 
 /**
- * The recovery history card. macOS shows a YearHeatStrip (a 53-week calendar heat grid);
- * that bespoke component has no Android foundation equivalent, so we plot the real
- * per-day recovery series as a bar strip over the same window and note the difference.
- * Always shows at least a full year of context, like the macOS strip.
+ * The recovery history card: the real per-day recovery series as a bar strip over the selected
+ * window, in place of a 53-week calendar heat grid (no foundation equivalent to build one on).
+ * The window is coerced to at least 365 days, so it always shows a full year of context.
  */
 @Composable
 internal fun RecoveryHistoryCard(days: List<DailyMetric>, range: TrendsRange) {

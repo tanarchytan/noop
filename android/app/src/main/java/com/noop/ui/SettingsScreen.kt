@@ -52,36 +52,32 @@ import com.noop.ble.PuffinExperiment
 import com.noop.ble.WhoopModel
 import kotlin.math.roundToInt
 
-// MARK: - Settings (ported from Strand/Screens/SettingsView.swift)
+// MARK: - Settings
 //
 // Profile (the numbers that power HR zones / calories / recovery baselines), a
 // Backup & restore section wiring DataBackup export/import through the Storage
 // Access Framework, and an About section with version + attribution + a Support
-// link. Re-skinned to the locked NOOP component system: every surface is a
+// link. Built on the locked NOOP component system: every surface is a
 // NoopCard, every status uses StatePill, the two-column form feel is preserved.
 //
-// macOS parity notes:
-// - macOS persisted the profile in a ProfileStore (ObservableObject on disk). The
-// Android equivalent is SharedPreferences; this screen owns the only profile
+// Notes:
+// - The profile is persisted in SharedPreferences; this screen owns the only profile
 // store in the app, so HealthScreen's age-agnostic HR-max default can later read
 // from it. Values persist immediately on every change.
-// - macOS used native +/- Steppers; Compose has no Stepper, so each numeric field
-// is a tabular value flanked by round −/+ buttons (same intent, same ranges).
 // - The strap "Re-scan / Disconnect" controls map to the ViewModel's connect /
 // disconnect pass-throughs.
-// - Backup export/import run through SAF (CreateDocument / OpenDocument); the macOS
-// alert is mirrored by a Toast. DataBackup.exportTo already checkpoints the WAL,
+// - Backup export/import run through SAF (CreateDocument / OpenDocument); the outcome
+// is reported by a Toast. DataBackup.exportTo already checkpoints the WAL,
 // so no separate repo checkpoint call is needed.
 
-// MARK: - Profile store (SharedPreferences-backed; the macOS ProfileStore equivalent)
+// MARK: - Profile store (SharedPreferences-backed)
 
 /**
  * The user's body profile — age / sex / weight / height plus an optional manual
  * HR-max override. Persisted to SharedPreferences so the values survive restarts
  * and other screens (HealthScreen, Coach zones) can read the same source of truth.
  *
- * Mirrors the macOS `ProfileStore` fields and ranges exactly. `hrMaxOverride == 0`
- * means "auto" — fall back to the Tanaka estimate from [age].
+ * `hrMaxOverride == 0` means "auto" — fall back to the Tanaka estimate from [age].
  */
 class ProfileStore(private val prefs: SharedPreferences) {
 
@@ -130,7 +126,7 @@ class ProfileStore(private val prefs: SharedPreferences) {
      * both go through here, so age always flows from a DOB). Clamped to [AGE_MIN]..[AGE_MAX]. */
     fun setAge(years: Int) { dateOfBirthMillis = dobForAge(years.coerceIn(AGE_MIN, AGE_MAX)) }
 
-    /** "male" | "female" | "nonbinary" — matches the macOS tag values. */
+    /** "male" | "female" | "nonbinary". */
     var sex: String
         get() = prefs.getString(KEY_SEX, "male") ?: "male"
         set(v) = prefs.edit().putString(KEY_SEX, v).apply()
@@ -180,7 +176,7 @@ class ProfileStore(private val prefs: SharedPreferences) {
             .apply()
 
     // ── Steps ESTIMATE calibration (WHOOP 4.0; StepsEstimateEngine) ─────────────────────────────
-    // Mirror of the macOS ProfileStore fields: the engine writes the auto-fit each analytics pass and
+    // The engine writes the auto-fit each analytics pass and
     // the Settings/Steps screen reads them. [stepsManualCoefficient] is the ONLY user-settable field
     // (0 = auto-fit / null to the engine; > 0 = manual override fed into calibrate); the other three
     // are fitted outputs surfaced read-only.
@@ -292,7 +288,7 @@ class ProfileStore(private val prefs: SharedPreferences) {
         /**
          * Variable step for the calibration stepper so high values stay reachable: fine near the
          * 1.0 default (where most people land), coarse up at the 20s+ a 5/MG needs. A flat 0.1 step
-         * from 0.5 to 30 would be ~295 taps — unusable. Mirrors macOS `ProfileStore.stepScaleIncrement`.
+         * from 0.5 to 30 would be ~295 taps — unusable.
          * - `< 2.0` → 0.1 (precision around the default)
          * - `2.0–5.0` → 0.5
          * - `>= 5.0` → 1.0 (ballpark the ~24× overcount in ~19 taps)
@@ -325,7 +321,7 @@ class ProfileStore(private val prefs: SharedPreferences) {
          * One increment/decrement of the calibration divisor, snapped to the increment grid and
          * clamped to [STEP_SCALE_MIN]..[STEP_SCALE_MAX]. Decrement uses the increment for the
          * *target* band so the up/down sequence is symmetric at band boundaries (e.g. 5.0 −1 → 4.0,
-         * 4.0 +0.5 → 4.5). Mirrors macOS `ProfileStore.steppedStepScale`.
+         * 4.0 +0.5 → 4.5).
          */
         fun steppedStepScale(value: Double, up: Boolean): Double {
             val delta = if (up) stepScaleIncrement(value) else stepScaleIncrement(value - 0.0001)
@@ -361,13 +357,13 @@ fun SettingsScreen(
     // diagnostics and raw-sensor export now live in the Test Centre "Diagnostic tools" card. Default
     // FALSE so a first-run user lands on the everyday sections instead of the full wall of cards (S3);
     // nothing is removed, every section stays one tap away by expanding.
-    // Persisted to the same key the iOS @AppStorage uses ("noop.settingsAdvancedOpen"); SharedPreferences
+    // Persisted under "noop.settingsAdvancedOpen"; SharedPreferences
     // isn't reactive, so the Switch-style toggle drives a local state that writes straight through.
     var advancedOpen by remember {
         mutableStateOf(SettingsDisclosurePrefs.read(NoopPrefs.of(context)))
     }
 
-    // EXPERIMENTAL WHOOP 5/MG protocol probes (off by default). Mirrors the macOS @AppStorage toggle;
+    // EXPERIMENTAL WHOOP 5/MG protocol probes (off by default).
     // SharedPreferences isn't reactive, so the Switch drives a local mutableState that the store reads.
     val puffinExperiment = remember { PuffinExperiment.from(context) }
     var puffinExperiments by remember { mutableStateOf(puffinExperiment.isEnabled) }
@@ -380,7 +376,7 @@ fun SettingsScreen(
     // connects (WhoopBleClient.persistSelectedModel, PR), so a real 5/MG owner who never opened the
     // model picker still flips this true once their strap is discovered. We also show it whenever a 5/MG
     // is live-detected this session. Hide only when the user is confidently on a 4.0 (pref says WHOOP4
-    // AND nothing 5/MG is connected). Mirrors the macOS SettingsView `showFiveMGControls` gate.
+    // AND nothing 5/MG is connected).
     val selectedModelName = remember {
         context.getSharedPreferences(NoopPrefs.NAME, Context.MODE_PRIVATE)
             .getString("noop.selectedWhoopModel", null)
@@ -398,8 +394,7 @@ fun SettingsScreen(
     var coachSignals by remember { mutableStateOf(NoopPrefs.coachSignals(context)) }
     var autoDetectWorkouts by remember { mutableStateOf(NoopPrefs.autoDetectWorkouts(context)) }
     // Keep the screen on during a manual workout recording , default OFF. The live-workout
-    // screen reads this same "workoutKeepScreenOn" key. String shared verbatim with the iOS/Mac twin
-    // (AppStorage "workoutKeepScreenOn"). Read/written inline against the shared prefs store.
+    // screen reads this same "workoutKeepScreenOn" key. Read/written inline against the shared prefs store.
     var workoutKeepScreenOn by remember {
         mutableStateOf(NoopPrefs.of(context).getBoolean("workoutKeepScreenOn", false))
     }
@@ -567,7 +562,7 @@ fun SettingsScreen(
         // off and holds your Charge wrong for a couple of weeks while the rolling average catches up.
         // Recalibrate re-learns it from tonight onward. Writes now-seconds to BOTH noop.hrvBaselineEpoch
         // and noop.recoveryBaselineEpoch (so HRV plus resting HR / respiration / skin temp re-anchor);
-        // foldHistory drops every night before that epoch and re-seeds. Mirrors the iOS/Mac button.
+        // foldHistory drops every night before that epoch and re-seeds.
         NoopSettingsSection(
             icon = Icons.Filled.Favorite,
             title = stringResource(R.string.settings_charge),
@@ -654,8 +649,8 @@ fun SettingsScreen(
 
         // Lower-frequency sections collapse behind a single default-closed disclosure (S3) so the
         // screen opens at the everyday handful instead of the full wall of cards. Nothing is removed;
-        // the experimental probes and Trends report stay one tap away. Mirrors the iOS SettingsView
-        // "Advanced" disclosure and the Test Centre Advanced group.
+        // the experimental probes and Trends report stay one tap away, grouped like the Test Centre
+        // "Advanced" group.
         SettingsDisclosure(
             title = stringResource(R.string.settings_advanced),
             subtitle = stringResource(R.string.settings_advanced_subtitle),
@@ -867,8 +862,8 @@ internal fun strapStatusDetail(bonded: Boolean, connected: Boolean, scanning: Bo
 // MARK: - Advanced disclosure persistence (S3)
 
 /**
- * The persisted open/closed state of the Settings "Advanced" disclosure. Keyed identically to the iOS
- * `@AppStorage("settingsAdvancedOpen")` (here under the `noop.` SharedPreferences namespace), and it
+ * The persisted open/closed state of the Settings "Advanced" disclosure. Keyed "settingsAdvancedOpen"
+ * under the `noop.` SharedPreferences namespace, and it
  * DEFAULTS to false so a first-run user lands collapsed. Pulled out so the default is a single testable
  * fact: a regression that ships it defaulting open would dump the full wall of cards on first run again.
  */

@@ -1,7 +1,7 @@
 package com.noop.testcentre
 
 /**
- * The bundle robustness check (Kotlin twin of the Swift BundleRobustness): a pure, last-line verifier
+ * The bundle robustness check: a pure, last-line verifier
  * run over the ASSEMBLED, already-redacted, already-capped entries before they ship. It is the safety net
  * for the export pipeline: it confirms the bundle is well-formed (report.txt present and non-empty,
  * meta.json present), that the optional attachments are HONOURED when they should be (the Display mode's
@@ -12,16 +12,15 @@ package com.noop.testcentre
  * edit could add an entry that bypasses redactEntries, or a redaction regex could regress. This check reads
  * the FINAL bytes the user is about to share and fails loud, so the review sheet / log surfaces "leak" or
  * "missing report.txt" rather than the bundle going out broken. Pure + side-effect-free (no IO, no clock);
- * tested directly on the JVM, and a parity test pins the leak patterns + summary shape against the Swift
- * twin. No PII in the output (it reports COUNTS and entry names only, never the offending text). No em-dashes.
+ * tested directly on the JVM, and a unit test pins the leak patterns + summary shape.
+ * No PII in the output (it reports COUNTS and entry names only, never the offending text). No em-dashes.
  */
 object BundleRobustness {
 
     /** Raw (un-redacted) PII shapes that must NEVER appear in a shipping text entry. These mirror the
      *  redaction regexes' INPUT shape, but match only the UNMASKED form: a full 6-octet MAC keeps all six
      *  octets (the redacted form has "••" in the middle four, so it won't match), and a WHOOP serial is the
-     *  device-name serial (the redacted form is "WHOOP <serial>", which won't match the digit-led pattern).
-     *  Byte-identical to the Swift twin's patterns. */
+     *  device-name serial (the redacted form is "WHOOP <serial>", which won't match the digit-led pattern). */
     private val RAW_MAC = Regex("[0-9A-Fa-f]{2}:[0-9A-Fa-f]{2}:[0-9A-Fa-f]{2}:[0-9A-Fa-f]{2}:[0-9A-Fa-f]{2}:[0-9A-Fa-f]{2}")
     private val RAW_WHOOP_SERIAL = Regex("WHOOP (\\d[0-9A-Za-z]{5,})")
 
@@ -40,7 +39,7 @@ object BundleRobustness {
         val crashAttachedWhenCaptured: Boolean,
         val leakingEntries: List<String>,
     ) {
-        /** One compact, PII-free line for the strap log / review surface, byte-identical to the Swift twin.
+        /** One compact, PII-free line for the strap log / review surface, pinned by a unit test.
          *  "bundle ok files=N report=present meta=present screenshot=present crash=present leaks=0" or the
          *  matching failure form so a maintainer reads the verdict at a glance. */
         fun summaryLine(fileCount: Int): String =

@@ -11,8 +11,7 @@ import android.content.SharedPreferences
 //
 // Stored as a single comma-joined string of sport names in SharedPreferences, most-recent-first,
 // capped at three, deduplicated case-insensitively — the same mechanism as the other display prefs
-// (KeyMetricPrefs). Mirrors the macOS/iOS RecentSportsPrefs.swift (UserDefaults
-// "workout.recentSports"). Display-only: no WorkoutRow, analytics value or migration changes, so like
+// (KeyMetricPrefs). Display-only: no WorkoutRow, analytics value or migration changes, so like
 // the other layout prefs it stays OUT of the .noopbak settings whitelist.
 
 /**
@@ -21,7 +20,7 @@ import android.content.SharedPreferences
  * included (each picker decides what it can display; see the callers).
  */
 object RecentSportsPrefs {
-    /** SharedPreferences key. The macOS/iOS twin persists the same "workout.recentSports" name. */
+    /** SharedPreferences key. PERSISTED, so the name must stay stable. */
     const val KEY = "workout.recentSports"
 
     /** Most-recent-first cap — the issue asks for "2-3"; three keeps the section one glance tall. */

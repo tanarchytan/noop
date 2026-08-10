@@ -31,9 +31,9 @@ import java.util.concurrent.TimeUnit
  * DESIGN
  * - Snapshots are timestamped and immutable. "Restore" REPLACES the live DB (whole-DB snapshot,
  *   newest-wins), exactly as [DataBackup.importFrom] already does - we add nothing to the restore
- *   safety path (magic-byte + Room/GRDB-origin validation, sidecar snapshot, rollback-on-failure).
- * - The pure filename/selection helpers are unit-tested byte-for-byte against the Apple twin so a
- *   `.noopbak` produced on either platform is named + selected identically.
+ *   safety path (magic-byte + foreign-origin validation, sidecar snapshot, rollback-on-failure).
+ * - The pure filename/selection helpers are pinned by `BackupSyncTest`: naming, newest-pick, prune and
+ *   the date-only fallback all round-trip.
  * - The daily schedule is opt-in (default OFF) and runs off the main thread (a whole-DB zip can be
  *   100MB+). The periodic write goes through WorkManager (survives reboot/app-kill, never the
  *   launch-critical path); the on-launch CATCH-UP is a deferred IO coroutine (see [catchUpIfDue]).
@@ -48,8 +48,8 @@ object BackupSync {
     /** Width of the "yyyyMMdd-HHmmss" stamp, so a variant marker ahead of it can be skipped. */
     private const val STAMP_LENGTH = 15
 
-    /** Default snapshots kept by prune: 7, i.e. a week of daily rollback points. (The Apple twin still
-     *  defaults to 10; this fork lowered it — parity dropdown on iOS is a follow-up.) */
+    /** Default snapshots kept by prune: 7, i.e. a week of daily rollback points.
+     *  [BackupSyncPrefs.keepCount] overrides it when the user has stored one. */
     const val DEFAULT_KEEP = 7
 
     /** A day in ms - the catch-up cadence (mirrors the Apple `dayMs`). */
@@ -147,8 +147,8 @@ object BackupSync {
         names.filter(::isBackupFile)
             .map { Restorable(it, snapshotTimeMs(it) ?: fileDateMs(it)) }
             // Newest-first, with a name tie-break so equal-time entries (two files sharing a date-only
-            // name, or a provider that reports the same modified date) order deterministically and
-            // identically to Swift's `timeMs desc then name asc`.
+            // name, or a provider that reports the same modified date) order deterministically:
+            // timeMs desc, then name asc.
             .sortedWith(compareByDescending<Restorable> { it.timeMs }.thenBy { it.name })
 
     /**

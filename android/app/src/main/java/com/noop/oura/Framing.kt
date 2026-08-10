@@ -11,11 +11,9 @@ package com.noop.oura
 // otherwise it is an inner event record. The OuraDriver routes on this; Framing exposes pure parsers
 // plus a defensive Reassembler that buffers partial trailing bytes across notifications (s2.4).
 //
-// DIVERGENCE FROM SWIFT (deliberate): the Swift port uses [UInt8]. Kotlin's signed Byte makes the
-// bit-math noisy, so this twin carries unsigned bytes as IntArray values 0..255. The wire layout,
-// offsets, and arithmetic are byte-for-byte identical to the Swift version; only the storage type
-// differs. The OuraReassembler.feed entry point accepts a ByteArray (the BLE callback type) and
-// widens to unsigned internally.
+// UNSIGNED STORAGE (deliberate): Kotlin's signed Byte makes the bit-math noisy, so this file carries
+// unsigned bytes as IntArray values 0..255; the wire layout and offsets are unaffected. The
+// OuraReassembler.feed entry point accepts a ByteArray (the BLE callback type) and widens internally.
 //
 // Platform-pure, value types only. Facts cited
 
@@ -56,8 +54,7 @@ data class OuraSecureFrame(val subop: Int, val subBody: IntArray) {
  * `ringTimestamp` is stored as a single u32 LE = (session << 16) | counter (the two views are
  * equivalent per the s2.3 note). `payload` is the `len-4` bytes after the 4 timestamp bytes.
  *
- * `ringTimestamp` is kept as a Long holding the unsigned 32-bit value (0..0xFFFFFFFF), the Kotlin
- * stand-in for Swift's UInt32.
+ * `ringTimestamp` is kept as a Long holding the unsigned 32-bit value (0..0xFFFFFFFF).
  */
 data class OuraRecord(val type: Int, val ringTimestamp: Long, val payload: IntArray) {
     /** Low 16 bits = the per-record counter. */
@@ -85,8 +82,8 @@ data class OuraRecord(val type: Int, val ringTimestamp: Long, val payload: IntAr
 }
 
 /**
- * The parsed result of a 0x11 GetEvents response. Kotlin twin of the Swift
- * `(cursor: UInt32, moreData: Bool)` tuple. `cursor` is the new resume cursor (an unsigned 32-bit ring
+ * The parsed result of a 0x11 GetEvents response.
+ * `cursor` is the new resume cursor (an unsigned 32-bit ring
  * timestamp carried as a Long, 0..0xFFFFFFFF); `moreData` is true while the ring still has banked events
  * to hand over.
  */
@@ -99,15 +96,14 @@ object OuraFraming {
     /**
      * The GetEvents response / summary outer opcode. Below the event-tag range
      * (tags are >= 0x41), so a caller that fails to special-case it and lets it fall through to the TLV
-     * decoder gets a safe no-op ("unknown tag") with correct byte accounting, never a misdecode. Kotlin
-     * twin of Swift's getEventsResponseOp.
+     * decoder gets a safe no-op ("unknown tag") with correct byte accounting, never a misdecode.
      */
     const val getEventsResponseOp = 0x11
 
     /**
      * The GetBattery response outer opcode. Below the event-tag range
      * (tags are >= 0x41), so it round-trips safely through the TLV decoder as an "unknown tag" no-op if a
-     * caller fails to special-case it. Kotlin twin of Swift's batteryResponseOp.
+     * caller fails to special-case it.
      */
     const val batteryResponseOp = 0x0D
 
@@ -118,8 +114,8 @@ object OuraFraming {
      * Parse a 0x11 GetEvents response body: `status:1 sub_status:1 last_ring_timestamp:4LE pad:2`
      *. `status` 0x00 = empty/no more; any other value = data follows. The
      * `last_ring_timestamp` is the new cursor to resume the fetch from. Returns null on a short body
-     * (never guesses a cursor). Kotlin twin of Swift's parseGetEventsResponse; `cursor` is the unsigned
-     * 32-bit ring timestamp carried as a Long (0..0xFFFFFFFF).
+     * (never guesses a cursor). `cursor` is the unsigned 32-bit ring timestamp carried as a Long
+     * (0..0xFFFFFFFF).
      */
     fun parseGetEventsResponse(body: IntArray): GetEventsSummary? {
         if (body.size < 6) return null
@@ -199,8 +195,8 @@ object OuraFraming {
  * trailing bytes across feeds and only emits complete `2 + len` records.
  *
  * This handles BOTH the multi-record-per-notification case (several records packed into one value)
- * and the partial-trailing-bytes case (a record split across two notifications). Mirrors the Swift
- * OuraReassembler, value-type and platform-pure.
+ * and the partial-trailing-bytes case (a record split across two notifications). Value-type and
+ * platform-pure.
  */
 class OuraReassembler {
     private val buf = ArrayList<Int>()

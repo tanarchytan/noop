@@ -7,9 +7,8 @@ import android.os.BatteryManager
 import android.os.Build
 
 /**
- * The Android environment-header block (spec section 3.4), bringing Android to the same shape as the iOS
- * IOSDiagnostics. macOS and Android emit almost nothing today; this carries the variables that quietly
- * break a background BLE health app: Doze / battery-optimisation exemption, OEM-kill heuristics, the
+ * The Android environment-header block: the variables that quietly
+ * break a background BLE health app - Doze / battery-optimisation exemption, OEM-kill heuristics, the
  * permission-grant state, the charging state, and the Build identity.
  *
  * TOTAL and best-effort: every probe is guarded so a header build never throws into the export. Degrades

@@ -1,7 +1,6 @@
 package com.noop.protocol
 
-// WHOOP 5.0 / MG "R22" feature-flag config (deep-stream unlock) — direct port of the macOS/iOS
-// `Whoop5Config` (Packages/WhoopProtocol/Sources/WhoopProtocol/Whoop5Config.swift).
+// WHOOP 5.0 / MG "R22" feature-flag config (deep-stream unlock).
 //
 // WHOOP 5/MG straps withhold their deep biometric streams (the high-rate "R22" optical/HR/motion
 // packets, type 0x2F) from a freshly-connected client. The official app switches them on by writing
@@ -15,7 +14,7 @@ package com.noop.protocol
 // NUL-padded to 32 bytes, then a one-byte value (itself an ASCII digit: '1'=0x31 or '2'=0x32) at
 // offset 32, then 7 zero bytes. The inner b3 byte (0x01) is carried as the first payload byte ahead
 // of the body, exactly like CLIENT_HELLO. Reversible (only changes which data the strap emits), gated
-// behind an explicit opt-in, and writable only on real iOS/Android hardware.
+// behind an explicit opt-in, and writable only against a real strap.
 object Whoop5Config {
 
     /** One persistent feature flag and the value the official app writes for it (ASCII '1'/'2'). */
@@ -25,10 +24,10 @@ object Whoop5Config {
      *  `enable_r22_packets` opens the type-0x2F biometric stream; the rest tune channel selection, wear
      *  detection and sleep behaviour. Flags 1–15 are transcribed verbatim from judes.club's frame-builder
      *  FLAGS array; flag 16 `enable_sig12` is NOT in that array — it was observed as a 16th SET_FF_VALUE
-     *  write in a real on-strap iOS HCI capture (WHOOP 5.0) that otherwise reproduced flags 1–15
+     *  write in a real on-strap HCI capture (WHOOP 5.0) that otherwise reproduced flags 1–15
      *  byte-for-byte in this order. `enable_sig12`'s value was corrected 0x32→0x31: a second real
      *  on-strap capture, this time spanning a live workout, reproduced flags 1–15 identically but decoded
-     *  enable_sig12 as ASCII '1'. Keep in lockstep with the Swift `Whoop5Config.enableR22Sequence`. */
+     *  enable_sig12 as ASCII '1'. */
     val enableR22Sequence: List<Flag> = listOf(
         Flag("enable_r22_packets", 0x32),
         Flag("enable_r22_v2_packets", 0x32),

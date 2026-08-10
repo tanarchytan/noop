@@ -11,8 +11,8 @@ import org.json.JSONObject
 // A journal item can now be renamed (display-only, the stored key stays put so imported WHOOP
 // history still lines up), typed as numeric (a value + unit, not just yes/no), grouped, and
 // reordered. The `canonical` string is the verbatim DB/engine key and is NEVER localised or
-// rewritten; only `displayName` changes on a rename. Pure helpers here mirror the macOS
-// JournalCatalogStore value-for-value so both platforms resolve, rename, and group identically.
+// rewritten; only `displayName` changes on a rename. The pure resolve / rename / group helpers below
+// are JVM-testable, and `JournalCatalogTest` pins that a rename never moves the canonical key.
 
 /** A journal item's type: a plain yes/no toggle, or a numeric value with an optional unit label. */
 sealed class JournalKind {
@@ -27,7 +27,7 @@ sealed class JournalKind {
 
 /**
  * A user-visible grouping for related journal items (display + organisation only, never a scoring
- * change). Mirrors macOS `JournalGroup` value-for-value. The enum name is the stable persisted key;
+ * change). The enum name is the stable persisted key;
  * [title] is the display label's string resource, resolved at the composable.
  */
 enum class JournalGroup(@StringRes val title: Int) {
@@ -39,7 +39,7 @@ enum class JournalGroup(@StringRes val title: Int) {
     Other(R.string.journal_group_other);
 
     companion object {
-        /** Fixed display order (matches macOS). Empty groups hide outside edit mode. */
+        /** Fixed display order. Empty groups hide outside edit mode. */
         val displayOrder: List<JournalGroup> =
             listOf(Nutrition, Supplements, Lifestyle, Health, Behaviour, Other)
 
@@ -52,7 +52,7 @@ enum class JournalGroup(@StringRes val title: Int) {
  * One journal catalog item. [canonical] is the verbatim DB/engine key (the exact question string the
  * effects engine and the `journal` table join on), it is NEVER localised or rewritten, so a rename
  * or a re-import always folds onto one behaviour. [displayName] (a rename) and [kind] / [group] /
- * [sortIndex] are display + organisation only. Mirrors macOS `JournalCatalogItem`.
+ * [sortIndex] are display + organisation only.
  */
 data class JournalCatalogItem(
     /** The stable key. Rename NEVER touches this, so history (logged + imported) is preserved. */
@@ -71,8 +71,7 @@ data class JournalCatalogItem(
 }
 
 /**
- * The default group for each starter question (canonical -> group). Mirrors macOS
- * JournalCatalogStore.starterGroups value-for-value. Anything not listed falls to Other.
+ * The default group for each starter question (canonical -> group). Anything not listed falls to Other.
  */
 val STARTER_JOURNAL_GROUPS: Map<String, JournalGroup> = mapOf(
     "Did you drink any alcohol?" to JournalGroup.Nutrition,
@@ -87,13 +86,12 @@ val STARTER_JOURNAL_GROUPS: Map<String, JournalGroup> = mapOf(
     "Did you feel stressed?" to JournalGroup.Behaviour,
 )
 
-// MARK: - Pure catalog logic (JVM-testable; mirrors macOS)
+// MARK: - Pure catalog logic (JVM-testable)
 
 /**
  * Fold the legacy custom/hidden arrays into v2 items (the one-time migration). Custom questions ->
  * Bool/Other custom items (ordered as they were); hidden starter/imported ones -> hidden markers; a
  * hidden custom keeps its flag on the single custom item (deduped by [normJournalKey], no dupe).
- * Mirrors macOS JournalCatalogStore.migrateLegacy value-for-value.
  */
 fun migrateLegacyJournalCatalog(custom: List<String>, hidden: List<String>): List<JournalCatalogItem> {
     val out = ArrayList<JournalCatalogItem>()
@@ -128,7 +126,7 @@ fun migrateLegacyJournalCatalog(custom: List<String>, hidden: List<String>): Lis
  * Resolve the merged catalog into full v2 items, grouped and ordered for display. Imported + starter
  * + custom questions fold onto one canonical key (norm dedupe); each carries the user's saved
  * displayName / kind / group / sortIndex (a starter with no saved item gets its default group and
- * Bool). Hidden items are dropped unless [includeHidden]. Mirrors macOS `resolvedItems`.
+ * Bool). Hidden items are dropped unless [includeHidden].
  */
 fun resolveJournalItems(
     imported: List<String>,
@@ -169,7 +167,7 @@ fun resolveJournalItems(
  * Rename an item: set a display-only label. The stored [JournalCatalogItem.canonical] (the DB/engine
  * key) is untouched, so all history, logged AND imported, stays joined under the original question.
  * A blank name clears the rename. Materialises a starter item into [items] if not present. Returns the
- * new item list. Mirrors macOS `JournalCatalogStore.rename`.
+ * new item list.
  */
 fun renameJournalItem(items: List<JournalCatalogItem>, canonical: String, displayName: String): List<JournalCatalogItem> {
     val trimmed = displayName.trim()
@@ -200,7 +198,7 @@ fun addCustomJournalItem(
 
 /**
  * Remove an item: a custom question is deleted outright; a starter/imported one is hidden
- * (restorable). Mirrors macOS `remove`.
+ * (restorable).
  */
 fun removeJournalItem(items: List<JournalCatalogItem>, canonical: String): List<JournalCatalogItem> {
     val key = normJournalKey(canonical)
@@ -242,7 +240,7 @@ private fun editJournalItem(
     return items + mutate(fresh)
 }
 
-// MARK: - JSON persistence (SharedPreferences, single blob), mirrors the macOS "journal.catalog.v2" key
+// MARK: - JSON persistence (SharedPreferences, single blob under [JOURNAL_CATALOG_V2_KEY])
 
 fun encodeJournalCatalog(items: List<JournalCatalogItem>): String {
     val arr = JSONArray()
@@ -293,7 +291,7 @@ private const val JOURNAL_CATALOG_V2_KEY = "noop.journalCatalogV2"
 
 /**
  * Load the v2 catalog items. On first run (no v2 blob) folds the legacy custom/hidden arrays into
- * items once and persists them, then never reads the legacy keys again. Mirrors macOS init().
+ * items once and persists them, then never reads the legacy keys again.
  */
 fun loadJournalCatalogItems(context: Context): List<JournalCatalogItem> {
     val prefs = context.getSharedPreferences("noop_prefs", Context.MODE_PRIVATE)

@@ -381,7 +381,7 @@ fun ProfileMenuScreen(vm: AppViewModel) {
                 // Tap-through to the WHOOP 4.0 steps-ESTIMATE calibration (a SEPARATE thing from the 5/MG
                 // @57 counter divisor above): a 4.0 sends no step count, so NOOP estimates steps from
                 // motion and calibrates that to the phone. Opens the explainer + fit + comparison + manual
-                // override screen. Mirrors the macOS Profile "Steps estimate" row.
+                // override screen.
                 val stepsSummary = when {
                     profile.stepsManualCoefficient > 0 -> stringResource(R.string.profile_steps_manual)
                     profile.stepsCalibrationCoefficient > 0 -> stringResource(

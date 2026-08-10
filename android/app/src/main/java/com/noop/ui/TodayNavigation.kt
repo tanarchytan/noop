@@ -1,21 +1,21 @@
 package com.noop.ui
 
-// MARK: - Day navigation - chevron arrows + horizontal swipe, iOS parity
+// MARK: - Day navigation - chevron arrows + horizontal swipe
 //
 // `selectedDayOffset` is days-back-from-today (0 = today, 1 = yesterday, …). The header chevrons and a
 // horizontal swipe across the dashboard both move it: older increments the offset (no upper bound - you
 // can browse arbitrarily far back), newer decrements it but is CLAMPED at 0 so a future day can never be
 // selected. These pure helpers hold that clamp so it's covered by a JVM test and shared by both the
-// arrow taps and the swipe handler, matching the iOS DayNavBar's `canGoNewer` / `selectedOffset ± 1`.
+// arrow taps and the swipe handler.
 
 /**
  * item 1: the launch day-landing policy, as ONE pure decision so the rule can't drift between the
- * screen and its test and stays byte-identical to the iOS `TodayView.launchDayOffset` twin. A FRESH-PROCESS
- * launch ALWAYS lands on today (offset 0), even when today has no data yet and the only banked data is N days
- * back - that exact case is what stranded a calibrating user on an old day after an app update (the reporter's
- * case on v7.6.0). A non-fresh (in-session) call returns [savedOffset] UNCHANGED, so tabbing away to an old
- * day and coming back within the same process preserves the user-navigated day. The old
- * "land on the most recent data day" inputs are gone because that behaviour is retired. Mirror in Swift.
+ * screen and its test. A FRESH-PROCESS launch ALWAYS lands on today (offset 0), even when today has no
+ * data yet and the only banked data is N days back - that exact case is what stranded a calibrating user
+ * on an old day after an app update (the reporter's case on v7.6.0). A non-fresh (in-session) call returns
+ * [savedOffset] UNCHANGED, so tabbing away to an old day and coming back within the same process preserves
+ * the user-navigated day. The old "land on the most recent data day" inputs are gone because that
+ * behaviour is retired.
  */
 internal fun launchDayOffset(
     isFreshLaunch: Boolean,
@@ -33,7 +33,7 @@ internal fun dayNavOlder(selectedOffset: Int): Int = selectedOffset + 1
 internal fun dayNavNewer(selectedOffset: Int): Int = (selectedOffset - 1).coerceAtLeast(0)
 
 /** True when there IS a newer day to step to (i.e. we're not already on today). Gates the ▶ chevron's
- *  enabled state, mirroring the iOS `canGoNewer`. */
+ *  enabled state. */
 internal fun dayNavCanGoNewer(selectedOffset: Int): Boolean = selectedOffset > 0
 
 /** The minimum horizontal drag (px) that counts as a day-change swipe, so a small wobble during a

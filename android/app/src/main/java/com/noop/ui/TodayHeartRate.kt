@@ -80,8 +80,8 @@ import kotlin.math.roundToInt
 // A full-width 24h HR trend, plotted from 5-minute bucket means of the strap's hrSample history
 // (offloaded even while the app was closed, so the day reads continuously). Hidden until there are at
 // least two buckets, so a strap-only user with no wear today sees nothing rather than an empty chart.
-// Mirrors the macOS TodayView.heartRateTrendSection. LineChart spaces points by index (no time axis),
-// so the buckets, being uniform 5-min means in time order, read as an even left-to-right day curve.
+// LineChart spaces points by index (no time axis), so the buckets, being uniform 5-min means in
+// time order, read as an even left-to-right day curve.
 
 /** The Today heart-rate card's visible window. [TODAY] = the full
  *  loaded day since the logical midnight — the unchanged default. The rest are rolling "last N hours"
@@ -148,8 +148,8 @@ internal fun HeartRateTrendCard(
     // VIEW-ONLY (see HrWindow): it narrows the rendered buckets below; the LaunchedEffect read is untouched.
     var hrWindowOrdinal by rememberSaveable { mutableIntStateOf(0) }
     val hrWindow = if (selectedDay == today) HrWindow.entries[hrWindowOrdinal] else HrWindow.TODAY
-    // Android parity - the Today HR pinch/drag zoom window (unix seconds), null = the full loaded
-    // day. Mirrors iOS TodayView.hrZoomDomain: VIEW-ONLY (it narrows which of the already-loaded buckets
+    // The Today HR pinch/drag zoom window (unix seconds), null = the full loaded day.
+    // VIEW-ONLY (it narrows which of the already-loaded buckets
     // render, never re-queries the DB), keyed on the selected day so stepping days always opens at full
     // scale, while a same-day live reload keeps the window (fresh buckets only ever extend the loaded
     // extent, so an existing window stays valid). Reset by double-tap on the chart or the Reset link.
@@ -163,7 +163,7 @@ internal fun HeartRateTrendCard(
     // HISTORY_COMPLETE (the banked samples are now final → reload the buckets), and `syncChunksThisSession`
     // advances through a long backfill so the curve fills in progressively rather than only at the end.
     // (No "show a past day curve" fallback, rejected behaviour change; this only re-queries the SAME
-    // selected-day window when fresh samples land.) Mirrors the iOS Today HR lane keying off the sync state.
+    // selected-day window when fresh samples land.)
     val live by viewModel.live.collectAsStateWithLifecycle()
     // Re-load when the day list changes (an import updates it), when the day selector moves, and, via the
     // sync tokens, when a strap offload banks fresh HR samples for the current window. Also on first compose.
@@ -221,7 +221,7 @@ internal fun HeartRateTrendCard(
     // froze". Show an explicit calibrating/empty card instead so the user knows the curve is still filling in
     // (a calibrating 4.0 banks HR slowly) rather than that the screen broke. We intentionally do NOT silently
     // swap in a different day's curve here (that day-swap reload behaviour was rejected, see above);
-    // the honest empty state is the parity-matched fix. Mirrors the iOS Today HR card's empty branch.
+    // the honest empty state is the fix.
     // the check reads the WINDOWED subset, and the pills stay visible in the empty state, so a
     // too-narrow rolling window (say 1h with no recent offload) is never a dead end — the user widens it
     // or steps back to Today, and the message says which window came up empty.
@@ -287,7 +287,7 @@ internal fun HeartRateTrendCard(
     SectionHeader(stringResource(R.string.today_hr_title), overline = selectedLabel)
     NoopCard {
         Column(verticalArrangement = Arrangement.spacedBy(Metrics.space12)) {
-            // Header, mirrors the macOS ChartCard (title + subtitle, trailing read-out).
+            // Header, in the shared ChartCard shape (title + subtitle, trailing read-out).
             Row(verticalAlignment = Alignment.Top) {
                 Column(modifier = Modifier.weight(1f)) {
                     Overline(stringResource(R.string.today_hr_beats_per_minute))
@@ -397,8 +397,8 @@ internal fun HeartRateTrendCard(
                     }
                 }
             }
-            // the pinch/drag affordance + Reset, mirroring the iOS hrZoomHint row: teaches the
-            // gesture, and once zoomed shows a Reset link that mirrors the chart's own double-tap reset.
+            // the pinch/drag affordance + Reset: teaches the gesture, and once zoomed shows a
+            // Reset link that does the same thing as the chart's own double-tap reset.
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
@@ -477,20 +477,18 @@ private fun HrTimeAxisLabels(
     }
 }
 
-// Android parity - the Today HR chart's transform detector. The Deep Timeline's own
+// The Today HR chart's transform detector. The Deep Timeline's own
 // detectTransformGestures claims EVERY drag on the chart, fine on its dedicated screen but here it would
 // eat the Today feed's vertical scroll AND the LineChart's scrub-to-inspect. This detector reuses the
 // Deep Timeline's pure window math (zoomedWindow / pannedWindow, Charts.kt) but watches the INITIAL
 // pointer pass and claims only:
 //   (a) any multi-finger gesture (pinch zooms about the centroid), always, and
 //   (b) a single-finger HORIZONTAL-dominant drag while ZOOMED (pan). Un-zoomed, a horizontal drag stays
-//       the LineChart's scrub-to-inspect exactly as before, matching iOS where an un-zoomed pan is a
-//       visual no-op anyway.
+//       the LineChart's scrub-to-inspect exactly as before (un-zoomed, a pan is a visual no-op anyway).
 // A vertical-dominant drag is never claimed, so the feed keeps scrolling over the chart. Claimed events
 // are consumed in the Initial pass, which cancels the child scrub AND the page-level day-swipe for that
-// gesture, the same chart-owns-its-frame exclusivity the iOS Today chart gets from masking the day-swipe
-// over the chart frame. A motionless double tap resets to the full day, mirroring the iOS double-tap
-// reset. Windows only commit when they keep >= 2 buckets visible (the curve stays drawable), and a
+// gesture, so the chart owns its own frame. A motionless double tap resets to the full day.
+// Windows only commit when they keep >= 2 buckets visible (the curve stays drawable), and a
 // window grown back to the full bounds normalises to null (un-zoomed), so the hint/Reset row recovers by
 // pinching out too.
 private suspend fun PointerInputScope.hrChartTransformGestures(
@@ -514,8 +512,8 @@ private suspend fun PointerInputScope.hrChartTransformGestures(
             val event = awaitPointerEvent(PointerEventPass.Initial)
             if (event.changes.none { it.pressed }) {
                 // Lift-off. A short motionless single tap feeds the double-tap reset, only meaningful
-                // while zoomed (the un-zoomed chart has nothing to reset, mirroring the iOS isZoomed
-                // guard), and never consumed, so the LineChart's single-tap inspect keeps working.
+                // while zoomed (the un-zoomed chart has nothing to reset), and never consumed, so the
+                // LineChart's single-tap inspect keeps working.
                 val up = event.changes.first()
                 if (!claimed && !ceded && !moved && window() != null) {
                     val upAtMs = up.uptimeMillis
@@ -583,8 +581,7 @@ private suspend fun PointerInputScope.hrChartTransformGestures(
 //
 // LineChart plots points by LIST INDEX (evenly spaced, no time axis), so each marker's wall-clock
 // time is mapped to a fractional list index by interpolating against the buckets' own timestamps, // markers then sit exactly on the rendered curve even when the strap history has gaps. Every layer
-// self-hides when its data is absent (no sleep, calibrating Charge, no workouts). Mirrors the macOS
-// OverviewHRChart (Packages/StrandDesign) in NOOP's own colour language.
+// self-hides when its data is absent (no sleep, calibrating Charge, no workouts).
 
 /** One marker lane's height: the pill plus the gap under it. */
 private val HR_MARKER_LANE = 34.dp
@@ -652,8 +649,8 @@ private fun OverviewHRChart(
         return if (n > 1) plotW * fi / (n - 1) else null
     }
     // Strict variant for POINT markers (charge pill, peak, effort-now rule): null when the time
-    // falls outside the RENDERED buckets, so a zoomed window hides out-of-window marks exactly like
-    // iOS clips them, instead of pinning them to the window edge. The sleep BAND keeps the clamping
+    // falls outside the RENDERED buckets, so a zoomed window CLIPS out-of-window marks instead of
+    // pinning them to the window edge. The sleep BAND keeps the clamping
     // xFor: clamping a range to the visible window is the correct behaviour for a span.
     fun xForStrict(ts: Long): Float? {
         if (n < 2) return null
@@ -717,14 +714,9 @@ private fun OverviewHRChart(
             .onSizeChanged { plotW = it.width.toFloat(); plotH = it.height.toFloat() }
             .semantics { contentDescription = markerDescription },
     ) {
-        // Z-order: the sleep band must sit BEHIND the HR curve, matching the
-        // iOS OverviewHRChart whose RectangleMark is "drawn first so the HR line/area sit on top". Android
-        // previously drew the band in the SAME Canvas as the dashed rules, AFTER the LineChart, so the
-        // translucent indigo region washed OVER the HR line + its value markers (the reported "text behind
-        // the chart" / muddied curve). Splitting the band into its OWN Canvas placed BEFORE the LineChart
-        // puts it under the curve, exactly like iOS; the wake divider, Charge/Effort rules and glow end-cap
-        // stay in the Canvas AFTER the line (iOS draws those marks after the LineMark too, so they read on
-        // top). Only the fill moved; same geometry, same colours.
+        // Z-order: the sleep band sits BEHIND the HR curve, so it gets its OWN Canvas BEFORE the
+        // LineChart. Drawn after the line instead, its translucent indigo fill washes over the curve
+        // and its value markers. The wake divider, rules and glow end-cap stay AFTER the line, on top.
         // Dotted round-time gridlines, FIRST so everything (band, curve, markers) reads over them.
         if (plotW > 0f && plotH > 0f && timeTicks.isNotEmpty()) {
             val gridDash = remember { PathEffect.dashPathEffect(floatArrayOf(4f, 6f), 0f) }
@@ -762,7 +754,7 @@ private fun OverviewHRChart(
         }
 
         // 1) The HR line (unchanged shared component, tap-to-inspect intact). Sits OVER the sleep band
-        // (above) and UNDER the dashed rules + glow end-cap + marker pills (below), mirroring iOS.
+        // (above) and UNDER the dashed rules + glow end-cap + marker pills (below).
         LineChart(
             values = bpm,
             modifier = Modifier.fillMaxSize(),
@@ -782,7 +774,7 @@ private fun OverviewHRChart(
             val wakeDash = remember { PathEffect.dashPathEffect(floatArrayOf(3f, 3f), 0f) }
             Canvas(modifier = Modifier.fillMaxSize()) {
                 // Wake divider: the sleep-to-day boundary, so the band reads even before Charge calibrates.
-                // On top of the line (matching iOS's wake RuleMark after the LineMark).
+                // Drawn after the line so it reads on top.
                 if (sleepStartX != null && sleepEndX != null && sleepEndX > sleepStartX &&
                     sleepEndX > 0f && sleepEndX < size.width) {
                     drawLine(

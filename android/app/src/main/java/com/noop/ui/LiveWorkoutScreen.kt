@@ -70,9 +70,8 @@ fun LiveWorkoutScreen(vm: AppViewModel, onClose: () -> Unit) {
     }
 
     // Keep the screen awake while recording. Opt-in, default off; the toggle lives in Settings.
-    // Read the same pref key the iOS @AppStorage uses ("workoutKeepScreenOn") and flag the view's window
-    // only while this screen is up, clearing it on the way out so normal screen-timeout resumes. Mirrors
-    // iOS calling ScreenIdle.keepAwake(true) on appear and false on disappear.
+    // Reads the "workoutKeepScreenOn" pref and flags the view's window only while this screen is up,
+    // clearing it on the way out so normal screen-timeout resumes.
     val view = LocalView.current
     DisposableEffect(Unit) {
         val on = NoopPrefs.of(context).getBoolean("workoutKeepScreenOn", false)

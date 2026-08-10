@@ -92,7 +92,7 @@ import kotlinx.coroutines.withContext
 
 // MARK: - OnboardingScreen
 //
-// Android's first-run flow mirrors the macOS OnboardingWizard shape: a paged,
+// The first-run flow: a paged,
 // full-screen sequence that sets expectations, scans/connects to the strap, captures
 // the profile values that power zones/calories, imports history, and then hands off to
 // the app shell. It uses the same AppViewModel/Repository/BLE client as the app itself.
@@ -157,7 +157,7 @@ fun OnboardingScreen(viewModel: AppViewModel, onFinished: () -> Unit) {
         color = Palette.surfaceBase,
     ) {
         // Design Reset: the flow sits on a flat opaque surfaceBase substrate — no scenic starfield
-        // hero behind the steps (mirrors the iOS onboarding's clean surfaceBase background). Each
+        // hero behind the steps. Each
         // step's read-outs live on flat opaque NoopCards over this canvas, not floating on a scene.
         Box(modifier = Modifier.fillMaxSize()) {
         Column(
@@ -513,7 +513,7 @@ private fun ConnectStep(viewModel: AppViewModel) {
 }
 
 // A short celebration once the strap bonds — the Connect step auto-advances here on bond, and
-// the nav skips it entirely when nothing is bonded (mirrors the macOS scan → bonded moment).
+// the nav skips it entirely when nothing is bonded.
 @Composable
 private fun BondedStep(viewModel: AppViewModel) {
     val live by viewModel.live.collectAsStateWithLifecycle()

@@ -130,8 +130,7 @@ fun DataSourcesScreen(vm: AppViewModel, onOpenAppleHealth: () -> Unit = {}) {
             // so a tester's file import is captured in a shared debug bundle. On success: brand label +
             // per-table COUNTS only (e.g. "dailyMetric=120, sleepSession=88"). On a zero-row/failed import:
             // the brand label + the human reason from the summary. Never a file name, a path, or any health
-            // value. Prefixed "Import: " so it's distinguishable from WHOOP / generic-HR lines. The Swift
-            // twin logs the same in DataSourcesView's import handlers.
+            // value. Prefixed "Import: " so it's distinguishable from WHOOP / generic-HR lines.
             if (summary.totalRows > 0) {
                 val countsText = summary.counts.entries.joinToString(", ") { "${it.key}=${it.value}" }
                 vm.ble.externalLog("Import ${summary.source}: $countsText")
@@ -142,7 +141,7 @@ fun DataSourcesScreen(vm: AppViewModel, onOpenAppleHealth: () -> Unit = {}) {
             // tagged IMPORT, iff the mode is on. Gated zero-cost when off (one SharedPreferences bool read).
             // The numbers are the SAME per-table counts the summary carries (Room upserts are fire-and-forget,
             // so the persisted count equals the mapped count at this seam); emission changes nothing saved. No
-            // file name, path, or health value is in any line. Twin of the macOS DataSourcesView handlers.
+            // file name, path, or health value is in any line.
             emitImportTrace(context, vm, summary)
             refreshCounts()
             busy = false
@@ -325,8 +324,8 @@ fun DataSourcesScreen(vm: AppViewModel, onOpenAppleHealth: () -> Unit = {}) {
                 modifier = Modifier.fillMaxWidth(),
             ) { onOpenAppleHealth() }
             // ah-delete : a destructive "Remove imported data" action wired to
-            // DeviceRegistry.deleteDeviceData("apple-health") (via vm.deletePairedDeviceData), mirroring
-            // the Swift card. Shown only once there's something to remove; a confirm dialog gates it.
+            // DeviceRegistry.deleteDeviceData("apple-health") (via vm.deletePairedDeviceData).
+            // Shown only once there's something to remove; a confirm dialog gates it.
             if (hasApple) {
                 BackupButton(
                     label = stringResource(R.string.datasources_remove_imported_data),
@@ -523,7 +522,7 @@ fun DataSourcesScreen(vm: AppViewModel, onOpenAppleHealth: () -> Unit = {}) {
     }
 }
 
-// MARK: - Source card (mirrors the macOS private `card(...)` builder)
+// MARK: - Source card
 
 @Composable
 private fun SourceCard(
@@ -621,16 +620,15 @@ private fun BackupButton(
 /**
  * Emit the Import & Data Ingest test-mode trace for a finished import, tagged TestDomain.IMPORT, iff the
  * mode is on. Shared by the Data Sources + Onboarding import flows (both call runImport). Gated zero-cost
- * when off: one SharedPreferences bool read before any line is built. The lines are byte-aligned with the
- * macOS ImportTrace shapes (parser / per-stage / reject / day-delta), built from the ImportSummary the
+ * when off: one SharedPreferences bool read before any line is built. The lines use the four ImportTrace
+ * shapes (parser / per-stage / reject / day-delta), built from the ImportSummary the
  * importer already returned. Never a file name, a path, or any health value.
  *
- * HONESTY (the whole point of this mode, tied to the // "didn't save" cluster): unlike the
- * Swift store, which returns the summed SQLite changes from each upsert, Room's @Upsert reports no
- * store-write count at this layer. So Android does NOT claim "(all written)" / "(all days persisted)" - it
+ * HONESTY (the whole point of this mode, tied to the // "didn't save" cluster): Room's @Upsert reports
+ * no store-write count at this layer, so a line does NOT claim "(all written)" / "(all days persisted)" - it
  * emits rowsIn / daysMapped with rowsOut / daysPersisted marked UNVERIFIED. A line never asserts a save it
  * cannot confirm. REJECTED counts (e.g. skippedSpans - scrubbed/damaged spans, the OPPOSITE of written)
- * are routed through the reject line, never a stage line, matching AppleHealthImport.swift.
+ * are routed through the reject line, never a stage line.
  */
 internal fun emitImportTrace(
     context: android.content.Context,
@@ -663,7 +661,7 @@ internal fun emitImportTrace(
         com.noop.testcentre.TestDomain.IMPORT,
     )
     // Day delta: pick the source's day-keyed table (Apple -> appleDaily, WHOOP/others -> dailyMetric) so a
-    // real Apple import reports the right day count, and label the stage with the Swift category vocabulary.
+    // real Apple import reports the right day count, and label the stage via ImportTrace.categoryWire.
     val dayKey = if (summary.counts.containsKey("appleDaily")) "appleDaily" else "dailyMetric"
     val days = summary.counts[dayKey] ?: summary.counts["days"] ?: 0
     val dayCategory = com.noop.analytics.ImportTrace.categoryWire(summary.source, dayKey)

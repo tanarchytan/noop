@@ -24,12 +24,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 /**
- * A small, dependency-free Markdown renderer for the AI Coach's replies (Android twin of the macOS/iOS
- * MarkdownUI Coach view. The Coach is told to emit "simple Markdown, chat-sized": short
+ * A small, dependency-free Markdown renderer for the AI Coach's replies. The Coach is told to emit
+ * "simple Markdown, chat-sized": short
  * paragraphs, **bold** for key numbers, *italics*, `code`, `###` headings, bullet/numbered lists, and
  * GFM pipe tables — exactly the block + inline set handled here. Anything else it doesn't recognise falls
  * through as plain text rather than showing raw symbols, which is strictly better than the old verbatim
- * Text() that rendered `**bold**` literally. Styled from the Strand palette/type so it matches the bubble.
+ * Text() that rendered `**bold**` literally. Styled from [Palette] / [NoopType] so it matches the bubble.
  *
  * The inline parser (parseInline) is pure and unit-tested in CoachMarkdownTest; block layout is above.
  */
@@ -140,9 +140,9 @@ fun parseInline(s: String, color: Color): AnnotatedString = buildAnnotatedString
     }
 }
 
-// MARK: - GFM pipe tables (Android twin of the iOS/macOS MarkdownUI table; "Markdown tables on Android"
-// from the roadmap). The Coach sometimes answers with a small comparison table ("metric | you |
-// typical"); this is the dependency-free Android equivalent. parseTable is pure and unit-tested in
+// MARK: - GFM pipe tables ("Markdown tables on Android" from the roadmap). The Coach sometimes
+// answers with a small comparison table ("metric | you | typical"); this is the dependency-free
+// renderer for it. parseTable is pure and unit-tested in
 // CoachMarkdownTest; MarkdownTable does the Compose layout (a bordered grid, header in SemiBold over a
 // subtle inset, hairline row separators), reusing parseInline so **bold** / `code` inside a cell styles.
 

@@ -101,7 +101,7 @@ internal fun PhysiologyStack(live: LiveState, activeConnection: Boolean) {
         Row(horizontalArrangement = Arrangement.spacedBy(Metrics.gap), modifier = Modifier.fillMaxWidth()) {
             // Offline: show a muted "Offline" word (dimmed to textTertiary) instead of bare accent-
             // coloured em-dashes that read as broken live readouts. Real values + accents return on a
-            // stream. Mirrors the macOS liveProofMetric(offline:).
+            // stream.
             LiveProofMetric(
                 Modifier.weight(1f), "R-R",
                 if (activeConnection) (live.rr.lastOrNull()?.let { "$it ms" } ?: "—")
@@ -198,7 +198,7 @@ private fun LiveProofMetric(modifier: Modifier, label: String, value: String, ti
 
 /** A non-WHOOP live source (the Oura ring, and on Android any external HR source that drives
  *  [LiveState.streamingLiveHR]) that is connected and actively streaming live HR. It streams without a
- *  WHOOP encrypted bond, so `bonded`/`activeConnection` never trip. Twin of the iOS LiveView.ringStreaming. */
+ *  WHOOP encrypted bond, so `bonded`/`activeConnection` never trip. */
 private fun ringStreaming(live: LiveState): Boolean = live.connected && live.streamingLiveHR
 
 @StringRes

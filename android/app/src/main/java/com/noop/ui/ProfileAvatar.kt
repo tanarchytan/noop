@@ -39,8 +39,7 @@ import java.io.File
 // picked image's bytes are downscaled to ~256px, re-encoded as a small JPEG, and written to a single
 // file in the app-private filesDir; only the file path + an "is set" flag live in SharedPreferences.
 //
-// macOS/iOS parity note: the iOS side keeps the avatar in its ProfileStore as Data on disk. Compose
-// has no OS-reactive store, so — exactly like `AppearancePrefs` in PaletteTokens.kt
+// SharedPreferences is not reactive, so — exactly like `AppearancePrefs` in PaletteTokens.kt
 // — the decoded [ImageBitmap] is held in SNAPSHOT state. Every `ProfileAvatarStore.bitmap` read (the
 // Today header avatar, the Settings avatar) recomposes the moment the photo is set or cleared.
 
@@ -135,7 +134,7 @@ object ProfileAvatarStore {
 
         // EXIF orientation — read BEFORE the bitmap decode (BitmapFactory drops EXIF). The pixels come
         // off the sensor un-rotated; the orientation tag says how to spin them upright. We read it from a
-        // fresh stream now and apply the rotation AFTER the down-fit below. iOS already lands upright.
+        // fresh stream now and apply the rotation AFTER the down-fit below.
         val orientation = runCatching {
             resolver.openInputStream(uri)?.use {
                 ExifInterface(it).getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL)
@@ -236,8 +235,8 @@ fun ProfileAvatar(
                 modifier = Modifier.size(size).clip(CircleShape),
             )
         } else {
-            // No photo: the NOOP loop mark (open green ring + white core) — the brand glyph, matching the
-            // iOS default avatar. The user's chosen photo path is untouched; this is only the fallback.
+            // No photo: the NOOP loop mark (open green ring + white core) — the brand glyph.
+            // The user's chosen photo path is untouched; this is only the fallback.
             LoopMark(modifier = Modifier.fillMaxSize())
         }
     }
@@ -245,8 +244,8 @@ fun ProfileAvatar(
 
 /**
  * The NOOP loop mark drawn as a fallback avatar: an OPEN ~80% recovery ring (round caps, starting at 12
- * o'clock, clockwise) in the recovery green with a solid WHITE centre core dot. Matches the iOS BrandMark
- * shape but in the Apple-Fitness green + white core. CLEAN/flat — no glow, no halo. Decorative.
+ * o'clock, clockwise) in the recovery green with a solid WHITE centre core dot.
+ * CLEAN/flat — no glow, no halo. Decorative.
  */
 @Composable
 private fun LoopMark(modifier: Modifier = Modifier) {

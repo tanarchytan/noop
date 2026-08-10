@@ -7,9 +7,8 @@ import java.util.TimeZone
 
 /**
  * bad-clock strap diagnostics: pure formatters for the Backfiller's strap-log lines about a strap
- * whose RTC reset to a wrong base (future- or far-past-dated banking). Kept in the protocol layer so the
- * formatting mirrors the Swift `BadClockDiagnostics` byte-for-byte. No state, no `now` inside - callers
- * inject `now` so the output is deterministic and unit-testable.
+ * whose RTC reset to a wrong base (future- or far-past-dated banking). The exact strings are pinned by
+ * unit tests. No state, no `now` inside - callers inject `now` so the output is deterministic.
  */
 object BadClockDiagnostics {
 

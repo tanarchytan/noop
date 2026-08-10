@@ -73,14 +73,13 @@ import java.util.Calendar
 
 // MARK: - NotificationsSettingsScreen
 //
-// Android port of NotificationSettingsView.swift. Choose which apps tap your wrist and
+// Choose which apps tap your wrist and
 // how (per-app buzz pattern), with a master switch and overnight quiet hours.
 //
-// macOS resolves real installed apps via LaunchServices/NSWorkspace. Android restricts
-// package visibility (API 30+) and there is no equivalent "notification-capable app"
-// query, so we ship a curated catalog of common notification apps grouped exactly like
-// the Mac screen. Preferences persist in SharedPreferences (the Android counterpart to
-// UserDefaults); when the background bridge ships it reads the same prefs.
+// Android restricts package visibility (API 30+) and offers no "notification-capable app"
+// query, so we ship a curated catalog of common notification apps grouped by category.
+// Preferences persist in SharedPreferences; when the background bridge ships it reads the
+// same prefs.
 //
 // Delivery requires a NotificationListenerService with Notification Access granted — the
 // behaviour card deep-links to Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS for that.
@@ -116,8 +115,8 @@ internal data class NotifApp(
 )
 
 /**
- * Curated catalog of common Android notification apps, grouped to match the Mac screen.
- * Unlike macOS we cannot enumerate which are actually installed (restricted package
+ * Curated catalog of common Android notification apps, grouped by category.
+ * We cannot enumerate which are actually installed (restricted package
  * visibility), so we present the full set as configurable examples.
  */
 private val notifCatalog: List<NotifApp> = listOf(
@@ -141,7 +140,7 @@ private fun appsIn(category: NotifCategory): List<NotifApp> =
 private val activeCategories: List<NotifCategory> =
     NotifCategory.entries.filter { appsIn(it).isNotEmpty() }
 
-// MARK: - SharedPreferences store (mirrors the UserDefaults-backed Swift store)
+// MARK: - SharedPreferences store
 
 /**
  * Plain-prefs store for wrist-alert settings (the AI key uses encrypted prefs; these are
@@ -682,7 +681,7 @@ private fun AppRow(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(Metrics.space12),
     ) {
-        // App glyph in a rounded inset tile (stand-in for the real macOS app icon).
+        // App glyph in a rounded inset tile (a stand-in: the real app icon is not resolvable here).
         Box(
             modifier = Modifier
                 .size(34.dp)
@@ -721,7 +720,7 @@ private fun AppRow(
     }
 }
 
-// MARK: - Pattern menu (DropdownMenu replacing the macOS Menu)
+// MARK: - Pattern menu
 
 @Composable
 private fun PatternMenu(

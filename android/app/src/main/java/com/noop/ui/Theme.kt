@@ -30,7 +30,7 @@ import com.noop.analytics.RustScores
 import uniffi.whoop_ffi.RecoveryState
 import kotlin.math.abs
 
-// MARK: - Palette — the "Titanium & Gold" re-skin (mirrors StrandDesign/Palette.swift)
+// MARK: - Palette — the "Titanium & Gold" re-skin
 //
 // A premium dark theme built on a deep NAVY canvas (NOT pure black) with per-domain
 // accent "colour worlds": Charge/recovery = GOLD, Effort/strain = amber, Rest/sleep =
@@ -40,8 +40,7 @@ import kotlin.math.abs
 // PUBLIC API IS FROZEN: every token NAME below is depended on by screens across the
 // app, so the names never change — only the VALUES were re-themed to Titanium & Gold.
 // New tokens (gold/titanium ramps + their gradients) are ADDED at the end of the
-// object; nothing existing was removed or renamed. Hex values mirror the macOS/iOS
-// StrandPalette so all three platforms share one visual language.
+// object; nothing existing was removed or renamed.
 
 object Palette {
 
@@ -183,9 +182,9 @@ object Palette {
     /** Gauge-tip / sparkline-head core — white on dark, deep ink on light. */
     val tipCore get() = active.tipCore
 
-    // MARK: - Sampling helpers (mirror StrandPalette.sample / recoveryColor)
+    // MARK: - Sampling helpers — a normalized position along a colour ramp to a colour
 
-    /** Linear-interpolate two colors in sRGB space (matches StrandPalette.interpolate). */
+    /** Linear-interpolate two colors in sRGB space. */
     private fun lerp(a: Color, b: Color, t: Float): Color {
         val tt = t.coerceIn(0f, 1f)
         return Color(
@@ -336,7 +335,7 @@ object Palette {
 // "colour world": a primary colour, a deep→bright gradient for gauge strokes and
 // card washes, and a glow colour for blooms / end-cap halos. Every surface
 // (layered gauge, frosted card tint, scenic hero) reads its colours from here so a
-// screen only has to name its domain. Mirrors StrandDesign/DomainTheme.swift.
+// screen only has to name its domain.
 
 enum class DomainTheme {
     Charge,
@@ -394,14 +393,14 @@ object Motion {
     const val durationSlow = 900       // ring arc, waveform ignite
     const val breathPeriodMs = 3200    // one breath cycle for ambient pulsing
 
-    // Easings (Compose equivalents of the SwiftUI curves)
+    // Easings
     val easeOut: Easing = LinearOutSlowInEasing
     val easeInOut: Easing = FastOutSlowInEasing
     val drawIn: Easing = LinearOutSlowInEasing
     val interactive: Easing = CubicBezierEasing(0.2f, 0.0f, 0.0f, 1.0f)
 }
 
-// MARK: - Shared UI tokens (ported Android-side from the StrandDesign contract)
+// MARK: - Shared UI tokens — the alpha values charts, selectors and hairlines draw with
 
 object StrandAlpha {
     const val subtleLine = 0.60f
@@ -419,7 +418,7 @@ object StrandAlpha {
     const val labelPlate = 0.82f
 }
 
-// MARK: - Metrics (ported from StrandDesign/Components.swift NoopMetrics)
+// MARK: - Metrics — the shared spacing / size tokens every screen lays out with
 
 object Metrics {
     val space2 = 2.dp
@@ -457,7 +456,7 @@ object Metrics {
     val selectorPadding = 10.dp
     val selectorSpacing = 8.dp
     val motionStripHeight = 40.dp   // the movement/restlessness trace under the hypnogram
-    // iOS port — WHOOP-style per-stage sleep timeline rows (design 2026-07-10).
+    // WHOOP-style per-stage sleep timeline rows.
     val stageRowTrackHeight = 20.dp  // hatched night track + solid stage segments
     val stageRowCorner = 10.dp       // row background rounding
     val stageRowPadH = 10.dp         // row inner horizontal padding — the movement strip and axis share it so epochs align
@@ -477,12 +476,11 @@ object Metrics {
 
 // MARK: - Typography
 //
-// Helvetica Neue on Apple; on Android we use a Helvetica-Neue FontFamily where one
-// is bundled in res/font, else FontFamily.SansSerif as the documented substitute
-// (no Helvetica asset is bundled, so the platform grotesque stands in) with the same
-// sizes/weights. Numeric/live styles stay in the house sans and request TABULAR
-// figures via fontFeatureSettings = "tnum" (mirroring iOS .monospacedDigit()) so live
-// values don't reflow; Monospace is reserved for the `mono` raw/log style only.
+// A Helvetica-Neue FontFamily where one is bundled in res/font, else FontFamily.SansSerif
+// as the documented substitute (no Helvetica asset is bundled, so the platform grotesque
+// stands in) with the same sizes/weights. Numeric/live styles stay in the house sans and
+// request TABULAR figures via fontFeatureSettings = "tnum" so live values don't reflow;
+// Monospace is reserved for the `mono` raw/log style only.
 
 object NoopType {
     // Helvetica Neue family — falls back to the platform grotesque (SansSerif) when
@@ -491,14 +489,14 @@ object NoopType {
     private val monoFamily = FontFamily.Monospace
 
     /** Display 64–80 / Bold — the recovery ring number. Tight tracking (≈ -0.04em),
-     *  tabular figures so a changing value never reflows. Mirrors StrandFont.display. */
+     *  tabular figures so a changing value never reflows. */
     fun display(size: Float = 72f) = TextStyle(
         fontFamily = sans, fontWeight = FontWeight.Bold, fontSize = size.sp,
         letterSpacing = displayTracking(size).sp, fontFeatureSettings = "tnum",
     )
 
     /** The tight tracking for big display numbers (≈ -0.04em). Already applied inside
-     *  display(); exposed to mirror StrandFont.displayTracking. */
+     *  display(); exposed so a caller building its own style can match it. */
     fun displayTracking(size: Float = 72f): Float = -size * 0.04f
 
     val title1 = TextStyle(fontFamily = sans, fontWeight = FontWeight.Bold, fontSize = 28.sp)
@@ -536,7 +534,7 @@ object NoopType {
     val mono = TextStyle(fontFamily = monoFamily, fontWeight = FontWeight.Normal, fontSize = 13.sp)
 
     /** A numeric style at an arbitrary size — the house sans with TABULAR figures
-     *  ('tnum') so live values don't reflow. Mirrors StrandFont.number. */
+     *  ('tnum') so live values don't reflow. */
     fun number(size: Float, weight: FontWeight = FontWeight.SemiBold) = TextStyle(
         fontFamily = sans, fontWeight = weight, fontSize = size.sp, fontFeatureSettings = "tnum",
     )

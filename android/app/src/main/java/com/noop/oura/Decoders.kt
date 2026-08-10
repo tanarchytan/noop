@@ -11,9 +11,8 @@ package com.noop.oura
 //   - 0x80 / 0x60 are bit-packed across byte boundaries.
 //   - live-HR IBI uses a 12-bit LE-ish nibble at subBody[5..6]: ((b6 & 0x0F) << 8) | b5.
 //
-// DIVERGENCE FROM SWIFT: payload bytes are unsigned-byte Ints (0..255) in an IntArray (see Framing.kt
-// note), so a signed int16/int8 read goes through an explicit sign-extension helper rather than
-// Swift's Int16(bitPattern:)/Int8(bitPattern:). The numeric results are identical.
+// UNSIGNED STORAGE: payload bytes are unsigned-byte Ints (0..255) in an IntArray (see Framing.kt
+// note), so a signed int16/int8 read goes through an explicit sign-extension helper.
 //
 // Platform-pure value types. All facts cited tersely
 
@@ -25,7 +24,7 @@ object OuraDecoders {
 
     private fun u16be(b: IntArray, i: Int): Int = (b[i] shl 8) or b[i + 1]
 
-    /** Signed 16-bit LE: sign-extend the assembled u16. Mirrors Swift Int16(bitPattern:). */
+    /** Signed 16-bit LE: sign-extend the assembled u16. */
     private fun i16le(b: IntArray, i: Int): Int = (b[i] or (b[i + 1] shl 8)).toShort().toInt()
 
     private fun u24le(b: IntArray, i: Int): Int = b[i] or (b[i + 1] shl 8) or (b[i + 2] shl 16)
@@ -34,7 +33,7 @@ object OuraDecoders {
         (b[i].toLong() and 0xFFL) or ((b[i + 1].toLong() and 0xFFL) shl 8) or
             ((b[i + 2].toLong() and 0xFFL) shl 16) or ((b[i + 3].toLong() and 0xFFL) shl 24)
 
-    /** Signed 8-bit: sign-extend an unsigned byte. Mirrors Swift Int8(bitPattern:). */
+    /** Signed 8-bit: sign-extend an unsigned byte. */
     private fun i8(v: Int): Int = v.toByte().toInt()
 
     // MARK: - Live-HR realtime push (0x2F sub-op 0x28; s5.6)
@@ -346,7 +345,7 @@ object OuraDecoders {
         var text: String? = null
         if (b.size > 5) {
             val tailBytes = ByteArray(b.size - 1) { b[it + 1].toByte() }
-            // Swift trims the NUL character set; match that exactly (trim only U+0000, not whitespace).
+            // Trim only U+0000, never whitespace - a trailing space is payload.
             text = String(tailBytes, Charsets.UTF_8).trim('\u0000')
         }
         return OuraState(ringTimestamp = rec.ringTimestamp, stateCode = code, text = text)
@@ -433,9 +432,8 @@ object OuraDecoders {
      * ground-truth-validated against the Oura app, so this stays Tier B end to end: OuraDriver gates it
      * behind `allowTierB`, and OuraStreamMapping never folds it into a durable stream. Values are
      * normalised to 2 decimal places so a decoded MET compares exactly against its fixture (0.1 is not
-     * exactly representable in binary floating point; same normalisation as the Swift twin, so both
-     * platforms decode identical doubles). Returns null on an empty body - a record with no state byte
-     * decodes to nothing, never a guess.
+     * exactly representable in binary floating point). Returns null on an empty body - a record with
+     * no state byte decodes to nothing, never a guess.
      */
     fun decodeActivityInfo(rec: OuraRecord): OuraActivityInfo? {
         val b = rec.payload
@@ -455,7 +453,6 @@ object OuraDecoders {
  * A minimal MSB-first bit reader over an unsigned-byte IntArray. Used for the bit-packed IBI+amplitude
  * layout where 11-bit IBI and 7-bit amplitude fields straddle byte boundaries.
  * Returns null when fewer than the requested bits remain (so the decoder stops cleanly, never guesses).
- * Kotlin twin of the Swift BitReader.
  */
 internal class BitReader(private val bytes: IntArray) {
     private var bitPos = 0

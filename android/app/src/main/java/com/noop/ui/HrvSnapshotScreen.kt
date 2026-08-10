@@ -69,8 +69,7 @@ import java.util.Locale
 import java.util.TimeZone
 
 /**
- * Manual HRV snapshot — "Take an HRV reading". Kotlin parity twin of
- * Strand/Screens/HRVSnapshotView.swift.
+ * Manual HRV snapshot — "Take an HRV reading".
  *
  * A short, deliberate seated capture: the user sits still and breathes normally while the strap's
  * live R-R intervals (the reliable 0x2A37 stream) accumulate for ~60 s. The whoop-rs cleaning pipeline
@@ -471,17 +470,17 @@ private fun NotBondedHint() {
     }
 }
 
-// MARK: - Pure view helpers (mirrors HRVSnapshotView)
+// MARK: - Pure view helpers
 
-/** Length of a capture in seconds. Mirrors HRVSnapshotView.captureSeconds. */
+/** Length of a capture in seconds. */
 const val HRV_CAPTURE_SECONDS = 60
 
-/** Generic metric-series key for a manual HRV reading (matches Swift `HRVSnapshot.metricKey`). */
+/** Generic metric-series key for a manual HRV reading. */
 const val HRV_SNAPSHOT_METRIC_KEY = "hrv_snapshot"
 
 /**
  * Source id this manual reading is stored under — its own source so it sits beside WHOOP / Apple for
- * the per-source explorer (matches Swift `HRVSnapshot.sourceId`).
+ * the per-source explorer.
  */
 const val HRV_SNAPSHOT_SOURCE_ID = "manual-hrv"
 

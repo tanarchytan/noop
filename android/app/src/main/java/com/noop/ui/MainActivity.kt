@@ -192,10 +192,9 @@ internal fun appLaunchIntent(context: Context): Intent =
             )
         }
 
-// MARK: - First-run / changelog gating (mirrors macOS ContentView.swift)
+// MARK: - First-run / changelog gating
 //
-// Two persisted flags decide what the user sees on launch, exactly like the macOS
-// ZStack-over-RootView:
+// Two persisted flags decide what the user sees on launch:
 //   • "noop.onboarded"               (Boolean, default false)
 //   • "noop.lastSeenChangelogVersion" (String,  default "")
 //
@@ -210,7 +209,7 @@ internal fun appLaunchIntent(context: Context): Intent =
 // SharedPreferences isn't reactive, so each value is read once into a remembered
 // mutableState and writes go through .edit().apply() + a state update to recompose.
 
-/** Shared accessor for the onboarding / changelog flags (the macOS @AppStorage equivalent). */
+/** Shared accessor for the onboarding / changelog flags, over SharedPreferences. */
 object NoopPrefs {
     const val NAME = "noop_prefs"
     const val KEY_ONBOARDED = "noop.onboarded"
@@ -268,7 +267,7 @@ object NoopPrefs {
 
     /** the raw-HR fingerprint ("count:maxTs") the last COMPLETED idle rescore scored against. The
      *  15-min backstop tick skips when the current fingerprint equals this; cleared implicitly by any HR
-     *  insert/delete (the fingerprint moves). Mirrors the Swift `analyzeWatermark` UserDefaults key. */
+     *  insert/delete (the fingerprint moves). */
     fun analyzeWatermark(context: Context): String? =
         of(context).getString(KEY_ANALYZE_WATERMARK, null)
 
@@ -317,7 +316,7 @@ object NoopPrefs {
 
     /** Imperial/Metric display preference. Display-only, stored data stays SI. The length/mass
      *  system is read by [UnitPrefs.system]; the temperature override (empty = "match the system") by
-     *  [UnitPrefs.temperature]. Mirrors macOS @AppStorage("units.system" / "units.temperature"). */
+     *  [UnitPrefs.temperature]. */
     const val KEY_UNIT_SYSTEM = "units.system"
     const val KEY_TEMPERATURE_UNIT = "units.temperature"
 
@@ -401,9 +400,9 @@ object NoopPrefs {
         of(context).edit().putInt(KEY_SMART_ALARM_MINUTES, minutes).apply()
     }
 
-    /** Weekdays the smart alarm fires on (Calendar.DAY_OF_WEEK: 1=Sun … 7=Sat). Empty = every day,      *  the backward-compatible default for anyone upgrading from before per-day scheduling. Stored
-     *  as a string set; only valid day numbers (1…7) are kept so a corrupted entry can't schedule a
-     *  bogus day. Mirrors macOS `BehaviorStore.smartAlarmWeekdays`. */
+    /** Weekdays the smart alarm fires on (Calendar.DAY_OF_WEEK: 1=Sun … 7=Sat). Empty = every day.
+     *  Stored as a string set; only valid day numbers (1…7) are kept so a corrupted entry can't
+     *  schedule a bogus day. */
     const val KEY_SMART_ALARM_WEEKDAYS = "noop.smartAlarmWeekdays"
 
     fun smartAlarmWeekdays(context: Context): Set<Int> =
@@ -442,8 +441,8 @@ object NoopPrefs {
     }
 
     /** HR-zone haptic coaching: buzz the strap on entering the top zone (ease off) and, when the
-     *  recovery buzz is on, on dropping back to Zone 1. Zone-based off the profile's HR-max; mirrors
-     *  macOS. Coaching default off; recovery buzz default on (matches macOS's always-both behaviour). */
+     *  recovery buzz is on, on dropping back to Zone 1. Zone-based off the profile's HR-max.
+     *  Coaching default off; recovery buzz default on. */
     const val KEY_ZONE_COACHING = "noop.zoneCoaching"
     const val KEY_ZONE_COACH_RECOVERY = "noop.zoneCoachRecovery"
 
@@ -454,7 +453,7 @@ object NoopPrefs {
         of(context).edit().putBoolean(KEY_ZONE_COACHING, enabled).apply()
     }
 
-    /** Whether to also buzz on recovering to Zone 1. Default ON (the macOS behaviour). */
+    /** Whether to also buzz on recovering to Zone 1. Default ON. */
     fun zoneCoachRecovery(context: Context): Boolean =
         of(context).getBoolean(KEY_ZONE_COACH_RECOVERY, true)
 
@@ -462,8 +461,8 @@ object NoopPrefs {
         of(context).edit().putBoolean(KEY_ZONE_COACH_RECOVERY, enabled).apply()
     }
 
-    /** Illness early-warning (banner + notification). Default ON, the watch has always run on
-     *  Android, so this is an opt-OUT; macOS is opt-in (behavior.illnessWatch, default off). */
+    /** Illness early-warning (banner + notification). Default ON — the watch has always run, so
+     *  this is an opt-OUT. */
     const val KEY_ILLNESS_WATCH = "noop.illnessWatch"
 
     fun illnessWatch(context: Context): Boolean =
@@ -511,8 +510,7 @@ object NoopPrefs {
     }
 
     /** The user's EDITED Coach system prompt. Empty/absent means "use the built-in default". A small,
-     *  non-secret text key, read FRESH per request so an edit takes effect on the next message. Mirrors
-     *  macOS/iOS UserDefaults "ai.systemPrompt". */
+     *  non-secret text key, read FRESH per request so an edit takes effect on the next message. */
     const val KEY_COACH_SYSTEM_PROMPT = "noop.coachSystemPrompt"
 
     /** The stored prompt override, or empty string when nothing custom is set. */
@@ -529,7 +527,7 @@ object NoopPrefs {
     /** "Auto-detect workouts" (MVP, opt-in, on-device, NON-DESTRUCTIVE). When ON, NOOP scans the last
      *  day or two of strap HR for a sustained-elevated bout and surfaces ONE dismissible Today card
      *  suggesting you save it, it NEVER creates a workout on its own (the user taps Save). Default OFF;
-     *  when off no detection runs and no card shows. Mirrors macOS/iOS @AppStorage("autoDetectWorkouts"). */
+     *  when off no detection runs and no card shows. */
     const val KEY_AUTO_DETECT_WORKOUTS = "noop.autoDetectWorkouts"
 
     fun autoDetectWorkouts(context: Context): Boolean =
@@ -562,8 +560,7 @@ object NoopPrefs {
     }
 
     /** Predictive "recharge tonight" warning at ~24h of estimated runtime left. Sub-gate under
-     *  KEY_BATTERY_ALERTS (both must be on). Default ON so pre-toggle behavior is unchanged.
-     *  iOS/macOS twin key: behavior.batteryPredictiveAlerts. */
+     *  KEY_BATTERY_ALERTS (both must be on). Default ON so pre-toggle behavior is unchanged. */
     const val KEY_BATTERY_PREDICTIVE_ALERTS = "noop.batteryPredictiveAlerts"
 
     fun predictiveBatteryAlerts(context: Context): Boolean =
@@ -808,7 +805,7 @@ fun NoopRoot() {
     val prefs = remember { NoopPrefs.of(context) }
     val appViewModel: AppViewModel = viewModel()
 
-    // app-wide "came to foreground" hook, mirrors the iOS/macOS scenePhase == .active trigger.
+    // app-wide "came to foreground" hook.
     // requestSync(FOREGROUND) is a safe no-op when nothing's connected/bonded yet (e.g. during
     // onboarding), so this is placed above the onboarding gate rather than duplicated below it.
     // ON_START/ON_STOP additionally drive the live-HR reachability gate: a screen want is armed only
@@ -849,7 +846,7 @@ fun NoopRoot() {
             viewModel = appViewModel,
             onFinished = {
                 // A brand-new user just completed onboarding, don't also pop the
-                // changelog at them; mark them current (mirrors macOS ContentView onFinished).
+                // changelog at them; mark them current.
                 prefs.edit()
                     .putBoolean(NoopPrefs.KEY_ONBOARDED, true)
                     .putString(NoopPrefs.KEY_LAST_SEEN_CHANGELOG, AppChangelog.CURRENT_VERSION)

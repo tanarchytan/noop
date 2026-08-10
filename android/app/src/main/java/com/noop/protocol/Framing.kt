@@ -12,7 +12,7 @@ package com.noop.protocol
  * Accumulate BLE notification fragments into complete frames.
  *
  * A complete frame is `length + 4` bytes where `length` = u16 LE at buf[1..3]. Leading bytes before
- * the 0xAA SOF are discarded. Mirrors framing.py / Swift `Reassembler`.
+ * the 0xAA SOF are discarded.
  */
 class Reassembler(private val family: DeviceFamily = DeviceFamily.WHOOP4) {
     // The backing store is a plain ByteArray plus a read cursor, not an ArrayList<Byte>. The old form
@@ -28,8 +28,7 @@ class Reassembler(private val family: DeviceFamily = DeviceFamily.WHOOP4) {
 
     /**
      * Drop any partial-frame remnant. Called on (re)connect so a stalled or garbage frame from one
-     * session can't wedge the live stream in the next. The macOS BLEManager achieves the same by
-     * reassigning a fresh `Reassembler` on every connect (BLEManager.swift:183).
+     * session can't wedge the live stream in the next.
      */
     fun reset() {
         head = 0

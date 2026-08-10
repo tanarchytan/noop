@@ -46,18 +46,18 @@ import java.util.Locale
 import kotlin.math.abs
 import kotlin.math.roundToInt
 
-// MARK: - StepsCalibrationScreen (ported from Strand/Screens/SettingsView.swift StepsCalibrationSheet)
+// MARK: - StepsCalibrationScreen
 //
 // WHOOP 4.0 steps-ESTIMATE calibration. A 4.0 sends no step count over BLE, so NOOP estimates steps
 // from the strap's daily MOTION VOLUME, calibrated per-user against the phone's real step count. This
 // screen is read-only over the engine's fit (it never recomputes the headline): an honest explainer,
 // the current calibration, a recent estimated-vs-phone accuracy table, and a manual coefficient
-// override with a live preview. Mirrors the macOS StepsCalibrationSheet card-for-card and shares its
-// confidence wording via [StepsCalibrationFormat]. Presented in a full-screen Dialog from Settings →
+// override with a live preview. Shares its confidence wording with the Profile summary row via
+// [StepsCalibrationFormat]. Presented in a full-screen Dialog from Settings →
 // Profile → "Steps estimate".
 
 /** Shared formatters for the steps-estimate calibration UI — kept apart so the Profile summary row and
- *  this screen agree on the confidence wording. Mirrors the macOS `StepsCalibrationFormat`. */
+ *  this screen agree on the confidence wording. */
 object StepsCalibrationFormat {
     /** A 0–1 confidence worded for this screen, banded by [StepsEstimateEngine.ConfidenceTier]. A
      *  manual coefficient is confidence 1.0 → "High". Resolved by the caller, which has a Context. */
@@ -164,7 +164,7 @@ fun StepsCalibrationScreen(
                 // the matched-day count (phone-counted days we could pair with strap motion — the
                 // engine's "usable overlapping days") drives the "Need N more days…" countdown. In the
                 // not-calibrated state the comparison build early-returns on coeff <= 0, so this is 0 and
-                // the headline reads the full MIN_CALIBRATION_DAYS — exactly the Swift behaviour.
+                // the headline reads the full MIN_CALIBRATION_DAYS.
                 CurrentFitCard(profile, matchedDays = comparison.size)
                 ComparisonCard(comparison)
                 ManualAdjustCard(
@@ -343,7 +343,7 @@ private fun CurrentFitCard(profile: ProfileStore, matchedDays: Int) {
                     color = Palette.textPrimary,
                 )
                 // a concrete countdown instead of a vague "a few days". Headline comes straight from
-                // the engine's NeedsMoreDays state so the wording matches the Today steps tile + the Swift card.
+                // the engine's NeedsMoreDays state so the wording matches the Today steps tile.
                 Text(
                     StepsEstimateEngine.CalibrationStatus
                         .NeedsMoreDays(have = matchedDays, need = StepsEstimateEngine.MIN_CALIBRATION_DAYS)

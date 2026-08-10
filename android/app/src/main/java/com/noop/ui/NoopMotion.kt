@@ -30,7 +30,7 @@ import kotlinx.coroutines.delay
 
 // MARK: - NoopMotion — the "Design Reset" motion set (WHOOP design language, 2026-06-22)
 //
-// Compose port of StrandDesign/NoopMotion.swift. The house motion language for the
+// The house motion language for the
 // WHOOP-flavoured redesign: smooth, snappy, almost no bounce. Beauty is in the restraint —
 // type, spacing and a single confident settle, NOT effects. NO glow here, nothing that
 // pulses or loops. Three things screens reach for constantly:
@@ -41,8 +41,7 @@ import kotlinx.coroutines.delay
 //
 // Every helper is public, GPU-cheap (alpha / translation / scale only), and honours Reduce
 // Motion: under it, animations collapse to their final frame instantly with no offset, scale
-// or counting. Android has no per-app accessibility flag equivalent to iOS
-// `accessibilityReduceMotion`, so we read the system animator scale
+// or counting. Android has no per-app reduce-motion flag, so we read the system animator scale
 // (`Settings.Global.ANIMATOR_DURATION_SCALE` == 0 → "Remove animations" / animations off),
 // the canonical Android signal that the user has opted out of motion.
 
@@ -51,8 +50,7 @@ import kotlinx.coroutines.delay
 /**
  * True when the user has disabled system animations (Settings → Accessibility → "Remove
  * animations", or Developer options → Animator duration scale = Off). The closest Android
- * analogue to iOS `accessibilityReduceMotion`: when on, every NOOP motion helper degrades to
- * its final frame instantly.
+ * When on, every NOOP motion helper degrades to its final frame instantly.
  *
  * Read once per composition from `Settings.Global.ANIMATOR_DURATION_SCALE`; previews
  * (inspection mode) always report `false` so design tooling shows the animated state.
@@ -74,8 +72,8 @@ fun rememberReduceMotion(): Boolean {
 object NoopMotion {
 
     // MARK: Springs — smooth, snappy, minimal bounce.
-    // SwiftUI `spring(response:dampingFraction:)` maps to Compose `spring(dampingRatio, stiffness)`
-    // where stiffness ≈ (2π / response)² and dampingRatio == dampingFraction.
+    // Each spring is specified as a perceptual `response` (seconds) + damping fraction, mapped to
+    // Compose `spring(dampingRatio, stiffness)` where stiffness ≈ (2π / response)².
 
     /** Screen-level spring — page pushes, sheet/tab swaps. response 0.46 / damping 0.88. */
     fun <T> screen(): AnimationSpec<T> =
@@ -89,7 +87,7 @@ object NoopMotion {
     fun <T> value(): AnimationSpec<T> =
         spring(dampingRatio = 0.90f, stiffness = stiffnessFor(0.34f))
 
-    /** Convert a SwiftUI spring `response` (perceptual duration, seconds) to a Compose `stiffness`. */
+    /** Convert a spring `response` (perceptual duration, seconds) to a Compose `stiffness`. */
     private fun stiffnessFor(response: Float): Float {
         val omega = (2.0 * Math.PI) / response.toDouble()
         return (omega * omega).toFloat()
@@ -98,7 +96,7 @@ object NoopMotion {
     // MARK: Stagger
 
     /** Per-item delay (ms) for a staggered list/grid reveal. Index 0 fires immediately; each
-     *  subsequent item waits `index * staggerMs`. Mirrors the iOS 0.04s. */
+     *  subsequent item waits `index * staggerMs`. */
     const val staggerMs: Int = 40
 
     /** The pre-reveal vertical offset (dp) for a staggered/appear item (rises UP into place). */
@@ -116,7 +114,7 @@ object NoopMotion {
 
 /**
  * A text view whose number animates from its previous value to the new one. Use for the big
- * scores / hero metric read-outs. Mirrors iOS `CountUpText`.
+ * scores / hero metric read-outs.
  *
  * ```
  * CountUpText(
@@ -172,8 +170,7 @@ fun CountUpText(
 
 /**
  * Fade-in + 8dp rise on first appearance, delayed by `index * 40ms` for a sequenced list/grid
- * reveal. Runs ONCE per element. Honours Reduce Motion (appears instantly, no offset). Mirrors
- * iOS `.staggeredAppear(index:)`.
+ * reveal. Runs ONCE per element. Honours Reduce Motion (appears instantly, no offset).
  *
  * @param index position in the sequence (0 = first / no delay).
  * @param isVisible set `false` to opt an element out (it stays fully shown).

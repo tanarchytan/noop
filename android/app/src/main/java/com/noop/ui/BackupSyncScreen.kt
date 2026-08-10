@@ -67,7 +67,8 @@ import kotlinx.coroutines.withContext
  *     only for folders we can't enumerate / legacy files.
  *  2. An explicit in-app confirm dialog fires before any destructive restore call.
  *  3. The file-fallback picker is tightened off the all-files wildcard to the backup MIME types, and
- *     the live [DataBackup.importFrom] now also rejects a foreign-but-valid SQLite (Mac/GRDB or other-app DB).
+ *     the live [DataBackup.importFrom] now also rejects a foreign-but-valid SQLite (one carrying a
+ *     `grdb_migrations` table, or any other app's store).
  */
 @Composable
 fun BackupSyncScreen(repo: WhoopRepository) {
@@ -170,7 +171,7 @@ fun BackupSyncScreen(repo: WhoopRepository) {
 
     // The FILE fallback is tightened to the backup MIME types. Used only
     // when the chosen folder holds no snapshots, or to restore a one-off file from elsewhere. The chosen
-    // file still passes through importFrom's full validation (magic + Room/GRDB-origin) and the same
+    // file still passes through importFrom's full validation (magic + foreign-origin) and the same
     // confirm dialog before it overwrites anything.
     val pickRestoreFile = rememberLauncherForActivityResult(
         ActivityResultContracts.OpenDocument(),
@@ -498,7 +499,7 @@ fun BackupSyncScreen(repo: WhoopRepository) {
                     snapshots.forEach { snap ->
                         // Label + confirmation come from the resolved timeMs carried through from
                         // listSnapshotDocs, so a hand-named / date-only backup still shows a friendly date
-                        // (its file-modification date) instead of the raw filename - parity with Swift. Only
+                        // (its file-modification date) instead of the raw filename. Only
                         // when the date is genuinely unknown (timeMs == 0) do we fall back to the name.
                         val whenLabel = if (snap.timeMs > 0L) {
                             DateUtils.getRelativeTimeSpanString(snap.timeMs).toString()

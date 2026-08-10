@@ -80,7 +80,7 @@ import kotlinx.coroutines.launch
 // never touches the BLE client directly - only the AppViewModel pass-throughs. WHOOP-FIRST: WHOOP is the
 // primary band; the type list shows it first and a footer reiterates it. Renders cleanly with nothing
 // nearby (the type picker, every prep step, and the searching/empty pick state all need no hardware).
-// Faithful Kotlin twin of Strand/Screens/AddDeviceWizard.swift. US English throughout.
+// US English throughout.
 
 /** What the user is adding. Drives the prep copy AND which scan/register path runs. */
 private enum class DeviceType {
@@ -259,7 +259,7 @@ fun AddDeviceWizard(
      * OuraRingGen.from(model)), sourceKind "oura" (routes the SourceCoordinator to [OuraLiveSource]),
      * gen-filtered capabilities - then registers it active so the live source starts. The Advanced path
      * also stores the user-supplied 16-byte key in the encrypted key store under the SAME id so the live
-     * source's authKey closure can read it. Mirrors the macOS finishAdd Oura branch.
+     * source's authKey closure can read it.
      */
     /**
      * Register an adopted (or Advanced-key) Oura ring active. [closeAfter] controls whether the wizard
@@ -312,7 +312,7 @@ fun AddDeviceWizard(
     }
 
     // The live adopt-failure reason (the source's needs-pairing message). Collected here so the honest
-    // Failed step can surface it instead of static copy, mirroring the Swift wizard's `model.ouraNeedsPairing`.
+    // Failed step can surface it instead of static copy.
     // The Adopting->Failed observer (the LaunchedEffect below) reads the SAME value.
     val adoptNeedsPairing by viewModel.ouraNeedsPairing.collectAsStateWithLifecycle()
 
@@ -372,7 +372,7 @@ fun AddDeviceWizard(
                     scanner = ouraScanner,
                     gen = ouraGen,
                     name = nameDraft,
-                    // The live adopt-failure reason, so the honest Failed step shows it (Swift parity).
+                    // The live adopt-failure reason, so the honest Failed step shows it.
                     failureReason = adoptNeedsPairing,
                     onConsent = { ouraConsent = it },
                     onKeyDraft = { ouraKeyDraft = it },
@@ -461,7 +461,7 @@ fun AddDeviceWizard(
     }
 
     // Final destructive confirm before the Oura key install (Step D's system alert). Tapping "Take over"
-    // moves to the honest Adopting progress, then registers the ring. Mirrors the macOS adopt confirm.
+    // moves to the honest Adopting progress, then registers the ring.
     if (ouraConfirmAdopt) {
         NoopConfirmDialog(
             title = stringResource(R.string.wizard_take_over_title),
@@ -480,8 +480,8 @@ fun AddDeviceWizard(
     // Drive the Adopting step to success (the active source reached streaming -> close) or to a REACHABLE
     // honest Failed step (the active source reported its adopt failed or announced needs-pairing). Only acts
     // while on the Adopting step, so a later steady-state needs-pairing on the device card never reopens this.
-    // Mirrors the Swift wizard's onChange(of: model.ouraAdoptPhase) / ouraNeedsPairing observers; a
-    // LaunchedEffect keeps the state write a side effect of the observed change, not a composition write.
+    // A LaunchedEffect keeps the state write a side effect of the observed change, not a composition
+    // write.
     val adoptPhase by viewModel.ouraAdoptPhase.collectAsStateWithLifecycle()
     LaunchedEffect(type, ouraStep, adoptPhase, adoptNeedsPairing) {
         if (type != DeviceType.Oura || ouraStep != OuraStep.Adopting) return@LaunchedEffect
@@ -618,7 +618,7 @@ private fun TypeRow(icon: ImageVector, title: String, subtitle: String, onClick:
  * The one-phone pairing warning shown before pairing a WHOOP strap. A WHOOP band bonds to a single
  * device/app at a time, so connecting it to NOOP means it won't stream to the official WHOOP app at the
  * same time (and vice versa). Honest + reversible: re-pairing in the other app hands the strap back. No
- * em-dashes. Mirrors the iOS one-phone warning card so all platforms say the same thing.
+ * em-dashes.
  */
 @Composable
 private fun OnePhoneWarningCard() {
@@ -692,8 +692,8 @@ private fun PrepStep(type: DeviceType, onScan: () -> Unit) {
         }
 
         // A WHOOP strap bonds to ONE phone/app at a time. Make the trade-off explicit BEFORE pairing so it
-        // isn't a surprise, with the honest reassurance that it is reversible. Mirrors the iOS one-phone
-        // pairing warning card. Shown for both WHOOP models (the constraint is the strap's, not the app's).
+        // isn't a surprise, with the honest reassurance that it is reversible. Shown for both WHOOP models
+        // (the constraint is the strap's, not the app's).
         if (type.isWhoop) {
             OnePhoneWarningCard()
         }
@@ -777,7 +777,7 @@ internal fun WhoopPickStep(
 
 // MARK: - Oura factory-reset-and-adopt flow (section 2 of the onboarding UX spec)
 //
-// Faithful Compose port of the macOS Oura adopt flow. The Oura type runs its OWN step machine
+// The Oura type runs its OWN step machine
 // (gate -> prep -> pick -> confirm -> adopting) plus the Advanced (B-Alt) key path. Every screen is
 // honest: the destructive consent gate, the single-owner warning, the per-gen capability checklist (dash
 // for not-available, * for an on-device estimate), and the honest progress sub-states. No em-dashes.
@@ -1204,13 +1204,12 @@ private fun OuraFailedStep(reason: String?, onTryAgain: () -> Unit, onUseFileImp
             color = Palette.textPrimary,
         )
         // Surface the live adopt-failure reason when the source reported one; otherwise the static help.
-        // Mirrors the Swift wizard's `model.ouraNeedsPairing ?? <static fallback>`.
         Text(
             reason ?: stringResource(R.string.wizard_oura_failed_body),
             style = NoopType.subhead,
             color = Palette.textSecondary,
         )
-        // Honest recovery reassurance (Swift parity): a failed adopt never bricks the ring.
+        // Honest recovery reassurance: a failed adopt never bricks the ring.
         Text(
             stringResource(R.string.wizard_oura_failed_recovery),
             style = NoopType.subhead,
@@ -1278,8 +1277,8 @@ private fun OuraBulletList(lines: List<String>) {
  * The per-generation capability checklist (section 3 of the onboarding UX spec). Each row is a (mark,
  * label) pair: a tick for decoded-and-used, * for a best-effort on-device estimate, and a dash for
  * not-available-off-the-ring. Gen3/Ring4 are the verified path; the newer (gen4-family / gen5) variant
- * carries the same set with the extra caveat that decoding is least proven. Mirrors the macOS capability
- * matrix; no Oura Readiness/Sleep score or absolute SpO2 % ever comes off the ring.
+ * carries the same set with the extra caveat that decoding is least proven. No Oura Readiness/Sleep
+ * score or absolute SpO2 % ever comes off the ring.
  */
 @Composable
 private fun ouraCapabilityRows(gen: OuraRingGen): List<Pair<String, String>> {
@@ -1301,7 +1300,7 @@ private fun ouraCapabilityRows(gen: OuraRingGen): List<Pair<String, String>> {
 /**
  * Parse a 32-hex-character ring key string into 16 unsigned bytes (0..255), or null when it is not exactly
  * 32 hex chars. Whitespace is ignored so a pasted key with stray spaces still validates. Shared by the
- * Advanced gate's validation and finishAddOura's key store write. Mirrors the macOS 16-byte/32-hex check.
+ * Advanced gate's validation and finishAddOura's key store write.
  */
 private fun parseHexKey(input: String): IntArray? {
     val hex = input.filterNot { it.isWhitespace() }
@@ -1311,8 +1310,7 @@ private fun parseHexKey(input: String): IntArray? {
 }
 
 /** Shared pick-step shell: a searching status bar + a Rescan button, then either the searching card
- *  (while [isEmpty]) or the caller's discovered [rows]. Mirrors the iOS pick step's ScanStatusBar +
- *  SearchingCard. */
+ *  (while [isEmpty]) or the caller's discovered [rows]. */
 @Composable
 private fun PickList(
     searching: Boolean,

@@ -3,7 +3,7 @@ package com.noop.protocol
 /**
  * Decoded stream rows — the durable, compact local record produced from parsed frames.
  *
- * Ported from the Swift reference (Streams.swift). `ts` is wall-clock unix seconds throughout.
+ * `ts` is wall-clock unix seconds throughout.
  * These are pure data carriers with no Android/Room dependency; the data layer maps them onto
  * Room entities (HrSample, RrInterval, EventRow, BatterySample) as needed.
  */
@@ -16,30 +16,28 @@ data class RrInterval(val ts: Int, val rrMs: Int)
 
 /**
  * A raw-ADC SpO2 sample at wall-clock unix seconds [ts]. Mirrors the Room `Spo2Sample` (red/ir)
- * and the Swift `SpO2Sample(red:ir:unit:)` shape so [StreamPersistence.toBatch] is a 1:1 widen.
+ * so [StreamPersistence.toBatch] is a 1:1 widen.
  * Historically only the type-47 historical-offload path produced these; the live carrier now also
  * carries them so a single-value optical source (the Oura ring exposes ONE combined SpO2 reading,
  * not separate red/ir channels) can flow live. Such a source puts its raw value in [red] and
  * leaves [ir] at 0 (an unread channel, never a fabricated second reading).
  *
  * [unit] preserves the decoder's own scale tag (e.g. "raw_adc"/"raw"/"dc_raw") so a downstream
- * reader never assumes a percentage. This mirrors the unit fidelity the Swift `SpO2Sample` carries,
- * so the unit is not silently dropped on the Kotlin side at the carrier level. (The Room `Spo2Sample`
- * entity has no unit column yet; the carrier-level tag documents the convention until a migration
- * adds one.)
+ * reader never assumes a percentage — the scale is never silently dropped at the carrier level. (The
+ * Room `Spo2Sample` entity has no unit column yet; the carrier-level tag documents the convention
+ * until a migration adds one.)
  */
 data class Spo2Sample(val ts: Int, val red: Int, val ir: Int, val unit: String = "raw_adc")
 
 /**
- * A skin-temperature sample at wall-clock unix seconds [ts]. Mirrors the Room `SkinTempSample` and
- * the Swift `SkinTempSample(raw:unit:)` shape.
+ * A skin-temperature sample at wall-clock unix seconds [ts]. Mirrors the Room `SkinTempSample`.
  *
  * UNIT CONVENTION: [raw] is a device-native register value whose °C scale is FAMILY-SPECIFIC —
  * the 5/MG v18 @73 field is CENTI-degrees C (°C = raw / 100), but the WHOOP 4.0 v24 @72 field is a RAW
- * ADC on a different scale. The analytics reader (AnalyticsEngine / wornNightlySkinTempC, both platforms)
+ * ADC on a different scale. The analytics reader (AnalyticsEngine / wornNightlySkinTempC)
  * converts via [skinTempCelsius], which branches on [DeviceFamily]; running the 4.0 raw through /100 read
  * every worn night ~8 °C, below the 28 °C worn gate. The live Oura path stores celsius * 100
- * (the 5/MG centidegree convention), so its raw decodes identically on Android and macOS. [unit] carries a
+ * (the 5/MG centidegree convention), so its raw decodes on the WHOOP5 branch. [unit] carries a
  * scale tag ("raw_adc") so the scale is never silently assumed. (The Room entity has no unit column yet;
  * this carrier-level tag plus this comment document the convention until a migration adds one.)
  */
@@ -47,8 +45,7 @@ data class SkinTempSample(val ts: Int, val raw: Int, val unit: String = "raw_adc
 
 /**
  * WHOOP 4.0 (v24) skin-temp mapping constants. The single provisional slope + anchor live in ONE
- * place so the two-point-calibration TODO has an obvious home. Kept in lockstep with the Swift
- * `Whoop4SkinTemp`.
+ * place so the two-point-calibration TODO has an obvious home.
  */
 object Whoop4SkinTemp {
     /** Worn resting raw register value the GLOBAL anchor pins (first reporter's steady worn baseline, ~826).
@@ -132,8 +129,7 @@ object Whoop4SkinTemp {
  *
  *   TODO: replace the provisional slope with the exact two-point anchor once a second worn point at a
  *   markedly different ambient pins the ADC→°C transfer (including whether it is linear). Until then this is
- *   a defensible worn-range mapping, NOT a claimed-accurate absolute thermometer. Kept in lockstep with the
- *   Swift `skinTempCelsius(raw:family:anchorRaw:)`.
+ *   a defensible worn-range mapping, NOT a claimed-accurate absolute thermometer.
  */
 fun skinTempCelsius(
     raw: Int,
@@ -267,7 +263,7 @@ internal fun appendBattery(out: Streams, ts: Int, p: Map<String, Any?>) {
     out.battery.add(BatterySample(ts = ts, soc = soc, mv = mv, charging = charging))
 }
 
-// MARK: - Heterogeneous parsed-map accessors (mirror Swift's ParsedValue.intValue/etc.)
+// MARK: - Heterogeneous parsed-map accessors (Int/Long/Double/String out of the parsed map)
 
 internal fun Map<String, Any?>.intOrNull(key: String): Int? = when (val v = this[key]) {
     is Int -> v

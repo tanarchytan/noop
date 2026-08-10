@@ -43,7 +43,7 @@ import kotlin.math.roundToInt
 
 // MARK: - Trends Report
 //
-// Kotlin parity for the macOS/iOS shareable offline trends report. Builds the five
+// The shareable offline trends report. Builds the five
 // metric day→value maps from the merged DailyMetric history, calls the pure, unit-tested
 // RangeReportEngine for a chosen range, renders a clean one-page PDF with android.graphics
 // (a deterministic native Canvas — no Compose-window dependency), saves it to the app's
@@ -52,7 +52,7 @@ import kotlin.math.roundToInt
 // Honesty: an empty range (no metric carried a reading) renders a friendly "not enough
 // data in this range yet" page, never a blank or fabricated sheet.
 
-// MARK: - Range options (mirror Swift ReportRange)
+// MARK: - Range options
 
 /** The export window choices: trailing N days, or all history. */
 enum class ReportRange(val days: Int?, val label: String, val longName: String) {
@@ -153,7 +153,7 @@ object TrendsReportData {
     }
 }
 
-// MARK: - Metric → colour (mirror Swift's per-metric hue; raw ARGB for the native Canvas)
+// MARK: - Metric → colour (raw ARGB for the native Canvas)
 
 private fun ReportMetric.accentArgb(): Int = when (this) {
     ReportMetric.WORKOUTS -> 0xFFD98A3D.toInt()       // activity → the Effort (amber) world
@@ -171,8 +171,7 @@ private fun ReportMetric.accentArgb(): Int = when (this) {
 
 object TrendsReportRenderer {
 
-    // Page geometry — A4-ish portrait at the same ~612pt width the Swift page uses, so the
-    // two platforms produce visually matched sheets.
+    // Page geometry — A4-ish portrait, ~612pt wide. Every layout constant below is in these units.
     private const val PAGE_W = 612
     private const val PAGE_H = 850
     private const val MARGIN = 28f
@@ -548,7 +547,7 @@ object TrendsReportRenderer {
         return (a shl 24) or (color and 0x00FFFFFF)
     }
 
-    // --- Formatting (mirror the Swift page) ---
+    // --- Formatting ---
 
     private fun valueText(v: Double, metric: ReportMetric): String {
         // One decimal for sleep hours, respiratory rate, skin-temp Δ and the 0–3 stress score
@@ -666,7 +665,7 @@ fun TrendsReportExportSection(vm: AppViewModel, modifier: Modifier = Modifier) {
             Text(range.longName, style = NoopType.footnote, color = Palette.textTertiary)
 
             // Routed through the unified NoopButton (crisp filled accent, no gold) — the same button
-            // system every other CTA uses, mirroring the iOS exportReportRow.
+            // system every other CTA uses.
             NoopButton(
                 text = stringResource(R.string.trends2_export_cta),
                 leadingIcon = Icons.Filled.IosShare,

@@ -60,7 +60,7 @@ import kotlin.math.roundToInt
  * titled top bar (Close) and a scrollable body hosting the existing What-shaped-it breakdown, the
  * Contributors bars and (S4) the folded Readiness card. Built only when shown (the caller gates on
  * showChargeBreakdown), so the heavy rows materialise on tap. Nothing is recomputed here, it reuses
- * the existing sections, which read the SAME carried/today row the ring shows. Mirrors iOS chargeBreakdownSheet.
+ * the existing sections, which read the SAME carried/today row the ring shows.
  * `internal` (not private) so the Coupled view's hero ring opens THIS same sheet, one breakdown,
  * never a duplicate.
  */
@@ -122,7 +122,7 @@ internal fun ChargeBreakdownSheet(
 // Charge ring reads, so a row can never describe a term the score did not use; a
 // missing input yields NO row (never a faked zero). The confidence dot + tier tag SURFACE the existing
 // ScoreConfidence.forCharge: they are read, not recomputed. Hidden entirely when the day can't score
-// (cold-start / no drivers). Byte-aligned with the iOS "What shaped it" section. No em-dashes.
+// (cold-start / no drivers). No em-dashes in the copy.
 
 @Composable
 internal fun RecoveryDriversSection(
@@ -186,7 +186,7 @@ private fun ChargeConfidencePill(tier: ScoreConfidence) {
 }
 
 /** One "What shaped it" driver row: an up/down delta chip (signed points, green up / red down),
- *  the label + verdict, and the value over its baseline. Mirrors the iOS driver row layout. */
+ *  the label + verdict, and the value over its baseline. */
 @Composable
 private fun DriverRow(driver: ChargeDriver) {
     val positive = driver.deltaPoints >= 0
@@ -251,9 +251,9 @@ private fun DriverRow(driver: ChargeDriver) {
 // MARK: - Recovery contributors, labelled progress bars
 //
 // "CONTRIBUTORS", what drove today's Charge, each as a labelled progress bar in the shared stage/zone
-// bar style (inset track, round-capped metric-hue fill, right-aligned read-out). Design-Reset tokens
-// (iOS RecoveryContributorsSection parity): HRV reads teal (metricCyan), Resting HR the recovery/Charge
-// world (chargeColor), Sleep and Respiratory the blue sleep world. Each bar's fraction is a
+// bar style (inset track, round-capped metric-hue fill, right-aligned read-out). Design-Reset tokens:
+// HRV reads teal (metricCyan), Resting HR the recovery/Charge world (chargeColor), Sleep and
+// Respiratory the blue sleep world. Each bar's fraction is a
 // presentation-only normalisation of the day's value to a typical adult span, no scoring/logic change.
 // Suppressed entirely until at least one contributor has a value.
 
@@ -284,15 +284,15 @@ internal fun RecoveryContributorsSection(day: DailyMetric?, carriedDay: DailyMet
     )
     NoopCard {
         Column(verticalArrangement = Arrangement.spacedBy(Metrics.space16)) {
-            // HRV, higher is better; map a typical 20–120 ms span. Teal (its biometric hue; iOS metricCyan).
+            // HRV, higher is better; map a typical 20–120 ms span. Teal (metricCyan, its biometric hue).
             ContributorBar(
                 label = stringResource(R.string.today_metric_hrv),
                 readout = hrv?.let { "${it.roundToInt()} ms" } ?: NO_DATA,
                 fraction = hrv?.let { ((it - 20.0) / 100.0) },
                 color = Palette.metricCyan,
             )
-            // Resting HR, lower is better, so invert a typical 40–80 bpm span. Charge/recovery world (iOS
-            // chargeColor, the recovery contributor reads on the WHOOP-green Charge world, not gold).
+            // Resting HR, lower is better, so invert a typical 40–80 bpm span. Charge/recovery world
+            // (chargeColor: the recovery contributor reads on the WHOOP-green Charge world, not gold).
             ContributorBar(
                 label = stringResource(R.string.today_metric_resting_hr),
                 readout = rhr?.let { "${it.roundToInt()} bpm" } ?: NO_DATA,
@@ -385,7 +385,7 @@ internal fun recoveryCalibrationNights(
  * (byte-identical to the engine's whole-history fold when no manual Recalibrate epoch is set, the common
  * case), then defers to [chargeDriverRows], which scores each row in whoop-rs against the SAME inputs
  * the Charge score reads. Empty when the displayed day can't score (cold-start / missing input),
- * so the section hides rather than faking rows. Mirrors the iOS chargeDrivers wiring.
+ * so the section hides rather than faking rows.
  */
 internal fun recoveryChargeDrivers(
     days: List<DailyMetric>,
@@ -431,7 +431,7 @@ internal fun recoveryChargeDrivers(
  * The Charge (recovery) [ScoreConfidence] tier for [displayDay] against the HRV baseline folded from
  * [days], surfaced as the confidence dot + tier tag under the "What shaped it" rows. SURFACED, never
  * recomputed differently: it calls [ScoreConfidence.forCharge] with the SAME folded HRV baseline the
- * drivers scored against. Mirrors the iOS surfacing of the existing ScoreConfidence on the recovery screen.
+ * drivers scored against.
  */
 internal fun chargeConfidenceTier(
     days: List<DailyMetric>,
@@ -449,7 +449,7 @@ internal fun chargeConfidenceTier(
  * unit-tested (TodayMetricTilesTest). [days] is oldest→newest; the chosen row is the last with a non-null
  * recovery that isn't today's (still-null) [selectedDayKey]. Returns null unless it's today, today itself
  * isn't scored, and we're not mid-calibration (calibration owns its own copy), so past days / a scored
- * today / a calibrating today carry nothing and live behaviour is unchanged. Mirrors iOS.
+ * today / a calibrating today carry nothing and live behaviour is unchanged.
  */
 internal fun lastScoredRecoveryDay(
     days: List<DailyMetric>,
@@ -470,24 +470,24 @@ internal fun lastScoredRecoveryDay(
 }
 
 /** A prior day's Charge carried over on TODAY (value + "Last night · <date>" caption) while tonight's
- *  recovery hasn't been scored yet. Mirrors the iOS lastScoredCharge tuple. */
+ *  recovery hasn't been scored yet. */
 internal data class LastCharge(val value: Double, val caption: String)
 
 /** "d MMM" for a stored `yyyy-MM-dd` day key, used by the carried-over Charge caption. Parses
- *  the key and falls back to the raw key so the caption is never empty. Mirrors iOS lastChargeDateFmt. */
+ *  the key and falls back to the raw key so the caption is never empty. */
 internal fun lastChargeDateLabel(dayKey: String): String =
     runCatching {
         LocalDate.parse(dayKey).format(DateTimeFormatter.ofPattern("d MMM", Locale.US))
     }.getOrDefault(dayKey)
 
 /** Carry-over recency cap: the "Last night" framing only holds when the carried scored day is
- *  within this many days of today. Mirrors iOS TodayView.carryFreshnessDays. */
+ *  within this many days of today. */
 internal const val CARRY_FRESHNESS_DAYS = 2L
 
 /** True when the carried scored day is OLDER than the freshness cap, which drives the "Latest
- *  sleep" relabel. Pure + unit-testable. Both keys are "yyyy-MM-dd"; an unparseable key (or non-positive gap)
+ *  sleep" relabel. Pure + unit-tested. Both keys are "yyyy-MM-dd"; an unparseable key (or non-positive gap)
  *  reads as fresh so we never over-claim staleness. [today] is today's key (carry-over is today-only),
- *  defaulted to the device's current date for the composable call sites. Mirrors iOS isCarryStale. */
+ *  defaulted to the device's current date for the composable call sites. */
 internal fun isCarryStale(priorDayKey: String, today: String = LocalDate.now().toString()): Boolean =
     runCatching {
         ChronoUnit.DAYS.between(LocalDate.parse(priorDayKey), LocalDate.parse(today)) > CARRY_FRESHNESS_DAYS
@@ -499,7 +499,7 @@ internal fun isCarryStale(priorDayKey: String, today: String = LocalDate.now().t
  *  `sleep_performance` point ever written) used to pin Rest to a weeks-old scored night while Charge kept
  *  advancing; gating the tail-fallback lets the Rest ring fall through to its needs-a-tracked-night state
  *  instead of freezing on a stale number. The legitimate morning carry of last night's Rest (before today
- *  scores) is preserved unchanged. Pure + unit-testable. Mirrors iOS TodayView.freshRestScore. */
+ *  scores) is preserved unchanged. Pure + unit-tested. */
 internal fun freshRestScore(
     todayValue: Double?, lastDay: String?, lastValue: Double?,
     isTodaySelected: Boolean, today: String = LocalDate.now().toString(),
@@ -513,7 +513,7 @@ internal fun freshRestScore(
  *  freshness cap it reads "Last night · <date>"; once the carried day is older than the cap it reads
  *  "Latest sleep · <date>" so a weeks-old import is never surfaced as "Last night". Shared by every carried
  *  recovery read-out so the prior-day provenance reads identically. Its one format argument is
- *  [lastChargeDateLabel] of the same key. Mirrors iOS carriedCaption. */
+ *  [lastChargeDateLabel] of the same key. */
 @StringRes
 internal fun carriedCaption(priorDayKey: String, today: String = LocalDate.now().toString()): Int =
     if (isCarryStale(priorDayKey, today)) R.string.core_caption_latest_sleep
@@ -526,7 +526,7 @@ internal fun carriedCaption(priorDayKey: String, today: String = LocalDate.now()
 // Today gets a clear state, a plain-English reason and a next step, and we NEVER fabricate a number:
 // calibrating / needs-strap show NO value, carried values are always stamped with their date, and the
 // provenance badge reflects the REAL per-day merge winner. The states name a resource key and
-// strings_core.xml holds the wording, which must still match the Swift today lane word-for-word.
+// strings_core.xml holds the wording, so no state ever hardcodes user-facing text.
 // ════════════════════════════════════════════════════════════════════════════════════════════════════
 
 // ── COMPONENT 2, explained score states ─────────────────────────────────────────────────────────────
@@ -534,9 +534,9 @@ internal fun carriedCaption(priorDayKey: String, today: String = LocalDate.now()
 /**
  * The honest state of one score/tile on Today, one state per score, never a bare blank. Derived from
  * baseline readiness + data presence + the carry-over, so a tile that has no own value for the day
- * still says WHY and WHAT to do, and shows no fabricated number. Mirrors Swift `ScoreState` 1:1 (same
- * three cases, same [titleRes] / [detailRes] copy). [Scored] carries the real value the tile renders
- * normally; the other three are the no-own-number states this layer explains.
+ * still says WHY and WHAT to do, and shows no fabricated number. [Scored] carries the real value the
+ * tile renders normally; the other three are the no-own-number states this layer explains, each
+ * naming its [titleRes] / [detailRes] copy rather than hardcoding a string.
  */
 sealed class ScoreState {
     /** Today's own value exists, the tile renders the number as usual; this layer adds nothing. */
@@ -607,7 +607,6 @@ sealed class ScoreState {
  *   2. mid-calibration ([calibratingNights])  → [ScoreState.Calibrating] (N more nights, no number);
  *   3. a prior scored day to carry     → [ScoreState.CarriedLastNight] (stamped with its date);
  *   4. otherwise                              → [ScoreState.NeedsStrap] (no data, no number).
- * Mirrors Swift `scoreStateForToday`.
  */
 internal fun scoreStateForToday(
     todayRecovery: Double?,
@@ -834,8 +833,7 @@ sealed class RecordingState {
  *                                              ROUNDED UP so a 30s-old sync reads "1m ago" not "0m ago");
  *   - else                                   → [RecordingState.NotRecording].
  * "Recording" requires BOTH a connection AND a live heart-rate sample so a bonded-but-silent link can't
- * claim it's saving data. [nowSec] is unix seconds (injected so the math is testable). Mirrors Swift
- * `recordingStateFor`.
+ * claim it's saving data. [nowSec] is unix seconds (injected so the math is testable).
  */
 internal fun recordingStateFor(
     connected: Boolean,
@@ -846,8 +844,8 @@ internal fun recordingStateFor(
     connected && liveHeartRate != null -> RecordingState.Recording
     lastSyncAtSec != null -> {
         // Clamp at 0 (a sync stamped slightly in the future from strap-clock skew can't read negative)
-        // then ROUND UP so a 30-second-old sync reads "1m ago", never "0m ago", matches the Swift
-        // `RecordingState.resolve` ceil. ceil(secs / 60) == (secs + 59) / 60 for non-negative longs.
+        // then ROUND UP so a 30-second-old sync reads "1m ago", never "0m ago".
+        // ceil(secs / 60) == (secs + 59) / 60 for non-negative longs.
         val secs = (nowSec - lastSyncAtSec).coerceAtLeast(0L)
         RecordingState.LastSynced((secs + 59L) / 60L)
     }
@@ -861,7 +859,7 @@ internal fun recordingStateFor(
  * vocabulary consistently. NOOP-computed reads "On-device" (the spec's wording for the By-Day badge,
  * versus the FusedRecord screen's terser "NOOP"), an imported strap day reads "Whoop", and a phone
  * aggregate reads "Apple Health" / "Health Connect". Null when no source owns the day (nothing to
- * stamp). Mirrors the Swift `provenanceBadgeLabel`. */
+ * stamp). */
 internal fun dayOwnerSource(deviceId: String?): com.noop.analytics.FusionSource? = when {
     deviceId == null -> null
     deviceId.endsWith("-noop") -> com.noop.analytics.FusionSource.NOOP_COMPUTED
@@ -892,9 +890,8 @@ internal fun provenanceBadgeLabel(owner: com.noop.analytics.FusionSource?): Stri
  * "NOOP" displayName (the internal id must never surface); the imported strap source ([deviceId], normally
  * "my-whoop") reads "Whoop"; the Apple-Health source reads "Apple Health". Any other real source (Health
  * Connect, Mi Band, nutrition) keeps its [com.noop.analytics.FusionSource.displayName], still the genuine
- * merge winner, never a blanket claim. Mirrors the Swift `provenanceDisplayLabel` EXACTLY. This is the
- * PER-METRIC mapper the Today rings use; the day-level [dayOwnerSource]/[provenanceBadgeLabel] pair stays
- * for the legacy By-Day vocabulary.
+ * merge winner, never a blanket claim. This is the PER-METRIC mapper the Today rings use; the day-level
+ * [dayOwnerSource]/[provenanceBadgeLabel] pair stays for the legacy By-Day vocabulary.
  */
 internal fun provenanceDisplayLabel(
     rawSource: String,
@@ -907,7 +904,7 @@ internal fun provenanceDisplayLabel(
     return com.noop.analytics.FusionSource.entries.firstOrNull { it.id == rawSource }?.displayName ?: rawSource
 }
 
-/** Today uses the audience-facing sensor name for Apple Health scores, matching the Swift Today lane. */
+/** Today uses the audience-facing sensor name for Apple Health scores ("Apple Watch"). */
 internal fun todayProvenanceChipLabel(
     rawSource: String,
     deviceId: String = WhoopRepository.WHOOP_SOURCE,
@@ -959,7 +956,7 @@ internal fun scoreHeroSourceLabel(
 
 /** The tint for a per-metric provenance badge, keyed on the resolved LABEL, gold for Whoop, cyan for
  *  Apple Health, the positive status hue for on-device (and anything else). Matches the Data Sources
- *  footer + the Swift `provenanceTint` so the same source reads the same colour on Today. */
+ *  footer, so the same source reads the same colour on both screens. */
 internal fun provenanceLabelTint(label: String): Color = when (label) {
     "Whoop" -> Palette.accent
     "Apple Health" -> Palette.metricCyan

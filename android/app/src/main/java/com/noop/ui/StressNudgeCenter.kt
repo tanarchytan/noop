@@ -5,8 +5,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
 /**
- * StressNudgeCenter — the L3 closed-loop JITAI surface (the "passive" layer), Kotlin twin of
- * Strand/Screens/StressCheckInCard.swift's `StressNudgeCenter`. When the shipped, unit-tested
+ * StressNudgeCenter — the L3 closed-loop JITAI surface (the "passive" layer).
+ * When the shipped, unit-tested
  * [com.noop.analytics.StressOnsetDetector] fires (a fresh, non-metabolic HRV dip while still), the
  * central hook (Wave 3, in WhoopBleClient's offload/evaluateStress path) calls [present]; the Compose
  * StressCheckInCard observes [pending] and surfaces a dismissible card.

@@ -92,8 +92,7 @@ private enum class Pace(@StringRes val label: Int) {
     Box(R.string.breathe_pace_box),
     Resonance(R.string.breathe_resonance);   // the user's locked pace (br/min) — only offered once a pace is locked
 
-    /** Inhale seconds — for [Resonance] it derives from the locked bpm at a 40:60 inhale:exhale split
-     *  (mirrors macOS Pace.inhale(lockedBpm:)). */
+    /** Inhale seconds — for [Resonance] it derives from the locked bpm at a 40:60 inhale:exhale split. */
     fun inhale(lockedBpm: Double? = null): Double = when (this) {
         Relax -> 4.0
         Coherence -> 5.5
@@ -160,8 +159,8 @@ fun BreatheScreen(viewModel: AppViewModel) {
 
     // Opt-in audio pacer — a soft tone at each phase change (a brighter note on the inhale, a lower one
     // on the exhale). Default OFF (manual-first). The tone player honours the ringer mode, so a phone on
-    // silent/vibrate stays quiet — the Android twin of the iOS ambient session that obeys the silent
-    // switch. SharedPreferences isn't reactive: read once, mirror writes into this state.
+    // silent/vibrate stays quiet. SharedPreferences isn't reactive: read once, mirror writes into this
+    // state.
     var audioCues by remember {
         mutableStateOf(NoopPrefs.of(context).getBoolean(KEY_BREATHE_AUDIO_CUES, false))
     }
@@ -269,7 +268,7 @@ fun BreatheScreen(viewModel: AppViewModel) {
 
     DisposableEffect(Unit) {
         onDispose {
-            // Leaving mid-session still banks the outcome (mirrors macOS onDisappear → stop()).
+            // Leaving mid-session still banks the outcome.
             if (running) {
                 endSession()
                 // also tell the strap to stop haptics on the way out so a leftover pattern can't
@@ -282,8 +281,7 @@ fun BreatheScreen(viewModel: AppViewModel) {
 
     // if the strap drops WHILE a session is live, end the session AND fire the stop-haptics clear.
     // The breath-engine LaunchedEffect already stops scheduling pulses once `running` flips false; this
-    // adds the strap-side clear (best-effort) and banks the outcome, mirroring the macOS
-    // BiofeedbackController bond watch.
+    // adds the strap-side clear (best-effort) and banks the outcome.
     LaunchedEffect(live.bonded) {
         if (!live.bonded && running) {
             running = false
@@ -423,8 +421,8 @@ fun BreatheScreen(viewModel: AppViewModel) {
                     color = if (running) Palette.restBright else Palette.textSecondary,
                 )
 
-                // The locked-resonance pill only appears once a pace has been locked (mirrors macOS
-                // availablePaces) so a locked pace is selectable here.
+                // The locked-resonance pill only appears once a pace has been locked, so a locked pace
+                // is selectable here.
                 val availablePaces = if (lockedBpm != null) {
                     listOf(Pace.Relax, Pace.Coherence, Pace.Box, Pace.Resonance)
                 } else {
@@ -692,8 +690,8 @@ private fun coherenceState(rmssd: Double?): Pair<Int, StrandTone> = when {
 
 // MARK: - Session outcome
 
-/** NoopPrefs key for the last completed session's outcome core (mirrors macOS
- *  `@AppStorage("breathe.lastOutcome")`). Display-only persistence — no Room table. */
+/** NoopPrefs key for the last completed session's outcome core. Display-only persistence — no Room
+ *  table. */
 private const val KEY_BREATHE_LAST_OUTCOME = "breathe.lastOutcome"
 
 /**
@@ -1310,7 +1308,7 @@ private fun formatDay(epochMs: Long): String =
 // Audio pacer (opt-in soft phase tones)
 // ════════════════════════════════════════════════════════════════════════════
 
-/** SharedPreferences key for the opt-in audio pacer toggle (mirrors macOS `@AppStorage("breathe.audioCues")`). */
+/** SharedPreferences key for the opt-in audio pacer toggle. */
 private const val KEY_BREATHE_AUDIO_CUES = "breathe.audioCues"
 
 enum class BreathTone(val frequencyHz: Double) {
@@ -1319,13 +1317,13 @@ enum class BreathTone(val frequencyHz: Double) {
 }
 
 /**
- * The Android twin of [BreathTonePlayer] (iOS) — a tiny on-device tone player for the opt-in audio pacer.
+ * A tiny on-device tone player for the opt-in audio pacer.
  * It synthesises a short, soft sine "ding" per phase (a higher note on the inhale, a lower one on the
  * exhale) into an [AudioTrack].
  *
- * iOS uses an *ambient* audio session so the silent switch mutes it; Android has no silent switch, so the
- * honest equivalent is to honour the **ringer mode** — when the phone is on silent or vibrate we simply
- * don't play, the same "quiet means quiet" promise. The track is tagged as a sonification assistance cue
+ * Android has no silent switch, so the honest equivalent is to honour the **ringer mode** — when the
+ * phone is on silent or vibrate we simply don't play, keeping the "quiet means quiet" promise. The
+ * track is tagged as a sonification assistance cue
  * (not media), so it ducks politely and won't hijack the music stream. Buffers are generated once and
  * reused; [release] frees the track when the screen goes away or the pacer is switched off.
  */

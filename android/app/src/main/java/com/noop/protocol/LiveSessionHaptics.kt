@@ -1,15 +1,14 @@
 package com.noop.protocol
 
 // LiveSessionHaptics.kt — the two, and only two, wrist signals the Live Session coach sends. Pure,
-// platform-agnostic: signal-in, pulse-list-out, no I/O and no BLE. Byte-for-byte mirror of
-// Strand/Packages/WhoopProtocol/Sources/WhoopProtocol/LiveSessionHaptics.swift. The trigger walks the list
+// platform-agnostic: signal-in, pulse-list-out, no I/O and no BLE. The trigger walks the list
 // and fires each pulse through the EXISTING hardware buzz, weighting by Pulse.isLong (long = heavier 2-loop,
 // short = lighter 1-loop) — the same mechanism HapticClock/BreathPacer already use.
 //
 //   • PUSH     — two LIGHT taps  → "give a bit more"
 //   • EASE_OFF — three HEAVY taps → "ease off, today can't pay for this"
 //
-// The two pulse lists are pinned identical to the Swift twin by matching unit tests.
+// The two pulse lists are pinned by matching unit tests.
 object LiveSessionHaptics {
 
     /** The coach's entire signalling vocabulary. Silence is the third, most common state — it is never sent. */

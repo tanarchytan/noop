@@ -58,21 +58,18 @@ import kotlin.math.roundToInt
 
 // MARK: - Explore (Metric Explorer)
 //
-// Port of the macOS MetricExplorerView focus: a metric picker → a hero LineChart of
-// the chosen metric over a selectable window → a uniform StatTile row of summary
-// stats (Average / Min / Max / Latest / Δ vs previous window).
+// A metric picker → a hero LineChart of the chosen metric over a selectable window → a
+// uniform StatTile row of summary stats (Average / Min / Max / Latest / Δ vs previous window).
 //
-// On macOS the catalog is driven by a shared MetricCatalog with per-metric formatters
-// and a cross-catalog Pearson correlation sweep. On Android the daily metrics we hold
-// are the built-in DailyMetric columns (recovery / strain / hrv / rhr / sleep / spo2 /
-// respiratory / efficiency) plus any extra long-format keys in the metricSeries table.
-// We expose exactly those as the picker, so there is no faked data: every chartable
-// metric maps to a real cached series.
+// The daily metrics we hold are the built-in DailyMetric columns (recovery / strain / hrv /
+// rhr / sleep / spo2 / respiratory / efficiency) plus any extra long-format keys in the
+// metricSeries table. We expose exactly those as the picker, so there is no faked data:
+// every chartable metric maps to a real cached series.
 //
-// macOS "sparse-window" rule preserved: a window is taken RELATIVE TO THE LATEST data
-// point (not "now"); if the selected window holds ≥1 point we show it, and only when it
-// holds ZERO points do we auto-widen to the smallest larger range that does. The hero
-// always reads the latest available point + "as of <day>".
+// The "sparse-window" rule: a window is taken RELATIVE TO THE LATEST data point (not "now");
+// if the selected window holds ≥1 point we show it, and only when it holds ZERO points do we
+// auto-widen to the smallest larger range that does. The hero always reads the latest
+// available point + "as of <day>".
 
 // MARK: - Window range (W / M / 3M / 6M / 1Y / ALL)
 
@@ -120,8 +117,7 @@ private data class MetricSpec(
     val dailyPick: ((DailyMetric) -> Double?)? = null,
     val seriesKey: String? = null,
     /** Source (deviceId) the [seriesKey] lives under when it is NOT the strap's own , e.g. the
-     *  nutrition-csv import or the noop-mood check-in write under dedicated source ids (v2.2.0
-     *  parity with the macOS MetricCatalog, whose descriptors carry key+source). */
+     *  nutrition-csv import or the noop-mood check-in write under dedicated source ids. */
     val seriesSource: String? = null,
     /** A short, plain-English one-liner (the Explore header subtitle / catalog blurb). Only the
      *  three headline scores , Charge / Effort / Rest , carry one today; everything else is null. */
@@ -149,7 +145,7 @@ private data class MetricSpec(
 @Composable
 private fun MetricSpec.title(): String = titleRes?.let { stringResource(it) } ?: rawTitle.orEmpty()
 
-/** The built-in DailyMetric-backed metrics, in the macOS ordering (Charge first). */
+/** The built-in DailyMetric-backed metrics, in picker order (Charge first). */
 private val builtInMetrics: List<MetricSpec> = listOf(
     MetricSpec(
         key = "recovery", titleRes = R.string.trends_charge, unit = "%", category = "Charge",
@@ -175,8 +171,7 @@ private val builtInMetrics: List<MetricSpec> = listOf(
     ),
     MetricSpec(
         key = "sleep", titleRes = R.string.trends2_metric_sleep, unit = "h", category = "Rest",
-        // Rest-score accent rides the reset accent token (iOS metricAccent maps every Rest metric ,
-        // sleep_performance / sleep_total_min , to StrandPalette.accent), not a stray metric hue.
+        // Every Rest-category metric rides the one Palette.accent token, not a stray metric hue.
         accent = Palette.accent, higherIsBetter = true, decimals = 1,
         dailyPick = { it.totalSleepMin?.let { m -> m / 60.0 } },
         description = R.string.trends2_desc_rest,
@@ -199,13 +194,12 @@ private val builtInMetrics: List<MetricSpec> = listOf(
 )
 
 /** Proper titles/units/categories for series-backed keys written by the importers and the Mind
- *  check-in , matching the macOS MetricCatalog entries exactly (v2.2.0 parity). seriesKey/
- *  seriesSource are filled in at discovery time. */
+ *  check-in. seriesKey / seriesSource are filled in at discovery time. */
 private val knownSeriesMetrics: Map<String, MetricSpec> = mapOf(
     // imported avg/max HR is written to metricSeries (Apple Health / WHOOP CSV / Xiaomi) and
-    // the Compare screen exposes it, but Explore's picker didn't , iOS MetricCatalog has had both. Series-
-    // backed (no DailyMetric column), "Heart" category, parity. (Strap-only per-second HR lives in the
-    // Deep Timeline; this surfaces the per-day avg/max for imported sources.)
+    // both the Compare screen and Explore's picker expose it. Series-backed (no DailyMetric column),
+    // "Heart" category. (Strap-only per-second HR lives in the Deep Timeline; this surfaces the
+    // per-day avg/max for imported sources.)
     "avg_hr" to MetricSpec("avg_hr", R.string.trends2_metric_avg_hr, "bpm", "Heart",
         Palette.metricRose, null, 0),
     "max_hr" to MetricSpec("max_hr", R.string.trends2_metric_max_hr, "bpm", "Heart",
@@ -228,8 +222,8 @@ private data class SeriesPoint(val day: String, val value: Double)
 
 /** Lightweight ordinal day index for slicing windows without date parsing. The series is
  *  already sorted ascending by day (YYYY-MM-DD), so the trailing N entries are the window;
- *  we slice by RELATIVE-TO-LATEST count, matching the macOS day-distance window closely
- *  enough for the per-day daily cache (one row per day). */
+ *  we slice by RELATIVE-TO-LATEST count, which stands in for a day-distance window because
+ *  the daily cache holds one row per day. */
 private fun List<SeriesPoint>.windowFor(range: ExploreRange): List<SeriesPoint> {
     val days = range.days ?: return this
     if (isEmpty()) return emptyList()
@@ -295,8 +289,8 @@ fun TrendsExploreScreen(vm: AppViewModel) {
     }
 
     // The full picker: built-ins first, then any extra metricSeries keys not already covered.
-    // Known import/check-in keys get their proper titles/units/categories (matching the macOS
-    // MetricCatalog); anything else falls back to a prettified key under "Other".
+    // Known import/check-in keys get their proper titles/units/categories from
+    // [knownSeriesMetrics]; anything else falls back to a prettified key under "Other".
     val metrics = remember(extraKeys) {
         val builtInKeys = builtInMetrics.map { it.key }.toSet()
         val extras = extraKeys
@@ -377,7 +371,7 @@ fun TrendsExploreScreen(vm: AppViewModel) {
         }
     }
 
-    // Resolve the active window with the macOS sparse-widen rule.
+    // Resolve the active window with the sparse-widen rule.
     val series = if (seriesKeyLoaded == selected.key) loadedSeries else emptyList()
     val effectiveRange = remember(series, range) {
         if (series.isEmpty()) range
@@ -394,7 +388,7 @@ fun TrendsExploreScreen(vm: AppViewModel) {
 
         // The headline tap-through: a full-day, full-resolution, zoomable timeline. Sits above the
         // per-metric catalog because it's a different kind of view , every second of one day, not one
-        // number per day. Mirrors the macOS MetricExplorerView "Deep Timeline" hero row.
+        // number per day.
         item { DeepTimelineEntry(onClick = { showDeepTimeline = true }) }
 
         // Nothing to explore until history is imported , lead with the verbatim note so
@@ -743,7 +737,7 @@ private fun HeroChartCard(
                 }
             }
 
-            // Footer chips, mirroring the macOS ChartFooter (Window / Points / Latest).
+            // Footer chips: Window / Points / Latest.
             Row(horizontalArrangement = Arrangement.spacedBy(Metrics.sectionGap)) {
                 ChartFootItem(stringResource(R.string.explore_chart_window), stringResource(effectiveRange.label))
                 ChartFootItem(stringResource(R.string.explore_chart_points), "${windowed.size}")

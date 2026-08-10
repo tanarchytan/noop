@@ -43,8 +43,8 @@ import kotlin.math.roundToInt
 
 // MARK: - Weekly Digest
 //
-// A deterministic, offline "week in review". Kotlin parity for the macOS/iOS
-// WeeklyDigestView. Reads the merged daily history from the view model, pulls each
+// A deterministic, offline "week in review".
+// Reads the merged daily history from the view model, pulls each
 // tracked metric into a "yyyy-MM-dd"→value map, and feeds the pure
 // WeeklyDigestEngine to produce a Monday-anchored summary: per-metric this-week
 // mean + week-over-week delta + vs-baseline, the biggest movers, a strain-vs-recovery
@@ -114,7 +114,7 @@ private val DISPLAY_ORDER = listOf(
 @Composable
 fun WeeklyDigestContent(digest: WeeklyDigest, compact: Boolean = false) {
     // the Effort row follows the Effort display-scale toggle like every other Effort
-    // read-out in the app (Swift's DigestScoreCard already does). Read once here, threaded to the
+    // read-out in the app. Read once here, threaded to the
     // rows, so a 0-21 user can't see "Effort 22" beside a Trends chart reading 4.6.
     val effortScale = UnitPrefs.effortScale(LocalContext.current)
     Column(verticalArrangement = Arrangement.spacedBy(Metrics.space14)) {
@@ -266,8 +266,8 @@ internal fun meanText(s: WeeklyMetricSummary, effortScale: EffortScale): String 
 internal fun deltaText(s: WeeklyMetricSummary): String {
     if (s.weekOverWeek.current.n == 0 || s.weekOverWeek.previous.n == 0) return "new"
     val pct = s.weekOverWeek.pctChange
-    // Sub-1% (or unpercentable) moves read "<1%", matching Swift. The old fallback printed the raw
-    // points delta: a bare "0.1", and for Effort a stored 0-100 figure the scale toggle never saw.
+    // Sub-1% (or unpercentable) moves read "<1%", never a raw points delta (a bare "0.1", and for
+    // Effort a stored 0-100 figure the scale toggle never saw).
     return if (pct != null && abs(pct) >= 1) "${abs(pct).roundToInt()}%" else "<1%"
 }
 

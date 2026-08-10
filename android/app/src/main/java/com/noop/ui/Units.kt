@@ -16,8 +16,7 @@ import kotlin.math.roundToInt
 // because plenty of people think in kg/cm but still read body temperature in °F (and vice versa).
 // Default is Metric — most of the world, and it matches what we store.
 //
-// Persisted via NoopPrefs (SharedPreferences), the same mechanism every other Android preference uses.
-// This mirrors the macOS Units.swift + @AppStorage side exactly.
+// Persisted via NoopPrefs (SharedPreferences), the same mechanism every other preference uses.
 
 /** Length+mass unit system. Temperature has its own override (see [UnitPrefs.temperature]). */
 enum class UnitSystem(val raw: String) {
@@ -47,7 +46,6 @@ enum class TemperatureUnit(val raw: String) {
  * How the Effort score is displayed. NOOP stores Effort on whoop-rs's 0–100 axis;
  * people coming from WHOOP often think in its 0–21 Day Strain axis, so this purely cosmetic toggle lets
  * the SAME stored value be shown on either scale. Default is NOOP's own 0–100 — the data never changes.
- * Mirrors the macOS [EffortScale].
  */
 enum class EffortScale(val raw: String) {
     /** NOOP's native 0–100 axis (the stored value, one decimal). */
@@ -69,7 +67,7 @@ enum class EffortScale(val raw: String) {
  * every screen redraws the instant a toggle is written. [reload] re-seeds from the store.
  */
 object UnitPrefs {
-    /** SharedPreferences key for the Effort display scale. Mirrors macOS @AppStorage("effort.scale"). */
+    /** SharedPreferences key for the Effort display scale. */
     const val KEY_EFFORT_SCALE = "effort.scale"
 
     private var systemState by mutableStateOf(UnitSystem.METRIC)
@@ -117,7 +115,7 @@ object UnitPrefs {
  *
  * The conversion factors are pinned by `UnitFormatterTest` — a wrong factor can't ship silently.
  * Nothing here reads SharedPreferences: callers pass the resolved [UnitSystem] / [TemperatureUnit] in,
- * which keeps the formatter trivially testable and side-effect free. Mirrors Swift's `UnitFormatter`.
+ * which keeps the formatter trivially testable and side-effect free.
  */
 object UnitFormatter {
 

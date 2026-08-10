@@ -589,8 +589,7 @@ class AiCoach(private val repo: WhoopRepository) {
          * never crosses the public internet: loopback (localhost / 127.0.0.0/8 / ::1), RFC1918
          * (10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16), link-local (169.254.0.0/16 / fe80::/10), the
          * emulator host alias 10.0.2.2, and any *.local mDNS name. Anything else is treated as public.
-         * Pure; `internal` so it's unit-testable — the byte-parity reference for Swift
-         * `AIProvider.isPrivateLANOrLoopback`. Called unqualified by the instance `guardCustomUrl`.
+         * Pure; `internal` so it's unit-testable. Called unqualified by the instance `guardCustomUrl`.
          */
         internal fun isPrivateLanOrLoopback(host: String): Boolean {
             val raw = host.trim()
@@ -698,8 +697,7 @@ class AiCoach(private val repo: WhoopRepository) {
         /**
          * The system prompt actually sent: the user's edited override from [NoopPrefs] when it is
          * non-blank, otherwise [DEFAULT_SYSTEM_PROMPT]. Read fresh per request so an edit in the Coach
-         * settings takes effect on the very next message, with no engine rebuild. Mirrors macOS/iOS
-         * `AICoachEngine.systemPrompt`.
+         * settings takes effect on the very next message, with no engine rebuild.
          */
         fun resolveSystemPrompt(ctx: Context): String {
             val custom = NoopPrefs.coachSystemPrompt(ctx).trim()

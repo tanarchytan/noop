@@ -73,7 +73,7 @@ fun AutomationsScreen(viewModel: AppViewModel) {
     val predictiveBatteryAlerts by viewModel.predictiveBatteryAlertsEnabled.collectAsStateWithLifecycle()
     val ctx = LocalContext.current
 
-    // HR-zone coaching is real + persisted (zone-based, mirrors macOS): the ViewModel owns the toggle +
+    // HR-zone coaching is real + persisted (zone-based): the ViewModel owns the toggle +
     // recovery option and buzzes the strap on entering the top zone (and Zone 1 if recovery is on).
     val profile = remember { ProfileStore.from(ctx.applicationContext) }
     val zoneCoaching by viewModel.zoneCoaching.collectAsStateWithLifecycle()
@@ -485,8 +485,8 @@ internal fun AlarmDayOverridePicker(
     }
 }
 
-/** A compact dropdown that mirrors the iOS double-tap Picker: a tappable label + chevron that opens a
- * menu of [DoubleTapAction]s. Labels come from [DoubleTapAction.label] so both clients read the same. */
+/** A compact dropdown for the double-tap action: a tappable label + chevron that opens a menu of
+ * [DoubleTapAction]s. Labels come from [DoubleTapAction.label], the single source. */
 @Composable
 private fun DoubleTapActionPicker(
     selected: DoubleTapAction,
@@ -530,7 +530,7 @@ private fun DoubleTapActionPicker(
 
 /**
  * Weekday selector for the smart alarm. One tappable circle per weekday, Monday-first. An empty
- * [selected] set means "every day" (all circles read as on). Mirrors the macOS AutomationsView picker.
+ * [selected] set means "every day" (all circles read as on).
  */
 // internal (not private) so SmartAlarmScreen (the consolidated Alarms surface, ) can reuse it.
 @Composable
@@ -573,8 +573,7 @@ internal fun smartAlarmWeekdayIsSelected(dow: Int, days: Set<Int>): Boolean =
 /**
  * Toggle one weekday, normalising "every day" at both ends so the empty set always means every day.
  * Pure + side-effect-free for unit tests. Pulling a day out of the implicit "every day" expands to the
- * explicit other six; selecting the seventh collapses back to the empty "every day" set. Mirrors macOS
- * `AutomationsView.toggledWeekday`.
+ * explicit other six; selecting the seventh collapses back to the empty "every day" set.
  */
 internal fun toggledSmartAlarmWeekday(dow: Int, days: Set<Int>): Set<Int> {
     val next: MutableSet<Int> = when {
@@ -585,7 +584,7 @@ internal fun toggledSmartAlarmWeekday(dow: Int, days: Set<Int>): Set<Int> {
     return if (next.size == 7) emptySet() else next
 }
 
-/** Human-readable summary of the selection. Pure for tests. Mirrors macOS `weekdaySummary`. */
+/** Human-readable summary of the selection. Pure for tests. */
 internal fun smartAlarmWeekdaySummary(days: Set<Int>): String = when {
     days.isEmpty() || days.size == 7 -> "Every day"
     days == setOf(2, 3, 4, 5, 6) -> "Weekdays"

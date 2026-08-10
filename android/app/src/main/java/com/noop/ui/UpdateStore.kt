@@ -13,14 +13,14 @@ import java.util.UUID
 
 // MARK: - UpdateItem
 //
-// Kotlin mirror of Strand/Data/UpdateStore.swift's `UpdateItem`. One entry in the "Updates inbox" —
+// One entry in the "Updates inbox" —
 // the bell in the Today header collects these. An item is either purely informational (a What's New
 // note, a "new data" reading) or actionable (a deep link to a screen, or a dismissed Today card the
 // user can restore). Everything stays on-device; nothing here is medical, identifying, or a verdict
 // — just a calm log of what's new in the app and the data.
 
-/** The flavour of update — drives the row's tinted icon and behaviour. Storage strings match the
- *  Swift `UpdateItem.Kind` raw values exactly, so a future export/import round-trips. */
+/** The flavour of update — drives the row's tinted icon and behaviour. [storageValue] is the
+ *  PERSISTED string, so it must stay stable for a future export/import to round-trip. */
 enum class UpdateKind(val storageValue: String) {
     /** a Today info-card the user swiped into the inbox (restorable) */
     DISMISSED_CARD("dismissedCard"),
@@ -41,7 +41,7 @@ enum class UpdateKind(val storageValue: String) {
 }
 
 /**
- * One inbox entry. Mirrors the Swift `UpdateItem` struct field-for-field.
+ * One inbox entry.
  *
  * @property deepLink Optional route key the inbox navigates to when tapped (null = purely
  *   informational). Matches a nav route string (e.g. "trends"); an unknown key just closes the sheet.
@@ -87,8 +87,8 @@ data class UpdateItem(
 // MARK: - Today card dismissal keys (shared)
 //
 // The Today info-cards persist their dismissed state under a stable per-card key. The inbox restores
-// a card by clearing that same key, so the key shape lives in ONE place both sides use. Mirrors the
-// Swift `TodayCardDismissal` enum. Stable card ids ("scoresBuilding", "newHere") match macOS/iOS.
+// a card by clearing that same key, so the key shape lives in ONE place both sides use. The card ids
+// ("scoresBuilding", "newHere") are STABLE and persisted.
 object TodayCardDismissal {
     const val FILE = "noop_today_cards"
 
@@ -111,8 +111,8 @@ object TodayCardDismissal {
 // MARK: - UpdateStore
 //
 // The bell's backing store: a single-user, on-device inbox of [UpdateItem]s persisted as a JSON array
-// in SharedPreferences. Kotlin mirror of the Swift `UpdateStore` singleton — the same lightweight
-// persist-the-whole-list-on-every-mutation approach, just over `org.json` instead of Codable. A
+// in SharedPreferences, on a lightweight persist-the-whole-list-on-every-mutation approach over
+// `org.json`. A
 // process singleton ([from]) so any surface (the Today cards, the import path) posts to the SAME
 // inbox the UI observes.
 //
@@ -156,7 +156,7 @@ class UpdateStore private constructor(
      *  [DEDUP_WINDOW_MS] of an existing one just refreshes that row's date (and re-arms its unread badge)
      *  instead of appending a duplicate, and the informational backlog is trimmed to [MAX_ITEMS] newest.
      *  Actionable rows ([UpdateKind.DISMISSED_CARD]/[UpdateKind.STRAP_ALERT]) always append and are never
-     *  auto-evicted. Mirrors the Swift `UpdateStore.post`. */
+     *  auto-evicted. */
     fun post(item: UpdateItem) {
         val dup = if (isInformational(item.kind)) {
             items.indexOfFirst {
@@ -181,7 +181,7 @@ class UpdateStore private constructor(
 
     /** Trim the informational backlog to the newest [MAX_ITEMS]. Actionable rows
      *  ([UpdateKind.DISMISSED_CARD]/[UpdateKind.STRAP_ALERT]) are exempt — only READING/WHATS_NEW are
-     *  auto-evicted, oldest first. Mirrors the Swift `evictOverflow`. */
+     *  auto-evicted, oldest first. */
     private fun evictOverflow() {
         val informationalCount = items.count { isInformational(it.kind) }
         if (informationalCount <= MAX_ITEMS) return
@@ -232,8 +232,7 @@ class UpdateStore private constructor(
     /**
      * Post the current What's New as a [UpdateKind.WHATS_NEW] item ONCE per version. Idempotent:
      * tracks the last version it seeded in prefs, so a relaunch on the same version never
-     * double-posts. Call on app start, after the changelog version is known. Mirrors the Swift
-     * `seedWhatsNewIfNeeded`.
+     * double-posts. Call on app start, after the changelog version is known.
      */
     fun seedWhatsNewIfNeeded(
         version: String = AppChangelog.CURRENT_VERSION,

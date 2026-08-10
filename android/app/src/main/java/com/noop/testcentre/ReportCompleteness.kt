@@ -1,7 +1,7 @@
 package com.noop.testcentre
 
 /**
- * The report-completeness guard (Kotlin twin of the Swift ReportCompleteness). A report is only useful
+ * The report-completeness guard. A report is only useful
  * if the active mode's KILLER TRACE actually landed in report.txt. The Test Centre's whole point is that
  * each domain emits one upfront, hard-to-miss line that settles the bug; if a tester toggles a mode but
  * the emitter never fires (strap never connected, no scored day, the import never ran), the .zip looks
@@ -9,15 +9,15 @@ package com.noop.testcentre
  * whether its killer-trace token is present, so a maintainer (and the tester, via the review sheet) sees
  * "Sleep: MISSING" before the report ships rather than after a round-trip.
  *
- * The {domain -> token} map below is the SINGLE source of truth and is byte-identical to the Swift twin
- * (same domains, same token substrings). Each token is the distinctive, stable leading fragment of that
- * domain's killer trace (verified against the trace emitters and their unit tests): a SUBSTRING match is
- * deliberate so the per-day / per-record suffix (counts, ids, ISO dates) can vary without breaking the
- * check. The UNIVERSAL token (`dayOwner day=`) rides every export, so it is checked on every report.
+ * The {domain -> token} map below is the SINGLE source of truth. Each token is the distinctive, stable
+ * leading fragment of that domain's killer trace (verified against the trace emitters and their unit
+ * tests): a SUBSTRING match is deliberate so the per-day / per-record suffix (counts, ids, ISO dates)
+ * can vary without breaking the check. The UNIVERSAL token (`dayOwner day=`) rides every export, so it
+ * is checked on every report.
  *
  * Pure + side-effect-free (no clock, no IO): the assembler passes the assembled report.txt text and the
  * active-domain set, and gets back the lines to append. No PII (tokens are fixed format fragments). No
- * em-dashes. Tested directly on the JVM, and a parity test pins the map against the Swift twin.
+ * em-dashes. Tested directly on the JVM, and a unit test pins the map.
  */
 object ReportCompleteness {
 
@@ -26,8 +26,8 @@ object ReportCompleteness {
     enum class Status(val token: String) { PRESENT("present"), MISSING("MISSING") }
 
     /**
-     * domain -> the distinctive leading substring of that domain's killer trace. Byte-identical to the
-     * Swift twin's map. UNIVERSAL's `dayOwner day=` rides every export (checked always); the rest are
+     * domain -> the distinctive leading substring of that domain's killer trace.
+     * UNIVERSAL's `dayOwner day=` rides every export (checked always); the rest are
      * checked only when their mode is active. MASTER is "log everything" and has no single killer trace,
      * so it is intentionally absent from the map and never claimed present.
      */
@@ -60,10 +60,10 @@ object ReportCompleteness {
      * fires when the sleep-stager gate actually (re-)runs under the SLEEP-gated trace sink; a night scored
      * on the backfill/post-sync pass, or already scored so `analyzeRecent(force=false)` skips the gate,
      * won't re-emit it — yet the always-on per-day diagnostic line (`sleep day=… totalSleepMin=… source=…`)
-     * IS in the report and proves the sleep pipeline evaluated the day. Accepting it mirrors the Swift
-     * twin's multi-token `.sleep` and the same "the mode worked, even if the strap had nothing" rule the
-     * steps domain already uses, so a valid capture is no longer flagged INCOMPLETE for a trace that just
-     * didn't re-run. `gate run=` stays the preferred (deeper) trace; this only rescues the legit gap.
+     * IS in the report and proves the sleep pipeline evaluated the day. Accepting it follows the same
+     * "the mode worked, even if the strap had nothing" rule the steps domain already uses, so a valid
+     * capture is no longer flagged INCOMPLETE for a trace that just didn't re-run. `gate run=` stays the
+     * preferred (deeper) trace; this only rescues the legit gap.
      */
     val evidenceTokens: Map<TestDomain, String> = linkedMapOf(
         TestDomain.SLEEP to "sleep day=",
@@ -103,7 +103,7 @@ object ReportCompleteness {
      * "this report carries no diagnostic for X" signal). The parenthetical names the token that ACTUALLY
      * matched, never the one we hoped for (mislabel): a killer-trace match keeps the bare
      * `(<killer>)`, an evidence-only match reads `(via <evidence>)`, and MISSING reads
-     * `(expected <killer>)` — the Swift renderer's "expected …" wording for the missing case. Returns
+     * `(expected <killer>)`. Returns
      * the section WITHOUT a leading newline; the assembler joins it.
      */
     fun captureCheckSection(reportText: String, active: Set<TestDomain>): String {
@@ -137,7 +137,7 @@ object ReportCompleteness {
 
     /** The meta.json `capture_check` value: a {domainId -> "present"|"MISSING"} map plus the `complete`
      *  flag, for the machine-readable tie. Keys are the wire ids; emitted in sorted order by TestBundleMeta
-     *  so the JSON bytes line up with the Swift twin. */
+     *  so the JSON bytes are deterministic. */
     fun captureCheckMeta(reportText: String, active: Set<TestDomain>): CaptureCheckMeta {
         val statuses = statuses(reportText, active)
         val map = LinkedHashMap<String, String>()

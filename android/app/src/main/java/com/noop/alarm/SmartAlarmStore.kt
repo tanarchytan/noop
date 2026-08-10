@@ -17,7 +17,7 @@ import android.content.SharedPreferences
  * be woken; [windowMinutes] is how much later the hard deadline sits (e.g. target 06:30 + 30 min
  * window = guaranteed wake by 07:00, with the smart logic allowed to fire any time from 06:30).
  *
- * Single-user, on-device. Mirrors the macOS UserDefaults pattern; nothing is ever sent off-device.
+ * Single-user, on-device; nothing is ever sent off-device.
  */
 class SmartAlarmStore(private val prefs: SharedPreferences) {
 

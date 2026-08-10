@@ -50,7 +50,7 @@ import java.util.Date
 import java.util.Locale
 import kotlin.math.roundToInt
 
-// MARK: - Coupled view — Kotlin twin of CoupledView.swift
+// MARK: - Coupled view
 //
 // An optional, default-OFF day view that reads like the classic coupled home: one screen, three numbers,
 // Recovery % / Day Strain on 0-21 / Sleep, for users who came across from another band and want the old
@@ -59,7 +59,7 @@ import kotlin.math.roundToInt
 // DISPLAY-ONLY, like the Effort-scale toggle. It reads the SAME values Today already computes (recovery
 // / Rest composite / Effort strain / readiness) and re-presents them in the coupled layout. The only new
 // mapping is the OPTIMAL strain band, a pure display-only read of today's recovery to a suggested strain
-// range (never fed back into scoring) that is byte-identical to the Swift [CoupledView.optimalStrainRange].
+// range (never fed back into scoring). Its bands are pinned by unit tests.
 //
 // Every colour routes through the [Palette] ramps, so the Classic / Titanium appearance carries automatically.
 // The brand word never appears in a shipped UI string (legal posture); the screen is called "Coupled view".
@@ -121,7 +121,8 @@ fun CoupledScreen(
     }
 
     // The day the coupled read describes: today's resolved row, else the carried last-scored prior day, so a
-    // just-rolled-over morning carries yesterday's read rather than blanking (mirrors Swift + widgetAnchor).
+    // just-rolled-over morning carries yesterday's read rather than blanking (the same logical-day
+    // resolution [widgetAnchorRow] builds on).
     val logicalKey = remember { logicalDayKeyNow() }
     val localKey = remember { java.time.LocalDate.now().toString() }
     val todayRow = remember(today, days, logicalKey, localKey) {
@@ -194,9 +195,8 @@ fun CoupledScreen(
             onOpenSleep = onOpenSleep,
         )
         Text(
-            // The brief quotes the footer with the brand word, but the hard legal / anonymity rule wins over
-            // the illustrative copy: this keeps the exact intent without the branding word. Byte-identical to
-            // the Swift footer caption.
+            // The brief quotes the footer with the brand word, but the hard legal / anonymity rule wins
+            // over the illustrative copy: this keeps the exact intent without the branding word.
             stringResource(R.string.coupled_footer),
             style = NoopType.footnote,
             color = Palette.textTertiary,
@@ -399,7 +399,7 @@ private fun StrainCard(dayStrain21: Double?, recovery: Double?, calories: Double
     }
 }
 
-/** The heroStat idiom (an UPPERCASE overline over a big tinted number), mirroring WorkoutsScreen/iOS heroStat. */
+/** The heroStat idiom (an UPPERCASE overline over a big tinted number), as used on WorkoutsScreen. */
 @Composable
 private fun HeroStat(title: String, value: String, tint: Color) {
     Column(
@@ -490,7 +490,7 @@ private fun SleepCard(
     }
 }
 
-// MARK: - Pure helpers (byte-identical formatting to the Swift CoupledView)
+// MARK: - Pure helpers (formatting pinned by unit tests)
 
 /** The header subtitle "Today, d MMM". */
 @Composable
@@ -499,16 +499,16 @@ private fun subtitleToday(): String = stringResource(
     SimpleDateFormat("d MMM", Locale.getDefault()).format(Date()),
 )
 
-/** "6h 42m" from a minutes count, for the slept-vs-needed read. Mirrors CoupledView.hoursMinutes EXACTLY. */
+/** "6h 42m" from a minutes count, for the slept-vs-needed read. Pinned by unit tests. */
 internal fun hoursMinutes(minutes: Double): String {
     val total = minutes.roundToInt().coerceAtLeast(0)
     return "${total / 60}h ${total % 60}m"
 }
 
 /**
- * The strain band word for a 0..1 fill fraction, byte-identical to the Swift StrandDesign StrainGauge bands
- * (LIGHT/MODERATE/STRENUOUS/HIGH/ALL-OUT at 6/10/14/18 of 21). The Android StrainGauge has no internal state
- * word, so the coupled strain card computes it for the overline.
+ * The strain band word for a 0..1 fill fraction: LIGHT/MODERATE/STRENUOUS/HIGH/ALL-OUT at 6/10/14/18 of
+ * 21, each threshold pinned by unit tests. The StrainGauge component carries no state word of its own, so
+ * the coupled strain card computes it for the overline.
  */
 internal fun strainBandWord(fraction: Double): String = when {
     fraction < 6.0 / 21 -> "LIGHT"

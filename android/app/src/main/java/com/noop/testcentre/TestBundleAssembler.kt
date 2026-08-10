@@ -25,8 +25,7 @@ object TestBundleAssembler {
         entries.map { (name, data) ->
             // BINARY entries (the Display mode's screenshot.png) must NOT be decoded as text and re-encoded
             // - that would corrupt the PNG. Redaction scrubs text identifiers, not pixels, so a binary
-            // entry passes through untouched (the Swift twin guards the same way via the UTF-8 decode
-            // returning nil). Only text entries are scrubbed.
+            // entry passes through untouched. Only text entries are scrubbed.
             if (isBinaryEntry(name)) {
                 name to data
             } else {
@@ -106,7 +105,7 @@ object TestBundleAssembler {
         }
         // CAPTURE-completeness: append the "Capture check" section so report.txt itself states, per active
         // domain, whether its killer trace landed. Computed over the header+body that will ship (the guard
-        // reads exactly what the maintainer reads). Byte-identical section to the Swift twin.
+        // reads exactly what the maintainer reads).
         val reportBody = header + "\n" + body
         val captureCheck = ReportCompleteness.captureCheckSection(reportBody, activeDomains)
         val reportText = reportBody + "\n" + captureCheck

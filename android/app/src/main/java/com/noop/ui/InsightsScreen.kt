@@ -66,7 +66,7 @@ import kotlin.math.sqrt
 
 // MARK: - Insights
 //
-// The "interrogate what affects what" screen, ported from the macOS InsightsView.
+// The "interrogate what affects what" screen.
 // Two halves:
 //
 //  1. BEHAVIOUR EFFECTS, split logged journal answers (the days each behaviour WAS
@@ -98,7 +98,7 @@ private enum class Outcome(
     val higherIsBetter: Boolean,
     /** The Bevel colour world the outcome belongs to, drives the card wash so the
      *  Behaviour Effects section sits in one world (Charge→green, HRV/Rest→indigo,
-     *  RHR→Stress teal), mirroring the Swift Outcome.domain. */
+     *  RHR→Stress teal). */
     val domain: DomainTheme,
     val pick: (DailyMetric) -> Double?,
     val format: (Double) -> String,
@@ -199,7 +199,7 @@ private data class InsightModel(
  * Loads the journal (all days) and the per-day outcome series from `vm.recentDays`,
  * then presents the ranked behaviour effects for the selected outcome and the curated
  * Pearson relationships. Empty/sparse states explain what's missing rather than faking
- * numbers, matching the macOS data-display contract.
+ * numbers — the honest data-display contract.
  */
 @Composable
 fun InsightsScreen(vm: AppViewModel, onOpenInsightsHub: () -> Unit = {}) {
@@ -233,7 +233,7 @@ fun InsightsScreen(vm: AppViewModel, onOpenInsightsHub: () -> Unit = {}) {
     // can pass with the screen alive and no save (the app simply backgrounded overnight), leaving the
     // previous day's answers pinned under "Today" instead of the new day starting blank. We re-stamp this on
     // every lifecycle RESUME, and fold it into the load effect's keys, so the moment the date rolls over the
-    // journal reloads for the new day and prior answers move to their real date. iOS parity in InsightsView.
+    // journal reloads for the new day and prior answers move to their real date.
     var currentDayKey by remember { mutableStateOf(LocalDate.now().toString()) }
     val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
     androidx.compose.runtime.DisposableEffect(lifecycleOwner) {
@@ -297,9 +297,9 @@ fun InsightsScreen(vm: AppViewModel, onOpenInsightsHub: () -> Unit = {}) {
     // Selected outcome metric for the behaviour-effects half.
     var outcome by remember { mutableStateOf(Outcome.Recovery) }
 
-    // --- Personal-experiment state (LOCAL ONLY, SharedPreferences, parity with the
-    //     Swift @AppStorage keys). `experimentSeq` bumps after a save so the snapshot
-    //     and compliance refresh immediately, matching the journal card's pattern. ---
+    // --- Personal-experiment state (LOCAL ONLY, SharedPreferences). `experimentSeq`
+    //     bumps after a save so the snapshot and compliance refresh immediately,
+    //     matching the journal card's pattern. ---
     var experimentSeq by remember { mutableStateOf(0) }
     var experimentBehaviour by remember { mutableStateOf(loadExperimentString(ctx, EXP_BEHAVIOUR)) }
     var experimentOutcomeName by remember { mutableStateOf(loadExperimentString(ctx, EXP_OUTCOME)) }
@@ -341,7 +341,7 @@ fun InsightsScreen(vm: AppViewModel, onOpenInsightsHub: () -> Unit = {}) {
 
         // --- "What moves you" deep-link into the v5 Insights Hub (ranked, lag-aware ranked-effect feed +
         //     personal alcohol/caffeine dose-response). The honest in-Insights entry point; the hub is its
-        //     own destination too. Mirrors the Swift InsightsView.whatMovesYouLink. ---
+        //     own destination too. ---
         item { WhatMovesYouLink(onOpen = onOpenInsightsHub) }
 
         item { Spacer(Modifier.height(Metrics.sectionGap - 20.dp)) }
@@ -406,15 +406,14 @@ fun InsightsScreen(vm: AppViewModel, onOpenInsightsHub: () -> Unit = {}) {
 
         item { Spacer(Modifier.height(Metrics.sectionGap - 20.dp)) }
 
-        // --- Mind: daily mood check-in + mood ↔ body correlations (Swift Mind-lane
-        //     mirror; storage contract + footnote shared verbatim across platforms) ---
+        // --- Mind: daily mood check-in + mood ↔ body correlations ---
         item { MindSection(vm) }
 
         item { Spacer(Modifier.height(Metrics.sectionGap - 20.dp)) }
 
         // --- Caffeine window, log an intake + a rough on-device "still active"
         //     hint. Self-contained (owns its own SharedPreferences state). Opt-in: shows
-        //     nothing until the user logs one. Twin of macOS CaffeineLogCard. ---
+        //     nothing until the user logs one. ---
         item { CaffeineLogCard() }
 
         item { Spacer(Modifier.height(Metrics.sectionGap - 20.dp)) }
@@ -537,8 +536,7 @@ fun InsightsScreen(vm: AppViewModel, onOpenInsightsHub: () -> Unit = {}) {
 // A single NoopCard row into the v5 Insights Hub, the ranked, lag-aware "which of your habits actually
 // move your Charge" feed plus the personal alcohol/caffeine dose-response. Charge-world wash (chargeColor
 // tint), an accent auto_awesome glyph in a soft rounded chip, a short lag-aware blurb, and a trailing
-// chevron. One combined accessibility label so screen readers announce it as a single link. Mirrors the
-// Swift InsightsView.whatMovesYouLink.
+// chevron. One combined accessibility label so screen readers announce it as a single link.
 
 @Composable
 private fun WhatMovesYouLink(onOpen: () -> Unit) {
@@ -573,7 +571,7 @@ private fun WhatMovesYouLink(onOpen: () -> Unit) {
             }
             Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(Metrics.space4)) {
                 // WHOOP tappable-card title: UPPERCASE tracked WHITE label + a trailing "›" chevron
-                // glyph (mirrors the iOS "WHAT MOVES YOU ›" overline). The descriptive line sits beneath.
+                // glyph. The descriptive line sits beneath.
                 Overline(stringResource(R.string.insights_what_moves_you_overline), color = Palette.textPrimary)
                 Text(
                     stringResource(R.string.insights_what_moves_you_blurb),
@@ -596,8 +594,7 @@ private fun WhatMovesYouLink(onOpen: () -> Unit) {
 // "What each activity costs your recovery": one ranked NoopCard per sport that cleared the engine's
 // minSessions gate, each carrying next-morning Charge vs rest baseline, days-to-baseline, the sample
 // count + confidence pill, and the engine's plain-English sentence. Sign-aware tint: a positive cost
-// (recovery dipped) reads warm/critical, a recovery-POSITIVE delta reads green. Mirrors the Swift
-// InsightsView.activityCostSection exactly.
+// (recovery dipped) reads warm/critical, a recovery-POSITIVE delta reads green.
 
 /**
  * Shape the [ActivityCostEngine] inputs from the loaded sessions + cached daily metrics, then rank.
@@ -613,7 +610,7 @@ internal fun computeActivityCosts(
     // Single "now" offset for every session, the SAME tz-offset basis IntelligenceEngine.kt uses to
     // key DailyMetric.day (getOffset(now)/1000 applied across the run), via the SAME
     // AnalyticsEngine.dayString(ts, offsetSec) path, so the engine's D+1 next-morning lookups align
-    // byte-for-byte with the recovery keys (and match the Swift TimeZone.current.secondsFromGMT path).
+    // byte-for-byte with the recovery keys.
     val offsetSec = java.util.TimeZone.getDefault().getOffset(System.currentTimeMillis()) / 1_000L
     val activityDaysBySport = HashMap<String, MutableSet<String>>()
     for (w in workouts) {
@@ -648,7 +645,7 @@ private fun ActivityCostSection(costs: List<com.noop.analytics.ActivityCost>) {
                 )
             }
         } else {
-            // Fade + rise the ranked cost cards in sequence (mirrors iOS .staggeredAppear(index:)).
+            // Fade + rise the ranked cost cards in sequence (staggeredAppear).
             costs.forEachIndexed { i, cost ->
                 Box(modifier = Modifier.staggeredAppear(i)) { ActivityCostCard(cost) }
             }
@@ -771,7 +768,7 @@ private fun BehaviourSection(
                 )
             }
         } else {
-            // Fade + rise the ranked cards in sequence (mirrors iOS .staggeredAppear(index:)).
+            // Fade + rise the ranked cards in sequence (staggeredAppear).
             ranked.forEachIndexed { i, e ->
                 Box(modifier = Modifier.staggeredAppear(i)) { EffectCard(e, outcome) }
             }
@@ -889,7 +886,7 @@ private fun EffectCard(e: BehaviorEffect, outcome: Outcome) {
 
 // MARK: - Personal experiment section
 //
-// A LOCAL-ONLY n-of-1 protocol mirroring the Swift InsightsView experiment section:
+// A LOCAL-ONLY n-of-1 protocol:
 // pick ONE behaviour you actually log, one outcome, and a short window, then compare
 // the outcome on days you logged the behaviour (the intervention) against your
 // behaviour-ABSENT days before the start (the baseline). The absent-day baseline
@@ -1065,7 +1062,7 @@ private fun ExperimentSetupCard(
                 )
             }
 
-            // Unified button system (mirrors iOS NoopButton("Start experiment", flask, .primary, fullWidth)).
+            // Unified button system: a primary, full-width NoopButton.
             NoopButton(
                 text = startLabel,
                 leadingIcon = Icons.Filled.Science,
@@ -1211,8 +1208,8 @@ private fun ActiveExperimentCard(
             }
         }
 
-        // Mark done / Skip / End, all routed through the unified NoopButton (mirrors iOS
-        // NoopButtonStyle(.primary / .secondary / .destructive) with leading icons).
+        // Mark done / Skip / End, all routed through the unified NoopButton (primary /
+        // secondary / destructive kinds, with leading icons).
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(Metrics.space10),
@@ -1298,7 +1295,7 @@ private fun ExperimentMeasure(
     }
 }
 
-/** A menu-style behaviour picker (mirrors the Swift Picker(.menu) style). */
+/** A menu-style behaviour picker. */
 @Composable
 private fun ExperimentBehaviourPicker(
     candidates: List<String>,
@@ -1347,7 +1344,7 @@ private fun ExperimentBehaviourPicker(
     }
 }
 
-// MARK: - Experiment computation (mirrors Swift activeExperimentSnapshot)
+// MARK: - Experiment computation
 
 /**
  * Behaviours the user actually has data for: distinct logged journal questions
@@ -1495,7 +1492,7 @@ private fun dayDistance(start: String, end: String): Int {
 private fun mean(values: List<Double>): Double? =
     if (values.isEmpty()) null else RustScores.mean(values)
 
-// MARK: - Experiment persistence (SharedPreferences, parity with Swift @AppStorage keys)
+// MARK: - Experiment persistence (SharedPreferences)
 
 private const val EXP_PREFS = "noop_prefs"
 private const val EXP_BEHAVIOUR = "noop.experiment.behaviour"
@@ -1605,8 +1602,8 @@ private fun RelationshipRow(rel: Relationship) {
 /**
  * A centred correlation bar: a faint inset track with a centre tick at zero, and a
  * coloured fill that grows left (negative r) or right (positive r) proportional to |r|.
- * Mirrors the macOS RBar (minus the desktop hover tooltip, the exact r value is already
- * printed beside the title, so the bar is never an unexplained coloured shape on phone).
+ * There is no hover tooltip: the exact r value is already printed beside the title,
+ * so the bar is never an unexplained coloured shape.
  */
 @Composable
 private fun RBar(r: Double, color: Color) {

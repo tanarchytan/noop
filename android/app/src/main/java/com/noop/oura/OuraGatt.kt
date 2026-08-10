@@ -1,10 +1,9 @@
 package com.noop.oura
 
 // OuraGatt: the GATT layout facts for the Oura ring, as plain UUID strings + MTU values.
-// Kotlin twin of the Swift OuraProtocol package (Packages/OuraProtocol). Platform-pure: this package
-// NEVER imports android.bluetooth or CoreBluetooth, so the app layer is responsible for turning these
-// strings into ParcelUuid / CBUUID. Keeping that out of here lets the protocol code run headless on
-// the JVM (plain JUnit tests) unchanged.
+// Platform-pure: this package NEVER imports android.bluetooth, so the app layer is responsible for
+// turning these strings into ParcelUuid. Keeping that out of here lets the protocol code run headless
+// on the JVM (plain JUnit tests) unchanged.
 //
 // All facts cited tersely per docs/OURA_PROTOCOL.md s1 (GATT Layout). The RE repos were read for
 // protocol facts ONLY; no RE source was copied.

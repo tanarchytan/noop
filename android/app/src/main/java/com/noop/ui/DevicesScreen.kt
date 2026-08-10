@@ -85,7 +85,7 @@ import kotlinx.coroutines.launch
 // [com.noop.ble.ExperimentalBrand]). The screen is a thin UI over [com.noop.data.DeviceRegistry] (the Phase 1A/1B data layer):
 // every mutation goes through an [AppViewModel] registry op, and the [SourceCoordinator] (wired in
 // NoopApplication) reacts to the active-device change — so this view never touches the BLE client or the
-// WHOOP path directly. Faithful Kotlin twin of Strand/Screens/DevicesView.swift.
+// WHOOP path directly.
 //
 // The registry's reads are one-shot suspend (not a Flow), so the screen keeps the list in a remembered
 // state and reloads it after every mutation via [reload].
@@ -113,7 +113,7 @@ fun DevicesScreen(
     }
     LaunchedEffect(Unit) { devices = viewModel.pairedDevices() }
 
-    // Sheets / dialogs (mirror the Swift @State targets).
+    // Sheets / dialogs.
     var showAddWizard by remember { mutableStateOf(false) }
     var switchTarget by remember { mutableStateOf<PairedDeviceRow?>(null) }
     var renameTarget by remember { mutableStateOf<PairedDeviceRow?>(null) }
@@ -501,8 +501,7 @@ private fun DeviceCard(
             // Honest local-takeover state row for an adopted Oura ring that is paired but not the
             // active+connected source right now. States the single-owner reality plainly (if the ring was
             // reset again or re-claimed in the Oura app, NOOP no longer owns it) without faking a live
-            // reading. Suppressed for the active+connected ring and for removed rings. Mirrors the macOS
-            // ouraLocalStateNote.
+            // reading. Suppressed for the active+connected ring and for removed rings.
             if (device.sourceKind == SourceKind.oura.name && !isLiveConnected &&
                 device.status == DeviceStatus.paired.name
             ) {
@@ -618,9 +617,8 @@ private fun BatteryBar(pct: Int, label: String = stringResource(R.string.devices
 /**
  * The device card's state-pill label + tone, as a priority-ordered pure decision : archived beats
  * everything; on the active card, reconnecting > bond-refused > live > plain active; a non-active card is
- * "Paired". Mirrors the Swift `DevicePillState.resolve` in DevicesView.swift exactly (see
- * `DevicePillStateTest` / the Swift `DevicePillStateTests`), so a future edit to either side can't
- * silently reorder "Connected · not paired" vs "Active · Live" without a test catching it.
+ * "Paired". The ordering is pinned by `DevicePillStateTest`, so a future edit can't silently reorder
+ * "Connected · not paired" vs "Active · Live" without a test catching it.
  */
 internal data class DevicePillState(
     @StringRes val label: Int,
@@ -823,8 +821,7 @@ private fun MenuItem(
 @Composable
 private fun AddDeviceButton(onClick: () -> Unit) {
     // Routed through the unified NoopButton (Design Reset) so the add affordance is the crisp
-    // filled-accent-blue / white-label primary the iOS DevicesView uses (`NoopButton(... kind:.primary,
-    // fullWidth: true)`) — no hand-rolled gold-text fill, no glow.
+    // filled-accent-blue / white-label primary — no hand-rolled gold-text fill, no glow.
     val label = stringResource(R.string.devices_add_device)
     NoopButton(
         text = label,
@@ -882,7 +879,7 @@ private fun WristDialog(
 }
 
 /** WHOOP 4.0 reboot probe : a candidate list, one button per unconfirmed reboot frame. Gated to
- * Test Centre → Connection + a live 4.0 at the call site. Twin of the macOS DevicesView confirmationDialog. */
+ * Test Centre → Connection + a live 4.0 at the call site. */
 @Composable
 private fun RebootProbeDialog(
     onSend: (RebootProbeVariant) -> Unit,
@@ -1012,7 +1009,7 @@ private fun PickActiveDialog(
 // MARK: - Signal indicator
 //
 // A four-bar signal indicator derived from RSSI. RSSI is negative dBm: closer to 0 is stronger. Buckets
-// are coarse on purpose — a precise dBm readout would be noise to the user. Mirrors the Swift SignalBars.
+// are coarse on purpose — a precise dBm readout would be noise to the user.
 
 @Composable
 internal fun SignalBars(rssi: Int) {
@@ -1035,7 +1032,7 @@ internal fun SignalBars(rssi: Int) {
 }
 
 internal object SignalBars {
-    /** RSSI (negative dBm) → 0..4 signal level, coarse buckets. Matches the Swift SignalBars.level. */
+    /** RSSI (negative dBm) → 0..4 signal level, coarse buckets. */
     fun level(rssi: Int): Int = when {
         rssi >= -55 -> 4
         rssi >= -67 -> 3
@@ -1058,10 +1055,10 @@ private fun devicesFieldColors() = OutlinedTextFieldDefaults.colors(
     unfocusedContainerColor = Palette.surfaceInset,
 )
 
-// MARK: - Presentation helpers (mirror the Swift PairedDevice computed props)
+// MARK: - Presentation helpers (derived from the PairedDeviceRow fields)
 
 /**
- * Collapsed display name (mirrors Swift `PairedDevice.displayName`): the nickname if present, else the
+ * Collapsed display name: the nickname if present, else the
  * model if it already contains the brand (so the seeded WHOOP/WHOOP reads "WHOOP", not "WHOOP WHOOP"),
  * else "brand model".
  */
@@ -1110,7 +1107,7 @@ internal fun fiveSeriesLabel(hardwareRev: String?): String =
 /**
  * Honest paired-but-not-connected note for a locally-adopted Oura ring (Beta). Amber heads-up, no
  * fabricated reading: re-states the single-owner reality so the user understands why a re-reset or an Oura
- * re-claim would break NOOP's ownership. Mirrors the macOS DeviceCard.ouraLocalStateNote (no em-dashes).
+ * re-claim would break NOOP's ownership. No em-dashes.
  */
 @Composable
 private fun OuraLocalStateNote() {

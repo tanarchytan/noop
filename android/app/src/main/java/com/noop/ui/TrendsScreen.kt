@@ -35,23 +35,20 @@ import kotlin.math.roundToInt
 
 // MARK: - Trends
 //
-// The longitudinal view, ported from Strand/Screens/TrendsView.swift onto the locked
-// Android component system so every surface, height and gap matches: one
-// SegmentedPillControl for the range (W / M / 3M / 6M / 1Y / ALL), a hero Recovery
-// ChartCard, and a uniform set of HRV / Resting HR / Day-strain ChartCards (all
+// The longitudinal view, built on the locked component system so every surface, height and
+// gap matches: one SegmentedPillControl for the range (W / M / 3M / 6M / 1Y / ALL), a hero
+// Recovery ChartCard, and a uniform set of HRV / Resting HR / Day-strain ChartCards (all
 // Metrics.chartHeight tall), followed by a recovery history strip.
 //
-// Windows are taken relative to the phone's actual local day, with the macOS auto-expand
-// rule: if the selected window holds zero points for a metric, the smallest larger range
-// that does is used and the card caption notes the widening.
+// Windows are taken relative to the phone's actual local day, with an auto-expand rule: if
+// the selected window holds zero points for a metric, the smallest larger range that does is
+// used and the card caption notes the widening.
 //
 // Data: full history is loaded once via repo.days("my-whoop"); until it arrives the
 // reactive recentDays flow backs the charts, so the screen is never empty when data exists.
 //
-// Difference from macOS: the macOS Trends footer carries a YearHeatStrip calendar
-// (a bespoke 53-week heat grid) that has no Android foundation equivalent. Rather than
-// fake it, the "Recovery history" card renders the real per-day recovery series as a
-// bar strip over the same window, with a short note pointing at the macOS calendar view.
+// The footer "Recovery history" card renders the real per-day recovery series as a bar strip
+// over the selected window, in place of a 53-week calendar heat grid.
 
 @Composable
 fun TrendsScreen(vm: AppViewModel) {
@@ -80,15 +77,15 @@ fun TrendsScreen(vm: AppViewModel) {
     // RANGE control above scopes the long charts; this only moves the weekly digest at the top.
     var weekOffset by remember { mutableStateOf(0) }
     // Re-clamp the offset whenever the loaded history changes (e.g. an import lands more weeks), so a
-    // stored offset can never point past the new earliest week. Mirrors the iOS minWeekOffset clamp.
+    // stored offset can never point past the new earliest week.
     val minWeekOffset = remember(days) { minWeekOffset(days) }
     LaunchedEffect(minWeekOffset) { weekOffset = weekOffset.coerceIn(minWeekOffset, 0) }
 
-    // Resolve each metric's window ONCE per composition and reuse below , mirrors the macOS resolve(_:)
-    // so caption / widened / points aren't recomputed per use. HOISTED above the lazy scaffold: these
-    // are @Composable `remember` hooks, which can't run inside the LazyListScope content lambda. They're
-    // cheap memoized resolves (no-ops over an empty `days`), so the empty branch below simply ignores
-    // them , same as Intelligence's hoisted range/filter. Mirrors the eager body's per-composition resolve.
+    // Resolve each metric's window ONCE per composition and reuse below, so caption / widened / points
+    // aren't recomputed per use. HOISTED above the lazy scaffold: these are @Composable `remember`
+    // hooks, which can't run inside the LazyListScope content lambda. They're cheap memoized resolves
+    // (no-ops over an empty `days`), so the empty branch below simply ignores them , same as
+    // Intelligence's hoisted range/filter.
     val recovery = remember(days, range) { resolveMetric(days, range) { it.recovery } }
     val hrv = remember(days, range) { resolveMetric(days, range) { it.avgHrv } }
     val rhr = remember(days, range) { resolveMetric(days, range) { it.restingHr?.toDouble() } }
@@ -122,8 +119,8 @@ fun TrendsScreen(vm: AppViewModel) {
             return@LazyScreenScaffold
         }
 
-        // The main card list ripples in once on appear (Reduce-Motion safe), mirroring the iOS
-        // staggeredAppear sequence , each top-level section is one staggered child.
+        // The main card list ripples in once on appear (Reduce-Motion safe) , each top-level
+        // section is one staggeredAppear child.
 
         // --- Week-in-review digest with prev/next week browsing. Past weeks render in the
         // same format; the chevrons stay visible on an empty PAST week so the user can step on. ---
@@ -139,8 +136,8 @@ fun TrendsScreen(vm: AppViewModel) {
         }
 
         // --- Week in review , the Charge / Effort / Rest trio in NOOP's pip language (PipBar +
-        // CountUpText), mirroring the iOS TrendsView.weekInReview card. White count-up numbers over
-        // segmented count-up bars; self-hides when none of the three carry a window mean. ---
+        // CountUpText). White count-up numbers over segmented count-up bars; self-hides when
+        // none of the three carry a window mean. ---
         item {
             WeekInReviewCard(
                 charge = recovery,
@@ -202,8 +199,7 @@ fun TrendsScreen(vm: AppViewModel) {
                 change = periodChange(recovery.values),
                 higherIsBetter = true,
                 changeFmt = { "${it.roundToInt()}" },
-                // Lift the ceiling ~6% so a near-100 peak and the now-cap halo clear the top gridline ,
-                // mirrors the iOS hero's `valueRange: 0...106`.
+                // Lift the ceiling ~6% so a near-100 peak and the now-cap halo clear the top gridline.
                 chartHeadroom = 0.06f,
                 footer = listOf(
                     stringResource(R.string.trends_avg) to (recAvg?.let { "${it.roundToInt()}" } ?: EM_DASH),
@@ -254,16 +250,16 @@ fun TrendsScreen(vm: AppViewModel) {
             }
         }
 
-        // --- Recovery history strip (stands in for the macOS YearHeatStrip) ---
+        // --- Recovery history strip (the calendar-grid stand-in) ---
         item {
             Column(modifier = Modifier.staggeredAppear(index = 5)) {
                 RecoveryHistoryCard(days = days, range = range)
             }
         }
 
-        // --- Export trends report , the shareable offline PDF exporter. Mirrors the iOS
-        // TrendsView.exportReportRow footer; the same composable Settings hosts, so both surfaces
-        // offer it. Routed through NoopButton like every other CTA (no gold). ---
+        // --- Export trends report , the shareable offline PDF exporter. The same composable
+        // Settings hosts, so both surfaces offer it. Routed through NoopButton like every other
+        // CTA (no gold). ---
         item {
             Column(modifier = Modifier.staggeredAppear(index = 6)) {
                 TrendsReportExportSection(vm)
@@ -277,7 +273,7 @@ fun TrendsScreen(vm: AppViewModel) {
 /**
  * The most-negative weekOffset allowed: the number of whole Mon–Sun weeks between the earliest day we
  * hold and this week. Beyond it there's no data to digest, so the back chevron disables. 0 when history
- * is empty or unparseable (so we stay on this week). `days` is oldest → newest. Mirrors iOS minWeekOffset.
+ * is empty or unparseable (so we stay on this week). `days` is oldest → newest.
  */
 private fun minWeekOffset(days: List<DailyMetric>): Int {
     val earliest = days.firstOrNull()?.day ?: return 0
@@ -298,7 +294,6 @@ private fun minWeekOffset(days: List<DailyMetric>): Int {
  * the offset week is built straight from the shared [buildWeeklyDigest] (the same builder
  * WeeklyDigestCard uses) so past weeks render in the identical format. The whole block self-hides only
  * when the WHOLE history is empty; an empty PAST week still shows the chevrons so the user can step on.
- * Mirrors iOS TrendsView.weeklyDigestNav.
  */
 @Composable
 private fun WeeklyDigestNav(
@@ -334,7 +329,7 @@ private fun WeeklyDigestNav(
 
 /**
  * Prev/next week stepper. Back is clamped at the earliest week we hold; forward at this week (no future
- * weeks). Flat accent chevrons, mirroring the iOS FullDayChart day stepper.
+ * weeks). Flat accent chevrons, the same stepper idiom the FullDayChart day nav uses.
  */
 @Composable
 private fun WeekNavBar(weekOffset: Int, minWeekOffset: Int, onStep: (Int) -> Unit) {
@@ -392,9 +387,9 @@ private fun WeekNavBar(weekOffset: Int, minWeekOffset: Int, onStep: (Int) -> Uni
 // MARK: - Week in review , the Charge / Effort / Rest trio in pip language
 //
 // The three daily scores as NOOP pip rows over the resolved window: Charge (recovery, 0–100),
-// Effort (strain, shown on the WHOOP 0–21 / 0–100 scale per the unit toggle) and Rest (sleep
-// efficiency, 0–100). Each value ticks up via CountUpText; the segmented PipBar cascades on appear.
-// Self-hides when none of the three carry a window mean. Mirrors iOS TrendsView.weekInReview.
+// Effort (strain, shown on the WHOOP 0–21 / 0–100 scale per the unit toggle) and Rest (the
+// sleep_performance composite, 0–100 — not raw efficiency). Each value ticks up via CountUpText;
+// the segmented PipBar cascades on appear. Self-hides when none of the three carry a window mean.
 
 @Composable
 private fun WeekInReviewCard(
@@ -444,7 +439,6 @@ private fun WeekInReviewCard(
 /**
  * One pip row matching PipBarRow's layout, but with the value driven by [CountUpText] so the big
  * number ticks up. UPPERCASE label + big white count-up value over the segmented count-up bar.
- * Mirrors iOS TrendsView.pipScoreRow.
  */
 @Composable
 private fun PipScoreRow(

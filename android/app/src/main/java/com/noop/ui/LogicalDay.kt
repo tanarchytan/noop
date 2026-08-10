@@ -59,7 +59,7 @@ internal fun logicalDayStartEpochSecond(
  * banked under the new local calendar day while [logicalKey] still points at yesterday. Otherwise fall
  * back to the logical-day row, preserving the anti-blank guard (never blank when a night isn't
  * banked yet). [localKey] == [logicalKey] (the common daytime case) collapses to the plain logical
- * lookup. Mirrors Swift Repository.resolveToday.
+ * lookup.
  */
 internal fun resolveTodayRow(days: List<DailyMetric>, logicalKey: String, localKey: String): DailyMetric? {
     if (localKey != logicalKey) {
@@ -80,7 +80,7 @@ internal fun resolveTodayRow(days: List<DailyMetric>, logicalKey: String, localK
  * day exists but isn't scored yet, so a naive `days.lastOrNull { recovery != null }` kept pointing at
  * yesterday's scored row while Today had already moved on. The `it.day < anchorKey` bound ([anchorKey] =
  * today's own key) mirrors [lastScoredRecoveryDay] + its future-day guard, so a stale or stray
- * future-dated scored row can never re-surface AS today. Mirrors Swift Repository.widgetAnchor.
+ * future-dated scored row can never re-surface AS today.
  */
 internal fun widgetAnchorRow(days: List<DailyMetric>, logicalKey: String, localKey: String): DailyMetric? {
     val todayRow = resolveTodayRow(days, logicalKey, localKey)
@@ -100,7 +100,7 @@ internal fun widgetAnchorRow(days: List<DailyMetric>, logicalKey: String, localK
  * the vital), which is wrong. Selecting the last row with ANY of the three vitals, bounded strictly before
  * [todayKey], keeps last night's OWN vitals in view. Pure + testable; days is oldest→newest. The
  * `it.day < todayKey` bound mirrors [widgetAnchorRow]'s future-day guard, so a stray future-dated row (a
- * bad strap clock) can never surface. Mirrors Swift Repository.lastVitalsDay.
+ * bad strap clock) can never surface.
  */
 internal fun lastVitalsRow(days: List<DailyMetric>, todayKey: String): DailyMetric? =
     days.lastOrNull { (it.avgHrv != null || it.restingHr != null || it.respRateBpm != null) && it.day < todayKey }
@@ -110,7 +110,7 @@ internal fun lastVitalsRow(days: List<DailyMetric>, todayKey: String): DailyMetr
  * [lastVitalsRow]'s predicate only checks HRV/resting-HR/respiratory, so it can select a row whose spo2Pct is
  * null (the on-device engine writes spo2Pct = null; only imported rows carry it) while an OLDER imported row
  * has a real reading. Resolving SpO₂ per field keeps the SpO₂ card honest instead of "No Data".
- * Same `it.day < todayKey` future-clock guard. Mirrors Swift `DailyMetric.lastSpo2Day` / `lastSkinTempDay`.
+ * Same `it.day < todayKey` future-clock guard.
  */
 internal fun lastSpo2Row(days: List<DailyMetric>, todayKey: String): DailyMetric? =
     days.lastOrNull { it.spo2Pct != null && it.day < todayKey }

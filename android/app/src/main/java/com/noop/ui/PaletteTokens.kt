@@ -9,13 +9,13 @@ import androidx.compose.ui.graphics.Color
 
 // MARK: - PaletteTokens — the per-scheme colour set behind `object Palette`
 //
-// Compose has no OS-dynamic colour (unlike iOS UIColor(light:dark:)), so the light theme is built
-// the same way conceptually: ONE set of colour tokens, swapped wholesale per scheme. `Palette.active`
+// Compose has no OS-dynamic colour, so the light theme is built the same way the dark one is:
+// ONE set of colour tokens, swapped wholesale per scheme. `Palette.active`
 // is snapshot state, so every `Palette.X` read (in a composable OR a Canvas DrawScope) re-resolves
 // automatically when the theme flips — ZERO call-site changes across the ~1,740 references.
 //
-// Dark = the "Neon Violet" cyberpunk scheme; light = "Terracotta & Sand". noop-tan is Android-only, so
-// these are the fork's own palettes (no Swift twin); token names/order are unchanged.
+// Dark = the "Neon Violet" cyberpunk scheme; light = "Terracotta & Sand". Both schemes carry the same
+// token names in the same order.
 
 data class PaletteTokens(
     val surfaceBase: Color,

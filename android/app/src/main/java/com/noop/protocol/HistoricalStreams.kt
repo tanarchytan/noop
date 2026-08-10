@@ -23,19 +23,15 @@ import uniffi.whoop_ffi.Response
 /*
  * Historical (offload) decode for the WHOOP 4.0 — the type-47 HISTORICAL_DATA path.
  *
- * Faithful port of three macOS Swift pieces:
- *   - the `postHooks["historical_data"]` decoder (Packages/WhoopProtocol/.../PostHooks.swift),
- *     which decodes a type-47 record's biometric block using the per-version field table baked
- *     into whoop_protocol.json (V24/V12 = full DSP block; V5/V7/V9 = generic HR/RR only),
- *   - `classifyHistoricalMeta` (Packages/WhoopProtocol/.../HistoricalMeta.swift), the METADATA
- *     classifier the offload state machine uses, and
- *   - `extractHistoricalStreams` (Packages/WhoopProtocol/.../HistoricalStreams.swift), which turns
- *     a batch of parsed offload frames into datastore rows.
+ * Three pieces:
+ *   - the type-47 record decoder, which reads a record's biometric block through the per-version
+ *     field table (V24/V12 = full DSP block; V5/V7/V9 = generic HR/RR only),
+ *   - [classifyHistoricalMeta], the METADATA classifier the offload state machine uses, and
+ *   - [extractHistoricalStreams], which turns a batch of parsed offload frames into datastore rows.
  *
  * WHY this lives here and not on the live decode path: the live decode ([RustAdapter.parseFrame] over
- * the whoop-rs codec) surfaces only REALTIME_DATA / EVENT / COMMAND_RESPONSE / METADATA, exactly like
- * the Swift live path. Historical records are decoded only during a backfill, so the type-47 decode is
- * kept on the offload path to mirror the Swift split precisely.
+ * the whoop-rs codec) surfaces only REALTIME_DATA / EVENT / COMMAND_RESPONSE / METADATA. Historical
+ * records are decoded only during a backfill, so the type-47 decode is kept on the offload path.
  *
  * The frame envelope is identical to Framing.kt's: [0]=0xAA, [1..2]=len u16 LE, [3]=crc8(len),
  * [4]=packet type (47 here), [5]=record VERSION (NOT a sequence byte for type-47 — the schema
@@ -69,7 +65,7 @@ const val FUTURE_MARGIN: Long = 86_400L
  * nor post-date the newest by more than benign skew, so a record dated MONTHS off the strap's OWN window is
  * a bad-clock artefact even when it clears the absolute 2023-11 floor (e.g. a 2024-12-25 record against a
  * 2026 strap window). 7 days absorbs marker jitter / a still-banking newest edge / DST while still catching
- * the months-off garbage. Kept in lockstep with Swift `HistoricalStreams.swift` SESSION_RANGE_MARGIN.
+ * the months-off garbage.
  */
 const val SESSION_RANGE_MARGIN: Long = 7L * 86_400L
 
@@ -158,16 +154,15 @@ fun classifyHistoricalMeta(frame: ByteArray, family: DeviceFamily): HistoricalMe
  */
 data class EventFields(val kind: String, val rawTs: Long, val residual: Map<String, Any?>)
 
-// MARK: - Historical extraction (port of HistoricalStreams.swift extractHistoricalStreams)
+// MARK: - Historical extraction
 
 /**
- * Turn a batch of parsed offload frames into a [StreamBatch] of datastore rows. Direct port of
- * Swift `extractHistoricalStreams`.
+ * Turn a batch of parsed offload frames into a [StreamBatch] of datastore rows.
  *
  * HR/R-R/SpO2/skinTemp/resp/gravity come from type-47 HISTORICAL_DATA records, each of which
  * carries its OWN real unix timestamp — so NO wall-clock offset is applied to them (the
- * [deviceClockRef]/[wallClockRef] args exist only for the REALTIME_RAW_DATA fallback below and to
- * mirror the Swift signature). EVENT timestamps are real RTC unix seconds (already wall-clock).
+ * [deviceClockRef]/[wallClockRef] args exist only for the REALTIME_RAW_DATA fallback below).
+ * EVENT timestamps are real RTC unix seconds (already wall-clock).
  * CRC-failed / non-ok frames are skipped.
  *
  * [rawFrames] are the verbatim BLE frames for this chunk; each record is decoded through whoop-rs
@@ -189,17 +184,17 @@ fun extractHistoricalStreams(
     // wallClockRef — that arg is the (device,wall) correlation and is 0 on the RawHistoryArchive replay
     // path (which would otherwise reject everything). Take the LATER of the supplied correlation wall and
     // the real clock so a test that passes a recent wallClockRef still has a sane upper bound, and the
-    // replay path's wallClockRef=0 falls back to the real clock. Mirrors the Swift wallNow seam.
+    // replay path's wallClockRef=0 falls back to the real clock.
     wallNow: Long = maxOf(wallClockRef.toLong(), System.currentTimeMillis() / 1000L),
     // SESSION-RELATIVE bounds: the strap's own GET_DATA_RANGE oldest/newest markers for THIS sync.
     // null on the replay/import/no-range paths — the gate then falls back to the absolute-only floor
-    // (unchanged). Kept in lockstep with the Swift extractHistoricalStreams session args.
+    // (unchanged).
     sessionOldestUnix: Long? = null,
     sessionNewestUnix: Long? = null,
     // Diagnostic tap, off unless a caller supplies it: receives each frame's decoded property map and
     // the frame itself, including frames this funnel drops. Must not alter what is ingested.
     recordSink: ((Map<String, Any?>?, ByteArray) -> Unit)? = null,
-    // Retained caller/Swift-signature arg (Test Centre → Experimental algorithms). The v26 PPG-HR now
+    // Retained caller-signature arg (Test Centre → Experimental algorithms). The v26 PPG-HR now
     // runs through whoop-rs's adjudicated sub-lag estimator (always sub-lag), so this flag no longer
     // gates the estimate; it is kept so the caller contract is unchanged.
     @Suppress("UNUSED_PARAMETER") ppgHrSubLagInterp: Boolean = false,
@@ -220,7 +215,7 @@ fun extractHistoricalStreams(
     // A record dated months outside the strap's own window is wandering-clock pollution even if it clears the
     // absolute floor (e.g. 2024-12-25 against a 2026 strap). A legitimately-OLD record WITHIN [oldest, newest]
     // (real banked history) is always kept. Malformed/half markers fall back to absolute-only — never reject
-    // real data on a wrong-epoch marker. Mirrors Swift `isPlausibleHistoricalUnix(_:wallNow:sessionOldest:sessionNewest:)`.
+    // real data on a wrong-epoch marker.
     fun plausible(ts: Long): Boolean {
         if (ts < MIN_PLAUSIBLE_UNIX || ts > wallNow + FUTURE_MARGIN) return false
         val oldest = sessionOldestUnix
@@ -248,7 +243,7 @@ fun extractHistoricalStreams(
     // far-past / a future date); the constant-skew corrector returns those rawTs UNVALIDATED on a healthy-
     // looking clock (offset 0 on backfill), so they entered the DB verbatim and polluted every day-window.
     // Returning null here makes every call site skip the record. Counts each drop for the once-per-session
-    // bad-clock log. Mirrors the Swift correctedWall returning nil.
+    // bad-clock log.
     fun correctedWall(rawTs: Long): Long? {
         val candidate: Long = run {
             if (!applyStaleClockCorrection || kotlin.math.abs(clockOffset) <= staleThreshold) return@run rawTs
@@ -318,7 +313,7 @@ fun extractHistoricalStreams(
                             for (v in samples) ppgSamples.add(PpgSample(baseTs, v))
                             // Persist the raw waveform itself too (follow-up), keyed on the record's
                             // corrected wall-second. Guard on non-empty so a truncated frame that decoded
-                            // zero samples never banks an empty row (mirrors the Swift `!samples.isEmpty`).
+                            // zero samples never banks an empty row.
                             if (samples.isNotEmpty()) ppgWaveform.add(PpgWaveformRow(baseTs, samples))
                         }
                     }
@@ -335,7 +330,7 @@ fun extractHistoricalStreams(
                 // instead of letting its garbage `unix` enter the DB and pollute the day-windowed analytics.
                 val ts = (p.intOrNull("unix")?.toLong())?.let { correctedWall(it) } ?: continue
 
-                // skip startup hr=0 (matches Swift `bpm != 0`).
+                // skip startup hr=0.
                 p.intOrNull("heart_rate")?.let { bpm -> if (bpm != 0) hr.add(HrRow(ts, bpm)) }
 
                 @Suppress("UNCHECKED_CAST")
@@ -420,8 +415,7 @@ fun extractHistoricalStreams(
 
             PacketType.EVENT.rawValue -> {
                 // EVENT carries the strap RTC's real-unix seconds. Correct for a grossly-stale RTC;
-                // a normal strap is unchanged. Port of the Swift `case "EVENT"` branch:
-                // persist the event (with battery extracted for BATTERY_LEVEL) so offloaded
+                // a normal strap is unchanged. Persist the event (battery extracted for BATTERY_LEVEL) so offloaded
                 // wrist/charge/battery events aren't lost. During a backfill the live path is
                 // suppressed, so the offload extractor MUST handle these.
                 // whoop-rs supplies the widened event (kind + canonical residual). The timestamp
@@ -442,7 +436,7 @@ fun extractHistoricalStreams(
             }
 
             PacketType.COMMAND_RESPONSE.rawValue -> {
-                // No device timestamp on COMMAND_RESPONSE → stamp battery at wallClockRef (Swift parity).
+                // No device timestamp on COMMAND_RESPONSE → stamp battery at wallClockRef.
                 // whoop-rs decodes the response; only a GET_BATTERY_LEVEL reply carries a percent.
                 (RustCodec.decodeResponse(family.gen, frame) as? Response.Battery)?.let {
                     battery.add(BatteryRow(ts = wallClockRef.toLong(), soc = it.percent, mv = null, charging = null))

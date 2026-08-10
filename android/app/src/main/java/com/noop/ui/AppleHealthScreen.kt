@@ -30,9 +30,8 @@ import kotlin.math.roundToInt
 
 // MARK: - Apple Health (per-source page)
 //
-// Faithful port of the macOS AppleHealthView. The macOS screen is a Vitaltrends-style,
-// instrument-grade page driven by ONE range control (W / M / 3M / 6M / 1Y / ALL): a
-// uniform grid of fixed-height StatTiles over every metric, then four ChartCard
+// A Vitaltrends-style, instrument-grade page driven by ONE range control (W / M / 3M / 6M / 1Y /
+// ALL): a uniform grid of fixed-height StatTiles over every metric, then four ChartCard
 // sections — Heart & Vitals, Activity & Energy, Body Composition, Sleep — each with an
 // avg / min / max / points footer.
 //
@@ -82,7 +81,7 @@ private data class HealthPoint(val day: String, val value: Double)
 /**
  * Slice the (ascending-by-day) series to a window taken RELATIVE TO THE LATEST point.
  * The daily/metricSeries caches hold one row per day, so the trailing N rows are the
- * trailing-N-day window — matching the macOS day-distance windowing closely enough.
+ * trailing-N-day window, which approximates true day-distance windowing closely enough.
  */
 private fun List<HealthPoint>.windowFor(range: AppleRange): List<HealthPoint> {
     val n = range.days ?: return this
@@ -271,7 +270,7 @@ private fun TileGrid(data: AppleData, range: AppleRange) {
     // Imperial/Metric display preference. Weight + lean mass (stored kg) re-label to lb; every
     // other Apple Health metric is unit-agnostic. Display-only.
     val unitSystem = UnitPrefs.system(LocalContext.current)
-    // Two columns of equal-width fixed-height tiles, mirroring the macOS adaptive grid.
+    // Two columns of equal-width fixed-height tiles.
     Column(verticalArrangement = Arrangement.spacedBy(Metrics.gap)) {
         TileRow {
             MetricTile(Modifier.weight(1f), data, range, "steps", stringResource(R.string.applehealth_steps), Palette.metricCyan) { intString(it) }

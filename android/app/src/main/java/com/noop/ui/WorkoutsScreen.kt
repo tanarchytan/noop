@@ -102,8 +102,7 @@ import java.util.Locale
 import kotlin.math.roundToInt
 
 /**
- * Workouts — the activity log, instrument-grade and uniform. Ports the macOS
- * WorkoutsView (Strand/Screens/WorkoutsView.swift) onto the locked Android component
+ * Workouts — the activity log, instrument-grade and uniform. Built on the locked component
  * system (NoopCard / StatTile / SectionHeader / SegmentedPillControl / SourceBadge)
  * so every card, tile and row lines up:
  *
@@ -118,7 +117,7 @@ import kotlin.math.roundToInt
  * merged newest first, with dismissed detected bouts filtered out. Each row carries a source
  * badge (Whoop / Apple / HC / Detected / Manual) and an overflow menu to edit, re-label, dismiss or
  * delete. The windowing is anchored to the LATEST session (not "now"), so an old log still resolves;
- * an empty window auto-widens to the next larger range, exactly like the macOS screen.
+ * an empty window auto-widens to the next larger range.
  */
 @Composable
 fun WorkoutsScreen(vm: AppViewModel) {
@@ -130,7 +129,7 @@ fun WorkoutsScreen(vm: AppViewModel) {
     var loaded by remember { mutableStateOf(false) }
     var range by remember { mutableStateOf(WorkoutRange.All) }
     // Pick the default range ONCE on first non-empty load; later mutations must not fight a range the
-    // user chose. Mirrors macOS, which sets the default only in `.task` / first onAppear.
+    // user chose. The default is set on first load only, never again.
     var didPickDefaultRange by remember { mutableStateOf(false) }
 
     // The manual add/edit dialog target: Some(null) = add, Some(row) = edit, null = closed.
@@ -329,7 +328,7 @@ private fun EmptyWorkouts(loaded: Boolean, onAdd: () -> Unit) {
 /**
  * The transient "personal pattern" caption shown after a manual save / relabel — an
  * Effort-tinted frosted strip with a chart glyph and the engine's "Sessions like this usually …"
- * sentence. Mirrors the macOS WorkoutsView.postLogBanner. Auto-dismisses (the caller clears it).
+ * sentence. Auto-dismisses (the caller clears it).
  */
 @Composable
 private fun PostLogNoteBanner(text: String) {
@@ -435,7 +434,7 @@ private fun sourceFilterLabel(c: WorkoutSource): Int = when (c) {
 
 /**
  * : filter controls beside the range pill — a Sport menu, a Source menu, and a search field, with a
- * "×" clear chip that appears only when a filter is active. Mirrors the iOS WorkoutsView.filterBar; the
+ * "×" clear chip that appears only when a filter is active. The
  * predicate is the pure [WorkoutFilter], these controls only drive its state.
  */
 @Composable
@@ -612,8 +611,7 @@ private fun MergeSportDialog(onDismiss: () -> Unit, onPick: (String) -> Unit) {
             val context = LocalContext.current
             TextButton(onClick = {
                 if (sport.isNotBlank()) {
-                    // naming a merge is a real selection too — parity with the macOS/iOS sheet,
-                    // whose reused StartWorkoutSheet records on its action button.
+                    // naming a merge is a real selection too, so it is recorded like a start.
                     RecentSportsPrefs.record(context, sport.trim())
                     onPick(sport.trim())
                 }
@@ -1364,7 +1362,7 @@ private fun WorkoutDetailSheet(vm: AppViewModel, row: WorkoutRow, onDismiss: () 
 
             // - per-session Effort contribution. The session's captured strain re-homed from a plain
             // value row into a prominent Effort-amber card (the big count-up value + the "This session"
-            // overline + an explainer), mirroring the iOS WorkoutDetailView.effortCard. Gated on a captured
+            // overline + an explainer). Gated on a captured
             // strain - an imported session with none simply omits the card. The display honours the Effort
             // scale toggle , so a WHOOP-axis user sees the rescaled 0–21 value; the stored value is
             // unchanged. Presentation only - no new data is computed here.
@@ -1403,7 +1401,6 @@ private fun WorkoutDetailSheet(vm: AppViewModel, row: WorkoutRow, onDismiss: () 
                 // Effort stay from the recorded session (preservingCaptured keeps the captured strain/zones).
                 // When the typed average disagrees materially with this trace's own mean AND the row carries
                 // that captured strain/zones, say so plainly. We do NOT re-score from the typed number.
-                // Parity with macOS WorkoutDetailView.avgHrEditedDisclosure.
                 val traceMean = hrCurve.sum() / hrCurve.size
                 val captured = row.strain != null || !row.zonesJSON.isNullOrEmpty()
                 if (captured && row.avgHr != null && kotlin.math.abs(row.avgHr - traceMean) > 3.0) {
@@ -1512,8 +1509,7 @@ private fun RecoveryStat(label: String, value: Int?, modifier: Modifier = Modifi
 /**
  * - the workout detail's per-session Effort contribution card. The Effort-amber tinted [NoopCard]
  * carries a "This session" overline, the captured strain as a big count-up value (the NOOP signature),
- * its scale caption (Effort 0–100 or strain 0–21), and a one-line explainer. Mirrors the iOS
- * WorkoutDetailView.effortCard: same colour world, same count-up, same copy. [strain] is the stored
+ * its scale caption (Effort 0–100 or strain 0–21), and a one-line explainer. [strain] is the stored
  * 0–100 Effort value; [effortScale] only changes how it is DISPLAYED, never the stored number.
  */
 @Composable
@@ -1693,12 +1689,10 @@ private fun Cell(text: String, modifier: Modifier, color: Color? = null) {
 
 // MARK: - Manual workout add / edit dialog
 //
-// Five inputs — sport, start (date-time, here entered as minutes-ago for simplicity on phone),
+// Five inputs — sport, start (absolute date + time, see [StartTimeField]),
 // duration, average HR, calories — validated by WorkoutEditing.buildManualRow (the same honest-row
 // rules the engine uses). Editing carries the original's captured maxHr/strain/route over via
-// preservingCaptured so changing sport/duration never wipes them. Android mirror of macOS
-// ManualWorkoutSheet (the macOS sheet uses a DatePicker; on phone we take "minutes ago" to keep the
-// dialog to plain numeric fields — the persisted startTs is identical).
+// preservingCaptured so changing sport/duration never wipes them.
 
 @Composable
 private fun ManualWorkoutDialog(
@@ -1709,8 +1703,7 @@ private fun ManualWorkoutDialog(
     val nowSec = System.currentTimeMillis() / 1000
     // Pre-fill from the edited row ("detected" shown as "Activity" so a re-label starts clean).
     var sport by remember { mutableStateOf(editing?.let { WorkoutEditing.displaySport(it.sport) } ?: "") }
-    // — absolute start date+time (parity with the macOS/iOS sheet's DatePicker) instead of the old
-    // "minutes ago" field. Defaults to the edited row's start, or one hour ago for a fresh add.
+    // Absolute start date+time. Defaults to the edited row's start, or one hour ago for a fresh add.
     var startMillis by remember {
         mutableStateOf((editing?.startTs ?: (nowSec - 3_600)) * 1000L)
     }
@@ -1803,7 +1796,7 @@ private fun ManualWorkoutDialog(
                 // editing the Avg HR on a row that carries CAPTURED strain/zones saves the typed
                 // average while the HR graph, zones and Effort stay from the recorded session
                 // (preservingCaptured keeps them verbatim). That mismatch is silent, so say so plainly.
-                // We do NOT re-score from one number. Parity with macOS ManualWorkoutSheet.avgHrEditedNote.
+                // We do NOT re-score from one number.
                 if (built != null && WorkoutEditing.avgHrEdited(built, editing)) {
                     Text(
                         stringResource(R.string.workouts_avg_hr_typed_note),
@@ -1853,8 +1846,7 @@ private fun ManualWorkoutDialog(
  * match (an exact catalogue hit, or a free-typed sport, collapses it).
  */
 /**
- * Absolute start date + time for the manual add/edit dialog — parity with the macOS/iOS sheet's
- * DatePicker (; the old Android sheet only took "minutes ago"). A tappable row that opens a date
+ * Absolute start date + time for the manual add/edit dialog. A tappable row that opens a date
  * picker, then chains to a time picker, both capped at now (you can't log a workout in the future).
  */
 @Composable
@@ -2114,8 +2106,8 @@ internal fun workoutSourceLabel(deviceId: String, source: String): String {
 
 // MARK: - Zone parsing/aggregation (internal + Compose-free so the unit test can pin them,
 // same pattern as workoutSourceLabel). zonesJSON is a flat one-level numeric object in BOTH
-// stored shapes — "zone1".."zone5" (WhoopCsvImporter.zonesJson) and "z1".."z5" (the macOS
-// importer's rows) — so an anchored regex is safe, and it keeps org.json (an unmocked
+// stored shapes — "zone1".."zone5" (WhoopCsvImporter.zonesJson) and "z1".."z5" (imported
+// rows) — so an anchored regex is safe, and it keeps org.json (an unmocked
 // Android stub in plain-JVM unit tests) out of test-reachable code.
 
 private val ZONE_KEY = Regex("\"z(?:one)?([1-5])\"\\s*:\\s*(-?[0-9]+(?:\\.[0-9]+)?(?:[eE][+-]?[0-9]+)?)")
@@ -2137,7 +2129,7 @@ internal data class ZoneSummary(val minutes: List<Double>, val sessionsWithZones
     val totalMinutes: Double get() = minutes.sum()
 }
 
-/** Duration-weighted zone minutes across [rows] — mirrors the macOS WorkoutZones.summary
+/** Duration-weighted zone minutes across [rows]
  * (duration-minutes × pct ÷ 100). APPROXIMATE: an on-device aggregate of imported
  * per-workout percentages, not a WHOOP-computed figure. */
 internal fun zoneSummary(rows: List<WorkoutRow>): ZoneSummary? {
@@ -2201,7 +2193,7 @@ private fun oneDecimal(v: Double): String = String.format(Locale.US, "%.1f", v)
 
 private fun grouped(v: Double): String = String.format(Locale.US, "%,d", v.roundToInt())
 
-// MARK: - Sport icons (Material equivalents of the SF Symbols used on macOS)
+// MARK: - Sport icons
 
 // internal (not private): reused by the Today Overview-HR chart to glyph each workout at its HR peak.
 internal fun sportIcon(sport: String): ImageVector {
@@ -2222,8 +2214,7 @@ internal fun sportIcon(sport: String): ImageVector {
         s.contains("tennis") || s.contains("padel") || s.contains("pickle") || s.contains("squash") || s.contains("racquet") || s.contains("badminton") -> Icons.Filled.SportsTennis
         s.contains("volleyball") -> Icons.Filled.SportsVolleyball
         s.contains("golf") -> Icons.Filled.SportsGolf
-        // No dedicated bowling icon in the Material set; the plain ball glyph is the closest match
-        // (iOS has figure.bowling). (D)
+        // No dedicated bowling icon in the Material set; the plain ball glyph is the closest match.
         s.contains("bowl") -> Icons.Filled.SportsBaseball
         s.contains("climb") -> Icons.Filled.Terrain
         s.contains("soccer") || s.contains("football") -> Icons.Filled.SportsSoccer

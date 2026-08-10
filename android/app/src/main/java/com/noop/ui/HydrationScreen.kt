@@ -74,7 +74,7 @@ private val HYDRATION_RING_DIAMETER = 184.dp
 private const val HYDRATION_RING_STROKE_FRACTION = 0.10f
 
 /** Upper bound (ml) for a single custom hydration log - a sane cap so a stray digit can't bank an
- *  absurd 50-litre day. A 3-litre container covers any realistic bottle/jug. Mirrors the iOS clamp. */
+ *  absurd 50-litre day. A 3-litre container covers any realistic bottle/jug. */
 private const val MAX_CUSTOM_ML: Int = 3000
 
 /** Parse a custom-amount field to a clamped whole-ml value in 1..[MAX_CUSTOM_ML], or null when the text
@@ -484,7 +484,7 @@ private fun weekdayInitial(dayKey: String): String =
  * the custom-amount dialog. A single numeric ml field (the "custom container size") with a clamped
  * confirm: the Log button is disabled until the text parses to a positive whole-ml value (1..MAX_CUSTOM_ML
  * via [parseCustomHydrationMl]), and confirming hands the parsed amount back to the caller's additive log.
- * Tokens-only on the hydration-blue field; mirrors the iOS custom-amount sheet.
+ * Tokens-only on the hydration-blue field.
  */
 @Composable
 private fun CustomAmountDialog(

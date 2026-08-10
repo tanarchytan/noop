@@ -1,9 +1,9 @@
 package com.noop.oura
 
-// OuraDriver: the transport-agnostic protocol state machine. Kotlin twin of OuraDriver.swift. It holds
-// NO BLE handle: the app's live source owns the BluetoothGatt / CBCentralManager and feeds the driver
+// OuraDriver: the transport-agnostic protocol state machine. It holds
+// NO BLE handle: the app's live source owns the BluetoothGatt and feeds the driver
 // only bytes + transition events. This is what makes the protocol headless-testable (no
-// android.bluetooth, no CoreBluetooth anywhere in this package).
+// android.bluetooth anywhere in this package).
 //
 // Two entry points:
 //   - nextStep(after:) -> List<OuraCommand>   : given the last transition, return the commands to write.
@@ -21,7 +21,7 @@ package com.noop.oura
 /**
  * A transport-level transition the app reports to the driver to advance the flow. The driver answers
  * with the next batch of commands. This keeps all BLE specifics (peripheral, GATT callbacks) in the
- * app and all protocol specifics here. Kotlin twin of Swift's OuraTransition enum.
+ * app and all protocol specifics here.
  */
 sealed class OuraTransition {
     /** Service + characteristics discovered and notifications enabled on ...0003. Begin auth. */
@@ -51,8 +51,7 @@ sealed class OuraTransition {
 }
 
 /**
- * The driver's coarse phase, exposed for the app and tests to assert on. Kotlin twin of Swift's
- * OuraDriverPhase enum.
+ * The driver's coarse phase, exposed for the app and tests to assert on.
  */
 sealed class OuraDriverPhase {
     object Idle : OuraDriverPhase()
@@ -105,8 +104,7 @@ class OuraDriver(
      * (primary) or, only while no 0x42 has arrived yet THIS session, the coarser 1s-granularity 0x85 RTC
      * beacon (secondary). null until the first anchor event of this session: a record decoded before then
      * has no computable UTC time, and [unixSeconds] honestly returns null rather than guessing. A stale
-     * anchor from a PREVIOUS session is never reused - the ring may have rebooted. Kotlin twin of Swift's
-     * anchorUtcMs/anchorRingTime.
+     * anchor from a PREVIOUS session is never reused - the ring may have rebooted.
      */
     private var anchorUtcMs: Long? = null
     private var anchorRingTime: Long? = null
@@ -241,7 +239,6 @@ class OuraDriver(
      * true. When allowKeyInstall is false it stays at NeedsKeyInstall and returns null, so the
      * dangerous 0x24 write is never emitted outside an explicit opt-in adopt flow. Returns null (and
      * leaves phase unchanged) when not gated on, the key length is wrong, or the command cannot build.
-     * Kotlin twin of Swift's beginKeyInstall.
      */
     fun beginKeyInstall(key: IntArray): OuraCommand? {
         if (!allowKeyInstall || phase != OuraDriverPhase.NeedsKeyInstall) return null
@@ -259,8 +256,7 @@ class OuraDriver(
      * Handle the ring's 0x25 SetAuthKey ack (`25 01 00`, s3.2) by driving re-auth with the freshly
      * installed key: transition InstallingKey -> Authenticating and return the same enable+nonce
      * commands the ready path uses. Returns [] (phase unchanged) when not in InstallingKey or when no
-     * installed key is present, so a stray ack cannot advance the flow. Kotlin twin of Swift's
-     * keyInstallAcknowledged.
+     * installed key is present, so a stray ack cannot advance the flow.
      */
     fun keyInstallAcknowledged(): List<OuraCommand> {
         if (phase != OuraDriverPhase.InstallingKey || installedKey == null) return emptyList()
@@ -287,8 +283,8 @@ class OuraDriver(
     /**
      * Convert a record's ring-clock timestamp to unix seconds using the current session's anchor
      *. Returns null when no anchor has arrived yet this session, so the caller
-     * can honestly fall back (e.g. to wall-clock arrival time) instead of guessing. Kotlin twin of
-     * Swift's `unixSeconds(forRingTimestamp:)`. `rt` is the unsigned 32-bit ring timestamp as a Long.
+     * can honestly fall back (e.g. to wall-clock arrival time) instead of guessing. `rt` is the
+     * unsigned 32-bit ring timestamp as a Long.
      */
     fun unixSeconds(forRingTimestamp: Long): Long? {
         val anchorMs = anchorUtcMs ?: return null
@@ -298,7 +294,7 @@ class OuraDriver(
         // a corrupt/misaligned ring timestamp (seen on a full cursor=0 history dump) can convert to
         // an implausible epoch. Gate the RESULT to the same 2020-2035 plausible window used for anchoring
         // (was a weak `ms <= 0`), so the caller honestly falls back to arrival time instead of banking a
-        // 1970 or far-future sample. Byte-identical to the Swift twin.
+        // 1970 or far-future sample.
         val seconds = ms / 1000
         if (seconds < MIN_PLAUSIBLE_EPOCH_SECONDS || seconds > MAX_PLAUSIBLE_EPOCH_SECONDS) return null
         return seconds
@@ -307,8 +303,7 @@ class OuraDriver(
     /**
      * Set the session anchor from a decoded epoch (unix SECONDS on the wire, s6.11) if it is plausible.
      * `preferPrimary` is true for a 0x42 time-sync (always wins) and false for a 0x85 RTC beacon (fills a
-     * gap only while no time-sync anchor exists yet). Kotlin twin of the anchor-set logic inlined in the
-     * Swift driver's `.timeSync` / `.rtcBeacon` ingest cases.
+     * gap only while no time-sync anchor exists yet).
      */
     private fun setAnchorIfPlausible(epochSeconds: Long, ringTimestamp: Long, preferPrimary: Boolean) {
         // A secondary (beacon) anchor never displaces an already-set primary (time-sync) anchor.
@@ -319,8 +314,8 @@ class OuraDriver(
     }
 
     /**
-     * Bounds-check a decoded epoch (unix seconds) and convert to ms, or null if implausible. Kotlin twin
-     * of Swift's `plausibleAnchorMs(fromEpochSeconds:)`. The 2020-2035 gate rejects a corrupt/misaligned
+     * Bounds-check a decoded epoch (unix seconds) and convert to ms, or null if implausible.
+     * The 2020-2035 gate rejects a corrupt/misaligned
      * 0x42/0x85 value (seen on real hardware: a full cursor=0 history dump hit one deep in the backlog) so
      * it is never trusted as an anchor (honest-data invariant). The gate ALSO bounds the input to the
      * seconds->ms `* 1000` conversion so it can never overflow Long.
@@ -538,7 +533,7 @@ class OuraDriver(
         return SecureRouting.Unhandled
     }
 
-    /** What handleSecureFrame resolved a 0x2F sub-frame to. Kotlin twin of Swift's SecureRouting. */
+    /** What handleSecureFrame resolved a 0x2F sub-frame to. */
     sealed class SecureRouting {
         data class Nonce(val nonce: IntArray) : SecureRouting() {
             override fun equals(other: Any?): Boolean {
@@ -570,7 +565,7 @@ class OuraDriver(
          * 0x42/0x85 value outside this range is a corrupt/misaligned record (seen on real hardware: a full
          * cursor=0 history dump hit one deep in the backlog) and is never trusted as an anchor (honest-data
          * invariant). This gate ALSO bounds the input to the seconds->ms `* 1000` conversion so it can
-         * never overflow Long. Byte-identical to Swift's min/maxPlausibleEpochSeconds.
+         * never overflow Long.
          */
         private const val MIN_PLAUSIBLE_EPOCH_SECONDS = 1_577_836_800L
         private const val MAX_PLAUSIBLE_EPOCH_SECONDS = 2_051_222_400L

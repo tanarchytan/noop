@@ -64,9 +64,8 @@ import kotlin.math.roundToInt
 
 // MARK: - Insights Hub (v5)
 //
-// The headline n-of-1 "what actually moves YOUR recovery" surface — the Compose twin of
-// Strand/Screens/InsightsHubView.swift. Two halves, both pure association on the user's
-// own logged days, never advice / cause / diagnosis:
+// The headline n-of-1 "what actually moves YOUR recovery" surface. Two halves, both pure
+// association on the user's own logged days, never advice / cause / diagnosis:
 //
 //  1. WHAT MOVES YOUR CHARGE — the unified lag-aware EffectRanker feed. Each row keeps the
 //     strongest honest lag ({0,+1,+2}) so it reads "shows up the next morning"; carries the
@@ -152,7 +151,7 @@ private fun MoversSection(
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(Metrics.gap)) {
         // Header then the outcome selector on its own row below it — on a ~360dp phone the pill
-        // control can't share a row with the weighted header without compressing (matches macOS).
+        // control can't share a row with the weighted header without compressing.
         val labels = HashMap<InsightsOutcome, String>()
         for (o in InsightsOutcome.entries) labels[o] = stringResource(o.labelRes)
         SectionHeader(
@@ -175,7 +174,7 @@ private fun MoversSection(
                 )
             }
         } else {
-            // Fade + rise the ranked mover cards in sequence (mirrors iOS .staggeredAppear(index:)).
+            // Fade + rise the ranked mover cards in sequence.
             ranked.forEachIndexed { i, r ->
                 Box(modifier = Modifier.staggeredAppear(i)) { MoverCard(r, outcome) }
             }
@@ -286,7 +285,7 @@ private fun DoseSection(cards: List<DoseCardData>) {
                 )
             }
         } else {
-            // Fade + rise the dose-response cards in sequence (mirrors iOS .staggeredAppear(index:)).
+            // Fade + rise the dose-response cards in sequence.
             cards.forEachIndexed { i, card ->
                 Box(modifier = Modifier.staggeredAppear(i)) { DoseResponseCard(card) }
             }
@@ -379,7 +378,7 @@ private fun DamageForecast(
 
     Column(verticalArrangement = Arrangement.spacedBy(Metrics.gap)) {
         // Overline then the dose stepper on its own row — the choices (0…max+) overflow a ~360dp
-        // phone if they share a row with the overline (matches the macOS fix).
+        // phone if they share a row with the overline.
         Overline(stringResource(card.forecastOverlineRes), modifier = Modifier.fillMaxWidth())
         SegmentedPillControl(
             items = card.doseChoices,
@@ -674,7 +673,7 @@ internal class InsightsHubViewModel {
         }
 
         // Dose rows per dosed behaviour, under the dedicated dose source; logged "yes" days
-        // back-fill dose = 1, explicit dose rows override (matches the Swift contract).
+        // back-fill dose = 1, explicit dose rows override.
         val doseCards = ArrayList<DoseCardData>()
         for (behavior in DosedBehavior.entries) {
             val doses = HashMap<String, Int>()

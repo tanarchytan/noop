@@ -28,8 +28,8 @@ import org.json.JSONArray
 // sharing a file changes nothing about that.
 //
 // Both are DISPLAY-ONLY. No metric is computed or stored differently here; these decide which of the
-// already-loaded values render and in what sequence. Both raw-id sets are byte-identical to their
-// iOS twins so a backup/restore reads the same layout on either OS.
+// already-loaded values render and in what sequence. Both raw-id sets are the STORED identifiers:
+// renaming one drops it on read (unknown ids are ignored), silently resetting a user's saved layout.
 
 // MARK: - Editable Key-Metrics layout
 //
@@ -39,13 +39,13 @@ import org.json.JSONArray
 // differently; this just decides which of the already-computed tiles render and in what sequence.
 //
 // Stored as a single comma-joined string of metric keys in SharedPreferences ("today.keyMetrics"), the
-// same mechanism every other Android preference uses. Mirrors the macOS KeyMetricPrefs.swift +
-// @AppStorage("today.keyMetrics"). Unknown keys are dropped on read so a removed tile can't crash, and
-// any known key missing from the saved list is treated as disabled (the editor re-lists it).
+// same mechanism every other Android preference uses. Unknown keys are dropped on read so a removed
+// tile can't crash, and any known key missing from the saved list is treated as disabled (the editor
+// re-lists it).
 
 /**
- * One of the Today screen's Key-Metric tiles. The [raw] is the stable persisted identifier — keep it
- * byte-identical to the macOS `KeyMetric` enum so a backup/restore reads the same layout on either OS.
+ * One of the Today screen's Key-Metric tiles. The [raw] is the stable persisted identifier — changing
+ * one drops that tile from every saved layout on read, so treat the strings as frozen.
  */
 enum class KeyMetric(val raw: String, val title: String) {
     CHARGE("charge", "Charge"),
@@ -74,7 +74,6 @@ enum class KeyMetric(val raw: String, val title: String) {
  * Display-only persistence for the Key-Metrics layout. Holds an ORDERED list of the enabled tiles; a tile
  * not in the list is hidden. SharedPreferences isn't reactive, so the Today screen reads this once into
  * remembered state (like the other prefs) and re-reads on the recomposition the editor's write triggers.
- * Mirrors the macOS KeyMetricPrefs (@AppStorage "today.keyMetrics").
  */
 object KeyMetricPrefs {
     private const val KEY_LAYOUT = "today.keyMetrics"
@@ -107,24 +106,23 @@ object KeyMetricPrefs {
     }
 }
 
-// MARK: - "Your cards" customisable dashboard (WHOOP "My Dashboard") — Kotlin twin of DashboardCards.swift
+// MARK: - "Your cards" customisable dashboard (WHOOP "My Dashboard")
 //
 // The Today screen's "Your cards" section is a user-customisable dashboard faithful to WHOOP's "My
 // Dashboard": the user chooses WHICH metric cards show and in WHAT order from a registry of the values
 // Today already loads. Persistence is DISPLAY-ONLY — no metric is computed or stored differently; this just
 // decides which already-loaded values render as WHOOP metric rows and in what sequence.
 //
-// Stored as a JSON-encoded array of card ids in SharedPreferences ("today.dashboardCards") — the SAME
-// JSON-array form the iOS @AppStorage uses, so a backup/restore reads the same dashboard on either OS.
+// Stored as a JSON-encoded array of card ids in SharedPreferences ("today.dashboardCards").
 // Unknown ids are dropped on read; a known id missing from the saved list is offered (disabled) in the
 // editor so a future card can't be lost. Mirrors the existing [KeyMetricPrefs] mechanism but as its own
 // list so the two sections stay independent (Key Metrics grid vs. the Your-cards dashboard).
 
 /**
- * One available card in the "Your cards" dashboard. The [raw] is the stable persisted identifier — keep it
- * BYTE-IDENTICAL to the iOS `DashboardCard` rawValue so a backup/restore reads the same dashboard on either
- * OS. [title] / [subtitle] / [unit] mirror the Swift registry verbatim; [icon] is the Material twin of the
- * SF Symbol (closest match in the bundled icon set).
+ * One available card in the "Your cards" dashboard. The [raw] is the stable persisted identifier —
+ * changing one drops that card from every saved dashboard on read, so treat the strings as frozen.
+ * [title] / [subtitle] / [unit] are the display strings; [icon] is the closest match in the bundled
+ * Material icon set.
  */
 enum class DashboardCard(
     val raw: String,
@@ -148,8 +146,8 @@ enum class DashboardCard(
 
     // Optional, default-OFF: a tap-through to the Coupled view (the WHOOP-style day read). Unlike
     // every other card it carries NO metric value of its own, it is a navigation row that opens the full
-    // CoupledScreen. It is NOT in [defaultSelection], so a fresh install never shows it until the user adds
-    // it via CUSTOMISE. Mirrors iOS DashboardCard.coupled (raw "coupled", byte-identical across OS).
+    // CoupledScreen. It is NOT in [defaultSelection], so a fresh install never shows it until the user
+    // adds it via CUSTOMISE.
     COUPLED("coupled", "Coupled view", "Recovery, strain and sleep in one glance", "", Icons.Filled.Hexagon);
 
     companion object {
@@ -166,7 +164,7 @@ enum class DashboardCard(
             STRESS, FITNESS_AGE, VITALITY,
         )
 
-        /** Canonical order used to list the disabled remainder in the editor (matches iOS allCases order). */
+        /** Canonical order used to list the disabled remainder in the editor (declaration order). */
         val canonicalOrder: List<DashboardCard> = entries.toList()
     }
 }
@@ -176,8 +174,7 @@ enum class DashboardCard(
  * cards as a JSON-encoded array of ids; a card not in the list is hidden. Stored in SharedPreferences under
  * "today.dashboardCards", the same mechanism every other Android preference uses ([NoopPrefs]).
  * SharedPreferences isn't reactive, so the Today screen reads this once into remembered state (like the
- * other prefs) and re-reads on the recomposition the editor's write triggers. Mirrors the iOS
- * DashboardCardPrefs (@AppStorage "today.dashboardCards", JSON-array form).
+ * other prefs) and re-reads on the recomposition the editor's write triggers.
  */
 object DashboardCardPrefs {
     private const val KEY_SELECTION = "today.dashboardCards"
@@ -191,7 +188,7 @@ object DashboardCardPrefs {
         NoopPrefs.of(context).edit().putString(KEY_SELECTION, encode(cards)).apply()
     }
 
-    /** Encode an ordered list of enabled cards into the stored JSON-array string (matches the iOS form). */
+    /** Encode an ordered list of enabled cards into the stored JSON-array string. */
     fun encode(cards: List<DashboardCard>): String {
         val arr = JSONArray()
         cards.forEach { arr.put(it.raw) }
@@ -201,10 +198,10 @@ object DashboardCardPrefs {
     /**
      * Decode the stored string into an ordered list of enabled cards. An empty/unset string yields the
      * default selection (so a fresh install shows the sensible default). Accepts both the JSON-array form
-     * (the canonical iOS form) and a legacy comma-joined form. Unknown ids are dropped; duplicates are
+     * (the canonical one) and a legacy comma-joined form. Unknown ids are dropped; duplicates are
      * de-duped; this returns ONLY the enabled cards in their saved order — the editor pairs it with the
      * disabled remainder. An all-unknown / empty decode falls back to the default set so the dashboard is
-     * never blanked. Mirrors iOS DashboardCardPrefs.decodeEnabled.
+     * never blanked.
      */
     fun decodeEnabled(raw: String?): List<DashboardCard> {
         val trimmed = raw?.trim().orEmpty()

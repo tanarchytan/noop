@@ -114,7 +114,7 @@ private fun appearanceFor(kind: NoopButtonKind, enabled: Boolean): NoopButtonApp
 /**
  * The unified button. A sentence-case title, an optional leading icon, a [NoopButtonKind], an
  * optional [fullWidth], and an action. Crisp, flat, glow-free; subtle press; 44dp hit floor;
- * Reduce-Motion aware. Mirrors iOS `NoopButton`.
+ * Reduce-Motion aware.
  *
  * ```
  * NoopButton(text = "Save changes", leadingIcon = Icons.Filled.Check, kind = NoopButtonKind.Primary, fullWidth = true) {

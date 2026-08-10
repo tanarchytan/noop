@@ -5,7 +5,7 @@ import android.content.SharedPreferences
 import org.json.JSONObject
 
 /**
- * The Test Centre orchestration surface (Kotlin twin of the Swift TestCentre).
+ * The Test Centre orchestration surface.
  *
  * Backed by a SINGLE SharedPreferences file "noop_testcentre" for all NEW Test Centre flags,
  * consolidating what used to be scattered across noop_prefs / noop_experiments / noop_debug_export and
@@ -62,7 +62,7 @@ class TestCentre internal constructor(private val prefs: SharedPreferences) {
         prefs.edit().putString(ANSWERS_PREFIX + d.id, o.toString()).apply()
     }
 
-    // All-time drained-rows tally - twin of the Swift TestCentre accessors. Sits in the
+    // All-time drained-rows tally. Sits in the
     // testcentre.* namespace because the Connection readout is its consumer, but it accrues
     // UNCONDITIONALLY (the Backfiller session summary is not test-mode gated), so it answers "has this
     // install ever drained anything" across sessions - the per-session counter resets on every

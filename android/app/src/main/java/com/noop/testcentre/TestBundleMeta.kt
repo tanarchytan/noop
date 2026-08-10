@@ -3,10 +3,9 @@ package com.noop.testcentre
 import org.json.JSONObject
 
 /**
- * Twin of the Swift TestBundleMeta (spec section 5.1): meta.json schema v1, the machine-readable tie
- * between a strap log and the test profile that produced it. Same snake_case wire keys, same build and
- * storage blocks, redaction stamped v2. We emit keys in sorted order by hand so the bytes line up with
- * the Swift JSONEncoder sortedKeys output, which the parity test asserts.
+ * meta.json schema v1, the machine-readable tie between a strap log and the test profile that produced
+ * it. snake_case wire keys, a build and a storage block, redaction stamped v2. We emit keys in sorted
+ * order by hand so the bytes are deterministic, which a unit test asserts.
  */
 data class TestBundleMeta(
     val schema: Int,
@@ -27,15 +26,15 @@ data class TestBundleMeta(
     data class Build(val channel: String, val signed: Boolean)
     data class Storage(val dbBytes: Int, val rows: Map<String, Int>, val rawCaptureBytes: Int)
 
-    /** The report-completeness tie (twin of the Swift CaptureCheck): per-domain killer-trace presence
+    /** The report-completeness tie: per-domain killer-trace presence
      *  ({domainId -> "present"|"MISSING"}) plus the overall `complete` flag, so a maintainer can tell at
      *  a glance whether the report actually carries each active mode's diagnostic. */
     data class CaptureCheck(val traces: Map<String, String>, val complete: Boolean)
 
     /** Pretty, sorted JSON. We do NOT rely on JSONObject key ordering (the org.json on the unit-test
      *  classpath is HashMap-backed and does not preserve insertion order), so we emit keys in explicit
-     *  alphabetical order ourselves, matching the Swift JSONEncoder .sortedKeys output the parity test
-     *  asserts. Only JSONObject.quote (a pure static escaper) is used, so this is backend-independent. */
+     *  alphabetical order ourselves, which a unit test asserts.
+     *  Only JSONObject.quote (a pure static escaper) is used, so this is backend-independent. */
     fun encoded(): String {
         val root = mapOf<String, Any?>(
             "app_version" to appVersion,

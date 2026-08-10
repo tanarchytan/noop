@@ -39,8 +39,8 @@ import kotlin.math.abs
 
 // MARK: - Mind (mood check-in + mood ↔ body correlations)
 //
-// Kotlin mirror of the Swift Mind lane. One 5-face check-in per local day, stored via
-// MoodStore under the shared cross-platform contract (source id "noop-mood", key "mood",
+// One 5-face check-in per local day, stored via
+// MoodStore under a stable contract (source id "noop-mood", key "mood",
 // value 1.0–5.0, overwrite on edit). Once ≥7 days are checked in, up to three Pearson
 // correlation lines appear — mood vs HRV / recovery / sleep duration — computed over the
 // cached DailyMetric rows through the shared [CorrelationEngine]. Deliberately NEUTRAL palette:
@@ -57,7 +57,7 @@ private val MOOD_FACES = listOf(
     MoodFace("😄", 5.0, R.string.mind_mood_great),
 )
 
-/** Check-ins needed before the correlation lines unlock (mirrors the Swift gate). */
+/** Check-ins needed before the correlation lines unlock. */
 private const val MIND_GATE_DAYS = 7
 
 // MARK: - Section

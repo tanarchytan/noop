@@ -188,8 +188,8 @@ fun WorkoutStartSection(vm: AppViewModel) {
 
     // Live/Health fold: the Today "workout in progress" indicator's one-shot moved here from the removed
     // Live screen. consumeActiveWorkoutRequest() returns true exactly once per raise, and only while a
-    // workout is active, so a stale flag can never open an empty overlay (iOS parity:
-    // LiveView.consumeActiveWorkoutRequest). AppRoot routes onOpenActiveWorkout to Workouts, which mounts
+    // workout is active, so a stale flag can never open an empty overlay.
+    // AppRoot routes onOpenActiveWorkout to Workouts, which mounts
     // this section and consumes the request to re-open the in-exercise overlay.
     LaunchedEffect(Unit) {
         if (vm.consumeActiveWorkoutRequest()) showLiveWorkout = true

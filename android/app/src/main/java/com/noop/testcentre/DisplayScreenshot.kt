@@ -8,8 +8,7 @@ import android.graphics.Canvas
 import java.io.ByteArrayOutputStream
 
 /**
- * Captures the current screen as PNG bytes for the Display & Performance test mode's export bundle
- * (Kotlin twin of the Swift DisplayScreenshot).
+ * Captures the current screen as PNG bytes for the Display & Performance test mode's export bundle.
  *
  * The PNG is BINARY image bytes, not a text line, so it is NOT run through the strap-log PII scrub (that
  * is correct: redaction scrubs text identifiers, not pixels). The screenshot IS covered by the mandatory
@@ -19,7 +18,7 @@ import java.io.ByteArrayOutputStream
  */
 object DisplayScreenshot {
 
-    /** The in-zip name of the captured screenshot, matching the Swift bundle name. */
+    /** The in-zip name of the captured screenshot. */
     const val BUNDLE_NAME = "screenshot.png"
 
     /**

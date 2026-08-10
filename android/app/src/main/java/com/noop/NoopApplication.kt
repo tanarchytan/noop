@@ -21,9 +21,7 @@ import kotlinx.coroutines.runBlocking
  * The data layer ([WhoopRepository]) and the BLE client ([WhoopBleClient]) are owned **here**, at the
  * process level, rather than by the Activity-scoped AppViewModel. That is what lets a connection keep
  * streaming when the app is backgrounded or closed: [com.noop.ble.WhoopConnectionService] holds the
- * process up with a foreground notification, and both it and the UI share this one BLE client. The
- * macOS app gets the same outcome for free — its `AppModel` is an app-level `@StateObject` kept alive
- * by the menu-bar extra.
+ * process up with a foreground notification, and both it and the UI share this one BLE client.
  */
 class NoopApplication : Application() {
 
@@ -84,8 +82,8 @@ class NoopApplication : Application() {
      * calls [SourceCoordinator.onActiveDeviceChanged] after a setActive.
      *
      * Multi-WHOOP identity adoption: AppViewModel's init collects [WhoopBleClient.connectedPeripheralAddress]
-     * (distinctUntilChanged) into [SourceCoordinator.connectedPeripheralChanged] — the Kotlin analogue of
-     * macOS wiring `BLEManager.connectedPeripheralUUID` into the coordinator's adoption sink. Kept beside
+     * (distinctUntilChanged) into [SourceCoordinator.connectedPeripheralChanged], the coordinator's
+     * adoption sink. Kept beside
      * the other `ble`-flow collectors there (this Application owns no CoroutineScope of its own).
      */
     val sourceCoordinator: SourceCoordinator by lazy {
@@ -96,9 +94,8 @@ class NoopApplication : Application() {
             liveSink = { hr, rr -> ble.publishExternalLiveHr(hr, rr) },
             // reconnect on the PERSISTED family, not the WhoopModel.WHOOP4 default - otherwise a
             // 5/MG WHOOP->WHOOP switch rescans the wrong service and misses the 5/MG direct-bond fast
-            // path (status=133 on an OS-bonded strap). Mirrors macOS AppModel.scan() reading the persisted
-            // "selectedWhoopModel". Same-strap switches now adopt in place (no reconnect) via the
-            // coordinator, so this only fires for a genuinely different WHOOP.
+            // path (status=133 on an OS-bonded strap). Same-strap switches now adopt in place (no
+            // reconnect) via the coordinator, so this only fires for a genuinely different WHOOP.
             startWhoop = { ble.connect(persistedWhoopModel()) },
             stopWhoop = { ble.disconnect() },
             // Multi-WHOOP (MW-2/MW-3): pin the connection to the active WHOOP's persisted address and
