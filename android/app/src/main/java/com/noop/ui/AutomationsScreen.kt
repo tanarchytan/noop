@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.BatteryStd
 import androidx.compose.material.icons.filled.Bedtime
@@ -23,7 +22,6 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.MonitorHeart
 import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material.icons.filled.TouchApp
 import androidx.compose.material3.ButtonDefaults
@@ -487,8 +485,6 @@ internal fun AlarmDayOverridePicker(
     }
 }
 
-
-
 /** A compact dropdown that mirrors the iOS double-tap Picker: a tappable label + chevron that opens a
  * menu of [DoubleTapAction]s. Labels come from [DoubleTapAction.label] so both clients read the same. */
 @Composable
@@ -623,46 +619,17 @@ private fun StepperRow(
             Text(help, style = NoopType.footnote, color = Palette.textTertiary)
         }
         Spacer(Modifier.width(Metrics.space12))
-        StepButton(
-            Icons.Filled.Remove,
-            stringResource(R.string.automations_stepper_decrease, label),
-            enabled = value > range.first,
-        ) {
-            onChange((value - step).coerceAtLeast(range.first))
-        }
-        Text(
-            "$value $suffix",
-            style = NoopType.body,
-            color = Palette.textPrimary,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.padding(horizontal = Metrics.space8).widthIn(min = 56.dp),
-        )
-        StepButton(
-            Icons.Filled.Add,
-            stringResource(R.string.automations_stepper_increase, label),
-            enabled = value < range.last,
-        ) {
-            onChange((value + step).coerceAtMost(range.last))
-        }
-    }
-}
-
-@Composable
-private fun StepButton(icon: ImageVector, contentDescription: String, enabled: Boolean, onClick: () -> Unit) {
-    Box(
-        modifier = Modifier
-            .size(34.dp)
-            .clip(CircleShape)
-            .background(Palette.surfaceInset)
-            .then(if (enabled) Modifier.clickable(onClick = onClick) else Modifier),
-        contentAlignment = Alignment.Center,
-    ) {
-        Icon(
-            icon,
-            contentDescription = contentDescription,
-            tint = if (enabled) Palette.accent else Palette.textTertiary,
+        val steps = remember(range, step) { range.step(step).toList() }
+        val options = remember(steps, suffix) { steps.map { "$it $suffix" } }
+        WheelPickerField(
+            value = "$value",
+            unit = suffix,
+            accessibility = label,
+            options = options,
+            selectedIndex = steps.indexOf(value).coerceAtLeast(0),
+            dialogTitle = label,
+            onSelected = { onChange(steps[it]) },
         )
     }
 }
-
 

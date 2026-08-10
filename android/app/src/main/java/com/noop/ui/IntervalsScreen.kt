@@ -551,19 +551,20 @@ private fun ConfigStepper(
             }
         }
         Spacer(Modifier.width(Metrics.space12))
-        StepperButton(
-            icon = Icons.Filled.Remove,
-            description = stringResource(R.string.intervals_stepper_decrease, title),
-            enabled = enabled && value > range.first,
-            tint = tint,
-        ) { onChange((value - step).coerceIn(range.first, range.last)) }
-        Spacer(Modifier.width(Metrics.space8))
-        StepperButton(
-            icon = Icons.Filled.Add,
-            description = stringResource(R.string.intervals_stepper_increase, title),
-            enabled = enabled && value < range.last,
-            tint = tint,
-        ) { onChange((value + step).coerceIn(range.first, range.last)) }
+        // Disabled keeps the read-out but not the picker, matching the old buttons' enabled gate.
+        if (enabled) {
+            val steps = remember(range, step) { range.step(step).toList() }
+            val options = remember(steps, unit) { steps.map { if (unit != null) "$it $unit" else "$it" } }
+            WheelPickerField(
+                value = value.toString(),
+                unit = unit,
+                accessibility = title,
+                options = options,
+                selectedIndex = steps.indexOf(value).coerceAtLeast(0),
+                dialogTitle = title,
+                onSelected = { onChange(steps[it].coerceIn(range.first, range.last)) },
+            )
+        }
     }
 }
 

@@ -381,25 +381,26 @@ private fun ExplanationCard() {
 
 // MARK: - Window stepper (5–60 min in 5-min steps)
 
+/** Smart-alarm wake window: 5..60 min in 5-minute steps. */
+private const val ALARM_WINDOW_MIN = 5
+private const val ALARM_WINDOW_MAX = 60
+private const val ALARM_WINDOW_STEP = 5
+
 @Composable
 private fun WindowStepper(windowMinutes: Int, onChange: (Int) -> Unit) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(Metrics.space8),
     ) {
-        StepperButton(
-            symbol = "−",
-            onClick = { onChange((windowMinutes - 5).coerceAtLeast(5)) },
-            label = stringResource(R.string.alarm_shorten_window),
-        )
-        Text(
-            stringResource(R.string.alarm_window_minutes, windowMinutes),
-            style = NoopType.bodyNumber, color = Palette.textPrimary,
-        )
-        StepperButton(
-            symbol = "+",
-            onClick = { onChange((windowMinutes + 5).coerceAtMost(60)) },
-            label = stringResource(R.string.alarm_lengthen_window),
+        val steps = remember { (ALARM_WINDOW_MIN..ALARM_WINDOW_MAX step ALARM_WINDOW_STEP).toList() }
+        val options = steps.map { stringResource(R.string.alarm_window_minutes, it) }
+        WheelPickerField(
+            value = stringResource(R.string.alarm_window_minutes, windowMinutes),
+            accessibility = stringResource(R.string.alarm_window_a11y),
+            options = options,
+            selectedIndex = steps.indexOf(windowMinutes).coerceAtLeast(0),
+            dialogTitle = stringResource(R.string.alarm_window_a11y),
+            onSelected = { onChange(steps[it]) },
         )
     }
 }
