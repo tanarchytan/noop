@@ -80,7 +80,7 @@ class SleepUiStructureTest {
                 "hrChartWindow", "hrChartBucketSec", "windowFraction", "hrChartSeries",
                 "hrAxisBounds", "hrAxisTicks",
                 "hrTraceRuns", "stageBandsInWindow", "MOTION_BAND", "EPOCH_SEC", "SleepHrChart",
-                "SleepHrMotionLegend", "LegendKey", "HrBoundLabels",
+                "hasMotionLine", "SleepHrMotionLegend", "LegendKey", "HrBoundLabels",
             ),
             "Charts.kt" to setOf(
                 "LineChart",

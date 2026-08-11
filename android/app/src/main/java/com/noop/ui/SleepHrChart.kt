@@ -295,7 +295,7 @@ internal fun SleepHrChart(
             // Movement, on the same clock as the HR trace. It has no bpm, so it is self-normalised to
             // the night's own peak and confined to the bottom MOTION_BAND of the plot — it shares the
             // time axis and nothing else, and never crosses into the HR trace's range.
-            if (motionEpochs.size >= 2) {
+            if (hasMotionLine(motionEpochs)) {
                 val peak = motionEpochs.max()
                 if (peak > 0.0) {
                     val bandTop = h * (1f - MOTION_BAND)
@@ -340,15 +340,22 @@ internal fun SleepHrChart(
     }
 }
 
-/** Names the two series on the HR chart, so the colours are not the only thing telling them apart. */
+/** Whether a movement line can be drawn at all: a polyline needs two points. One owner, two readers. */
+internal fun hasMotionLine(motionEpochs: List<Double>): Boolean = motionEpochs.size >= 2
+
+/**
+ * Names the series on the HR chart, so the colours are not the only thing telling them apart. The
+ * movement key appears only when a movement line was drawn: [hasMotion] must come from
+ * [hasMotionLine], or a night stored before motion capture advertises a line that is not there.
+ */
 @Composable
-internal fun SleepHrMotionLegend() {
+internal fun SleepHrMotionLegend(hasMotion: Boolean) {
     Row(
         horizontalArrangement = Arrangement.spacedBy(Metrics.space12),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         LegendKey(Palette.metricRose, stringResource(R.string.sleep_legend_heart_rate))
-        LegendKey(Palette.metricCyan, stringResource(R.string.sleep_legend_movement))
+        if (hasMotion) LegendKey(Palette.metricCyan, stringResource(R.string.sleep_legend_movement))
     }
 }
 

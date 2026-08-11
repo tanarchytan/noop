@@ -97,7 +97,7 @@ internal fun SleepStagesCard(
                 selectedStage = if (real == null) null else selectedStage,
                 motionEpochs = motionEpochs,
             )
-            SleepHrMotionLegend()
+            SleepHrMotionLegend(hasMotion = hasMotionLine(motionEpochs))
             CardHairline()
             Row(verticalAlignment = Alignment.CenterVertically) {
                 TypicalMarkKey()
