@@ -20,42 +20,23 @@ object CalibrationMilestones {
     /** The rolling-30-day baseline target. Not a baseline gate — a card target. */
     const val fullBaselineNights: Int = 30
 
-    /** A single calibration checkpoint. [nights] is the banked valid-night count at which it unlocks. */
+    /**
+     * A single calibration checkpoint. [nights] is the banked valid-night count at which it unlocks.
+     * The title and the "what this unlocks" line are keyed off [id] in the UI, which is where the
+     * words live.
+     */
     data class Milestone(
         /** Stable id (persisted, analytics-safe). Never renumber. */
         val id: String,
-        val title: String,
         val nights: Int,
-        /** One-line "what this unlocks", shown on the active card. */
-        val unlocks: String,
     )
 
     /** The ordered timeline, soonest first. Targets are pinned to the honest gates where they coincide. */
     val all: List<Milestone> = listOf(
-        Milestone(
-            id = "firstRecovery",
-            title = "First Recovery",
-            nights = Baselines.minNightsSeed, // 4 — noop seeds its baseline here
-            unlocks = "Charge, Effort and Rest become personal to you.",
-        ),
-        Milestone(
-            id = "sleepBaseline",
-            title = "Sleep baseline",
-            nights = sleepBaselineNights, // 7 — a full week of nights
-            unlocks = "Your sleep need and coaching tune to your own nights.",
-        ),
-        Milestone(
-            id = "trustedBaseline",
-            title = "Trusted baseline",
-            nights = Baselines.minNightsTrust, // 14 — noop's full-confidence gate
-            unlocks = "Full-confidence baselines — the calibrating tag drops.",
-        ),
-        Milestone(
-            id = "fullBaseline",
-            title = "30-day baseline",
-            nights = fullBaselineNights, // 30 — the full rolling window
-            unlocks = "Your complete rolling 30-day baseline is set.",
-        ),
+        Milestone(id = "firstRecovery", nights = Baselines.minNightsSeed), // 4 — noop seeds its baseline here
+        Milestone(id = "sleepBaseline", nights = sleepBaselineNights), // 7 — a full week of nights
+        Milestone(id = "trustedBaseline", nights = Baselines.minNightsTrust), // 14 — full-confidence gate
+        Milestone(id = "fullBaseline", nights = fullBaselineNights), // 30 — the full rolling window
     )
 
     /** The furthest target. Banked ≥ this means calibration is fully complete and the card retires.

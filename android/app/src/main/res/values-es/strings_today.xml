@@ -58,4 +58,24 @@
     <string name="today_session_ended_detail">Mira el resumen de tu última sesión.</string>
     <string name="today_session_start_detail">Sesión de esfuerzo guiada por la banda. Solo vibra cuando te sales del rango de hoy.</string>
     <string name="today_quick_actions">Acciones rápidas</string>
+    <string name="readiness_headline_insufficient">Preparación</string>
+    <string name="readiness_headline_rundown">Agotado</string>
+    <string name="readiness_headline_strained">Forzado</string>
+    <string name="readiness_headline_primed">A punto</string>
+    <string name="readiness_headline_balanced">Equilibrado</string>
+    <string name="readiness_summary_no_data">Lleva la banda unas cuantas noches y tu lectura de preparación aparecerá aquí.</string>
+    <string name="readiness_summary_thin">Con unas noches más de datos tu lectura de preparación se afinará.</string>
+    <string name="readiness_summary_rundown">Varias señales han bajado a la vez. Toma hoy como recuperación: movimiento suave y dormir bien esta noche.</string>
+    <string name="readiness_summary_strained">Una de tus señales está alertando. Puedes entrenar, pero mantenlo controlado y guarda la recuperación.</string>
+    <string name="readiness_summary_primed">Tus señales están alineadas y tu carga está respaldada. Hoy una sesión más dura tiene buen apoyo.</string>
+    <string name="readiness_summary_balanced">Nada está alertando. Entrena según te sientas: tu cuerpo se mantiene estable.</string>
+    <string name="milestone_first_recovery">Primer Recovery</string>
+    <string name="milestone_sleep_baseline">Base de sueño</string>
+    <string name="milestone_trusted_baseline">Base fiable</string>
+    <string name="milestone_full_baseline">Base de 30 días</string>
+    <string name="milestone_first_recovery_unlocks">Charge, Effort y Rest pasan a ser tuyos.</string>
+    <string name="milestone_sleep_baseline_unlocks">Tu necesidad de sueño y los consejos se ajustan a tus propias noches.</string>
+    <string name="milestone_trusted_baseline_unlocks">Bases con plena confianza: desaparece la etiqueta de calibración.</string>
+    <string name="milestone_full_baseline_unlocks">Tu base completa de 30 días está fijada.</string>
+    <string name="language_system_default">Predeterminado del sistema</string>
 </resources>

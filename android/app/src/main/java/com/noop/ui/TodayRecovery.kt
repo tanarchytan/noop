@@ -664,10 +664,30 @@ internal fun CalibrationMilestonesCard(progress: List<CalibrationMilestones.Prog
     }
 }
 
+/** A milestone's name, keyed off its stable id: the engine owns the schedule, the UI owns the words. */
+@StringRes
+private fun milestoneTitle(id: String): Int = when (id) {
+    "firstRecovery" -> R.string.milestone_first_recovery
+    "sleepBaseline" -> R.string.milestone_sleep_baseline
+    "trustedBaseline" -> R.string.milestone_trusted_baseline
+    else -> R.string.milestone_full_baseline
+}
+
+/** The one-line "what this unlocks" for a milestone id. */
+@StringRes
+private fun milestoneUnlocks(id: String): Int = when (id) {
+    "firstRecovery" -> R.string.milestone_first_recovery_unlocks
+    "sleepBaseline" -> R.string.milestone_sleep_baseline_unlocks
+    "trustedBaseline" -> R.string.milestone_trusted_baseline_unlocks
+    else -> R.string.milestone_full_baseline_unlocks
+}
+
 /** One milestone row inside [CalibrationMilestonesCard], drawn by its [CalibrationMilestones.State]. */
 @Composable
 private fun CalibrationMilestoneRow(p: CalibrationMilestones.Progress) {
     val m = p.milestone
+    val title = stringResource(milestoneTitle(m.id))
+    val unlocks = stringResource(milestoneUnlocks(m.id))
     val banked = (m.nights - p.remaining).coerceAtLeast(0)
     val nightsWord = if (p.remaining == 1) {
         stringResource(R.string.today_milestone_night_one)
@@ -675,14 +695,14 @@ private fun CalibrationMilestoneRow(p: CalibrationMilestones.Progress) {
         stringResource(R.string.today_milestone_nights_other)
     }
     val nightsToGo = stringResource(R.string.today_milestone_nights_to_go, p.remaining, nightsWord)
-    val doneDescription = stringResource(R.string.today_milestone_unlocked_a11y, m.title)
+    val doneDescription = stringResource(R.string.today_milestone_unlocked_a11y, title)
     val activeDescription = stringResource(
         R.string.today_milestone_active_a11y,
-        m.title, banked, m.nights, p.remaining, nightsWord, m.unlocks,
+        title, banked, m.nights, p.remaining, nightsWord, unlocks,
     )
     val lockedDescription = stringResource(
         R.string.today_milestone_locked_a11y,
-        m.title, banked, m.nights, p.remaining, nightsWord,
+        title, banked, m.nights, p.remaining, nightsWord,
     )
     when (p.state) {
         // A cleared milestone: a compact green check + "Unlocked", no progress bar (it's full by definition).
@@ -699,7 +719,7 @@ private fun CalibrationMilestoneRow(p: CalibrationMilestones.Progress) {
                 tint = Palette.statusPositive,
                 modifier = Modifier.size(Metrics.iconSmall),
             )
-            Text(m.title, style = NoopType.subhead, color = Palette.textSecondary, modifier = Modifier.weight(1f))
+            Text(title, style = NoopType.subhead, color = Palette.textSecondary, modifier = Modifier.weight(1f))
             Text(
                 stringResource(R.string.today_milestone_unlocked),
                 style = NoopType.footnote,
@@ -724,7 +744,7 @@ private fun CalibrationMilestoneRow(p: CalibrationMilestones.Progress) {
                     tint = Palette.accent,
                     modifier = Modifier.size(Metrics.iconSmall),
                 )
-                Text(m.title, style = NoopType.headline, color = Palette.textPrimary, modifier = Modifier.weight(1f))
+                Text(title, style = NoopType.headline, color = Palette.textPrimary, modifier = Modifier.weight(1f))
                 Text(nightsToGo, style = NoopType.footnote, color = Palette.accent)
             }
             LinearProgressIndicator(
@@ -739,7 +759,7 @@ private fun CalibrationMilestoneRow(p: CalibrationMilestones.Progress) {
                     .height(Metrics.progressHeight),
             )
             Text(
-                stringResource(R.string.today_milestone_progress, banked, m.nights, m.unlocks),
+                stringResource(R.string.today_milestone_progress, banked, m.nights, unlocks),
                 style = NoopType.footnote,
                 color = Palette.textSecondary,
             )
@@ -762,7 +782,7 @@ private fun CalibrationMilestoneRow(p: CalibrationMilestones.Progress) {
                     tint = Palette.textTertiary,
                     modifier = Modifier.size(Metrics.iconSmall),
                 )
-                Text(m.title, style = NoopType.subhead, color = Palette.textSecondary, modifier = Modifier.weight(1f))
+                Text(title, style = NoopType.subhead, color = Palette.textSecondary, modifier = Modifier.weight(1f))
                 Text(nightsToGo, style = NoopType.footnote, color = Palette.textTertiary)
             }
             LinearProgressIndicator(

@@ -39,6 +39,7 @@ class TodayUiStructureTest {
                 "recoveryChargeDrivers", "chargeConfidenceTier", "lastScoredRecoveryDay", "LastCharge",
                 "lastChargeDateLabel", "CARRY_FRESHNESS_DAYS", "isCarryStale", "freshRestScore",
                 "carriedCaption", "ScoreState", "scoreStateForToday", "CalibrationMilestonesCard",
+                "milestoneTitle", "milestoneUnlocks",
                 "CalibrationMilestoneRow", "RecordingState", "recordingStateFor",
                 "dayOwnerSource", "provenanceBadgeLabel", "provenanceDisplayLabel",
                 "todayProvenanceChipLabel", "heroSourceLabel", "scoreHeroSourceLabel",
@@ -46,7 +47,8 @@ class TodayUiStructureTest {
             ),
             "TodayMetrics.kt" to setOf(
                 "MetricGrid", "KeyTileData", "KEY_TILE_RADIUS", "KeyTile", "workoutsAllSources", "ReadinessSection",
-                "hrvReadinessWord", "hrvReadinessColor", "readinessWord",
+                "hrvReadinessWord", "hrvReadinessColor",
+                "readinessHeadline", "readinessSummary", "readinessWord",
                 "syncedFromSources", "METRICS_COLLAPSED_CAP", "readinessColor", "flagColor",
                 "IllnessBanner", "sleepValue",
                 "restStageLowConfidence", "buildingHint",

@@ -86,4 +86,24 @@
     <string name="today_session_a11y">%1$s, beta. %2$s</string>
     <string name="today_beta">BETA</string>
     <string name="today_quick_actions">Quick actions</string>
+    <string name="readiness_headline_insufficient">Readiness</string>
+    <string name="readiness_headline_rundown">Run down</string>
+    <string name="readiness_headline_strained">Strained</string>
+    <string name="readiness_headline_primed">Primed</string>
+    <string name="readiness_headline_balanced">Balanced</string>
+    <string name="readiness_summary_no_data">Wear the strap for a few nights and your readiness read will appear here.</string>
+    <string name="readiness_summary_thin">A few more nights of data and your readiness read will sharpen.</string>
+    <string name="readiness_summary_rundown">Several signals are down at once. Treat today as recovery - easy movement, real sleep tonight.</string>
+    <string name="readiness_summary_strained">One of your signals is flagging. You can train, but keep it controlled and bank the recovery.</string>
+    <string name="readiness_summary_primed">Your signals are aligned and your load is supported. A harder session is well backed today.</string>
+    <string name="readiness_summary_balanced">Nothing\'s flagging. Train to feel - your body\'s holding steady.</string>
+    <string name="milestone_first_recovery">First Recovery</string>
+    <string name="milestone_sleep_baseline">Sleep baseline</string>
+    <string name="milestone_trusted_baseline">Trusted baseline</string>
+    <string name="milestone_full_baseline">30-day baseline</string>
+    <string name="milestone_first_recovery_unlocks">Charge, Effort and Rest become personal to you.</string>
+    <string name="milestone_sleep_baseline_unlocks">Your sleep need and coaching tune to your own nights.</string>
+    <string name="milestone_trusted_baseline_unlocks">Full-confidence baselines - the calibrating tag drops.</string>
+    <string name="milestone_full_baseline_unlocks">Your complete rolling 30-day baseline is set.</string>
+    <string name="language_system_default">System default</string>
 </resources>

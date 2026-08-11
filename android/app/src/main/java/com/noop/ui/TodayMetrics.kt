@@ -372,7 +372,7 @@ internal fun ReadinessSection(days: List<DailyMetric>, carriedDay: DailyMetric? 
                 )
                 Spacer(Modifier.width(10.dp))
                 Text(
-                    readiness.headline,
+                    stringResource(readinessHeadline(readiness.message)),
                     style = NoopType.headline,
                     color = Palette.textPrimary,
                     modifier = Modifier.weight(1f),
@@ -391,7 +391,7 @@ internal fun ReadinessSection(days: List<DailyMetric>, carriedDay: DailyMetric? 
 
             // Plain-English summary.
             Text(
-                readiness.summary,
+                stringResource(readinessSummary(readiness.message)),
                 style = NoopType.subhead,
                 color = Palette.textSecondary,
             )
@@ -469,6 +469,28 @@ internal fun hrvReadinessColor(tier: uniffi.whoop_ffi.ReadinessTier?): Color = w
 /**
  * Retained for the Coupled screen's readiness pill, which still reads the multi-signal engine.
  */
+/** The readiness card's title for a [ReadinessEngine.Message]; the engine picks which, never the words. */
+@StringRes
+internal fun readinessHeadline(message: ReadinessEngine.Message): Int = when (message) {
+    ReadinessEngine.Message.NO_DATA, ReadinessEngine.Message.THIN_HISTORY ->
+        R.string.readiness_headline_insufficient
+    ReadinessEngine.Message.RUNDOWN -> R.string.readiness_headline_rundown
+    ReadinessEngine.Message.STRAINED -> R.string.readiness_headline_strained
+    ReadinessEngine.Message.PRIMED -> R.string.readiness_headline_primed
+    ReadinessEngine.Message.BALANCED -> R.string.readiness_headline_balanced
+}
+
+/** The sentence under [readinessHeadline]. */
+@StringRes
+internal fun readinessSummary(message: ReadinessEngine.Message): Int = when (message) {
+    ReadinessEngine.Message.NO_DATA -> R.string.readiness_summary_no_data
+    ReadinessEngine.Message.THIN_HISTORY -> R.string.readiness_summary_thin
+    ReadinessEngine.Message.RUNDOWN -> R.string.readiness_summary_rundown
+    ReadinessEngine.Message.STRAINED -> R.string.readiness_summary_strained
+    ReadinessEngine.Message.PRIMED -> R.string.readiness_summary_primed
+    ReadinessEngine.Message.BALANCED -> R.string.readiness_summary_balanced
+}
+
 @StringRes
 internal fun readinessWord(level: ReadinessEngine.Level): Int? = when (level) {
     ReadinessEngine.Level.PRIMED -> R.string.core_readiness_push

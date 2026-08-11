@@ -48,10 +48,12 @@ object ReadinessEngine {
         val evidence: String? = null,
     )
 
+    /** Which of the six readiness reads this resolves to. The wording for each lives in the UI. */
+    enum class Message { NO_DATA, THIN_HISTORY, RUNDOWN, STRAINED, PRIMED, BALANCED }
+
     data class Readiness(
         val level: Level,
-        val headline: String,
-        val summary: String,
+        val message: Message,
         val signals: List<Signal>,
         /** Acute:chronic workload ratio (null if not enough strain history). */
         val acwr: Double?,
@@ -142,8 +144,7 @@ object ReadinessEngine {
         if (latest == null) {
             return Readiness(
                 level = Level.INSUFFICIENT,
-                headline = "Readiness",
-                summary = "Wear the strap for a few nights and your readiness read will appear here.",
+                message = Message.NO_DATA,
                 signals = emptyList(), acwr = null, monotony = null,
             )
         }
@@ -242,12 +243,12 @@ object ReadinessEngine {
             }
         }
 
-        val (level, headline, summary) = synthesize(
+        val (level, message) = synthesize(
             signals = signals,
             hasHistory = history.isNotEmpty() || acwr != null,
         )
         return Readiness(
-            level = level, headline = headline, summary = summary,
+            level = level, message = message,
             signals = signals, acwr = acwr, monotony = monotony,
         )
     }
@@ -321,12 +322,9 @@ object ReadinessEngine {
 
     // MARK: Synthesis
 
-    private fun synthesize(signals: List<Signal>, hasHistory: Boolean): Triple<Level, String, String> {
+    private fun synthesize(signals: List<Signal>, hasHistory: Boolean): Pair<Level, Message> {
         if (!hasHistory || signals.isEmpty()) {
-            return Triple(
-                Level.INSUFFICIENT, "Readiness",
-                "A few more nights of data and your readiness read will sharpen.",
-            )
+            return Pair(Level.INSUFFICIENT, Message.THIN_HISTORY)
         }
         val bad = signals.filter { it.flag == Flag.BAD }
         val watch = signals.filter { it.flag == Flag.WATCH }
@@ -334,28 +332,10 @@ object ReadinessEngine {
         val recoveryDown = signals.any { it.key in listOf("hrv", "rhr", "respRate") && it.flag == Flag.BAD }
         val loadHigh = signals.any { it.key == "acwr" && it.flag == Flag.BAD }
 
-        if (bad.size >= 2 || (recoveryDown && loadHigh)) {
-            return Triple(
-                Level.RUNDOWN, "Run down",
-                "Several signals are down at once. Treat today as recovery - easy movement, real sleep tonight.",
-            )
-        }
-        if (recoveryDown || loadHigh || bad.size >= 1) {
-            return Triple(
-                Level.STRAINED, "Strained",
-                "One of your signals is flagging. You can train, but keep it controlled and bank the recovery.",
-            )
-        }
-        if (good.size >= 2 && watch.isEmpty()) {
-            return Triple(
-                Level.PRIMED, "Primed",
-                "Your signals are aligned and your load is supported. A harder session is well backed today.",
-            )
-        }
-        return Triple(
-            Level.BALANCED, "Balanced",
-            "Nothing's flagging. Train to feel - your body's holding steady.",
-        )
+        if (bad.size >= 2 || (recoveryDown && loadHigh)) return Pair(Level.RUNDOWN, Message.RUNDOWN)
+        if (recoveryDown || loadHigh || bad.size >= 1) return Pair(Level.STRAINED, Message.STRAINED)
+        if (good.size >= 2 && watch.isEmpty()) return Pair(Level.PRIMED, Message.PRIMED)
+        return Pair(Level.BALANCED, Message.BALANCED)
     }
 
     // MARK: Stats helpers
