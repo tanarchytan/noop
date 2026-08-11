@@ -16,11 +16,15 @@ object NoopLocale {
     /** Persisted BCP-47 tag, or absent for "follow the system". */
     private const val KEY_LANGUAGE = "noop.ui.language"
 
-    /** The languages the app ships strings for. `null` = follow the system. */
+    /**
+     * The languages the app ships a complete UI for. `null` = follow the system.
+     *
+     * `values-de` exists but covers 120 of 2,309 strings, so German is not offered here — a phone set
+     * to German still picks it up through the system, which is where a partial locale belongs.
+     */
     val SUPPORTED: List<Option> = listOf(
         Option(null, "System default"),
         Option("en", "English"),
-        Option("de", "Deutsch"),
         Option("es", "Español"),
     )
 
@@ -47,9 +51,14 @@ object NoopLocale {
         }.apply()
     }
 
-    /** The base context with the chosen locale applied, or unchanged when following the system. */
+    /**
+     * The base context with the chosen locale applied, or unchanged when following the system. A
+     * stored tag no longer in [SUPPORTED] falls back to the system rather than pinning a locale the
+     * Profile row can no longer name.
+     */
     fun wrap(base: Context): Context {
         val tag = runCatching { tag(base) }.getOrNull() ?: return base
+        if (SUPPORTED.none { it.tag == tag }) return base
         val locale = Locale.forLanguageTag(tag)
         Locale.setDefault(locale)
         val config = Configuration(base.resources.configuration)
