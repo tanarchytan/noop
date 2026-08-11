@@ -200,4 +200,10 @@
     <string name="updates_seed_title">Novedades de NOOP %1$s</string>
     <string name="updates_seed_message">NOOP %1$s ya está aquí: toca para ver las novedades.</string>
     <string name="alarm_window_a11y">Ventana de despertar</string>
+    <string name="doubletap_nothing">Nada</string>
+    <string name="doubletap_buzz_back">Vibrar de vuelta (confirmar)</string>
+    <string name="doubletap_mark_moment">Marcar un momento</string>
+    <string name="doubletap_sleep_mark">Registrar una marca de sueño</string>
+    <string name="doubletap_haptic_clock">Vibrar la hora</string>
+    <string name="automation_on">ACTIVA</string>
 </resources>

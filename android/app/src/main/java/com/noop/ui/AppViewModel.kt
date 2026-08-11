@@ -1,9 +1,11 @@
 package com.noop.ui
 
 import android.app.Application
+import androidx.annotation.StringRes
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.noop.NoopApplication
+import com.noop.R
 import com.noop.alarm.SmartAlarmScheduler
 import com.noop.alarm.SmartAlarmStore
 import com.noop.alarm.WindDownScheduler
@@ -2037,7 +2039,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         if (ev == null || !ev.startsWith("DOUBLE_TAP")) return
         val action = _doubleTapAction.value
         if (action == DoubleTapAction.NONE) return
-        ble.externalLog("Double-tap -> ${action.label}")
+        ble.externalLog("Double-tap -> ${action.name}")
         runDoubleTapAction(action)
     }
 
@@ -2198,14 +2200,15 @@ enum class DoubleTapAction {
     SLEEP_MARK,   // log a sleep mark
     HAPTIC_CLOCK; // buzz the current time out on the strap
 
-    /** The picker label shown for each case. */
-    val label: String
+    /** The picker label shown for each case; the caller resolves it. */
+    @get:StringRes
+    val labelRes: Int
         get() = when (this) {
-            NONE -> "Nothing"
-            BUZZ_BACK -> "Buzz back (confirm)"
-            MARK_MOMENT -> "Mark a moment"
-            SLEEP_MARK -> "Log a sleep mark"
-            HAPTIC_CLOCK -> "Buzz the time"
+            NONE -> R.string.doubletap_nothing
+            BUZZ_BACK -> R.string.doubletap_buzz_back
+            MARK_MOMENT -> R.string.doubletap_mark_moment
+            SLEEP_MARK -> R.string.doubletap_sleep_mark
+            HAPTIC_CLOCK -> R.string.doubletap_haptic_clock
         }
 
     companion object {

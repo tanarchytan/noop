@@ -486,7 +486,7 @@ internal fun AlarmDayOverridePicker(
 }
 
 /** A compact dropdown for the double-tap action: a tappable label + chevron that opens a menu of
- * [DoubleTapAction]s. Labels come from [DoubleTapAction.label], the single source. */
+ * [DoubleTapAction]s. Labels come from [DoubleTapAction.labelRes], the single source. */
 @Composable
 private fun DoubleTapActionPicker(
     selected: DoubleTapAction,
@@ -502,7 +502,7 @@ private fun DoubleTapActionPicker(
                 .padding(horizontal = Metrics.space12, vertical = 6.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(selected.label, style = NoopType.body, color = Palette.textPrimary)
+            Text(stringResource(selected.labelRes), style = NoopType.body, color = Palette.textPrimary)
             Spacer(Modifier.width(Metrics.space4))
             Icon(
                 Icons.Filled.ArrowDropDown,
@@ -516,7 +516,7 @@ private fun DoubleTapActionPicker(
                 DropdownMenuItem(
                     text = {
                         Text(
-                            action.label,
+                            stringResource(action.labelRes),
                             style = NoopType.body,
                             color = if (action == selected) Palette.accent else Palette.textPrimary,
                         )

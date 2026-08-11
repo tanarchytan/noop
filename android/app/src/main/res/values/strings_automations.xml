@@ -199,4 +199,10 @@
     <string name="updates_seed_title">What\'s new in NOOP %1$s</string>
     <string name="updates_seed_message">NOOP %1$s is here — tap to read what\'s new.</string>
     <string name="alarm_window_a11y">Wake window</string>
+    <string name="doubletap_nothing">Nothing</string>
+    <string name="doubletap_buzz_back">Buzz back (confirm)</string>
+    <string name="doubletap_mark_moment">Mark a moment</string>
+    <string name="doubletap_sleep_mark">Log a sleep mark</string>
+    <string name="doubletap_haptic_clock">Buzz the time</string>
+    <string name="automation_on">ON</string>
 </resources>

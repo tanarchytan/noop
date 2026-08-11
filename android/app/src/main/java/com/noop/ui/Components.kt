@@ -1371,7 +1371,7 @@ fun NoopSettingsSection(
                     horizontalArrangement = Arrangement.spacedBy(Metrics.space6),
                 ) {
                     Overline(overline)
-                    if (active) Overline("ON", color = Palette.accent)
+                    if (active) Overline(stringResource(R.string.automation_on), color = Palette.accent)
                 }
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
