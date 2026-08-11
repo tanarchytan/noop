@@ -28,6 +28,13 @@ object NoopLocale {
         Option("es", "Español"),
     )
 
+    /**
+     * Every language with a `values-xx` folder, which is a wider set than [SUPPORTED] offers. A system
+     * language outside this set gets English strings, so its dates and numbers must read English too:
+     * a Dutch phone rendered an English UI over `di, 11 aug` until this existed.
+     */
+    private val TRANSLATED = setOf("en", "de", "es")
+
     /** One selectable language: its BCP-47 tag and the name shown for it. */
     data class Option(val tag: String?, val label: String)
 
@@ -52,14 +59,29 @@ object NoopLocale {
     }
 
     /**
-     * The base context with the chosen locale applied, or unchanged when following the system. A
-     * stored tag no longer in [SUPPORTED] falls back to the system rather than pinning a locale the
-     * Profile row can no longer name.
+     * The locale the app actually renders in: the chosen language, else the system's if we translate
+     * it (region kept, so an en-GB phone keeps British dates), else English. A stored tag no longer in
+     * [SUPPORTED] resolves as if nothing were stored rather than pinning a language the Profile row
+     * cannot name.
+     */
+    fun resolved(base: Context): Locale =
+        resolve(runCatching { tag(base) }.getOrNull(), base.resources.configuration.locales[0])
+
+    /** [resolved] without a Context, so the three branches can be pinned by a test. */
+    fun resolve(storedTag: String?, system: Locale): Locale {
+        if (storedTag != null && SUPPORTED.any { it.tag == storedTag }) {
+            return Locale.forLanguageTag(storedTag)
+        }
+        return if (system.language in TRANSLATED) system else Locale.ENGLISH
+    }
+
+    /**
+     * The base context rendering in [resolved]. Also the one place `Locale.getDefault` is set, which is
+     * what the date and number formatters read — they must not follow a system language the strings do
+     * not.
      */
     fun wrap(base: Context): Context {
-        val tag = runCatching { tag(base) }.getOrNull() ?: return base
-        if (SUPPORTED.none { it.tag == tag }) return base
-        val locale = Locale.forLanguageTag(tag)
+        val locale = resolved(base)
         Locale.setDefault(locale)
         val config = Configuration(base.resources.configuration)
         config.setLocale(locale)
