@@ -37,10 +37,16 @@ object AppChangelog {
     val releases: List<Release> = listOf(
         Release(
             version = "10.0.0",
-            title = "Rhythm Age arrives for real, HRV reads true, and three numbers get honest",
+            title = "Spanish, Rhythm Age, and four numbers that finally read true",
             date = "August 2026",
             items = listOf(
                 "**Nothing breaks in this one.** The version jumps to 10 because of how much changed underneath, not because anything about your data or your setup does. Your history upgrades in place — no re-pair, no re-import, no restore.",
+                "**NOOP speaks Spanish, and you pick the language in the app.** Profile → Language switches the whole interface without touching your phone's settings. Every screen is translated. The names NOOP invented for its own metrics — Charge, Effort, Rest — stay as they are in both languages, because they are names rather than words.",
+                "**Your resting heart rate reads about 10 bpm higher, and that is the fix.** It had been the lowest stretch the night could hold, which is a floor rather than a resting level. It is now the middle of your in-bed heart rate. Against the published figure on the nights where both exist, the old number sat 10.8 bpm low and the new one lands inside 1.",
+                "**A short night can no longer earn a full Restorative Sleep score.** Rest was scored as a share of whatever you happened to sleep, so five good hours scored like eight good hours. It is now scored in minutes against what you need. On a five-hour-ten night that moves Rest from about 81 to about 74.",
+                "**Every number you set is a wheel.** Waist, max heart rate, step calibration, the automation timers, the alarm window and the interval timer all spin to a value instead of counting one tap at a time. Max heart rate can also be handed back to Auto, which it could not before.",
+                "**The night chart draws your movement beside your heart rate.** Two lines on one chart, heart rate in rose and movement in cyan, with a key beneath. Where the two part company is usually where a stage boundary sits.",
+                "**You can restore a backup while setting the app up.** Restore lived in Settings, which you reach after setup is done, so a fresh phone had no way back to its history at the moment you want it. It is now a step in the walkthrough.",
                 "**Rhythm Age now has a card, in Health.** The last release announced it; the number was being computed and stored but had nowhere to appear, so nobody ever saw one. It sits under Body signals beside your body clock, charted against your real age and your fitness age. It still needs about a week of wear, and below that it counts up rather than hiding.",
                 "**Your HRV was reading low.** When several heartbeats land in the same second they were read shortest-first instead of in the order they happened — and HRV is built entirely from the gaps between consecutive beats, so sorting them flattened it. On this fork's own strap the nightly figure was about a quarter too low. Nights recorded from here on read true; earlier nights keep their stored values, because the original order was never saved.",
                 "**Daily calories now show the active half only, so the number drops.** It had been showing your whole day including the energy you burn lying still, in a place everything else treats as active energy. A day that read 1,450 will now read a few hundred. The old figure was not wrong, it was answering a different question.",
@@ -51,6 +57,7 @@ object AppChangelog {
                 "**A WHOOP MG now says MG.** Both straps used to share one \"WHOOP 5.0 / MG\" label because nothing read the strap's hardware revision. A strap that has been read says which one it is; one that has not keeps the combined label rather than guessing.",
                 "**Sleep has a weekly view of the score the screen is about.** Sleep Performance joins Hours vs Needed and Restorative Sleep as a seven-day card, and a night with no data leaves its slot empty instead of drawing a zero.",
                 "**Skin temperature, VO2 max and your heart-rate zones reach Health Connect**, and weight, height, blood pressure, hydration, nutrition and period dates now arrive from it. Almost nothing else on a phone measures skin temperature, so it is the most useful thing NOOP can contribute.",
+                "**The unit switches reach every screen.** Metric/Imperial, °C/°F and the Effort scale were read once when the app started, so flipping one left parts of the app on the old unit until you restarted it.",
             ),
         ),
         Release(

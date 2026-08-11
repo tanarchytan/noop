@@ -16,9 +16,9 @@ A per-version notes file docs/releases/v<VER>.md may carry a YAML front-matter b
     <the full release notes — the GitHub release body; the front-matter is stripped there>
 
 Running `Tools/appchangelog-gen.py docs/releases/v8.2.2.md` prepends the generated Release entry to
-`releases` in AppChangelog.kt AND AppChangelog.swift and bumps CURRENT_VERSION/currentVersion to that
-version. Idempotent: if the version is already the newest entry it only re-checks the constant. The
-version comes from the filename (v8.2.2.md -> 8.2.2).
+`releases` in AppChangelog.kt and bumps CURRENT_VERSION to that version. Idempotent: if the version is
+already the newest entry its block is regenerated in place, so editing the notes across rc cuts reaches
+the app. The version comes from the filename (v8.2.2.md -> 8.2.2).
 """
 import re
 import sys
@@ -64,17 +64,23 @@ def kt_block(ver, wn):
 def apply(path, anchor, block, ver, const_re, const_new):
     text = path.read_text(encoding="utf-8")
     idx = text.index(anchor) + len(anchor)
-    already = f'version = "{ver}"' in text[idx:idx + 400] or f'version: "{ver}"' in text[idx:idx + 400]
-    if already:
-        print(f"  {path.name}: v{ver} already the newest entry — leaving entries, refreshing constant")
+    # A version already at the head is REPLACED, not skipped: the notes are edited across rc cuts, and
+    # skipping left the sheet showing an older set of items than the notes file it is generated from.
+    head = re.compile(
+        r'        Release\(\n            version = "%s",\n.*?\n        \),\n' % re.escape(ver), re.S
+    )
+    m = head.match(text, idx)
+    if m:
+        verb = "replaced" if m.group(0) != block else "unchanged"
+        text = text[:idx] + block + text[m.end():]
     else:
+        verb = "inserted"
         text = text[:idx] + block + text[idx:]
     text, n = re.subn(const_re, const_new, text, count=1)
     if n != 1:
         sys.exit(f"appchangelog-gen: could not bump the version constant in {path.name}")
     path.write_text(text, encoding="utf-8")
-    if not already:
-        print(f"  {path.name}: inserted v{ver} entry + set constant")
+    print(f"  {path.name}: v{ver} entry {verb}, constant set")
 
 
 def main():
