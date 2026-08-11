@@ -3,6 +3,7 @@ package com.noop.ingest
 import android.content.Context
 import android.net.Uri
 import android.util.Xml
+import com.noop.R
 import com.noop.analytics.RouteMath
 import com.noop.data.HrSample
 import com.noop.data.ImportSummary
@@ -82,15 +83,21 @@ object ActivityFileImporter {
         val durationS: Double? get() = (endTs - startTs).takeIf { it > 0 }?.toDouble()
 
         /** Honest one-line note for the workout row — only what's actually present. */
-        fun importNote(): String {
+        fun importNote(context: Context): String {
             val parts = ArrayList<String>(4)
-            parts.add("Imported ${kind.name}")
+            parts.add(context.getString(R.string.import_activity_note_kind, kind.name))
             if (distanceM != null && distanceM > 0) {
                 val km = distanceM / 1000.0
                 parts.add(if (km >= 10) "${km.roundToInt()} km" else String.format(Locale.US, "%.2f km", km))
             }
-            if (gpsPointCount > 0) parts.add("$gpsPointCount GPS points")
-            if (hrSampleCount > 0) parts.add("$hrSampleCount HR samples")
+            if (gpsPointCount > 0) parts.add(
+                context.resources
+                    .getQuantityString(R.plurals.import_frag_gps_points, gpsPointCount, gpsPointCount),
+            )
+            if (hrSampleCount > 0) parts.add(
+                context.resources
+                    .getQuantityString(R.plurals.import_frag_hr_samples, hrSampleCount, hrSampleCount),
+            )
             return parts.joinToString(" · ")
         }
     }
@@ -166,9 +173,18 @@ object ActivityFileImporter {
         val filename = displayName(context, uri)
         val bytes: ByteArray = try {
             context.contentResolver.openInputStream(uri)?.use { it.readCapped(MAX_BYTES) }
-                ?: return ImportSummary.failure(SOURCE_LABEL, "Could not open the selected file.")
+                ?: return ImportSummary.failure(
+                    SOURCE_LABEL,
+                    context.getString(R.string.import_open_failed),
+                )
         } catch (e: Exception) {
-            return ImportSummary.failure(SOURCE_LABEL, "Could not read the file: ${e.message ?: "unknown error"}")
+            return ImportSummary.failure(
+                SOURCE_LABEL,
+                context.getString(
+                    R.string.import_read_failed,
+                    e.message ?: context.getString(R.string.import_unknown_error),
+                ),
+            )
         }
 
         val result = parse(bytes, filename)
@@ -177,7 +193,7 @@ object ActivityFileImporter {
         if (activity == null || durationS == null || durationS <= 0) {
             return ImportSummary.failure(
                 SOURCE_LABEL,
-                "No usable activity found - point at a .gpx, .tcx or .fit workout file.",
+                context.getString(R.string.import_activity_none),
             )
         }
 
@@ -194,7 +210,7 @@ object ActivityFileImporter {
             strain = null,                                  // never a fabricated cardiovascular strain
             distanceM = activity.distanceM,
             zonesJSON = null,
-            notes = activity.importNote(),
+            notes = activity.importNote(context),
             routePolyline = activity.route.takeIf { it.size >= 2 }
                 ?.let { RouteMath.encode(it.map { p -> RouteMath.LatLng(p.lat, p.lon) }) },
         )
@@ -216,7 +232,7 @@ object ActivityFileImporter {
             counts = linkedMapOf("workouts" to 1),
             firstDay = dayString(activity.startTs),
             lastDay = dayString(activity.endTs),
-            message = summaryText(activity),
+            message = summaryText(context, activity),
         )
     }
 
@@ -512,20 +528,26 @@ object ActivityFileImporter {
     }
 
     /** One-line status string for the import UI — only what the file actually carried. */
-    fun summaryText(a: Activity): String {
-        val head = StringBuilder("Imported")
-        if (a.distanceM != null && a.distanceM > 0) {
+    fun summaryText(context: Context, a: Activity): String {
+        val sport = workoutSport(a.sport)
+        val head = if (a.distanceM != null && a.distanceM > 0) {
             val km = a.distanceM / 1000.0
-            head.append(if (km >= 10) " a ${km.roundToInt()} km" else String.format(Locale.US, " a %.2f km", km))
+            val kmText = if (km >= 10) km.roundToInt().toString() else String.format(Locale.US, "%.2f", km)
+            context.getString(R.string.import_activity_summary_distance, kmText, sport)
         } else {
-            head.append(" an")
+            context.getString(R.string.import_activity_summary, sport)
         }
-        head.append(" ${workoutSport(a.sport)} activity")
         val parts = ArrayList<String>(4)
-        parts.add(head.toString())
-        if (a.gpsPointCount > 0) parts.add("${a.gpsPointCount} GPS points")
-        if (a.hrSampleCount > 0) parts.add("${a.hrSampleCount} HR samples")
-        if (a.avgHr != null) parts.add("avg ${a.avgHr} bpm")
+        parts.add(head)
+        if (a.gpsPointCount > 0) parts.add(
+            context.resources
+                .getQuantityString(R.plurals.import_frag_gps_points, a.gpsPointCount, a.gpsPointCount),
+        )
+        if (a.hrSampleCount > 0) parts.add(
+            context.resources
+                .getQuantityString(R.plurals.import_frag_hr_samples, a.hrSampleCount, a.hrSampleCount),
+        )
+        if (a.avgHr != null) parts.add(context.getString(R.string.import_activity_avg_bpm, a.avgHr))
         return parts.joinToString(" · ")
     }
 

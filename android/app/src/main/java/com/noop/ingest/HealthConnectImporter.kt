@@ -164,7 +164,10 @@ object HealthConnectImporter {
         val granted = try {
             client.permissionController.getGrantedPermissions()
         } catch (e: Exception) {
-            return ImportSummary.failure(SOURCE, "Could not read Health Connect permissions: ${e.message}")
+            return ImportSummary.failure(
+                SOURCE,
+                context.getString(R.string.import_hc_permissions_failed, e.message.orEmpty()),
+            )
         }
         // Partial permissions are fine: import the record types the user granted and skip the rest,
         // instead of refusing the whole import when a single type is missing. A revoked type throws and
@@ -172,7 +175,7 @@ object HealthConnectImporter {
         if (granted.none { it in PERMISSIONS }) {
             return ImportSummary.failure(
                 SOURCE,
-                "No Health Connect data types are granted. Allow at least one type for NOOP in Health Connect, then import.",
+                context.getString(R.string.import_hc_no_types_granted),
             )
         }
 
@@ -467,14 +470,17 @@ object HealthConnectImporter {
                 if (kcal != null) workouts[i] = w.copy(energyKcal = kcal)
             }
         } catch (e: Exception) {
-            return ImportSummary.failure(SOURCE, "Health Connect read failed: ${e.message}")
+            return ImportSummary.failure(
+                SOURCE,
+                context.getString(R.string.import_hc_read_failed, e.message.orEmpty()),
+            )
         }
 
         if (acc.isEmpty() && workouts.isEmpty()) {
             return ImportSummary(
                 source = SOURCE,
                 counts = emptyMap(),
-                message = "No Health Connect data found to import.",
+                message = context.getString(R.string.import_none_health_connect),
             )
         }
 
@@ -603,7 +609,10 @@ object HealthConnectImporter {
             // inserted an imported-bucket row that OUTRANKED a strap SpO2 held under "<strapId>-noop".
             for ((day, pct) in spo2Fills) repo.fillMissingSpo2(HC_DEVICE, day, pct)
         } catch (e: Exception) {
-            return ImportSummary.failure(SOURCE, "Saving Health Connect data failed: ${e.message}")
+            return ImportSummary.failure(
+                SOURCE,
+                context.getString(R.string.import_hc_save_failed, e.message.orEmpty()),
+            )
         }
 
         // After the save, so a failed import never moves the profile's weight or height.
@@ -632,8 +641,8 @@ object HealthConnectImporter {
             counts = counts,
             firstDay = firstDay,
             lastDay = lastDay,
-            message = if (total == 0) "Nothing new to import from Health Connect."
-            else "Imported $total rows from Health Connect.",
+            message = if (total == 0) context.getString(R.string.import_hc_nothing_new)
+            else context.resources.getQuantityString(R.plurals.import_hc_imported_rows, total, total),
         )
     }
 

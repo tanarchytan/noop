@@ -286,4 +286,88 @@
     <string name="notif_channel_strap_connection">Conexión de la banda</string>
     <string name="notif_channel_strap_connection_desc">Se muestra mientras NOOP mantiene tu WHOOP conectada en segundo plano.</string>
     <string name="import_hc_unavailable">Health Connect no está disponible en este dispositivo.</string>
+
+    <!-- Importers (com.noop.ingest) - failures -->
+    <string name="import_open_failed">No se ha podido abrir el archivo seleccionado.</string>
+    <string name="import_read_failed">No se ha podido leer el archivo: %1$s</string>
+    <string name="import_csv_read_failed">No se ha podido leer el CSV: %1$s</string>
+    <string name="import_unknown_error">error desconocido</string>
+
+    <!-- Importers - shared count fragments -->
+    <plurals name="import_frag_days">
+        <item quantity="one">%1$d día</item>
+        <item quantity="other">%1$d días</item>
+    </plurals>
+    <plurals name="import_frag_workouts">
+        <item quantity="one">%1$d entrenamiento</item>
+        <item quantity="other">%1$d entrenamientos</item>
+    </plurals>
+    <plurals name="import_frag_gps_points">
+        <item quantity="one">%1$d punto GPS</item>
+        <item quantity="other">%1$d puntos GPS</item>
+    </plurals>
+    <plurals name="import_frag_hr_samples">
+        <item quantity="one">%1$d muestra de FC</item>
+        <item quantity="other">%1$d muestras de FC</item>
+    </plurals>
+    <plurals name="import_frag_readings">
+        <item quantity="one">%1$d lectura</item>
+        <item quantity="other">%1$d lecturas</item>
+    </plurals>
+    <plurals name="import_frag_markers">
+        <item quantity="one">%1$d marcador</item>
+        <item quantity="other">%1$d marcadores</item>
+    </plurals>
+    <plurals name="import_frag_nutrition_values">
+        <item quantity="one">%1$d valor de nutrición</item>
+        <item quantity="other">%1$d valores de nutrición</item>
+    </plurals>
+
+    <!-- ActivityFileImporter (GPX / TCX / FIT) -->
+    <string name="import_activity_none">No se ha encontrado ninguna actividad utilizable. Elige un archivo de entrenamiento .gpx, .tcx o .fit.</string>
+    <string name="import_activity_note_kind">%1$s importado</string>
+    <string name="import_activity_summary">Actividad importada: %1$s</string>
+    <string name="import_activity_summary_distance">Actividad importada: %2$s de %1$s km</string>
+    <string name="import_activity_avg_bpm">media %1$d bpm</string>
+
+    <!-- AppleHealthImporter -->
+    <string name="import_apple_no_export_xml">No se ha encontrado export.xml dentro del archivo comprimido.</string>
+    <string name="import_apple_read_failed">No se ha podido leer la exportación de Apple Health: %1$s</string>
+    <string name="import_apple_summary">Importación de Apple Health: %1$s.</string>
+    <string name="import_apple_summary_workouts">Importación de Apple Health: %1$s y %2$s.</string>
+    <plurals name="import_apple_skipped_spans">
+        <item quantity="one">Se ha omitido %1$d fragmento dañado.</item>
+        <item quantity="other">Se han omitido %1$d fragmentos dañados.</item>
+    </plurals>
+
+    <!-- HealthConnectImporter -->
+    <string name="import_hc_permissions_failed">No se han podido leer los permisos de Health Connect: %1$s</string>
+    <string name="import_hc_no_types_granted">No se ha concedido ningún tipo de dato de Health Connect. Permite al menos un tipo para NOOP en Health Connect y vuelve a importar.</string>
+    <string name="import_hc_read_failed">Error al leer Health Connect: %1$s</string>
+    <string name="import_hc_save_failed">Error al guardar los datos de Health Connect: %1$s</string>
+    <string name="import_hc_nothing_new">No hay nada nuevo que importar de Health Connect.</string>
+    <plurals name="import_hc_imported_rows">
+        <item quantity="one">Se ha importado %1$d fila de Health Connect.</item>
+        <item quantity="other">Se han importado %1$d filas de Health Connect.</item>
+    </plurals>
+
+    <!-- LabMarkerCsvImport -->
+    <string name="import_lab_too_large">Ese archivo es demasiado grande para importar un CSV de marcadores.</string>
+    <string name="import_lab_no_rows">No se han encontrado filas utilizables. Comprueba que el archivo tenga columnas de fecha, marcador y valor.</string>
+    <string name="import_lab_summary">Importación de marcadores: %1$s en %2$s.</string>
+    <string name="import_lab_summary_span">Importación de marcadores: %1$s en %2$s (%3$s → %4$s).</string>
+    <plurals name="import_lab_skipped_rows">
+        <item quantity="one">%1$d fila omitida.</item>
+        <item quantity="other">%1$d filas omitidas.</item>
+    </plurals>
+
+    <!-- LiftingImporter -->
+    <string name="import_lifting_none">No se han encontrado entrenamientos. Elige una exportación CSV de Hevy o JSON de Liftosaur.</string>
+
+    <!-- NutritionCsvImporter -->
+    <string name="import_nutrition_no_data_rows">El CSV no contenía filas de datos.</string>
+    <string name="import_nutrition_unknown_columns">No se han reconocido las columnas. Se esperaba una columna de fecha y alguna de calorías / proteínas / carbohidratos / grasas / peso.</string>
+    <string name="import_nutrition_no_rows">No hay filas de nutrición utilizables (comprueba el formato de la columna de fecha).</string>
+    <string name="import_nutrition_summary">Importación de nutrición: %1$s en %2$s.</string>
+    <string name="import_nutrition_summary_span">Importación de nutrición: %1$s en %2$s (%3$s → %4$s).</string>
 </resources>

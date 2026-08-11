@@ -92,13 +92,22 @@ object AppleHealthImporter {
                 } else {
                     parseXml(buffered, agg)
                 }
-            } ?: return ImportSummary.failure(SOURCE_LABEL, "Could not open the selected file.")
+            } ?: return ImportSummary.failure(
+                SOURCE_LABEL,
+                context.getString(R.string.import_open_failed),
+            )
         } catch (e: MissingExportXml) {
-            return ImportSummary.failure(SOURCE_LABEL, "No export.xml found inside the archive.")
+            return ImportSummary.failure(
+                SOURCE_LABEL,
+                context.getString(R.string.import_apple_no_export_xml),
+            )
         } catch (e: Exception) {
             return ImportSummary.failure(
                 SOURCE_LABEL,
-                "Could not read the Apple Health export: ${e.message ?: e.javaClass.simpleName}",
+                context.getString(
+                    R.string.import_apple_read_failed,
+                    e.message ?: e.javaClass.simpleName,
+                ),
             )
         }
 
@@ -438,24 +447,24 @@ object AppleHealthImporter {
 
         val firstDay = days.first().day
         val lastDay = days.last().day
+        val dayCount = appleDailyRows.size
+        val daysText = context.resources
+            .getQuantityString(R.plurals.import_frag_days, dayCount, dayCount)
         val message = buildString {
-            append("Imported ")
-            append(appleDailyRows.size)
-            append(" day")
-            if (appleDailyRows.size != 1) append("s")
             if (workoutRows.isNotEmpty()) {
-                append(", ")
-                append(workoutRows.size)
-                append(" workout")
-                if (workoutRows.size != 1) append("s")
+                val workoutsText = context.resources.getQuantityString(
+                    R.plurals.import_frag_workouts, workoutRows.size, workoutRows.size,
+                )
+                append(context.getString(R.string.import_apple_summary_workouts, daysText, workoutsText))
+            } else {
+                append(context.getString(R.string.import_apple_summary, daysText))
             }
-            append(" from Apple Health.")
             if (skipped > 0) {
-                append(" Skipped ")
-                append(skipped)
-                append(" damaged span")
-                if (skipped != 1) append("s")
-                append(".")
+                append(" ")
+                append(
+                    context.resources
+                        .getQuantityString(R.plurals.import_apple_skipped_spans, skipped, skipped),
+                )
             }
         }
 

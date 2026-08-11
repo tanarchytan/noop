@@ -2,6 +2,7 @@ package com.noop.ingest
 
 import android.content.Context
 import android.net.Uri
+import com.noop.R
 import com.noop.data.ImportSummary
 import com.noop.data.MetricSeriesRow
 import com.noop.data.WhoopRepository
@@ -56,20 +57,31 @@ object NutritionCsvImporter {
     ): ImportSummary {
         val bytes: ByteArray = try {
             context.contentResolver.openInputStream(uri)?.use { it.readCapped(MAX_BYTES) }
-                ?: throw IllegalStateException("Could not open input stream for $uri")
+                ?: return ImportSummary.failure(
+                    SOURCE_LABEL,
+                    context.getString(R.string.import_open_failed),
+                )
         } catch (e: Exception) {
-            return ImportSummary.failure(SOURCE_LABEL, "Could not read CSV: ${e.message ?: "unknown error"}")
+            return ImportSummary.failure(
+                SOURCE_LABEL,
+                context.getString(
+                    R.string.import_csv_read_failed,
+                    e.message ?: context.getString(R.string.import_unknown_error),
+                ),
+            )
         }
 
         val table = CsvTable.fromData(bytes)
         if (table.rows.isEmpty()) {
-            return ImportSummary.failure(SOURCE_LABEL, "CSV contained no data rows.")
+            return ImportSummary.failure(
+                SOURCE_LABEL,
+                context.getString(R.string.import_nutrition_no_data_rows),
+            )
         }
         if (resolveColumns(table.normalizedHeaders) == null) {
             return ImportSummary.failure(
                 SOURCE_LABEL,
-                "Couldn't recognise the columns - expected a date column plus any of " +
-                    "calories / protein / carbs / fat / weight.",
+                context.getString(R.string.import_nutrition_unknown_columns),
             )
         }
 
@@ -77,7 +89,7 @@ object NutritionCsvImporter {
         if (rows.isEmpty()) {
             return ImportSummary.failure(
                 SOURCE_LABEL,
-                "No usable nutrition rows (check the date column format).",
+                context.getString(R.string.import_nutrition_no_rows),
             )
         }
 
@@ -94,11 +106,16 @@ object NutritionCsvImporter {
             counts = linkedMapOf("metricSeries" to rows.size),
             firstDay = firstDay,
             lastDay = lastDay,
-            message = buildString {
-                append("Imported ${rows.size} nutrition values across $dayCount day")
-                if (dayCount != 1) append("s")
-                if (firstDay != null && lastDay != null) append(" ($firstDay → $lastDay)")
-                append(".")
+            message = run {
+                val values = context.resources
+                    .getQuantityString(R.plurals.import_frag_nutrition_values, rows.size, rows.size)
+                val days = context.resources
+                    .getQuantityString(R.plurals.import_frag_days, dayCount, dayCount)
+                if (firstDay != null && lastDay != null) {
+                    context.getString(R.string.import_nutrition_summary_span, values, days, firstDay, lastDay)
+                } else {
+                    context.getString(R.string.import_nutrition_summary, values, days)
+                }
             },
         )
     }

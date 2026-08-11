@@ -2,6 +2,7 @@ package com.noop.ingest
 
 import android.content.Context
 import android.net.Uri
+import com.noop.R
 import com.noop.analytics.LabMarkerCategory
 import com.noop.analytics.MarkerCatalog
 import com.noop.analytics.CalendarDay
@@ -90,19 +91,28 @@ object LabMarkerCsvImport {
     ): ImportSummary {
         val bytes: ByteArray = try {
             context.contentResolver.openInputStream(uri)?.use { it.readCappedBytes(MAX_BYTES) }
-                ?: throw IllegalStateException("Could not open input stream for $uri")
+                ?: return ImportSummary.failure(
+                    SOURCE_LABEL,
+                    context.getString(R.string.import_open_failed),
+                )
         } catch (e: Exception) {
-            return ImportSummary.failure(SOURCE_LABEL, "Could not read CSV: ${e.message ?: "unknown error"}")
+            return ImportSummary.failure(
+                SOURCE_LABEL,
+                context.getString(
+                    R.string.import_csv_read_failed,
+                    e.message ?: context.getString(R.string.import_unknown_error),
+                ),
+            )
         }
 
         val result = parse(bytes)
         if (result.fileTooLarge) {
-            return ImportSummary.failure(SOURCE_LABEL, "That file is too large for a markers CSV import.")
+            return ImportSummary.failure(SOURCE_LABEL, context.getString(R.string.import_lab_too_large))
         }
         if (result.rows.isEmpty()) {
             return ImportSummary.failure(
                 SOURCE_LABEL,
-                "No usable rows found. Check the file has date, marker and value columns.",
+                context.getString(R.string.import_lab_no_rows),
             )
         }
 
@@ -131,20 +141,28 @@ object LabMarkerCsvImport {
             firstDay = result.earliestDay,
             lastDay = result.latestDay,
             message = buildString {
-                append("Imported ${result.importedReadings} reading")
-                if (result.importedReadings != 1) append("s")
-                append(" across ${result.distinctMarkers} marker")
-                if (result.distinctMarkers != 1) append("s")
-                if (result.earliestDay != null && result.latestDay != null &&
-                    result.earliestDay != result.latestDay
-                ) {
-                    append(" (${result.earliestDay} → ${result.latestDay})")
-                }
-                append(".")
+                val readings = context.resources.getQuantityString(
+                    R.plurals.import_frag_readings, result.importedReadings, result.importedReadings,
+                )
+                val markers = context.resources.getQuantityString(
+                    R.plurals.import_frag_markers, result.distinctMarkers, result.distinctMarkers,
+                )
+                val first = result.earliestDay
+                val last = result.latestDay
+                append(
+                    if (first != null && last != null && first != last) {
+                        context.getString(R.string.import_lab_summary_span, readings, markers, first, last)
+                    } else {
+                        context.getString(R.string.import_lab_summary, readings, markers)
+                    },
+                )
                 if (result.skippedRows > 0) {
-                    append(" ${result.skippedRows} row")
-                    if (result.skippedRows != 1) append("s")
-                    append(" skipped.")
+                    append(" ")
+                    append(
+                        context.resources.getQuantityString(
+                            R.plurals.import_lab_skipped_rows, result.skippedRows, result.skippedRows,
+                        ),
+                    )
                 }
             },
         )

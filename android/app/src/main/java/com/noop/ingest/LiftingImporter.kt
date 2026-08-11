@@ -2,6 +2,7 @@ package com.noop.ingest
 
 import android.content.Context
 import android.net.Uri
+import com.noop.R
 import com.noop.data.ImportSummary
 import com.noop.data.WhoopRepository
 import com.noop.data.WorkoutRow
@@ -96,16 +97,25 @@ object LiftingImporter {
     ): ImportSummary {
         val bytes: ByteArray = try {
             context.contentResolver.openInputStream(uri)?.use { it.readCapped(MAX_BYTES) }
-                ?: return ImportSummary.failure(SOURCE_LABEL, "Could not open the selected file.")
+                ?: return ImportSummary.failure(
+                    SOURCE_LABEL,
+                    context.getString(R.string.import_open_failed),
+                )
         } catch (e: Exception) {
-            return ImportSummary.failure(SOURCE_LABEL, "Could not read the file: ${e.message ?: "unknown error"}")
+            return ImportSummary.failure(
+                SOURCE_LABEL,
+                context.getString(
+                    R.string.import_read_failed,
+                    e.message ?: context.getString(R.string.import_unknown_error),
+                ),
+            )
         }
 
         val result = parse(bytes)
         if (result.sessions.isEmpty()) {
             return ImportSummary.failure(
                 SOURCE_LABEL,
-                "No workouts found - point at a Hevy CSV export or a Liftosaur JSON export.",
+                context.getString(R.string.import_lifting_none),
             )
         }
 
