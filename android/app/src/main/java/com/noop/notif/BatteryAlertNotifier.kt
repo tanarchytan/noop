@@ -110,8 +110,8 @@ object BatteryAlertNotifier {
             val label = com.noop.analytics.BatteryEstimator.label(remainingHours)
             val n = NotificationCompat.Builder(context, CHANNEL_ID)
                 .setSmallIcon(R.drawable.ic_stat_heart)
-                .setContentTitle("Strap battery low")
-                .setContentText("$label left on your WHOOP — recharge tonight.")
+                .setContentTitle(context.getString(R.string.notif_battery_runtime_title))
+                .setContentText(context.getString(R.string.notif_battery_runtime_body, label))
                 .setContentIntent(openAppIntent(context))
                 .setAutoCancel(true)
                 .setCategory(NotificationCompat.CATEGORY_STATUS)
@@ -138,8 +138,8 @@ object BatteryAlertNotifier {
             if (decision.fireLow) {
                 val n = NotificationCompat.Builder(context, CHANNEL_ID)
                     .setSmallIcon(R.drawable.ic_stat_heart)
-                    .setContentTitle("Low battery")
-                    .setContentText("Recharge your WHOOP before tonight.")
+                    .setContentTitle(context.getString(R.string.notif_battery_low_title))
+                    .setContentText(context.getString(R.string.notif_battery_low_body))
                     .setContentIntent(openAppIntent(context))
                     .setAutoCancel(true)
                     .setCategory(NotificationCompat.CATEGORY_STATUS)
@@ -150,8 +150,13 @@ object BatteryAlertNotifier {
             if (decision.fireFull) {
                 val n = NotificationCompat.Builder(context, CHANNEL_ID)
                     .setSmallIcon(R.drawable.ic_stat_heart)
-                    .setContentTitle("Strap fully charged")
-                    .setContentText("Your WHOOP is at 100%.")
+                    .setContentTitle(context.getString(R.string.notif_battery_full_title))
+                    .setContentText(
+                        context.getString(
+                            R.string.notif_battery_full_body,
+                            BatteryAlertPolicy.FULL_THRESHOLD,
+                        ),
+                    )
                     .setContentIntent(openAppIntent(context))
                     .setAutoCancel(true)
                     .setCategory(NotificationCompat.CATEGORY_STATUS)
@@ -185,10 +190,10 @@ object BatteryAlertNotifier {
             if (mgr.getNotificationChannel(CHANNEL_ID) != null) return
             mgr.createNotificationChannel(
                 NotificationChannel(
-                    CHANNEL_ID, "Battery alerts",
+                    CHANNEL_ID, context.getString(R.string.notif_channel_battery),
                     NotificationManager.IMPORTANCE_HIGH,
                 ).apply {
-                    description = "Alerts when the strap battery is low or fully charged."
+                    description = context.getString(R.string.notif_channel_battery_desc)
                 },
             )
         }

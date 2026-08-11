@@ -93,6 +93,48 @@ object ScheduledReportPolicy {
     }
 }
 
+/** Resource-backed twins of the [ScheduledReportPolicy] copy builders, so a report reads in the device
+ *  language. Same shapes and the same honest omissions; only the wording comes from resources. */
+internal object ScheduledReportCopy {
+
+    /** Between the score/summary fragments, e.g. "Charge 72 · Rest 88". Punctuation, not copy. */
+    const val SEPARATOR = " · "
+
+    fun morning(context: Context, chargePct: Int?, restPct: Int?): Pair<String, String>? {
+        val parts = ArrayList<String>(2)
+        chargePct?.let { parts.add(context.getString(R.string.notif_report_frag_charge, it)) }
+        restPct?.let { parts.add(context.getString(R.string.notif_report_frag_rest, it)) }
+        if (parts.isEmpty()) return null
+        return context.getString(R.string.notif_report_morning_title) to
+            context.getString(R.string.notif_report_morning_body, parts.joinToString(SEPARATOR))
+    }
+
+    fun workout(
+        context: Context,
+        sportLabel: String,
+        effortDisplay: String,
+        effortMaxLabel: String,
+        durationLabel: String,
+        avgHr: Int?,
+    ): Pair<String, String> {
+        val pieces = ArrayList<String>(3)
+        pieces.add(context.getString(R.string.notif_report_frag_effort, effortDisplay, effortMaxLabel))
+        pieces.add(durationLabel)
+        avgHr?.let { pieces.add(context.getString(R.string.notif_report_frag_avg_hr, it)) }
+        return context.getString(R.string.notif_report_workout_title, sportLabel) to
+            context.getString(R.string.notif_report_workout_body, pieces.joinToString(SEPARATOR))
+    }
+
+    fun duration(context: Context, minutes: Int): String = when {
+        minutes <= 0 -> context.getString(R.string.notif_duration_under_minute)
+        minutes < 60 -> context.resources.getQuantityString(
+            R.plurals.notif_duration_minutes, minutes, minutes,
+        )
+        minutes % 60 == 0 -> context.getString(R.string.notif_duration_hours, minutes / 60)
+        else -> context.getString(R.string.notif_duration_hours_minutes, minutes / 60, minutes % 60)
+    }
+}
+
 object ScheduledReportNotifier {
     private const val CHANNEL_ID = "noop_scheduled_reports"
     // distinct ids so a report never silently replaces another notifier's (tagless notify()).
@@ -115,7 +157,7 @@ object ScheduledReportNotifier {
                 today = today,
             )
         ) return
-        val copy = ScheduledReportPolicy.morningCopy(chargePct, restPct) ?: return
+        val copy = ScheduledReportCopy.morning(context, chargePct, restPct) ?: return
         runCatching {
             if (!NotificationManagerCompat.from(context).areNotificationsEnabled()) return
             ensureChannel(context)
@@ -190,10 +232,10 @@ object ScheduledReportNotifier {
             if (mgr.getNotificationChannel(CHANNEL_ID) != null) return
             mgr.createNotificationChannel(
                 NotificationChannel(
-                    CHANNEL_ID, "Daily reports",
+                    CHANNEL_ID, context.getString(R.string.notif_channel_daily_reports),
                     NotificationManager.IMPORTANCE_LOW,
                 ).apply {
-                    description = "A morning recap and post-workout summary, after your strap syncs."
+                    description = context.getString(R.string.notif_channel_daily_reports_desc)
                 },
             )
         }

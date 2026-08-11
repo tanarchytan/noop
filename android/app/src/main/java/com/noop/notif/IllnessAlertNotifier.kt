@@ -42,11 +42,11 @@ object IllnessAlertNotifier {
             )
             val n = NotificationCompat.Builder(context, CHANNEL_ID)
                 .setSmallIcon(R.drawable.ic_stat_heart)
-                .setContentTitle("Early warning: take it easy")
+                .setContentTitle(context.getString(R.string.notif_illness_title))
                 .setContentText(alert)
                 .setStyle(
                     NotificationCompat.BigTextStyle()
-                        .bigText("$alert\nOn-device estimate (approximate), not a diagnosis."),
+                        .bigText(context.getString(R.string.notif_illness_bigtext, alert)),
                 )
                 .setContentIntent(openApp)
                 .setAutoCancel(true)
@@ -65,10 +65,10 @@ object IllnessAlertNotifier {
             if (mgr.getNotificationChannel(CHANNEL_ID) != null) return
             mgr.createNotificationChannel(
                 NotificationChannel(
-                    CHANNEL_ID, "Illness early-warning",
+                    CHANNEL_ID, context.getString(R.string.notif_channel_illness),
                     NotificationManager.IMPORTANCE_DEFAULT,
                 ).apply {
-                    description = "A heads-up when resting HR, HRV, skin temp or respiration drift together vs your baseline."
+                    description = context.getString(R.string.notif_channel_illness_desc)
                 },
             )
         }

@@ -59,11 +59,11 @@ class SmartAlarmReceiver : BroadcastReceiver() {
             context, 0, appLaunchIntent(context),
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
         )
-        val title = "Good morning"
+        val title = context.getString(R.string.notif_alarm_good_morning)
         val body = if (smart) {
-            "You're in a lighter sleep phase. Time to wake up."
+            context.getString(R.string.notif_alarm_body_smart)
         } else {
-            "Your wake window has ended. Time to get up."
+            context.getString(R.string.notif_alarm_body_deadline)
         }
         return NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_stat_heart)
@@ -88,10 +88,10 @@ class SmartAlarmReceiver : BroadcastReceiver() {
                 ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
             val channel = NotificationChannel(
                 CHANNEL_ID,
-                "Smart alarm",
+                context.getString(R.string.notif_channel_smart_alarm),
                 NotificationManager.IMPORTANCE_HIGH,
             ).apply {
-                description = "The phone wake alarm NOOP fires inside your chosen wake window."
+                description = context.getString(R.string.notif_channel_smart_alarm_phone_desc)
                 enableVibration(true)
                 vibrationPattern = longArrayOf(0, 600, 400, 600, 400, 600)
                 setBypassDnd(true)   // a wake alarm should sound through Do Not Disturb

@@ -38,8 +38,8 @@ object SmartAlarmNotifier {
             )
             val n = NotificationCompat.Builder(context, CHANNEL_ID)
                 .setSmallIcon(R.drawable.ic_stat_heart)
-                .setContentTitle("Good morning")
-                .setContentText("Your smart alarm just went off.")
+                .setContentTitle(context.getString(R.string.notif_alarm_good_morning))
+                .setContentText(context.getString(R.string.notif_smart_alarm_body))
                 .setContentIntent(openApp)
                 .setAutoCancel(true)
                 .setCategory(NotificationCompat.CATEGORY_ALARM)
@@ -56,10 +56,10 @@ object SmartAlarmNotifier {
             if (mgr.getNotificationChannel(CHANNEL_ID) != null) return
             mgr.createNotificationChannel(
                 NotificationChannel(
-                    CHANNEL_ID, "Smart alarm",
+                    CHANNEL_ID, context.getString(R.string.notif_channel_smart_alarm),
                     NotificationManager.IMPORTANCE_HIGH,
                 ).apply {
-                    description = "Your wake-up smart alarm went off on the strap."
+                    description = context.getString(R.string.notif_channel_smart_alarm_desc)
                 },
             )
         }

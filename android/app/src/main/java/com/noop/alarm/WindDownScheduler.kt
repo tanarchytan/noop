@@ -65,8 +65,8 @@ object WindDownScheduler {
             )
             val n = NotificationCompat.Builder(context, CHANNEL_ID)
                 .setSmallIcon(R.drawable.ic_stat_heart)
-                .setContentTitle("Time to wind down")
-                .setContentText("A calm hour now helps you hit your wake time well-rested.")
+                .setContentTitle(context.getString(R.string.notif_wind_down_title))
+                .setContentText(context.getString(R.string.notif_wind_down_body))
                 .setContentIntent(open)
                 .setCategory(NotificationCompat.CATEGORY_REMINDER)
                 .setPriority(NotificationCompat.PRIORITY_DEFAULT)
@@ -92,8 +92,12 @@ object WindDownScheduler {
             val mgr = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
             if (mgr.getNotificationChannel(CHANNEL_ID) != null) return
             mgr.createNotificationChannel(
-                NotificationChannel(CHANNEL_ID, "Wind-down nudge", NotificationManager.IMPORTANCE_DEFAULT).apply {
-                    description = "An optional evening reminder to start winding down before bed."
+                NotificationChannel(
+                    CHANNEL_ID,
+                    context.getString(R.string.notif_channel_wind_down),
+                    NotificationManager.IMPORTANCE_DEFAULT,
+                ).apply {
+                    description = context.getString(R.string.notif_channel_wind_down_desc)
                     setShowBadge(false)
                 },
             )

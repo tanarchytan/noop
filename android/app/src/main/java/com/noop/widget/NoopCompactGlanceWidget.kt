@@ -50,7 +50,7 @@ class NoopCompactGlanceWidget : GlanceAppWidget() {
                     android.content.res.Configuration.UI_MODE_NIGHT_YES
             }
         }.getOrDefault(true)
-        provideContent { CompactWidgetContent(snap, dark) }
+        provideContent { CompactWidgetContent(context, snap, dark) }
     }
 
     override fun onCompositionError(
@@ -85,7 +85,7 @@ private fun compactEffortColor(dark: Boolean): ColorProvider =
     ColorProvider(if (dark) Color(0xFF4FB6A8) else Color(0xFF2E7D74))
 
 @Composable
-private fun CompactWidgetContent(snap: WidgetSnapshot, dark: Boolean) {
+private fun CompactWidgetContent(context: Context, snap: WidgetSnapshot, dark: Boolean) {
     val surface = compactWidgetSurface(dark)
     val textPrimary = compactWidgetTextPrimary(dark)
     val textSecondary = compactWidgetTextSecondary(dark)
@@ -135,7 +135,7 @@ private fun CompactWidgetContent(snap: WidgetSnapshot, dark: Boolean) {
             Spacer(modifier = GlanceModifier.width(10.dp))
             Image(
                 provider = ImageProvider(R.drawable.ic_widget_strap_battery),
-                contentDescription = "Strap battery",
+                contentDescription = context.getString(R.string.widget_a11y_strap_battery),
                 modifier = GlanceModifier.width(14.dp).height(14.dp),
                 colorFilter = ColorFilter.tint(textPrimary),
             )
@@ -148,10 +148,10 @@ private fun CompactWidgetContent(snap: WidgetSnapshot, dark: Boolean) {
         Spacer(modifier = GlanceModifier.height(1.dp))
         Text(
             text = when {
-                snap.connected -> "Connected"
+                snap.connected -> context.getString(R.string.widget_status_connected)
                 snap.updatedAtMs > 0L ->
                     DateFormat.getTimeInstance(DateFormat.SHORT).format(Date(snap.updatedAtMs))
-                else -> "Open NOOP to connect"
+                else -> context.getString(R.string.widget_status_open_to_connect)
             },
             style = TextStyle(color = textSecondary, fontSize = 11.sp),
         )

@@ -374,14 +374,22 @@ class WhoopConnectionService : Service() {
         // service to re-post (and wake the device) ~once a second, a real battery cost for a number
         // nobody reads off the lock screen. The title reflects only the connection/sync state.
         val title = when {
-            !state.connected   -> "Reconnecting to your WHOOP…"
-            state.backfilling  -> "Syncing strap history…"
-            else               -> "Connected to your WHOOP"
+            !state.connected   -> getString(R.string.notif_conn_title_reconnecting)
+            state.backfilling  -> getString(R.string.notif_conn_title_syncing)
+            else               -> getString(R.string.notif_conn_title_connected)
         }
         val detail = buildList {
-            add(if (state.connected) "Streaming in the background" else "Keeping the link open")
-            recoveryPct?.let { add("Recovery ${it.roundToInt()}%") }
-            state.batteryPct?.let { add("Strap ${it.roundToInt()}%") }
+            add(
+                getString(
+                    if (state.connected) {
+                        R.string.notif_conn_detail_streaming
+                    } else {
+                        R.string.notif_conn_detail_keeping_link
+                    },
+                ),
+            )
+            recoveryPct?.let { add(getString(R.string.notif_conn_detail_recovery, it.roundToInt())) }
+            state.batteryPct?.let { add(getString(R.string.notif_conn_detail_strap, it.roundToInt())) }
         }.joinToString("  ·  ")
 
         val openApp = PendingIntent.getActivity(
@@ -402,7 +410,7 @@ class WhoopConnectionService : Service() {
             .setContentTitle(title)
             .setContentText(detail)
             .setContentIntent(openApp)
-            .addAction(0, "Disconnect", stopAction)
+            .addAction(0, getString(R.string.notif_conn_action_disconnect), stopAction)
             .setOngoing(true)
             .setSilent(true)
             .setShowWhen(false)

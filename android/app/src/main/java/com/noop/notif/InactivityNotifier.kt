@@ -31,9 +31,11 @@ object InactivityNotifier {
         // Master gate: the engine already honours it before buzzing, re-check anyway.
         if (!NotifPrefs.getBool(context, NotifPrefs.MASTER, false)) return
         val body = if (minutes > 0) {
-            "You've been seated for about $minutes min. Time to move."
+            context.resources.getQuantityString(
+                R.plurals.notif_inactivity_body_minutes, minutes, minutes,
+            )
         } else {
-            "Time to move. You've been seated a while."
+            context.getString(R.string.notif_inactivity_body_generic)
         }
         // Defensive: never let a notify() throw (revoked POST_NOTIFICATIONS, OEM quirk) crash the offload.
         runCatching {
@@ -46,7 +48,7 @@ object InactivityNotifier {
             )
             val n = NotificationCompat.Builder(context, CHANNEL_ID)
                 .setSmallIcon(R.drawable.ic_stat_heart)
-                .setContentTitle("Move reminder")
+                .setContentTitle(context.getString(R.string.notif_inactivity_title))
                 .setContentText(body)
                 .setContentIntent(openApp)
                 .setAutoCancel(true)
@@ -64,10 +66,10 @@ object InactivityNotifier {
             if (mgr.getNotificationChannel(CHANNEL_ID) != null) return
             mgr.createNotificationChannel(
                 NotificationChannel(
-                    CHANNEL_ID, "Inactivity reminder",
+                    CHANNEL_ID, context.getString(R.string.notif_channel_inactivity),
                     NotificationManager.IMPORTANCE_DEFAULT,
                 ).apply {
-                    description = "A nudge to move after a long sedentary stretch."
+                    description = context.getString(R.string.notif_channel_inactivity_desc)
                 },
             )
         }

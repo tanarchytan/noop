@@ -41,6 +41,7 @@ import com.noop.ingest.HealthConnectImporter
 import com.noop.ingest.HealthConnectWriter
 import com.noop.ingest.LiftingImporter
 import com.noop.notif.IllnessAlertNotifier
+import com.noop.notif.ScheduledReportCopy
 import com.noop.notif.ScheduledReportNotifier
 import com.noop.notif.ScheduledReportPolicy
 import com.noop.notif.scorePctOrNull
@@ -1349,21 +1350,27 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val scale = UnitPrefs.effortScale(appContext)
         val durMin = ((row.durationS ?: (row.endTs - row.startTs).toDouble()) / 60.0).roundToInt()
         val (title, body) = if (row.strain != null) {
-            ScheduledReportPolicy.workoutCopy(
+            ScheduledReportCopy.workout(
+                context = appContext,
                 sportLabel = WorkoutEditing.displaySport(row.sport),
                 effortDisplay = UnitFormatter.effortDisplay(row.strain, scale),
                 effortMaxLabel = UnitFormatter.effortScaleMax(scale),
-                durationLabel = ScheduledReportPolicy.durationLabel(durMin),
+                durationLabel = ScheduledReportCopy.duration(appContext, durMin),
                 avgHr = row.avgHr,
             )
         } else {
             // No strain: a leaner summary that still tells the user the session landed.
             val pieces = buildList {
-                add(ScheduledReportPolicy.durationLabel(durMin))
-                row.avgHr?.let { add("avg $it bpm") }
+                add(ScheduledReportCopy.duration(appContext, durMin))
+                row.avgHr?.let { add(appContext.getString(R.string.notif_report_frag_avg_hr, it)) }
             }
-            "Workout logged: ${WorkoutEditing.displaySport(row.sport)}" to
-                (pieces.joinToString(" · ") + ". Summarised after your strap synced.")
+            appContext.getString(
+                R.string.notif_report_workout_title,
+                WorkoutEditing.displaySport(row.sport),
+            ) to appContext.getString(
+                R.string.notif_report_workout_body,
+                pieces.joinToString(ScheduledReportCopy.SEPARATOR),
+            )
         }
         ScheduledReportNotifier.onWorkout(appContext, row.startTs, title, body)
     }
