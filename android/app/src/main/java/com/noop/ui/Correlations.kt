@@ -52,14 +52,4 @@ internal object CorrelationEngine {
         CorrelationStrength.STRONG -> R.string.insights_strength_strong
         CorrelationStrength.VERY_STRONG -> R.string.insights_strength_very_strong
     }
-
-    /** The same wording for a caller that cannot reach resources yet; delete once every
-     *  correlation surface reads [strengthPhraseRes]. */
-    fun strengthPhrase(r: Double): String = when (strength(r)) {
-        CorrelationStrength.NEGLIGIBLE -> "No"
-        CorrelationStrength.WEAK -> "A weak"
-        CorrelationStrength.MODERATE -> "A moderate"
-        CorrelationStrength.STRONG -> "A strong"
-        CorrelationStrength.VERY_STRONG -> "A very strong"
-    }
 }

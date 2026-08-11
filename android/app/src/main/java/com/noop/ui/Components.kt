@@ -83,6 +83,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -92,6 +93,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.graphics.vector.ImageVector
+import com.noop.R
 import kotlin.math.min
 import kotlin.math.roundToInt
 
@@ -1460,7 +1462,11 @@ fun NoopConfirmDialog(
 @Composable
 fun CloseButton(onClick: () -> Unit, modifier: Modifier = Modifier.size(36.dp)) {
     IconButton(onClick = onClick, modifier = modifier) {
-        Icon(Icons.Filled.Close, contentDescription = "Close", tint = Palette.textSecondary)
+        Icon(
+            Icons.Filled.Close,
+            contentDescription = stringResource(R.string.today_close),
+            tint = Palette.textSecondary,
+        )
     }
 }
 

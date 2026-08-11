@@ -245,7 +245,7 @@ private fun MindCorrelationRow(line: MindLine) {
     )
     val sentence = stringResource(
         R.string.mind_correlation_sentence,
-        CorrelationEngine.strengthPhrase(line.r), dir, line.n,
+        stringResource(CorrelationEngine.strengthPhraseRes(line.r)), dir, line.n,
     )
     val title = stringResource(line.title)
     Column(
