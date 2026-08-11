@@ -48,7 +48,9 @@ class TodayUiStructureTest {
             "TodayMetrics.kt" to setOf(
                 "MetricGrid", "KeyTileData", "KEY_TILE_RADIUS", "KeyTile", "workoutsAllSources", "ReadinessSection",
                 "hrvReadinessWord", "hrvReadinessColor",
-                "readinessHeadline", "readinessSummary", "readinessWord",
+                "readinessHeadline", "readinessSummary",
+                "readinessSignalLabel", "readinessSignalDetail", "readinessEvidenceLine",
+                "readinessWord",
                 "syncedFromSources", "METRICS_COLLAPSED_CAP", "readinessColor", "flagColor",
                 "IllnessBanner", "sleepValue",
                 "restStageLowConfidence", "buildingHint",

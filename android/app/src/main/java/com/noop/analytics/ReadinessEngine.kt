@@ -38,15 +38,39 @@ object ReadinessEngine {
 
     enum class Flag { GOOD, NEUTRAL, WATCH, BAD }
 
+    /** Which signal a row reports on. The wording for each lives in the UI. */
+    enum class Metric(val key: String) {
+        HRV("hrv"), RESTING_HR("rhr"), RESP_RATE("respRate"), LOAD("acwr"), VARIETY("monotony"),
+    }
+
+    /** Which one-line read a signal resolves to. The wording for each lives in the UI. */
+    enum class Detail {
+        HRV_ABOVE, HRV_BELOW, HRV_SUPPRESSED,
+        IN_NORMAL_RANGE,
+        RHR_AT_OR_BELOW, RHR_HIGH, RHR_ELEVATED,
+        RESP_RAISED, RESP_UP,
+        LOAD_RAMPING_DOWN, LOAD_SWEET_SPOT, LOAD_BUILDING, LOAD_SPIKING,
+        VARIETY_LOW,
+    }
+
+    /** Which numeric line sits under a signal. The wording and units live in the UI. */
+    enum class EvidenceKind { VS_MS, VS_BPM, VS_RPM, ACUTE_CHRONIC, MONOTONY }
+
+    /** The figures behind a signal, formatted here and worded by [EvidenceKind] in the UI. */
+    data class Evidence(val kind: EvidenceKind, val first: String, val second: String = "")
+
     data class Signal(
-        val key: String,            // "hrv" | "rhr" | "respRate" | "acwr" | "monotony"
-        val label: String,          // short human label
-        val detail: String,         // one-line plain-English read
+        val metric: Metric,
+        val detail: Detail,
         val flag: Flag,
-        // The numbers behind the signal, e.g. "48 vs 55 ms" or "7d 12.1 / 28d 9.4". Optional
-        // (defaults null); rendered as a small caption under the signal in the UI.
-        val evidence: String? = null,
-    )
+        /** The figure [detail] embeds, when its wording carries one (the acute:chronic ratio). */
+        val detailValue: String? = null,
+        /** Rendered as a small caption under the signal; null when there is no figure to show. */
+        val evidence: Evidence? = null,
+    ) {
+        /** Stable identity for the synthesis gates: "hrv" | "rhr" | "respRate" | "acwr" | "monotony". */
+        val key: String get() = metric.key
+    }
 
     /** Which of the six readiness reads this resolves to. The wording for each lives in the UI. */
     enum class Message { NO_DATA, THIN_HISTORY, RUNDOWN, STRAINED, PRIMED, BALANCED }
@@ -156,13 +180,12 @@ object ReadinessEngine {
         val hrvSignal = zSignal(
             value = latest.avgHrv,
             baseline = history.takeLast(vitalsBaselineDays).mapNotNull { it.avgHrv },
-            key = "hrv", label = "HRV",
-            unit = "ms", decimals = 0,
+            metric = Metric.HRV, evidenceKind = EvidenceKind.VS_MS, decimals = 0,
             higherIsBetter = true,
-            goodText = "above your baseline - well recovered",
-            neutralText = "in your normal range",
-            watchText = "a touch below baseline",
-            badText = "suppressed - a sign of autonomic fatigue",
+            good = Detail.HRV_ABOVE,
+            neutral = Detail.IN_NORMAL_RANGE,
+            watch = Detail.HRV_BELOW,
+            bad = Detail.HRV_SUPPRESSED,
         )
         if (hrvSignal != null) signals.add(hrvSignal)
 
@@ -170,13 +193,12 @@ object ReadinessEngine {
         val rhrSignal = zSignal(
             value = latest.restingHr?.toDouble(),
             baseline = history.takeLast(vitalsBaselineDays).mapNotNull { it.restingHr?.toDouble() },
-            key = "rhr", label = "Resting HR",
-            unit = "bpm", decimals = 0,
+            metric = Metric.RESTING_HR, evidenceKind = EvidenceKind.VS_BPM, decimals = 0,
             higherIsBetter = false,
-            goodText = "at or below baseline",
-            neutralText = "in your normal range",
-            watchText = "running a little high",
-            badText = "elevated - overtraining or illness can do this",
+            good = Detail.RHR_AT_OR_BELOW,
+            neutral = Detail.IN_NORMAL_RANGE,
+            watch = Detail.RHR_HIGH,
+            bad = Detail.RHR_ELEVATED,
         )
         if (rhrSignal != null) signals.add(rhrSignal)
 
@@ -191,20 +213,18 @@ object ReadinessEngine {
             val sd = sampleSD(base)
             if (base.size >= minVitalsNights && m != null && m in respPlausibleRange && sd != null && sd > 0) {
                 val z = (rr - m) / sd
-                val respEvidence = "${fmt(rr, 1)} vs ${fmt(m, 1)} rpm"
+                val respEvidence = Evidence(EvidenceKind.VS_RPM, fmt(rr, 1), fmt(m, 1))
                 if (z >= respZBad) {
                     signals.add(
                         Signal(
-                            key = "respRate", label = "Respiratory rate",
-                            detail = "up vs baseline - sometimes an early sign of getting sick", flag = Flag.BAD,
+                            metric = Metric.RESP_RATE, detail = Detail.RESP_UP, flag = Flag.BAD,
                             evidence = respEvidence,
                         )
                     )
                 } else if (z >= respZWatch) {
                     signals.add(
                         Signal(
-                            key = "respRate", label = "Respiratory rate",
-                            detail = "slightly raised vs baseline", flag = Flag.WATCH,
+                            metric = Metric.RESP_RATE, detail = Detail.RESP_RAISED, flag = Flag.WATCH,
                             evidence = respEvidence,
                         )
                     )
@@ -234,9 +254,8 @@ object ReadinessEngine {
                 if (mono >= 2.0) {
                     signals.add(
                         Signal(
-                            key = "monotony", label = "Training variety",
-                            detail = "low - similar strain every day raises strain/illness risk", flag = Flag.WATCH,
-                            evidence = "monotony ${fmt(mono, 1)}",
+                            metric = Metric.VARIETY, detail = Detail.VARIETY_LOW, flag = Flag.WATCH,
+                            evidence = Evidence(EvidenceKind.MONOTONY, fmt(mono, 1)),
                         )
                     )
                 }
@@ -258,9 +277,9 @@ object ReadinessEngine {
     /** Build a z-score signal for a metric where the baseline is the trailing window. */
     private fun zSignal(
         value: Double?, baseline: List<Double>,
-        key: String, label: String, unit: String, decimals: Int, higherIsBetter: Boolean,
-        goodText: String, neutralText: String,
-        watchText: String, badText: String,
+        metric: Metric, evidenceKind: EvidenceKind, decimals: Int, higherIsBetter: Boolean,
+        good: Detail, neutral: Detail,
+        watch: Detail, bad: Detail,
     ): Signal? {
         if (value == null || baseline.size < minVitalsNights) return null
         val m = mean(baseline) ?: return null
@@ -269,16 +288,18 @@ object ReadinessEngine {
         // Orient z so positive always means "better".
         val z = (if (higherIsBetter) (value - m) else (m - value)) / sd
         val flag: Flag
-        val text: String
+        val detail: Detail
         when {
-            z >= 0.5 -> { flag = Flag.GOOD; text = goodText }
-            z >= -0.5 -> { flag = Flag.NEUTRAL; text = neutralText }
-            z >= -1.0 -> { flag = Flag.WATCH; text = watchText }
-            else -> { flag = Flag.BAD; text = badText }
+            z >= 0.5 -> { flag = Flag.GOOD; detail = good }
+            z >= -0.5 -> { flag = Flag.NEUTRAL; detail = neutral }
+            z >= -1.0 -> { flag = Flag.WATCH; detail = watch }
+            else -> { flag = Flag.BAD; detail = bad }
         }
-        // The numbers behind the read: today's value vs the baseline mean, in the metric's units.
-        val evidence = "${fmt(value, decimals)} vs ${fmt(m, decimals)} $unit"
-        return Signal(key = key, label = label, detail = text, flag = flag, evidence = evidence)
+        // The numbers behind the read: today's value and the baseline mean, worded by the UI.
+        return Signal(
+            metric = metric, detail = detail, flag = flag,
+            evidence = Evidence(evidenceKind, fmt(value, decimals), fmt(m, decimals)),
+        )
     }
 
     /**
@@ -295,29 +316,16 @@ object ReadinessEngine {
         // render "1,15" for the ratio.
         val pct = fmt(ratio, 2)
         // Evidence: the two strain loads the ratio is built from, 1 dp each.
-        val evidence = "7d ${fmt(acute, 1)} / 28d ${fmt(chronic, 1)}"
-        return when {
-            ratio < 0.8 -> Signal(
-                key = "acwr", label = "Training load",
-                detail = "ramping down (acute:chronic $pct) - room to build", flag = Flag.WATCH,
-                evidence = evidence,
-            )
-            ratio < 1.3 -> Signal(
-                key = "acwr", label = "Training load",
-                detail = "in the sweet spot (acute:chronic $pct)", flag = Flag.GOOD,
-                evidence = evidence,
-            )
-            ratio < 1.5 -> Signal(
-                key = "acwr", label = "Training load",
-                detail = "building fast (acute:chronic $pct) - watch fatigue", flag = Flag.WATCH,
-                evidence = evidence,
-            )
-            else -> Signal(
-                key = "acwr", label = "Training load",
-                detail = "spiking (acute:chronic $pct) - higher injury risk", flag = Flag.BAD,
-                evidence = evidence,
-            )
+        val evidence = Evidence(EvidenceKind.ACUTE_CHRONIC, fmt(acute, 1), fmt(chronic, 1))
+        val (detail, flag) = when {
+            ratio < 0.8 -> Detail.LOAD_RAMPING_DOWN to Flag.WATCH
+            ratio < 1.3 -> Detail.LOAD_SWEET_SPOT to Flag.GOOD
+            ratio < 1.5 -> Detail.LOAD_BUILDING to Flag.WATCH
+            else -> Detail.LOAD_SPIKING to Flag.BAD
         }
+        return Signal(
+            metric = Metric.LOAD, detail = detail, flag = flag, detailValue = pct, evidence = evidence,
+        )
     }
 
     // MARK: Synthesis

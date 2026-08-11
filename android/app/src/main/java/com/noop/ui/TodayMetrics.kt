@@ -415,7 +415,7 @@ internal fun ReadinessSection(days: List<DailyMetric>, carriedDay: DailyMetric? 
                         )
                         Spacer(Modifier.width(8.dp))
                         Text(
-                            signal.label,
+                            stringResource(readinessSignalLabel(signal.metric)),
                             style = NoopType.caption,
                             color = Palette.textSecondary,
                             modifier = Modifier.width(104.dp),
@@ -424,8 +424,10 @@ internal fun ReadinessSection(days: List<DailyMetric>, carriedDay: DailyMetric? 
                             modifier = Modifier.weight(1f),
                             verticalArrangement = Arrangement.spacedBy(1.dp),
                         ) {
+                            val detailRes = readinessSignalDetail(signal.detail)
                             Text(
-                                signal.detail,
+                                signal.detailValue?.let { stringResource(detailRes, it) }
+                                    ?: stringResource(detailRes),
                                 style = NoopType.caption,
                                 color = Palette.textTertiary,
                             )
@@ -433,7 +435,11 @@ internal fun ReadinessSection(days: List<DailyMetric>, carriedDay: DailyMetric? 
                             // caption, matching the "load X.XX" numeric readout above.
                             signal.evidence?.let { evidence ->
                                 Text(
-                                    evidence,
+                                    stringResource(
+                                        readinessEvidenceLine(evidence.kind),
+                                        evidence.first,
+                                        evidence.second,
+                                    ),
                                     style = NoopType.captionNumber,
                                     color = Palette.textTertiary,
                                 )
@@ -489,6 +495,45 @@ internal fun readinessSummary(message: ReadinessEngine.Message): Int = when (mes
     ReadinessEngine.Message.STRAINED -> R.string.readiness_summary_strained
     ReadinessEngine.Message.PRIMED -> R.string.readiness_summary_primed
     ReadinessEngine.Message.BALANCED -> R.string.readiness_summary_balanced
+}
+
+/** The short name of a readiness signal; the engine picks which signal, never the words. */
+@StringRes
+internal fun readinessSignalLabel(metric: ReadinessEngine.Metric): Int = when (metric) {
+    ReadinessEngine.Metric.HRV -> R.string.readiness_signal_hrv
+    ReadinessEngine.Metric.RESTING_HR -> R.string.readiness_signal_resting_hr
+    ReadinessEngine.Metric.RESP_RATE -> R.string.readiness_signal_resp_rate
+    ReadinessEngine.Metric.LOAD -> R.string.readiness_signal_load
+    ReadinessEngine.Metric.VARIETY -> R.string.readiness_signal_variety
+}
+
+/** The one-line read under a signal's name. The LOAD_* wordings take the acute:chronic ratio. */
+@StringRes
+internal fun readinessSignalDetail(detail: ReadinessEngine.Detail): Int = when (detail) {
+    ReadinessEngine.Detail.HRV_ABOVE -> R.string.readiness_detail_hrv_above
+    ReadinessEngine.Detail.HRV_BELOW -> R.string.readiness_detail_hrv_below
+    ReadinessEngine.Detail.HRV_SUPPRESSED -> R.string.readiness_detail_hrv_suppressed
+    ReadinessEngine.Detail.IN_NORMAL_RANGE -> R.string.readiness_detail_normal_range
+    ReadinessEngine.Detail.RHR_AT_OR_BELOW -> R.string.readiness_detail_rhr_at_or_below
+    ReadinessEngine.Detail.RHR_HIGH -> R.string.readiness_detail_rhr_high
+    ReadinessEngine.Detail.RHR_ELEVATED -> R.string.readiness_detail_rhr_elevated
+    ReadinessEngine.Detail.RESP_RAISED -> R.string.readiness_detail_resp_raised
+    ReadinessEngine.Detail.RESP_UP -> R.string.readiness_detail_resp_up
+    ReadinessEngine.Detail.LOAD_RAMPING_DOWN -> R.string.readiness_detail_load_ramping_down
+    ReadinessEngine.Detail.LOAD_SWEET_SPOT -> R.string.readiness_detail_load_sweet_spot
+    ReadinessEngine.Detail.LOAD_BUILDING -> R.string.readiness_detail_load_building
+    ReadinessEngine.Detail.LOAD_SPIKING -> R.string.readiness_detail_load_spiking
+    ReadinessEngine.Detail.VARIETY_LOW -> R.string.readiness_detail_variety_low
+}
+
+/** The numeric caption under a signal; the engine formats the figures, this names the units. */
+@StringRes
+internal fun readinessEvidenceLine(kind: ReadinessEngine.EvidenceKind): Int = when (kind) {
+    ReadinessEngine.EvidenceKind.VS_MS -> R.string.readiness_evidence_vs_ms
+    ReadinessEngine.EvidenceKind.VS_BPM -> R.string.readiness_evidence_vs_bpm
+    ReadinessEngine.EvidenceKind.VS_RPM -> R.string.readiness_evidence_vs_rpm
+    ReadinessEngine.EvidenceKind.ACUTE_CHRONIC -> R.string.readiness_evidence_load
+    ReadinessEngine.EvidenceKind.MONOTONY -> R.string.readiness_evidence_monotony
 }
 
 @StringRes
