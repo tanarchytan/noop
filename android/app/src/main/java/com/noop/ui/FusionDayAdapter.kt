@@ -1,5 +1,7 @@
 package com.noop.ui
 
+import androidx.annotation.StringRes
+import com.noop.R
 import com.noop.analytics.DayOwnerResolver
 import com.noop.analytics.FusionInput
 import com.noop.analytics.FusionResolver
@@ -23,20 +25,20 @@ import com.noop.data.WhoopRepository
 object FusionDayAdapter {
 
     /** The fusion metrics shown on the record, in display order, each with its label + resolver key. */
-    private data class MetricSpec(val key: String, val label: String)
+    private data class MetricSpec(val key: String, @StringRes val labelRes: Int)
 
     private val METRICS: List<MetricSpec> = listOf(
-        MetricSpec("rhr", "Resting HR"),
-        MetricSpec("hrv", "HRV"),
+        MetricSpec("rhr", R.string.narr_fusion_metric_rhr),
+        MetricSpec("hrv", R.string.narr_fusion_metric_hrv),
         // The stored column is the signed deviation from the wearer's own baseline, not the absolute
         // reading Health Monitor prints, so it is named for what it is.
-        MetricSpec("skin_temp", "Skin temp vs baseline"),
-        MetricSpec("spo2", "Blood O₂"),
-        MetricSpec("steps", "Steps"),
-        MetricSpec("active_kcal", "Active energy"),
-        MetricSpec("sleep_total_min", "Asleep time"),
-        MetricSpec("sleep_deep_min", "Deep sleep"),
-        MetricSpec("sleep_rem_min", "REM sleep"),
+        MetricSpec("skin_temp", R.string.narr_fusion_metric_skin_temp),
+        MetricSpec("spo2", R.string.narr_fusion_metric_spo2),
+        MetricSpec("steps", R.string.narr_fusion_metric_steps),
+        MetricSpec("active_kcal", R.string.narr_fusion_metric_active_energy),
+        MetricSpec("sleep_total_min", R.string.narr_fusion_metric_asleep),
+        MetricSpec("sleep_deep_min", R.string.narr_fusion_metric_deep),
+        MetricSpec("sleep_rem_min", R.string.narr_fusion_metric_rem),
     )
 
     /**
@@ -97,7 +99,7 @@ object FusionDayAdapter {
                 row?.let { WhoopRepository.dailyColumn(spec.key, it)?.let { v -> FusionInput(source, v) } }
             }
             val point = FusionResolver.resolve(spec.key, inputs) ?: continue
-            rows.add(FusedRow(point = point, label = spec.label))
+            rows.add(FusedRow(point = point, labelRes = spec.labelRes))
         }
 
         // Day owner: the single device that owns the day's displayed scores (lowest priority with data).

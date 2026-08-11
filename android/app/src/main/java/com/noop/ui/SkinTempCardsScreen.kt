@@ -153,7 +153,11 @@ fun CycleAwarenessCard(
                 }
             }
 
-            Text(result.note, style = NoopType.subhead, color = Palette.textSecondary)
+            Text(
+                stringResource(cycleNote(result.noteKind)),
+                style = NoopType.subhead,
+                color = Palette.textSecondary,
+            )
 
             // Probabilistic next-period WINDOW, never a single date.
             result.nextPeriodWindow?.let { w ->
@@ -195,8 +199,12 @@ fun CycleAwarenessCard(
 
             HorizontalDivider(color = Palette.hairline)
 
-            // Standing awareness-only legal line (verbatim from the engine) + privacy promise.
-            Text(CyclePhaseEngine.awarenessLine, style = NoopType.footnote, color = Palette.textTertiary)
+            // Standing awareness-only legal line + privacy promise.
+            Text(
+                stringResource(R.string.narr_cycle_awareness_line),
+                style = NoopType.footnote,
+                color = Palette.textTertiary,
+            )
             PrivacyNote()
         }
     }
@@ -257,7 +265,11 @@ fun BodyClockCard(estimate: CircadianEngine.PhaseEstimate) {
 
             Text(bodyClockOffsetTitle(estimate), style = NoopType.title2, color = Palette.textPrimary)
 
-            Text(estimate.note, style = NoopType.subhead, color = Palette.textSecondary)
+            Text(
+                stringResource(bodyClockNote(estimate.note)),
+                style = NoopType.subhead,
+                color = Palette.textSecondary,
+            )
 
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Metrics.space6)) {
                 Icon(Icons.Filled.NightsStay, contentDescription = null, tint = hue, modifier = Modifier.size(14.dp))
@@ -376,17 +388,25 @@ fun HeadsUpCard(
                         stringResource(headsUpTitle(result.level)),
                         style = NoopType.headline, color = Palette.textPrimary,
                     )
-                    Text(result.copy, style = NoopType.subhead, color = Palette.textSecondary)
+                    Text(headsUpCopy(result), style = NoopType.subhead, color = Palette.textSecondary)
                 }
             }
 
             // The visible "why": which signals fired.
-            if (result.firedSignals.isNotEmpty()) {
-                WhyRow(stringResource(R.string.skintemp_signals_up), result.firedSignals, hue)
+            if (result.firedKeys.isNotEmpty()) {
+                WhyRow(
+                    stringResource(R.string.skintemp_signals_up),
+                    result.firedKeys.map { stringResource(illnessSignalLabel(it)) },
+                    hue,
+                )
             }
             // ...and what was ruled out (the differentiating part vs a black-box warning).
             if (result.suppressedBy.isNotEmpty()) {
-                WhyRow(stringResource(R.string.skintemp_explained_by), result.suppressedBy, Palette.textTertiary)
+                WhyRow(
+                    stringResource(R.string.skintemp_explained_by),
+                    result.suppressedBy.map { stringResource(illnessConfounderLabel(it)) },
+                    Palette.textTertiary,
+                )
             }
             // Optional confidence read from the parallel Mahalanobis distance, only when the level is
             // raised. Subtle by design: it augments, never gates (the engine already decided to raise).
@@ -454,6 +474,79 @@ private fun WhyRow(label: String, values: List<String>, tint: Color) {
 }
 
 // MARK: - Derived copy / presentation
+
+@StringRes
+private fun cycleNote(note: CyclePhaseEngine.Note): Int = when (note) {
+    CyclePhaseEngine.Note.OPT_IN_OFF -> R.string.narr_cycle_note_opt_in_off
+    CyclePhaseEngine.Note.LEARNING_FROM_TEMPERATURE -> R.string.narr_cycle_note_learning
+    CyclePhaseEngine.Note.NO_CLEAR_TEMPERATURE_PATTERN -> R.string.narr_cycle_note_no_pattern
+    CyclePhaseEngine.Note.LOGGED_START_MAY_BE_OFF -> R.string.narr_cycle_note_logged_off
+    CyclePhaseEngine.Note.PHASE_FOLLICULAR -> R.string.narr_cycle_note_follicular
+    CyclePhaseEngine.Note.PHASE_PERI_OVULATORY -> R.string.narr_cycle_note_peri_ovulatory
+    CyclePhaseEngine.Note.PHASE_LUTEAL -> R.string.narr_cycle_note_luteal
+    CyclePhaseEngine.Note.PHASE_UNKNOWN -> R.string.narr_cycle_note_unknown
+    CyclePhaseEngine.Note.PHASE_LEARNING -> R.string.narr_cycle_note_learning_short
+}
+
+@StringRes
+private fun bodyClockNote(note: CircadianEngine.Note): Int = when (note) {
+    CircadianEngine.Note.HARD_TO_READ -> R.string.narr_bodyclock_hard_to_read
+    CircadianEngine.Note.LEANS_LATER -> R.string.narr_bodyclock_leans_later
+    CircadianEngine.Note.LEANS_EARLIER -> R.string.narr_bodyclock_leans_earlier
+    CircadianEngine.Note.ALIGNED -> R.string.narr_bodyclock_aligned
+}
+
+@StringRes
+private fun illnessSignalLabel(key: IllnessSignalEngine.SignalKey): Int = when (key) {
+    IllnessSignalEngine.SignalKey.RESTING_HR -> R.string.narr_illness_signal_rhr
+    IllnessSignalEngine.SignalKey.SKIN_TEMP -> R.string.narr_illness_signal_skin_temp
+    IllnessSignalEngine.SignalKey.HRV -> R.string.narr_illness_signal_hrv
+    IllnessSignalEngine.SignalKey.RESPIRATION -> R.string.narr_illness_signal_respiration
+}
+
+@StringRes
+private fun illnessConfounderLabel(c: IllnessSignalEngine.Confounder): Int = when (c) {
+    IllnessSignalEngine.Confounder.ALCOHOL -> R.string.narr_illness_confounder_alcohol
+    IllnessSignalEngine.Confounder.STRESS -> R.string.narr_illness_confounder_stress
+    IllnessSignalEngine.Confounder.SAUNA -> R.string.narr_illness_confounder_sauna
+    IllnessSignalEngine.Confounder.HARD_OR_LATE_WORKOUT -> R.string.narr_illness_confounder_workout
+    IllnessSignalEngine.Confounder.TRAVEL -> R.string.narr_illness_confounder_travel
+}
+
+/**
+ * The heads-up read. The engine chose the [IllnessSignalEngine.Message]; the whole sentence is one
+ * resource so a translation can reorder it, with the fired signals and the ruled-out behaviours
+ * substituted in as already-localised lists.
+ */
+@Composable
+private fun headsUpCopy(result: IllnessSignalEngine.Result): String {
+    val signals = result.firedKeys.map { stringResource(illnessSignalLabel(it)) }.joinToString(", ")
+    return when (result.message) {
+        IllnessSignalEngine.Message.LEARNING_BASELINE -> stringResource(R.string.narr_illness_learning)
+        IllnessSignalEngine.Message.UNWELL_AND_AGREES -> stringResource(R.string.narr_illness_unwell_agrees)
+        IllnessSignalEngine.Message.UNWELL_LOGGED -> stringResource(R.string.narr_illness_unwell_logged)
+        IllnessSignalEngine.Message.NOTHING_NOTABLE -> stringResource(R.string.narr_illness_nothing_notable)
+        IllnessSignalEngine.Message.SUPPRESSED -> stringResource(
+            R.string.narr_illness_suppressed,
+            signals,
+            naturalList(result.suppressedBy.map { stringResource(illnessConfounderLabel(it)) }),
+        )
+        IllnessSignalEngine.Message.MILD -> stringResource(R.string.narr_illness_mild, signals)
+        IllnessSignalEngine.Message.RAISED -> stringResource(R.string.narr_illness_raised, signals)
+    }
+}
+
+/** Join already-localised items the way the language does ("a", "a and b", "a, b and c"). */
+@Composable
+private fun naturalList(items: List<String>): String = when (items.size) {
+    0 -> ""
+    1 -> items[0]
+    else -> stringResource(
+        R.string.narr_list_pair,
+        items.dropLast(1).joinToString(", "),
+        items.last(),
+    )
+}
 
 @StringRes
 private fun cyclePhaseTitle(phase: CyclePhaseEngine.Phase): Int = when (phase) {

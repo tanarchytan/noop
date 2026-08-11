@@ -38,6 +38,7 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
@@ -224,12 +225,12 @@ private fun MoverCard(r: RankedEffect, outcome: InsightsOutcome) {
                         overflow = TextOverflow.Ellipsis,
                     )
                 }
-                StatePill(r.leadLagText, tone = StrandTone.Accent, showsDot = false)
+                StatePill(leadLagLabel(r.lag), tone = StrandTone.Accent, showsDot = false)
                 Spacer(Modifier.width(Metrics.space6))
                 ConfidencePill(r.confidence)
             }
 
-            Text(r.sentence(), style = NoopType.body, color = Palette.textSecondary)
+            Text(moverSentence(r, outcome), style = NoopType.body, color = Palette.textSecondary)
 
             // With / without means as uniform StatTiles.
             Row(horizontalArrangement = Arrangement.spacedBy(Metrics.gap)) {
@@ -315,7 +316,7 @@ private fun DoseResponseCard(card: DoseCardData) {
                 ConfidencePill(r.confidence)
             }
 
-            Text(r.sentence(), style = NoopType.body, color = Palette.textSecondary)
+            Text(doseSentence(card, r), style = NoopType.body, color = Palette.textSecondary)
 
             val curveA11y = curveDescription(card, r)
             // The prior-shrunk curve.
@@ -708,6 +709,72 @@ internal class InsightsHubViewModel {
 }
 
 // MARK: - Copy helpers
+
+/** The lead/lag chip: which morning the effect showed up on. */
+@Composable
+private fun leadLagLabel(lag: Int): String = when (lag) {
+    0 -> stringResource(R.string.narr_effect_lag_same_day)
+    1 -> stringResource(R.string.narr_effect_lag_next_morning)
+    else -> pluralStringResource(R.plurals.narr_effect_lag_mornings_later, lag, lag)
+}
+
+/**
+ * The ranked mover's sentence. The engine measured the effect and its best lag; the direction picks
+ * which whole sentence is used, so a translation can reorder it instead of gluing "higher" on the end.
+ */
+@Composable
+private fun moverSentence(r: RankedEffect, outcome: InsightsOutcome): String {
+    val e = r.effect
+    val name = stringResource(outcome.nameRes)
+    val avgWith = EffectRanker.roundedInt(e.meanWith).toString()
+    val avgWithout = EffectRanker.roundedInt(e.meanWithout).toString()
+    val lead = leadLagLabel(r.lag)
+    if (e.delta == 0.0) {
+        return stringResource(
+            R.string.narr_effect_sentence_same,
+            e.behavior, name, avgWith, avgWithout, e.nWith, e.nWithout, lead,
+        )
+    }
+    val pct = e.pctChange
+    val magnitude = if (pct != null) {
+        stringResource(R.string.narr_effect_magnitude_percent, EffectRanker.roundedInt(abs(pct)))
+    } else {
+        round1(abs(e.delta)).toString()
+    }
+    val res = if (e.delta > 0) {
+        R.string.narr_effect_sentence_higher
+    } else {
+        R.string.narr_effect_sentence_lower
+    }
+    return stringResource(
+        res, e.behavior, name, magnitude, avgWith, avgWithout, e.nWith, e.nWithout, lead,
+    )
+}
+
+/** The dose-response read: honest about prior-vs-yours, and about which way the curve points. */
+@Composable
+private fun doseSentence(card: DoseCardData, r: DoseResponse): String {
+    val outcome = stringResource(card.outcomeNameRes)
+    if (r.contradictsPrior) {
+        return stringResource(R.string.narr_dose_contradicts, outcome, r.nUser)
+    }
+    val magnitude = round1(abs(r.perUnit)).toString()
+    val lower = r.perUnit <= 0
+    val res = when {
+        r.priorDominated && lower -> R.string.narr_dose_prior_lower
+        r.priorDominated -> R.string.narr_dose_prior_higher
+        lower -> R.string.narr_dose_yours_lower
+        else -> R.string.narr_dose_yours_higher
+    }
+    return stringResource(res, magnitude, outcome, r.nUser)
+}
+
+/** Round to one decimal place, half away from zero — the magnitude form both reads quote. */
+private fun round1(x: Double): Double {
+    val scaled = x * 10.0
+    val sign = if (scaled < 0) -1.0 else 1.0
+    return sign * Math.floor(abs(scaled) + 0.5) / 10.0
+}
 
 @Composable
 private fun forecastSentence(card: DoseCardData, previewDose: Int, delta: Double, stepLabel: String): String {

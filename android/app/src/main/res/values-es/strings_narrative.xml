@@ -1,0 +1,173 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Narrative copy for the sentences com.noop.analytics engines DECIDE and the UI WORDS.
+         Each engine exposes an enum plus the figures its sentence embeds; the mapper lives beside
+         the composable that renders it. -->
+
+    <!-- Shared - natural-language list join ("a and b", "a, b and c") -->
+    <string name="narr_list_pair">%1$s y %2$s</string>
+
+    <!-- IllnessSignalEngine - Heads-Up card: which signals fired -->
+    <string name="narr_illness_signal_rhr">FC en reposo al alza</string>
+    <string name="narr_illness_signal_skin_temp">temperatura cutánea al alza</string>
+    <string name="narr_illness_signal_hrv">HRV a la baja</string>
+    <string name="narr_illness_signal_respiration">respiración al alza</string>
+
+    <!-- IllnessSignalEngine - Heads-Up card: what was ruled out -->
+    <string name="narr_illness_confounder_alcohol">alcohol</string>
+    <string name="narr_illness_confounder_stress">estrés</string>
+    <string name="narr_illness_confounder_sauna">sauna</string>
+    <string name="narr_illness_confounder_workout">un entrenamiento duro o tardío</string>
+    <string name="narr_illness_confounder_travel">viajes</string>
+
+    <!-- IllnessSignalEngine - Heads-Up card: the read. Never names a condition. -->
+    <string name="narr_illness_learning">Todavía estamos aprendiendo tu línea base; seguimos atentos.</string>
+    <string name="narr_illness_unwell_agrees">Descansa: registraste que no te encuentras bien y tus números coinciden. Estimación en el dispositivo, no es un diagnóstico.</string>
+    <string name="narr_illness_unwell_logged">Descansa: registraste que no te encuentras bien. Tómatelo con calma hoy. Estimación en el dispositivo, no es un diagnóstico.</string>
+    <string name="narr_illness_nothing_notable">Nada destacable: tus señales están dentro de tu rango normal.</string>
+    <string name="narr_illness_suppressed">Hay señales al alza (%1$s), pero registraste %2$s: lo más probable es que sea eso y no una enfermedad. Estimación en el dispositivo, no es un diagnóstico.</string>
+    <string name="narr_illness_mild">Algunas señales están algo altas (%1$s). Nada alarmante: te vendría bien un día más tranquilo. Estimación en el dispositivo, no es un diagnóstico.</string>
+    <string name="narr_illness_raised">Atención: tu cuerpo parece forzado. %1$s. Como no registraste alcohol ni viajes, tómatelo con calma. Estimación en el dispositivo, no es un diagnóstico.</string>
+
+    <!-- IllnessWatch - the background banner / notification -->
+    <string name="narr_watch_flag_resting_hr">FC en reposo +%1$s bpm</string>
+    <string name="narr_watch_flag_hrv">HRV −%1$s%%</string>
+    <string name="narr_watch_flag_skin_temp">temp. cutánea +%1$s°C</string>
+    <string name="narr_watch_flag_respiration">respiración al alza</string>
+    <string name="narr_watch_banner">Tu cuerpo parece forzado: %1$s. Tómatelo con calma.</string>
+
+    <!-- CyclePhaseEngine - awareness only, never contraception or a fertility window -->
+    <string name="narr_cycle_awareness_line">Solo a título informativo. No es un producto sanitario, no es un método anticonceptivo y no sustituye la atención profesional.</string>
+    <string name="narr_cycle_note_opt_in_off">Activa el seguimiento del ciclo para leer una fase aproximada a partir de tu temperatura nocturna.</string>
+    <string name="narr_cycle_note_learning">Estamos aprendiendo tu patrón a partir de tu temperatura nocturna; sigue llevándola puesta por la noche.</string>
+    <string name="narr_cycle_note_no_pattern">Todavía no hay un patrón de temperatura claro; puede pasar con ciclos irregulares, anticoncepción hormonal o turnos rotativos.</string>
+    <string name="narr_cycle_note_logged_off">Tu cambio de temperatura llegó en un momento distinto al de la fecha que registraste; puede que el inicio anotado no sea exacto.</string>
+    <string name="narr_cycle_note_follicular">Fase folicular: la temperatura se mantiene en tu línea base.</string>
+    <string name="narr_cycle_note_peri_ovulatory">Cerca de tu cambio de mitad de ciclo: la temperatura está girando.</string>
+    <string name="narr_cycle_note_luteal">Fase lútea: la temperatura va por encima de tu línea base.</string>
+    <string name="narr_cycle_note_unknown">Todavía no hay un patrón claro.</string>
+    <string name="narr_cycle_note_learning_short">Estamos aprendiendo tu patrón; sigue llevándola puesta por la noche.</string>
+
+    <!-- CircadianEngine - body clock. Light and sleep timing only, never a supplement. -->
+    <string name="narr_bodyclock_hard_to_read">Ahora mismo tu ritmo es difícil de leer; sigue llevándola puesta para tener una imagen más clara.</string>
+    <string name="narr_bodyclock_leans_later">Tu reloj corporal va más tarde (con tendencia noctámbula).</string>
+    <string name="narr_bodyclock_leans_earlier">Tu reloj corporal va más temprano (con tendencia madrugadora).</string>
+    <string name="narr_bodyclock_aligned">Tu reloj corporal está bien alineado con tu horario.</string>
+
+    <!-- EffectRanker - the lag-aware mover card. Association, never cause. -->
+    <string name="narr_effect_lag_same_day">el mismo día</string>
+    <string name="narr_effect_lag_next_morning">a la mañana siguiente</string>
+    <plurals name="narr_effect_lag_mornings_later">
+        <item quantity="one">%1$d mañana después</item>
+        <item quantity="other">%1$d mañanas después</item>
+    </plurals>
+    <string name="narr_effect_magnitude_percent">un %1$d%%</string>
+    <string name="narr_effect_sentence_higher">En los días en que registraste «%1$s», %2$s fue %3$s superior (media %4$s frente a %5$s, n=%6$d frente a %7$d) (%8$s).</string>
+    <string name="narr_effect_sentence_lower">En los días en que registraste «%1$s», %2$s fue %3$s inferior (media %4$s frente a %5$s, n=%6$d frente a %7$d) (%8$s).</string>
+    <string name="narr_effect_sentence_same">En los días en que registraste «%1$s», %2$s no cambió (media %3$s frente a %4$s, n=%5$d frente a %6$d) (%7$s).</string>
+
+    <!-- DoseResponseEngine - the personal, prior-shrunk dose curve -->
+    <string name="narr_dose_prior_lower">Cada unidad extra suele asociarse a unos %1$s de %2$s menos: patrones típicos, todavía no los tuyos (n=%3$d).</string>
+    <string name="narr_dose_prior_higher">Cada unidad extra suele asociarse a unos %1$s de %2$s más: patrones típicos, todavía no los tuyos (n=%3$d).</string>
+    <string name="narr_dose_contradicts">En tus datos hasta ahora, esto no mueve tu %1$s como suele hacerlo (n=%2$d).</string>
+    <string name="narr_dose_yours_lower">Cada unidad extra tiende a asociarse a unos %1$s de %2$s menos en tu caso (n=%3$d).</string>
+    <string name="narr_dose_yours_higher">Cada unidad extra tiende a asociarse a unos %1$s de %2$s más en tu caso (n=%3$d).</string>
+
+    <!-- ActivityCostEngine - what a sport costs the next morning -->
+    <plurals name="narr_activity_points">
+        <item quantity="one">%1$d punto de Charge</item>
+        <item quantity="other">%1$d puntos de Charge</item>
+    </plurals>
+    <plurals name="narr_activity_days">
+        <item quantity="one">%1$d día</item>
+        <item quantity="other">%1$d días</item>
+    </plurals>
+    <string name="narr_activity_barely_moves">Las sesiones así apenas mueven tu Charge del día siguiente (n=%1$d).</string>
+    <string name="narr_activity_cost">Las sesiones así suelen costarte unos %1$s a la mañana siguiente (n=%2$d).</string>
+    <string name="narr_activity_cost_bounce">Las sesiones así suelen costarte unos %1$s a la mañana siguiente y tardas unos %2$s en recuperarte (n=%3$d).</string>
+    <string name="narr_activity_lift">Las sesiones así suelen subirte unos %1$s a la mañana siguiente (n=%2$d).</string>
+    <string name="narr_activity_lift_bounce">Las sesiones así suelen subirte unos %1$s a la mañana siguiente y tardas unos %2$s en recuperarte (n=%3$d).</string>
+
+    <!-- WeeklyDigest - metric names, the balance read and the focal points -->
+    <string name="narr_digest_metric_charge">Charge</string>
+    <string name="narr_digest_metric_effort">Effort</string>
+    <string name="narr_digest_metric_rest">Rest</string>
+    <string name="narr_digest_metric_rhr">FC en reposo</string>
+    <string name="narr_digest_metric_hrv">HRV</string>
+    <string name="narr_digest_balance_overreaching">Esta semana tu Effort superó a tu Charge: te fuiste al rojo. Ojo con una caída de recuperación.</string>
+    <string name="narr_digest_balance_balanced">Esta semana el Effort y el Charge fueron a la par: una carga sostenible.</string>
+    <string name="narr_digest_balance_underloaded">Esta semana acumulaste más Charge del que gastaste: hay margen para apretar si te apetece.</string>
+    <string name="narr_digest_balance_insufficient">No hay suficientes días de Effort y Charge esta semana para leer tu equilibrio.</string>
+    <string name="narr_digest_magnitude_percent">un %1$d%%</string>
+    <string name="narr_digest_magnitude_points">%1$s pts</string>
+    <string name="narr_digest_magnitude_unit">%1$s %2$s</string>
+    <string name="narr_digest_focal_up_good">%1$s ha subido %2$s respecto a la semana pasada (media %3$d frente a %4$d): buena señal.</string>
+    <string name="narr_digest_focal_up_bad">%1$s ha subido %2$s respecto a la semana pasada (media %3$d frente a %4$d): merece un vistazo.</string>
+    <string name="narr_digest_focal_down_good">%1$s ha bajado %2$s respecto a la semana pasada (media %3$d frente a %4$d): buena señal.</string>
+    <string name="narr_digest_focal_down_bad">%1$s ha bajado %2$s respecto a la semana pasada (media %3$d frente a %4$d): merece un vistazo.</string>
+    <plurals name="narr_digest_focal_too_early">
+        <item quantity="one">Solo llevas %1$d día de esta semana, aún es pronto para hablar de una tendencia semanal.</item>
+        <item quantity="other">Solo llevas %1$d días de esta semana, aún es pronto para hablar de una tendencia semanal.</item>
+    </plurals>
+    <plurals name="narr_digest_focal_rough_last_week">
+        <item quantity="one">La semana pasada solo tuvo %1$d día de datos, así que los cambios semanales son aproximados, no una tendencia.</item>
+        <item quantity="other">La semana pasada solo tuvo %1$d días de datos, así que los cambios semanales son aproximados, no una tendencia.</item>
+    </plurals>
+    <string name="narr_digest_focal_steady_rest">Una semana estable: el Rest se mantuvo parejo (±%1$s pts) y nada se movió mucho.</string>
+    <string name="narr_digest_focal_steady">Una semana estable: ninguna métrica se movió de forma apreciable respecto a la semana pasada.</string>
+
+    <!-- SpotHrvReading - the honesty caveat under a spot reading -->
+    <string name="narr_hrv_caveat_base">Es una lectura puntual sobre una captura corta y quieta, no tu línea base de HRV nocturna. Tómala sentado, sin moverte y a una hora parecida cada día para poder compararla, y solo se muestra una lectura con suficientes latidos limpios.</string>
+    <string name="narr_hrv_caveat_optical">Es una lectura puntual sobre una captura corta y quieta, no tu línea base de HRV nocturna. Tómala sentado, sin moverte y a una hora parecida cada día para poder compararla, y solo se muestra una lectura con suficientes latidos limpios. En una WHOOP 5.0/MG los intervalos salen de la señal de pulso óptica, con más ruido que una banda pectoral, así que trata el número como una estimación aproximada.</string>
+
+    <!-- FitnessAgeEngine - the readiness checklist -->
+    <string name="narr_fitness_input_age">Tu edad</string>
+    <string name="narr_fitness_input_sex">Sexo biológico</string>
+    <string name="narr_fitness_input_resting_hr">Frecuencia cardiaca en reposo</string>
+    <string name="narr_fitness_input_activity">Actividad reciente</string>
+    <string name="narr_fitness_input_body_metrics">Altura y peso</string>
+    <string name="narr_fitness_input_waist">Cintura (opcional)</string>
+    <string name="narr_fitness_detail_set">Indicado</string>
+    <string name="narr_fitness_detail_add_in_settings">Añádelo en Ajustes</string>
+    <plurals name="narr_fitness_detail_nights">
+        <item quantity="one">%1$d de las últimas 7 noches</item>
+        <item quantity="other">%1$d de las últimas 7 noches</item>
+    </plurals>
+    <plurals name="narr_fitness_detail_days">
+        <item quantity="one">%1$d de los últimos 7 días</item>
+        <item quantity="other">%1$d de los últimos 7 días</item>
+    </plurals>
+    <string name="narr_fitness_detail_unlocks_vo2max">Desbloquea tu VO₂máx</string>
+    <string name="narr_fitness_detail_add_to_see_vo2max">Añádelos para ver también el VO₂máx</string>
+    <string name="narr_fitness_detail_sharpens_vo2max">Afina el VO₂máx</string>
+    <string name="narr_fitness_detail_optional_sharpens">Opcional: afina el VO₂máx</string>
+
+    <!-- MetricArbitrationPolicy - why a source won a metric. Never "accurate" or "correct". -->
+    <string name="narr_fusion_reason_counts_directly">los cuenta directamente</string>
+    <string name="narr_fusion_reason_step_estimate">estimación de pasos</string>
+    <string name="narr_fusion_reason_best_stager">mejor clasificador de fases</string>
+    <string name="narr_fusion_reason_computed_stages">fases calculadas</string>
+    <string name="narr_fusion_reason_phone_sleep_buckets">bloques de sueño del teléfono</string>
+    <string name="narr_fusion_reason_worn_sensor">sensor en la muñeca</string>
+    <string name="narr_fusion_reason_direct_sensor">sensor directo</string>
+    <string name="narr_fusion_reason_computed_on_device">calculado en el dispositivo</string>
+    <string name="narr_fusion_reason_phone_aggregate">agregado del teléfono</string>
+    <string name="narr_fusion_reason_estimate">estimación</string>
+
+    <!-- FusionDayAdapter - the metric rows on the fused record -->
+    <string name="narr_fusion_metric_rhr">FC en reposo</string>
+    <string name="narr_fusion_metric_hrv">HRV</string>
+    <string name="narr_fusion_metric_skin_temp">Temp. cutánea vs línea base</string>
+    <string name="narr_fusion_metric_spo2">O₂ en sangre</string>
+    <string name="narr_fusion_metric_steps">Pasos</string>
+    <string name="narr_fusion_metric_active_energy">Energía activa</string>
+    <string name="narr_fusion_metric_asleep">Tiempo dormido</string>
+    <string name="narr_fusion_metric_deep">Sueño profundo</string>
+    <string name="narr_fusion_metric_rem">Sueño REM</string>
+
+    <!-- StepsEstimateEngine - the calibration countdown -->
+    <plurals name="narr_steps_need_more_days">
+        <item quantity="one">Falta %1$d día más en el que tu teléfono también contara pasos</item>
+        <item quantity="other">Faltan %1$d días más en los que tu teléfono también contara pasos</item>
+    </plurals>
+</resources>

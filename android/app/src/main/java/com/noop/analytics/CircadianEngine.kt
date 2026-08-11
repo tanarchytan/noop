@@ -1,8 +1,8 @@
 package com.noop.analytics
 
 // Body-clock phase estimate: maps the whoop-rs `circadian` cosinor result onto the type
-// [BodyClockCard] renders and words the note beside it. The fit and its constants are whoop-rs; what
-// is here is the coverage the fit is offered on. Wellness awareness only, approximate.
+// [BodyClockCard] renders and picks which [Note] sits beside it. The fit and its constants are
+// whoop-rs; what is here is the coverage the fit is offered on. Wellness awareness only, approximate.
 object CircadianEngine {
 
     /** Distinct worn days of rest-activity a cosinor fit needs before anything derived from it is
@@ -21,15 +21,18 @@ object CircadianEngine {
         SOLID("solid"),
     }
 
+    /** Which one-line note sits under the body clock. The wording for each lives in the UI. */
+    enum class Note { HARD_TO_READ, LEANS_LATER, LEANS_EARLIER, ALIGNED }
+
     data class PhaseEstimate(
         val tempMinHour: Double,
         val acrophaseHours: Double,
         val offsetVsScheduleMinutes: Double,
         val confidence: PhaseConfidence,
-        val note: String,
+        val note: Note,
     )
 
-    /** Map an FFI phase estimate onto the UI type, generating the note the card renders. */
+    /** Map an FFI phase estimate onto the UI type, choosing the note the card words. */
     fun fromRust(info: uniffi.whoop_ffi.PhaseEstimateInfo): PhaseEstimate {
         val confidence = when (info.confidence) {
             "solid" -> PhaseConfidence.SOLID
@@ -37,14 +40,13 @@ object CircadianEngine {
             else -> PhaseConfidence.UNREADABLE
         }
         val note = if (confidence == PhaseConfidence.UNREADABLE) {
-            "Your rhythm is hard to read right now - keep wearing it for a clearer picture."
+            Note.HARD_TO_READ
         } else {
-            val lean = when (info.lean) {
-                "later" -> "later (a night-owl lean)"
-                "earlier" -> "earlier (a morning-lark lean)"
-                else -> "well-aligned with your schedule"
+            when (info.lean) {
+                "later" -> Note.LEANS_LATER
+                "earlier" -> Note.LEANS_EARLIER
+                else -> Note.ALIGNED
             }
-            "Your body clock looks $lean."
         }
         return PhaseEstimate(
             tempMinHour = info.tempMinHour,

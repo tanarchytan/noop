@@ -37,9 +37,10 @@ data class ActivityCost(
     val confidence: ScoreConfidence,
 ) {
     /**
-     * Plain-English summary of this sport's recovery cost. Degrades gracefully: drops the
-     * bounce-back clause when [daysToBaseline] is null, and says "barely move" when the
-     * cost is under a point in either direction.
+     * English summary of this sport's recovery cost, for the post-log note on the Workouts screen.
+     * The Insights card words the same fields from its own resources. Degrades gracefully: drops the
+     * bounce-back clause when [daysToBaseline] is null, and says "barely move" when the cost is under
+     * a point in either direction.
      */
     fun sentence(): String {
         val mag = abs(delta)

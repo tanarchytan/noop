@@ -11,7 +11,7 @@ package com.noop.analytics
  * Uses the SAME (n-1) denominator as the nightly HRV path, not a population (n) one — otherwise the
  * same beats would read a few percent lower than the overnight figure. Returns a value only when
  * enough clean beats survive (the whoop-rs clean-beat floor); otherwise [Insufficient] with the
- * survived/needed counts, never a fabricated value. The caveat ([caveatFor]) is source-aware: optical
+ * survived/needed counts, never a fabricated value. Which [Caveat] applies is source-aware: optical
  * PPG (WHOOP 5/MG) is noisier than a chest strap's electrical R-R.
  */
 object SpotHrvReading {
@@ -83,20 +83,15 @@ object SpotHrvReading {
         if (meanNN == null || meanNN <= 0.0) null else 60_000.0 / meanNN
 
     /**
-     * Honest, source-aware caveat for a spot reading. Plain text, US-neutral, no em-dashes. Always
-     * states the two universal limits (a 60 s spot is not the overnight baseline; it needs enough clean
-     * beats) and adds the source-specific noise note for an optical-PPG strap.
+     * Which honesty caveat a spot reading carries. [BASE] states the two universal limits (a 60 s spot
+     * is not the overnight baseline; it needs enough clean beats); [BASE_PLUS_OPTICAL] adds the
+     * source-specific noise note. The wording for each lives in the UI.
      */
-    fun caveatFor(source: Source): String {
-        val base =
-            "This is a spot reading over a short, still capture, not your overnight HRV baseline. " +
-                "Take it seated, still, and at a consistent time of day for comparable numbers, and " +
-                "only a reading with enough clean beats is shown."
-        return when (source) {
-            Source.OPTICAL_PPG ->
-                base + " On a WHOOP 5.0/MG the intervals come from the optical pulse signal, which is " +
-                    "noisier than a chest strap, so treat the number as a rough estimate."
-            Source.CHEST_STRAP, Source.UNKNOWN -> base
-        }
+    enum class Caveat { BASE, BASE_PLUS_OPTICAL }
+
+    /** Which caveat [source] earns. Optical PPG is noisier than a chest strap's electrical R-R. */
+    fun caveatFor(source: Source): Caveat = when (source) {
+        Source.OPTICAL_PPG -> Caveat.BASE_PLUS_OPTICAL
+        Source.CHEST_STRAP, Source.UNKNOWN -> Caveat.BASE
     }
 }

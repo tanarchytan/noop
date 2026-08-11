@@ -1,6 +1,5 @@
 package com.noop.analytics
 
-import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
 
@@ -14,8 +13,8 @@ import kotlin.math.min
  *   3. β = w·β_user + (1−w)·β_prior, w = n_user/(n_user + k); clamp to the prior's range.
  *   4. Report per-unit Δ (= β), the curve, and a ScoreConfidence from n_user.
  *
- * HONESTY: below the dose gate → priorDominated ("typical patterns, not yet yours"); once over
- * the gate a personal slope whose SIGN disagrees with the prior flags contradictsPrior (the
+ * HONESTY: below the dose gate → priorDominated (the UI says the pattern is typical, not yet yours);
+ * once over the gate a personal slope whose SIGN disagrees with the prior flags contradictsPrior (the
  * person overrides the population). Caffeine "dose" is a TIMING proxy, not mg. No causal claims.
  */
 
@@ -50,23 +49,6 @@ data class DoseResponse(
 ) {
     /** The signed Δ for going from [fromDose] to [toDose] units (each unit contributes perUnit). */
     fun delta(fromDose: Int, toDose: Int): Double = (toDose - fromDose) * perUnit
-
-    /** Plain-English read. Honest about prior-vs-yours. */
-    fun sentence(): String {
-        val mag = DoseResponseEngine.round1(abs(perUnit))
-        val dir = if (perUnit <= 0) "lower" else "higher"
-        return when {
-            priorDominated ->
-                "Each extra unit typically lines up with about $mag $outcome $dir " +
-                    " - typical patterns, not yet yours (n=$nUser)."
-            contradictsPrior ->
-                "In your data so far, this doesn't move your $outcome the way it typically " +
-                    "does (n=$nUser)."
-            else ->
-                "Each extra unit tends to line up with about $mag $outcome $dir for you " +
-                    "(n=$nUser)."
-        }
-    }
 }
 
 object DoseResponseEngine {
@@ -207,11 +189,4 @@ object DoseResponseEngine {
     }
 
     internal fun clamp(x: Double, lo: Double, hi: Double): Double = min(max(x, lo), hi)
-
-    /** Round to one decimal place, half away from zero. */
-    internal fun round1(x: Double): Double {
-        val scaled = x * 10.0
-        val sign = if (scaled < 0) -1.0 else 1.0
-        return sign * Math.floor(abs(scaled) + 0.5) / 10.0
-    }
 }

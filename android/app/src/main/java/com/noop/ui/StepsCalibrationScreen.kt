@@ -32,6 +32,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -342,12 +343,13 @@ private fun CurrentFitCard(profile: ProfileStore, matchedDays: Int) {
                     style = NoopType.bodyNumber,
                     color = Palette.textPrimary,
                 )
-                // a concrete countdown instead of a vague "a few days". Headline comes straight from
-                // the engine's NeedsMoreDays state so the wording matches the Today steps tile.
+                // a concrete countdown instead of a vague "a few days". The count comes straight from
+                // the engine's NeedsMoreDays state so it matches the Today steps tile.
+                val stillNeeded = StepsEstimateEngine.CalibrationStatus
+                    .NeedsMoreDays(have = matchedDays, need = StepsEstimateEngine.MIN_CALIBRATION_DAYS)
+                    .stillNeeded
                 Text(
-                    StepsEstimateEngine.CalibrationStatus
-                        .NeedsMoreDays(have = matchedDays, need = StepsEstimateEngine.MIN_CALIBRATION_DAYS)
-                        .headline,
+                    pluralStringResource(R.plurals.narr_steps_need_more_days, stillNeeded, stillNeeded),
                     style = NoopType.bodyNumber,
                     color = Palette.accent,
                 )

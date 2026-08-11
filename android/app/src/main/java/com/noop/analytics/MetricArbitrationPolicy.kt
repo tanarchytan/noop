@@ -3,9 +3,9 @@ package com.noop.analytics
 /*
  * MetricArbitrationPolicy — Local Multi-Device Fusion.
  *
- * A DATA table (not if/else branches) keyed by metric × source that yields a trust tier + a plain,
- * published reason string, plus the per-metric cross-validation tolerances. The single place a
- * future Polar/Garmin/Oura source is registered. Pure constants + two lookups.
+ * A DATA table (not if/else branches) keyed by metric × source that yields a trust tier + a named
+ * [Reason], plus the per-metric cross-validation tolerances. The single place a future
+ * Polar/Garmin/Oura source is registered. Pure constants + two lookups.
  *
  * Trust tiers (lower = more trusted), grounded in what a device MEASURES vs ESTIMATES:
  *   0 — Direct dedicated sensor for this metric (WHOOP R-R for HRV; a wrist band's pedometer for
@@ -153,37 +153,64 @@ object MetricArbitrationPolicy {
     }
 
     /**
-     * The published "best signal" reason a source wins (or appears) for a metric. Plain English,
-     * wellness-only — never asserts a value is true or medically valid. Drives the one-line caption on
-     * the fused row.
+     * Why a source wins (or appears) for a metric. Wellness-only — never asserts a value is true or
+     * medically valid. The wording for each lives in the UI.
      */
-    fun reason(metric: MetricKind, source: FusionSource): String {
+    enum class Reason {
+        COUNTS_DIRECTLY,
+        STEP_ESTIMATE,
+        BEST_STAGER,
+        COMPUTED_STAGES,
+        PHONE_SLEEP_BUCKETS,
+        WORN_SENSOR,
+        DIRECT_SENSOR,
+        COMPUTED_ON_DEVICE,
+        PHONE_AGGREGATE,
+        ESTIMATE,
+    }
+
+    /** Which [Reason] a (metric, source) pair earns. Drives the one-line caption on the fused row. */
+    fun reasonKind(metric: MetricKind, source: FusionSource): Reason {
         if (metric == MetricKind.STEPS &&
             (source == FusionSource.XIAOMI_BAND || source == FusionSource.APPLE_HEALTH ||
                 source == FusionSource.HEALTH_CONNECT)
         ) {
-            return "counts directly"
+            return Reason.COUNTS_DIRECTLY
         }
         if (metric == MetricKind.STEPS &&
             (source == FusionSource.WHOOP_IMPORT || source == FusionSource.NOOP_COMPUTED)
         ) {
-            return "step estimate"
+            return Reason.STEP_ESTIMATE
         }
-        if (metric == MetricKind.SLEEP && source == FusionSource.WHOOP_IMPORT) return "best stager"
-        if (metric == MetricKind.SLEEP && source == FusionSource.NOOP_COMPUTED) return "computed stages"
+        if (metric == MetricKind.SLEEP && source == FusionSource.WHOOP_IMPORT) return Reason.BEST_STAGER
+        if (metric == MetricKind.SLEEP && source == FusionSource.NOOP_COMPUTED) return Reason.COMPUTED_STAGES
         if (metric == MetricKind.SLEEP &&
             (source == FusionSource.APPLE_HEALTH || source == FusionSource.HEALTH_CONNECT)
         ) {
-            return "phone sleep buckets"
+            return Reason.PHONE_SLEEP_BUCKETS
         }
-        if (metric == MetricKind.SKIN_TEMP) return "worn sensor"
+        if (metric == MetricKind.SKIN_TEMP) return Reason.WORN_SENSOR
 
         return when (tier(metric, source)) {
-            0 -> "direct sensor"
-            1 -> "computed on device"
-            2 -> "phone aggregate"
-            else -> "estimate"
+            0 -> Reason.DIRECT_SENSOR
+            1 -> Reason.COMPUTED_ON_DEVICE
+            2 -> Reason.PHONE_AGGREGATE
+            else -> Reason.ESTIMATE
         }
+    }
+
+    /** English reason carried on a resolved contribution. Screens word [reasonKind] from resources. */
+    fun reason(metric: MetricKind, source: FusionSource): String = when (reasonKind(metric, source)) {
+        Reason.COUNTS_DIRECTLY -> "counts directly"
+        Reason.STEP_ESTIMATE -> "step estimate"
+        Reason.BEST_STAGER -> "best stager"
+        Reason.COMPUTED_STAGES -> "computed stages"
+        Reason.PHONE_SLEEP_BUCKETS -> "phone sleep buckets"
+        Reason.WORN_SENSOR -> "worn sensor"
+        Reason.DIRECT_SENSOR -> "direct sensor"
+        Reason.COMPUTED_ON_DEVICE -> "computed on device"
+        Reason.PHONE_AGGREGATE -> "phone aggregate"
+        Reason.ESTIMATE -> "estimate"
     }
 
     // Cross-validation tolerances ------------------------------------------------------------------

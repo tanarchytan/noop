@@ -310,7 +310,7 @@ fun HrvSnapshotScreen(
                     style = NoopType.footnote, color = Palette.textTertiary,
                 )
                 Text(
-                    SpotHrvReading.caveatFor(source),
+                    stringResource(spotHrvCaveat(SpotHrvReading.caveatFor(source))),
                     style = NoopType.footnote, color = Palette.textTertiary,
                 )
             }
@@ -319,6 +319,13 @@ fun HrvSnapshotScreen(
 
         if (!bonded) { item { NotBondedHint() } }
     }
+}
+
+/** The honesty caveat under a spot reading; the engine decided which one the source earns. */
+@StringRes
+private fun spotHrvCaveat(caveat: SpotHrvReading.Caveat): Int = when (caveat) {
+    SpotHrvReading.Caveat.BASE -> R.string.narr_hrv_caveat_base
+    SpotHrvReading.Caveat.BASE_PLUS_OPTICAL -> R.string.narr_hrv_caveat_optical
 }
 
 // MARK: - Capture phase

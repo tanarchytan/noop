@@ -63,7 +63,7 @@ data class RankedEffect(
     val effect: BehaviorEffect,
     val confidence: ScoreConfidence,
 ) {
-    /** Plain-English lead/lag chip text. */
+    /** English lead/lag text for the AI-coach prompt. On screen the UI words [lag] from resources. */
     val leadLagText: String
         get() = when (lag) {
             0 -> "same day"
@@ -71,7 +71,8 @@ data class RankedEffect(
             else -> "$lag mornings later"
         }
 
-    /** The sign-aware sentence plus the lead/lag clause. */
+    /** English sentence plus the lead/lag clause, for the AI-coach prompt. On screen the UI builds
+     *  the sentence from these fields and its own resources. */
     fun sentence(): String {
         val base = EffectRanker.sentence(effect)
         val trimmed = if (base.endsWith(".")) base.dropLast(1) else base
@@ -212,7 +213,8 @@ object EffectRanker {
         )
     }
 
-    /** Render an effect as a plain-English sentence. */
+    /** Render an effect as an English sentence, for the AI-coach prompt. Screens word it from
+     *  [BehaviorEffect]'s own fields and their resources. */
     internal fun sentence(e: BehaviorEffect): String {
         val directionWord = when {
             e.delta > 0 -> "higher"

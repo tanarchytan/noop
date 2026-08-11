@@ -1,5 +1,6 @@
 package com.noop.ui
 
+import androidx.annotation.StringRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -25,12 +26,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.noop.R
+import com.noop.analytics.BalanceRead
+import com.noop.analytics.FocalPoint
 import com.noop.analytics.RestScorer
 import com.noop.analytics.StrainScorer
 import com.noop.analytics.WeeklyDigest
@@ -48,7 +52,7 @@ import kotlin.math.roundToInt
 // tracked metric into a "yyyy-MM-dd"→value map, and feeds the pure
 // WeeklyDigestEngine to produce a Monday-anchored summary: per-metric this-week
 // mean + week-over-week delta + vs-baseline, the biggest movers, a strain-vs-recovery
-// balance read, and 1–2 plain-English focal points. No AI, no network.
+// balance read, and 1–2 focal points this file words. No AI, no network.
 //
 // Two surfaces are exposed so navigation can wire whichever it wants:
 //   • WeeklyDigestCard  — an embeddable card (drop into Today / Trends).
@@ -57,9 +61,9 @@ import kotlin.math.roundToInt
 // (non-clinical), consistent with the app disclaimer.
 
 /**
- * The engine's Effort display factor for the user's scale: moverSentence's
- * "(avg X vs Y)" prints stored 0-100 Effort means, so the 0-21 toggle rescales them for
- * display only. 1.0 leaves every sentence byte-identical to the pre-toggle output.
+ * The engine's Effort display factor for the user's scale: a [FocalPoint.Mover] carries stored
+ * 0-100 Effort means, so the 0-21 toggle rescales them for display only. 1.0 leaves every figure
+ * identical to the pre-toggle output.
  */
 internal fun effortDisplayFactor(scale: EffortScale): Double =
     if (scale == EffortScale.WHOOP) StrainScorer.effortToWhoopDayStrain else 1.0
@@ -139,7 +143,7 @@ fun WeeklyDigestContent(digest: WeeklyDigest, compact: Boolean = false) {
         // Focal points — the plain-English read, most salient first.
         if (digest.focalPoints.isNotEmpty()) {
             Column(verticalArrangement = Arrangement.spacedBy(Metrics.space8)) {
-                digest.focalPoints.forEach { FocalRow(it) }
+                digest.focalPoints.forEach { FocalRow(focalSentence(it)) }
             }
         }
 
@@ -162,7 +166,11 @@ fun WeeklyDigestContent(digest: WeeklyDigest, compact: Boolean = false) {
                         color = Palette.textTertiary,
                     )
                 }
-                Text(digest.balance.sentence, style = NoopType.footnote, color = Palette.textTertiary)
+                Text(
+                    stringResource(balanceSentence(digest.balance)),
+                    style = NoopType.footnote,
+                    color = Palette.textTertiary,
+                )
                 Text(
                     stringResource(R.string.digest_disclaimer),
                     style = NoopType.footnote,
@@ -201,7 +209,7 @@ private fun MetricRow(s: WeeklyMetricSummary, effortScale: EffortScale) {
         horizontalArrangement = Arrangement.spacedBy(Metrics.space12),
     ) {
         Text(
-            s.metric.label,
+            stringResource(metricLabel(s.metric)),
             style = NoopType.subhead,
             color = Palette.textSecondary,
             modifier = Modifier.width(92.dp),
@@ -299,11 +307,76 @@ private fun rowAccessibility(s: WeeklyMetricSummary, effortScale: EffortScale): 
         s.wowGoodness == -1 -> stringResource(R.string.digest_a11y_worth_a_look)
         else -> ""
     }
+    val label = stringResource(metricLabel(s.metric))
     return if (s.weekOverWeek.current.n == 0 || s.weekOverWeek.previous.n == 0) {
-        stringResource(R.string.digest_a11y_row_no_comparison, s.metric.label, mean)
+        stringResource(R.string.digest_a11y_row_no_comparison, label, mean)
     } else {
-        stringResource(R.string.digest_a11y_row, s.metric.label, mean, dir, deltaText(s), frame)
+        stringResource(R.string.digest_a11y_row, label, mean, dir, deltaText(s), frame)
     }
 }
 
 private fun fmt1(x: Double): String = ((x * 10).roundToInt() / 10.0).toString()
+
+// MARK: - Engine reads, worded here
+
+@StringRes
+private fun metricLabel(metric: WeeklyMetric): Int = when (metric) {
+    WeeklyMetric.CHARGE -> R.string.narr_digest_metric_charge
+    WeeklyMetric.EFFORT -> R.string.narr_digest_metric_effort
+    WeeklyMetric.REST -> R.string.narr_digest_metric_rest
+    WeeklyMetric.RHR -> R.string.narr_digest_metric_rhr
+    WeeklyMetric.HRV -> R.string.narr_digest_metric_hrv
+}
+
+@StringRes
+private fun balanceSentence(read: BalanceRead): Int = when (read) {
+    BalanceRead.OVERREACHING -> R.string.narr_digest_balance_overreaching
+    BalanceRead.BALANCED -> R.string.narr_digest_balance_balanced
+    BalanceRead.UNDERLOADED -> R.string.narr_digest_balance_underloaded
+    BalanceRead.INSUFFICIENT -> R.string.narr_digest_balance_insufficient
+}
+
+/**
+ * One focal point as a whole sentence. The engine picked the read and supplied the figures; the
+ * direction and the good/bad framing each select their own resource so a translation can reorder
+ * the clause rather than glue fragments together.
+ */
+@Composable
+private fun focalSentence(point: FocalPoint): String = when (point) {
+    is FocalPoint.Mover -> {
+        val res = when {
+            point.direction > 0 && point.goodness >= 0 -> R.string.narr_digest_focal_up_good
+            point.direction > 0 -> R.string.narr_digest_focal_up_bad
+            point.goodness >= 0 -> R.string.narr_digest_focal_down_good
+            else -> R.string.narr_digest_focal_down_bad
+        }
+        stringResource(
+            res,
+            stringResource(metricLabel(point.metric)),
+            moverMagnitude(point),
+            point.thisAvg,
+            point.lastAvg,
+        )
+    }
+    is FocalPoint.Balance -> stringResource(balanceSentence(point.read))
+    is FocalPoint.TooEarly ->
+        pluralStringResource(R.plurals.narr_digest_focal_too_early, point.days, point.days)
+    is FocalPoint.RoughPreviousWeek ->
+        pluralStringResource(R.plurals.narr_digest_focal_rough_last_week, point.days, point.days)
+    is FocalPoint.SteadyWithRest ->
+        stringResource(R.string.narr_digest_focal_steady_rest, fmt1(point.restScoreSD))
+    FocalPoint.Steady -> stringResource(R.string.narr_digest_focal_steady)
+}
+
+/** The mover's size: a percentage when the engine could report one, else the metric's own units. */
+@Composable
+private fun moverMagnitude(point: FocalPoint.Mover): String {
+    point.percent?.let { return stringResource(R.string.narr_digest_magnitude_percent, it) }
+    val value = fmt1(point.points ?: 0.0)
+    val unit = point.metric.unit
+    return if (unit.isEmpty()) {
+        stringResource(R.string.narr_digest_magnitude_points, value)
+    } else {
+        stringResource(R.string.narr_digest_magnitude_unit, value, unit)
+    }
+}

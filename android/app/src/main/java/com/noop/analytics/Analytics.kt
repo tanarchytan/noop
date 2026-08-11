@@ -56,20 +56,27 @@ object Zones {
  *
  * Compares the last ~2 days against the trailing baseline whoop-rs defines (a window ending
  * a few nights back, so a developing strain stays out of it) across resting HR, HRV,
- * skin-temperature deviation and respiration. Two or more anomalies surface a banner; the
+ * skin-temperature deviation and respiration. Two or more anomalies surface a banner ([flags]); the
  * classic early-illness signature is RHR up + HRV down + skin-temp up.
  *
  * Gating on a user toggle is a UI concern this pure function omits; callers decide
  * whether to run it.
  */
 object IllnessWatch {
+
+    /** Which anomaly fired. The wording for each lives in the UI. */
+    enum class FlagKind { RESTING_HR_UP, HRV_DOWN, SKIN_TEMP_UP, RESPIRATION_UP }
+
+    /** One fired anomaly: which one, and the figure its phrase embeds (empty when it carries none). */
+    data class Flag(val kind: FlagKind, val value: String = "")
+
     /**
-     * Evaluate the [days] history (oldest -> newest). Returns a human-readable banner
-     * message when 2+ anomaly flags fire, otherwise null.
+     * Evaluate the [days] history (oldest -> newest). Returns the fired anomalies when 2+ of them
+     * clear their gate, otherwise null — the banner threshold, not a per-flag one.
      *
      * Needs at least the baseline policy's minimum nights of history.
      */
-    fun evaluate(days: List<DailyMetric>): String? {
+    fun flags(days: List<DailyMetric>): List<Flag>? {
         val cfg = RustScores.illnessBaselineCfg
         if (days.size < cfg.minNights.toInt()) return null
 
@@ -85,13 +92,13 @@ object IllnessWatch {
         fun bm(selector: (DailyMetric) -> Double?): Double? =
             mean(base.mapNotNull(selector))
 
-        val flags = mutableListOf<String>()
+        val flags = mutableListOf<Flag>()
 
         run {
             val r = rm { it.restingHr?.toDouble() }
             val b = bm { it.restingHr?.toDouble() }
             if (r != null && b != null && r >= b + 5) {
-                flags.add("resting HR +${(r - b).roundToInt()} bpm")
+                flags.add(Flag(FlagKind.RESTING_HR_UP, "${(r - b).roundToInt()}"))
             }
         }
 
@@ -99,14 +106,14 @@ object IllnessWatch {
             val r = rm { it.avgHrv }
             val b = bm { it.avgHrv }
             if (r != null && b != null && b > 0 && r <= b * 0.80) {
-                flags.add("HRV −${((1 - r / b) * 100).roundToInt()}%")
+                flags.add(Flag(FlagKind.HRV_DOWN, "${((1 - r / b) * 100).roundToInt()}"))
             }
         }
 
         run {
             val r = rm { it.skinTempDevC }
             if (r != null && r >= 0.6) {
-                flags.add("skin temp +${formatOneDp(r)}°C")
+                flags.add(Flag(FlagKind.SKIN_TEMP_UP, formatOneDp(r)))
             }
         }
 
@@ -121,16 +128,28 @@ object IllnessWatch {
             if (r != null && b != null && respBase.size >= 10 &&
                 plausible(r) && plausible(b) && r >= b + 2.5
             ) {
-                flags.add("respiration up")
+                flags.add(Flag(FlagKind.RESPIRATION_UP))
             }
         }
 
-        return if (flags.size >= 2) {
-            "Your body looks strained - " + flags.joinToString(", ") +
-                ". Consider taking it easy."
-        } else {
-            null
+        return if (flags.size >= 2) flags else null
+    }
+
+    /**
+     * English banner text for the notification path, built from [flags]. Screens that can reach
+     * resources word [flags] themselves.
+     */
+    fun evaluate(days: List<DailyMetric>): String? {
+        val fired = flags(days) ?: return null
+        val phrases = fired.map {
+            when (it.kind) {
+                FlagKind.RESTING_HR_UP -> "resting HR +${it.value} bpm"
+                FlagKind.HRV_DOWN -> "HRV −${it.value}%"
+                FlagKind.SKIN_TEMP_UP -> "skin temp +${it.value}°C"
+                FlagKind.RESPIRATION_UP -> "respiration up"
+            }
         }
+        return "Your body looks strained - " + phrases.joinToString(", ") + ". Consider taking it easy."
     }
 
     /** Format a double to one decimal place (locale-independent), matching "%.1f". */

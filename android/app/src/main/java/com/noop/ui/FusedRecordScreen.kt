@@ -1,5 +1,6 @@
 package com.noop.ui
 
+import androidx.annotation.StringRes
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -68,12 +69,12 @@ import kotlin.math.roundToInt
 
 /**
  * One resolved metric row for the fused record — the engine's [FusedMetricPoint] plus the display
- * [label] and an optional per-metric [accent]. The Wave 3 repository adapter builds these from the
+ * [labelRes] and an optional per-metric [accent]. The Wave 3 repository adapter builds these from the
  * rows it already loads.
  */
 data class FusedRow(
     val point: FusedMetricPoint,
-    val label: String,
+    @StringRes val labelRes: Int,
     val accent: androidx.compose.ui.graphics.Color? = null,
 )
 
@@ -255,7 +256,7 @@ private fun FusedMetricRow(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
-                row.label,
+                stringResource(row.labelRes),
                 style = NoopType.headline,
                 color = Palette.textPrimary,
                 modifier = Modifier.weight(1f),
@@ -278,8 +279,12 @@ private fun FusedMetricRow(
                     stringResource(R.string.fused_from_source, point.winningSource.displayName),
                     tint = Palette.accent,
                 )
-                point.contributors.firstOrNull()?.reason?.let { reason ->
-                    Text(reason, style = NoopType.footnote, color = Palette.textTertiary)
+                point.contributors.firstOrNull()?.let { winner ->
+                    Text(
+                        stringResource(fusionReason(point.metric, winner.source)),
+                        style = NoopType.footnote,
+                        color = Palette.textTertiary,
+                    )
                 }
             }
 
@@ -388,7 +393,7 @@ private fun ConflictCompareDialog(row: FusedRow, onDismiss: () -> Unit) {
                 verticalArrangement = Arrangement.spacedBy(Metrics.gap),
             ) {
                 SectionHeader(
-                    title = row.label,
+                    title = stringResource(row.labelRes),
                     overline = stringResource(R.string.fused_sources_differ),
                 )
                 Text(
@@ -425,7 +430,7 @@ private fun ConflictCompareDialog(row: FusedRow, onDismiss: () -> Unit) {
                             stringResource(
                                 R.string.fused_winner_reason,
                                 winner.source.displayName,
-                                winner.reason,
+                                stringResource(fusionReason(point.metric, winner.source)),
                             ),
                             style = NoopType.subhead,
                             color = Palette.textSecondary,
@@ -490,7 +495,11 @@ private fun ContributorRow(
                     )
                 }
             }
-            Text(contrib.reason, style = NoopType.footnote, color = Palette.textTertiary)
+            Text(
+                stringResource(fusionReason(metricKey, contrib.source)),
+                style = NoopType.footnote,
+                color = Palette.textTertiary,
+            )
         }
         Text(
             FusionFormat.value(contrib.value, metricKey, tempUnit),
@@ -507,6 +516,25 @@ private fun ContributorRow(
  * screen: the engine deals in numbers, the UI owns
  * units. Sleep/duration keys read as "7h 12m"; temp as "34.1°C"; HR/HRV/steps as integers + unit.
  */
+/**
+ * Why a source won this metric. The policy names the [MetricArbitrationPolicy.Reason]; the wording
+ * is here, so the caption never asserts a value is correct, only why the source is trusted for it.
+ */
+@StringRes
+private fun fusionReason(metricKey: String, source: FusionSource): Int =
+    when (MetricArbitrationPolicy.reasonKind(MetricArbitrationPolicy.kind(metricKey), source)) {
+        MetricArbitrationPolicy.Reason.COUNTS_DIRECTLY -> R.string.narr_fusion_reason_counts_directly
+        MetricArbitrationPolicy.Reason.STEP_ESTIMATE -> R.string.narr_fusion_reason_step_estimate
+        MetricArbitrationPolicy.Reason.BEST_STAGER -> R.string.narr_fusion_reason_best_stager
+        MetricArbitrationPolicy.Reason.COMPUTED_STAGES -> R.string.narr_fusion_reason_computed_stages
+        MetricArbitrationPolicy.Reason.PHONE_SLEEP_BUCKETS -> R.string.narr_fusion_reason_phone_sleep_buckets
+        MetricArbitrationPolicy.Reason.WORN_SENSOR -> R.string.narr_fusion_reason_worn_sensor
+        MetricArbitrationPolicy.Reason.DIRECT_SENSOR -> R.string.narr_fusion_reason_direct_sensor
+        MetricArbitrationPolicy.Reason.COMPUTED_ON_DEVICE -> R.string.narr_fusion_reason_computed_on_device
+        MetricArbitrationPolicy.Reason.PHONE_AGGREGATE -> R.string.narr_fusion_reason_phone_aggregate
+        MetricArbitrationPolicy.Reason.ESTIMATE -> R.string.narr_fusion_reason_estimate
+    }
+
 object FusionFormat {
     fun value(v: Double, metricKey: String, tempUnit: TemperatureUnit): String =
         when (MetricArbitrationPolicy.kind(metricKey)) {

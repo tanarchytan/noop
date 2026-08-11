@@ -81,28 +81,38 @@ object FitnessAgeEngine {
     fun assessReadiness(hasAge: Boolean, hasSex: Boolean, rhrDays: Int, activityDays: Int,
                         hasHeightWeight: Boolean, hasWaist: Boolean): FitnessAgeReadiness {
         val items = listOf(
-            FitnessReadinessItem("age", "Your age",
+            FitnessReadinessItem(FitnessReadinessInput.AGE,
                 if (hasAge) FitnessReadinessStatus.SATISFIED else FitnessReadinessStatus.MISSING,
                 required = true, role = FitnessReadinessRole.DRIVES_AGE,
-                detail = if (hasAge) "Set" else "Add it in Settings"),
-            FitnessReadinessItem("sex", "Biological sex",
+                detail = if (hasAge) FitnessReadinessDetail.SET else FitnessReadinessDetail.ADD_IN_SETTINGS),
+            FitnessReadinessItem(FitnessReadinessInput.SEX,
                 if (hasSex) FitnessReadinessStatus.SATISFIED else FitnessReadinessStatus.MISSING,
                 required = true, role = FitnessReadinessRole.DRIVES_AGE,
-                detail = if (hasSex) "Set" else "Add it in Settings"),
-            FitnessReadinessItem("rhr", "Resting heart rate",
+                detail = if (hasSex) FitnessReadinessDetail.SET else FitnessReadinessDetail.ADD_IN_SETTINGS),
+            FitnessReadinessItem(FitnessReadinessInput.RESTING_HR,
                 coverageStatus(rhrDays, minCoverageDays), required = true,
-                role = FitnessReadinessRole.DRIVES_AGE, detail = "$rhrDays of last 7 nights"),
-            FitnessReadinessItem("activity", "Recent activity",
+                role = FitnessReadinessRole.DRIVES_AGE,
+                detail = FitnessReadinessDetail.NIGHTS_OF_LAST_SEVEN, detailCount = rhrDays),
+            FitnessReadinessItem(FitnessReadinessInput.ACTIVITY,
                 coverageStatus(activityDays, minCoverageDays), required = false,
-                role = FitnessReadinessRole.DRIVES_AGE, detail = "$activityDays of last 7 days"),
-            FitnessReadinessItem("bodyMetrics", "Height & weight",
+                role = FitnessReadinessRole.DRIVES_AGE,
+                detail = FitnessReadinessDetail.DAYS_OF_LAST_SEVEN, detailCount = activityDays),
+            FitnessReadinessItem(FitnessReadinessInput.BODY_METRICS,
                 if (hasHeightWeight) FitnessReadinessStatus.SATISFIED else FitnessReadinessStatus.MISSING,
                 required = false, role = FitnessReadinessRole.UNLOCKS_VO2MAX,
-                detail = if (hasHeightWeight) "Unlocks your VO₂max" else "Add to also see VO₂max"),
-            FitnessReadinessItem("waist", "Waist (optional)",
+                detail = if (hasHeightWeight) {
+                    FitnessReadinessDetail.UNLOCKS_VO2MAX
+                } else {
+                    FitnessReadinessDetail.ADD_TO_SEE_VO2MAX
+                }),
+            FitnessReadinessItem(FitnessReadinessInput.WAIST,
                 if (hasWaist) FitnessReadinessStatus.SATISFIED else FitnessReadinessStatus.MISSING,
                 required = false, role = FitnessReadinessRole.UNLOCKS_VO2MAX,
-                detail = if (hasWaist) "Sharpens VO₂max" else "Optional - sharpens VO₂max"),
+                detail = if (hasWaist) {
+                    FitnessReadinessDetail.SHARPENS_VO2MAX
+                } else {
+                    FitnessReadinessDetail.OPTIONAL_SHARPENS_VO2MAX
+                }),
         )
         val confidence = when {
             !hasAge || !hasSex || rhrDays < minCoverageDays -> FitnessAgeConfidence.NOT_READY
@@ -117,13 +127,29 @@ enum class FitnessReadinessStatus { SATISFIED, PARTIAL, MISSING }
 enum class FitnessReadinessRole { DRIVES_AGE, UNLOCKS_VO2MAX }
 enum class FitnessAgeConfidence { READY, ESTIMATE, NOT_READY }
 
+/** Which input a checklist row reports on. The label for each lives in the UI. */
+enum class FitnessReadinessInput { AGE, SEX, RESTING_HR, ACTIVITY, BODY_METRICS, WAIST }
+
+/** Which one-line detail sits beside a checklist row. The wording for each lives in the UI. */
+enum class FitnessReadinessDetail {
+    SET,
+    ADD_IN_SETTINGS,
+    NIGHTS_OF_LAST_SEVEN,
+    DAYS_OF_LAST_SEVEN,
+    UNLOCKS_VO2MAX,
+    ADD_TO_SEE_VO2MAX,
+    SHARPENS_VO2MAX,
+    OPTIONAL_SHARPENS_VO2MAX,
+}
+
 data class FitnessReadinessItem(
-    val key: String,
-    val label: String,
+    val input: FitnessReadinessInput,
     val status: FitnessReadinessStatus,
     val required: Boolean,
     val role: FitnessReadinessRole,
-    val detail: String,
+    val detail: FitnessReadinessDetail,
+    /** The count [detail] embeds, when its wording carries one. */
+    val detailCount: Int = 0,
 )
 
 data class FitnessAgeReadiness(

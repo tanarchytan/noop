@@ -8,8 +8,8 @@ package com.noop.analytics
 // population cutoff, via a calibrated 0–100 score, a ≥2-signal corroboration gate, and EXPLICIT confounder
 // suppression cross-checked against the same-day journal tags.
 //
-// WELLNESS ONLY — APPROXIMATE, NOT A DIAGNOSIS. Never names a condition; copy is always "a heads-up to
-// rest" / "consider taking it easy".
+// WELLNESS ONLY — APPROXIMATE, NOT A DIAGNOSIS. It decides WHICH read fires ([Message]); the UI words it,
+// and no wording here may ever name a condition.
 object IllnessSignalEngine {
 
     // ── Tuning constants (pinned by test) ──
@@ -20,9 +20,6 @@ object IllnessSignalEngine {
     const val kZToScore: Double = 22.0
     const val perSignalCap: Double = 40.0
     const val confounderDampen: Double = 0.45
-
-    /** Standing not-a-diagnosis tail reused verbatim from the illness alert notification copy. */
-    const val disclaimerTail = "On-device estimate - not a diagnosis."
 
     // ── Inputs ──
 
@@ -66,33 +63,56 @@ object IllnessSignalEngine {
         ALREADY_UNWELL("alreadyUnwell"),
     }
 
+    /** Which signal cleared [signalZThreshold]. The wording for each lives in the UI. */
+    enum class SignalKey(val key: String) {
+        RESTING_HR("restingHR"), SKIN_TEMP("skinTemp"), HRV("hrv"), RESPIRATION("respiration"),
+    }
+
+    /** Which logged behaviour explained an anomaly away. The wording for each lives in the UI. */
+    enum class Confounder { ALCOHOL, STRESS, SAUNA, HARD_OR_LATE_WORKOUT, TRAVEL }
+
+    /** Which one-line read the heads-up resolves to. The wording for each lives in the UI. */
+    enum class Message {
+        LEARNING_BASELINE,
+        UNWELL_AND_AGREES,
+        UNWELL_LOGGED,
+        NOTHING_NOTABLE,
+        SUPPRESSED,
+        MILD,
+        RAISED,
+    }
+
     data class Result(
         val score: Double,
         val level: Level,
+        /** Caller-supplied phrases for the signals that fired, in [SignalKey] order. Empty unless the
+         *  caller passed `firedLabels`; the UI words [firedKeys] instead. */
         val firedSignals: List<String>,
-        val suppressedBy: List<String>,
+        /** Which signals fired, in a fixed order. The wording for each lives in the UI. */
+        val firedKeys: List<SignalKey>,
+        val suppressedBy: List<Confounder>,
         val signalCount: Int,
-        val copy: String,
+        val message: Message,
     )
 
     // ── Evaluate ──
 
     /**
-     * Score the recent window and decide the heads-up level + copy. [firedLabels] maps a signal key to
-     * the caller-rendered phrase shown when that signal fires (e.g. {"restingHR": "RHR +6"}). Only keys
-     * for signals that clear [signalZThreshold] are surfaced.
+     * Score the recent window and decide the heads-up level + [Message]. [firedLabels] maps a
+     * [SignalKey.key] to a caller-rendered phrase carried through as [Result.firedSignals]; the UI words
+     * [Result.firedKeys] instead. Only signals that clear [signalZThreshold] are surfaced.
      */
     fun evaluate(inputs: Inputs, context: Context, firedLabels: Map<String, String> = emptyMap()): Result {
-        // Order is fixed so firedSignals is deterministic.
-        val ordered: List<Pair<String, SignalReading?>> = listOf(
-            "restingHR" to inputs.restingHR,
-            "skinTemp" to inputs.skinTemp,
-            "hrv" to inputs.hrv,
-            "respiration" to inputs.respiration,
+        // Order is fixed so firedKeys is deterministic.
+        val ordered: List<Pair<SignalKey, SignalReading?>> = listOf(
+            SignalKey.RESTING_HR to inputs.restingHR,
+            SignalKey.SKIN_TEMP to inputs.skinTemp,
+            SignalKey.HRV to inputs.hrv,
+            SignalKey.RESPIRATION to inputs.respiration,
         )
 
         var rawScore = 0.0
-        val firedKeys = mutableListOf<String>()
+        val firedKeys = mutableListOf<SignalKey>()
         for ((key, reading) in ordered) {
             if (reading == null || !reading.present) continue
             val over = reading.zIllnessward - signalZThreshold
@@ -102,71 +122,46 @@ object IllnessSignalEngine {
         }
         val score = minOf(100.0, rawScore)
         val signalCount = firedKeys.size
-        val firedSignals = firedKeys.mapNotNull { firedLabels[it] }
+        val firedSignals = firedKeys.mapNotNull { firedLabels[it.key] }
+
+        fun result(at: Double, level: Level, suppressed: List<Confounder>, message: Message) =
+            Result(at, level, firedSignals, firedKeys, suppressed, signalCount, message)
 
         // Gate 0: untrusted baseline → silent.
         if (!context.baselineTrusted) {
-            return Result(score, Level.QUIET, firedSignals, emptyList(), signalCount,
-                "Still learning your baseline - keeping an eye out.")
+            return result(score, Level.QUIET, emptyList(), Message.LEARNING_BASELINE)
         }
 
         // Already-unwell path: switch from "early warning" to a gentle "rest up".
         if (context.alreadyUnwell) {
             val agreeing = score >= mildThreshold && signalCount >= 1
-            val copy = if (agreeing)
-                "Rest up - you logged feeling unwell, and your numbers agree. $disclaimerTail"
-            else
-                "Rest up - you logged feeling unwell. Take it easy today. $disclaimerTail"
-            return Result(score, Level.ALREADY_UNWELL, firedSignals, emptyList(), signalCount, copy)
+            return result(
+                score, Level.ALREADY_UNWELL, emptyList(),
+                if (agreeing) Message.UNWELL_AND_AGREES else Message.UNWELL_LOGGED,
+            )
         }
 
         // Corroboration + magnitude gate.
         if (signalCount < minCorroboratingSignals || score < mildThreshold) {
-            return Result(score, Level.QUIET, firedSignals, emptyList(), signalCount,
-                "Nothing notable - your signals look like your normal range.")
+            return result(score, Level.QUIET, emptyList(), Message.NOTHING_NOTABLE)
         }
 
         // Confounder suppression — the differentiating part.
-        val suppressedBy = mutableListOf<String>()
-        if (context.alcohol) suppressedBy.add("alcohol")
-        if (context.stress) suppressedBy.add("stress")
-        if (context.sauna) suppressedBy.add("sauna")
-        if (context.hardOrLateWorkout) suppressedBy.add("a hard or late workout")
-        if (context.travelPhaseJump) suppressedBy.add("travel")
-
-        val signalsPhrase = if (firedSignals.isEmpty()) "Some signals are up" else firedSignals.joinToString(", ")
+        val suppressedBy = mutableListOf<Confounder>()
+        if (context.alcohol) suppressedBy.add(Confounder.ALCOHOL)
+        if (context.stress) suppressedBy.add(Confounder.STRESS)
+        if (context.sauna) suppressedBy.add(Confounder.SAUNA)
+        if (context.hardOrLateWorkout) suppressedBy.add(Confounder.HARD_OR_LATE_WORKOUT)
+        if (context.travelPhaseJump) suppressedBy.add(Confounder.TRAVEL)
 
         if (suppressedBy.isNotEmpty()) {
-            val dampened = score * confounderDampen
-            val reason = joinReasons(suppressedBy)
-            val copy = "Some signals are up ($signalsPhrase), but you logged $reason - likely that, " +
-                "not illness. $disclaimerTail"
-            return Result(dampened, Level.SUPPRESSED, firedSignals, suppressedBy, signalCount, copy)
+            return result(score * confounderDampen, Level.SUPPRESSED, suppressedBy, Message.SUPPRESSED)
         }
 
         // No confounder. Mild stays in the detail view; a strong composite raises.
         if (score < raiseThreshold) {
-            val copy = "A few signals are mildly up ($signalsPhrase). Nothing alarming - worth a calmer " +
-                "day. $disclaimerTail"
-            return Result(score, Level.MILD, firedSignals, emptyList(), signalCount, copy)
+            return result(score, Level.MILD, emptyList(), Message.MILD)
         }
-
-        val ruledOut = "no alcohol or travel logged"
-        val copy = "Heads-up - your body looks strained. $signalsPhrase. With $ruledOut, consider " +
-            "taking it easy. $disclaimerTail"
-        return Result(score, Level.RAISED, firedSignals, emptyList(), signalCount, copy)
-    }
-
-    // ── Helpers ──
-
-    /** Join named confounders into a natural list ("alcohol", "alcohol and stress", "a, b and c"). */
-    internal fun joinReasons(reasons: List<String>): String = when (reasons.size) {
-        0 -> "something"
-        1 -> reasons[0]
-        2 -> "${reasons[0]} and ${reasons[1]}"
-        else -> {
-            val head = reasons.dropLast(1).joinToString(", ")
-            "$head and ${reasons.last()}"
-        }
+        return result(score, Level.RAISED, emptyList(), Message.RAISED)
     }
 }

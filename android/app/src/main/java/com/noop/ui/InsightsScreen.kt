@@ -44,6 +44,7 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
@@ -692,7 +693,7 @@ private fun ActivityCostCard(cost: com.noop.analytics.ActivityCost) {
                     showsDot = false,
                 )
             }
-            Text(cost.sentence(), style = NoopType.subhead, color = Palette.textSecondary)
+            Text(activityCostSentence(cost), style = NoopType.subhead, color = Palette.textSecondary)
             // 2×2 StatTile grid so tile heights stay uniform on phone widths (matches SummarySection).
             Row(horizontalArrangement = Arrangement.spacedBy(Metrics.gap)) {
                 StatTile(
@@ -734,6 +735,30 @@ private fun ActivityCostCard(cost: com.noop.analytics.ActivityCost) {
             }
         }
     }
+}
+
+/**
+ * What a sport costs the next morning. The engine measured the delta and the bounce-back; the
+ * direction and whether a bounce-back exists each select a whole sentence, with the point and day
+ * counts injected as their own plurals.
+ */
+@Composable
+private fun activityCostSentence(cost: com.noop.analytics.ActivityCost): String {
+    val magnitude = abs(cost.delta)
+    if (magnitude < com.noop.analytics.ActivityCostEngine.barelyMovesPoints) {
+        return stringResource(R.string.narr_activity_barely_moves, cost.n)
+    }
+    val points = magnitude.roundToInt()
+    val pointsText = pluralStringResource(R.plurals.narr_activity_points, points, points)
+    val costs = cost.delta >= 0
+    val days = cost.daysToBaseline
+    if (days == null) {
+        val res = if (costs) R.string.narr_activity_cost else R.string.narr_activity_lift
+        return stringResource(res, pointsText, cost.n)
+    }
+    val daysText = pluralStringResource(R.plurals.narr_activity_days, days, days)
+    val res = if (costs) R.string.narr_activity_cost_bounce else R.string.narr_activity_lift_bounce
+    return stringResource(res, pointsText, daysText, cost.n)
 }
 
 // MARK: - Behaviour effects section
