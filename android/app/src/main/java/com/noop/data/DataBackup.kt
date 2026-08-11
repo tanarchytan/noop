@@ -8,6 +8,7 @@ import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import androidx.sqlite.db.SupportSQLiteOpenHelper
 import androidx.sqlite.db.framework.FrameworkSQLiteOpenHelperFactory
+import com.noop.R
 import com.noop.ble.WhoopModel
 import java.io.File
 import java.io.FileOutputStream
@@ -143,10 +144,10 @@ object DataBackup {
         val header = ByteArray(16)
         try {
             val read = resolver.openInputStream(uri)?.use { readFully(it, header) }
-                ?: return ImportResult.Failed("Could not open the chosen file.")
-            if (read < 4) return ImportResult.Failed("That file is not a NOOP backup.")
+                ?: return ImportResult.Failed(appContext.getString(R.string.restore_error_cannot_open))
+            if (read < 4) return ImportResult.Failed(appContext.getString(R.string.restore_error_not_a_backup))
         } catch (e: IOException) {
-            return ImportResult.Failed("Could not read the chosen file: ${e.message}")
+            return ImportResult.Failed(appContext.getString(R.string.restore_error_cannot_read, e.message))
         }
 
         // 2. Extract the SQLite entry if it's a ZIP (.noopbak), or copy a plain SQLite (legacy)
@@ -159,26 +160,28 @@ object DataBackup {
         try {
             when (val staged = stageBackupSqlite(resolver.openInputStream(uri), header, tempSqlite, tempSettings)) {
                 StageResult.OK -> Unit
-                StageResult.CANNOT_OPEN -> return ImportResult.Failed("Could not open the chosen file.")
+                StageResult.CANNOT_OPEN -> return ImportResult.Failed(
+                    appContext.getString(R.string.restore_error_cannot_open)
+                )
                 StageResult.NO_DB_IN_ZIP -> {
                     tempSettings.delete()
-                    return ImportResult.Failed("The backup archive doesn't contain a database file.")
+                    return ImportResult.Failed(appContext.getString(R.string.restore_error_no_db_in_archive))
                 }
                 StageResult.NOT_A_BACKUP -> return ImportResult.Failed(
-                    "That file is not a NOOP backup - it doesn't look like a .noopbak archive or a SQLite database."
+                    appContext.getString(R.string.restore_error_not_a_backup_detail)
                 )
             }
         } catch (e: IOException) {
             tempSqlite.delete()
             tempSettings.delete()
-            return ImportResult.Failed("Could not read the chosen file: ${e.message}")
+            return ImportResult.Failed(appContext.getString(R.string.restore_error_cannot_read, e.message))
         }
 
         // 3. Validate the extracted file is a real SQLite database (magic-byte check).
         if (!isValidSqliteHeader(tempSqlite)) {
             tempSqlite.delete()
             tempSettings.delete()
-            return ImportResult.Failed("The backup archive doesn't contain a valid NOOP database.")
+            return ImportResult.Failed(appContext.getString(R.string.restore_error_invalid_db))
         }
 
         // 3b. Route by schema content: a foreign backup (another platform, or a fork without our
@@ -196,9 +199,7 @@ object DataBackup {
                     return rejectForeign(
                         tempSqlite,
                         tempSettings,
-                        "This isn't a NOOP backup from this app. It's missing the database bookkeeping a " +
-                            "NOOP backup carries (it looks like another app's database). Restoring it would " +
-                            "strand your store.",
+                        appContext.getString(R.string.restore_error_foreign_app),
                     )
                 }
                 reconciled = false
@@ -208,7 +209,7 @@ object DataBackup {
                     ?: return rejectForeign(
                         tempSqlite,
                         tempSettings,
-                        "Couldn't prepare a NOOP store on this device to bring the backup into. [no-store]",
+                        appContext.getString(R.string.restore_error_no_store),
                     )
                 importWarnings = runCatching {
                     reconcileForeign(appContext, liveDbFile, tempSqlite)
@@ -216,7 +217,7 @@ object DataBackup {
                     return rejectForeign(
                         tempSqlite,
                         tempSettings,
-                        "Couldn't bring this backup into NOOP's format: ${e.message}",
+                        appContext.getString(R.string.restore_error_reconcile_failed, e.message),
                     )
                 }
                 reconciled = true
@@ -248,8 +249,7 @@ object DataBackup {
                     ?: return rejectForeign(
                         tempSqlite,
                         tempSettings,
-                        "The backup could not be migrated to the current NOOP schema and no store could " +
-                            "be prepared to copy it into: $migrationError [no-store]",
+                        appContext.getString(R.string.restore_error_migrate_no_store, migrationError),
                     )
                 importWarnings = runCatching {
                     reconcileForeign(appContext, liveDbFile, tempSqlite)
@@ -257,8 +257,8 @@ object DataBackup {
                     return rejectForeign(
                         tempSqlite,
                         tempSettings,
-                        "Couldn't bring this backup into NOOP's format: ${e.message} " +
-                            "(after: $migrationError) [row-copy]",
+                        appContext.getString(
+                            R.string.restore_error_reconcile_after_migrate, e.message, migrationError),
                     )
                 }
             } else {
@@ -277,8 +277,7 @@ object DataBackup {
             tempSqlite.delete()
             tempSettings.delete()
             return ImportResult.Failed(
-                "This backup file is damaged and can't be restored (SQLite reports: $complaint). " +
-                    "Your current data is untouched. Try an earlier backup file."
+                appContext.getString(R.string.restore_error_damaged, complaint)
             )
         }
 
@@ -297,7 +296,7 @@ object DataBackup {
             pending.delete()
             tempSqlite.delete()
             tempSettings.delete()
-            return ImportResult.Failed("Import failed, your data is unchanged: ${e.message}")
+            return ImportResult.Failed(appContext.getString(R.string.restore_error_import_failed, e.message))
         }
         tempSqlite.delete()
 
@@ -308,8 +307,7 @@ object DataBackup {
             pending.delete()
             tempSettings.delete()
             return ImportResult.Failed(
-                "This backup file is damaged and can't be restored (SQLite reports: $complaint). " +
-                    "Your current data is untouched. Try an earlier backup file.",
+                appContext.getString(R.string.restore_error_damaged, complaint),
             )
         }
 

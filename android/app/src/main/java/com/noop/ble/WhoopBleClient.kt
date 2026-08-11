@@ -22,12 +22,14 @@ import android.content.pm.PackageManager
 import android.os.BatteryManager
 import android.os.Build
 import android.os.PowerManager
+import androidx.annotation.StringRes
 import androidx.core.content.ContextCompat
 import android.os.Handler
 import android.os.Looper
 import android.os.ParcelUuid
 import android.os.SystemClock
 import android.util.Log
+import com.noop.R
 import com.noop.data.HrRow
 import com.noop.data.RrRow
 import com.noop.data.StreamBatch
@@ -80,13 +82,14 @@ import java.util.UUID
 import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.atomic.AtomicInteger
 
-/** What [WhoopBleClient.renameStrap] did with a name. [message] is the user-facing wording, and is
- *  also what lands in [LiveState.renameStatus], so the two can never drift apart. */
-enum class StrapRename(val message: String) {
-    Sent("Sent - your strap will reboot to apply, then reconnect with the new name."),
-    NotWhoop4("Saved on this phone. Only a WHOOP 4.0 can take the name over Bluetooth."),
-    NotConnected("Saved on this phone. Connect the strap to give it the same Bluetooth name."),
-    EmptyName("Enter a name first."),
+/** What [WhoopBleClient.renameStrap] did with a name. [messageRes] is the translated wording a caller
+ *  renders; [message] is the untranslated twin the pure fixtures read, so a caller with no Context
+ *  still has one. */
+enum class StrapRename(@StringRes val messageRes: Int, val message: String) {
+    Sent(R.string.connect_rename_sent, "Sent - your strap will reboot to apply, then reconnect with the new name."),
+    NotWhoop4(R.string.connect_rename_not_whoop4, "Saved on this phone. Only a WHOOP 4.0 can take the name over Bluetooth."),
+    NotConnected(R.string.connect_rename_not_connected, "Saved on this phone. Connect the strap to give it the same Bluetooth name."),
+    EmptyName(R.string.connect_rename_empty_name, "Enter a name first."),
 }
 
 /** Whether renaming [device] should also write the strap's advertising name, so one rename keeps the
@@ -585,16 +588,6 @@ class WhoopBleClient(
          *  can be a transient just-works race, but two in a row means the strap is genuinely still bonded
          *  to another app. */
         private const val BOND_REFUSAL_HINT_THRESHOLD = 2
-
-        /** Concrete pairing-mode guidance for a WHOOP 5/MG that keeps refusing the encrypted bond because
-         *  it's still bonded to the official WHOOP app. Plain, country-neutral wording; Android
-         *  settings path. */
-        private const val PAIRING_HINT_TEXT =
-            "Your WHOOP won't pair because it's still bonded to the official WHOOP app. To fix it: " +
-                "1. Close the official WHOOP app (or turn off Bluetooth on that phone). " +
-                "2. Hold or tap the band until its LEDs flash blue (pairing mode). " +
-                "3. Open Settings > Bluetooth, find your WHOOP, and choose Forget This Device. " +
-                "Then come back and tap Connect."
 
         /** 5/MG raw-capture file (app filesDir; shared via Settings → "Share 5/MG capture"). */
         const val WHOOP5_CAPTURE_FILE = "whoop5-backfill-capture.jsonl"
@@ -1190,9 +1183,7 @@ class WhoopBleClient(
             log("No WHOOP strap found within ${SCAN_TIMEOUT_MS / 1000}s")
             _state.update { it.copy(
                 scanning = false,
-                statusNote = "No strap found. Check it's charged and on your wrist, and that the " +
-                    "official WHOOP app isn't connected to it (a strap will only pair with one app " +
-                    "at a time). Then tap Connect again.",
+                statusNote = context.getString(R.string.connect_status_no_strap_found),
             ) }
         }
     }
@@ -1597,20 +1588,19 @@ class WhoopBleClient(
             log("No Bluetooth LE on this device")
             _state.update { it.copy(
                 scanning = false,
-                statusNote = "This device has no Bluetooth LE. NOOP has to run on a real phone with " +
-                    "Bluetooth, near your strap. It can't connect from an emulator or virtual device.") }
+                statusNote = context.getString(R.string.connect_status_no_ble_hardware)) }
             return
         }
         if (!adp.isEnabled) {
             log("Bluetooth is off")
             _state.update { it.copy(
-                scanning = false, statusNote = "Bluetooth is off. Turn it on, then tap Connect.") }
+                scanning = false, statusNote = context.getString(R.string.connect_status_bluetooth_off)) }
             return
         }
         val sc = scanner
         if (sc == null) {
             log("No BLE scanner available")
-            _state.update { it.copy(statusNote = "Bluetooth isn't ready yet. Try again in a moment.") }
+            _state.update { it.copy(statusNote = context.getString(R.string.connect_status_bluetooth_not_ready)) }
             return
         }
         if (scanning) {
@@ -1630,7 +1620,8 @@ class WhoopBleClient(
             log("Easy-connect: attaching directly to ${direct.name ?: "WHOOP"} (no scan needed)")
             _state.update { it.copy(
                 scanning = false, whoop5Detected = false,
-                statusNote = "Connecting to your ${WhoopModel.WHOOP5_MG.displayName}…",
+                statusNote = context.getString(
+                    R.string.connect_status_connecting_to, WhoopModel.WHOOP5_MG.displayName),
             ) }
             connectToDevice(direct)
             bondedDirectAttempt = true   // after connectToDevice: reset() must not clear it
@@ -1654,7 +1645,7 @@ class WhoopBleClient(
         selectedModel = model
         val sc = scanner ?: run {
             log("No BLE scanner available")
-            _state.update { it.copy(scanning = false, statusNote = "Bluetooth isn't ready yet. Try again in a moment.") }
+            _state.update { it.copy(scanning = false, statusNote = context.getString(R.string.connect_status_bluetooth_not_ready)) }
             return
         }
         // Filter to the strap we're targeting — a single service, so a WHOOP 4.0
@@ -1675,7 +1666,8 @@ class WhoopBleClient(
             .build()
         log("Scanning for ${model.displayName}…")
         scanning = true
-        _state.update { it.copy(scanning = true, whoop5Detected = false, statusNote = "Searching for your ${model.displayName}…") }
+        _state.update { it.copy(scanning = true, whoop5Detected = false,
+            statusNote = context.getString(R.string.connect_status_searching_for, model.displayName)) }
         try {
             sc.startScan(filters, settings, scanCallback)
         } catch (se: SecurityException) {
@@ -1684,13 +1676,13 @@ class WhoopBleClient(
             log("Scan blocked (permission): ${se.message}")
             _state.update { it.copy(
                 scanning = false,
-                statusNote = "NOOP needs the Nearby devices / Bluetooth permission. Allow it in " +
-                    "Settings → Apps → NOOP → Permissions, then tap Connect.") }
+                statusNote = context.getString(R.string.connect_status_needs_permission)) }
             return
         } catch (t: Throwable) {
             scanning = false
             log("Scan failed to start: ${t.message}")
-            _state.update { it.copy(scanning = false, statusNote = "Couldn't start scanning: ${t.message}") }
+            _state.update { it.copy(scanning = false,
+                statusNote = context.getString(R.string.connect_status_scan_failed, t.message)) }
             return
         }
         // Stop and explain if nothing turns up in time.
@@ -1751,7 +1743,7 @@ class WhoopBleClient(
             // "off" reason explicit for the UI so it reads "Bluetooth is off" rather than "Reconnecting…".
             _state.update { it.copy(
                 connected = false, scanning = false, streamingLiveHR = false,   // keep streamingLiveHR ⟹ connected
-                statusNote = "Bluetooth is off. Turn it on to reconnect.",
+                statusNote = context.getString(R.string.connect_status_bluetooth_off_reconnect),
             ) }
         }
     }
@@ -2718,7 +2710,7 @@ class WhoopBleClient(
             // Persist the family that actually advertised so the next scan starts on the right service —
             // this is what makes a one-time rotation stick after a stale-preference reconnect.
             persistSelectedModel(selectedModel)
-            _state.update { it.copy(statusNote = "Found $name, connecting…") }
+            _state.update { it.copy(statusNote = context.getString(R.string.connect_status_found_connecting, name)) }
             // Stop scanning, then connect to this peripheral.
             stopScan()
             connectToDevice(device)
@@ -3030,6 +3022,10 @@ class WhoopBleClient(
     private fun isInsufficientAuthStatus(status: Int): Boolean =
         status == GATT_INSUFFICIENT_AUTHENTICATION || status == GATT_INSUFFICIENT_ENCRYPTION
 
+    /** Concrete pairing-mode guidance for a WHOOP 5/MG that keeps refusing the encrypted bond because
+     *  it's still bonded to the official WHOOP app. Read per use so it follows the phone's language. */
+    private fun pairingHintText(): String = context.getString(R.string.connect_pairing_hint)
+
     /** Count a WHOOP 5/MG encrypted-bond refusal toward the pairing-hint streak and, once it reaches
      *  [BOND_REFUSAL_HINT_THRESHOLD] with no genuine bond yet this session, publish concrete pairing-mode
      *  guidance. WHOOP 4 always reaches a genuine bond, so this is 5/MG-only. Independent of the
@@ -3052,7 +3048,8 @@ class WhoopBleClient(
             if (_state.value.pairingHint == null) {
                 log("WHOOP 5/MG: encrypted bond refused $bondRefusalStreak times — surfacing pairing guidance")
             }
-            _state.update { it.copy(pairingHint = PAIRING_HINT_TEXT, statusNote = PAIRING_HINT_TEXT) }
+            val hint = pairingHintText()
+            _state.update { it.copy(pairingHint = hint, statusNote = hint) }
         }
         // Feed the same refusal into the give-up tracker. Once it crosses the higher threshold (the
         // pairing hint has had several cycles to be acted on), pause auto-reconnect so we stop hammering
@@ -3063,7 +3060,7 @@ class WhoopBleClient(
             bondLoopPausedAtMs = System.currentTimeMillis()   // starts the salvage-probe floor
             val opaque = BondRefusalGiveUp.opaqueId(failedAddress ?: "device")
             log(BondRefusalGiveUp.epitaphLine(bondGiveUp.refusals, opaque))
-            _state.update { it.copy(pairingHint = BondRefusalGiveUp.pausedHint()) }
+            _state.update { it.copy(pairingHint = BondRefusalGiveUp.pausedHint(context)) }
             if (testCentre.active(com.noop.testcentre.TestDomain.CONNECTION)) {
                 log("bond gaveUp refusals=${bondGiveUp.refusals} id=$opaque (auto-reconnect paused)",
                     com.noop.testcentre.TestDomain.CONNECTION)
@@ -3084,7 +3081,7 @@ class WhoopBleClient(
         bondLoopPausedAtMs = null
         if (_state.value.pairingHint != null) {
             _state.update {
-                val clearedNote = if (it.statusNote == PAIRING_HINT_TEXT) null else it.statusNote
+                val clearedNote = if (it.statusNote == pairingHintText()) null else it.statusNote
                 it.copy(pairingHint = null, statusNote = clearedNote)
             }
         }
@@ -3284,9 +3281,7 @@ class WhoopBleClient(
                 log("WHOOP 5/MG detected — will send CLIENT_HELLO after subscribing (experimental).")
                 _state.update { it.copy(
                     whoop5Detected = true,
-                    statusNote = "WHOOP 5/MG connected - experimental. After bonding, NOOP brings up live " +
-                        "heart rate from the strap's realtime stream. Deeper metrics (recovery, strain, " +
-                        "sleep) for 5/MG are still being figured out. WHOOP 4.0 is fully supported today.",
+                    statusNote = context.getString(R.string.connect_status_whoop5_experimental),
                 ) }
                 cmdCharacteristic = whoop5.getCharacteristic(WHOOP5_CMD_WRITE_CHAR)
             } else {

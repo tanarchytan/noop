@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- WhoopBleClient - connection status the onboarding screen renders under the state pill -->
+    <string name="connect_status_no_strap_found">No strap found. Check it\'s charged and on your wrist, and that the official WHOOP app isn\'t connected to it (a strap will only pair with one app at a time). Then tap Connect again.</string>
+    <string name="connect_status_no_ble_hardware">This device has no Bluetooth LE. NOOP has to run on a real phone with Bluetooth, near your strap. It can\'t connect from an emulator or virtual device.</string>
+    <string name="connect_status_bluetooth_off">Bluetooth is off. Turn it on, then tap Connect.</string>
+    <string name="connect_status_bluetooth_off_reconnect">Bluetooth is off. Turn it on to reconnect.</string>
+    <string name="connect_status_bluetooth_not_ready">Bluetooth isn\'t ready yet. Try again in a moment.</string>
+    <string name="connect_status_connecting_to">Connecting to your %1$s…</string>
+    <string name="connect_status_searching_for">Searching for your %1$s…</string>
+    <string name="connect_status_found_connecting">Found %1$s, connecting…</string>
+    <string name="connect_status_needs_permission">NOOP needs the Nearby devices / Bluetooth permission. Allow it in Settings → Apps → NOOP → Permissions, then tap Connect.</string>
+    <string name="connect_status_scan_failed">Couldn\'t start scanning: %1$s</string>
+    <string name="connect_status_whoop5_experimental">WHOOP 5/MG connected - experimental. After bonding, NOOP brings up live heart rate from the strap\'s realtime stream. Deeper metrics (recovery, strain, sleep) for 5/MG are still being figured out. WHOOP 4.0 is fully supported today.</string>
+
+    <!-- Pairing guidance shown on the Devices card when the strap keeps refusing the bond -->
+    <string name="connect_pairing_hint">Your WHOOP won\'t pair because it\'s still bonded to the official WHOOP app. To fix it: 1. Close the official WHOOP app (or turn off Bluetooth on that phone). 2. Hold or tap the band until its LEDs flash blue (pairing mode). 3. Open Settings > Bluetooth, find your WHOOP, and choose Forget This Device. Then come back and tap Connect.</string>
+    <string name="connect_paused_hint">NOOP stopped retrying because your strap keeps refusing to pair. It is likely still held by the official WHOOP app, or your phone is holding an old pairing. Close the WHOOP app, put the strap in pairing mode (tap until the LEDs flash blue), and if it is listed in your Bluetooth settings choose Forget This Device. Then tap Connect to try again.</string>
+
+    <!-- Strap rename outcome, shown as a toast from the Devices rename dialog -->
+    <string name="connect_rename_sent">Sent - your strap will reboot to apply, then reconnect with the new name.</string>
+    <string name="connect_rename_not_whoop4">Saved on this phone. Only a WHOOP 4.0 can take the name over Bluetooth.</string>
+    <string name="connect_rename_not_connected">Saved on this phone. Connect the strap to give it the same Bluetooth name.</string>
+    <string name="connect_rename_empty_name">Enter a name first.</string>
+
+    <!-- DataBackup - restore/import failures, shown in onboarding and Backup &amp; Sync -->
+    <string name="restore_error_cannot_open">Could not open the chosen file.</string>
+    <string name="restore_error_cannot_read">Could not read the chosen file: %1$s</string>
+    <string name="restore_error_not_a_backup">That file is not a NOOP backup.</string>
+    <string name="restore_error_not_a_backup_detail">That file is not a NOOP backup - it doesn\'t look like a .noopbak archive or a SQLite database.</string>
+    <string name="restore_error_no_db_in_archive">The backup archive doesn\'t contain a database file.</string>
+    <string name="restore_error_invalid_db">The backup archive doesn\'t contain a valid NOOP database.</string>
+    <string name="restore_error_foreign_app">This isn\'t a NOOP backup from this app. It\'s missing the database bookkeeping a NOOP backup carries (it looks like another app\'s database). Restoring it would strand your store.</string>
+    <string name="restore_error_no_store">Couldn\'t prepare a NOOP store on this device to bring the backup into. [no-store]</string>
+    <string name="restore_error_reconcile_failed">Couldn\'t bring this backup into NOOP\'s format: %1$s</string>
+    <string name="restore_error_migrate_no_store">The backup could not be migrated to the current NOOP schema and no store could be prepared to copy it into: %1$s [no-store]</string>
+    <string name="restore_error_reconcile_after_migrate">Couldn\'t bring this backup into NOOP\'s format: %1$s (after: %2$s) [row-copy]</string>
+    <string name="restore_error_damaged">This backup file is damaged and can\'t be restored (SQLite reports: %1$s). Your current data is untouched. Try an earlier backup file.</string>
+    <string name="restore_error_import_failed">Import failed, your data is unchanged: %1$s</string>
+</resources>

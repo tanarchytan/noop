@@ -1,5 +1,8 @@
 package com.noop.ble
 
+import android.content.Context
+import com.noop.R
+
 /**
  * Decides when a strap that keeps REFUSING the encrypted bond (INSUFFICIENT_AUTHENTICATION/_ENCRYPTION,
  * no genuine bond in between) has refused enough times that hammering it further is pointless. Pure so
@@ -63,8 +66,14 @@ class BondRefusalGiveUp(
                 "the strap in pairing mode, forget it in Bluetooth settings) then reconnect in NOOP."
 
         /**
-         * The honest user-facing hint shown when auto-reconnect pauses. Tells them why it stopped and how
-         * to get going again. Pure; no em-dash.
+         * The honest user-facing hint shown when auto-reconnect pauses, in the phone's language. Tells
+         * them why it stopped and how to get going again.
+         */
+        fun pausedHint(context: Context): String = context.getString(R.string.connect_paused_hint)
+
+        /**
+         * The same hint with no Context: the untranslated twin the pure fixtures read. Never rendered -
+         * [pausedHint] is what reaches the screen.
          */
         fun pausedHint(): String =
             "NOOP stopped retrying because your strap keeps refusing to pair. It is likely still held by the " +
