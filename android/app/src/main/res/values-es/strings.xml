@@ -110,4 +110,5 @@
     <string name="power_saving_hrv_pause_desc">Mientras el Ahorro de batería de Android está activo, detiene el flujo de HRV en segundo plano siempre activo (el mayor consumo en vivo). Al abrir una pantalla en vivo se sigue mostrando la frecuencia cardíaca, y se reactiva automáticamente cuando termina el Ahorro de batería.</string>
     <string name="common_cancel">Cancelar</string>
     <string name="common_today">Hoy</string>
+    <string name="deep_timeline_title">Cronología detallada</string>
 </resources>

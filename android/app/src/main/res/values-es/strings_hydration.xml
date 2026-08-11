@@ -17,4 +17,8 @@
     <string name="hydration_millilitres">Mililitros (ml)</string>
     <string name="hydration_custom_hint">Introduce cualquier cantidad de 1 a %1$d ml.</string>
     <string name="hydration_log">Registrar</string>
+    <string name="hydration_sip">Sorbo</string>
+    <string name="hydration_cup">Taza</string>
+    <string name="hydration_bottle">Botella</string>
+    <string name="hydration_container_sizes">Sorbo %1$d ml · Taza %2$d ml · Botella %3$d ml</string>
 </resources>

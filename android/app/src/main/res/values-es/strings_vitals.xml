@@ -301,4 +301,8 @@
     <string name="caffeine_intake_no_mg">%1$s · cantidad no registrada</string>
     <string name="caffeine_remove">Quitar</string>
 
+    <string name="mind_correlation_sentence">%1$s relación %2$s (n = %3$d).</string>
+    <string name="mind_dir_positive">positiva</string>
+    <string name="mind_dir_negative">negativa</string>
+    <string name="mind_dir_flat">plana</string>
 </resources>

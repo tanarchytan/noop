@@ -212,4 +212,5 @@
     <string name="about_source_github">Código en GitHub</string>
     <string name="about_source_github_a11y">Código del proyecto en GitHub, %1$s</string>
 
+    <string name="fused_winner_reason">NOOP muestra la lectura de %1$s porque %2$s para esta métrica: aquí es una fuente de mayor confianza, no un veredicto de que las demás se equivoquen.</string>
 </resources>
