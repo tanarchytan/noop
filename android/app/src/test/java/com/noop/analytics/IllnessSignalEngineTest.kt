@@ -26,7 +26,7 @@ class IllnessSignalEngineTest {
         assertEquals(3, r.signalCount)
         assertEquals(listOf("RHR +6", "skin temp +0.7 °C", "HRV −22%"), r.firedSignals)
         assertTrue(r.suppressedBy.isEmpty())
-        assertTrue(r.copy.contains("not a diagnosis"))
+        assertEquals(IllnessSignalEngine.Message.RAISED, r.message)
     }
 
     @Test fun alcoholTagSuppresses() {
@@ -36,12 +36,10 @@ class IllnessSignalEngineTest {
         val suppressed = IllnessSignalEngine.evaluate(
             inputs, IllnessSignalEngine.Context(alcohol = true), labels)
         assertEquals(IllnessSignalEngine.Level.SUPPRESSED, suppressed.level)
-        assertEquals(listOf("alcohol"), suppressed.suppressedBy)
+        assertEquals(listOf(IllnessSignalEngine.Confounder.ALCOHOL), suppressed.suppressedBy)
         assertTrue(suppressed.score < raised.score)
         assertEquals(raised.score * IllnessSignalEngine.confounderDampen, suppressed.score, 1e-9)
-        assertTrue(suppressed.copy.contains("alcohol"))
-        assertTrue(suppressed.copy.contains("not illness"))
-        assertTrue(suppressed.copy.contains("not a diagnosis"))
+        assertEquals(IllnessSignalEngine.Message.SUPPRESSED, suppressed.message)
     }
 
     @Test fun stressSaunaTravelEachDowngradeWithReason() {
@@ -49,15 +47,15 @@ class IllnessSignalEngineTest {
             restingHR = reading(3.2), skinTemp = reading(3.0), hrv = reading(3.5))
         val stress = IllnessSignalEngine.evaluate(inputs, IllnessSignalEngine.Context(stress = true), labels)
         assertEquals(IllnessSignalEngine.Level.SUPPRESSED, stress.level)
-        assertEquals(listOf("stress"), stress.suppressedBy)
+        assertEquals(listOf(IllnessSignalEngine.Confounder.STRESS), stress.suppressedBy)
 
         val sauna = IllnessSignalEngine.evaluate(inputs, IllnessSignalEngine.Context(sauna = true), labels)
-        assertEquals(listOf("sauna"), sauna.suppressedBy)
+        assertEquals(listOf(IllnessSignalEngine.Confounder.SAUNA), sauna.suppressedBy)
 
         val travel = IllnessSignalEngine.evaluate(
             inputs, IllnessSignalEngine.Context(travelPhaseJump = true), labels)
-        assertEquals(listOf("travel"), travel.suppressedBy)
-        assertTrue(travel.copy.contains("travel"))
+        assertEquals(listOf(IllnessSignalEngine.Confounder.TRAVEL), travel.suppressedBy)
+        assertEquals(IllnessSignalEngine.Message.SUPPRESSED, travel.message)
     }
 
     @Test fun multipleConfoundersJoinNaturally() {
@@ -65,19 +63,19 @@ class IllnessSignalEngineTest {
             restingHR = reading(3.2), skinTemp = reading(3.0), hrv = reading(3.5))
         val r = IllnessSignalEngine.evaluate(
             inputs, IllnessSignalEngine.Context(alcohol = true, stress = true), labels)
-        assertEquals(listOf("alcohol", "stress"), r.suppressedBy)
-        assertTrue(r.copy.contains("alcohol and stress"))
+        assertEquals(
+            listOf(IllnessSignalEngine.Confounder.ALCOHOL, IllnessSignalEngine.Confounder.STRESS),
+            r.suppressedBy,
+        )
     }
 
-    @Test fun alreadyUnwellSwitchesCopy() {
+    @Test fun alreadyUnwellSwitchesTheMessage() {
         val inputs = IllnessSignalEngine.Inputs(
             restingHR = reading(3.2), skinTemp = reading(3.0), hrv = reading(3.5))
         val r = IllnessSignalEngine.evaluate(
             inputs, IllnessSignalEngine.Context(alreadyUnwell = true), labels)
         assertEquals(IllnessSignalEngine.Level.ALREADY_UNWELL, r.level)
-        assertTrue(r.copy.contains("Rest up"))
-        assertTrue(r.copy.contains("numbers agree"))
-        assertFalse(r.copy.contains("Heads-up"))
+        assertEquals(IllnessSignalEngine.Message.UNWELL_AND_AGREES, r.message)
     }
 
     @Test fun singleSignalDoesNotRaise() {
@@ -93,7 +91,7 @@ class IllnessSignalEngineTest {
         val r = IllnessSignalEngine.evaluate(
             inputs, IllnessSignalEngine.Context(baselineTrusted = false), labels)
         assertEquals(IllnessSignalEngine.Level.QUIET, r.level)
-        assertFalse(r.copy.contains("Heads-up"))
+        assertEquals(IllnessSignalEngine.Message.LEARNING_BASELINE, r.message)
     }
 
     @Test fun belowThresholdSignalsAreMildNotRaised() {
@@ -112,20 +110,21 @@ class IllnessSignalEngineTest {
             hrv = reading(3.5))
         val r = IllnessSignalEngine.evaluate(inputs, IllnessSignalEngine.Context(), labels)
         assertEquals(2, r.signalCount)
-        assertFalse(r.firedSignals.contains("skin temp +0.7 °C"))
+        assertFalse(r.firedKeys.contains(IllnessSignalEngine.SignalKey.SKIN_TEMP))
     }
 
-    @Test fun copyNeverNamesACondition() {
+    @Test fun eachContextResolvesToItsOwnMessage() {
+        // The wording lives in the UI, so what is pinned here is WHICH read fires: the engine may
+        // never reach for a message that names a condition, because no such message exists.
         val inputs = IllnessSignalEngine.Inputs(
             restingHR = reading(3.2), skinTemp = reading(3.0), hrv = reading(3.5))
-        val banned = listOf("covid", "flu", "fever", "infection", "sick with", "illness with", "disease")
-        val ctxs = listOf(
-            IllnessSignalEngine.Context(),
-            IllnessSignalEngine.Context(alcohol = true),
-            IllnessSignalEngine.Context(alreadyUnwell = true))
-        for (ctx in ctxs) {
-            val copy = IllnessSignalEngine.evaluate(inputs, ctx, labels).copy.lowercase()
-            for (b in banned) assertFalse("copy contained $b: $copy", copy.contains(b))
+        val expected = listOf(
+            IllnessSignalEngine.Context() to IllnessSignalEngine.Message.RAISED,
+            IllnessSignalEngine.Context(alcohol = true) to IllnessSignalEngine.Message.SUPPRESSED,
+            IllnessSignalEngine.Context(alreadyUnwell = true) to IllnessSignalEngine.Message.UNWELL_AND_AGREES,
+        )
+        for ((ctx, message) in expected) {
+            assertEquals(message, IllnessSignalEngine.evaluate(inputs, ctx, labels).message)
         }
     }
 

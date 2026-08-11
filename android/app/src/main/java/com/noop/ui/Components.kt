@@ -83,6 +83,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -216,10 +217,10 @@ fun SyncingHistoryNote(chunks: Int, modifier: Modifier = Modifier) {
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(Metrics.space10),
     ) {
-        StatePill("Syncing strap history…", tone = StrandTone.Accent, pulsing = true)
+        StatePill(stringResource(R.string.uicore_syncing_history), tone = StrandTone.Accent, pulsing = true)
         if (chunks > 0) {
             Text(
-                "$chunks chunks pulled",
+                pluralStringResource(R.plurals.uicore_chunks_pulled, chunks, chunks),
                 style = NoopType.footnote,
                 color = Palette.textSecondary,
             )
@@ -1604,10 +1605,11 @@ fun DayPagerBar(
     canGoPrevious: Boolean = true,
     canGoNext: Boolean = true,
     overline: String? = null,
-    previousLabel: String = "Previous day",
-    nextLabel: String = "Next day",
+    previousLabel: String = stringResource(R.string.uicore_previous_day),
+    nextLabel: String = stringResource(R.string.uicore_next_day),
     onLabelClick: (() -> Unit)? = null,
 ) {
+    val pickADay = stringResource(R.string.uicore_pick_a_day)
     Row(
         modifier = modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
@@ -1625,7 +1627,7 @@ fun DayPagerBar(
                 .clip(RoundedCornerShape(Metrics.cornerSm))
                 .then(
                     if (onLabelClick != null) {
-                        Modifier.clickable(onClickLabel = "Pick a day", onClick = onLabelClick)
+                        Modifier.clickable(onClickLabel = pickADay, onClick = onLabelClick)
                     } else {
                         Modifier
                     },

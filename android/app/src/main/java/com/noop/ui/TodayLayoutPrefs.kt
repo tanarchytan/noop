@@ -1,6 +1,7 @@
 package com.noop.ui
 
 import android.content.Context
+import androidx.annotation.StringRes
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.DirectionsRun
 import androidx.compose.material.icons.automirrored.filled.DirectionsWalk
@@ -16,6 +17,7 @@ import androidx.compose.material.icons.filled.MonitorHeart
 import androidx.compose.material.icons.filled.Thermostat
 import androidx.compose.material.icons.filled.WaterDrop
 import androidx.compose.ui.graphics.vector.ImageVector
+import com.noop.R
 import org.json.JSONArray
 
 // MARK: - What the Today screen shows, and in what order
@@ -45,19 +47,21 @@ import org.json.JSONArray
 
 /**
  * One of the Today screen's Key-Metric tiles. The [raw] is the stable persisted identifier — changing
- * one drops that tile from every saved layout on read, so treat the strings as frozen.
+ * one drops that tile from every saved layout on read, so treat the strings as frozen. [titleRes] is
+ * the drawn name, resolved at the render site; Charge / Effort / Rest are NOOP's own vocabulary and
+ * their resources carry the same word in every language.
  */
-enum class KeyMetric(val raw: String, val title: String) {
-    CHARGE("charge", "Charge"),
-    EFFORT("effort", "Effort"),
-    REST("rest", "Rest"),
-    HRV("hrv", "HRV"),
-    RESTING_HR("restingHr", "Resting HR"),
-    BLOOD_OXYGEN("bloodOxygen", "SpO₂"),
-    RESPIRATORY("respiratory", "Respiratory"),
-    STEPS("steps", "Steps"),
-    WEIGHT("weight", "Weight"),
-    CALORIES("calories", "Calories");
+enum class KeyMetric(val raw: String, @StringRes val titleRes: Int) {
+    CHARGE("charge", R.string.trends_charge),
+    EFFORT("effort", R.string.trends_effort),
+    REST("rest", R.string.trends_rest),
+    HRV("hrv", R.string.today_metric_hrv),
+    RESTING_HR("restingHr", R.string.today_metric_resting_hr),
+    BLOOD_OXYGEN("bloodOxygen", R.string.trends2_metric_spo2),
+    RESPIRATORY("respiratory", R.string.today_metric_respiratory),
+    STEPS("steps", R.string.today_metric_steps),
+    WEIGHT("weight", R.string.today_metric_weight),
+    CALORIES("calories", R.string.today_metric_calories);
 
     companion object {
         fun fromRaw(raw: String?): KeyMetric? = entries.firstOrNull { it.raw == raw }
@@ -121,34 +125,40 @@ object KeyMetricPrefs {
 /**
  * One available card in the "Your cards" dashboard. The [raw] is the stable persisted identifier —
  * changing one drops that card from every saved dashboard on read, so treat the strings as frozen.
- * [title] / [subtitle] / [unit] are the display strings; [icon] is the closest match in the bundled
- * Material icon set.
+ * [titleRes] is the drawn name, resolved at the render site; [subtitle] / [unit] are display strings
+ * and [icon] is the closest match in the bundled Material icon set.
  */
 enum class DashboardCard(
     val raw: String,
-    val title: String,
+    @StringRes val titleRes: Int,
     val subtitle: String,
     val unit: String,
     val icon: ImageVector,
 ) {
-    HRV("hrv", "HRV", "Heart-rate variability", "ms", Icons.Filled.MonitorHeart),
-    RESTING_HR("restingHr", "Resting HR", "Resting heart rate", "bpm", Icons.Filled.Favorite),
-    RESPIRATORY("respiratory", "Respiratory", "Breaths per minute", "rpm", Icons.Filled.Air),
-    STEPS("steps", "Steps", "Today", "", Icons.AutoMirrored.Filled.DirectionsWalk),
-    STRESS("stress", "Stress", "Autonomic load", "", Icons.Filled.Bolt),
-    FITNESS_AGE("fitnessAge", "Fitness Age", "Updated weekly", "yrs", Icons.AutoMirrored.Filled.DirectionsRun),
-    VITALITY("vitality", "Vitality", "Wellness score", "", Icons.Filled.AutoAwesome),
-    BLOOD_OXYGEN("bloodOxygen", "SpO₂", "Blood oxygen saturation", "", Icons.Filled.WaterDrop),
-    SKIN_TEMP("skinTemp", "Skin Temp", "Skin temperature", "", Icons.Filled.Thermostat),
-    SLEEP("sleep", "Sleep", "Last night", "", Icons.Filled.Bedtime),
-    CALORIES("calories", "Calories", "Active energy", "kcal", Icons.Filled.LocalFireDepartment),
-    HYDRATION("hydration", "Hydration", "Today's fluid", "", Icons.Filled.LocalDrink),
+    HRV("hrv", R.string.today_metric_hrv, "Heart-rate variability", "ms", Icons.Filled.MonitorHeart),
+    RESTING_HR("restingHr", R.string.today_metric_resting_hr, "Resting heart rate", "bpm", Icons.Filled.Favorite),
+    RESPIRATORY("respiratory", R.string.today_metric_respiratory, "Breaths per minute", "rpm", Icons.Filled.Air),
+    STEPS("steps", R.string.today_metric_steps, "Today", "", Icons.AutoMirrored.Filled.DirectionsWalk),
+    STRESS("stress", R.string.nav_stress, "Autonomic load", "", Icons.Filled.Bolt),
+    FITNESS_AGE(
+        "fitnessAge", R.string.vitals_metric_fitness_age, "Updated weekly", "yrs",
+        Icons.AutoMirrored.Filled.DirectionsRun,
+    ),
+    VITALITY("vitality", R.string.vitals_metric_vitality, "Wellness score", "", Icons.Filled.AutoAwesome),
+    BLOOD_OXYGEN("bloodOxygen", R.string.trends2_metric_spo2, "Blood oxygen saturation", "", Icons.Filled.WaterDrop),
+    SKIN_TEMP("skinTemp", R.string.trends2_timeline_skin_temp, "Skin temperature", "", Icons.Filled.Thermostat),
+    SLEEP("sleep", R.string.today_metric_sleep, "Last night", "", Icons.Filled.Bedtime),
+    CALORIES("calories", R.string.today_metric_calories, "Active energy", "kcal", Icons.Filled.LocalFireDepartment),
+    HYDRATION("hydration", R.string.hydration_title, "Today's fluid", "", Icons.Filled.LocalDrink),
 
     // Optional, default-OFF: a tap-through to the Coupled view (the WHOOP-style day read). Unlike
     // every other card it carries NO metric value of its own, it is a navigation row that opens the full
     // CoupledScreen. It is NOT in [defaultSelection], so a fresh install never shows it until the user
     // adds it via CUSTOMISE.
-    COUPLED("coupled", "Coupled view", "Recovery, strain and sleep in one glance", "", Icons.Filled.Hexagon);
+    COUPLED(
+        "coupled", R.string.nav_coupled_view, "Recovery, strain and sleep in one glance", "",
+        Icons.Filled.Hexagon,
+    );
 
     companion object {
         fun fromRaw(raw: String?): DashboardCard? = entries.firstOrNull { it.raw == raw }

@@ -19,28 +19,28 @@ class DisplayedSplitsSumTest {
         return parts.sumOf { (it / total * 100.0).roundToInt() }
     }
 
-    /** The percentages the spoken summary actually says, in the order it says them. */
+    /** The percentages the spoken summary carries, in the order it says them. */
     private fun spoken(vararg stages: Pair<String, Float>): List<Int> =
-        Regex("(\\d+) percent").findAll(hypnogramSummary(stages.toList()))
-            .map { it.groupValues[1].toInt() }
-            .toList()
+        hypnogramShares(stages.toList()).map { it.second }
 
     // ── the hypnogram summary ────────────────────────────────────────────────
+    // An EMPTY share list is what the screen reads as "Sleep stages, no data"; the wording itself is a
+    // resource, so what is pinned here is that the night yields nothing to speak.
 
     @Test
     fun aNightWithNoStagesIsSpokenAsNoDataRatherThanAsAHundred() {
-        assertEquals("Sleep stages, no data", hypnogramSummary(emptyList()))
-        assertEquals(
-            "Sleep stages, no data",
-            hypnogramSummary(listOf("deep" to 0f, "rem" to 0f, "light" to 0f, "awake" to 0f)),
+        assertTrue(hypnogramShares(emptyList()).isEmpty())
+        assertTrue(
+            hypnogramShares(listOf("deep" to 0f, "rem" to 0f, "light" to 0f, "awake" to 0f)).isEmpty(),
         )
     }
 
     @Test
     fun aNightOfNonFiniteWeightsIsSpokenAsNoDataRatherThanAsAHundred() {
-        assertEquals(
-            "Sleep stages, no data",
-            hypnogramSummary(listOf("deep" to Float.NaN, "rem" to -3f, "light" to Float.POSITIVE_INFINITY)),
+        assertTrue(
+            hypnogramShares(
+                listOf("deep" to Float.NaN, "rem" to -3f, "light" to Float.POSITIVE_INFINITY),
+            ).isEmpty(),
         )
     }
 
@@ -62,9 +62,9 @@ class DisplayedSplitsSumTest {
 
     @Test
     fun aStageWithNoMinutesIsLeftUnspokenRatherThanAnnouncedAsZero() {
-        val said = hypnogramSummary(listOf("deep" to 71f, "rem" to 71f, "light" to 71f, "awake" to 0f))
-        assertTrue(said, !said.contains("Awake"))
-        assertEquals(100, spoken("deep" to 71f, "rem" to 71f, "light" to 71f, "awake" to 0f).sum())
+        val said = hypnogramShares(listOf("deep" to 71f, "rem" to 71f, "light" to 71f, "awake" to 0f))
+        assertTrue("$said", said.none { it.first == "awake" })
+        assertEquals(100, said.sumOf { it.second })
     }
 
     @Test

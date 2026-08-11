@@ -90,7 +90,7 @@ internal fun MetricGrid(
         KeyMetric.CHARGE to run {
             val v = d?.recovery ?: lastScoredCharge?.value
             KeyTileData(
-                label = KeyMetric.CHARGE.title,
+                label = stringResource(KeyMetric.CHARGE.titleRes),
                 value = d?.recovery?.let { "${it.roundToInt()}" }
                     ?: recoveryCalibration?.let { "$it/${Baselines.minNightsSeed}" }
                     ?: lastScoredCharge?.let { "${it.value.roundToInt()}" } ?: NO_DATA,
@@ -100,14 +100,14 @@ internal fun MetricGrid(
             )
         },
         KeyMetric.EFFORT to KeyTileData(
-            label = KeyMetric.EFFORT.title,
+            label = stringResource(KeyMetric.EFFORT.titleRes),
             value = d?.strain?.let { UnitFormatter.effortDisplay(it, effortScale) } ?: NO_DATA,
             unit = "", // Strain is a 0–21 load index, not a percentage
             tint = d?.strain?.let { Palette.effortTint(it / StrainScorer.maxStrain) } ?: Palette.effortColor,
             frac = d?.strain?.let { (it / 100.0).coerceIn(0.0, 1.0) },
         ),
         KeyMetric.REST to KeyTileData(
-            label = KeyMetric.REST.title,
+            label = stringResource(KeyMetric.REST.titleRes),
             value = restScore?.let { "${it.roundToInt()}" } ?: NO_DATA,
             unit = if (restScore != null) "%" else "",
             tint = restScore?.let { Palette.recoveryColor(it) } ?: Palette.restColor,
@@ -612,6 +612,7 @@ internal fun IllnessBanner(message: String) {
 
 // MARK: - Derived text (ported from TodayView.swift)
 
+@Composable
 internal fun sleepValue(d: DailyMetric?): String {
     val m = d?.totalSleepMin ?: return NO_DATA
     val total = m.roundToInt()
@@ -732,7 +733,9 @@ private fun intString(v: Double): String {
     return if (kotlin.math.abs(n) >= 1000) String.format(Locale.US, "%,d", n) else "$n"
 }
 
-internal const val NO_DATA = "No Data"
+/** The placeholder a tile prints when the day carries no reading for it. */
+internal val NO_DATA: String
+    @Composable get() = stringResource(R.string.uicore_no_data)
 
 /** The dashboard-card placeholder for a baseline-relative metric (Stress) that is still seeding its window,  *  an honest "building your baseline" state rather than a bare dash. Rendered dimmed like NO_DATA. */
 internal const val STRESS_CALIBRATING = "Calibrating"
@@ -758,6 +761,7 @@ internal fun batteryPillTone(pct: Int): StrandTone = when {
     else -> StrandTone.Positive
 }
 
+@Composable
 internal fun workoutDuration(row: WorkoutRow): String {
     val seconds = row.durationS ?: (row.endTs - row.startTs).coerceAtLeast(0L).toDouble()
     if (seconds <= 0.0) return NO_DATA

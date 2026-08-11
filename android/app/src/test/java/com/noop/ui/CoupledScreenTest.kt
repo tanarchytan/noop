@@ -32,8 +32,9 @@ class CoupledScreenTest {
     }
 
     @Test fun optimalRange_noRecovery_isNoData() {
+        // No band to name: the screen substitutes the shared no-data resource.
         assertNull(optimalStrainRange(null))
-        assertEquals("No Data", optimalStrainRangeText(null))
+        assertNull(optimalStrainRangeText(null))
     }
 
     @Test fun optimalRange_bands_matchTheStruct() {

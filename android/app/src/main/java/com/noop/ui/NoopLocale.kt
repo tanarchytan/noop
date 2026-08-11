@@ -2,6 +2,8 @@ package com.noop.ui
 
 import android.content.Context
 import android.content.res.Configuration
+import androidx.annotation.StringRes
+import com.noop.R
 import java.util.Locale
 
 /**
@@ -23,9 +25,9 @@ object NoopLocale {
      * to German still picks it up through the system, which is where a partial locale belongs.
      */
     val SUPPORTED: List<Option> = listOf(
-        Option(null, "System default"),
-        Option("en", "English"),
-        Option("es", "Español"),
+        Option(null, R.string.language_system_default),
+        Option("en", R.string.uicore_language_english),
+        Option("es", R.string.uicore_language_spanish),
     )
 
     /**
@@ -35,8 +37,9 @@ object NoopLocale {
      */
     private val TRANSLATED = setOf("en", "de", "es")
 
-    /** One selectable language: its BCP-47 tag and the name shown for it. */
-    data class Option(val tag: String?, val label: String)
+    /** One selectable language: its BCP-47 tag and the name shown for it. A language name is an
+     *  endonym, so [labelRes] carries the same word in every locale. */
+    data class Option(val tag: String?, @StringRes val labelRes: Int)
 
     /** The stored tag, or null when following the system. */
     fun tag(context: Context): String? =

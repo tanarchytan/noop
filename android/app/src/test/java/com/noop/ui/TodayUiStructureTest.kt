@@ -59,7 +59,7 @@ class TodayUiStructureTest {
                 "batteryPillTone", "workoutDuration", "workoutCaption", "grouped",
             ),
             "TodayHeartRate.kt" to setOf(
-                "HrWindow", "hrWindowKeeps", "HrWindowPills", "HeartRateTrendCard", "HrTimeAxisLabels",
+                "HrWindow", "hrWindowKeeps", "label", "HrWindowPills", "HeartRateTrendCard", "HrTimeAxisLabels",
                 "hrChartTransformGestures", "HR_MARKER_LANE", "HR_MARKER_MAX_LANES",
                 "OverviewHRChart", "hrHoursMinutes", "hrPeakIn", "HrMarker",
                 "HrMarkerPills", "glyphOffset",

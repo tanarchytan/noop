@@ -1,5 +1,6 @@
 package com.noop.ui
 
+import androidx.annotation.StringRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -559,7 +560,12 @@ internal fun AlarmWeekdayPicker(selected: Set<Int>, onToggle: (Int) -> Unit) {
                 }
             }
         }
-        Text(smartAlarmWeekdaySummary(selected), style = NoopType.caption, color = Palette.textTertiary)
+        Text(
+            smartAlarmWeekdaySummaryRes(selected)?.let { stringResource(it) }
+                ?: smartAlarmWeekdayList(selected),
+            style = NoopType.caption,
+            color = Palette.textTertiary,
+        )
     }
 }
 
@@ -584,14 +590,19 @@ internal fun toggledSmartAlarmWeekday(dow: Int, days: Set<Int>): Set<Int> {
     return if (next.size == 7) emptySet() else next
 }
 
-/** Human-readable summary of the selection. Pure for tests. */
-internal fun smartAlarmWeekdaySummary(days: Set<Int>): String = when {
-    days.isEmpty() || days.size == 7 -> "Every day"
-    days == setOf(2, 3, 4, 5, 6) -> "Weekdays"
-    days == setOf(1, 7) -> "Weekends"
-    else -> SMART_ALARM_WEEKDAY_ORDER.filter { days.contains(it) }
-        .joinToString(", ") { smartAlarmWeekdayName(it) }
+/** The whole-set shorthand for a selection, or null when it has none and the days are listed. Pure. */
+@StringRes
+internal fun smartAlarmWeekdaySummaryRes(days: Set<Int>): Int? = when {
+    days.isEmpty() || days.size == 7 -> R.string.uicore_every_day
+    days == setOf(2, 3, 4, 5, 6) -> R.string.uicore_weekdays
+    days == setOf(1, 7) -> R.string.uicore_weekends
+    else -> null
 }
+
+/** The selected days named in week order, for a selection with no shorthand. Pure. */
+internal fun smartAlarmWeekdayList(days: Set<Int>): String =
+    SMART_ALARM_WEEKDAY_ORDER.filter { days.contains(it) }
+        .joinToString(", ") { smartAlarmWeekdayName(it) }
 
 private fun smartAlarmWeekdayInitial(dow: Int): String = when (dow) {
     1 -> "S"; 2 -> "M"; 3 -> "T"; 4 -> "W"; 5 -> "T"; 6 -> "F"; 7 -> "S"; else -> "?"

@@ -59,7 +59,7 @@ internal fun WhoopDashboardCard(
             add(
                 WhoopDashboardRow(
                     icon = card.icon,
-                    label = card.title,
+                    label = stringResource(card.titleRes),
                     value = dashboardValue(card, state),
                     comparison = dashboardComparison(card, state.previousDay),
                     onClick = dashboardDestination(card, onOpenMetric, onOpenStress, onOpenSleep),
@@ -124,6 +124,7 @@ private val RENDERED_CARDS: Set<DashboardCard> = setOf(
 )
 
 /** Append the card's unit to an already-formatted figure; a missing figure stays the honest dash. */
+@Composable
 private fun withUnit(card: DashboardCard, formatted: String?): String = when {
     formatted == null -> NO_DATA
     card.unit.isEmpty() -> formatted
@@ -134,6 +135,7 @@ private fun withUnit(card: DashboardCard, formatted: String?): String = when {
  * The card's current value. The overnight vitals read per-field today-first with the recovery-independent
  * carry behind them, so a night whose recovery was nulled still shows its own preserved figure.
  */
+@Composable
 private fun dashboardValue(card: DashboardCard, s: WhoopHomeState): String {
     val carried = s.carriedDay ?: s.metric
     return when (card) {
@@ -171,6 +173,7 @@ private fun dashboardValue(card: DashboardCard, s: WhoopHomeState): String {
  * The grey line beneath the value: the PREVIOUS banked day's own reading for the same metric, stamped
  * with its date. It is never a difference — no delta is computed on this side of the border.
  */
+@Composable
 private fun dashboardComparison(card: DashboardCard, previous: DailyMetric?): String? {
     val prev = previous ?: return null
     val figure = when (card) {

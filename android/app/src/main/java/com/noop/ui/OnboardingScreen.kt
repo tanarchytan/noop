@@ -896,7 +896,7 @@ private fun AppearanceStep() {
                         SegmentedPillControl(
                             items = listOf(AppearanceMode.SYSTEM, AppearanceMode.LIGHT, AppearanceMode.DARK),
                             selection = mode,
-                            label = { it.label },
+                            label = { context.getString(it.labelRes) },
                             onSelect = {
                                 mode = it
                                 // Persist + flip live — the rest of the onboarding (and the app) re-themes

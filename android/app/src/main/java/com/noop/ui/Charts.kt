@@ -1,5 +1,6 @@
 package com.noop.ui
 
+import androidx.annotation.StringRes
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -87,13 +88,12 @@ private fun seriesSummary(values: List<Double>, noun: String): String {
 }
 
 /**
- * The hypnogram's spoken summary: each stage's share of the night as a whole percentage. whoop-rs
- * apportions the four shares so they sum to exactly 100, and yields nothing for a night with no
- * minutes — so the summary never speaks a total the night never had. A stage with no minutes is left
- * unspoken rather than announced as zero.
+ * Each stage's share of the night as a whole percentage, in speaking order and keyed by stage. whoop-rs
+ * apportions the four shares so they sum to exactly 100, and yields nothing for a night with no minutes,
+ * which comes back EMPTY — so the summary never speaks a total the night never had. A stage with no
+ * minutes is dropped rather than reported as zero. Pure + unit-tested.
  */
-internal fun hypnogramSummary(stages: List<Pair<String, Float>>): String {
-    val noData = "Sleep stages, no data"
+internal fun hypnogramShares(stages: List<Pair<String, Float>>): List<Pair<String, Int>> {
     val order = listOf("deep", "rem", "light", "awake")
     val byStage = LinkedHashMap<String, Float>()
     for (key in order) byStage[key] = 0f
@@ -104,14 +104,31 @@ internal fun hypnogramSummary(stages: List<Pair<String, Float>>): String {
         }
         byStage[key] = (byStage[key] ?: 0f) + v
     }
-    val split = RustScores.wholePercentages(order.map { (byStage[it] ?: 0f).toDouble() }) ?: return noData
-    val parts = order.mapIndexedNotNull { i, key ->
-        if ((byStage[key] ?: 0f) <= 0f) null else {
-            val label = if (key == "rem") "REM" else key.replaceFirstChar { it.uppercase() }
-            "${split[i]} percent $label"
-        }
+    val split = RustScores.wholePercentages(order.map { (byStage[it] ?: 0f).toDouble() }) ?: return emptyList()
+    return order.mapIndexedNotNull { i, key ->
+        if ((byStage[key] ?: 0f) <= 0f) null else key to split[i]
     }
-    return if (parts.isEmpty()) noData else "Sleep stages, " + parts.joinToString(", ")
+}
+
+/** The stage name a share is spoken under. */
+@StringRes
+private fun hypnogramStageRes(key: String): Int = when (key) {
+    "deep" -> R.string.sleep_stage_deep
+    "rem" -> R.string.sleep_stage_rem
+    "awake" -> R.string.sleep_stage_awake
+    else -> R.string.sleep_stage_light
+}
+
+/** The hypnogram's spoken summary: the shares [hypnogramShares] found, each named and read as a percent. */
+@Composable
+internal fun hypnogramSummary(stages: List<Pair<String, Float>>): String {
+    val shares = hypnogramShares(stages)
+    if (shares.isEmpty()) return stringResource(R.string.uicore_hypnogram_no_data)
+    // `map` is inline, so the resource reads stay in composable scope; joinToString is not.
+    val parts = shares.map { (key, pct) ->
+        stringResource(R.string.uicore_hypnogram_share, pct, stringResource(hypnogramStageRes(key)))
+    }
+    return stringResource(R.string.uicore_hypnogram_summary, parts.joinToString(", "))
 }
 
 // MARK: - Shared geometry helpers

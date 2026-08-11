@@ -1,5 +1,6 @@
 package com.noop.ui.whoop
 
+import androidx.annotation.StringRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -286,12 +287,23 @@ private fun StressMonitorSummaryCard(score: Double?, read: DaytimeStress.Result?
 }
 
 /**
- * The line under the day's score: the high-stress total once an hour has been scored, else what the
- * hour-by-hour read is still short of. PURE.
+ * Which line goes under the day's score: the high-stress total once an hour has been scored, else what
+ * the hour-by-hour read is still short of. PURE.
  */
-internal fun stressHoursCaption(scoredHours: Int, highMinutes: Long?): String = when {
-    scoredHours >= 2 && highMinutes != null -> "${durationText(highMinutes.toDouble())} high stress today"
-    else -> "Hour-by-hour detail needs more scored hours"
+@StringRes
+internal fun stressHoursCaptionRes(scoredHours: Int, highMinutes: Long?): Int =
+    if (scoredHours >= 2 && highMinutes != null) {
+        R.string.uicore_stress_high_today
+    } else {
+        R.string.uicore_stress_needs_more_hours
+    }
+
+/** That line as drawn; the high-stress form carries the total, the other stands alone. */
+@Composable
+internal fun stressHoursCaption(scoredHours: Int, highMinutes: Long?): String {
+    val res = stressHoursCaptionRes(scoredHours, highMinutes)
+    if (res != R.string.uicore_stress_high_today || highMinutes == null) return stringResource(res)
+    return stringResource(res, durationText(highMinutes.toDouble()))
 }
 
 // MARK: - Notice

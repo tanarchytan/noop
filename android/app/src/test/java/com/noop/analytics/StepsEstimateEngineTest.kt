@@ -111,7 +111,7 @@ class StepsEstimateEngineTest {
         assertEquals(2, status.have)
         assertEquals(3, status.need)
         assertTrue(!status.canEstimate)
-        assertEquals("Need 1 more day where your phone also counted steps", status.headline)
+        assertEquals(1, status.stillNeeded)
     }
 
     @Test fun statusCalibratedOnceEnoughDays() {
@@ -123,7 +123,6 @@ class StepsEstimateEngineTest {
         assertEquals(3, status.sampleDays)
         assertTrue(status.confidence > 0)
         assertTrue(status.canEstimate)
-        assertEquals("Estimated from 3 days your phone also counted", status.headline)
     }
 
     @Test fun statusManualOverrideWinsEvenWithNoDays() {
@@ -133,7 +132,6 @@ class StepsEstimateEngineTest {
         assertEquals(42.0, status.coefficient, 1e-9)
         assertEquals(0, status.sampleDays)
         assertTrue(status.canEstimate)
-        assertEquals("Calibrated by hand", status.headline)
     }
 
     // calibration STATUS surfaced on the tile (#760/#792 - k / days / confidence self-explain). Mirrors Swift.
@@ -147,30 +145,30 @@ class StepsEstimateEngineTest {
         assertEquals(StepsEstimateEngine.ConfidenceTier.HIGH, StepsEstimateEngine.ConfidenceTier.from(1.0))
     }
 
-    @Test fun statusDetailCalibratedSurfacesKDaysAndConfidence() {
+    @Test fun statusCalibratedCarriesKDaysAndConfidence() {
         val status = StepsEstimateEngine.CalibrationStatus.Calibrated(
             coefficient = 12.34, sampleDays = 6, confidence = 0.2,
         )
         assertEquals(StepsEstimateEngine.ConfidenceTier.LOW, status.confidenceTier)
         assertEquals(12.34, status.coefficientOrNull!!, 1e-9)
-        assertEquals("k=12.3 from 6 days, low confidence", status.detail)
+        assertEquals(6, status.sampleDays)
         val one = StepsEstimateEngine.CalibrationStatus.Calibrated(
             coefficient = 5.0, sampleDays = 1, confidence = 0.8,
         )
         assertEquals(StepsEstimateEngine.ConfidenceTier.HIGH, one.confidenceTier)
-        assertEquals("k=5.0 from 1 day, high confidence", one.detail)
+        assertEquals(1, one.sampleDays)
     }
 
-    @Test fun statusDetailManualAndNeedsMoreDays() {
+    @Test fun statusManualAndNeedsMoreDaysCarryTheirFigures() {
         val manual = StepsEstimateEngine.CalibrationStatus.Manual(coefficient = 9.5, sampleDays = 0)
         assertEquals(StepsEstimateEngine.ConfidenceTier.HIGH, manual.confidenceTier)
         assertEquals(9.5, manual.coefficientOrNull!!, 1e-9)
-        assertEquals("manual k=9.5", manual.detail)
         val needs = StepsEstimateEngine.CalibrationStatus.NeedsMoreDays(have = 1, need = 3)
         assertEquals(StepsEstimateEngine.ConfidenceTier.LOW, needs.confidenceTier)
         assertNull(needs.coefficientOrNull)
-        assertEquals("calibrating: 1/3 days", needs.detail)
+        assertEquals(2, needs.stillNeeded)
+        // More overlapping days than the floor still needs nothing more, never a negative countdown.
         val over = StepsEstimateEngine.CalibrationStatus.NeedsMoreDays(have = 9, need = 3)
-        assertEquals("calibrating: 3/3 days", over.detail)
+        assertEquals(0, over.stillNeeded)
     }
 }

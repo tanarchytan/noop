@@ -102,12 +102,13 @@ class CyclePhaseEngineTest {
         val lastDay = nights.last().day
         val badStart = CyclePhaseEngine.shiftDay(lastDay, -50)!!
         val r = CyclePhaseEngine.classify(nights, baselineUsable = true, loggedPeriodStarts = listOf(badStart))
-        assertTrue(r.note.lowercase().contains("logged"))
+        assertEquals(CyclePhaseEngine.Note.LOGGED_START_MAY_BE_OFF, r.noteKind)
     }
 
-    @Test fun noFertilityOrContraceptionLanguage() {
-        val banned = listOf("fertile", "fertility", "safe day", "safe days", "ovulation prediction",
-            "contracept", "conceive", "conception", "pregnan")
+    @Test fun everyNoteIsOneOfTheAwarenessOnlyReads() {
+        // The wording lives in the UI, so what is pinned here is WHICH note fires: no read in the
+        // enum can name a fertile window, a safe day or a conception outcome, because none exists.
+        val allowed = CyclePhaseEngine.Note.entries.toSet()
         val flat = (0 until 60).map {
             CyclePhaseEngine.Night(CyclePhaseEngine.shiftDay("2026-01-01", it)!!, 0.05, 0.0, 0.0)
         }
@@ -118,15 +119,9 @@ class CyclePhaseEngineTest {
             }
         }
         for (nights in listOf(biphasic(3), follicular, flat)) {
-            val note = CyclePhaseEngine.classify(nights, baselineUsable = true).note.lowercase()
-            for (b in banned) assertFalse("note contained $b: $note", note.contains(b))
+            val note = CyclePhaseEngine.classify(nights, baselineUsable = true).noteKind
+            assertTrue("unexpected note: $note", note in allowed)
         }
-        val awareness = CyclePhaseEngine.awarenessLine.lowercase()
-        for (b in banned) {
-            if (b == "contracept") continue
-            assertFalse(awareness.contains(b))
-        }
-        assertTrue(CyclePhaseEngine.awarenessLine.contains("not contraception"))
     }
 
     @Test fun fusedIndexNegatesHrvAndRenormalises() {

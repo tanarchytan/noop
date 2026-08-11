@@ -2,10 +2,12 @@ package com.noop.ui
 
 import android.content.Context
 import android.content.SharedPreferences
+import androidx.annotation.StringRes
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Color
+import com.noop.R
 
 // MARK: - PaletteTokens — the per-scheme colour set behind `object Palette`
 //
@@ -176,10 +178,11 @@ val LightTokens = PaletteTokens(
 
 // MARK: - Appearance preference (System / Light / Dark)
 
-enum class AppearanceMode(val storageValue: String, val label: String) {
-    SYSTEM("system", "System"),
-    LIGHT("light", "Light"),
-    DARK("dark", "Dark");
+/** [storageValue] is the persisted identifier; [labelRes] is the pill caption, resolved when drawn. */
+enum class AppearanceMode(val storageValue: String, @StringRes val labelRes: Int) {
+    SYSTEM("system", R.string.uicore_theme_system),
+    LIGHT("light", R.string.onboarding_theme_light),
+    DARK("dark", R.string.onboarding_theme_dark);
 
     companion object {
         fun fromStorage(raw: String?): AppearanceMode =

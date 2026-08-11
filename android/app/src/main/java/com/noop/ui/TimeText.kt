@@ -1,5 +1,9 @@
 package com.noop.ui
 
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
+import com.noop.R
 import java.time.LocalDate
 
 // MARK: - Time text
@@ -10,19 +14,38 @@ import java.time.LocalDate
 // the decision drifting into it. Clocks are injectable so both are pinned by JVM tests
 // (RelativeAgoTest, DayLabelTest).
 
+/** The coarse bucket a gap falls into; [relativeAgoBucket] picks it, the resources word it. */
+internal enum class AgoUnit { NOW, MINUTES, HOURS, DAYS }
+
 /**
- * Coarse relative-time label for the "History synced N ago" sync-status line. Pure + unit-tested
- * (RelativeAgoTest); [nowSec] is injectable for determinism. Buckets to just-now / min / h / d.
- * Used by DevicesScreen and UpdatesInboxScreen. (Lived in the old LiveScreen.kt until the Live/Health
- * fold; split out here as a standalone helper since it has nothing to do with live physiology.)
+ * The bucket a gap falls into and the count inside it: just-now / min / h / d. Pure + unit-tested
+ * (RelativeAgoTest); [nowSec] is injectable for determinism, and a future timestamp clamps to NOW.
  */
-internal fun relativeAgo(epochSec: Long, nowSec: Long = System.currentTimeMillis() / 1000L): String {
+internal fun relativeAgoBucket(
+    epochSec: Long,
+    nowSec: Long = System.currentTimeMillis() / 1000L,
+): Pair<AgoUnit, Int> {
     val d = (nowSec - epochSec).coerceAtLeast(0)
     return when {
-        d < 60L -> "just now"
-        d < 3600L -> "${d / 60L} min ago"
-        d < 86_400L -> "${d / 3600L} h ago"
-        else -> "${d / 86_400L} d ago"
+        d < 60L -> AgoUnit.NOW to 0
+        d < 3600L -> AgoUnit.MINUTES to (d / 60L).toInt()
+        d < 86_400L -> AgoUnit.HOURS to (d / 3600L).toInt()
+        else -> AgoUnit.DAYS to (d / 86_400L).toInt()
+    }
+}
+
+/**
+ * Coarse relative-time label for the "History synced N ago" sync-status line. Words the bucket
+ * [relativeAgoBucket] picked. Used by DevicesScreen and UpdatesInboxScreen.
+ */
+@Composable
+internal fun relativeAgo(epochSec: Long, nowSec: Long = System.currentTimeMillis() / 1000L): String {
+    val (unit, n) = relativeAgoBucket(epochSec, nowSec)
+    return when (unit) {
+        AgoUnit.NOW -> stringResource(R.string.uicore_ago_just_now)
+        AgoUnit.MINUTES -> pluralStringResource(R.plurals.uicore_ago_minutes, n, n)
+        AgoUnit.HOURS -> pluralStringResource(R.plurals.uicore_ago_hours, n, n)
+        AgoUnit.DAYS -> pluralStringResource(R.plurals.uicore_ago_days, n, n)
     }
 }
 

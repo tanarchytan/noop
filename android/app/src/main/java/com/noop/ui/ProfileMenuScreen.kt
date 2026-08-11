@@ -496,7 +496,7 @@ fun ProfileMenuScreen(vm: AppViewModel) {
                 NoopLocale.SUPPORTED.forEachIndexed { index, option ->
                     if (index > 0) RowDivider()
                     LanguageRow(
-                        label = option.label,
+                        label = stringResource(option.labelRes),
                         selected = option.tag == currentTag,
                         onSelect = {
                             if (option.tag != currentTag) {

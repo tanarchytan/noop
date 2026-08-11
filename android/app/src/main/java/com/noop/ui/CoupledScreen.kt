@@ -67,9 +67,6 @@ import kotlin.math.roundToInt
 /** The 0-21 Day-Strain axis the coupled read always uses, regardless of the user's display toggle. */
 private const val COUPLED_STRAIN_OUT_OF = 21.0
 
-/** The missing-value placeholder, matching the app's shipped "No Data" token. */
-private const val COUPLED_NO_DATA = "No Data"
-
 /** The Charge hero ring. */
 private val HERO_RING_DIAMETER: Dp = 232.dp
 
@@ -274,7 +271,11 @@ private fun HeroCard(
                     modifier = Modifier.alpha(if (isCarrying) 0.8f else 1f),
                 )
                 if (recovery == null) {
-                    Text(COUPLED_NO_DATA, style = NoopType.headline, color = Palette.textSecondary)
+                    Text(
+                        stringResource(R.string.uicore_no_data),
+                        style = NoopType.headline,
+                        color = Palette.textSecondary,
+                    )
                 }
             }
             HeroLabels(recovery = recovery, readinessLevel = readinessLevel)
@@ -382,15 +383,20 @@ private fun StrainCard(dayStrain21: Double?, recovery: Double?, calories: Double
                 modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.spacedBy(Metrics.space14),
             ) {
+                val noData = stringResource(R.string.uicore_no_data)
                 HeroStat(
                     stringResource(R.string.coupled_day_strain),
-                    dayStrain21?.let { String.format(Locale.US, "%.1f", it) } ?: COUPLED_NO_DATA,
+                    dayStrain21?.let { String.format(Locale.US, "%.1f", it) } ?: noData,
                     Palette.effortColor,
                 )
-                HeroStat(stringResource(R.string.coupled_optimal), optimalStrainRangeText(recovery), Palette.chargeColor)
+                HeroStat(
+                    stringResource(R.string.coupled_optimal),
+                    optimalStrainRangeText(recovery) ?: noData,
+                    Palette.chargeColor,
+                )
                 HeroStat(
                     stringResource(R.string.coupled_calories),
-                    calories?.let { "${it.roundToInt()} kcal" } ?: COUPLED_NO_DATA,
+                    calories?.let { "${it.roundToInt()} kcal" } ?: noData,
                     Palette.metricAmber,
                 )
                 HeroStat(stringResource(R.string.coupled_workouts), workouts.toString(), Palette.textPrimary)
@@ -558,8 +564,8 @@ internal fun optimalStrainRange(recovery: Double?): OptimalStrainRange? {
     }
 }
 
-/** The optimal band as display text ("14 to 18" / the no-data token). */
-internal fun optimalStrainRangeText(recovery: Double?): String {
-    val band = optimalStrainRange(recovery) ?: return COUPLED_NO_DATA
+/** The optimal band as display text ("14 to 18"), or null when there is no band to name. */
+internal fun optimalStrainRangeText(recovery: Double?): String? {
+    val band = optimalStrainRange(recovery) ?: return null
     return "${band.low} to ${band.high}"
 }

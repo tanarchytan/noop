@@ -145,6 +145,19 @@ private data class MetricSpec(
 @Composable
 private fun MetricSpec.title(): String = titleRes?.let { stringResource(it) } ?: rawTitle.orEmpty()
 
+/** The drawn name of a grouping key. Shares Compare's category resources so one word has one spelling. */
+@StringRes
+private fun categoryLabelRes(category: String): Int = when (category) {
+    "Heart" -> R.string.compare_category_heart
+    "Charge" -> R.string.compare_category_charge
+    "Rest" -> R.string.compare_category_rest
+    "Effort" -> R.string.compare_category_effort
+    "Health" -> R.string.compare_category_health
+    "Nutrition" -> R.string.compare_category_nutrition
+    "Mind" -> R.string.compare_category_mind
+    else -> R.string.uicore_category_other
+}
+
 /** The built-in DailyMetric-backed metrics, in picker order (Charge first). */
 private val builtInMetrics: List<MetricSpec> = listOf(
     MetricSpec(
@@ -531,11 +544,12 @@ private fun MetricDropdown(
         ) {
             Box(modifier = Modifier.size(10.dp).clip(CircleShape).background(selected.accent))
             val selectedTitle = selected.title()
+            val selectedCategory = stringResource(categoryLabelRes(selected.category))
             Column(modifier = Modifier.weight(1f)) {
                 // A metric whose name IS its category (Charge, Effort, Rest) would print the word
                 // twice in one row, so the eyebrow only appears when it says something else.
-                if (!selected.category.equals(selectedTitle, ignoreCase = true)) {
-                    Overline(selected.category, color = Palette.textTertiary)
+                if (!selectedCategory.equals(selectedTitle, ignoreCase = true)) {
+                    Overline(selectedCategory, color = Palette.textTertiary)
                 }
                 Text(selectedTitle, style = NoopType.headline, color = Palette.textPrimary)
             }
@@ -569,7 +583,7 @@ private fun MetricDropdown(
                     horizontalArrangement = Arrangement.spacedBy(Metrics.space8),
                 ) {
                     Box(modifier = Modifier.size(6.dp).clip(CircleShape).background(Palette.accent))
-                    Overline(category, color = Palette.accent)
+                    Overline(stringResource(categoryLabelRes(category)), color = Palette.accent)
                 }
                 items.forEach { metric ->
                     val isSelected = metric.key == selected.key

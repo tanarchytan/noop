@@ -427,7 +427,7 @@ fun SettingsScreen(
                 SegmentedPillControl(
                     items = listOf(AppearanceMode.SYSTEM, AppearanceMode.LIGHT, AppearanceMode.DARK),
                     selection = themeMode,
-                    label = { it.label },
+                    label = { context.getString(it.labelRes) },
                     onSelect = { mode ->
                         themeMode = mode
                         AppearancePrefs.set(context, mode)

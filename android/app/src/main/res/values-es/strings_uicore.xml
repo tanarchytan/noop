@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <!-- Spanish (es). Neutral wording; the slots are narrow, so the shortest natural form wins. -->
+    <string name="uicore_no_data">Sin datos</string>
+
+    <string name="uicore_syncing_history">Sincronizando historial…</string>
+    <plurals name="uicore_chunks_pulled">
+        <item quantity="one">%1$d fragmento descargado</item>
+        <item quantity="other">%1$d fragmentos descargados</item>
+    </plurals>
+
+    <string name="uicore_previous_day">Día anterior</string>
+    <string name="uicore_next_day">Día siguiente</string>
+    <string name="uicore_pick_a_day">Elegir un día</string>
+
+    <string name="uicore_theme_system">Sistema</string>
+
+    <!-- Endonyms: the same in every locale, deliberately untranslated -->
+    <string name="uicore_language_english">English</string>
+    <string name="uicore_language_spanish">Español</string>
+
+    <string name="uicore_hr_window_hours">%1$dh</string>
+
+    <string name="uicore_category_other">Otros</string>
+
+    <string name="uicore_report_range_30d">Últimos 30 días</string>
+    <string name="uicore_report_range_90d">Últimos 90 días</string>
+    <string name="uicore_report_range_6m">Últimos 6 meses</string>
+    <string name="uicore_report_range_1y">Último año</string>
+
+    <string name="uicore_hydration_goal_percent">%1$d%% del objetivo de hoy</string>
+    <string name="uicore_hydration_goal_percent_a11y">%1$d por ciento del objetivo de hoy</string>
+
+    <string name="uicore_hypnogram_no_data">Fases de sueño, sin datos</string>
+    <string name="uicore_hypnogram_summary">Fases de sueño, %1$s</string>
+    <string name="uicore_hypnogram_share">%1$d por ciento %2$s</string>
+
+    <string name="uicore_ago_just_now">ahora mismo</string>
+    <plurals name="uicore_ago_minutes">
+        <item quantity="one">hace %1$d min</item>
+        <item quantity="other">hace %1$d min</item>
+    </plurals>
+    <plurals name="uicore_ago_hours">
+        <item quantity="one">hace %1$d h</item>
+        <item quantity="other">hace %1$d h</item>
+    </plurals>
+    <plurals name="uicore_ago_days">
+        <item quantity="one">hace %1$d d</item>
+        <item quantity="other">hace %1$d d</item>
+    </plurals>
+
+    <string name="uicore_reboot_probe_menu">Sonda de reinicio (4.0 RE)…</string>
+    <string name="uicore_reboot_probe_title">Sonda de reinicio WHOOP 4.0</string>
+
+    <string name="uicore_every_day">Todos los días</string>
+    <string name="uicore_weekdays">Entre semana</string>
+    <string name="uicore_weekends">Fines de semana</string>
+
+    <string name="uicore_stress_high_today">%1$s de estrés alto hoy</string>
+    <string name="uicore_stress_needs_more_hours">El detalle por horas necesita más horas puntuadas</string>
+</resources>

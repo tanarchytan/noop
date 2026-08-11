@@ -142,6 +142,11 @@ fun HydrationScreen(viewModel: AppViewModel) {
     // one royal blue on the page and sat outside both schemes.
     val accent = Palette.metricCyan
 
+    // The goal read-out, drawn and spoken. Capped at 100 so a day past the goal reads "100%".
+    val goalPercent = kotlin.math.min(100, (fraction * 100).toInt())
+    val goalPercentText = stringResource(R.string.uicore_hydration_goal_percent, goalPercent)
+    val goalPercentSpoken = stringResource(R.string.uicore_hydration_goal_percent_a11y, goalPercent)
+
     // the custom-amount entry. Logs any whole-ml amount the Sip/Cup/Bottle quick buttons don't
     // cover (a bespoke container), clamped to a sane 1..MAX_CUSTOM_ML, then routed through the SAME
     // additive `log` path so it accumulates into the day total and refreshes the vessel + history.
@@ -202,12 +207,11 @@ fun HydrationScreen(viewModel: AppViewModel) {
                             .height(Metrics.progressHeight)
                             .clip(RoundedCornerShape(Metrics.progressHeight / 2))
                             .semantics {
-                                contentDescription =
-                                    "${kotlin.math.min(100, (fraction * 100).toInt())} percent of today's goal"
+                                contentDescription = goalPercentSpoken
                             },
                     )
                     Text(
-                        "${kotlin.math.min(100, (fraction * 100).toInt())}% of today's goal",
+                        goalPercentText,
                         style = NoopType.footnote,
                         color = Palette.textTertiary,
                     )

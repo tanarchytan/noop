@@ -142,22 +142,20 @@ class SpotHrvReadingTest {
     }
 
     @Test
-    fun caveatIsSourceAwareAndClean() {
-        val ppg = SpotHrvReading.caveatFor(SpotHrvReading.Source.OPTICAL_PPG)
-        val strap = SpotHrvReading.caveatFor(SpotHrvReading.Source.CHEST_STRAP)
-        val unknown = SpotHrvReading.caveatFor(SpotHrvReading.Source.UNKNOWN)
-
-        // PPG caveat must call out the noisier optical source; chest strap must not.
-        assertTrue("PPG caveat mentions the optical pulse signal", ppg.contains("optical pulse signal"))
-        assertTrue("chest-strap caveat omits the PPG note", !strap.contains("optical pulse signal"))
-        assertEquals("unknown source uses the base caveat", strap, unknown)
-
-        // Every caveat states the universal "spot, not overnight baseline" limit.
-        for (c in listOf(ppg, strap, unknown)) {
-            assertTrue("states it is a spot reading", c.contains("spot reading"))
-            assertTrue("states it is not the overnight baseline", c.contains("overnight HRV baseline"))
-            // House rule: no em-dashes anywhere in user-facing copy.
-            assertTrue("no em-dash in caveat", !c.contains("—"))
-        }
+    fun caveatIsSourceAware() {
+        // The wording lives in the UI; what the engine owns is WHICH caveat a source earns. Only the
+        // optical strap gets the extra noise note, and an unspecified source is treated as the base case.
+        assertEquals(
+            SpotHrvReading.Caveat.BASE_PLUS_OPTICAL,
+            SpotHrvReading.caveatFor(SpotHrvReading.Source.OPTICAL_PPG),
+        )
+        assertEquals(
+            SpotHrvReading.Caveat.BASE,
+            SpotHrvReading.caveatFor(SpotHrvReading.Source.CHEST_STRAP),
+        )
+        assertEquals(
+            SpotHrvReading.caveatFor(SpotHrvReading.Source.CHEST_STRAP),
+            SpotHrvReading.caveatFor(SpotHrvReading.Source.UNKNOWN),
+        )
     }
 }

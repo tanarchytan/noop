@@ -10,6 +10,7 @@ import android.graphics.RectF
 import android.graphics.Typeface
 import android.graphics.pdf.PdfDocument
 import android.widget.Toast
+import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.material.icons.Icons
@@ -55,12 +56,12 @@ import kotlin.math.roundToInt
 // MARK: - Range options
 
 /** The export window choices: trailing N days, or all history. */
-enum class ReportRange(val days: Int?, val label: String, val longName: String) {
-    Days30(30, "30d", "Last 30 days"),
-    Days90(90, "90d", "Last 90 days"),
-    Days180(180, "6M", "Last 6 months"),
-    Days365(365, "1Y", "Last year"),
-    All(null, "All", "All history"),
+enum class ReportRange(val days: Int?, val label: String, @StringRes val longNameRes: Int) {
+    Days30(30, "30d", R.string.uicore_report_range_30d),
+    Days90(90, "90d", R.string.uicore_report_range_90d),
+    Days180(180, "6M", R.string.uicore_report_range_6m),
+    Days365(365, "1Y", R.string.uicore_report_range_1y),
+    All(null, "All", R.string.trends2_all_history),
 }
 
 // MARK: - Data builder (pure glue over the engine)
@@ -248,7 +249,10 @@ object TrendsReportRenderer {
         val left = MARGIN + 16f
         var ty = cardTop + 26f
         text(canvas, "NOOP", left, ty, 11f, sansBold, ACCENT, letterSpacing = 0.12f)
-        textRight(canvas, range.longName.uppercase(), PAGE_W - MARGIN - 16f, ty, 10f, sansBold, TEXT_TERTIARY)
+        textRight(
+            canvas, context.getString(range.longNameRes).uppercase(),
+            PAGE_W - MARGIN - 16f, ty, 10f, sansBold, TEXT_TERTIARY,
+        )
         ty += 30f
         text(canvas, context.getString(R.string.trends2_report_title), left, ty, 26f, sansBold, TEXT_PRIMARY)
         ty += 22f
@@ -406,7 +410,10 @@ object TrendsReportRenderer {
         val left = MARGIN + 16f
         val title = context.getString(R.string.trends2_report_empty_title)
         text(canvas, title, left, top + 30f, 16f, sansBold, TEXT_PRIMARY)
-        val body = context.getString(R.string.trends2_report_empty_body, range.longName.lowercase())
+        val body = context.getString(
+            R.string.trends2_report_empty_body,
+            context.getString(range.longNameRes).lowercase(),
+        )
         drawWrapped(canvas, body, left, top + 52f, PAGE_W - MARGIN - left - 16f, 16f, 12f, sans, TEXT_SECONDARY)
     }
 
@@ -662,7 +669,7 @@ fun TrendsReportExportSection(vm: AppViewModel, modifier: Modifier = Modifier) {
                 label = { it.label },
                 onSelect = { range = it },
             )
-            Text(range.longName, style = NoopType.footnote, color = Palette.textTertiary)
+            Text(stringResource(range.longNameRes), style = NoopType.footnote, color = Palette.textTertiary)
 
             // Routed through the unified NoopButton (crisp filled accent, no gold) — the same button
             // system every other CTA uses.

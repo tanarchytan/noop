@@ -386,7 +386,7 @@ fun AppRoot(viewModel: AppViewModel = viewModel()) {
                         .padding(bottom = 24.dp),
                 ) {
                     Overline(
-                        "Quick actions",
+                        stringResource(R.string.today_quick_actions),
                         modifier = Modifier.padding(start = 16.dp, top = 4.dp, bottom = 6.dp),
                         color = Palette.textTertiary,
                     )

@@ -39,14 +39,15 @@ class FitnessAgeEngineTest {
         val r = FitnessAgeEngine.assessReadiness(true, true, 0, 7, true, true)
         assertEquals(FitnessAgeConfidence.NOT_READY, r.confidence)
         assertFalse(r.canCompute)
-        assertEquals(FitnessReadinessStatus.MISSING, r.items.first { it.key == "rhr" }.status)
+        val rhr = r.items.first { it.input == FitnessReadinessInput.RESTING_HR }
+        assertEquals(FitnessReadinessStatus.MISSING, rhr.status)
     }
 
     @Test fun readinessPartialIsEstimate() {
         val r = FitnessAgeEngine.assessReadiness(true, true, 5, 3, false, false)
         assertEquals(FitnessAgeConfidence.ESTIMATE, r.confidence)
         assertTrue(r.canCompute)
-        val body = r.items.first { it.key == "bodyMetrics" }
+        val body = r.items.first { it.input == FitnessReadinessInput.BODY_METRICS }
         assertEquals(FitnessReadinessStatus.MISSING, body.status)
         assertEquals(FitnessReadinessRole.UNLOCKS_VO2MAX, body.role)
         assertFalse(body.required)

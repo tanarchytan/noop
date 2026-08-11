@@ -779,7 +779,9 @@ private fun DeviceActionsMenu(
                 // 4.0 reboot probe (RE): only present when the parent passed a closure (Test Centre →
                 // Connection on + a live WHOOP 4.0). Finds the real reboot frame the 4.0 accepts.
                 if (onRebootProbe != null) {
-                    MenuItem("Reboot probe (4.0 RE)…", Icons.Filled.BugReport) { onOpenChange(false); onRebootProbe() }
+                    MenuItem(stringResource(R.string.uicore_reboot_probe_menu), Icons.Filled.BugReport) {
+                        onOpenChange(false); onRebootProbe()
+                    }
                 }
                 // Which wrist the strap is worn on — a persistent strap-config write, so it is offered only for the
                 // live-connected 5/MG and picked in a dialog by the parent.
@@ -888,7 +890,13 @@ private fun RebootProbeDialog(
     AlertDialog(
         onDismissRequest = onDismiss,
         containerColor = Palette.surfaceOverlay,
-        title = { Text("WHOOP 4.0 reboot probe", style = NoopType.title2, color = Palette.textPrimary) },
+        title = {
+            Text(
+                stringResource(R.string.uicore_reboot_probe_title),
+                style = NoopType.title2,
+                color = Palette.textPrimary,
+            )
+        },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(Metrics.space12)) {
                 RebootProbeVariant.entries.forEach { variant ->

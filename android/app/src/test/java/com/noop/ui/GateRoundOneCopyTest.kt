@@ -2,7 +2,7 @@ package com.noop.ui
 
 import com.noop.R
 import com.noop.ui.whoop.chargeReadinessWord
-import com.noop.ui.whoop.stressHoursCaption
+import com.noop.ui.whoop.stressHoursCaptionRes
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
@@ -32,9 +32,19 @@ class GateRoundOneCopyTest {
     }
 
     @Test fun stressCaptionNamesTheHoursItHasOrWhatItLacks() {
-        assertEquals("12m high stress today", stressHoursCaption(scoredHours = 6, highMinutes = 12L))
-        assertTrue(stressHoursCaption(scoredHours = 1, highMinutes = 12L).contains("more scored hours"))
-        assertTrue(stressHoursCaption(scoredHours = 6, highMinutes = null).contains("more scored hours"))
+        // The wording is a resource now; which of the two lines the day earns is the decision.
+        assertEquals(
+            R.string.uicore_stress_high_today,
+            stressHoursCaptionRes(scoredHours = 6, highMinutes = 12L),
+        )
+        assertEquals(
+            R.string.uicore_stress_needs_more_hours,
+            stressHoursCaptionRes(scoredHours = 1, highMinutes = 12L),
+        )
+        assertEquals(
+            R.string.uicore_stress_needs_more_hours,
+            stressHoursCaptionRes(scoredHours = 6, highMinutes = null),
+        )
     }
 
     @Test fun hrvBandSentenceReadsAgainstTheBandNotInsideIt() {

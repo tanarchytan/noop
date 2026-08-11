@@ -1,5 +1,6 @@
 package com.noop.ui
 
+import com.noop.R
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -10,7 +11,7 @@ import java.util.TimeZone
 /**
  * Per-weekday smart-alarm scheduling (PR #539, @hkuehl): the strap alarm only fires on selected
  * weekdays. Covers the pure date math ([nextSmartAlarmEpochSec]) and the picker's selection rules
- * ([toggledSmartAlarmWeekday] / [smartAlarmWeekdayIsSelected] / [smartAlarmWeekdaySummary]). Mirrors
+ * ([toggledSmartAlarmWeekday] / [smartAlarmWeekdayIsSelected] / [smartAlarmWeekdaySummaryRes]). Mirrors
  * the macOS SmartAlarmWeekdayTests.
  *
  * Calendar.DAY_OF_WEEK numbers: 1 = Sun … 7 = Sat. Empty set = every day (backward compatible).
@@ -129,10 +130,12 @@ class SmartAlarmWeekdayTest {
 
     @Test
     fun summary_labels() {
-        assertEquals("Every day", smartAlarmWeekdaySummary(emptySet()))
-        assertEquals("Every day", smartAlarmWeekdaySummary(setOf(1, 2, 3, 4, 5, 6, 7)))
-        assertEquals("Weekdays", smartAlarmWeekdaySummary(setOf(2, 3, 4, 5, 6)))
-        assertEquals("Weekends", smartAlarmWeekdaySummary(setOf(1, 7)))
-        assertEquals("Mon, Wed", smartAlarmWeekdaySummary(setOf(2, 4)))
+        // The three whole-set shorthands are resources; the picker lists the days itself otherwise.
+        assertEquals(R.string.uicore_every_day, smartAlarmWeekdaySummaryRes(emptySet()))
+        assertEquals(R.string.uicore_every_day, smartAlarmWeekdaySummaryRes(setOf(1, 2, 3, 4, 5, 6, 7)))
+        assertEquals(R.string.uicore_weekdays, smartAlarmWeekdaySummaryRes(setOf(2, 3, 4, 5, 6)))
+        assertEquals(R.string.uicore_weekends, smartAlarmWeekdaySummaryRes(setOf(1, 7)))
+        assertNull(smartAlarmWeekdaySummaryRes(setOf(2, 4)))
+        assertEquals("Mon, Wed", smartAlarmWeekdayList(setOf(2, 4)))
     }
 }

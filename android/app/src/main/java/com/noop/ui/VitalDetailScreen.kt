@@ -27,6 +27,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -37,6 +38,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.noop.R
 import com.noop.analytics.FitnessAgeEngine
 import com.noop.analytics.FitnessAgeReadiness
+import com.noop.analytics.FitnessReadinessDetail
+import com.noop.analytics.FitnessReadinessInput
 import com.noop.analytics.FitnessReadinessItem
 import com.noop.analytics.FitnessReadinessRole
 import com.noop.analytics.FitnessReadinessStatus
@@ -238,10 +241,12 @@ private fun ReadinessRow(item: FitnessReadinessItem) {
         FitnessReadinessStatus.PARTIAL -> Palette.statusWarning
         FitnessReadinessStatus.MISSING -> Palette.textTertiary
     }
+    val label = stringResource(readinessLabel(item.input))
+    val detail = readinessDetail(item)
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .semantics { contentDescription = "${item.label}: ${item.detail}" },
+            .semantics { contentDescription = "$label: $detail" },
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(Metrics.space10),
     ) {
@@ -252,19 +257,48 @@ private fun ReadinessRow(item: FitnessReadinessItem) {
             modifier = Modifier.width(16.dp),
         )
         Text(
-            item.label,
+            label,
             style = NoopType.subhead,
             color = Palette.textPrimary,
             modifier = Modifier.weight(1f),
         )
         Text(
-            item.detail,
+            detail,
             style = NoopType.footnote,
             color = Palette.textTertiary,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
     }
+}
+
+/** The checklist row's name; the engine names the INPUT, this names it for the reader. */
+@StringRes
+private fun readinessLabel(input: FitnessReadinessInput): Int = when (input) {
+    FitnessReadinessInput.AGE -> R.string.narr_fitness_input_age
+    FitnessReadinessInput.SEX -> R.string.narr_fitness_input_sex
+    FitnessReadinessInput.RESTING_HR -> R.string.narr_fitness_input_resting_hr
+    FitnessReadinessInput.ACTIVITY -> R.string.narr_fitness_input_activity
+    FitnessReadinessInput.BODY_METRICS -> R.string.narr_fitness_input_body_metrics
+    FitnessReadinessInput.WAIST -> R.string.narr_fitness_input_waist
+}
+
+/** The row's one-line detail; the coverage reads carry the count their wording embeds. */
+@Composable
+private fun readinessDetail(item: FitnessReadinessItem): String = when (item.detail) {
+    FitnessReadinessDetail.SET -> stringResource(R.string.narr_fitness_detail_set)
+    FitnessReadinessDetail.ADD_IN_SETTINGS -> stringResource(R.string.narr_fitness_detail_add_in_settings)
+    FitnessReadinessDetail.NIGHTS_OF_LAST_SEVEN -> pluralStringResource(
+        R.plurals.narr_fitness_detail_nights, item.detailCount, item.detailCount,
+    )
+    FitnessReadinessDetail.DAYS_OF_LAST_SEVEN -> pluralStringResource(
+        R.plurals.narr_fitness_detail_days, item.detailCount, item.detailCount,
+    )
+    FitnessReadinessDetail.UNLOCKS_VO2MAX -> stringResource(R.string.narr_fitness_detail_unlocks_vo2max)
+    FitnessReadinessDetail.ADD_TO_SEE_VO2MAX -> stringResource(R.string.narr_fitness_detail_add_to_see_vo2max)
+    FitnessReadinessDetail.SHARPENS_VO2MAX -> stringResource(R.string.narr_fitness_detail_sharpens_vo2max)
+    FitnessReadinessDetail.OPTIONAL_SHARPENS_VO2MAX ->
+        stringResource(R.string.narr_fitness_detail_optional_sharpens)
 }
 
 /** One windowed reading behind a vital's detail chart: its day ("YYYY-MM-DD"), the value, and the RAW

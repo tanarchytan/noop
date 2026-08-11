@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <!-- The shared placeholder for a slot the day has no reading for -->
+    <string name="uicore_no_data">No Data</string>
+
+    <!-- Components - strap history offload -->
+    <string name="uicore_syncing_history">Syncing strap history…</string>
+    <plurals name="uicore_chunks_pulled">
+        <item quantity="one">%1$d chunk pulled</item>
+        <item quantity="other">%1$d chunks pulled</item>
+    </plurals>
+
+    <!-- Components - the prev/next day pager -->
+    <string name="uicore_previous_day">Previous day</string>
+    <string name="uicore_next_day">Next day</string>
+    <string name="uicore_pick_a_day">Pick a day</string>
+
+    <!-- Appearance - the theme pill. Light and Dark reuse onboarding_theme_light/dark. -->
+    <string name="uicore_theme_system">System</string>
+
+    <!-- Language names are endonyms: identical in every locale, never translated -->
+    <string name="uicore_language_english">English</string>
+    <string name="uicore_language_spanish">Español</string>
+
+    <!-- Today heart-rate card - the rolling window pills -->
+    <string name="uicore_hr_window_hours">%1$dh</string>
+
+    <!-- Explore - the only metric category with no Compare twin -->
+    <string name="uicore_category_other">Other</string>
+
+    <!-- Trends report - the export ranges. All history reuses trends2_all_history. -->
+    <string name="uicore_report_range_30d">Last 30 days</string>
+    <string name="uicore_report_range_90d">Last 90 days</string>
+    <string name="uicore_report_range_6m">Last 6 months</string>
+    <string name="uicore_report_range_1y">Last year</string>
+
+    <!-- Hydration - progress against the daily goal -->
+    <string name="uicore_hydration_goal_percent">%1$d%% of today\'s goal</string>
+    <string name="uicore_hydration_goal_percent_a11y">%1$d percent of today\'s goal</string>
+
+    <!-- Hypnogram - the spoken stage summary -->
+    <string name="uicore_hypnogram_no_data">Sleep stages, no data</string>
+    <string name="uicore_hypnogram_summary">Sleep stages, %1$s</string>
+    <string name="uicore_hypnogram_share">%1$d percent %2$s</string>
+
+    <!-- Relative time, for the "history synced N ago" lines -->
+    <string name="uicore_ago_just_now">just now</string>
+    <plurals name="uicore_ago_minutes">
+        <item quantity="one">%1$d min ago</item>
+        <item quantity="other">%1$d min ago</item>
+    </plurals>
+    <plurals name="uicore_ago_hours">
+        <item quantity="one">%1$d h ago</item>
+        <item quantity="other">%1$d h ago</item>
+    </plurals>
+    <plurals name="uicore_ago_days">
+        <item quantity="one">%1$d d ago</item>
+        <item quantity="other">%1$d d ago</item>
+    </plurals>
+
+    <!-- Devices - the WHOOP 4.0 reboot probe -->
+    <string name="uicore_reboot_probe_menu">Reboot probe (4.0 RE)…</string>
+    <string name="uicore_reboot_probe_title">WHOOP 4.0 reboot probe</string>
+
+    <!-- Smart alarm - the whole-set shorthands for a weekday selection -->
+    <string name="uicore_every_day">Every day</string>
+    <string name="uicore_weekdays">Weekdays</string>
+    <string name="uicore_weekends">Weekends</string>
+
+    <!-- Health - the line under the day's stress score -->
+    <string name="uicore_stress_high_today">%1$s high stress today</string>
+    <string name="uicore_stress_needs_more_hours">Hour-by-hour detail needs more scored hours</string>
+</resources>

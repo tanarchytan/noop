@@ -103,7 +103,7 @@ internal fun WhoopProfileHighlightsCard(
                 label = { it.label },
                 onSelect = onRangeChange,
             )
-            Text(range.longName, style = NoopType.footnote, color = Palette.textTertiary)
+            Text(stringResource(range.longNameRes), style = NoopType.footnote, color = Palette.textTertiary)
 
             if (rings.isEmpty() && stats.isEmpty()) {
                 InsetChartPlaceholder(stringResource(R.string.whoopskin_profile_no_readings))

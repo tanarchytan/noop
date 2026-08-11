@@ -92,11 +92,11 @@ import kotlin.math.roundToInt
  *  Because the loaded extent starts at midnight, a window clips to the day: early in the morning the wider
  *  windows coincide with Today, which reads fine — both mean "everything so far". Only offered on the
  *  CURRENT day: a past day has no "now", so it always shows the full calendar day, exactly as before. */
-internal enum class HrWindow(val label: String, val hours: Int) {
+internal enum class HrWindow(val hours: Int) {
     // Declaration order IS the pill order: Today (the whole loaded day) anchors the wide end, then
     // strictly most → least hours. TODAY stays ordinal 0 so the rememberSaveable default is the full day.
-    TODAY("Today", 0),
-    H24("24h", 24), H12("12h", 12), H6("6h", 6), H3("3h", 3), H1("1h", 1);
+    TODAY(0),
+    H24(24), H12(12), H6(6), H3(3), H1(1);
 
     /** Earliest bucket timestamp (unix seconds) this window renders, anchored at `now`. TODAY = no
      *  narrowing. Anchoring at the wall clock (not the newest banked bucket) keeps the card honest: a
@@ -111,15 +111,26 @@ internal enum class HrWindow(val label: String, val hours: Int) {
 internal fun hrWindowKeeps(bucketTs: Long, window: HrWindow, now: Long): Boolean =
     bucketTs >= window.cutoff(now)
 
+/** The window's caption: the localised word for the whole day, else its bare hour span. */
+@Composable
+internal fun HrWindow.label(): String =
+    if (this == HrWindow.TODAY) {
+        stringResource(R.string.common_today)
+    } else {
+        stringResource(R.string.uicore_hr_window_hours, hours)
+    }
+
 /** The HR-window selector row, reusing the app's ONE SegmentedPillControl (house chrome, not the PR's
  *  bespoke control). Shared by the empty and populated card branches so the pills stay put whether or
  *  not the chosen window has data. */
 @Composable
 private fun HrWindowPills(selection: HrWindow, onSelect: (HrWindow) -> Unit) {
+    // Resolved up front: the pill's label lambda is not composable, so it reads the captions by ordinal.
+    val captions = HrWindow.entries.map { it.label() }
     SegmentedPillControl(
         items = HrWindow.entries.toList(),
         selection = selection,
-        label = { it.label },
+        label = { captions[it.ordinal] },
         onSelect = onSelect,
     )
 }
@@ -238,7 +249,7 @@ internal fun HeartRateTrendCard(
                         selectedDay != today ->
                             stringResource(R.string.today_hr_empty_past_day)
                         hrWindow != HrWindow.TODAY && buckets.size >= 2 ->
-                            stringResource(R.string.today_hr_empty_window, hrWindow.label)
+                            stringResource(R.string.today_hr_empty_window, hrWindow.label())
                         else ->
                             stringResource(R.string.today_hr_empty_calibrating)
                     },
@@ -300,7 +311,7 @@ internal fun HeartRateTrendCard(
                         hrWindow == HrWindow.TODAY ->
                             stringResource(R.string.today_hr_subtitle_since_midnight)
                         else ->
-                            stringResource(R.string.today_hr_subtitle_last_window, hrWindow.label)
+                            stringResource(R.string.today_hr_subtitle_last_window, hrWindow.label())
                     }
                     Text(
                         subtitle,

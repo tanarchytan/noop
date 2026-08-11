@@ -1,13 +1,12 @@
 package com.noop.analytics
 
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import kotlin.math.PI
 import kotlin.math.cos
 
-/** The cosinor + phase estimate run in whoop-rs; these pin the FFI result and the Kotlin wording. */
+/** The cosinor + phase estimate run in whoop-rs; these pin the FFI result and which note it maps to. */
 class CircadianEngineTest {
 
     /** A 24 h rest-activity profile as raw (unix, motion) samples — one per hour, over [days] days. */
@@ -47,7 +46,7 @@ class CircadianEngineTest {
     @Test fun thinDataIsUnreadable() {
         val est = CircadianEngine.fromRust(phase(50.0, 30.0, 15.0, 4)!!)
         assertEquals(CircadianEngine.PhaseConfidence.UNREADABLE, est.confidence)
-        assertTrue(est.note.lowercase().contains("hard to read"))
+        assertEquals(CircadianEngine.Note.HARD_TO_READ, est.note)
     }
 
     @Test fun arrhythmicProfileIsUnreadable() {
@@ -66,14 +65,16 @@ class CircadianEngineTest {
         val late = CircadianEngine.fromRust(phase(50.0, 30.0, 18.0, 20, wake = 6.0)!!)
         assertEquals(CircadianEngine.PhaseConfidence.SOLID, late.confidence)
         assertTrue(late.offsetVsScheduleMinutes > 20.0)
-        assertTrue(late.note.contains("night-owl"))
+        assertEquals(CircadianEngine.Note.LEANS_LATER, late.note)
     }
 
-    @Test fun noteNeverMentionsSupplements() {
-        val banned = listOf("melatonin", "supplement", "pill", "drug", "caffeine pill", "medication")
+    @Test fun everyNoteIsALightAndTimingRead() {
+        // The wording lives in the UI, so what is pinned here is WHICH note fires: the enum carries
+        // only alignment reads, so the card can never reach for a supplement or a medication.
+        val allowed = CircadianEngine.Note.entries.toSet()
         for (acro in listOf(6.0, 15.0, 18.0, 23.0)) {
-            val text = CircadianEngine.fromRust(phase(50.0, 30.0, acro, 20)!!).note.lowercase()
-            for (b in banned) assertFalse("note mentioned $b", text.contains(b))
+            val note = CircadianEngine.fromRust(phase(50.0, 30.0, acro, 20)!!).note
+            assertTrue("unexpected note: $note", note in allowed)
         }
     }
 }
