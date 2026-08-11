@@ -27,6 +27,7 @@ import androidx.health.connect.client.records.WeightRecord
 import androidx.health.connect.client.request.ReadRecordsRequest
 import androidx.health.connect.client.time.TimeRangeFilter
 import com.noop.NoopApplication
+import com.noop.R
 import com.noop.analytics.FitnessAgeEngine
 import com.noop.analytics.HydrationStore
 import com.noop.data.AppleDaily
@@ -142,7 +143,7 @@ object HealthConnectImporter {
         onBodyMeasurements: (weightKg: Double?, heightCm: Double?) -> Unit = { _, _ -> },
     ): ImportSummary {
         if (sdkStatus(context) != HealthConnectClient.SDK_AVAILABLE) {
-            return ImportSummary.failure(SOURCE, "Health Connect is not available on this device.")
+            return ImportSummary.failure(SOURCE, context.getString(R.string.import_hc_unavailable))
         }
 
         // Refile any legacy Health Connect data that landed in the shared "apple-health" bucket, before

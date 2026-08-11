@@ -281,4 +281,9 @@
     <string name="onboarding_restore_backup">Restaurar una copia de NOOP (.noopbak)</string>
     <string name="onboarding_restoring">Restaurando…</string>
     <string name="onboarding_restore_done">Restauración terminada.</string>
+    <string name="import_none_apple_health">No se han encontrado datos de Apple Health compatibles en la exportación.</string>
+    <string name="import_none_health_connect">No se han encontrado datos de Health Connect para importar.</string>
+    <string name="notif_channel_strap_connection">Conexión de la banda</string>
+    <string name="notif_channel_strap_connection_desc">Se muestra mientras NOOP mantiene tu WHOOP conectada en segundo plano.</string>
+    <string name="import_hc_unavailable">Health Connect no está disponible en este dispositivo.</string>
 </resources>

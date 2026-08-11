@@ -421,10 +421,10 @@ class WhoopConnectionService : Service() {
             if (mgr.getNotificationChannel(CHANNEL_ID) != null) return
             val channel = NotificationChannel(
                 CHANNEL_ID,
-                "Strap connection",
+                getString(R.string.notif_channel_strap_connection),
                 NotificationManager.IMPORTANCE_LOW,
             ).apply {
-                description = "Shown while NOOP keeps your WHOOP connected in the background."
+                description = getString(R.string.notif_channel_strap_connection_desc)
                 setShowBadge(false)
                 enableVibration(false)
                 setSound(null, null)

@@ -3,6 +3,7 @@ package com.noop.ingest
 import android.content.Context
 import android.net.Uri
 import android.util.Xml
+import com.noop.R
 import com.noop.data.AppleDaily
 import com.noop.data.DailyMetric
 import com.noop.data.ImportSummary
@@ -101,7 +102,7 @@ object AppleHealthImporter {
             )
         }
 
-        return persist(agg, repo, deviceId)
+        return persist(context, agg, repo, deviceId)
     }
 
     // ------------------------------------------------------------------------
@@ -330,6 +331,7 @@ object AppleHealthImporter {
     // ------------------------------------------------------------------------
 
     private suspend fun persist(
+        context: Context,
         agg: Aggregator,
         repo: WhoopRepository,
         deviceId: String,
@@ -340,7 +342,7 @@ object AppleHealthImporter {
             return ImportSummary(
                 source = SOURCE_LABEL,
                 counts = emptyMap(),
-                message = "No supported Apple Health data found in the export.",
+                message = context.getString(R.string.import_none_apple_health),
             )
         }
 
