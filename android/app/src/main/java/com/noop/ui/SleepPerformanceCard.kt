@@ -22,6 +22,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.noop.R
@@ -133,6 +134,9 @@ private fun SleepDriverRow(driver: SleepDriver) {
             style = NoopType.overline,
             color = Palette.textPrimary,
             maxLines = 1,
+            // Ellipsis, not the default Clip: a label too long for the row was being cut mid-word with
+            // nothing to show it had been, which reads as a shorter label rather than a truncated one.
+            overflow = TextOverflow.Ellipsis,
             modifier = Modifier.weight(1f),
         )
         SleepDriverStrip(pct, driver.higherIsBetter)

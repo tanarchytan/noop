@@ -17,10 +17,10 @@
     <string name="sleep_journal_prompt_open">Abrir el diario</string>
     <string name="sleep_journal_prompt_later">Quizá más tarde</string>
     <string name="sleep_edit_time_invalid">Esa hora no se puede guardar (queda en el futuro o termina antes de empezar).</string>
-    <string name="sleep_driver_hours_vs_needed">Horas vs. necesarias</string>
-    <string name="sleep_driver_consistency">Consistencia del sueño</string>
-    <string name="sleep_driver_efficiency">Eficiencia del sueño</string>
-    <string name="sleep_driver_high_stress">Estrés alto durante el sueño</string>
+    <string name="sleep_driver_hours_vs_needed">Horas vs. meta</string>
+    <string name="sleep_driver_consistency">Consistencia</string>
+    <string name="sleep_driver_efficiency">Eficiencia</string>
+    <string name="sleep_driver_high_stress">Estrés alto</string>
     <string name="sleep_no_stage_data">No hay datos de fases registrados para esta noche.</string>
     <string name="sleep_weekly_trends">Tendencias semanales</string>
     <string name="sleep_last_7_nights">Últimas 7 noches</string>

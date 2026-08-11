@@ -77,4 +77,5 @@
     <string name="devices2_history_layout">historial v%1$d</string>
     <string name="core_tap_to_choose">%1$s. Toca para elegir.</string>
     <string name="core_done">Listo</string>
+    <string name="common_open_x">Abrir %1$s</string>
 </resources>

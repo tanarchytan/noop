@@ -1565,7 +1565,7 @@ fun NoopCardHeader(
     title: String,
     modifier: Modifier = Modifier,
     onClick: (() -> Unit)? = null,
-    openLabel: String = "Open $title",
+    openLabel: String = stringResource(R.string.common_open_x, title),
     color: Color = Palette.textPrimary,
     trailing: (@Composable () -> Unit)? = null,
 ) {

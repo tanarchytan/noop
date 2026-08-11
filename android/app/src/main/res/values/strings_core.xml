@@ -106,4 +106,5 @@
     <!-- Shared wheel-picker accessibility label. -->
     <string name="core_tap_to_choose">%1$s. Tap to choose.</string>
     <string name="core_done">Done</string>
+    <string name="common_open_x">Open %1$s</string>
 </resources>

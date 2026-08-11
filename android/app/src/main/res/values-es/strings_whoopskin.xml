@@ -118,13 +118,13 @@
     <string name="whoopskin_of_max">de %1$d</string>
 
     <!-- WhoopHomeDayCards -->
-    <string name="whoopskin_home_health_monitor">Monitor de salud</string>
+    <string name="whoopskin_home_health_monitor">Salud</string>
     <string name="whoopskin_no_readings_yet">Aún sin lecturas</string>
-    <string name="whoopskin_home_stress_monitor">Monitor de estrés</string>
+    <string name="whoopskin_home_stress_monitor">Estrés</string>
     <string name="whoopskin_autonomic_load">Carga autonómica</string>
     <string name="whoopskin_tonights_sleep">El sueño de esta noche</string>
-    <string name="whoopskin_wake_alarm">Alarma de despertar</string>
-    <string name="whoopskin_alarm_off">Desactivada</string>
+    <string name="whoopskin_wake_alarm">Alarma</string>
+    <string name="whoopskin_alarm_off">Apagada</string>
     <string name="whoopskin_change_alarm">Cambiar la alarma</string>
     <string name="whoopskin_set_alarm">Poner alarma</string>
     <string name="whoopskin_todays_activities">Actividades de hoy</string>
