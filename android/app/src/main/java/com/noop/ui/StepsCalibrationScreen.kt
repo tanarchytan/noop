@@ -534,5 +534,5 @@ private fun grouped(n: Int): String =
 
 /** "yyyy-MM-dd" → "EEE d MMM" for the table's day column. */
 private fun shortDay(key: String): String = runCatching {
-    LocalDate.parse(key).format(DateTimeFormatter.ofPattern("EEE d MMM", Locale.US))
+    LocalDate.parse(key).format(DateTimeFormatter.ofPattern("EEE d MMM", Locale.getDefault()))
 }.getOrDefault(key)

@@ -354,7 +354,7 @@ private fun SleepEditPicker(currentTs: Long, pickDate: Boolean, onDismiss: () ->
 
 /** "Jul 29" for a chip. */
 internal fun editDateLabel(ts: Long): String =
-    SimpleDateFormat("MMM d", Locale.US).format(Date(ts * 1000L))
+    SimpleDateFormat("MMM d", Locale.getDefault()).format(Date(ts * 1000L))
 
 /** What the edit sheet is open on: an existing block, or a provisional nap awaiting its first save. */
 internal data class SleepEditTarget(val session: SleepSession, val isNew: Boolean)

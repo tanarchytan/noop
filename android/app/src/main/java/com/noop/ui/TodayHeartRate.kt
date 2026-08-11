@@ -205,7 +205,7 @@ internal fun HeartRateTrendCard(
         selectedDay,
         today = stringResource(R.string.common_today),
         yesterday = stringResource(R.string.today_yesterday),
-        other = selectedDay.format(DateTimeFormatter.ofPattern("d MMM", Locale.US)),
+        other = selectedDay.format(DateTimeFormatter.ofPattern("d MMM", Locale.getDefault())),
         now = today,
     )
 

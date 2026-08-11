@@ -130,11 +130,11 @@ internal fun rememberWhoopHomeState(viewModel: AppViewModel, dayOffset: Int): Wh
         when (dayOffset) {
             0 -> todayWord
             1 -> yesterdayWord
-            else -> labelDate.format(DateTimeFormatter.ofPattern("EEEE", Locale.US))
+            else -> labelDate.format(DateTimeFormatter.ofPattern("EEEE", Locale.getDefault()))
         }
     }
     val subtitle = remember(labelDate) {
-        labelDate.format(DateTimeFormatter.ofPattern("EEE, d MMM", Locale.US))
+        labelDate.format(DateTimeFormatter.ofPattern("EEE, d MMM", Locale.getDefault()))
     }
 
     // A future-dated row (a bad strap clock) must never win the carry, so bound it by the later of the

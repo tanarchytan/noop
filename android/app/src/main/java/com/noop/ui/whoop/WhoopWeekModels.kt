@@ -147,7 +147,7 @@ private fun chargeDriversFor(
 
 /** "17 Jul" for a stored yyyy-MM-dd key, falling back to the key so a stamp is never blank. */
 internal fun recoveryDayStamp(dayKey: String): String = runCatching {
-    LocalDate.parse(dayKey).format(DateTimeFormatter.ofPattern("d MMM", Locale.US))
+    LocalDate.parse(dayKey).format(DateTimeFormatter.ofPattern("d MMM", Locale.getDefault()))
 }.getOrDefault(dayKey)
 
 // The Strain page's data assembly: calendar-day slices of the rows AppViewModel already holds. No

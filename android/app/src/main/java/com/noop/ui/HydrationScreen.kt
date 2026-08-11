@@ -477,7 +477,7 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawRoundRectBar(
 /** The single-letter weekday for a yyyy-MM-dd key (M T W T F S S), or "·" when unparseable. */
 private fun weekdayInitial(dayKey: String): String =
     runCatching {
-        LocalDate.parse(dayKey).format(DateTimeFormatter.ofPattern("EEE", Locale.US)).take(1)
+        LocalDate.parse(dayKey).format(DateTimeFormatter.ofPattern("EEE", Locale.getDefault())).take(1)
     }.getOrDefault("·")
 
 /**

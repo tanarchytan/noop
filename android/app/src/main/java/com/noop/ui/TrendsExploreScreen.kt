@@ -704,7 +704,7 @@ private fun HeroChartCard(
                                 .forEachIndexed { i, d ->
                                     Text(
                                         d?.let {
-                                            runCatching { LocalDate.parse(it).format(DateTimeFormatter.ofPattern("d MMM", Locale.US)) }
+                                            runCatching { LocalDate.parse(it).format(DateTimeFormatter.ofPattern("d MMM", Locale.getDefault())) }
                                                 .getOrDefault(it)
                                         }.orEmpty(),
                                         style = NoopType.footnote,

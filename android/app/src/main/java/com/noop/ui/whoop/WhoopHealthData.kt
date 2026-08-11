@@ -260,7 +260,7 @@ internal fun healthAsOfLabel(day: String?): String? {
             date,
             today = stringResource(R.string.whoopskin_today_lowercase),
             yesterday = stringResource(R.string.whoopskin_yesterday_lowercase),
-            other = date.format(DateTimeFormatter.ofPattern("d MMM", Locale.US)),
+            other = date.format(DateTimeFormatter.ofPattern("d MMM", Locale.getDefault())),
         ),
     )
 }
@@ -273,7 +273,7 @@ internal fun stressDayLabel(day: String): String {
         date,
         today = stringResource(R.string.common_today),
         yesterday = stringResource(R.string.whoopskin_yesterday),
-        other = date.format(DateTimeFormatter.ofPattern("EEE d MMM", Locale.US)),
+        other = date.format(DateTimeFormatter.ofPattern("EEE d MMM", Locale.getDefault())),
     )
 }
 

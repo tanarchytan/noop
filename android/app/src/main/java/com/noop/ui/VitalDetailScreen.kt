@@ -602,7 +602,7 @@ internal fun vitalReadingDateLabel(day: String): String {
     val date = runCatching { LocalDate.parse(day) }.getOrNull() ?: return day
     return relativeDayLabel(
         date, today = "Today", yesterday = "Yesterday",
-        other = date.format(DateTimeFormatter.ofPattern("d MMM", Locale.US)),
+        other = date.format(DateTimeFormatter.ofPattern("d MMM", Locale.getDefault())),
     )
 }
 

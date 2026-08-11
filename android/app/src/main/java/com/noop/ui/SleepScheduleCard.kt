@@ -308,7 +308,7 @@ internal fun optimalSleepBand(
  */
 internal fun sleepScheduleNights(slots: List<NightSlot>): List<SleepScheduleNight> {
     // Dated, not the weekday alone: a week with a missing night printed two Mondays and no Sunday.
-    val dayFmt = SimpleDateFormat("EEE d", Locale.US)
+    val dayFmt = SimpleDateFormat("EEE d", Locale.getDefault())
     val keyFmt = SimpleDateFormat("yyyy-MM-dd", Locale.US)
     return slots.map { slot ->
         val span = slot.span

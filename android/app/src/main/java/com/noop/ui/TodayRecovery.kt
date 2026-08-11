@@ -477,7 +477,7 @@ internal data class LastCharge(val value: Double, val caption: String)
  *  the key and falls back to the raw key so the caption is never empty. */
 internal fun lastChargeDateLabel(dayKey: String): String =
     runCatching {
-        LocalDate.parse(dayKey).format(DateTimeFormatter.ofPattern("d MMM", Locale.US))
+        LocalDate.parse(dayKey).format(DateTimeFormatter.ofPattern("d MMM", Locale.getDefault()))
     }.getOrDefault(dayKey)
 
 /** Carry-over recency cap: the "Last night" framing only holds when the carried scored day is

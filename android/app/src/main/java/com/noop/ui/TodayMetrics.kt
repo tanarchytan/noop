@@ -671,7 +671,7 @@ internal const val NO_DATA = "No Data"
 internal const val STRESS_CALIBRATING = "Calibrating"
 
 private val workoutDateFmt: DateTimeFormatter =
-    DateTimeFormatter.ofPattern("d MMM", Locale.US).withZone(ZoneId.systemDefault())
+    DateTimeFormatter.ofPattern("d MMM", Locale.getDefault()).withZone(ZoneId.systemDefault())
 private val workoutTimeFmt: DateTimeFormatter =
     // Respect the device's 12-/24-hour locale: "7:10 AM" where 12-hour is preferred, "19:10"
     // where 24-hour is, instead of forcing 24-hour on everyone.

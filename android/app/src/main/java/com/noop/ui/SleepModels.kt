@@ -687,7 +687,7 @@ internal fun durationText(minutes: Double): String {
 internal fun clockLabel(latest: DailyMetric, session: SleepSession?): String {
     if (session != null) return sessionClockLabel(session)
     // Fall back to the daily metric's day string (YYYY-MM-DD), formatted to "EEE d MMM".
-    val dateFmt = SimpleDateFormat("EEE d MMM", Locale.US)
+    val dateFmt = SimpleDateFormat("EEE d MMM", Locale.getDefault())
     return runCatching {
         val parser = SimpleDateFormat("yyyy-MM-dd", Locale.US).apply { timeZone = TimeZone.getTimeZone("UTC") }
         parser.parse(latest.day)?.let { dateFmt.format(it) }
@@ -706,7 +706,7 @@ private fun sessionClockLabel(session: SleepSession): String =
  */
 private fun clockLabelFor(onsetTs: Long, wakeTs: Long): String {
     val timeFmt = SimpleDateFormat("HH:mm", Locale.US)
-    val dateFmt = SimpleDateFormat("EEE d MMM", Locale.US)
+    val dateFmt = SimpleDateFormat("EEE d MMM", Locale.getDefault())
     val onset = Date(onsetTs * 1000L)
     val wake = Date(wakeTs * 1000L)
     return "${dateFmt.format(wake)} · ${timeFmt.format(onset)} - ${timeFmt.format(wake)}"

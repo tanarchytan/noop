@@ -432,5 +432,5 @@ private fun SleepTrendShell(title: String, onOpen: (() -> Unit)?, body: @Composa
 
 /** "Sat 11" from a YYYY-MM-DD day string, falling back to the string itself. */
 internal fun trendDayLabel(day: String): String = runCatching {
-    java.time.LocalDate.parse(day).format(java.time.format.DateTimeFormatter.ofPattern("EEE d", Locale.US))
+    java.time.LocalDate.parse(day).format(java.time.format.DateTimeFormatter.ofPattern("EEE d", Locale.getDefault()))
 }.getOrDefault(day)

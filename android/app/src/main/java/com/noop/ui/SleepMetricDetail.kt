@@ -189,7 +189,7 @@ internal fun SleepMetricDetailSheetContent(vm: AppViewModel, key: String) {
             Row(modifier = Modifier.fillMaxWidth()) {
                 listOf(dates.first(), dates.getOrNull(dates.lastIndex / 2), dates.last()).forEach { d ->
                     Text(
-                        d?.let { runCatching { LocalDate.parse(it).format(DateTimeFormatter.ofPattern("d MMM", Locale.US)) }.getOrDefault(it) }.orEmpty(),
+                        d?.let { runCatching { LocalDate.parse(it).format(DateTimeFormatter.ofPattern("d MMM", Locale.getDefault())) }.getOrDefault(it) }.orEmpty(),
                         style = NoopType.footnote, color = Palette.textTertiary,
                         modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis,
                     )

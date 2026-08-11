@@ -498,5 +498,5 @@ internal fun landTargetDayStart(
 private fun dayLabel(dayStartSec: Long, todayStart: Long): String = when (dayStartSec) {
     todayStart -> stringResource(R.string.common_today)
     todayStart - 86_400 -> stringResource(R.string.trends2_yesterday)
-    else -> java.text.SimpleDateFormat("EEE d MMM", Locale.US).format(java.util.Date(dayStartSec * 1000))
+    else -> java.text.SimpleDateFormat("EEE d MMM", Locale.getDefault()).format(java.util.Date(dayStartSec * 1000))
 }
