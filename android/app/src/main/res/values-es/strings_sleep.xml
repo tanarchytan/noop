@@ -5,7 +5,7 @@
     <string name="sleep_stage_light">Ligero</string>
     <string name="sleep_stage_deep">Profundo</string>
     <string name="sleep_typical_value">%1$s típico</string>
-    <string name="sleep_no_typical_yet">aún no hay valor típico</string>
+    <string name="sleep_no_typical_yet">sin valor típico</string>
     <string name="sleep_performance">RENDIMIENTO DEL SUEÑO</string>
     <string name="sleep_efficiency">EFICIENCIA DEL SUEÑO</string>
     <string name="sleep_restorative">SUEÑO REPARADOR</string>

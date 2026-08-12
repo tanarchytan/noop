@@ -134,9 +134,9 @@
     <string name="devices_sync_pairing">Koppeln…</string>
     <string name="devices_sync_offline">Offline</string>
     <string name="devices_sync_no_strap">Kein Band verbunden</string>
-    <string name="devices_sync_history_synced">Verlauf synchronisiert</string>
+    <string name="devices_sync_history_synced">Synchronisiert</string>
     <string name="devices_sync_ready">Bereit zum Sync</string>
-    <string name="devices_syncing">Synchronisiert…</string>
+    <string name="devices_syncing">Sync läuft…</string>
     <string name="devices_sync_now">Jetzt syncen</string>
     <string name="devices_sync_a11y_ready">Jetzt syncen. Holt den auf deinem Band gespeicherten Verlauf sofort, ohne auf die nächste automatische Synchronisierung zu warten.</string>
     <string name="devices_sync_a11y_in_progress">Jetzt syncen. Es läuft bereits eine Synchronisierung.</string>

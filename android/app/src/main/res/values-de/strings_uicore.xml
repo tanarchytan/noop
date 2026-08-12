@@ -4,7 +4,7 @@
     <!-- German (de). Du, not Sie. The slots are narrow, so the shortest natural form wins. -->
     <string name="uicore_no_data">Keine Daten</string>
 
-    <string name="uicore_syncing_history">Verlauf wird synchronisiert…</string>
+    <string name="uicore_syncing_history">Verlauf wird geladen…</string>
     <plurals name="uicore_chunks_pulled">
         <item quantity="one">%1$d Block geladen</item>
         <item quantity="other">%1$d Blöcke geladen</item>

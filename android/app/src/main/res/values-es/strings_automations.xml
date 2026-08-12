@@ -145,8 +145,8 @@
     <string name="intervals_phase_work">TRABAJO</string>
     <string name="intervals_phase_rest">DESCANSO</string>
     <string name="intervals_phase_done">FIN</string>
-    <string name="intervals_buzz_cues_on">Avisos por vibración activados</string>
-    <string name="intervals_connect_for_buzz">Conecta la banda para los avisos por vibración</string>
+    <string name="intervals_buzz_cues_on">Vibración activada</string>
+    <string name="intervals_connect_for_buzz">Conecta la banda para vibrar</string>
     <string name="intervals_running">En marcha</string>
     <string name="intervals_complete">Completado</string>
     <string name="intervals_paused">En pausa</string>

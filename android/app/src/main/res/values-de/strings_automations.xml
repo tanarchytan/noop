@@ -145,8 +145,8 @@
     <string name="intervals_phase_work">AKTIV</string>
     <string name="intervals_phase_rest">PAUSE</string>
     <string name="intervals_phase_done">FERTIG</string>
-    <string name="intervals_buzz_cues_on">Vibrationshinweise an</string>
-    <string name="intervals_connect_for_buzz">Band für Vibrationshinweise verbinden</string>
+    <string name="intervals_buzz_cues_on">Vibration an</string>
+    <string name="intervals_connect_for_buzz">Band für Vibration verbinden</string>
     <string name="intervals_running">Läuft</string>
     <string name="intervals_complete">Abgeschlossen</string>
     <string name="intervals_paused">Pausiert</string>

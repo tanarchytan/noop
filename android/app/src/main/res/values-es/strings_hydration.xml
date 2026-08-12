@@ -4,11 +4,11 @@
          beside a number. -->
     <string name="hydration_title">Hidratación</string>
     <string name="hydration_subtitle">Tu ingesta de líquidos de hoy, solo en este teléfono.</string>
-    <string name="hydration_custom_amount">Cantidad personalizada</string>
+    <string name="hydration_custom_amount">Personalizada</string>
     <string name="hydration_last_7_days">Últimos 7 días</string>
     <string name="hydration_empty_today">Aún no has registrado bebidas. Toca Sip, Cup o Bottle para empezar.</string>
     <string name="hydration_logged_today">Registrado hoy</string>
-    <string name="hydration_undo_last">Deshacer lo último (%1$d ml)</string>
+    <string name="hydration_undo_last">Deshacer (%1$d ml)</string>
     <string name="hydration_clear_today">Borrar hoy</string>
     <string name="hydration_goal_disclaimer">Un objetivo simple que se ajusta a tu esfuerzo. Orientación general de bienestar, no es consejo médico.</string>
     <string name="hydration_log_container">Registrar %1$s</string>

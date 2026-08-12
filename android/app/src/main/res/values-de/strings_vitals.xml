@@ -33,7 +33,7 @@
     <string name="breathe_audio_cues_detail">Sanfter Ton bei jeder Phase · beachtet den Lautlos-Modus</string>
     <string name="breathe_stop_session">Sitzung beenden</string>
     <string name="breathe_start_session">Sitzung starten</string>
-    <string name="breathe_test_buzz">Vibration testen</string>
+    <string name="breathe_test_buzz">Testen</string>
     <string name="breathe_outcome_no_rr">RMSSD - · zu wenig R-R-Daten</string>
     <string name="breathe_outcome_rmssd">RMSSD %1$s</string>
     <string name="breathe_outcome_last_session">Letzte Sitzung: %1$s</string>
@@ -223,7 +223,7 @@
     <string name="skintemp_dir_earlier">früher</string>
     <string name="skintemp_body_clock_low">Geschätztes Tief der inneren Uhr gegen %1$s</string>
     <string name="skintemp_rhythm_age">Rhythmusalter</string>
-    <string name="skintemp_rhythm_age_sub">Abgelesen an deiner Bewegung am Handgelenk</string>
+    <string name="skintemp_rhythm_age_sub">Aus deiner Bewegung am Handgelenk</string>
     <string name="skintemp_rhythm_age_years">%1$s Jahre</string>
     <string name="skintemp_rhythm_still_building">Baut noch auf</string>
     <string name="skintemp_rhythm_too_flat">Dein Rhythmus ist gerade zu flach zum Ablesen – trag das Band weiter für ein klareres Bild.</string>

@@ -206,7 +206,7 @@
     <string name="compare_range_caption">%1$d %2$s über %3$d Reihen · %4$s</string>
     <string name="compare_range_caption_widened">%1$s · dünne erweitert</string>
     <string name="compare_add_metric_a11y">Eine Metrik zum Vergleichen hinzufügen</string>
-    <string name="compare_add_metric">Metrik hinzufügen</string>
+    <string name="compare_add_metric">Hinzufügen</string>
     <string name="compare_max_four">Max. 4</string>
     <string name="compare_remove_metric_a11y">%1$s entfernen</string>
     <string name="compare_nothing_selected">Noch nichts ausgewählt.</string>

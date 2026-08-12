@@ -222,7 +222,7 @@
     <string name="skintemp_dir_earlier">más temprano</string>
     <string name="skintemp_body_clock_low">Mínimo estimado del reloj corporal en torno a las %1$s</string>
     <string name="skintemp_rhythm_age">Edad del ritmo</string>
-    <string name="skintemp_rhythm_age_sub">Leída a partir del movimiento en tu muñeca</string>
+    <string name="skintemp_rhythm_age_sub">Según tu movimiento en la muñeca</string>
     <string name="skintemp_rhythm_age_years">%1$s años</string>
     <string name="skintemp_rhythm_still_building">Aún formándose</string>
     <string name="skintemp_rhythm_too_flat">Tu ritmo es demasiado plano para leerlo ahora mismo: sigue llevando la banda para tener una imagen más clara.</string>

@@ -134,10 +134,10 @@
     <string name="devices_sync_pairing">Vinculando…</string>
     <string name="devices_sync_offline">Sin conexión</string>
     <string name="devices_sync_no_strap">Ninguna banda conectada</string>
-    <string name="devices_sync_history_synced">Historial sincronizado</string>
+    <string name="devices_sync_history_synced">Sincronizado</string>
     <string name="devices_sync_ready">Listo para sincronizar</string>
     <string name="devices_syncing">Sincronizando…</string>
-    <string name="devices_sync_now">Sincronizar ahora</string>
+    <string name="devices_sync_now">Sincronizar</string>
     <string name="devices_sync_a11y_ready">Sincronizar ahora. Descarga de inmediato el historial guardado en tu banda, sin esperar a la siguiente sincronización automática.</string>
     <string name="devices_sync_a11y_in_progress">Sincronizar ahora. Ya hay una sincronización en curso.</string>
     <string name="devices_sync_a11y_connect_first">Sincronizar ahora. Conecta tu banda primero.</string>
@@ -153,7 +153,7 @@
     <string name="devices_battery">Batería</string>
     <string name="devices_battery_a11y">%1$s %2$d%%</string>
     <string name="devices_removed_header">Eliminados</string>
-    <string name="devices_add_device">Añadir un dispositivo</string>
+    <string name="devices_add_device">Añadir dispositivo</string>
 
     <!-- DevicesScreen - actions menu -->
     <string name="devices_menu_disconnect">Desconectar</string>

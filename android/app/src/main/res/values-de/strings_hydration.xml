@@ -12,7 +12,7 @@
     <string name="hydration_last_7_days">Letzte 7 Tage</string>
     <string name="hydration_empty_today">Noch keine Getränke erfasst. Tippe auf Schluck, Becher oder Flasche, um zu starten.</string>
     <string name="hydration_logged_today">Heute erfasst</string>
-    <string name="hydration_undo_last">Letztes rückgängig (%1$d ml)</string>
+    <string name="hydration_undo_last">Rückgängig (%1$d ml)</string>
     <string name="hydration_clear_today">Heute löschen</string>
     <string name="hydration_goal_disclaimer">Ein einfaches Ziel, das sich an deine Anstrengung anpasst. Allgemeine Wellness-Hinweise, keine medizinische Beratung.</string>
     <string name="hydration_log_container">%1$s erfassen</string>

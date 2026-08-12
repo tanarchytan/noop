@@ -40,7 +40,7 @@
     <string name="settings_deep_data_toggle">Desbloquear los datos profundos de WHOOP 5/MG (R22)</string>
     <string name="settings_deep_data_toggle_desc">Desbloquear los datos profundos de WHOOP 5/MG</string>
     <string name="settings_deep_data_detail">Las bandas WHOOP 5/MG solo entregan frecuencia cardíaca en vivo a una app nueva. La app oficial activa los flujos más profundos (FC de alta frecuencia + movimiento + historial) escribiendo un conjunto de flags de funciones, una secuencia que dos proyectos independientes han documentado. Con esto activado, el botón de abajo envía esa misma secuencia a tu banda. A diferencia de todo lo demás aquí, sí escribe en la banda, pero es reversible (solo cambia qué datos emite la banda) y es lo mismo que hace la app oficial. Experimental: puede que no haga nada en tu firmware.</string>
-    <string name="settings_send_enable_sequence">Enviar la secuencia de activación a la banda</string>
+    <string name="settings_send_enable_sequence">Enviar secuencia de activación</string>
     <string name="settings_deep_data_needs_bond">Necesita el vínculo cifrado completo: cierra la app oficial de WHOOP y vincula la banda a NOOP primero (un enlace de solo FC en vivo no puede llevar el desbloqueo).</string>
     <string name="settings_deep_data_needs_worn">Ponte la banda primero. El flujo profundo solo funciona con la banda puesta.</string>
     <string name="settings_deep_data_ready">Ponte la banda, toca una vez, y luego deja que sincronice y comparte el registro de tu banda.</string>
@@ -177,10 +177,10 @@
     <string name="backup_failed_no_access">La copia de seguridad falló: concede acceso a archivos e inténtalo de nuevo.</string>
     <string name="backup_restore">Restaurar</string>
     <string name="backup_restore_detail">Sustituye los datos de este dispositivo por los de una de tus copias. Esto sobrescribe los datos actuales, así que haz una copia antes si tienes dudas.</string>
-    <string name="backup_restore_action">Restaurar desde una copia de seguridad…</string>
+    <string name="backup_restore_action">Restaurar una copia…</string>
     <string name="backup_export_copy">Exportar una copia</string>
     <string name="backup_export_copy_detail">Guarda un archivo puntual para llevar tus datos a otro teléfono o compartirlos. El .noopbak es el archivo de restauración sin pérdidas; el CSV es un zip con formato WHOOP que se vuelve a importar en Android o Mac.</string>
-    <string name="backup_export_file">Exportar archivo de copia de seguridad…</string>
+    <string name="backup_export_file">Exportar copia de seguridad…</string>
     <string name="backup_export_csv">Exportar CSV…</string>
     <string name="backup_choose">Elige una copia de seguridad</string>
     <string name="backup_choose_hint">Las más recientes primero. Restaurar sustituye los datos de este dispositivo.</string>

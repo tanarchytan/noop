@@ -143,7 +143,7 @@
     <string name="whoopskin_profile_longest">%1$s más largo</string>
 
     <!-- WhoopStrainScreen + WhoopStrainCards -->
-    <string name="whoopskin_strain_today_vs_window">Hoy frente a los últimos %1$d días</string>
+    <string name="whoopskin_strain_today_vs_window">Hoy vs. %1$d días</string>
     <string name="whoopskin_hr_zones_1_3">Zonas de FC 1-3</string>
     <string name="whoopskin_hr_zones_4_5">Zonas de FC 4-5</string>
     <string name="whoopskin_strain_zones_1_3">Zonas de frecuencia cardiaca 1-3</string>

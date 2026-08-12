@@ -114,8 +114,8 @@
     <string name="intelligence_days">%1$d días</string>
     <string name="intelligence_no_days_in_window">No hay días puntuados en este intervalo. Amplía el rango o importa más historial.</string>
     <string name="intelligence_charge_model">Modelo de Charge</string>
-    <string name="intelligence_weight_hrv">Variabilidad de la frecuencia cardíaca</string>
-    <string name="intelligence_weight_rhr">Frecuencia cardíaca en reposo</string>
+    <string name="intelligence_weight_hrv">Variabilidad cardíaca</string>
+    <string name="intelligence_weight_rhr">FC en reposo</string>
     <string name="intelligence_weight_rest">Calidad del descanso</string>
     <string name="intelligence_weight_respiration">Respiración</string>
     <string name="intelligence_weight_skin_temp">Desviación de la temperatura de la piel</string>
@@ -140,7 +140,7 @@
     <string name="fused_agrees">%1$s coincide: %2$s</string>
     <string name="fused_differs_slightly">Difiere ligeramente</string>
     <string name="fused_source_value">%1$s: %2$s</string>
-    <string name="fused_sources_differ">Las fuentes no coinciden</string>
+    <string name="fused_sources_differ">Fuentes distintas</string>
     <string name="fused_tap_to_compare">Toca para comparar</string>
     <string name="fused_conflict_summary">%1$s dice %2$s. Toca para comparar</string>
     <string name="fused_compare_body">Tus bandas dan números distintos. Aquí tienes todas las fuentes, y la que NOOP está usando.</string>

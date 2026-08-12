@@ -5,7 +5,7 @@
     <string name="sleep_stage_light">Leicht</string>
     <string name="sleep_stage_deep">Tief</string>
     <string name="sleep_typical_value">%1$s typisch</string>
-    <string name="sleep_no_typical_yet">noch kein typischer Wert</string>
+    <string name="sleep_no_typical_yet">noch kein Ø-Wert</string>
     <string name="sleep_performance">SCHLAFLEISTUNG</string>
     <string name="sleep_efficiency">SCHLAFEFFIZIENZ</string>
     <string name="sleep_restorative">ERHOLSAMER SCHLAF</string>

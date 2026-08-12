@@ -40,7 +40,7 @@
     <string name="settings_deep_data_toggle">WHOOP 5/MG-Tiefendaten freischalten (R22)</string>
     <string name="settings_deep_data_toggle_desc">WHOOP 5/MG-Tiefendaten freischalten</string>
     <string name="settings_deep_data_detail">WHOOP 5/MG-Bänder geben einer neuen App nur die Live-Herzfrequenz. Die offizielle App schaltet die tieferen Streams (HR mit hoher Rate + Bewegung + Verlauf) frei, indem sie eine Reihe von Feature-Flags schreibt, eine Sequenz, die zwei unabhängige Projekte dokumentiert haben. Wenn dies an ist, sendet die Schaltfläche unten genau diese Sequenz an dein Band. Anders als alles andere hier schreibt es tatsächlich auf das Band, aber es ist umkehrbar (es ändert nur, welche Daten das Band sendet) und ist dasselbe, was die offizielle App tut. Experimentell: Auf deiner Firmware bewirkt es möglicherweise nichts.</string>
-    <string name="settings_send_enable_sequence">Aktivierungssequenz an das Band senden</string>
+    <string name="settings_send_enable_sequence">Aktivierungssequenz senden</string>
     <string name="settings_deep_data_needs_bond">Benötigt die vollständige verschlüsselte Kopplung: Schließe zuerst die offizielle WHOOP-App und kopple das Band mit NOOP (eine Verbindung nur für Live-HR kann die Freischaltung nicht übertragen).</string>
     <string name="settings_deep_data_needs_worn">Leg das Band zuerst an. Der Tiefenstream läuft nur am Handgelenk.</string>
     <string name="settings_deep_data_ready">Band anlegen, einmal tippen, dann synchronisieren lassen und dein Bandprotokoll teilen.</string>
@@ -119,7 +119,7 @@
     <string name="datasources_subtitle">Alles bleibt auf diesem Telefon. Hol deinen Verlauf einmal herein, dann gehört er dir.</string>
     <string name="datasources_whoop_history">WHOOP-Verlauf</string>
     <string name="datasources_whoop_history_subtitle">Recovery, Strain, Schlaf und Workouts, lokal gespeichert. Importiere einen vollständigen WHOOP-Datenexport (.zip) von app.whoop.com → Data Management, und er füllt deinen gesamten Verlauf in etwa einer Minute auf. Funktioniert jetzt unter Android.</string>
-    <string name="datasources_stored_here">Auf diesem Telefon gespeichert</string>
+    <string name="datasources_stored_here">Lokal gespeichert</string>
     <string name="datasources_nothing_here_yet">Noch nichts hier</string>
     <string name="datasources_history_span">Verlauf von %1$s bis %2$s</string>
     <string name="datasources_replace_whoop_export">WHOOP-Export (.zip) ersetzen…</string>
@@ -177,7 +177,7 @@
     <string name="backup_failed_no_access">Backup fehlgeschlagen: Erteile Dateizugriff und versuch es erneut.</string>
     <string name="backup_restore">Wiederherstellen</string>
     <string name="backup_restore_detail">Ersetzt die Daten dieses Geräts durch eines deiner Backups. Das überschreibt die aktuellen Daten, sichere also vorher, wenn du unsicher bist.</string>
-    <string name="backup_restore_action">Aus einem Backup wiederherstellen…</string>
+    <string name="backup_restore_action">Backup wiederherstellen…</string>
     <string name="backup_export_copy">Kopie exportieren</string>
     <string name="backup_export_copy_detail">Speichere eine einmalige Datei, um deine Daten auf ein anderes Telefon zu bringen oder zu teilen. Die .noopbak ist die verlustfreie Wiederherstellungsdatei; die CSV ist ein Zip im WHOOP-Format, das sich unter Android oder Mac wieder importieren lässt.</string>
     <string name="backup_export_file">Backup-Datei exportieren…</string>
