@@ -118,10 +118,10 @@
     <string name="intelligence_weight_rhr">FC en reposo</string>
     <string name="intelligence_weight_rest">Calidad de Rest</string>
     <string name="intelligence_weight_respiration">Respiración</string>
-    <string name="intelligence_weight_skin_temp">Desviación de temperatura</string>
+    <string name="intelligence_weight_skin_temp">Desviación de temp. piel</string>
     <string name="intelligence_effort_scale">escala de 0 a %1$s</string>
     <string name="intelligence_stat_hrv">HRV</string>
-    <string name="intelligence_stat_rhr">FC reposo</string>
+    <string name="intelligence_stat_rhr">FC en reposo</string>
     <string name="intelligence_no_data">sin datos</string>
 
     <!-- FusedRecordScreen -->

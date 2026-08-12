@@ -45,7 +45,7 @@
     <string name="automations_nap_keep">Nickerchen behalten</string>
     <string name="automations_nap_skip">Nickerchen verwerfen</string>
     <string name="automations_illness_title">Krankheits-Frühwarnung</string>
-    <string name="automations_illness_blurb">Beobachtet deine Ruhe-HF, HRV, Hauttemperatur und Atmung im Vergleich zu deiner eigenen 28-Tage-Baseline. Auf dem Gerät und ungefähr: nur zur Information, keine Diagnose.</string>
+    <string name="automations_illness_blurb">Beobachtet deinen Ruhepuls, HRV, Hauttemperatur und Atmung im Vergleich zu deiner eigenen 28-Tage-Baseline. Auf dem Gerät und ungefähr: nur zur Information, keine Diagnose.</string>
     <string name="automations_illness_toggle">Auf frühe Krankheitszeichen achten</string>
     <string name="automations_illness_detail">Braucht mindestens 14 Tage Verlauf. Wenn zwei oder mehr Signale gemeinsam abweichen, bekommst du einen Hinweis auf Heute und eine Benachrichtigung, höchstens einmal am Tag.</string>
     <string name="automations_battery_title">Akku-Hinweise</string>
@@ -151,14 +151,14 @@
     <string name="intervals_complete">Abgeschlossen</string>
     <string name="intervals_paused">Pausiert</string>
     <string name="intervals_round">Runde</string>
-    <string name="intervals_session_done">SESSION BEENDET</string>
+    <string name="intervals_session_done">EINHEIT BEENDET</string>
     <string name="intervals_seconds">SEKUNDEN</string>
     <string name="intervals_pause">Pause</string>
     <string name="intervals_restart">Neu starten</string>
     <string name="intervals_start">Start</string>
     <string name="intervals_reset">Zurücksetzen</string>
     <string name="intervals_bond_hint">Kopple dein Band im Live-Bildschirm, um die Übergänge freihändig zu spüren.</string>
-    <string name="intervals_overline_session">Session</string>
+    <string name="intervals_overline_session">Einheit</string>
     <string name="intervals_elapsed_of_total">%1$s / %2$s</string>
     <string name="intervals_work">Aktiv</string>
     <string name="intervals_rest">Pause</string>

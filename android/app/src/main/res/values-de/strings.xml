@@ -1,7 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- German (de). App name stays untranslated (brand). Nav terms mirror the iOS German pass where
-         one exists, so the two platforms read the same. -->
+         one exists, so the two platforms read the same. Shared terms, app-wide: strap = Band,
+         phone = Telefon, history = Verlauf, notification = Benachrichtigung, session = Einheit,
+         resting HR = Ruhepuls, baseline = Baseline. -->
     <string name="widget_description">Rest, Charge und Effort von heute, mit Live-Herzfrequenz und Band-Akku auf einen Blick.</string>
     <string name="widget_compact_name">NOOP Kompakt</string>
     <string name="widget_compact_description">Kompaktes Widget für Rest, Charge und Effort, mit Live-Herzfrequenz und Band-Akku.</string>
@@ -86,8 +88,8 @@
     <string name="explore_max">Max</string>
     <string name="explore_latest">Aktuellste</string>
     <string name="explore_delta_vs_prev">Δ vs. vorher</string>
-    <string name="explore_summary">Übersicht</string>
-    <string name="explore_over_visible_window">Über das sichtbare Fenster</string>
+    <string name="explore_summary">Zusammenfassung</string>
+    <string name="explore_over_visible_window">Im sichtbaren Fenster</string>
     <string name="explore_n_days">%1$d Tage</string>
     <string name="explore_n_pts">%1$d Pkt.</string>
     <string name="explore_vs_prev_window">vs. vorher %1$s</string>
@@ -98,7 +100,7 @@
     <string name="explore_chart_window">Fenster</string>
     <string name="explore_chart_points">Punkte</string>
 
-    <string name="timeline_subtitle">Jede Sekunde deines Tages. Bis zu 3 Tage zurückziehen.</string>
+    <string name="timeline_subtitle">Jede Sekunde deines Tages. Zieh bis zu 3 Tage zurück.</string>
     <string name="timeline_my_whoop">Mein WHOOP</string>
     <string name="timeline_owned">Eigene</string>
     <string name="timeline_all">Alle</string>

@@ -25,7 +25,7 @@
 
     <!-- Illness early-warning -->
     <string name="notif_channel_illness">Krankheits-Frühwarnung</string>
-    <string name="notif_channel_illness_desc">Ein Hinweis, wenn Ruhe-HF, HRV, Hauttemperatur oder Atmung gemeinsam von deiner Baseline abweichen.</string>
+    <string name="notif_channel_illness_desc">Ein Hinweis, wenn Ruhepuls, HRV, Hauttemperatur oder Atmung gemeinsam von deiner Baseline abweichen.</string>
     <string name="notif_illness_title">Frühwarnung: mach langsam</string>
     <string name="notif_illness_bigtext">%1$s\nSchätzung auf dem Gerät (ungefähr), keine Diagnose.</string>
 

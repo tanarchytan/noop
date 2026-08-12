@@ -105,7 +105,7 @@
     <string name="sleep_edit_move_title">Schlaf verschieben?</string>
     <string name="sleep_edit_move_body">Damit rückt die Nacht auf eine Zeit ohne aufgezeichnete Daten. Dort lassen sich keine Phasen ableiten, sie kann also leer bleiben, bis Daten sie abdecken.</string>
     <string name="sleep_edit_move_confirm">Trotzdem verschieben</string>
-    <string name="sleep_edit_delete_title">Diese Schlafsitzung löschen?</string>
+    <string name="sleep_edit_delete_title">Diesen Schlafeintrag löschen?</string>
     <string name="sleep_edit_delete_body_edited">Entfernt diesen Schlaf und berechnet den Tag neu. Du kannst das ein paar Sekunden lang rückgängig machen.</string>
     <string name="sleep_edit_delete_body_detected">Entfernt diesen aufgezeichneten Schlaf und berechnet den Tag neu. NOOP erkennt in diesem Fenster keinen Schlaf mehr. Du kannst das ein paar Sekunden lang rückgängig machen.</string>
     <string name="sleep_edit_delete_confirm">Löschen</string>

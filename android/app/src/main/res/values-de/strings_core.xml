@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- German (de). Du, not Sie. Charge / Effort / Rest / Recovery stay English (NOOP metric names);
-         a lowercase generic "recovery" in a sentence is translated. -->
+         a lowercase generic "recovery" in a sentence is translated. Shared terms, app-wide: session =
+         Einheit, resting HR = Ruhepuls, baseline = Baseline, strap = Band. -->
     <string name="charge_driver_hrv">Herzfrequenzvariabilität</string>
     <string name="charge_driver_resting_hr">Ruheherzfrequenz</string>
     <string name="charge_driver_sleep">Schlafqualität</string>
@@ -21,9 +22,9 @@
     <string name="charge_verdict_sleep_supporting">eine starke Nacht, unterstützt die Erholung</string>
     <string name="charge_verdict_sleep_neutral">eine typische Nacht</string>
     <string name="charge_verdict_sleep_limiting">unter einer guten Nacht, bremst die Erholung</string>
-    <string name="charge_verdict_index_supporting">Ruhe-HF ist über Nacht gefallen, unterstützt die Erholung</string>
-    <string name="charge_verdict_index_neutral">Ruhe-HF blieb über Nacht konstant</string>
-    <string name="charge_verdict_index_limiting">Ruhe-HF ist über Nacht gestiegen, bremst die Erholung</string>
+    <string name="charge_verdict_index_supporting">Ruhepuls ist über Nacht gefallen, unterstützt die Erholung</string>
+    <string name="charge_verdict_index_neutral">Ruhepuls blieb über Nacht konstant</string>
+    <string name="charge_verdict_index_limiting">Ruhepuls ist über Nacht gestiegen, bremst die Erholung</string>
     <string name="charge_verdict_activity_supporting">ein leichterer Tag gestern, unterstützt die Erholung</string>
     <string name="charge_verdict_activity_neutral">ein typischer Tag gestern</string>
     <string name="charge_verdict_activity_limiting">ein härterer Tag gestern, bremst die Erholung</string>
@@ -35,7 +36,7 @@
     <string name="core_state_calibrating">Kalibrierung</string>
     <string name="core_state_calibrating_detail">Deine Baseline entsteht. Noch etwa %1$d %2$s, bis deine Werte persönlich sind.</string>
     <string name="core_state_carried_detail">Der von heute Nacht kommt, wenn du mit dem Band schläfst.</string>
-    <string name="core_state_carried_stale_detail">Das ist deine letzte bewertete Sitzung. Trag das Band über Nacht für einen neuen Wert.</string>
+    <string name="core_state_carried_stale_detail">Das ist deine letzte bewertete Einheit. Trag das Band über Nacht für einen neuen Wert.</string>
     <string name="core_state_needs_strap">Band nötig</string>
     <string name="core_state_needs_strap_detail">Keine Daten für heute. War dein Band über Nacht getragen und verbunden?</string>
     <string name="core_recording">Zeichnet auf</string>
@@ -58,7 +59,7 @@
     <string name="core_weight_from_profile">aus dem Profil</string>
     <string name="core_building_wear_tonight">Entsteht, trag es heute Nacht</string>
     <string name="core_building_moves_as_you_do">Entsteht, bewegt sich mit dir</string>
-    <string name="core_live_verdict_nothing_scored">Es kam keine Herzfrequenz in der Sitzung an, also konnte nichts bewertet werden.</string>
+    <string name="core_live_verdict_nothing_scored">Es kam keine Herzfrequenz in der Einheit an, also konnte nichts bewertet werden.</string>
     <string name="core_live_verdict_too_short">Zu kurz zum Bewerten.</string>
     <string name="core_live_verdict_on_track">Auf Kurs. Du hast getroffen, was heute drin war.</string>
     <string name="core_live_verdict_mixed">Gemischt. Etwa die Hälfte der Zeit im Zielbereich.</string>

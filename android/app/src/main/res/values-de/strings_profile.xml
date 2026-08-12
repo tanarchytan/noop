@@ -121,7 +121,7 @@
     <string name="intelligence_weight_skin_temp">Hauttemperatur-Abweichung</string>
     <string name="intelligence_effort_scale">Skala 0 - %1$s</string>
     <string name="intelligence_stat_hrv">HRV</string>
-    <string name="intelligence_stat_rhr">Ruhe-HF</string>
+    <string name="intelligence_stat_rhr">Ruhepuls</string>
     <string name="intelligence_no_data">keine Daten</string>
 
     <!-- FusedRecordScreen -->

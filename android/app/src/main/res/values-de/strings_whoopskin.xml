@@ -14,9 +14,9 @@
     <string name="whoopskin_confidence_solid">SOLIDE</string>
     <string name="whoopskin_confidence_building">IM AUFBAU</string>
     <string name="whoopskin_confidence_calibrating">KALIBRIERUNG</string>
-    <string name="whoopskin_recovery_driver_point">%1$s pt</string>
-    <string name="whoopskin_recovery_driver_points">%1$s pts</string>
-    <string name="whoopskin_recovery_drivers_footnote">Jede Zeile zeigt, wie viele Punkte das Signal Recovery gegenüber deiner Gerätebasislinie verschoben hat. Eine Wellness-Schätzung, kein medizinischer Rat.</string>
+    <string name="whoopskin_recovery_driver_point">%1$s Pkt.</string>
+    <string name="whoopskin_recovery_driver_points">%1$s Pkt.</string>
+    <string name="whoopskin_recovery_drivers_footnote">Jede Zeile zeigt, wie viele Punkte das Signal Recovery gegenüber deiner Geräte-Baseline verschoben hat. Eine Wellness-Schätzung, kein medizinischer Rat.</string>
     <string name="whoopskin_recovery_card_hrv">Herzfrequenzvariabilität</string>
     <string name="whoopskin_recovery_series_hrv">Herzfrequenzvariabilität</string>
     <string name="whoopskin_recovery_card_rhr">Ruheherzfrequenz</string>
@@ -36,11 +36,11 @@
     <string name="whoopskin_vital_rhr_short">RHF</string>
     <string name="whoopskin_vital_hrv">HRV</string>
     <string name="whoopskin_vital_skin">Hauttemp.</string>
-    <string name="whoopskin_vital_skin_from_baseline">Hauttemp. (zur Basislinie)</string>
+    <string name="whoopskin_vital_skin_from_baseline">Hauttemp. (zur Baseline)</string>
     <string name="whoopskin_vital_skin_short">Temp.</string>
     <string name="whoopskin_vital_no_reading">Noch kein Messwert</string>
     <string name="whoopskin_vital_in_your_range">In deinem Bereich</string>
-    <string name="whoopskin_vital_off_baseline">Abseits deiner Basislinie</string>
+    <string name="whoopskin_vital_off_baseline">Abseits deiner Baseline</string>
     <string name="whoopskin_vital_in_typical">Im üblichen Bereich</string>
     <string name="whoopskin_vital_outside_typical">Nicht im üblichen Bereich</string>
     <string name="whoopskin_vital_spoken">%1$s %2$s, %3$s</string>
@@ -61,7 +61,7 @@
     <string name="whoopskin_stress_no_score_day">Zu wenig Ruheherzfrequenz oder HRV, um diesen Tag zu bewerten.</string>
     <string name="whoopskin_stress_of_ceiling">von %1$d</string>
     <string name="whoopskin_stress_gauge_a11y">Stress %1$s von %2$d</string>
-    <string name="whoopskin_stress_hero_footnote">Bewertet danach, wie deine heutige Ruheherzfrequenz und HRV zu deiner eigenen jüngsten Basislinie stehen. Eine Wellness-Schätzung, keine medizinische Messung.</string>
+    <string name="whoopskin_stress_hero_footnote">Bewertet danach, wie deine heutige Ruheherzfrequenz und HRV zu deiner eigenen jüngsten Baseline stehen. Eine Wellness-Schätzung, keine medizinische Messung.</string>
     <string name="whoopskin_stress_through_the_day">Im Tagesverlauf</string>
     <string name="whoopskin_stress_peak">Spitze %1$s · %2$s</string>
     <string name="whoopskin_stress_reading_day">Herzfrequenz des Tages wird gelesen…</string>
@@ -82,7 +82,7 @@
     <string name="whoopskin_health_monitor">Gesundheits-Monitor</string>
     <string name="whoopskin_health_monitor_subtitle">Live-Herzfrequenz und die Vitalwerte deines Körpers.</string>
     <string name="whoopskin_vitals_building_title">Vitalwerte bauen sich noch auf</string>
-    <string name="whoopskin_vitals_building_body">SpO₂, Atemfrequenz und Hauttemperatur sind Messwerte aus dem Schlaffenster; Ruhepuls und HRV kommen, sobald eine Nacht ausgewertet ist.</string>
+    <string name="whoopskin_vitals_building_body">SpO₂, Atemfrequenz und Hauttemperatur sind Messwerte aus dem Schlaffenster; Ruheherzfrequenz und HRV kommen, sobald eine Nacht ausgewertet ist.</string>
     <string name="whoopskin_heart_rate">Herzfrequenz</string>
     <string name="whoopskin_live">Live</string>
     <string name="whoopskin_idle">Inaktiv</string>

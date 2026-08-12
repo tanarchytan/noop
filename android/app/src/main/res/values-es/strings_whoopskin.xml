@@ -55,13 +55,13 @@
 
     <!-- WhoopStressMonitorScreen -->
     <string name="whoopskin_stress_monitor">Monitor de estrés</string>
-    <string name="whoopskin_stress_monitor_subtitle">Carga autonómica a partir de la FC y la HRV.</string>
+    <string name="whoopskin_stress_monitor_subtitle">Carga autonómica según frecuencia cardíaca y HRV.</string>
     <string name="whoopskin_stress_empty_title">Aún sin historial de estrés</string>
     <string name="whoopskin_stress_empty_body">Lleva tu banda durante el día, o importa una exportación de WHOOP en Fuentes de datos, y tu estrés se leerá aquí.</string>
-    <string name="whoopskin_stress_no_score_day">Sin suficiente FC en reposo ni HRV para puntuar este día.</string>
+    <string name="whoopskin_stress_no_score_day">Frecuencia cardíaca en reposo o HRV insuficientes para puntuar este día.</string>
     <string name="whoopskin_stress_of_ceiling">de %1$d</string>
     <string name="whoopskin_stress_gauge_a11y">Estrés %1$s de %2$d</string>
-    <string name="whoopskin_stress_hero_footnote">Puntuado según cómo se sitúan tu FC en reposo y tu HRV de hoy frente a tu propia línea base reciente. Una estimación de bienestar, no una lectura médica.</string>
+    <string name="whoopskin_stress_hero_footnote">Puntuado según se sitúan hoy tu frecuencia cardíaca en reposo y tu HRV frente a tu línea base reciente. Una estimación de bienestar, no una lectura médica.</string>
     <string name="whoopskin_stress_through_the_day">A lo largo del día</string>
     <string name="whoopskin_stress_peak">pico %1$s · %2$s</string>
     <string name="whoopskin_stress_reading_day">Leyendo frecuencia cardíaca del día…</string>
@@ -82,7 +82,7 @@
     <string name="whoopskin_health_monitor">Monitor de salud</string>
     <string name="whoopskin_health_monitor_subtitle">Frecuencia cardíaca en directo y constantes vitales.</string>
     <string name="whoopskin_vitals_building_title">Constantes vitales en formación</string>
-    <string name="whoopskin_vitals_building_body">SpO₂, frecuencia respiratoria y temp. de la piel son lecturas de la ventana de sueño; la FC en reposo y la HRV llegan al analizar una noche.</string>
+    <string name="whoopskin_vitals_building_body">SpO₂, frecuencia respiratoria y temp. de la piel se miden en el sueño; la frecuencia cardíaca en reposo y la HRV llegan al analizar una noche.</string>
     <string name="whoopskin_heart_rate">Frecuencia cardíaca</string>
     <string name="whoopskin_live">Directo</string>
     <string name="whoopskin_idle">Inactivo</string>
@@ -102,7 +102,7 @@
     <string name="whoopskin_health_empty_title">Aún no hay biometría</string>
     <string name="whoopskin_health_empty_body">Lleva la banda de noche o importa una exportación de WHOOP en Fuentes de datos, y aquí verás tus constantes vitales.</string>
     <string name="whoopskin_stress_reading_today">Leyendo frecuencia cardíaca de hoy…</string>
-    <string name="whoopskin_stress_no_score_today">Sin suficiente FC en reposo ni HRV para puntuar hoy.</string>
+    <string name="whoopskin_stress_no_score_today">Frecuencia cardíaca en reposo o HRV insuficientes para puntuar hoy.</string>
     <string name="whoopskin_todays_stress">Estrés de hoy</string>
     <string name="whoopskin_health_disclaimer">El Monitor de salud y el Monitor de estrés no son dispositivos médicos y no pueden diagnosticar ni tratar una afección médica. Ofrecen estimaciones de bienestar, nunca consejo médico. Consulta siempre a tu médico ante cualquier problema de salud, y nunca retrases ni cambies una atención médica por lo que leas aquí.</string>
 

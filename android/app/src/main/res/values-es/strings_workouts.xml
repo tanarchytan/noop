@@ -119,7 +119,7 @@
     <!-- WorkoutsScreen: session detail sheet -->
     <string name="workouts_detail_duration">Duración</string>
     <string name="workouts_detail_avg_hr">FC media</string>
-    <string name="workouts_detail_max_hr">FC máx</string>
+    <string name="workouts_detail_max_hr">FC máxima</string>
     <string name="workouts_detail_calories">Calorías</string>
     <string name="workouts_detail_distance">Distancia</string>
     <string name="workouts_detail_steps">Pasos</string>
@@ -202,7 +202,7 @@
     <string name="live_hr_zone">Zona de FC</string>
     <string name="live_zone_with_name">Zona %1$d · %2$s</string>
     <string name="live_below_zone_1">Bajo la Zona 1</string>
-    <string name="live_zone_band">Zona %1$d: %2$d - %3$d bpm (%4$d - %5$d%% de la FC máx)</string>
+    <string name="live_zone_band">Zona %1$d: %2$d - %3$d bpm (%4$d - %5$d%% de la FC máxima)</string>
     <string name="live_warming_up">Calentando: sigue moviéndote para entrar en la Zona 1.</string>
     <string name="live_zone_recovery">Recuperación</string>
     <string name="live_zone_fat_burn">Quema de grasa</string>
