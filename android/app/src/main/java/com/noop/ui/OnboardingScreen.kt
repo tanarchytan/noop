@@ -476,6 +476,19 @@ private fun ConnectStep(viewModel: AppViewModel) {
                 )
             }
 
+            // The numbered re-pair steps the client raises when a bond keeps failing. Set in four
+            // places and rendered nowhere until now, so the note above named the fault and withheld
+            // the fix. Left-aligned: it is a list, not a caption.
+            live.reconnectGuide?.let {
+                NoopCard(padding = Metrics.space14) {
+                    Text(
+                        it,
+                        style = NoopType.footnote,
+                        color = Palette.textSecondary,
+                    )
+                }
+            }
+
             if (!live.bonded) {
                 // The SAME per-band picker the Add-device wizard uses: tap the strap that's yours to pair
                 // it. No 4.0-vs-5/MG choice up front — the scan lists both families and each row carries the

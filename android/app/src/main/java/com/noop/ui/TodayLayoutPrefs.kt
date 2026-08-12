@@ -125,38 +125,37 @@ object KeyMetricPrefs {
 /**
  * One available card in the "Your cards" dashboard. The [raw] is the stable persisted identifier —
  * changing one drops that card from every saved dashboard on read, so treat the strings as frozen.
- * [titleRes] is the drawn name, resolved at the render site; [subtitle] / [unit] are display strings
- * and [icon] is the closest match in the bundled Material icon set.
+ * [titleRes] is the drawn name, resolved at the render site; [unit] is a display string and [icon]
+ * is the closest match in the bundled Material icon set.
  */
 enum class DashboardCard(
     val raw: String,
     @StringRes val titleRes: Int,
-    val subtitle: String,
     val unit: String,
     val icon: ImageVector,
 ) {
-    HRV("hrv", R.string.today_metric_hrv, "Heart-rate variability", "ms", Icons.Filled.MonitorHeart),
-    RESTING_HR("restingHr", R.string.today_metric_resting_hr, "Resting heart rate", "bpm", Icons.Filled.Favorite),
-    RESPIRATORY("respiratory", R.string.today_metric_respiratory, "Breaths per minute", "rpm", Icons.Filled.Air),
-    STEPS("steps", R.string.today_metric_steps, "Today", "", Icons.AutoMirrored.Filled.DirectionsWalk),
-    STRESS("stress", R.string.nav_stress, "Autonomic load", "", Icons.Filled.Bolt),
+    HRV("hrv", R.string.today_metric_hrv, "ms", Icons.Filled.MonitorHeart),
+    RESTING_HR("restingHr", R.string.today_metric_resting_hr, "bpm", Icons.Filled.Favorite),
+    RESPIRATORY("respiratory", R.string.today_metric_respiratory, "rpm", Icons.Filled.Air),
+    STEPS("steps", R.string.today_metric_steps, "", Icons.AutoMirrored.Filled.DirectionsWalk),
+    STRESS("stress", R.string.nav_stress, "", Icons.Filled.Bolt),
     FITNESS_AGE(
-        "fitnessAge", R.string.vitals_metric_fitness_age, "Updated weekly", "yrs",
+        "fitnessAge", R.string.vitals_metric_fitness_age, "yrs",
         Icons.AutoMirrored.Filled.DirectionsRun,
     ),
-    VITALITY("vitality", R.string.vitals_metric_vitality, "Wellness score", "", Icons.Filled.AutoAwesome),
-    BLOOD_OXYGEN("bloodOxygen", R.string.trends2_metric_spo2, "Blood oxygen saturation", "", Icons.Filled.WaterDrop),
-    SKIN_TEMP("skinTemp", R.string.trends2_timeline_skin_temp, "Skin temperature", "", Icons.Filled.Thermostat),
-    SLEEP("sleep", R.string.today_metric_sleep, "Last night", "", Icons.Filled.Bedtime),
-    CALORIES("calories", R.string.today_metric_calories, "Active energy", "kcal", Icons.Filled.LocalFireDepartment),
-    HYDRATION("hydration", R.string.hydration_title, "Today's fluid", "", Icons.Filled.LocalDrink),
+    VITALITY("vitality", R.string.vitals_metric_vitality, "", Icons.Filled.AutoAwesome),
+    BLOOD_OXYGEN("bloodOxygen", R.string.trends2_metric_spo2, "", Icons.Filled.WaterDrop),
+    SKIN_TEMP("skinTemp", R.string.trends2_timeline_skin_temp, "", Icons.Filled.Thermostat),
+    SLEEP("sleep", R.string.today_metric_sleep, "", Icons.Filled.Bedtime),
+    CALORIES("calories", R.string.today_metric_calories, "kcal", Icons.Filled.LocalFireDepartment),
+    HYDRATION("hydration", R.string.hydration_title, "", Icons.Filled.LocalDrink),
 
     // Optional, default-OFF: a tap-through to the Coupled view (the WHOOP-style day read). Unlike
     // every other card it carries NO metric value of its own, it is a navigation row that opens the full
     // CoupledScreen. It is NOT in [defaultSelection], so a fresh install never shows it until the user
     // adds it via CUSTOMISE.
     COUPLED(
-        "coupled", R.string.nav_coupled_view, "Recovery, strain and sleep in one glance", "",
+        "coupled", R.string.nav_coupled_view, "",
         Icons.Filled.Hexagon,
     );
 
