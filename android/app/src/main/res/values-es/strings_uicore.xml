@@ -19,6 +19,7 @@
     <!-- Endonyms: the same in every locale, deliberately untranslated -->
     <string name="uicore_language_english">English</string>
     <string name="uicore_language_spanish">Español</string>
+    <string name="uicore_language_german">Deutsch</string>
 
     <string name="uicore_hr_window_hours">%1$dh</string>
 

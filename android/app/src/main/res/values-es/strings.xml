@@ -27,7 +27,7 @@
     <string name="nav_alarms">Alarmas</string>
     <string name="nav_devices">Dispositivos</string>
     <string name="nav_data_sources">Fuentes de datos</string>
-    <string name="nav_backup_sync">Copia de seguridad y sincronización</string>
+    <string name="nav_backup_sync">Copia y sincronización</string>
     <string name="nav_fused_record">Tus datos, unificados</string>
     <string name="nav_notifications">Notificaciones</string>
     <string name="nav_support">Soporte</string>

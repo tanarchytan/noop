@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <!-- German (de). Du, not Sie. The slots are narrow, so the shortest natural form wins. -->
+    <string name="uicore_no_data">Keine Daten</string>
+
+    <string name="uicore_syncing_history">Verlauf wird synchronisiert…</string>
+    <plurals name="uicore_chunks_pulled">
+        <item quantity="one">%1$d Block geladen</item>
+        <item quantity="other">%1$d Blöcke geladen</item>
+    </plurals>
+
+    <string name="uicore_previous_day">Vorheriger Tag</string>
+    <string name="uicore_next_day">Nächster Tag</string>
+    <string name="uicore_pick_a_day">Tag wählen</string>
+
+    <string name="uicore_theme_system">System</string>
+
+    <!-- Endonyms: the same in every locale, deliberately untranslated -->
+    <string name="uicore_language_english">English</string>
+    <string name="uicore_language_spanish">Español</string>
+    <string name="uicore_language_german">Deutsch</string>
+
+    <string name="uicore_hr_window_hours">%1$dh</string>
+
+    <string name="uicore_category_other">Sonstige</string>
+
+    <string name="uicore_report_range_30d">Letzte 30 Tage</string>
+    <string name="uicore_report_range_90d">Letzte 90 Tage</string>
+    <string name="uicore_report_range_6m">Letzte 6 Monate</string>
+    <string name="uicore_report_range_1y">Letztes Jahr</string>
+
+    <string name="uicore_hydration_goal_percent">%1$d %% des heutigen Ziels</string>
+    <string name="uicore_hydration_goal_percent_a11y">%1$d Prozent des heutigen Ziels</string>
+
+    <string name="uicore_hypnogram_no_data">Schlafphasen, keine Daten</string>
+    <string name="uicore_hypnogram_summary">Schlafphasen, %1$s</string>
+    <string name="uicore_hypnogram_share">%1$d Prozent %2$s</string>
+
+    <string name="uicore_ago_just_now">gerade eben</string>
+    <plurals name="uicore_ago_minutes">
+        <item quantity="one">vor %1$d min</item>
+        <item quantity="other">vor %1$d min</item>
+    </plurals>
+    <plurals name="uicore_ago_hours">
+        <item quantity="one">vor %1$d h</item>
+        <item quantity="other">vor %1$d h</item>
+    </plurals>
+    <plurals name="uicore_ago_days">
+        <item quantity="one">vor %1$d d</item>
+        <item quantity="other">vor %1$d d</item>
+    </plurals>
+
+    <string name="uicore_reboot_probe_menu">Neustart-Test (4.0 RE)…</string>
+    <string name="uicore_reboot_probe_title">WHOOP 4.0 Neustart-Test</string>
+
+    <string name="uicore_every_day">Täglich</string>
+    <string name="uicore_weekdays">Wochentags</string>
+    <string name="uicore_weekends">Wochenende</string>
+
+    <string name="uicore_stress_high_today">%1$s hoher Stress heute</string>
+    <string name="uicore_stress_needs_more_hours">Für die Stundenansicht braucht es mehr bewertete Stunden</string>
+</resources>

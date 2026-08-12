@@ -1,0 +1,295 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- German (de). Du, not Sie. Charge / Effort / Rest / HRV / WHOOP / NOOP stay untranslated.
+         Correlation and experiment wording keeps its uncertainty: "tendenziell", "meist",
+         "hängt zusammen mit", never "verursacht" and never "zeigt an". Strength and direction words
+         come in two shapes: insights_strength_* / insights_direction_* are inflected masculine so
+         they agree with "Zusammenhang", the noun those sentences build around; compare_strength_* /
+         compare_direction_* stay uninflected because their sentences use them predicatively.
+         Metric titles reach compare_insight_link lowercased by the caller, so its clauses are
+         framed to keep that readable.
+         -->
+
+    <!-- InsightsScreen -->
+    <string name="insights_title">Einblicke</string>
+    <string name="insights_subtitle">Untersuche, was was beeinflusst.</string>
+    <string name="insights_what_moves_you_overline">Was dich bewegt ›</string>
+    <string name="insights_what_moves_you_blurb">Sortiert und zeitversetzt betrachtet: welche deiner Gewohnheiten dein Charge wirklich bewegen, plus deine persönliche Dosis-Wirkung bei Alkohol und Koffein.</string>
+    <string name="insights_what_moves_you_a11y">Was dich bewegt. Sortierte Muster in deinen eigenen Daten und deine Dosis-Wirkung.</string>
+    <string name="insights_prefilled_from_last_night">Aus der letzten Nacht vorausgefüllt. Tippe zum Bestätigen oder Ändern.</string>
+    <string name="insights_reading_journal">Dein Journal und deine Ergebnisse werden gelesen…</string>
+    <string name="insights_no_journal_title">Einblicke lesen dein Journal und deine Ergebnisse</string>
+    <string name="insights_no_journal_body">Protokolliere oben dein Verhalten. Nach ein paar Tagen mit Antworten sortiert NOOP, wie stark jedes davon deine Erholung, deine HRV und deinen Schlaf bewegt. Der Import eines WHOOP-Exports (der sein Journal enthält) füllt den Verlauf sofort auf.</string>
+
+    <!-- Insights: outcome names - the segmented control and every sentence -->
+    <string name="insights_outcome_charge">Charge</string>
+    <string name="insights_outcome_hrv">HRV</string>
+    <string name="insights_outcome_rest">Rest</string>
+    <string name="insights_outcome_rhr">RHR</string>
+    <string name="insights_outcome_resting_hr">Ruhe-HR</string>
+
+    <!-- Insights: Activity Cost -->
+    <string name="insights_activity_cost">Aktivitätskosten</string>
+    <string name="insights_activity_cost_overline">Was jede Aktivität deine Erholung kostet</string>
+    <string name="insights_activity_cost_empty">Markiere ein paar Einheiten derselben Aktivität, und NOOP lernt ihre persönlichen Erholungskosten.</string>
+    <string name="insights_pill_solid">SOLIDE</string>
+    <string name="insights_pill_building">IM AUFBAU</string>
+    <string name="insights_activity_next_morning">Nächster Morgen</string>
+    <string name="insights_activity_charge_pts">Charge · %1$s pts</string>
+    <string name="insights_activity_rest_baseline">Rest-Baseline</string>
+    <string name="insights_activity_untouched_days">Tage ohne die Aktivität</string>
+    <string name="insights_activity_bounce_back">Rückkehr</string>
+    <string name="insights_activity_to_baseline">bis zur Baseline</string>
+    <string name="insights_activity_not_within_7d">nicht in 7d</string>
+    <string name="insights_activity_sessions">Einheiten</string>
+    <string name="insights_caption_solid">solide</string>
+    <string name="insights_caption_building">im Aufbau</string>
+
+    <!-- Insights: Behaviour Effects -->
+    <string name="insights_behaviour_effects">Verhaltenseffekte</string>
+    <string name="insights_what_moves_your">Was dein %1$s bewegt</string>
+    <string name="insights_behaviour_no_overlap">Noch zu wenig Überschneidung zwischen deinen Journal-Antworten und %1$s, um einen Effekt zu messen. Protokolliere weiter. Effekte brauchen Tage mit und ohne das jeweilige Verhalten.</string>
+    <string name="insights_pill_significant">SIGNIFIKANT</string>
+    <string name="insights_pill_exploratory">EXPLORATIV</string>
+    <string name="insights_with">Mit</string>
+    <string name="insights_without">Ohne</string>
+    <string name="insights_n_count">n = %1$d</string>
+    <string name="insights_effect_size">Effektstärke</string>
+    <string name="insights_cohens_d">d = %1$s</string>
+    <string name="insights_effect_no_difference">An Tagen, an denen du %1$s protokolliert hast, war dein %2$s nicht anders.</string>
+    <string name="insights_effect_sentence">An Tagen, an denen du %1$s protokolliert hast, lag dein %2$s im Mittel bei %3$s, %4$s als %5$s an Tagen ohne.</string>
+    <string name="insights_direction_higher">höher</string>
+    <string name="insights_direction_lower">niedriger</string>
+    <string name="insights_magnitude_negligible">vernachlässigbar</string>
+    <string name="insights_magnitude_small">klein</string>
+    <string name="insights_magnitude_moderate">mäßig</string>
+    <string name="insights_magnitude_large">groß</string>
+
+    <!-- Insights: Personal Experiment -->
+    <string name="insights_personal_experiment">Persönliches Experiment</string>
+    <string name="insights_experiment_overline">N-von-1-Protokoll</string>
+    <string name="insights_experiment_setup">Einrichtung</string>
+    <string name="insights_experiment_complete">FERTIG</string>
+    <string name="insights_experiment_day_of">TAG %1$d/%2$d</string>
+    <string name="insights_experiment_run_title">Mach einen sauberen persönlichen Test</string>
+    <string name="insights_pill_local_only">NUR LOKAL</string>
+    <string name="insights_experiment_run_blurb">Wähle ein Verhalten, das du protokollierst, ein Ergebnis und einen kurzen Zeitraum. NOOP vergleicht die Tage, an denen du das Verhalten protokollierst, mit deinen Tagen ohne dieses Verhalten vor dem Start.</string>
+    <string name="insights_experiment_needs_behaviour">Protokolliere oben mindestens ein Verhalten, bevor du ein Experiment startest.</string>
+    <string name="insights_field_behaviour">Verhalten</string>
+    <string name="insights_field_outcome">Ergebnis</string>
+    <string name="insights_field_window">Zeitraum</string>
+    <string name="insights_window_7d">7d</string>
+    <string name="insights_window_14d">14d</string>
+    <string name="insights_window_28d">28d</string>
+    <string name="insights_experiment_start">Experiment starten</string>
+    <string name="insights_experiment_behaviour_a11y">Verhalten im Experiment: %1$s</string>
+    <string name="insights_experiment_started">Gestartet %1$s · testet %2$s</string>
+    <string name="insights_experiment_needs_days">Sammle ein paar protokollierte Interventionstage, bevor du den Effekt abliest. Baseline und importierte Werte bleiben bestehen.</string>
+    <string name="insights_experiment_flat">%1$s bleibt an den protokollierten Interventionstagen unverändert gegenüber der Baseline.</string>
+    <string name="insights_experiment_reading">%1$s ist an Tagen, an denen du dieses Verhalten protokolliert hast, %2$s %3$s als die Baseline.</string>
+    <string name="insights_direction_better">besser</string>
+    <string name="insights_direction_worse">schlechter</string>
+    <string name="insights_measure_baseline">Baseline</string>
+    <string name="insights_days_without_it">%1$d Tage ohne</string>
+    <string name="insights_measure_intervention">Intervention</string>
+    <string name="insights_logged_days">%1$d protokollierte Tage</string>
+    <string name="insights_measure_change">Änderung</string>
+    <string name="insights_delta_needs_baseline">braucht Baseline + protokollierte Tage</string>
+    <string name="insights_delta_vs_baseline">vs. Baseline ohne das Verhalten</string>
+    <string name="insights_measure_compliance">Einhaltung</string>
+    <string name="insights_logged_today">heute protokolliert</string>
+    <string name="insights_not_logged_today">heute nicht protokolliert</string>
+    <string name="insights_experiment_progress_a11y">Fortschritt des Experiments: %1$d von %2$d Tagen</string>
+    <string name="insights_experiment_days_of">%1$d von %2$d Tagen</string>
+    <string name="insights_signal_stronger">STÄRKERES SIGNAL</string>
+    <string name="insights_signal_early">FRÜHES SIGNAL</string>
+    <string name="insights_signal_low">SCHWACHES SIGNAL</string>
+    <string name="insights_mark_done">Erledigt</string>
+    <string name="insights_mark_done_a11y">Heute als erledigt markieren</string>
+    <string name="insights_skip">Aussetzen</string>
+    <string name="insights_skip_a11y">Heute aussetzen</string>
+    <string name="insights_end">Beenden</string>
+    <string name="insights_end_a11y">Experiment beenden</string>
+
+    <!-- Insights: Metric Relationships -->
+    <string name="insights_metric_relationships">Metrik-Zusammenhänge</string>
+    <string name="insights_pearson_r">Pearson r</string>
+    <string name="insights_relationships_empty">Noch nicht genug überlappender Verlauf, um deine Metriken zu korrelieren.</string>
+    <string name="insights_r_value">r = %1$s</string>
+    <string name="insights_p_significant">p &lt; 0.05</string>
+    <string name="insights_p_ns">n.s.</string>
+    <string name="insights_rel_hrv_charge">HRV ↔ Charge</string>
+    <string name="insights_rel_hrv_charge_blurb">Die Herzfrequenzvariabilität als Motor hinter deinem Charge-Wert.</string>
+    <string name="insights_rel_rest_charge">Rest ↔ Charge</string>
+    <string name="insights_rel_rest_charge_blurb">Wie eng eine gute Nacht mit dem Charge am nächsten Morgen zusammengeht.</string>
+    <string name="insights_rel_rhr_charge">Ruhe-HR ↔ Charge</string>
+    <string name="insights_rel_rhr_charge_blurb">Eine niedrigere Ruheherzfrequenz bedeutet meist ein höheres Charge.</string>
+    <string name="insights_rel_charge_next_day">Charge → Charge am Folgetag</string>
+    <string name="insights_rel_charge_next_day_blurb">Wie viel vom Charge eines Tages in den nächsten übergeht.</string>
+    <string name="insights_relationship_sentence">%1$s %2$s Zusammenhang (r = %3$s, n = %4$d).</string>
+    <string name="insights_direction_positive">positiver</string>
+    <string name="insights_direction_negative">negativer</string>
+    <string name="insights_direction_flat">flacher</string>
+
+    <!-- Correlations - the shared correlation-strength phrase (Insights, Mind) -->
+    <string name="insights_strength_negligible">Kein</string>
+    <string name="insights_strength_weak">Ein schwacher</string>
+    <string name="insights_strength_moderate">Ein mäßiger</string>
+    <string name="insights_strength_strong">Ein starker</string>
+    <string name="insights_strength_very_strong">Ein sehr starker</string>
+
+    <!-- InsightsHubScreen -->
+    <string name="insights_hub_subtitle">Muster in deinen eigenen Daten: Zusammenhang, keine Ursache.</string>
+    <string name="insights_ranked_your_data">Sortiert · deine Daten</string>
+    <string name="insights_movers_no_overlap">Noch zu wenig Überschneidung zwischen deinen Journal-Antworten und %1$s. Protokolliere weiter. Jedes Verhalten braucht Tage mit und ohne, bevor NOOP seinen Effekt ablesen kann.</string>
+    <string name="insights_how_to_read">So liest du das</string>
+    <string name="insights_how_to_read_body">Alles hier ist ein Muster in deinen eigenen protokollierten Tagen: ein Zusammenhang mit Effektstärke und Konfidenz, nie eine Ursache und nie eine Diagnose. Muster aus der Bevölkerung werden als „typisch“ gekennzeichnet und immer von deinen eigenen Daten überschrieben, sobald du genug davon hast. Näherungswerte, nicht die Werte von WHOOP; kein Medizinprodukt.</string>
+    <string name="insights_confidence_solid">Solide</string>
+    <string name="insights_confidence_building">Im Aufbau</string>
+    <string name="insights_confidence_calibrating">Kalibrierung</string>
+
+    <!-- Insights Hub: dose-response -->
+    <string name="insights_dose_response">Dosis-Wirkung</string>
+    <string name="insights_dose_response_overline">Persönliche Kurve · Prior-geschrumpft</string>
+    <string name="insights_dose_response_empty">Protokolliere Alkohol oder spätes Koffein mit einer Menge, und NOOP passt eine persönliche Dosiskurve an: wie stark jede zusätzliche Einheit deine Zahlen tendenziell bewegt. Bis dahin zeigt es typische Muster, klar gekennzeichnet als noch nicht deine.</string>
+    <string name="insights_alcohol">Alkohol</string>
+    <string name="insights_caffeine">Koffein</string>
+    <string name="insights_dose_unit_drink">Drink</string>
+    <string name="insights_dose_unit_later_step">Zeitstufe</string>
+    <string name="insights_dose_label_drink">Drink</string>
+    <string name="insights_dose_label_late_caffeine">Spätkoffein</string>
+    <string name="insights_dose_prior_dominated">Beruht bisher vor allem auf typischen Mustern, noch nicht auf deinen eigenen. Protokolliere noch ein paar %1$s-Tage, dann wird das hier deins.</string>
+    <string name="insights_dose_contradicts_prior">In deinen bisherigen Daten bewegt das dein %1$s nicht so, wie es typischerweise der Fall ist.</string>
+    <string name="insights_dose_timing_proxy">„Dosis“ ist hier die Uhrzeit (später am Tag = stärker), nicht Milligramm.</string>
+    <string name="insights_dose_curve_a11y">Dosis-Wirkungs-Kurve. Pro %1$s mehr etwa %2$s bei %3$s, %4$s</string>
+    <string name="insights_dose_basis_typical">basierend auf typischen Mustern.</string>
+    <string name="insights_dose_basis_yours">basierend auf deinen eigenen Daten.</string>
+    <string name="insights_forecast_tonight">Prognose heute Abend</string>
+    <string name="insights_forecast_timing">Zeitprognose</string>
+    <string name="insights_dose_time_am">Vorm.</string>
+    <string name="insights_dose_time_noon">Mittag</string>
+    <string name="insights_dose_time_afternoon">14 h+</string>
+    <string name="insights_dose_time_evening">Abend</string>
+    <string name="insights_dose_no_extra">nichts extra</string>
+    <string name="insights_dose_plus_drinks">%1$d+ Drinks</string>
+    <string name="insights_dose_drinks">%1$d Drinks</string>
+    <string name="insights_forecast_no_extra">Heute Abend nichts extra. Deine Prognose für %1$s bleibt, wo sie ist.</string>
+    <string name="insights_forecast_basis_typical">nach typischen Mustern</string>
+    <string name="insights_forecast_basis_yours">nach %1$d deiner %2$s-Tage</string>
+    <string name="insights_forecast_sentence">Mit %1$s heute Abend liegt dein %4$s von morgen bei dir tendenziell etwa %2$s %3$s, %5$s.</string>
+    <string name="insights_dose_per_extra">Pro %1$s mehr</string>
+    <string name="insights_dose_typical">typisch</string>
+    <string name="insights_dose_your_data">deine Daten</string>
+    <string name="insights_dose_tomorrows">%1$s von morgen</string>
+    <string name="insights_dose_projected">prognostiziert · %1$s</string>
+    <string name="insights_dose_needs_recent_day">braucht einen aktuellen Tag</string>
+
+    <!-- CompareScreen -->
+    <string name="compare_title">Vergleichen</string>
+    <string name="compare_subtitle">Signale überlagern, Schlüsse ziehen.</string>
+    <string name="compare_metrics">Metriken</string>
+    <string name="compare_metrics_overline">2-4 Signale überlagern</string>
+    <string name="compare_range_w">W</string>
+    <string name="compare_range_m">M</string>
+    <string name="compare_range_3m">3M</string>
+    <string name="compare_range_6m">6M</string>
+    <string name="compare_range_1y">1J</string>
+    <string name="compare_range_all">ALLE</string>
+    <string name="compare_phrase_week">die letzten 7 Tage</string>
+    <string name="compare_phrase_month">30 Tage</string>
+    <string name="compare_phrase_quarter">3 Monate</string>
+    <string name="compare_phrase_half">6 Monate</string>
+    <string name="compare_phrase_year">1 Jahr</string>
+    <string name="compare_phrase_all">gesamter Verlauf</string>
+    <string name="compare_reading">Messwert</string>
+    <string name="compare_readings">Messwerte</string>
+    <string name="compare_range_caption">%1$d %2$s über %3$d Reihen · %4$s</string>
+    <string name="compare_range_caption_widened">%1$s · dünne erweitert</string>
+    <string name="compare_add_metric_a11y">Eine Metrik zum Vergleichen hinzufügen</string>
+    <string name="compare_add_metric">Metrik hinzufügen</string>
+    <string name="compare_max_four">Max. 4</string>
+    <string name="compare_remove_metric_a11y">%1$s entfernen</string>
+    <string name="compare_nothing_selected">Noch nichts ausgewählt.</string>
+    <string name="compare_pick_two">Wähle oben mindestens zwei Metriken, um sie zu überlagern und abzulesen, wie sie sich zusammen bewegen.</string>
+    <string name="compare_needs_history_title">Vergleichen braucht mindestens zwei Metriken mit Verlauf</string>
+    <string name="compare_needs_history_body">Importiere zuerst deinen WHOOP-Export unter Datenquellen.</string>
+    <string name="compare_reading_history">Dein Verlauf wird gelesen…</string>
+    <string name="compare_silent_joiner">" und "</string>
+    <string name="compare_silent_series_one">Keine Messwerte für %1$s in diesem Zeitraum, daher wird sie nicht gezeichnet.</string>
+    <string name="compare_silent_series_many">Keine Messwerte für %1$s in diesem Zeitraum, daher werden sie nicht gezeichnet.</string>
+
+    <!-- Compare: overlay chart -->
+    <string name="compare_overlay">Überlagerung</string>
+    <string name="compare_series_count">%1$d Reihen</string>
+    <string name="compare_normalized_overlay">Normierte Überlagerung</string>
+    <string name="compare_normalized_within">Jede Linie min-max-normiert innerhalb von %1$s</string>
+    <string name="compare_normalized_widened">Jede Linie min-max-normiert · dünne Reihen über %1$s hinaus erweitert</string>
+    <string name="compare_axis_low">niedrig</string>
+    <string name="compare_axis_high">hoch</string>
+
+    <!-- Compare: pairwise correlations -->
+    <string name="compare_how_they_move">Wie sie sich zusammen bewegen</string>
+    <string name="compare_pearson_r">Pearson r · %1$s</string>
+    <string name="compare_pair_count_one">%1$d Paar</string>
+    <string name="compare_pair_count_many">%1$d Paare</string>
+    <string name="compare_no_overlap">Nicht genug überlappende Tage zwischen diesen Metriken in %1$s. Erweitere den Zeitraum.</string>
+    <string name="compare_pair_title">%1$s ↔ %2$s</string>
+    <string name="compare_pair_footnote">%1$d gemeinsame Tage · Korrelation: %2$s %3$s</string>
+    <string name="compare_insight_head">%1$s ↔ %2$s: r = %3$s (%4$s %5$s) über %6$d gemeinsame Tage.</string>
+    <string name="compare_insight_no_relationship">%1$s Kein klarer Zusammenhang: Sie bewegen sich weitgehend unabhängig voneinander.</string>
+    <string name="compare_insight_link">%1$s Wenn %2$s steigt: %3$s %4$s. Der Zusammenhang ist %5$s %6$s.</string>
+    <string name="compare_verb_tends_to_rise">steigt tendenziell</string>
+    <string name="compare_verb_tends_to_fall">fällt tendenziell</string>
+    <string name="compare_strength_negligible">vernachlässigbar</string>
+    <string name="compare_strength_weak">schwach</string>
+    <string name="compare_strength_moderate">mäßig</string>
+    <string name="compare_strength_strong">stark</string>
+    <string name="compare_strength_very_strong">sehr stark</string>
+    <string name="compare_direction_positive">positiv</string>
+    <string name="compare_direction_negative">negativ</string>
+
+    <!-- Compare: metric catalog - category headers -->
+    <string name="compare_category_heart">Herz</string>
+    <string name="compare_category_charge">Charge</string>
+    <string name="compare_category_rest">Rest</string>
+    <string name="compare_category_effort">Effort</string>
+    <string name="compare_category_health">Gesundheit</string>
+    <string name="compare_category_nutrition">Ernährung</string>
+    <string name="compare_category_mind">Psyche</string>
+
+    <!-- Compare: metric catalog - titles -->
+    <string name="compare_metric_avg_hr">Mittlere Herzfrequenz</string>
+    <string name="compare_metric_max_hr">Max. Herzfrequenz</string>
+    <string name="compare_metric_energy_kcal">Kalorien</string>
+    <string name="compare_metric_vo2max">VO₂ Max</string>
+    <string name="compare_metric_fitness_age">Fitnessalter</string>
+    <string name="compare_metric_vo2max_est">VO₂ Max (geschätzt)</string>
+    <string name="compare_metric_vitality">Vitalität</string>
+    <string name="compare_metric_body_age">Körperalter</string>
+    <string name="compare_metric_recovery">Charge</string>
+    <string name="compare_metric_hrv">Herzfrequenzvariabilität</string>
+    <string name="compare_metric_rhr">Ruheherzfrequenz</string>
+    <string name="compare_metric_resp_rate">Atemfrequenz</string>
+    <string name="compare_metric_spo2">SpO₂</string>
+    <string name="compare_metric_skin_temp">Hauttemperatur</string>
+    <string name="compare_metric_sleep_performance">Rest</string>
+    <string name="compare_metric_sleep_total_min">Schlafzeit</string>
+    <string name="compare_metric_sleep_efficiency">Schlafeffizienz</string>
+    <string name="compare_metric_sleep_deep_min">Tiefschlaf (SWS)</string>
+    <string name="compare_metric_sleep_rem_min">REM-Schlaf</string>
+    <string name="compare_metric_sleep_light_min">Leichtschlaf</string>
+    <string name="compare_metric_strain">Effort</string>
+    <string name="compare_metric_steps">Schritte</string>
+    <string name="compare_metric_steps_est">Schritte (geschätzt)</string>
+    <string name="compare_metric_active_kcal">Aktive Energie</string>
+    <string name="compare_metric_weight">Gewicht</string>
+    <string name="compare_metric_body_fat">Körperfett</string>
+    <string name="compare_metric_lean_mass">Fettfreie Masse</string>
+    <string name="compare_metric_bmi">BMI</string>
+    <string name="compare_metric_bmi_note">Aus Health Connect wird das aus deinem Gewicht und der Größe in deinem Profil abgeleitet.</string>
+    <string name="compare_metric_calories_in">Kalorienzufuhr</string>
+    <string name="compare_metric_protein_g">Protein</string>
+    <string name="compare_metric_carbs_g">Kohlenhydrate</string>
+    <string name="compare_metric_fat_g">Fett</string>
+    <string name="compare_metric_mood">Stimmung</string>
+</resources>

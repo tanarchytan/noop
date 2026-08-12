@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- German (de). Du, not Sie. NOOP metric names (Charge, Effort, Rest, Recovery), the WHOOP
+         and NOOP brands, HRV and unit abbreviations (bpm, h, min) stay English. -->
+
+    <!-- Foreground connection service -->
+    <string name="notif_conn_title_reconnecting">Verbinde erneut mit deinem WHOOP…</string>
+    <string name="notif_conn_title_syncing">Verlauf wird synchronisiert…</string>
+    <string name="notif_conn_title_connected">Mit deinem WHOOP verbunden</string>
+    <string name="notif_conn_detail_streaming">Überträgt im Hintergrund</string>
+    <string name="notif_conn_detail_keeping_link">Verbindung bleibt offen</string>
+    <string name="notif_conn_detail_recovery">Recovery %1$d %%</string>
+    <string name="notif_conn_detail_strap">Band %1$d %%</string>
+    <string name="notif_conn_action_disconnect">Trennen</string>
+
+    <!-- Battery alerts -->
+    <string name="notif_channel_battery">Akku-Hinweise</string>
+    <string name="notif_channel_battery_desc">Hinweise, wenn der Band-Akku schwach oder voll geladen ist.</string>
+    <string name="notif_battery_runtime_title">Band-Akku schwach</string>
+    <string name="notif_battery_runtime_body">Noch %1$s auf deinem WHOOP — heute Nacht laden.</string>
+    <string name="notif_battery_low_title">Akku schwach</string>
+    <string name="notif_battery_low_body">Lade dein WHOOP vor heute Nacht.</string>
+    <string name="notif_battery_full_title">Band voll geladen</string>
+    <string name="notif_battery_full_body">Dein WHOOP ist bei %1$d %%.</string>
+
+    <!-- Illness early-warning -->
+    <string name="notif_channel_illness">Krankheits-Frühwarnung</string>
+    <string name="notif_channel_illness_desc">Ein Hinweis, wenn Ruhe-HF, HRV, Hauttemperatur oder Atmung gemeinsam von deiner Baseline abweichen.</string>
+    <string name="notif_illness_title">Frühwarnung: mach langsam</string>
+    <string name="notif_illness_bigtext">%1$s\nSchätzung auf dem Gerät (ungefähr), keine Diagnose.</string>
+
+    <!-- Inactivity nudge -->
+    <string name="notif_channel_inactivity">Inaktivitäts-Erinnerung</string>
+    <string name="notif_channel_inactivity_desc">Ein Anstoß, dich nach langem Sitzen zu bewegen.</string>
+    <string name="notif_inactivity_title">Bewegungserinnerung</string>
+    <plurals name="notif_inactivity_body_minutes">
+        <item quantity="one">Du sitzt seit etwa %1$d min. Zeit, dich zu bewegen.</item>
+        <item quantity="other">Du sitzt seit etwa %1$d min. Zeit, dich zu bewegen.</item>
+    </plurals>
+    <string name="notif_inactivity_body_generic">Zeit, dich zu bewegen. Du sitzt schon eine Weile.</string>
+
+    <!-- Smart alarm: the strap buzz notifier and the phone wake receiver share one channel -->
+    <string name="notif_channel_smart_alarm">Smarter Wecker</string>
+    <string name="notif_channel_smart_alarm_desc">Dein smarter Wecker hat am Band ausgelöst.</string>
+    <string name="notif_channel_smart_alarm_phone_desc">Der Telefon-Wecker, den NOOP in deinem gewählten Weckfenster auslöst.</string>
+    <string name="notif_alarm_good_morning">Guten Morgen</string>
+    <string name="notif_smart_alarm_body">Dein smarter Wecker hat gerade ausgelöst.</string>
+    <string name="notif_alarm_body_smart">Du bist in einer leichteren Schlafphase. Zeit aufzustehen.</string>
+    <string name="notif_alarm_body_deadline">Dein Weckfenster ist vorbei. Zeit aufzustehen.</string>
+
+    <!-- Wind-down nudge -->
+    <string name="notif_channel_wind_down">Erinnerung zum Runterkommen</string>
+    <string name="notif_channel_wind_down_desc">Eine optionale Erinnerung am Abend, vor dem Schlafen runterzukommen.</string>
+    <string name="notif_wind_down_title">Zeit zum Runterkommen</string>
+    <string name="notif_wind_down_body">Eine ruhige Stunde jetzt hilft dir, ausgeruht aufzuwachen.</string>
+
+    <!-- Scheduled reports: morning recap + post-workout summary -->
+    <string name="notif_channel_daily_reports">Tagesberichte</string>
+    <string name="notif_channel_daily_reports_desc">Ein Morgenrückblick und eine Zusammenfassung nach dem Workout, sobald dein Band synchronisiert.</string>
+    <string name="notif_report_morning_title">Guten Morgen: Rückblick auf die Nacht</string>
+    <string name="notif_report_morning_body">%1$s. Recovery von deinem Band, bewertet nach der Synchronisierung heute Morgen.</string>
+    <string name="notif_report_frag_charge">Charge %1$d</string>
+    <string name="notif_report_frag_rest">Rest %1$d</string>
+    <string name="notif_report_workout_title">Workout erfasst: %1$s</string>
+    <string name="notif_report_workout_body">%1$s. Zusammengefasst nach der Synchronisierung deines Bands.</string>
+    <string name="notif_report_frag_effort">Effort %1$s/%2$s</string>
+    <string name="notif_report_frag_avg_hr">Ø %1$d bpm</string>
+    <string name="notif_duration_under_minute">unter einer Minute</string>
+    <plurals name="notif_duration_minutes">
+        <item quantity="one">%1$d min</item>
+        <item quantity="other">%1$d min</item>
+    </plurals>
+    <string name="notif_duration_hours">%1$d h</string>
+    <string name="notif_duration_hours_minutes">%1$d h %2$d min</string>
+
+    <!-- Home-screen widgets -->
+    <string name="widget_status_connected">Verbunden</string>
+    <string name="widget_status_open_to_connect">NOOP öffnen zum Verbinden</string>
+    <string name="widget_a11y_strap_battery">Band-Akku</string>
+</resources>

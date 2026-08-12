@@ -18,22 +18,19 @@ object NoopLocale {
     /** Persisted BCP-47 tag, or absent for "follow the system". */
     private const val KEY_LANGUAGE = "noop.ui.language"
 
-    /**
-     * The languages the app ships a complete UI for. `null` = follow the system.
-     *
-     * `values-de` exists but covers 120 of 2,309 strings, so German is not offered here — a phone set
-     * to German still picks it up through the system, which is where a partial locale belongs.
-     */
+    /** The languages the app ships a complete UI for. `null` = follow the system. */
     val SUPPORTED: List<Option> = listOf(
         Option(null, R.string.language_system_default),
         Option("en", R.string.uicore_language_english),
+        Option("de", R.string.uicore_language_german),
         Option("es", R.string.uicore_language_spanish),
     )
 
     /**
-     * Every language with a `values-xx` folder, which is a wider set than [SUPPORTED] offers. A system
-     * language outside this set gets English strings, so its dates and numbers must read English too:
-     * a Dutch phone rendered an English UI over `di, 11 aug` until this existed.
+     * Every language with a `values-xx` folder. Wider than [SUPPORTED] only when a locale is present
+     * but not complete enough to offer. A system language outside this set gets English strings, so its
+     * dates and numbers must read English too: a Dutch phone rendered an English UI over `di, 11 aug`
+     * until this existed.
      */
     private val TRANSLATED = setOf("en", "de", "es")
 

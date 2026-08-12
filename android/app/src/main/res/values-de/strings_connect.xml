@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- German (de). Du, not Sie. WHOOP, NOOP, Bluetooth and .noopbak stay as they are. -->
+
+    <!-- WhoopBleClient - connection status the onboarding screen renders under the state pill -->
+    <string name="connect_status_no_strap_found">Kein Band gefunden. Prüfe, ob es geladen ist und an deinem Handgelenk sitzt und ob die offizielle WHOOP-App nicht damit verbunden ist (ein Band koppelt sich immer nur mit einer App). Tippe dann erneut auf Verbinden.</string>
+    <string name="connect_status_no_ble_hardware">Dieses Gerät hat kein Bluetooth LE. NOOP muss auf einem echten Telefon mit Bluetooth laufen, in der Nähe deines Bands. Aus einem Emulator oder virtuellen Gerät kann es sich nicht verbinden.</string>
+    <string name="connect_status_bluetooth_off">Bluetooth ist aus. Schalte es ein und tippe dann auf Verbinden.</string>
+    <string name="connect_status_bluetooth_off_reconnect">Bluetooth ist aus. Schalte es ein, um dich wieder zu verbinden.</string>
+    <string name="connect_status_bluetooth_not_ready">Bluetooth ist noch nicht bereit. Versuche es gleich noch einmal.</string>
+    <string name="connect_status_connecting_to">Verbinde mit deinem %1$s…</string>
+    <string name="connect_status_searching_for">Suche nach deinem %1$s…</string>
+    <string name="connect_status_found_connecting">%1$s gefunden, verbinde…</string>
+    <string name="connect_status_needs_permission">NOOP braucht die Berechtigung „Geräte in der Nähe“ / Bluetooth. Erlaube sie unter Einstellungen → Apps → NOOP → Berechtigungen und tippe dann auf Verbinden.</string>
+    <string name="connect_status_scan_failed">Die Suche konnte nicht gestartet werden: %1$s</string>
+    <string name="connect_status_whoop5_experimental">WHOOP 5/MG verbunden – experimentell. Nach dem Koppeln zeigt NOOP die Live-Herzfrequenz aus dem Echtzeit-Stream des Bands. Tiefere Metriken (Erholung, Belastung, Schlaf) für 5/MG werden noch erarbeitet. WHOOP 4.0 wird heute vollständig unterstützt.</string>
+
+    <!-- Pairing guidance shown on the Devices card when the strap keeps refusing the bond -->
+    <string name="connect_pairing_hint">Dein WHOOP koppelt sich nicht, weil es noch mit der offiziellen WHOOP-App verbunden ist. So behebst du das: 1. Schließe die offizielle WHOOP-App (oder schalte Bluetooth auf diesem Telefon aus). 2. Halte oder tippe das Band, bis seine LEDs blau blinken (Kopplungsmodus). 3. Öffne Einstellungen > Bluetooth, suche dein WHOOP und wähle „Dieses Gerät entfernen“. Komm dann zurück und tippe auf Verbinden.</string>
+    <string name="connect_paused_hint">NOOP versucht es nicht mehr, weil dein Band die Kopplung immer wieder ablehnt. Wahrscheinlich hält die offizielle WHOOP-App es noch, oder dein Telefon hält eine alte Kopplung. Schließe die WHOOP-App, versetze das Band in den Kopplungsmodus (tippe darauf, bis die LEDs blau blinken), und wähle „Dieses Gerät entfernen“, falls es in deinen Bluetooth-Einstellungen steht. Tippe dann auf Verbinden, um es erneut zu versuchen.</string>
+
+    <!-- Strap rename outcome, shown as a toast from the Devices rename dialog -->
+    <string name="connect_rename_sent">Gesendet – dein Band startet neu, um den Namen zu übernehmen, und verbindet sich dann mit dem neuen Namen.</string>
+    <string name="connect_rename_not_whoop4">Auf diesem Telefon gespeichert. Nur ein WHOOP 4.0 kann den Namen über Bluetooth übernehmen.</string>
+    <string name="connect_rename_not_connected">Auf diesem Telefon gespeichert. Verbinde das Band, um ihm denselben Bluetooth-Namen zu geben.</string>
+    <string name="connect_rename_empty_name">Gib zuerst einen Namen ein.</string>
+
+    <!-- DataBackup - restore/import failures, shown in onboarding and Backup &amp; Sync -->
+    <string name="restore_error_cannot_open">Die gewählte Datei konnte nicht geöffnet werden.</string>
+    <string name="restore_error_cannot_read">Die gewählte Datei konnte nicht gelesen werden: %1$s</string>
+    <string name="restore_error_not_a_backup">Diese Datei ist kein NOOP-Backup.</string>
+    <string name="restore_error_not_a_backup_detail">Diese Datei ist kein NOOP-Backup – sie sieht weder wie ein .noopbak-Archiv noch wie eine SQLite-Datenbank aus.</string>
+    <string name="restore_error_no_db_in_archive">Das Backup-Archiv enthält keine Datenbankdatei.</string>
+    <string name="restore_error_invalid_db">Das Backup-Archiv enthält keine gültige NOOP-Datenbank.</string>
+    <string name="restore_error_foreign_app">Das ist kein NOOP-Backup aus dieser App. Ihm fehlt die interne Datenbankverwaltung, die ein NOOP-Backup mitbringt (es sieht nach der Datenbank einer anderen App aus). Es wiederherzustellen würde deinen Datenspeicher unbrauchbar machen.</string>
+    <string name="restore_error_no_store">Auf diesem Gerät konnte kein NOOP-Datenspeicher vorbereitet werden, in den das Backup gebracht werden kann. [no-store]</string>
+    <string name="restore_error_reconcile_failed">Dieses Backup konnte nicht in das Format von NOOP gebracht werden: %1$s</string>
+    <string name="restore_error_migrate_no_store">Das Backup konnte nicht auf das aktuelle NOOP-Schema migriert werden, und es konnte kein Datenspeicher vorbereitet werden, in den es kopiert werden kann: %1$s [no-store]</string>
+    <string name="restore_error_reconcile_after_migrate">Dieses Backup konnte nicht in das Format von NOOP gebracht werden: %1$s (danach: %2$s) [row-copy]</string>
+    <string name="restore_error_damaged">Diese Backup-Datei ist beschädigt und kann nicht wiederhergestellt werden (SQLite meldet: %1$s). Deine aktuellen Daten bleiben unangetastet. Versuche eine ältere Backup-Datei.</string>
+    <string name="restore_error_import_failed">Import fehlgeschlagen, deine Daten sind unverändert: %1$s</string>
+</resources>

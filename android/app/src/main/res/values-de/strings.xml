@@ -2,9 +2,9 @@
 <resources>
     <!-- German (de). App name stays untranslated (brand). Nav terms mirror the iOS German pass where
          one exists, so the two platforms read the same. -->
-    <string name="widget_description">Ruhe, Ladung und Anstrengung von heute, mit Live-Herzfrequenz und Band-Akku auf einen Blick.</string>
+    <string name="widget_description">Rest, Charge und Effort von heute, mit Live-Herzfrequenz und Band-Akku auf einen Blick.</string>
     <string name="widget_compact_name">NOOP Kompakt</string>
-    <string name="widget_compact_description">Kompaktes Widget für Ruhe, Ladung und Anstrengung, mit Live-Herzfrequenz und Band-Akku.</string>
+    <string name="widget_compact_description">Kompaktes Widget für Rest, Charge und Effort, mit Live-Herzfrequenz und Band-Akku.</string>
     <string name="widget_error">Das NOOP-Widget konnte nicht gezeichnet werden. Es erholt sich beim nächsten Update.</string>
 
     <string name="nav_today">Heute</string>
@@ -14,11 +14,8 @@
     <string name="nav_sleep">Schlaf</string>
     <string name="nav_breathe">Atmen</string>
     <string name="nav_stress">Stress</string>
-    <string name="nav_recovery">Erholung</string>
-    <string name="nav_strain">Belastung</string>
     <string name="nav_workouts">Workouts</string>
     <string name="nav_trends">Trends</string>
-    <string name="nav_coach">Coach</string>
     <string name="nav_insights_hub">Was dich bewegt</string>
     <string name="nav_insights">Einblicke</string>
     <string name="nav_explore">Entdecken</string>
@@ -26,7 +23,6 @@
     <string name="nav_health">Gesundheit</string>
     <string name="nav_hydration">Flüssigkeit</string>
     <string name="nav_vital_signs">Vitalwerte</string>
-    <string name="nav_apple_health">Apple Health</string>
     <string name="nav_automations">Automationen</string>
     <string name="nav_alarms">Wecker</string>
     <string name="nav_devices">Geräte</string>
@@ -36,7 +32,6 @@
     <string name="nav_notifications">Mitteilungen</string>
     <string name="nav_support">Support</string>
     <string name="nav_settings">Einstellungen</string>
-    <string name="nav_test_centre">Debug</string>
     <string name="nav_profile">Profil</string>
     <string name="nav_about">Über</string>
     <string name="nav_more">Mehr</string>
@@ -45,7 +40,6 @@
     <string name="more_group_trends">Trends</string>
     <string name="more_group_body">Körper</string>
     <string name="more_group_data">Daten</string>
-    <string name="more_group_app">App</string>
 
     <string name="action_live_hr">Live-HF</string>
     <string name="action_start_workout">Workout starten</string>
@@ -57,9 +51,6 @@
     <!-- Trends / Explore / Deep Timeline , see the English values/strings.xml comment for scope.
          Wording matches the existing iOS/macOS German catalog entries where one exists. -->
     <string name="trends_subtitle">Der rote Faden deiner Zeit.</string>
-    <string name="trends_charge">Ladung</string>
-    <string name="trends_effort">Anstrengung</string>
-    <string name="trends_rest">Ruhe</string>
     <string name="trends_hrv_full">Herzfrequenzvariabilität</string>
     <string name="trends_resting_hr_full">Ruheherzfrequenz</string>
     <string name="trends_no_readings_this_week">Keine Messwerte diese Woche</string>
@@ -71,7 +62,6 @@
     <string name="trends_next_week">Nächste Woche</string>
     <string name="trends_daily_signals">Tägliche Signale</string>
     <string name="trends_week_in_review">Woche im Rückblick</string>
-    <string name="trends_charge_effort_rest">Ladung · Anstrengung · Ruhe</string>
     <string name="trends_calendar">Kalender</string>
     <string name="trends_avg">Ø</string>
     <string name="trends_peak">Spitze</string>
@@ -80,7 +70,7 @@
     <string name="trends_mean">Mittelwert</string>
     <string name="trends_min">Min</string>
     <string name="trends_max">Max</string>
-    <string name="trends_calendar_footnote">Jeder Balken ist der Ladungswert eines Tages, von niedrig bis hoch. Das 53-Wochen-Kalendergitter ist Teil der Desktop-App.</string>
+    <string name="trends_calendar_footnote">Jeder Balken ist der Charge-Wert eines Tages, von niedrig bis hoch. Das 53-Wochen-Kalendergitter ist Teil der Desktop-App.</string>
     <string name="trends_not_enough_data">Nicht genug Daten für diesen Zeitraum.</string>
     <string name="trends_empty_title">Trends brauchen Verlauf zum Zeichnen</string>
     <string name="trends_empty_body">Trends brauchen Verlauf zum Zeichnen. Importiere deinen WHOOP-Export in den Datenquellen, um Wochen, Monate und Jahre sofort zu sehen.</string>
@@ -130,8 +120,8 @@
     <string name="power_saving_mode_desc">Verlangsamt die Hintergrund-Synchronisierung des Sensors (alle 45 statt 15 Minuten), wenn der Akku niedrig ist oder der Energiesparmodus aktiv ist. Kein Datenverlust – die Synchronisierung erfolgt in größeren, selteneren Schüben.</string>
     <string name="power_saving_kick_in">Aktiv ab</string>
     <string name="power_saving_pct">%1$d %%</string>
-    <string name="power_saving_hrv_pause">HFV-Erfassung im Energiesparmodus pausieren</string>
-    <string name="power_saving_hrv_pause_desc">Solange der Android-Energiesparmodus aktiv ist, wird der dauerhafte HFV-Hintergrundstream gestoppt (der größte Live-Verbraucher). Beim Öffnen eines Live-Bildschirms wird weiterhin die Herzfrequenz angezeigt, und er wird automatisch reaktiviert, wenn der Energiesparmodus endet.</string>
+    <string name="power_saving_hrv_pause">HRV-Erfassung im Energiesparmodus pausieren</string>
+    <string name="power_saving_hrv_pause_desc">Solange der Android-Energiesparmodus aktiv ist, wird der dauerhafte HRV-Hintergrundstream gestoppt (der größte Live-Verbraucher). Beim Öffnen eines Live-Bildschirms wird weiterhin die Herzfrequenz angezeigt, und er wird automatisch reaktiviert, wenn der Energiesparmodus endet.</string>
 
     <!-- Shared words, defined once in values/strings.xml. -->
     <string name="common_cancel">Abbrechen</string>

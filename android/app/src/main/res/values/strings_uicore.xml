@@ -22,6 +22,7 @@
     <!-- Language names are endonyms: identical in every locale, never translated -->
     <string name="uicore_language_english">English</string>
     <string name="uicore_language_spanish">Español</string>
+    <string name="uicore_language_german">Deutsch</string>
 
     <!-- Today heart-rate card - the rolling window pills -->
     <string name="uicore_hr_window_hours">%1$dh</string>

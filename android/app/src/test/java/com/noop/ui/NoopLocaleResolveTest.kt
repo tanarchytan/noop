@@ -34,16 +34,17 @@ class NoopLocaleResolveTest {
     }
 
     @Test
-    fun germanStillRendersFromTheSystemThoughThePickerDropsIt() {
+    fun germanIsOfferedAndAlsoFollowsTheSystem() {
         val de = Locale.forLanguageTag("de-DE")
         assertEquals(de, NoopLocale.resolve(null, de))
-        assertEquals(null, NoopLocale.SUPPORTED.firstOrNull { it.tag == "de" })
+        assertEquals(Locale.forLanguageTag("de"), NoopLocale.resolve("de", Locale.forLanguageTag("nl-NL")))
+        assertEquals(3, NoopLocale.SUPPORTED.count { it.tag != null })
     }
 
     @Test
     fun aStoredTagThePickerNoLongerOffersResolvesAsIfUnset() {
-        assertEquals(Locale.ENGLISH, NoopLocale.resolve("de", Locale.forLanguageTag("nl-NL")))
+        assertEquals(Locale.ENGLISH, NoopLocale.resolve("fr", Locale.forLanguageTag("nl-NL")))
         val gb = Locale.forLanguageTag("en-GB")
-        assertEquals(gb, NoopLocale.resolve("de", gb))
+        assertEquals(gb, NoopLocale.resolve("fr", gb))
     }
 }

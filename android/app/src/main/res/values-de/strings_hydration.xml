@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- German (de). Du, not Sie. Container names are translated and referenced by the same German
+         word everywhere they appear. -->
+    <string name="hydration_title">Flüssigkeit</string>
+    <string name="hydration_subtitle">Deine Flüssigkeitsaufnahme heute, nur auf diesem Telefon.</string>
+    <string name="hydration_sip">Schluck</string>
+    <string name="hydration_cup">Becher</string>
+    <string name="hydration_bottle">Flasche</string>
+    <string name="hydration_custom_amount">Eigene Menge</string>
+    <string name="hydration_container_sizes">Schluck %1$d ml · Becher %2$d ml · Flasche %3$d ml</string>
+    <string name="hydration_last_7_days">Letzte 7 Tage</string>
+    <string name="hydration_empty_today">Noch keine Getränke erfasst. Tippe auf Schluck, Becher oder Flasche, um zu starten.</string>
+    <string name="hydration_logged_today">Heute erfasst</string>
+    <string name="hydration_undo_last">Letztes rückgängig (%1$d ml)</string>
+    <string name="hydration_clear_today">Heute löschen</string>
+    <string name="hydration_goal_disclaimer">Ein einfaches Ziel, das sich an deine Anstrengung anpasst. Allgemeine Wellness-Hinweise, keine medizinische Beratung.</string>
+    <string name="hydration_log_container">%1$s erfassen</string>
+    <string name="hydration_no_history">Noch kein Verlauf.</string>
+    <string name="hydration_no_history_7d">In den letzten 7 Tagen keine Getränke erfasst.</string>
+    <string name="hydration_millilitres">Milliliter (ml)</string>
+    <string name="hydration_custom_hint">Gib eine beliebige Menge von 1 bis %1$d ml ein.</string>
+    <string name="hydration_log">Erfassen</string>
+</resources>
