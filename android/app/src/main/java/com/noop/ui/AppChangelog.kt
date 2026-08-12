@@ -37,11 +37,11 @@ object AppChangelog {
     val releases: List<Release> = listOf(
         Release(
             version = "10.0.0",
-            title = "Spanish, Rhythm Age, and four numbers that finally read true",
+            title = "Spanish and German, Rhythm Age, and four numbers that finally read true",
             date = "August 2026",
             items = listOf(
                 "**Nothing breaks in this one.** The version jumps to 10 because of how much changed underneath, not because anything about your data or your setup does. Your history upgrades in place — no re-pair, no re-import, no restore.",
-                "**NOOP speaks Spanish, and you pick the language in the app.** Profile → Language switches the whole interface without touching your phone's settings. Every screen is translated. The names NOOP invented for its own metrics — Charge, Effort, Rest — stay as they are in both languages, because they are names rather than words.",
+                "**NOOP speaks Spanish and German, and you pick the language in the app.** Profile → Language switches the whole interface without touching your phone's settings, and a phone already set to Spanish or German gets it on first launch with nothing to change. Every screen is translated. The names NOOP invented for its own metrics — Charge, Effort, Rest — stay as they are in all three languages, because they are names rather than words.",
                 "**Your resting heart rate reads about 10 bpm higher, and that is the fix.** It had been the lowest stretch the night could hold, which is a floor rather than a resting level. It is now the middle of your in-bed heart rate. Against the published figure on the nights where both exist, the old number sat 10.8 bpm low and the new one lands inside 1.",
                 "**A short night can no longer earn a full Restorative Sleep score.** Rest was scored as a share of whatever you happened to sleep, so five good hours scored like eight good hours. It is now scored in minutes against what you need. On a five-hour-ten night that moves Rest from about 81 to about 74.",
                 "**Every number you set is a wheel.** Waist, max heart rate, step calibration, the automation timers, the alarm window and the interval timer all spin to a value instead of counting one tap at a time. Max heart rate can also be handed back to Auto, which it could not before.",

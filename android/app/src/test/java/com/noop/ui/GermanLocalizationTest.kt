@@ -127,18 +127,16 @@ class GermanLocalizationTest {
         assumeTrue("no German strings", de.isNotEmpty())
 
         // Spot-check terms that MUST differ, so a locale file cannot be an accidental English copy.
-        val differs = mapOf(
-            "nav_today" to "Heute",
-            "nav_sleep" to "Schlaf",
-            "nav_settings" to "Einstellungen",
-            "nav_more" to "Mehr",
-            "nav_health" to "Gesundheit",
-        )
-        for ((key, expected) in differs) {
+        // Pinned by the PROPERTY, not by the word: an earlier version asserted nav_today == "Heute" and
+        // failed when the English became "Home" and the German correctly followed it to "Start".
+        val mustDiffer = listOf("nav_today", "nav_sleep", "nav_settings", "nav_more", "nav_health")
+        for (key in mustDiffer) {
             assertTrue("$key present in en", key in en)
+            val German = de[key]
+            assertFalse("$key has no German", German.isNullOrBlank())
             assertTrue(
-                "$key should be German ($expected), was '${de[key]}'",
-                de[key] == expected && de[key] != en[key],
+                "$key must be translated, but German and English are both '${en[key]}'",
+                German != en[key],
             )
         }
     }
