@@ -29,7 +29,9 @@ object BackupSettingsCodec {
     /**
      * The only keys `settings.json` may carry: profile body metrics (HR zones/calories/recovery),
      * the HR-max override (`profile.hrMax`, 0 = auto/Tanaka), unit system, a temperature override
-     * ("" = match the system), and the Effort axis. Per-strap/device-specific values are excluded.
+     * ("" = match the system), the Effort axis, the UI language and the Today layout. Both layout
+     * values are already flat strings (comma-joined keys / a JSON id array), so they cross the wire
+     * as STRING. Per-strap/device-specific values are excluded.
      */
     val WHITELIST: Map<String, Kind> = linkedMapOf(
         "profile.age" to Kind.INT,
@@ -41,6 +43,9 @@ object BackupSettingsCodec {
         "units.system" to Kind.STRING,
         "units.temperature" to Kind.STRING,
         "effort.scale" to Kind.STRING,
+        "noop.ui.language" to Kind.STRING,
+        "today.keyMetrics" to Kind.STRING,
+        "today.dashboardCards" to Kind.STRING,
     )
 
     /**

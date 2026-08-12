@@ -163,4 +163,23 @@ class BackupSettingsCodecTest {
         assertEquals(DataBackup.StageResult.OK, result)
         assertEquals(liveDb.readBytes().toList(), stagedDb.readBytes().toList())
     }
+    /**
+     * The Today layout and the UI language survive a restore. Every .noopbak we hold - five of David\'s
+     * and three from two other users, across app versions v0 to v101 - carried 3 to 6 settings keys and
+     * never a layout one, so a restore always reset a customised Today screen to the default order.
+     */
+    @Test fun layoutAndLanguageRoundTrip() {
+        val values = mapOf(
+            "noop.ui.language" to "es",
+            "today.keyMetrics" to "charge,effort,rest,hrv",
+            "today.dashboardCards" to """["sleep","stress","hydration"]""",
+        )
+        val json = requireNotNull(BackupSettingsCodec.encode(values))
+        val back = BackupSettingsCodec.decode(json)
+
+        assertEquals("es", back["noop.ui.language"])
+        assertEquals("charge,effort,rest,hrv", back["today.keyMetrics"])
+        assertEquals("""["sleep","stress","hydration"]""", back["today.dashboardCards"])
+        assertEquals(values.size, back.size)
+    }
 }
