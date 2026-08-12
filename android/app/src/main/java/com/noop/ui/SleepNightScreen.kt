@@ -113,7 +113,7 @@ fun SleepNightScreen(
     var motionByStart by remember { mutableStateOf<Map<Long, List<Double>>>(emptyMap()) }
     LaunchedEffect(sleeps) {
         motionByStart = runCatching {
-            vm.repo.sessionMotions("my-whoop", sleeps.map { it.startTs })
+            vm.repo.sessionMotionsUnion(sleeps.map { it.startTs })
         }.getOrDefault(emptyMap())
     }
 

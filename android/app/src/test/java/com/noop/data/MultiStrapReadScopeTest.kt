@@ -230,4 +230,58 @@ class MultiStrapReadScopeTest {
         assertEquals("the day is listed once", 1, merged.size)
         assertEquals("the active strap's value, verbatim", 466.0, merged[0].totalSleepMin)
     }
+    // --- per-session motion ---
+
+    /** A repository whose `sessionMotionJson(deviceId, startTs)` answers from [byIdAndStart]. */
+    private fun motionRepo(
+        devices: List<PairedDeviceRow>,
+        byIdAndStart: Map<Pair<String, Long>, String>,
+    ): WhoopRepository {
+        val dao = Proxy.newProxyInstance(
+            WhoopDao::class.java.classLoader,
+            arrayOf(WhoopDao::class.java),
+        ) { _, method, args ->
+            when (method.name) {
+                "pairedDevices" -> devices
+                "sessionMotionJson" -> byIdAndStart[(args?.get(0) as String) to (args[1] as Long)]
+                else -> throw UnsupportedOperationException("motion read must not call ${method.name}")
+            }
+        } as WhoopDao
+        return WhoopRepository(dao)
+    }
+
+    /**
+     * The night chart's motion follows the read scope, not one id. Measured across three users\' backups:
+     * motion sits under whichever strap scored the night, so a read pinned to the legacy sink found 1 of
+     * 18 series on one store and 6 of 16 on another.
+     */
+    @Test
+    fun motionIsFoundUnderWhicheverStrapScoredTheNight() = runBlocking {
+        val onA = 1_784_064_026L
+        val onB = 1_784_150_426L
+        val repo = motionRepo(
+            twoStraps(),
+            mapOf(
+                ("$strapA-noop" to onA) to "[0.1,0.2,0.3]",
+                ("$strapB-noop" to onB) to "[0.4,0.5]",
+            ),
+        )
+
+        val union = repo.sessionMotionsUnion(listOf(onA, onB))
+        assertEquals("both straps\' nights resolve", setOf(onA, onB), union.keys)
+        assertEquals(listOf(0.1, 0.2, 0.3), union[onA])
+        assertEquals(listOf(0.4, 0.5), union[onB])
+
+        // The single-id read is what the screen used to do; it reaches neither strap.
+        val legacyOnly = repo.sessionMotions(legacy, listOf(onA, onB))
+        assertTrue("a legacy-pinned read strands both straps", legacyOnly.isEmpty())
+    }
+
+    /** A start with no stored series stays absent - never a fabricated zero array. */
+    @Test
+    fun aNightWithNoStoredSeriesStaysAbsent() = runBlocking {
+        val repo = motionRepo(twoStraps(), emptyMap())
+        assertTrue(repo.sessionMotionsUnion(listOf(1L, 2L)).isEmpty())
+        assertTrue(repo.sessionMotionsUnion(emptyList()).isEmpty())
+    }
 }

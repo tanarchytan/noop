@@ -567,11 +567,28 @@ class WhoopRepository(private val dao: WhoopDao) {
      *  passes those blocks' starts; a start with no stored series is omitted. */
     suspend fun sessionMotions(strapDeviceId: String, starts: List<Long>): Map<Long, List<Double>> {
         if (starts.isEmpty()) return emptyMap()
-        val computedId = computedDeviceId(strapDeviceId)
+        return sessionMotionsUnder(listOf(computedDeviceId(strapDeviceId)), starts)
+    }
+
+    /** [sessionMotions] over the registry read scope ([computedSourceIds]), the twin of
+     *  [computedSleepSessionsUnion]. Each strap scores its own nights under its own computed id, so a
+     *  read pinned to ONE id strands every other strap's motion. First id holding a start wins. */
+    suspend fun sessionMotionsUnion(starts: List<Long>): Map<Long, List<Double>> {
+        if (starts.isEmpty()) return emptyMap()
+        return sessionMotionsUnder(computedSourceIds(), starts)
+    }
+
+    private suspend fun sessionMotionsUnder(
+        computedIds: List<String>,
+        starts: List<Long>,
+    ): Map<Long, List<Double>> {
         val out = HashMap<Long, List<Double>>()
-        for (start in starts) {
-            val m = dao.sessionMotionJson(computedId, start)?.let { decodeDoubleArray(it) }
-            if (!m.isNullOrEmpty()) out[start] = m
+        for (id in computedIds) {
+            for (start in starts) {
+                if (out.containsKey(start)) continue
+                val m = dao.sessionMotionJson(id, start)?.let { decodeDoubleArray(it) }
+                if (!m.isNullOrEmpty()) out[start] = m
+            }
         }
         return out
     }
