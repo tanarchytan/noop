@@ -40,8 +40,8 @@
     <string name="core_state_needs_strap_detail">Keine Daten für heute. War dein Band über Nacht getragen und verbunden?</string>
     <string name="core_recording">Zeichnet auf</string>
     <string name="core_recording_detail">Dein Band ist verbunden und speichert Daten.</string>
-    <string name="core_last_synced">Zuletzt vor %1$d min synchronisiert</string>
-    <string name="core_last_synced_detail">Verbinde dich neu, um das Neueste zu holen.</string>
+    <string name="core_last_synced">Sync vor %1$d min</string>
+    <string name="core_last_synced_detail">Neu verbinden zum Aktualisieren.</string>
     <string name="core_not_recording">Keine Aufzeichnung</string>
     <string name="core_not_recording_detail">Band nicht verbunden. Zum Verbinden tippen.</string>
     <string name="core_connected">Verbunden</string>
@@ -59,7 +59,7 @@
     <string name="core_building_wear_tonight">Entsteht, trag es heute Nacht</string>
     <string name="core_building_moves_as_you_do">Entsteht, bewegt sich mit dir</string>
     <string name="core_live_verdict_nothing_scored">Es kam keine Herzfrequenz in der Sitzung an, also konnte nichts bewertet werden.</string>
-    <string name="core_live_verdict_too_short">Zu kurz für eine Bewertung.</string>
+    <string name="core_live_verdict_too_short">Zu kurz zum Bewerten.</string>
     <string name="core_live_verdict_on_track">Auf Kurs. Du hast getroffen, was heute drin war.</string>
     <string name="core_live_verdict_mixed">Gemischt. Etwa die Hälfte der Zeit im Zielbereich.</string>
     <string name="core_live_verdict_easy">Ruhiger Tag. Du lagst fast durchgehend unter dem Zielbereich.</string>
@@ -74,7 +74,7 @@
     <string name="devices2_last_seen_removed">Entfernt · Daten behalten</string>
     <string name="devices2_last_seen_bond_refused">Verbunden, aber nicht gekoppelt</string>
     <string name="devices2_last_seen_connected">Jetzt verbunden</string>
-    <string name="devices2_last_seen">Zuletzt gesehen %1$s</string>
+    <string name="devices2_last_seen">Zuletzt %1$s</string>
     <string name="devices2_history_layout">Verlauf v%1$d</string>
     <string name="core_tap_to_choose">%1$s. Zum Auswählen tippen.</string>
     <string name="core_done">Fertig</string>

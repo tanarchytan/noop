@@ -8,8 +8,8 @@
     <string name="narr_list_pair">%1$s und %2$s</string>
 
     <!-- IllnessSignalEngine - Heads-Up card: which signals fired -->
-    <string name="narr_illness_signal_rhr">Ruhe-HF erhöht</string>
-    <string name="narr_illness_signal_skin_temp">Hauttemperatur erhöht</string>
+    <string name="narr_illness_signal_rhr">Ruhepuls erhöht</string>
+    <string name="narr_illness_signal_skin_temp">Hauttemp. erhöht</string>
     <string name="narr_illness_signal_hrv">HRV gesunken</string>
     <string name="narr_illness_signal_respiration">Atmung erhöht</string>
 
@@ -22,19 +22,19 @@
 
     <!-- IllnessSignalEngine - Heads-Up card: the read. Never names a condition. -->
     <string name="narr_illness_learning">Deine Baseline wird noch gelernt – wir behalten es im Blick.</string>
-    <string name="narr_illness_unwell_agrees">Ruh dich aus – du hast notiert, dass du dich unwohl fühlst, und deine Werte stimmen zu. Schätzung auf dem Gerät – keine Diagnose.</string>
-    <string name="narr_illness_unwell_logged">Ruh dich aus – du hast notiert, dass du dich unwohl fühlst. Mach es heute langsam. Schätzung auf dem Gerät – keine Diagnose.</string>
+    <string name="narr_illness_unwell_agrees">Ruh dich aus – du hast Unwohlsein notiert, und deine Werte stimmen zu. Schätzung auf dem Gerät – keine Diagnose.</string>
+    <string name="narr_illness_unwell_logged">Ruh dich aus – du hast Unwohlsein notiert. Mach es heute langsam. Schätzung auf dem Gerät – keine Diagnose.</string>
     <string name="narr_illness_nothing_notable">Nichts Auffälliges – deine Signale liegen in deinem normalen Bereich.</string>
-    <string name="narr_illness_suppressed">Einige Signale sind erhöht (%1$s), aber du hast %2$s notiert – wahrscheinlich liegt es daran und nicht an einer Krankheit. Schätzung auf dem Gerät – keine Diagnose.</string>
+    <string name="narr_illness_suppressed">Einige Signale sind erhöht (%1$s), aber du hast %2$s notiert – wohl eher das als eine Krankheit. Schätzung auf dem Gerät – keine Diagnose.</string>
     <string name="narr_illness_mild">Ein paar Signale sind leicht erhöht (%1$s). Nichts Alarmierendes – ein ruhigerer Tag lohnt sich. Schätzung auf dem Gerät – keine Diagnose.</string>
-    <string name="narr_illness_raised">Achtung – dein Körper wirkt beansprucht. %1$s. Da kein Alkohol und keine Reise notiert sind, mach es besser langsam. Schätzung auf dem Gerät – keine Diagnose.</string>
+    <string name="narr_illness_raised">Achtung – dein Körper wirkt beansprucht. %1$s. Da kein Alkohol und keine Reise notiert sind, solltest du es ruhig angehen. Schätzung auf dem Gerät – keine Diagnose.</string>
 
     <!-- IllnessWatch - the background banner / notification -->
-    <string name="narr_watch_flag_resting_hr">Ruhe-HF +%1$s bpm</string>
+    <string name="narr_watch_flag_resting_hr">Ruhepuls +%1$s bpm</string>
     <string name="narr_watch_flag_hrv">HRV −%1$s %%</string>
     <string name="narr_watch_flag_skin_temp">Hauttemp. +%1$s °C</string>
     <string name="narr_watch_flag_respiration">Atmung erhöht</string>
-    <string name="narr_watch_banner">Dein Körper wirkt beansprucht – %1$s. Mach es besser langsam.</string>
+    <string name="narr_watch_banner">Dein Körper wirkt beansprucht – %1$s. Geh es lieber ruhig an.</string>
 
     <!-- CyclePhaseEngine - awareness only, never contraception or a fertility window -->
     <string name="narr_cycle_awareness_line">Nur zur Information. Kein Medizinprodukt, keine Verhütung, kein Ersatz für professionelle Betreuung.</string>
@@ -69,7 +69,7 @@
     <!-- DoseResponseEngine - the personal, prior-shrunk dose curve -->
     <string name="narr_dose_prior_lower">Jede zusätzliche Einheit geht typischerweise mit etwa %1$s %2$s weniger einher – typische Muster, noch nicht deine (n=%3$d).</string>
     <string name="narr_dose_prior_higher">Jede zusätzliche Einheit geht typischerweise mit etwa %1$s %2$s mehr einher – typische Muster, noch nicht deine (n=%3$d).</string>
-    <string name="narr_dose_contradicts">In deinen bisherigen Daten bewegt sich %1$s dadurch nicht so wie üblich (n=%2$d).</string>
+    <string name="narr_dose_contradicts">In deinen bisherigen Daten bewegt das dein %1$s nicht so wie üblich (n=%2$d).</string>
     <string name="narr_dose_yours_lower">Bei dir geht jede zusätzliche Einheit meist mit etwa %1$s %2$s weniger einher (n=%3$d).</string>
     <string name="narr_dose_yours_higher">Bei dir geht jede zusätzliche Einheit meist mit etwa %1$s %2$s mehr einher (n=%3$d).</string>
 
@@ -82,17 +82,17 @@
         <item quantity="one">%1$d Tag</item>
         <item quantity="other">%1$d Tage</item>
     </plurals>
-    <string name="narr_activity_barely_moves">Solche Sessions bewegen deinen Charge am Folgetag kaum (n=%1$d).</string>
-    <string name="narr_activity_cost">Solche Sessions kosten dich am nächsten Morgen meist etwa %1$s (n=%2$d).</string>
-    <string name="narr_activity_cost_bounce">Solche Sessions kosten dich am nächsten Morgen meist etwa %1$s, und du brauchst etwa %2$s, um dich zu erholen (n=%3$d).</string>
-    <string name="narr_activity_lift">Solche Sessions bringen am nächsten Morgen meist etwa %1$s mehr (n=%2$d).</string>
-    <string name="narr_activity_lift_bounce">Solche Sessions bringen am nächsten Morgen meist etwa %1$s mehr, und du brauchst etwa %2$s, um dich zu erholen (n=%3$d).</string>
+    <string name="narr_activity_barely_moves">Solche Einheiten bewegen deinen Charge am Folgetag kaum (n=%1$d).</string>
+    <string name="narr_activity_cost">Solche Einheiten kosten dich am nächsten Morgen meist etwa %1$s (n=%2$d).</string>
+    <string name="narr_activity_cost_bounce">Solche Einheiten kosten dich am nächsten Morgen meist etwa %1$s, und du brauchst etwa %2$s, um dich zu erholen (n=%3$d).</string>
+    <string name="narr_activity_lift">Solche Einheiten bringen am nächsten Morgen meist etwa %1$s mehr (n=%2$d).</string>
+    <string name="narr_activity_lift_bounce">Solche Einheiten bringen am nächsten Morgen meist etwa %1$s mehr, und du brauchst etwa %2$s, um dich zu erholen (n=%3$d).</string>
 
     <!-- WeeklyDigest - metric names, the balance read and the focal points -->
     <string name="narr_digest_metric_charge">Charge</string>
     <string name="narr_digest_metric_effort">Effort</string>
     <string name="narr_digest_metric_rest">Rest</string>
-    <string name="narr_digest_metric_rhr">Ruhe-HF</string>
+    <string name="narr_digest_metric_rhr">Ruhepuls</string>
     <string name="narr_digest_metric_hrv">HRV</string>
     <string name="narr_digest_balance_overreaching">Dein Effort lag diese Woche über deinem Charge: Du bist ins Rote gegangen. Achte auf einen Einbruch der Erholung.</string>
     <string name="narr_digest_balance_balanced">Effort und Charge liefen diese Woche im Gleichschritt: eine tragfähige Belastung.</string>
@@ -101,10 +101,10 @@
     <string name="narr_digest_magnitude_percent">%1$d %%</string>
     <string name="narr_digest_magnitude_points">%1$s Pkt.</string>
     <string name="narr_digest_magnitude_unit">%1$s %2$s</string>
-    <string name="narr_digest_focal_up_good">%1$s ist gegenüber der Vorwoche um %2$s gestiegen (Ø %3$d vs. %4$d), ein gutes Zeichen.</string>
-    <string name="narr_digest_focal_up_bad">%1$s ist gegenüber der Vorwoche um %2$s gestiegen (Ø %3$d vs. %4$d), einen Blick wert.</string>
-    <string name="narr_digest_focal_down_good">%1$s ist gegenüber der Vorwoche um %2$s gefallen (Ø %3$d vs. %4$d), ein gutes Zeichen.</string>
-    <string name="narr_digest_focal_down_bad">%1$s ist gegenüber der Vorwoche um %2$s gefallen (Ø %3$d vs. %4$d), einen Blick wert.</string>
+    <string name="narr_digest_focal_up_good">%1$s ist zur Vorwoche um %2$s gestiegen (Ø %3$d vs. %4$d), ein gutes Zeichen.</string>
+    <string name="narr_digest_focal_up_bad">%1$s ist zur Vorwoche um %2$s gestiegen (Ø %3$d vs. %4$d), einen Blick wert.</string>
+    <string name="narr_digest_focal_down_good">%1$s ist zur Vorwoche um %2$s gefallen (Ø %3$d vs. %4$d), ein gutes Zeichen.</string>
+    <string name="narr_digest_focal_down_bad">%1$s ist zur Vorwoche um %2$s gefallen (Ø %3$d vs. %4$d), einen Blick wert.</string>
     <plurals name="narr_digest_focal_too_early">
         <item quantity="one">Erst %1$d Tag dieser Woche vorbei, noch zu früh für einen Wochenvergleich.</item>
         <item quantity="other">Erst %1$d Tage dieser Woche vorbei, noch zu früh für einen Wochenvergleich.</item>
@@ -114,7 +114,7 @@
         <item quantity="other">Letzte Woche hatte nur %1$d Tage mit Daten, Wochenvergleiche sind daher grob, kein Trend.</item>
     </plurals>
     <string name="narr_digest_focal_steady_rest">Eine ruhige Woche: Rest blieb konstant (±%1$s Pkt.) und nichts hat sich groß bewegt.</string>
-    <string name="narr_digest_focal_steady">Eine ruhige Woche: keine Metrik hat sich gegenüber der Vorwoche nennenswert bewegt.</string>
+    <string name="narr_digest_focal_steady">Eine ruhige Woche: keine Metrik bewegte sich nennenswert zur Vorwoche.</string>
 
     <!-- SpotHrvReading - the honesty caveat under a spot reading -->
     <string name="narr_hrv_caveat_base">Das ist eine Momentaufnahme über eine kurze, ruhige Messung, nicht deine nächtliche HRV-Baseline. Miss im Sitzen, ruhig und immer zur gleichen Tageszeit, damit die Werte vergleichbar sind, und angezeigt wird nur eine Messung mit genug sauberen Schlägen.</string>
@@ -145,7 +145,7 @@
     <!-- MetricArbitrationPolicy - why a source won a metric. Never "accurate" or "correct". -->
     <string name="narr_fusion_reason_counts_directly">zählt direkt</string>
     <string name="narr_fusion_reason_step_estimate">Schrittschätzung</string>
-    <string name="narr_fusion_reason_best_stager">beste Schlafphasenerkennung</string>
+    <string name="narr_fusion_reason_best_stager">beste Phasenerkennung</string>
     <string name="narr_fusion_reason_computed_stages">berechnete Phasen</string>
     <string name="narr_fusion_reason_phone_sleep_buckets">Schlafblöcke vom Telefon</string>
     <string name="narr_fusion_reason_worn_sensor">getragener Sensor</string>
@@ -155,7 +155,7 @@
     <string name="narr_fusion_reason_estimate">Schätzung</string>
 
     <!-- FusionDayAdapter - the metric rows on the fused record -->
-    <string name="narr_fusion_metric_rhr">Ruhe-HF</string>
+    <string name="narr_fusion_metric_rhr">Ruhepuls</string>
     <string name="narr_fusion_metric_hrv">HRV</string>
     <string name="narr_fusion_metric_skin_temp">Hauttemp. vs. Baseline</string>
     <string name="narr_fusion_metric_spo2">Blut-O₂</string>

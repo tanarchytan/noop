@@ -11,7 +11,7 @@
     <string name="breathe_subtitle">Atmung im Vibrationstakt · finde deinen Takt · komm zur Ruhe</string>
     <string name="breathe_resonance">Resonanz</string>
     <string name="breathe_calm_me">Beruhigen</string>
-    <string name="breathe_pace_relax">Entspannen 4-6</string>
+    <string name="breathe_pace_relax">Relax 4-6</string>
     <string name="breathe_pace_coherence">Kohärenz 5.5</string>
     <string name="breathe_pace_box">Box 4-4</string>
     <string name="breathe_tagline_relax">Lange Ausatmung · runterschalten zur Ruhe</string>
@@ -90,7 +90,7 @@
     <string name="breathe_calm_needs_hr">Warte auf eine Ruheherzfrequenz. Starte zuerst eine Live-Messung oder komm zurück, wenn du ruhig bist.</string>
     <string name="breathe_calm_normal">Das ist normal. Getaktetes Atmen beruhigt oft, wo ein Metronom allein es nicht schafft.</string>
     <string name="breathe_calm_settled_range">HF beruhigt: %1$d → %2$d in %3$s.</string>
-    <string name="breathe_calm_settled">HF hat sich über %1$s beruhigt.</string>
+    <string name="breathe_calm_settled">HF beruhigt in %1$s.</string>
     <string name="breathe_calm_eased">HF gesunken: %1$d → %2$d in %3$s.</string>
     <string name="breathe_calm_held">HF blieb stabil (%1$d → %2$d). Versuch stattdessen getaktetes Atmen.</string>
     <string name="breathe_calm_ended">Sitzung beendet. Versuch stattdessen getaktetes Atmen.</string>
@@ -110,7 +110,7 @@
     <string name="vitals_no_history_range_title">Zu wenig Verlauf in diesem Zeitraum</string>
     <string name="vitals_no_history_range_body">Probier einen längeren Zeitraum wie 3M, 6M, 1J oder ALLE, um den Trend dieses Vitalwerts zu sehen.</string>
     <string name="vitals_readings_count">%1$d Messwerte</string>
-    <string name="vitals_ranges_unlock">Längere Zeiträume werden freigeschaltet, sobald mehr Verlauf da ist.</string>
+    <string name="vitals_ranges_unlock">Längere Zeiträume öffnen sich mit mehr Verlauf.</string>
     <string name="vitals_min">Min</string>
     <string name="vitals_avg">Ø</string>
     <string name="vitals_max">Max</string>
@@ -135,7 +135,7 @@
     <string name="vitals_metric_vitality">Vitalität</string>
     <string name="vitals_metric_steps">Schritte</string>
     <string name="vitals_metric_active_energy">Aktive Energie</string>
-    <string name="vitals_fitness_refresh">Fitnessalter jetzt aktualisieren</string>
+    <string name="vitals_fitness_refresh">Fitnessalter aktualisieren</string>
     <string name="vitals_fitness_lead_days">Noch ein paar Tage und wir können dein Fitnessalter zeigen.</string>
     <string name="vitals_fitness_lead_basics">Trag unten dein Alter und Geschlecht ein und wir können dein Fitnessalter zeigen.</string>
     <string name="vitals_fitness_lead_one_night">Noch 1 Nacht Tragen und wir können dein Fitnessalter zeigen.</string>
@@ -143,8 +143,8 @@
     <string name="vitals_fitness_lead_nights">Noch %1$d Nächte Tragen und wir können dein Fitnessalter zeigen.</string>
     <string name="vitals_fitness_lead_nights_basics">Noch %1$d Nächte Tragen, dazu unten dein Alter und Geschlecht, und wir können dein Fitnessalter zeigen.</string>
     <string name="vitals_fitness_explainer">Es vergleicht deine Ruheherzfrequenz und deine jüngste Aktivität mit Menschen deines Alters. Trag dein Band eine ganze Woche und es erscheint hier.</string>
-    <string name="vitals_fitness_drives">Beeinflusst dein Fitnessalter</string>
-    <string name="vitals_fitness_unlocks">Schaltet deinen VO₂max frei</string>
+    <string name="vitals_fitness_drives">Beeinflusst das Fitnessalter</string>
+    <string name="vitals_fitness_unlocks">Schaltet VO₂max frei</string>
     <string name="vitals_fitness_extras">Gewicht, Größe und Taille ergeben eine VO₂max-Schätzung. Das Fitnessalter selbst ändern sie nicht.</string>
     <string name="vitals_fitness_updated">Fitnessalter aktualisiert.</string>
     <string name="vitals_fitness_not_enough_wear">Noch nicht genug getragen — lass dein Band über Nacht an.</string>
@@ -153,14 +153,14 @@
     <string name="vitals_live_max_hr">Max. HF</string>
     <string name="vitals_live_top_zone">Top-Zone</string>
     <string name="vitals_live_coaching_on">Das Band vibriert, wenn du in Zone 5 kommst (≥ %1$d bpm). Verwalte das unter Automationen → Haptisches Coaching.</string>
-    <string name="vitals_live_coaching_off">Schalte das HF-Zonen-Coaching unter Automationen ein, um am Handgelenk eine Vibration zu spüren, wenn du Zone 5 erreichst (≥ %1$d bpm).</string>
+    <string name="vitals_live_coaching_off">Schalte HF-Zonen-Coaching unter Automationen ein für eine Vibration am Handgelenk ab Zone 5 (≥ %1$d bpm).</string>
     <string name="vitals_live_physiology">Live-Physiologie</string>
     <string name="vitals_live_offline">Offline</string>
     <string name="vitals_live_event">Ereignis</string>
     <string name="vitals_live_waiting_rr">Warte auf R-R-Intervalle.</string>
     <string name="vitals_live_recent_intervals">Letzte Intervalle: %1$s ms</string>
-    <string name="vitals_live_mode_full">Der vollständige Band-Stream ist aktiv.</string>
-    <string name="vitals_live_mode_hr">Der Herzfrequenz-Stream ist aktiv.</string>
+    <string name="vitals_live_mode_full">Voller Band-Stream aktiv.</string>
+    <string name="vitals_live_mode_hr">HF-Stream aktiv.</string>
     <string name="vitals_live_mode_untrusted">Funk verbunden, Stream noch nicht vertrauenswürdig.</string>
     <string name="vitals_live_mode_none">Kein Live-Stream.</string>
 
@@ -185,7 +185,7 @@
     <string name="hrv_saved">Gespeichert</string>
     <string name="hrv_save">Speichern</string>
     <string name="hrv_your_reading">Deine Messung</string>
-    <string name="hrv_not_enough_beats">Nicht genug saubere Schläge – sitz still und versuch es noch einmal. %1$d von %2$d Schlägen haben die Filterung überstanden (nötig sind %3$d).</string>
+    <string name="hrv_not_enough_beats">Zu wenige saubere Schläge – sitz still und versuch es neu. %1$d von %2$d Schlägen kamen durch den Filter (nötig: %3$d).</string>
     <string name="hrv_stat_mean_hr">Mittlere HF</string>
     <string name="hrv_stat_beats">Schläge</string>
     <string name="hrv_stat_beats_caption">genutzt</string>
@@ -198,7 +198,7 @@
     <string name="skintemp_cycle_awareness">Zyklus-Überblick</string>
     <string name="skintemp_cycle_from_temp">Aus deiner nächtlichen Temperatur</string>
     <string name="skintemp_cycle_next_period">Eine Periode ist zwischen %1$s und %2$s wahrscheinlich (ein Zeitfenster, kein festes Datum).</string>
-    <string name="skintemp_cycle_log_period">Periodenbeginn notieren</string>
+    <string name="skintemp_cycle_log_period">Beginn notieren</string>
     <string name="skintemp_view_detail">Details ansehen</string>
     <string name="skintemp_turn_off">Ausschalten</string>
     <string name="skintemp_cycle_optin_body">NOOP kann aus deiner nächtlichen Hauttemperatur eine grobe Phase des Menstruationszyklus ablesen, komplett auf deinem Gerät. Das dient nur der Orientierung: keine Verhütung, keine Fruchtbarkeitsvorhersage, kein medizinischer Dienst.</string>
@@ -244,7 +244,7 @@
     <string name="skintemp_conf_moderate">mittel</string>
     <string name="skintemp_conf_slight">leicht</string>
     <string name="skintemp_headsup_raised">Achtung</string>
-    <string name="skintemp_headsup_unwell">Ruh dich aus</string>
+    <string name="skintemp_headsup_unwell">Ausruhen</string>
     <string name="skintemp_headsup_suppressed">Wohl keine Krankheit</string>
     <string name="skintemp_headsup_mild">Ein paar Signale erhöht</string>
     <string name="skintemp_headsup_quiet">Nichts Auffälliges</string>
@@ -256,7 +256,7 @@
     <string name="mind_how_feeling">Wie fühlst du dich heute?</string>
     <string name="mind_one_per_day">Ein Eintrag pro Tag; ein anderes Gesicht überschreibt den von heute.</string>
     <string name="mind_logged_today">Heute notiert</string>
-    <string name="mind_edit">Bearbeiten</string>
+    <string name="mind_edit">Ändern</string>
     <string name="mind_mood_awful">Furchtbar</string>
     <string name="mind_mood_low">Schlecht</string>
     <string name="mind_mood_okay">Okay</string>
@@ -291,9 +291,9 @@
     <string name="caffeine_hours_one">1 Stunde</string>
     <string name="caffeine_hours_many">%1$d Stunden</string>
     <string name="caffeine_nudge">Hinweis bei spätem Koffein</string>
-    <string name="caffeine_nudge_sub">Markiert Getränke, die spät genug sind, um zur Schlafenszeit noch zu wirken.</string>
-    <string name="caffeine_bedtime">Schlafenszeit</string>
-    <string name="caffeine_bedtime_a11y">Schlafenszeit für die Koffein-Grenze</string>
+    <string name="caffeine_nudge_sub">Markiert Getränke, die zur Bettzeit noch wirken können.</string>
+    <string name="caffeine_bedtime">Bettzeit</string>
+    <string name="caffeine_bedtime_a11y">Bettzeit für die Koffein-Grenze</string>
     <string name="caffeine_cutoff_hint">Trink dein letztes Koffein etwa um %1$s, damit bis %2$s das meiste abgebaut ist. Ein grober Anhaltspunkt aus einer typischen Halbwertszeit von 5 bis 6 Stunden, keine Regel.</string>
     <string name="caffeine_amount_placeholder">Menge in mg (optional)</string>
     <string name="caffeine_had_it">Getrunken</string>

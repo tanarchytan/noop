@@ -37,19 +37,19 @@
         <item quantity="one">Du sitzt seit etwa %1$d min. Zeit, dich zu bewegen.</item>
         <item quantity="other">Du sitzt seit etwa %1$d min. Zeit, dich zu bewegen.</item>
     </plurals>
-    <string name="notif_inactivity_body_generic">Zeit, dich zu bewegen. Du sitzt schon eine Weile.</string>
+    <string name="notif_inactivity_body_generic">Zeit, dich zu bewegen. Du sitzt schon länger.</string>
 
     <!-- Smart alarm: the strap buzz notifier and the phone wake receiver share one channel -->
-    <string name="notif_channel_smart_alarm">Smarter Wecker</string>
-    <string name="notif_channel_smart_alarm_desc">Dein smarter Wecker hat am Band ausgelöst.</string>
+    <string name="notif_channel_smart_alarm">Intelligenter Wecker</string>
+    <string name="notif_channel_smart_alarm_desc">Dein intelligenter Wecker hat am Band ausgelöst.</string>
     <string name="notif_channel_smart_alarm_phone_desc">Der Telefon-Wecker, den NOOP in deinem gewählten Weckfenster auslöst.</string>
     <string name="notif_alarm_good_morning">Guten Morgen</string>
-    <string name="notif_smart_alarm_body">Dein smarter Wecker hat gerade ausgelöst.</string>
+    <string name="notif_smart_alarm_body">Dein intelligenter Wecker hat gerade ausgelöst.</string>
     <string name="notif_alarm_body_smart">Du bist in einer leichteren Schlafphase. Zeit aufzustehen.</string>
     <string name="notif_alarm_body_deadline">Dein Weckfenster ist vorbei. Zeit aufzustehen.</string>
 
     <!-- Wind-down nudge -->
-    <string name="notif_channel_wind_down">Erinnerung zum Runterkommen</string>
+    <string name="notif_channel_wind_down">Runterkommen-Erinnerung</string>
     <string name="notif_channel_wind_down_desc">Eine optionale Erinnerung am Abend, vor dem Schlafen runterzukommen.</string>
     <string name="notif_wind_down_title">Zeit zum Runterkommen</string>
     <string name="notif_wind_down_body">Eine ruhige Stunde jetzt hilft dir, ausgeruht aufzuwachen.</string>
@@ -62,7 +62,7 @@
     <string name="notif_report_frag_charge">Charge %1$d</string>
     <string name="notif_report_frag_rest">Rest %1$d</string>
     <string name="notif_report_workout_title">Workout erfasst: %1$s</string>
-    <string name="notif_report_workout_body">%1$s. Zusammengefasst nach der Synchronisierung deines Bands.</string>
+    <string name="notif_report_workout_body">%1$s. Zusammengefasst nach dem Sync deines Bands.</string>
     <string name="notif_report_frag_effort">Effort %1$s/%2$s</string>
     <string name="notif_report_frag_avg_hr">Ø %1$d bpm</string>
     <string name="notif_duration_under_minute">unter einer Minute</string>

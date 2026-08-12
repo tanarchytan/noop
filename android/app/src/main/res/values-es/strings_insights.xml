@@ -24,7 +24,7 @@
     <string name="insights_outcome_resting_hr">FC en reposo</string>
 
     <!-- Insights: Activity Cost -->
-    <string name="insights_activity_cost">Coste de la actividad</string>
+    <string name="insights_activity_cost">Coste por actividad</string>
     <string name="insights_activity_cost_overline">Lo que cada actividad le cuesta a tu recuperación</string>
     <string name="insights_activity_cost_empty">Etiqueta varias sesiones de la misma actividad y NOOP aprenderá su coste personal de recuperación.</string>
     <string name="insights_pill_solid">SÓLIDA</string>
@@ -34,7 +34,7 @@
     <string name="insights_activity_rest_baseline">Línea base de Rest</string>
     <string name="insights_activity_untouched_days">días sin esa actividad</string>
     <string name="insights_activity_bounce_back">Rebote</string>
-    <string name="insights_activity_to_baseline">hasta volver a la línea base</string>
+    <string name="insights_activity_to_baseline">hasta la línea base</string>
     <string name="insights_activity_not_within_7d">no en 7 d</string>
     <string name="insights_activity_sessions">Sesiones</string>
     <string name="insights_caption_solid">sólida</string>
@@ -80,7 +80,7 @@
     <string name="insights_experiment_behaviour_a11y">Hábito del experimento: %1$s</string>
     <string name="insights_experiment_started">Empezó %1$s · probando %2$s</string>
     <string name="insights_experiment_needs_days">Reúne unos cuantos días de intervención registrados antes de leer el efecto. La línea base y las métricas importadas se mantienen.</string>
-    <string name="insights_experiment_flat">%1$s sigue sin cambios frente a la línea base en los días de intervención registrados.</string>
+    <string name="insights_experiment_flat">%1$s sigue igual que la línea base en los días de intervención registrados.</string>
     <string name="insights_experiment_reading">%1$s está %2$s %3$s que la línea base en los días en que registraste este hábito.</string>
     <string name="insights_direction_better">mejor</string>
     <string name="insights_direction_worse">peor</string>
@@ -90,7 +90,7 @@
     <string name="insights_logged_days">%1$d días registrados</string>
     <string name="insights_measure_change">Cambio</string>
     <string name="insights_delta_needs_baseline">faltan línea base y días registrados</string>
-    <string name="insights_delta_vs_baseline">frente a la línea base sin el hábito</string>
+    <string name="insights_delta_vs_baseline">vs. línea base sin el hábito</string>
     <string name="insights_measure_compliance">Cumplimiento</string>
     <string name="insights_logged_today">registrado hoy</string>
     <string name="insights_not_logged_today">no registrado hoy</string>
@@ -100,11 +100,11 @@
     <string name="insights_signal_early">SEÑAL TEMPRANA</string>
     <string name="insights_signal_low">SEÑAL DÉBIL</string>
     <string name="insights_mark_done">Marcar hecho</string>
-    <string name="insights_mark_done_a11y">Marcar hoy como hecho</string>
+    <string name="insights_mark_done_a11y">Marcar hecho hoy</string>
     <string name="insights_skip">Saltar</string>
     <string name="insights_skip_a11y">Saltar hoy</string>
     <string name="insights_end">Terminar</string>
-    <string name="insights_end_a11y">Terminar el experimento</string>
+    <string name="insights_end_a11y">Terminar experimento</string>
 
     <!-- Insights: Metric Relationships -->
     <string name="insights_metric_relationships">Relaciones entre métricas</string>
@@ -116,9 +116,9 @@
     <string name="insights_rel_hrv_charge">HRV ↔ Charge</string>
     <string name="insights_rel_hrv_charge_blurb">La variabilidad de la frecuencia cardíaca como motor de tu puntuación de Charge.</string>
     <string name="insights_rel_rest_charge">Rest ↔ Charge</string>
-    <string name="insights_rel_rest_charge_blurb">Hasta qué punto una buena noche acompaña al Charge de la mañana siguiente.</string>
+    <string name="insights_rel_rest_charge_blurb">Cuánto acompaña una buena noche al Charge de la mañana siguiente.</string>
     <string name="insights_rel_rhr_charge">FC en reposo ↔ Charge</string>
-    <string name="insights_rel_rhr_charge_blurb">Una frecuencia cardíaca en reposo más baja suele significar un Charge más alto.</string>
+    <string name="insights_rel_rhr_charge_blurb">Una FC en reposo más baja suele significar un Charge más alto.</string>
     <string name="insights_rel_charge_next_day">Charge → Charge del día siguiente</string>
     <string name="insights_rel_charge_next_day_blurb">Cuánto del Charge de un día se arrastra al siguiente.</string>
     <string name="insights_relationship_sentence">%1$s relación %2$s (r = %3$s, n = %4$d).</string>
@@ -145,22 +145,22 @@
 
     <!-- Insights Hub: dose-response -->
     <string name="insights_dose_response">Dosis-respuesta</string>
-    <string name="insights_dose_response_overline">Curva personal · ajustada hacia la previa</string>
+    <string name="insights_dose_response_overline">Curva personal · ajustada a la previa</string>
     <string name="insights_dose_response_empty">Registra alcohol o cafeína tardía con una cantidad y NOOP ajusta una curva de dosis personal: cuánto suele mover tus números cada unidad extra. Hasta entonces muestra patrones típicos, marcados claramente como todavía no tuyos.</string>
     <string name="insights_alcohol">Alcohol</string>
     <string name="insights_caffeine">Cafeína</string>
     <string name="insights_dose_unit_drink">copa</string>
-    <string name="insights_dose_unit_later_step">paso más tarde</string>
-    <string name="insights_dose_label_drink">copa</string>
+    <string name="insights_dose_unit_later_step">franja horaria</string>
+    <string name="insights_dose_label_drink">copas</string>
     <string name="insights_dose_label_late_caffeine">cafeína tardía</string>
-    <string name="insights_dose_prior_dominated">Basado sobre todo en patrones típicos, todavía no en los tuyos. Registra unos cuantos días más con %1$s y esto pasará a ser tuyo.</string>
+    <string name="insights_dose_prior_dominated">Basado sobre todo en patrones típicos, todavía no en los tuyos. Registra unos días más con %1$s y esto pasará a ser tuyo.</string>
     <string name="insights_dose_contradicts_prior">En tus datos hasta ahora, esto no mueve tu %1$s como suele hacerlo.</string>
     <string name="insights_dose_timing_proxy">Aquí la «dosis» es el momento del día (más tarde = más fuerte), no los miligramos.</string>
     <string name="insights_dose_curve_a11y">Curva dosis-respuesta. Cada %1$s extra coincide con unos %2$s en %3$s, %4$s</string>
     <string name="insights_dose_basis_typical">patrones típicos.</string>
     <string name="insights_dose_basis_yours">tus propios datos.</string>
     <string name="insights_forecast_tonight">Previsión de esta noche</string>
-    <string name="insights_forecast_timing">Previsión por horario</string>
+    <string name="insights_forecast_timing">Previsión horaria</string>
     <string name="insights_dose_time_am">Mañana</string>
     <string name="insights_dose_time_noon">Mediodía</string>
     <string name="insights_dose_time_afternoon">14 h+</string>
@@ -200,11 +200,11 @@
     <string name="compare_readings">lecturas</string>
     <string name="compare_range_caption">%1$d %2$s en %3$d series · %4$s</string>
     <string name="compare_range_caption_widened">%1$s · ampliado por escasez</string>
-    <string name="compare_add_metric_a11y">Añadir una métrica para comparar</string>
+    <string name="compare_add_metric_a11y">Añadir métrica para comparar</string>
     <string name="compare_add_metric">Añadir métrica</string>
     <string name="compare_max_four">Máx 4</string>
     <string name="compare_remove_metric_a11y">Quitar %1$s</string>
-    <string name="compare_nothing_selected">Aún no has seleccionado nada.</string>
+    <string name="compare_nothing_selected">Nada seleccionado aún.</string>
     <string name="compare_pick_two">Elige al menos dos métricas arriba para superponerlas y ver cómo se mueven juntas.</string>
     <string name="compare_needs_history_title">Comparar necesita al menos dos métricas con historial</string>
     <string name="compare_needs_history_body">Importa primero tu exportación de WHOOP en Fuentes de datos.</string>
@@ -217,8 +217,8 @@
     <string name="compare_overlay">Superposición</string>
     <string name="compare_series_count">%1$d series</string>
     <string name="compare_normalized_overlay">Superposición normalizada</string>
-    <string name="compare_normalized_within">Cada línea normalizada por mín-máx dentro de %1$s</string>
-    <string name="compare_normalized_widened">Cada línea normalizada por mín-máx · las series escasas se amplían más allá de %1$s</string>
+    <string name="compare_normalized_within">Cada línea normalizada mín-máx dentro de %1$s</string>
+    <string name="compare_normalized_widened">Cada línea normalizada mín-máx · series escasas ampliadas más allá de %1$s</string>
     <string name="compare_axis_low">bajo</string>
     <string name="compare_axis_high">alto</string>
 
@@ -253,17 +253,17 @@
     <string name="compare_category_mind">Mente</string>
 
     <!-- Compare: metric catalog - titles -->
-    <string name="compare_metric_avg_hr">Frecuencia cardíaca media</string>
-    <string name="compare_metric_max_hr">Frecuencia cardíaca máxima</string>
+    <string name="compare_metric_avg_hr">FC media</string>
+    <string name="compare_metric_max_hr">FC máxima</string>
     <string name="compare_metric_energy_kcal">Calorías</string>
-    <string name="compare_metric_vo2max">VO₂ máx</string>
+    <string name="compare_metric_vo2max">VO₂ Max</string>
     <string name="compare_metric_fitness_age">Edad física</string>
-    <string name="compare_metric_vo2max_est">VO₂ máx (estimado)</string>
+    <string name="compare_metric_vo2max_est">VO₂ Max (estimado)</string>
     <string name="compare_metric_vitality">Vitalidad</string>
     <string name="compare_metric_body_age">Edad corporal</string>
     <string name="compare_metric_recovery">Charge</string>
-    <string name="compare_metric_hrv">Variabilidad de la frecuencia cardíaca</string>
-    <string name="compare_metric_rhr">Frecuencia cardíaca en reposo</string>
+    <string name="compare_metric_hrv">Variabilidad cardíaca</string>
+    <string name="compare_metric_rhr">FC en reposo</string>
     <string name="compare_metric_resp_rate">Frecuencia respiratoria</string>
     <string name="compare_metric_spo2">SpO₂</string>
     <string name="compare_metric_skin_temp">Temperatura de la piel</string>

@@ -4,7 +4,7 @@
     <!-- ProfileMenuScreen -->
     <string name="profile_title">Profil</string>
     <string name="profile_subtitle">Dein Körperprofil und wie NOOP Einheiten anzeigt. Alles auf diesem Telefon.</string>
-    <string name="profile_avatar_error">Dieses Foto ließ sich nicht verwenden. Probier ein anderes.</string>
+    <string name="profile_avatar_error">Foto nicht nutzbar. Probier ein anderes.</string>
     <string name="profile_photo_a11y">Profilfoto</string>
     <string name="profile_age">Alter %1$d</string>
     <string name="profile_photo_title">Profilfoto</string>
@@ -12,7 +12,7 @@
     <string name="profile_change_photo">Foto ändern</string>
     <string name="profile_choose_photo">Foto auswählen</string>
     <string name="profile_remove_photo">Foto entfernen</string>
-    <string name="profile_body_blurb">Sie speisen deine Herzfrequenzzonen, Kalorienschätzungen und Recovery-Basiswerte. Halte sie genau.</string>
+    <string name="profile_body_blurb">Diese Angaben speisen deine Herzfrequenzzonen, Kalorienschätzungen und Recovery-Baselines. Halte sie genau.</string>
     <string name="profile_birthday">Geburtstag</string>
     <string name="profile_birthday_a11y">Geburtstag, %1$d Jahre alt</string>
     <string name="profile_sex">Geschlecht</string>
@@ -61,7 +61,7 @@
     <string name="steps_how_this_works">So funktioniert es</string>
     <string name="steps_explainer_body">NOOP schätzt deine Schritte aus der Bewegung deiner WHOOP, kalibriert auf die Schrittzahl deines Telefons. Es ist eine Schätzung, kein Schrittzähler. Eine WHOOP 4.0 überträgt keine Schritte.</string>
     <string name="steps_explainer_detail">An den Tagen, an denen auch dein Telefon Schritte gezählt hat, lernt NOOP, wie sich deine Bewegung in Schritte übersetzt, und wendet das auf die Tage nur mit Band an. Je mehr übereinstimmende Tage es gibt, desto mehr vertraut es der Schätzung.</string>
-    <string name="steps_no_motion_title">Noch keine Bewegung synchronisiert</string>
+    <string name="steps_no_motion_title">Noch keine Bewegung</string>
     <string name="steps_no_motion_body">Von deinem Band kommt noch keine Bewegung an. Schritte werden aus dem gespeicherten Bewegungsverlauf deiner WHOOP geschätzt, dein Band muss diesen Verlauf also erst synchronisieren, bevor NOOP etwas zu zählen hat.</string>
     <string name="steps_no_motion_detail">Öffne NOOP in der Nähe deines Bands und lass es aufholen (eine vollständige Synchronisierung des Verlaufs kann beim ersten Mal eine Weile dauern). Sobald ein oder zwei Tage Bewegung angekommen sind, füllen sich deine Schrittschätzung und die Kalibrierung unten.</string>
     <string name="steps_current_calibration">Aktuelle Kalibrierung</string>
@@ -104,10 +104,10 @@
     <string name="intelligence_forecast_trailing">Schätzung</string>
     <string name="intelligence_forecast_band">± %1$d</string>
     <string name="intelligence_forecast_body">Du wachst wahrscheinlich mit rund %1$d ± %2$d Charge auf, wenn du heute Nacht etwa %3$s schläfst.</string>
-    <string name="intelligence_forecast_note">Schätzung aus dem Effort von heute, deinem typischen Schlaf und deinem Recovery-Basiswert aus %1$d Nächten - keine Messung. Dein echter Charge wird morgen beim Aufwachen aus der HRV bewertet.</string>
+    <string name="intelligence_forecast_note">Schätzung aus dem Effort von heute, deinem typischen Schlaf und deiner Recovery-Baseline aus %1$d Nächten - keine Messung. Dein echter Charge wird morgen beim Aufwachen aus der HRV bewertet.</string>
     <string name="intelligence_how_this_works">So funktioniert es</string>
-    <string name="intelligence_explainer">Charge gewichtet deine Herzfrequenzvariabilität gegenüber deinem persönlichen Basiswert (~55%%), die Ruheherzfrequenz (~20%%), die Rest-Qualität (~15%%), die Atmung (~5%%) und die Abweichung der Hauttemperatur (~5%%). Effort ist eine kardiovaskuläre Last von 0 - %1$s aus der Zeit in jeder Herzfrequenzzone. Rest wird aus Bewegung und Herzfrequenz in Phasen eingeteilt. Die vollständige Neuberechnung auf dem Gerät aus den Rohdatenströmen des Bands kommt später; die Werte unten stammen aus den gespeicherten Metriken jedes Tages.</string>
-    <string name="intelligence_empty">Noch keine bewerteten Tage. Synchronisiere dein Band, um Rohdatenströme zu sammeln. Effort und Rest werden bewertet, sobald die Daten eines Tages da sind. Charge braucht etwa vier Nächte Schlaf, um deinen Basiswert zu lernen (bis dahin siehst du \"Kalibrierung\"), und wird über deine ersten Wochen hinweg schärfer. Auf einer WHOOP 5 oder MG speichert das Band wenig Verlauf, deshalb kann diese Zahl der Nächte langsam steigen oder bei 0 von 4 stehen bleiben, bis du es mehrere Nächte getragen hast. Das ist sein Synchronisierungslimit, kein Fehler. Importiere deinen WHOOP-Export, um die Wartezeit zu überspringen.</string>
+    <string name="intelligence_explainer">Charge gewichtet deine Herzfrequenzvariabilität gegenüber deiner persönlichen Baseline (~55%%), die Ruheherzfrequenz (~20%%), die Rest-Qualität (~15%%), die Atmung (~5%%) und die Abweichung der Hauttemperatur (~5%%). Effort ist eine kardiovaskuläre Last von 0 - %1$s aus der Zeit in jeder Herzfrequenzzone. Rest wird aus Bewegung und Herzfrequenz in Phasen eingeteilt. Die vollständige Neuberechnung auf dem Gerät aus den Rohdatenströmen des Bands kommt später; die Werte unten stammen aus den gespeicherten Metriken jedes Tages.</string>
+    <string name="intelligence_empty">Noch keine bewerteten Tage. Synchronisiere dein Band, um Rohdatenströme zu sammeln. Effort und Rest werden bewertet, sobald die Daten eines Tages da sind. Charge braucht etwa vier Nächte Schlaf, um deine Baseline zu lernen (bis dahin siehst du \"Kalibrierung\"), und wird über deine ersten Wochen hinweg schärfer. Auf einer WHOOP 5 oder MG speichert das Band wenig Verlauf, deshalb kann diese Zahl der Nächte langsam steigen oder bei 0 von 4 stehen bleiben, bis du es mehrere Nächte getragen hast. Das ist sein Synchronisierungslimit, kein Fehler. Importiere deinen WHOOP-Export, um die Wartezeit zu überspringen.</string>
     <string name="intelligence_recent">Zuletzt</string>
     <string name="intelligence_by_day">Nach Tag</string>
     <string name="intelligence_one_day">%1$d Tag</string>
@@ -141,7 +141,7 @@
     <string name="fused_differs_slightly">Leicht abweichend</string>
     <string name="fused_source_value">%1$s: %2$s</string>
     <string name="fused_sources_differ">Quellen weichen ab</string>
-    <string name="fused_tap_to_compare">Zum Vergleichen tippen</string>
+    <string name="fused_tap_to_compare">Zum Vergleich tippen</string>
     <string name="fused_conflict_summary">%1$s sagt %2$s. Zum Vergleichen tippen</string>
     <string name="fused_compare_body">Deine Bänder melden unterschiedliche Zahlen. Hier sind alle Quellen und die, die NOOP verwendet.</string>
     <string name="fused_winner_reason">NOOP zeigt den Wert von %1$s, weil er %2$s für diese Metrik: hier die vertrauenswürdigere Quelle, kein Urteil darüber, dass die anderen falsch liegen.</string>
@@ -155,7 +155,7 @@
     <string name="coach_subtitle">Frag zu Recovery, Strain, Schlaf und HRV, gestützt auf deine eigenen Zahlen.</string>
     <string name="coach_connect_provider">Anbieter verbinden</string>
     <string name="coach_setup_body_custom">Richte den Coach auf einen beliebigen OpenAI-kompatiblen Server: Ein lokales Modell (Ollama, LM Studio, llama.cpp) hält alles auf deinem Gerät; ein API-Schlüssel ist optional.</string>
-    <string name="coach_setup_body_cloud">Bring deinen eigenen API-Schlüssel mit. Er wird verschlüsselt auf diesem Gerät gespeichert und nur genutzt, um deine Frage und eine kurze Zusammenfassung deiner Metriken an den Anbieter zu senden, den du wählst.</string>
+    <string name="coach_setup_body_cloud">Bring deinen eigenen API-Schlüssel mit. Er wird verschlüsselt auf diesem Gerät gespeichert und nur genutzt, um deine Frage und eine kurze Metrik-Übersicht an deinen Anbieter zu senden.</string>
     <string name="coach_provider">Anbieter</string>
     <string name="coach_server_url">Server-URL</string>
     <string name="coach_model">Modell</string>
@@ -163,7 +163,7 @@
     <string name="coach_api_key_optional">API-Schlüssel (optional)</string>
     <string name="coach_api_key_a11y">API-Schlüssel (verborgen)</string>
     <string name="coach_key_placeholder_custom">Nur wenn dein Server einen braucht</string>
-    <string name="coach_key_placeholder">Füge deinen %1$s-Schlüssel ein</string>
+    <string name="coach_key_placeholder">%1$s-Schlüssel einfügen</string>
     <string name="coach_connect">Verbinden</string>
     <string name="coach_save_key">Schlüssel speichern</string>
     <string name="coach_provider_model">%1$s · %2$s</string>
@@ -174,7 +174,7 @@
     <string name="coach_consent_off">Aus: Der Coach antwortet allgemein und sendet keine deiner Metriken.</string>
     <string name="coach_empty_prompt">Frag alles zu Recovery, Strain, Schlaf oder HRV der letzten Zeit.</string>
     <string name="coach_error_a11y">Coach-Fehler: %1$s</string>
-    <string name="coach_error_generic">Etwas ist schiefgelaufen. Bitte versuch es noch einmal.</string>
+    <string name="coach_error_generic">Etwas ist schiefgelaufen. Versuch es nochmal.</string>
     <string name="coach_input_placeholder">Frag deinen Coach…</string>
     <string name="coach_instructions_title">Coach-Anweisungen</string>
     <string name="coach_instructions_collapse">Coach-Anweisungen einklappen</string>
@@ -182,13 +182,13 @@
     <string name="coach_instructions_custom">Angepasst. Deine bearbeiteten Anweisungen prägen jede Antwort.</string>
     <string name="coach_instructions_default">Bearbeite, wie der Coach denkt und spricht. Wird ab deiner nächsten Nachricht wirksam.</string>
     <string name="coach_instructions_editor_a11y">Editor für Coach-Anweisungen</string>
-    <string name="coach_reset_default">Auf Standard zurücksetzen</string>
+    <string name="coach_reset_default">Auf Standard setzen</string>
     <string name="coach_speaker_you">Du</string>
     <string name="coach_speaker_coach">Coach</string>
     <string name="coach_thinking">Denkt nach…</string>
     <string name="coach_thinking_a11y">Der Coach denkt nach</string>
     <string name="coach_try_asking">Frag zum Beispiel</string>
-    <string name="coach_prompt_recovery_trend">Wie entwickelt sich mein Recovery diese Woche?</string>
+    <string name="coach_prompt_recovery_trend">Wie läuft mein Recovery diese Woche?</string>
     <string name="coach_prompt_train_or_rest">Soll ich heute hart trainieren oder es ruhig angehen?</string>
     <string name="coach_prompt_low_hrv">Warum ist meine HRV in letzter Zeit niedrig?</string>
     <string name="coach_prompt_improve_sleep">Wie kann ich meinen Schlaf verbessern?</string>
@@ -205,7 +205,7 @@
     <string name="coach_fetch_models_a11y">Modelle vom Anbieter laden</string>
     <string name="coach_send_a11y">Nachricht senden</string>
     <string name="coach_privacy_local">Der Coach spricht nur mit der Server-URL, die du festlegst. Richte ihn auf ein lokales Modell, damit alles auf deinem Gerät bleibt. Es wird nichts gesendet, bevor du fragst.</string>
-    <string name="coach_privacy_cloud">Standardmäßig privat: Gesendet werden nur deine Frage und eine kurze Zusammenfassung der Metriken, und das erst, wenn du einen Schlüssel hinterlegt hast.</string>
+    <string name="coach_privacy_cloud">Standardmäßig privat: Gesendet werden nur deine Frage und eine kurze Metrik-Übersicht, und erst mit hinterlegtem Schlüssel.</string>
 
     <!-- AboutScreen -->
     <string name="about_title">Über</string>

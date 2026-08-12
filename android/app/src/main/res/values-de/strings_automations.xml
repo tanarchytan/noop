@@ -14,14 +14,14 @@
     <string name="automations_haptic_title">Haptisches Coaching</string>
     <string name="automations_haptic_blurb">Trainiere nach Gefühl. Das Band vibriert, damit du nicht auf einen Bildschirm schauen musst.</string>
     <string name="automations_zone_coaching">HF-Zonen-Coaching</string>
-    <string name="automations_zone_coaching_detail">Dreifaches Vibrieren, wenn du in deine höchste Zone kommst (Zone 5, ≥ %1$d bpm), ein Hinweis, es lockerer angehen zu lassen. Die maximale HF kommt aus den Einstellungen.</string>
+    <string name="automations_zone_coaching_detail">Dreifaches Vibrieren, wenn du in deine höchste Zone kommst (Zone 5, ≥ %1$d bpm), ein Hinweis, langsamer zu machen. Die max. HF kommt aus den Einstellungen.</string>
     <string name="automations_recovery_buzz">Erholungs-Vibration</string>
     <string name="automations_recovery_buzz_detail">Vibriert außerdem einmal, wenn deine Herzfrequenz wieder auf Zone 1 fällt, ein Zeichen, dass du dich erholt hast.</string>
     <string name="automations_inactivity_title">Inaktivitäts-Erinnerung</string>
     <string name="automations_inactivity_blurb">Ein sanftes Vibrieren am Handgelenk, wenn du zu lange gesessen hast, ein Anstoß zum Aufstehen und Bewegen. Wird bei jeder Verlaufssynchronisierung aus der Bewegung des Bands abgeleitet, hinkt der Echtzeit also ein bis zwei Synchronisierungen hinterher.</string>
     <string name="automations_inactivity_enable">Inaktivitäts-Erinnerung aktivieren</string>
     <string name="automations_inactivity_enable_detail">Vibriert, wenn du länger als deine Schwelle gesessen hast.</string>
-    <string name="automations_inactivity_notifications_off">Mitteilungen sind aus, deshalb kann das noch nicht vibrieren. Aktiviere den Hauptschalter unter Einstellungen → Mitteilungen, um sie durchzulassen.</string>
+    <string name="automations_inactivity_notifications_off">Benachrichtigungen sind aus, deshalb kann das noch nicht vibrieren. Aktiviere den Hauptschalter unter Einstellungen → Benachrichtigungen, um sie durchzulassen.</string>
     <string name="automations_inactivity_sitting_for">Sitzdauer</string>
     <string name="automations_inactivity_sitting_for_help">Minuten im Sitzen bis zum ersten Anstoß.</string>
     <string name="automations_inactivity_renudge">Erneut erinnern alle</string>
@@ -38,20 +38,20 @@
     <string name="automations_nap_blurb">Erkennt bei jeder Verlaufssynchronisierung ein wahrscheinliches Nickerchen am Tag anhand von Bewegung und Herzfrequenz des Bands und bittet dich dann um Bestätigung. Abgeleitet und ungefähr: NOOP fügt deinem Schlaf nie ein Nickerchen ohne dein OK hinzu.</string>
     <string name="automations_nap_detect">Kurze Nickerchen erkennen</string>
     <string name="automations_nap_detect_detail">Wenn eine Synchronisierung eine ruhige, entspannte Phase am Tag zeigt, bietet NOOP sie dir hier zum Behalten oder Verwerfen an.</string>
-    <string name="automations_nap_empty">Keine Nickerchen zu prüfen. Erkannte Nickerchen erscheinen hier nach einer Verlaufssynchronisierung.</string>
+    <string name="automations_nap_empty">Keine Nickerchen zu prüfen. Erkannte Nickerchen erscheinen hier nach einem Sync.</string>
     <string name="automations_nap_window">%1$s-%2$s · ~%3$d min</string>
     <string name="automations_nap_detail_hr">Ruhig und entspannt, mittlere HF ~%1$d bpm.</string>
     <string name="automations_nap_detail">Ruhig und entspannt.</string>
     <string name="automations_nap_keep">Nickerchen behalten</string>
     <string name="automations_nap_skip">Nickerchen verwerfen</string>
     <string name="automations_illness_title">Krankheits-Frühwarnung</string>
-    <string name="automations_illness_blurb">Beobachtet deine Ruhe-HF, HRV, Hauttemperatur und Atmung im Vergleich zu deiner eigenen 28-Tage-Basislinie. Auf dem Gerät und ungefähr: nur zur Information, keine Diagnose.</string>
+    <string name="automations_illness_blurb">Beobachtet deine Ruhe-HF, HRV, Hauttemperatur und Atmung im Vergleich zu deiner eigenen 28-Tage-Baseline. Auf dem Gerät und ungefähr: nur zur Information, keine Diagnose.</string>
     <string name="automations_illness_toggle">Auf frühe Krankheitszeichen achten</string>
-    <string name="automations_illness_detail">Braucht mindestens 14 Tage Verlauf. Wenn zwei oder mehr Signale gemeinsam abweichen, bekommst du einen Hinweis auf Heute und eine Mitteilung, höchstens einmal am Tag.</string>
-    <string name="automations_battery_title">Akku-Warnungen</string>
+    <string name="automations_illness_detail">Braucht mindestens 14 Tage Verlauf. Wenn zwei oder mehr Signale gemeinsam abweichen, bekommst du einen Hinweis auf Heute und eine Benachrichtigung, höchstens einmal am Tag.</string>
+    <string name="automations_battery_title">Akku-Hinweise</string>
     <string name="automations_battery_blurb">Ein Hinweis, wenn der Akku des Bands schwach wird, damit du vor dem Schlafengehen laden kannst, und eine Meldung, wenn er fertig geladen ist.</string>
-    <string name="automations_battery_toggle">Bei niedrigem und vollem Akku benachrichtigen</string>
-    <string name="automations_battery_detail" formatted="false">Sendet eine Mitteilung, wenn das Band auf 15 % fällt oder voll geladen ist, höchstens einmal pro Ladezyklus.</string>
+    <string name="automations_battery_toggle">Bei niedrigem und vollem Akku melden</string>
+    <string name="automations_battery_detail" formatted="false">Sendet eine Benachrichtigung, wenn das Band auf 15 % fällt oder voll geladen ist, höchstens einmal pro Ladezyklus.</string>
     <string name="automations_battery_predictive">Vorausschauende Laufzeitwarnung</string>
     <string name="automations_battery_predictive_detail" formatted="false">Ein früher Hinweis \"heute Abend laden\", wenn dem Band noch etwa ein Tag geschätzte Laufzeit bleibt, höchstens einmal pro Entladezyklus. Deaktiviere ihn, um nur die Warnung bei 15 % zu behalten.</string>
     <string name="automations_stepper_decrease">%1$s verringern</string>
@@ -68,7 +68,7 @@
     <string name="alarm_guaranteed_wake">Garantiertes Wecken</string>
     <string name="alarm_backup_set_for">Ein Ersatzwecker ist für %1$s gestellt. Er klingelt auch, wenn Bluetooth abbricht, das Band nicht getragen wird oder NOOP geschlossen ist.</string>
     <string name="alarm_off">Aus</string>
-    <string name="alarm_off_help">Aktiviere den intelligenten Wecker, um innerhalb eines von dir gewählten Fensters geweckt zu werden.</string>
+    <string name="alarm_off_help">Aktiviere den intelligenten Wecker für ein Weckfenster deiner Wahl.</string>
     <string name="alarm_card_title">Wecker</string>
     <string name="alarm_wake_smart">Mit intelligentem Wecker wecken</string>
     <string name="alarm_wake_smart_help">Ein garantierter System-Wecker wird auf das Ende deines Fensters gesetzt; der Datenstrom des Bands kann ihn vorziehen, wenn du leicht schläfst.</string>
@@ -92,10 +92,10 @@
     <string name="alarm_strap_connect_hint">Verbinde dein Band, um das zu aktivieren; es wird im Firmware-Wecker des Bands selbst gesetzt. Auf WHOOP 4.0 bestätigt, auf 5.0 und MG noch experimentell. Stelle einen Ersatzwecker für alles, was du wirklich nicht verpassen darfst.</string>
     <string name="alarm_strap_armed">Auf dem Band selbst aktiviert, damit es zu deiner Weckzeit vibrieren kann, auch wenn dein Telefon schläft oder NOOP geschlossen ist. Sendet genau den Weckbefehl, den die offizielle App sendet, bestätigtes Vibrieren auf einer echten WHOOP 4.0. Stelle einen Ersatzwecker für alles, was du wirklich nicht verpassen darfst.</string>
     <string name="alarm_overline_evening">Abends</string>
-    <string name="alarm_wind_down_title">Erinnerung zum Runterkommen</string>
+    <string name="alarm_wind_down_title">Runterkommen-Erinnerung</string>
     <string name="alarm_wind_down_toggle">Ans Runterkommen erinnern</string>
-    <string name="alarm_wind_down_help">Eine sanfte Mitteilung am Abend, berechnet aus deiner Weckzeit und deinem üblichen Schlafbedarf, damit du rechtzeitig zur Ruhe kommst. Ein Vorschlag, kein Wecker.</string>
-    <string name="alarm_explain_title">So funktioniert das intelligente Wecken</string>
+    <string name="alarm_wind_down_help">Eine sanfte Benachrichtigung am Abend, berechnet aus deiner Weckzeit und deinem üblichen Schlafbedarf, damit du rechtzeitig zur Ruhe kommst. Ein Vorschlag, kein Wecker.</string>
+    <string name="alarm_explain_title">Intelligentes Wecken erklärt</string>
     <string name="alarm_explain_body_1">Solange du im Fenster bist, beobachtet NOOP deine Live-Herzfrequenz vom Band. Tiefschlaf liegt nahe an deinem nächtlichen Tiefstwert und bleibt stabil; wenn deine Herzfrequenz darüber steigt (ein Zeichen, dass du leichter schläfst oder dich zu regen beginnst), weckt NOOP dich etwas früher, damit du aus einer leichteren Phase hochkommst.</string>
     <string name="alarm_explain_body_2">Das ist ein grober Hinweis aus der Herzfrequenz, keine klinische Messung der Schlafphasen. Wenn das Band nicht überträgt (Bluetooth aus, nicht getragen, App beendet), gibt es kein früheres Wecken und der garantierte Wecker am Ende des Fensters weckt dich trotzdem.</string>
     <string name="alarm_window_minutes">%1$d min</string>
@@ -131,7 +131,7 @@
     <string name="journal_display_name">Anzeigename</string>
     <string name="journal_rename_note">Der Verlauf bleibt unter der ursprünglichen Frage, damit WHOOP-Importe weiterhin passen.</string>
     <string name="journal_save">Speichern</string>
-    <string name="journal_add_placeholder">Eigenen Eintrag hinzufügen…</string>
+    <string name="journal_add_placeholder">Eintrag hinzufügen…</string>
     <string name="journal_kind_number">Zahl</string>
     <string name="journal_kind_bool">Ja/Nein</string>
     <string name="journal_add">Hinzufügen</string>
@@ -181,12 +181,12 @@
     <string name="updates_section_new">Neu</string>
     <string name="updates_section_earlier">Früher</string>
     <string name="updates_clear_all">Alle löschen</string>
-    <string name="updates_mark_all_read">Alle als gelesen markieren</string>
-    <string name="updates_mark_read">Als gelesen markieren</string>
+    <string name="updates_mark_all_read">Alle als gelesen</string>
+    <string name="updates_mark_read">Als gelesen</string>
     <string name="updates_row_a11y">%1$s. %2$s</string>
     <string name="updates_row_a11y_unread">Ungelesen. %1$s. %2$s</string>
     <string name="updates_restore_to_today">In Heute wiederherstellen</string>
-    <string name="updates_empty_title">Du bist auf dem neuesten Stand.</string>
+    <string name="updates_empty_title">Du bist auf dem Laufenden.</string>
     <string name="updates_empty_body">Neue Versionshinweise und frische Daten landen hier.</string>
 
     <!-- WhatsNewSheet -->
@@ -201,7 +201,7 @@
     <string name="updates_seed_message">NOOP %1$s ist da: tippe, um die Neuigkeiten zu lesen.</string>
     <string name="alarm_window_a11y">Weckfenster</string>
     <string name="doubletap_nothing">Nichts</string>
-    <string name="doubletap_buzz_back">Zurückvibrieren (Bestätigung)</string>
+    <string name="doubletap_buzz_back">Zurückvibrieren</string>
     <string name="doubletap_mark_moment">Moment markieren</string>
     <string name="doubletap_sleep_mark">Schlafmarkierung setzen</string>
     <string name="doubletap_haptic_clock">Uhrzeit vibrieren</string>

@@ -89,7 +89,7 @@
 
     <!-- WorkoutsScreen: all-sessions table -->
     <string name="workouts_all_sessions">Alle Sessions</string>
-    <string name="workouts_log">Verlauf</string>
+    <string name="workouts_log">Protokoll</string>
     <string name="workouts_n_total">%1$d gesamt</string>
     <string name="workouts_show_more">%1$d weitere anzeigen (%2$d übrig)</string>
     <string name="workouts_show_more_cd">%1$d weitere Sessions anzeigen</string>
@@ -169,7 +169,7 @@
     <string name="workouts_field_avg_hr">Ø HF (bpm, optional)</string>
     <string name="workouts_field_calories">Kalorien (kcal, optional)</string>
     <string name="workouts_manual_invalid">Gib eine Sportart, eine positive Dauer (≤ 24 h) und gültige Werte für HF (25-250) / Kalorien (0-20.000) ein.</string>
-    <string name="workouts_avg_hr_typed_note">Die Ø HF wird so angezeigt, wie du sie eingegeben hast. HF-Grafik, Zonen und Effort stammen weiter aus der aufgezeichneten Session.</string>
+    <string name="workouts_avg_hr_typed_note">Die Ø HF wird wie eingegeben angezeigt. HF-Grafik, Zonen und Effort stammen aus der aufgezeichneten Session.</string>
     <string name="workouts_add_action">Hinzufügen</string>
     <string name="workouts_save">Speichern</string>
     <string name="workouts_started">Beginn</string>
@@ -218,9 +218,9 @@
     <string name="live_guarding">Deine Session wird überwacht. Stille bedeutet, du bist auf Kurs.</string>
     <string name="live_end_session">Session beenden</string>
     <string name="live_state_stale">Signal verloren, Coaching pausiert</string>
-    <string name="live_state_above">Über dem Zielbereich von heute</string>
-    <string name="live_state_below">Unter dem Zielbereich von heute</string>
-    <string name="live_state_in_band">Im Zielbereich von heute</string>
+    <string name="live_state_above">Heute über dem Zielbereich</string>
+    <string name="live_state_below">Heute unter dem Zielbereich</string>
+    <string name="live_state_in_band">Heute im Zielbereich</string>
     <string name="live_ring_cd">Session-Ring. %1$s. Lange drücken, um die Herzfrequenz anzuzeigen.</string>
 
     <!-- LiveSessionScreen: end-of-session summary -->
@@ -240,7 +240,7 @@
     <string name="live_charge_low">Die Obergrenze liegt heute niedriger — Charge ist %1$d%%.</string>
     <string name="live_charge_mid">Ein mittlerer Tag — Charge ist %1$d%%, der Zielbereich liegt also in der Mitte.</string>
     <string name="live_charge_high">Noch viel im Tank — Charge ist %1$d%%, die Obergrenze liegt heute also höher.</string>
-    <string name="live_no_buzzes">Keine Vibrationen gesendet.</string>
+    <string name="live_no_buzzes">Keine Vibrationen.</string>
     <string name="live_push_nudge">%1$d Anstoß</string>
     <string name="live_push_nudges">%1$d Anstöße</string>
     <string name="live_ease_off">%1$d Bremssignal</string>

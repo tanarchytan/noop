@@ -7,7 +7,7 @@
     <string name="widget_compact_description">Kompaktes Widget für Rest, Charge und Effort, mit Live-Herzfrequenz und Band-Akku.</string>
     <string name="widget_error">Das NOOP-Widget konnte nicht gezeichnet werden. Es erholt sich beim nächsten Update.</string>
 
-    <string name="nav_today">Heute</string>
+    <string name="nav_today">Start</string>
     <string name="nav_intelligence">Intelligenz</string>
     <string name="nav_coupled_view">Gekoppelte Ansicht</string>
     <string name="nav_intervals">Intervalle</string>
@@ -29,7 +29,7 @@
     <string name="nav_data_sources">Datenquellen</string>
     <string name="nav_backup_sync">Backup &amp; Sync</string>
     <string name="nav_fused_record">Deine Daten, vereint</string>
-    <string name="nav_notifications">Mitteilungen</string>
+    <string name="nav_notifications">Benachrichtigungen</string>
     <string name="nav_support">Support</string>
     <string name="nav_settings">Einstellungen</string>
     <string name="nav_profile">Profil</string>
@@ -54,7 +54,7 @@
     <string name="trends_hrv_full">Herzfrequenzvariabilität</string>
     <string name="trends_resting_hr_full">Ruheherzfrequenz</string>
     <string name="trends_no_readings_this_week">Keine Messwerte diese Woche</string>
-    <string name="trends_no_readings_body">Wechsle mit den Pfeilen oben zu einer anderen Woche, um ihren Rückblick zu sehen.</string>
+    <string name="trends_no_readings_body">Wechsle mit den Pfeilen oben die Woche, um ihren Rückblick zu sehen.</string>
     <string name="trends_this_week">Diese Woche</string>
     <string name="trends_last_week">Letzte Woche</string>
     <string name="trends_weeks_ago">vor %1$d Wochen</string>
@@ -72,13 +72,13 @@
     <string name="trends_max">Max</string>
     <string name="trends_calendar_footnote">Jeder Balken ist der Charge-Wert eines Tages, von niedrig bis hoch. Das 53-Wochen-Kalendergitter ist Teil der Desktop-App.</string>
     <string name="trends_not_enough_data">Nicht genug Daten für diesen Zeitraum.</string>
-    <string name="trends_empty_title">Trends brauchen Verlauf zum Zeichnen</string>
+    <string name="trends_empty_title">Trends brauchen Verlauf</string>
     <string name="trends_empty_body">Trends brauchen Verlauf zum Zeichnen. Importiere deinen WHOOP-Export in den Datenquellen, um Wochen, Monate und Jahre sofort zu sehen.</string>
 
-    <string name="explore_subtitle">Jedes Signal, nur einen Tipp entfernt.</string>
-    <string name="explore_import_title">Importiere zuerst deine Historie</string>
-    <string name="explore_import_body">Importiere zuerst deine Historie. Ein WHOOP-Export unter Datenquellen füllt in etwa einer Minute jede Metrik, die du hier erkunden kannst.</string>
-    <string name="deep_timeline_title">Deep Timeline</string>
+    <string name="explore_subtitle">Jedes Signal, einen Tipp entfernt.</string>
+    <string name="explore_import_title">Importiere zuerst deinen Verlauf</string>
+    <string name="explore_import_body">Ein WHOOP-Export unter Datenquellen füllt in etwa einer Minute jede Metrik, die du hier erkunden kannst.</string>
+    <string name="deep_timeline_title">Detail-Zeitachse</string>
     <string name="explore_deep_timeline_hint">Jede Sekunde deines Tages, zoombar.</string>
     <string name="explore_pick_metric">Metrik wählen</string>
     <string name="explore_average">Durchschnitt</string>
@@ -86,28 +86,28 @@
     <string name="explore_max">Max</string>
     <string name="explore_latest">Aktuellste</string>
     <string name="explore_delta_vs_prev">Δ vs. vorher</string>
-    <string name="explore_summary">Zusammenfassung</string>
+    <string name="explore_summary">Übersicht</string>
     <string name="explore_over_visible_window">Über das sichtbare Fenster</string>
     <string name="explore_n_days">%1$d Tage</string>
     <string name="explore_n_pts">%1$d Pkt.</string>
     <string name="explore_vs_prev_window">vs. vorher %1$s</string>
-    <string name="explore_all_history">gesamte Historie</string>
-    <string name="explore_no_prior_window">kein vorheriger %1$s</string>
-    <string name="explore_empty_metric">Noch kein(e) %1$s aufgezeichnet. Synchronisiere deinen Strap, um diesen Trend zu füllen.</string>
+    <string name="explore_all_history">gesamter Verlauf</string>
+    <string name="explore_no_prior_window">%1$s davor: keine Daten</string>
+    <string name="explore_empty_metric">Noch kein(e) %1$s aufgezeichnet. Synchronisiere dein Band, um diesen Trend zu füllen.</string>
     <string name="explore_single_reading">Nur ein Messwert im Zeitraum — vergrößere das Fenster, um einen Trend zu sehen.</string>
     <string name="explore_chart_window">Fenster</string>
     <string name="explore_chart_points">Punkte</string>
 
     <string name="timeline_subtitle">Jede Sekunde deines Tages. Bis zu 3 Tage zurückziehen.</string>
     <string name="timeline_my_whoop">Mein WHOOP</string>
-    <string name="timeline_owned">Im Besitz</string>
+    <string name="timeline_owned">Eigene</string>
     <string name="timeline_all">Alle</string>
     <string name="timeline_loading_day">Tag wird geladen…</string>
-    <string name="timeline_pinch_to_zoom">Zum Zoomen aufziehen · zum Verschieben ziehen</string>
-    <string name="timeline_zoomed_in">Herangezoomt · zum Verschieben ziehen</string>
+    <string name="timeline_pinch_to_zoom">Aufziehen zoomt · Ziehen verschiebt</string>
+    <string name="timeline_zoomed_in">Herangezoomt · Ziehen verschiebt</string>
     <string name="timeline_reset">Zurücksetzen</string>
     <string name="timeline_min">MIN</string>
-    <string name="timeline_avg">AVG</string>
+    <string name="timeline_avg">Ø</string>
     <string name="timeline_max">MAX</string>
     <string name="timeline_empty_metric">Kein(e) %1$s hier</string>
     <string name="timeline_nothing_offloaded">Für dieses Fenster wurde noch nichts übertragen.</string>
@@ -115,9 +115,9 @@
 
     <!-- Power saving (#477) -->
     <string name="power_saving">Energie sparen</string>
-    <string name="power_saving_blurb">Reduziert den Akkuverbrauch, wenn dein Telefon wenig Akku hat oder im Energiesparmodus ist. Der Sensor speichert die Daten selbst, es geht also nichts verloren – NOOP synchronisiert nur seltener.</string>
+    <string name="power_saving_blurb">Reduziert den Akkuverbrauch, wenn dein Telefon wenig Akku hat oder im Energiesparmodus ist. Das Band speichert die Daten selbst, es geht also nichts verloren – NOOP synchronisiert nur seltener.</string>
     <string name="power_saving_mode">Energiesparmodus</string>
-    <string name="power_saving_mode_desc">Verlangsamt die Hintergrund-Synchronisierung des Sensors (alle 45 statt 15 Minuten), wenn der Akku niedrig ist oder der Energiesparmodus aktiv ist. Kein Datenverlust – die Synchronisierung erfolgt in größeren, selteneren Schüben.</string>
+    <string name="power_saving_mode_desc">Verlangsamt die Hintergrund-Synchronisierung des Bands (alle 45 statt 15 Minuten), wenn der Akku niedrig ist oder der Energiesparmodus aktiv ist. Kein Datenverlust – die Synchronisierung erfolgt in größeren, selteneren Schüben.</string>
     <string name="power_saving_kick_in">Aktiv ab</string>
     <string name="power_saving_pct">%1$d %%</string>
     <string name="power_saving_hrv_pause">HRV-Erfassung im Energiesparmodus pausieren</string>

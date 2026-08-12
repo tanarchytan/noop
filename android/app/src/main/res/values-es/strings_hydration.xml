@@ -1,19 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Spanish (es). Sip / Cup / Bottle stay English: they name fixed container sizes shown
-         beside a number. -->
+    <!-- Spanish (es). Container names are translated and referenced by the same Spanish word
+         everywhere they appear. -->
     <string name="hydration_title">Hidratación</string>
     <string name="hydration_subtitle">Tu ingesta de líquidos de hoy, solo en este teléfono.</string>
     <string name="hydration_custom_amount">Personalizada</string>
     <string name="hydration_last_7_days">Últimos 7 días</string>
-    <string name="hydration_empty_today">Aún no has registrado bebidas. Toca Sip, Cup o Bottle para empezar.</string>
+    <string name="hydration_empty_today">Aún no has registrado bebidas. Toca Sorbo, Taza o Botella para empezar.</string>
     <string name="hydration_logged_today">Registrado hoy</string>
     <string name="hydration_undo_last">Deshacer (%1$d ml)</string>
     <string name="hydration_clear_today">Borrar hoy</string>
     <string name="hydration_goal_disclaimer">Un objetivo simple que se ajusta a tu esfuerzo. Orientación general de bienestar, no es consejo médico.</string>
     <string name="hydration_log_container">Registrar %1$s</string>
     <string name="hydration_no_history">Aún no hay historial.</string>
-    <string name="hydration_no_history_7d">No hay bebidas registradas en los últimos 7 días.</string>
+    <string name="hydration_no_history_7d">Sin bebidas en los últimos 7 días.</string>
     <string name="hydration_millilitres">Mililitros (ml)</string>
     <string name="hydration_custom_hint">Introduce cualquier cantidad de 1 a %1$d ml.</string>
     <string name="hydration_log">Registrar</string>

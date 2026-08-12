@@ -12,14 +12,14 @@
     <string name="breathe_calm_me">Cálmame</string>
     <string name="breathe_pace_relax">Relajar 4-6</string>
     <string name="breathe_pace_coherence">Coherencia 5.5</string>
-    <string name="breathe_pace_box">Cuadrada 4-4</string>
+    <string name="breathe_pace_box">Box 4-4</string>
     <string name="breathe_tagline_relax">Exhalación larga · baja de marcha hacia el descanso</string>
     <string name="breathe_tagline_coherence">Respiración simétrica · coherencia a ~5.5 br/min</string>
     <string name="breathe_tagline_box">Respiración cuadrada · foco estable</string>
     <string name="breathe_tagline_resonance">Tu ritmo fijado · %1$s br/min</string>
     <string name="breathe_session_live">Sesión en curso</string>
     <string name="breathe_ready">Listo</string>
-    <string name="breathe_haptics_on">Vibración activada</string>
+    <string name="breathe_haptics_on">Con vibración</string>
     <string name="breathe_visual_only">Solo visual</string>
     <string name="breathe_live">En vivo</string>
     <string name="breathe_breath_count">%1$d respiraciones</string>
@@ -28,16 +28,16 @@
     <string name="breathe_no_reading">Sin lectura</string>
     <string name="breathe_phase_inhale">Inspira…</string>
     <string name="breathe_phase_exhale">Espira…</string>
-    <string name="breathe_audio_cues">Señales de audio</string>
+    <string name="breathe_audio_cues">Señales sonoras</string>
     <string name="breathe_audio_cues_detail">Tono suave en cada fase · respeta el modo silencio</string>
     <string name="breathe_stop_session">Detener sesión</string>
     <string name="breathe_start_session">Empezar sesión</string>
-    <string name="breathe_test_buzz">Probar vibración</string>
+    <string name="breathe_test_buzz">Probar</string>
     <string name="breathe_outcome_no_rr">RMSSD - · datos R-R insuficientes</string>
     <string name="breathe_outcome_rmssd">RMSSD %1$s</string>
     <string name="breathe_outcome_last_session">Última sesión: %1$s</string>
     <string name="breathe_trend_hrv">%1$s%2$d%% HRV</string>
-    <string name="breathe_tile_heart_rate">Frecuencia cardíaca</string>
+    <string name="breathe_tile_heart_rate">FC</string>
     <string name="breathe_tile_not_worn">No llevas la banda</string>
     <string name="breathe_tile_hrv">HRV (RMSSD)</string>
     <string name="breathe_tile_waiting_rr">Esperando R-R</string>
@@ -77,7 +77,7 @@
     <string name="breathe_locked_pace_title">Tu ritmo fijado</string>
     <string name="breathe_locked_pace_on">Fijado %1$s. Cambia a Respirar para usarlo, o vuelve a medir arriba.</string>
     <string name="breathe_rsa_by_pace">Respuesta RSA por ritmo</string>
-    <string name="breathe_calm_strap_needed">Se necesita la banda</string>
+    <string name="breathe_calm_strap_needed">Banda necesaria</string>
     <string name="breathe_calm_explainer">La banda vibra con un ritmo suave justo por debajo de tu frecuencia cardíaca actual, un metrónomo que se siente y hacia el que relajarte. Acompaña a tu corazón hacia abajo en vez de tirar de él, y se detiene sola.</string>
     <string name="breathe_calm_disclaimer">Un ritmo de relajación, no un control cardíaco. Nunca marca por debajo de una frecuencia segura y puedes parar cuando quieras. Si tu frecuencia cardíaca no se asienta, te lo diremos claramente.</string>
     <string name="breathe_calm_settling">Asentándose</string>
@@ -89,7 +89,7 @@
     <string name="breathe_calm_needs_hr">Esperando una frecuencia cardíaca en reposo. Empieza primero una lectura en vivo, o vuelve cuando estés en reposo.</string>
     <string name="breathe_calm_normal">Es normal. Una respiración marcada a menudo asienta las cosas cuando el metrónomo por sí solo no lo hace.</string>
     <string name="breathe_calm_settled_range">La FC se asentó %1$d → %2$d en %3$s.</string>
-    <string name="breathe_calm_settled">La FC se asentó a lo largo de %1$s.</string>
+    <string name="breathe_calm_settled">La FC se asentó en %1$s.</string>
     <string name="breathe_calm_eased">La FC bajó %1$d → %2$d en %3$s.</string>
     <string name="breathe_calm_held">La FC se mantuvo estable (%1$d → %2$d). Prueba mejor con una respiración marcada.</string>
     <string name="breathe_calm_ended">Sesión terminada. Prueba mejor con una respiración marcada.</string>
@@ -102,14 +102,14 @@
     <string name="vitals_loading_title">Cargando…</string>
     <string name="vitals_loading_body">Obteniendo el historial de esta métrica.</string>
     <string name="vitals_latest">Última</string>
-    <string name="vitals_as_of">a fecha de %1$s</string>
+    <string name="vitals_as_of">al %1$s</string>
     <string name="vitals_single_reading_note">Solo una lectura por ahora — tu gráfico de tendencia se rellena aquí en cuanto llegue una segunda.</string>
-    <string name="vitals_no_history_title">Aún no hay suficiente historial</string>
+    <string name="vitals_no_history_title">Historial insuficiente</string>
     <string name="vitals_no_history_body">Este signo vital necesita al menos dos lecturas históricas antes de que NOOP pueda representarlo.</string>
-    <string name="vitals_no_history_range_title">No hay suficiente historial en este intervalo</string>
+    <string name="vitals_no_history_range_title">Poco historial en este intervalo</string>
     <string name="vitals_no_history_range_body">Prueba un intervalo más largo como 3M, 6M, 1A o TODO para ver la tendencia de este signo vital.</string>
     <string name="vitals_readings_count">%1$d lecturas</string>
-    <string name="vitals_ranges_unlock">Los intervalos más largos se desbloquean a medida que se acumula historial.</string>
+    <string name="vitals_ranges_unlock">Los intervalos largos se abren con más historial.</string>
     <string name="vitals_min">Mín</string>
     <string name="vitals_avg">Prom.</string>
     <string name="vitals_max">Máx</string>
@@ -125,16 +125,16 @@
     <string name="vitals_range_6m">6M</string>
     <string name="vitals_range_1y">1A</string>
     <string name="vitals_range_all">TODO</string>
-    <string name="vitals_metric_resp">Frecuencia respiratoria</string>
+    <string name="vitals_metric_resp">Frec. respiratoria</string>
     <string name="vitals_metric_spo2">SpO₂</string>
-    <string name="vitals_metric_rhr">Frecuencia cardíaca en reposo</string>
-    <string name="vitals_metric_hrv">Variabilidad de la frecuencia cardíaca</string>
+    <string name="vitals_metric_rhr">FC en reposo</string>
+    <string name="vitals_metric_hrv">Variabilidad cardíaca</string>
     <string name="vitals_metric_skin_temp">Temperatura de la piel</string>
     <string name="vitals_metric_fitness_age">Edad física</string>
     <string name="vitals_metric_vitality">Vitalidad</string>
     <string name="vitals_metric_steps">Pasos</string>
     <string name="vitals_metric_active_energy">Energía activa</string>
-    <string name="vitals_fitness_refresh">Actualizar la Edad física ahora</string>
+    <string name="vitals_fitness_refresh">Actualizar Edad física</string>
     <string name="vitals_fitness_lead_days">Unos días más y podremos mostrarte tu Edad física.</string>
     <string name="vitals_fitness_lead_basics">Añade tu edad y sexo abajo y podremos mostrarte tu Edad física.</string>
     <string name="vitals_fitness_lead_one_night">1 noche más de uso y podremos mostrarte tu Edad física.</string>
@@ -152,20 +152,20 @@
     <string name="vitals_live_max_hr">FC máx</string>
     <string name="vitals_live_top_zone">Zona máxima</string>
     <string name="vitals_live_coaching_on">La banda vibra cuando entras en la Zona 5 (≥ %1$d bpm). Gestiónalo en Automatizaciones → Coaching háptico.</string>
-    <string name="vitals_live_coaching_off">Activa el coaching por zonas de FC en Automatizaciones para notar una vibración en la muñeca al llegar a la Zona 5 (≥ %1$d bpm).</string>
+    <string name="vitals_live_coaching_off">Activa el coaching por zonas de FC en Automatizaciones para vibrar en la muñeca en la Zona 5 (≥ %1$d bpm).</string>
     <string name="vitals_live_physiology">Fisiología en vivo</string>
     <string name="vitals_live_offline">Sin conexión</string>
     <string name="vitals_live_event">Evento</string>
     <string name="vitals_live_waiting_rr">Esperando intervalos R-R.</string>
     <string name="vitals_live_recent_intervals">Intervalos recientes: %1$s ms</string>
-    <string name="vitals_live_mode_full">El flujo completo de la banda está activo.</string>
-    <string name="vitals_live_mode_hr">El flujo de frecuencia cardíaca está activo.</string>
+    <string name="vitals_live_mode_full">Flujo completo de banda activo.</string>
+    <string name="vitals_live_mode_hr">Flujo de FC activo.</string>
     <string name="vitals_live_mode_untrusted">Radio conectada, el flujo aún no es fiable.</string>
     <string name="vitals_live_mode_none">Sin flujo en vivo.</string>
 
     <!-- HrvSnapshotScreen -->
     <string name="hrv_title">Lectura de HRV</string>
-    <string name="hrv_subtitle">Una instantánea de tu variabilidad de la frecuencia cardíaca, en posición sentada y sin moverte</string>
+    <string name="hrv_subtitle">Una instantánea de tu variabilidad cardíaca, en reposo y sentado</string>
     <string name="hrv_state_ready">Listo</string>
     <string name="hrv_state_capturing">Capturando</string>
     <string name="hrv_state_complete">Lectura completada</string>
@@ -184,7 +184,7 @@
     <string name="hrv_saved">Guardada</string>
     <string name="hrv_save">Guardar</string>
     <string name="hrv_your_reading">Tu lectura</string>
-    <string name="hrv_not_enough_beats">No hay suficientes latidos limpios: quédate sin moverte e inténtalo otra vez. %1$d de %2$d latidos superaron el filtrado (hacen falta %3$d).</string>
+    <string name="hrv_not_enough_beats">No hay suficientes latidos limpios: no te muevas y repite. %1$d de %2$d pasaron el filtro (hacen falta %3$d).</string>
     <string name="hrv_stat_mean_hr">FC media</string>
     <string name="hrv_stat_beats">Latidos</string>
     <string name="hrv_stat_beats_caption">usados</string>
@@ -194,16 +194,16 @@
 
     <!-- SkinTempCardsScreen -->
     <string name="skintemp_privacy">Esto se queda en tu dispositivo. Nunca se sube, nunca se sincroniza, nunca se comparte.</string>
-    <string name="skintemp_cycle_awareness">Conocimiento del ciclo</string>
+    <string name="skintemp_cycle_awareness">Conciencia del ciclo</string>
     <string name="skintemp_cycle_from_temp">A partir de tu temperatura nocturna</string>
     <string name="skintemp_cycle_next_period">Es probable que la regla llegue entre el %1$s y el %2$s (una ventana, no una fecha fija).</string>
-    <string name="skintemp_cycle_log_period">Registrar el inicio de la regla</string>
+    <string name="skintemp_cycle_log_period">Registrar inicio</string>
     <string name="skintemp_view_detail">Ver detalle</string>
     <string name="skintemp_turn_off">Desactivar</string>
     <string name="skintemp_cycle_optin_body">NOOP puede leer una fase aproximada del ciclo menstrual a partir de tu temperatura cutánea nocturna, todo en tu dispositivo. Es solo informativo: no es un anticonceptivo, no predice la fertilidad y no es un servicio médico.</string>
-    <string name="skintemp_cycle_optin_enable">Activar el conocimiento del ciclo</string>
+    <string name="skintemp_cycle_optin_enable">Activar conciencia del ciclo</string>
     <string name="skintemp_phase_follicular">Folicular</string>
-    <string name="skintemp_phase_periovulatory">Cambio de mitad de ciclo</string>
+    <string name="skintemp_phase_periovulatory">Mitad de ciclo</string>
     <string name="skintemp_phase_luteal">Lútea</string>
     <string name="skintemp_phase_unknown">Sin patrón claro</string>
     <string name="skintemp_phase_learning">Aprendiendo tu patrón</string>
@@ -218,8 +218,8 @@
     <string name="skintemp_hard_to_read">Difícil de leer ahora mismo</string>
     <string name="skintemp_body_clock_in_sync">Más o menos en sincronía con tu horario</string>
     <string name="skintemp_body_clock_offset">Unos %1$d min %2$s que tu horario</string>
-    <string name="skintemp_dir_later">más tarde</string>
-    <string name="skintemp_dir_earlier">más temprano</string>
+    <string name="skintemp_dir_later">después</string>
+    <string name="skintemp_dir_earlier">antes</string>
     <string name="skintemp_body_clock_low">Mínimo estimado del reloj corporal en torno a las %1$s</string>
     <string name="skintemp_rhythm_age">Edad del ritmo</string>
     <string name="skintemp_rhythm_age_sub">Según tu movimiento en la muñeca</string>
@@ -244,8 +244,8 @@
     <string name="skintemp_conf_slight">leve</string>
     <string name="skintemp_headsup_raised">Atención</string>
     <string name="skintemp_headsup_unwell">Descansa</string>
-    <string name="skintemp_headsup_suppressed">Probablemente no sea una enfermedad</string>
-    <string name="skintemp_headsup_mild">Algunas señales están elevadas</string>
+    <string name="skintemp_headsup_suppressed">No parece enfermedad</string>
+    <string name="skintemp_headsup_mild">Algunas señales elevadas</string>
     <string name="skintemp_headsup_quiet">Nada destacable</string>
 
     <!-- MindSection -->
@@ -286,9 +286,9 @@
     <string name="caffeine_hours_one">1 hora</string>
     <string name="caffeine_hours_many">%1$d horas</string>
     <string name="caffeine_nudge">Aviso de cafeína tardía</string>
-    <string name="caffeine_nudge_sub">Señala las bebidas lo bastante tardías como para seguir activas a la hora de dormir.</string>
-    <string name="caffeine_bedtime">Hora de dormir</string>
-    <string name="caffeine_bedtime_a11y">Hora de dormir para el límite de cafeína</string>
+    <string name="caffeine_nudge_sub">Señala las bebidas que sigan activas al acostarte.</string>
+    <string name="caffeine_bedtime">Acostarse</string>
+    <string name="caffeine_bedtime_a11y">Acostarse, para el límite de cafeína</string>
     <string name="caffeine_cutoff_hint">Toma tu última cafeína hacia las %1$s para eliminar la mayor parte antes de las %2$s. Una guía aproximada a partir de una semivida típica de 5 a 6 horas, no una regla.</string>
     <string name="caffeine_amount_placeholder">Cantidad en mg (opcional)</string>
     <string name="caffeine_had_it">La tomé</string>

@@ -3,7 +3,7 @@
     <!-- AddDeviceWizard - dialog shell -->
     <string name="wizard_back">Atrás</string>
     <string name="wizard_close">Cerrar</string>
-    <string name="wizard_title_add_device">Añadir un dispositivo</string>
+    <string name="wizard_title_add_device">Añadir dispositivo</string>
     <string name="wizard_title_pick_device">Elige tu dispositivo</string>
     <string name="wizard_title_name_confirm">Nombre y confirmación</string>
     <string name="wizard_subtitle_type">¿Qué vas a añadir?</string>
@@ -21,7 +21,7 @@
     <string name="wizard_one_phone_title">Un teléfono a la vez</string>
     <string name="wizard_one_phone_body">Una banda WHOOP se vincula a un solo dispositivo. Mientras esté conectada a NOOP no transmitirá a la app oficial de WHOOP, ni al revés. Es reversible: vincúlala en la otra app cuando quieras recuperarla.</string>
     <string name="wizard_whoop_support_note">WHOOP 4.0 es totalmente compatible. La compatibilidad con 5.0 / MG es más reciente y todavía experimental.</string>
-    <string name="wizard_prep_whoop_wear">Ponte tu WHOOP en la muñeca y asegúrate de que está activa.</string>
+    <string name="wizard_prep_whoop_wear">Ponte tu WHOOP en la muñeca y asegúrate de que está despierta.</string>
     <string name="wizard_prep_whoop_unpair">Una banda se vincula a un dispositivo a la vez, así que desvincúlala primero de la app oficial de WHOOP.</string>
     <string name="wizard_prep_whoop_detect">NOOP la buscará cerca y averiguará si es una 4.0, una 5.0 o una MG.</string>
     <string name="wizard_scan">Buscar</string>
@@ -31,7 +31,7 @@
     <string name="wizard_searching">Buscando…</string>
     <string name="wizard_idle">Inactivo</string>
     <string name="wizard_rescan">Buscar de nuevo</string>
-    <string name="wizard_pick_hint">Asegúrate de que está activa y no conectada en otro sitio.</string>
+    <string name="wizard_pick_hint">Asegúrate de que está despierta y no conectada en otro sitio.</string>
     <string name="wizard_discovered_a11y">%1$s, señal %2$d de 4</string>
 
     <!-- AddDeviceWizard - step 4, name and confirm -->
@@ -39,7 +39,7 @@
     <string name="wizard_device_name">Nombre del dispositivo</string>
     <string name="wizard_device_fallback">Dispositivo</string>
     <string name="wizard_add">Añadir</string>
-    <string name="wizard_make_active_title">¿Hacer que este sea tu dispositivo activo?</string>
+    <string name="wizard_make_active_title">¿Hacer activo este dispositivo?</string>
     <string name="wizard_make_active_text">¿Hacer que %1$s sea tu dispositivo activo ahora? Será el que aporte tus datos en vivo. Puedes cambiarlo cuando quieras.</string>
     <string name="wizard_make_active">Hacer activo</string>
     <string name="wizard_not_now">Ahora no</string>
@@ -49,9 +49,9 @@
     <string name="wizard_oura_title_prep">Prepara tu anillo</string>
     <string name="wizard_oura_title_pick">Elige el anillo</string>
     <string name="wizard_oura_title_confirm">Tu anillo</string>
-    <string name="wizard_oura_title_adopting">Tomando el control de tu anillo</string>
+    <string name="wizard_oura_title_adopting">Tomando el control…</string>
     <string name="wizard_oura_title_failed">No se pudo tomar el control</string>
-    <string name="wizard_oura_subtitle_advanced">Solo para usuarios avanzados.</string>
+    <string name="wizard_oura_subtitle_advanced">Solo para expertos.</string>
     <string name="wizard_oura_subtitle_gate">Toma el control en local. Beta.</string>
     <string name="wizard_oura_subtitle_prep">Restablécelo primero en la app de Oura.</string>
 
@@ -75,7 +75,7 @@
     <string name="wizard_oura_advanced_link">Avanzado: ya tengo la clave de mi anillo</string>
 
     <!-- AddDeviceWizard - Oura step B-Alt, the advanced key path -->
-    <string name="wizard_oura_advanced_title">Para usuarios avanzados.</string>
+    <string name="wizard_oura_advanced_title">Para expertos.</string>
     <string name="wizard_oura_advanced_body">Si extrajiste la clave de 16 bytes de tu anillo de una configuración anterior de Oura, NOOP puede hablar con el anillo usando esa clave SIN restablecerlo, así que la app de Oura sigue funcionando también. NOOP no extrae claves por ti y no puede ayudarte a encontrar una. Si no sabes qué significa esto, vuelve atrás y usa la configuración estándar o la importación de archivos.</string>
     <string name="wizard_oura_key_label">Clave del anillo (32 caracteres hex)</string>
     <string name="wizard_oura_key_a11y">Clave del anillo, 32 caracteres hex</string>
@@ -92,15 +92,15 @@
     <string name="wizard_oura_single_owner_body">Si la app de Oura sigue abierta retendrá el anillo y la adopción fallará. Fuerza el cierre de Oura y luego busca.</string>
 
     <!-- AddDeviceWizard - Oura step C, pick the ring -->
-    <string name="wizard_oura_not_showing">¿No aparece? Asegúrate de haber restablecido el anillo en la app de Oura y de haberla cerrado por completo, y luego toca Buscar de nuevo. Un anillo que todavía pertenece a Oura no aparecerá aquí.</string>
+    <string name="wizard_oura_not_showing">¿No aparece? Comprueba que el anillo esté restablecido y la app de Oura cerrada del todo, y toca Buscar de nuevo. Un anillo que aún pertenece a Oura no sale aquí.</string>
 
     <!-- AddDeviceWizard - Oura step D, confirm and adopt -->
     <string name="wizard_beta">Beta</string>
-    <string name="wizard_cap_live_hr">Frecuencia cardíaca en vivo</string>
+    <string name="wizard_cap_live_hr">FC en vivo</string>
     <string name="wizard_cap_hrv">HRV (rMSSD)</string>
-    <string name="wizard_cap_resting_hr">Frecuencia cardíaca en reposo</string>
+    <string name="wizard_cap_resting_hr">FC en reposo</string>
     <string name="wizard_cap_sleep_staging">Fases del sueño</string>
-    <string name="wizard_cap_skin_temp">Tendencia de temperatura de la piel</string>
+    <string name="wizard_cap_skin_temp">Tendencia de temp. cutánea</string>
     <string name="wizard_cap_steps">Pasos / movimiento</string>
     <string name="wizard_cap_battery">Batería</string>
     <string name="wizard_cap_spo2" formatted="false">SpO₂ (oxígeno en sangre %)</string>
@@ -108,18 +108,18 @@
     <string name="wizard_oura_estimate_note">Beta. * es una estimación en el dispositivo.</string>
     <string name="wizard_oura_connect">Conectar con este anillo</string>
     <string name="wizard_oura_connect_note">Tanto NOOP como la app de Oura pueden usar un anillo tuyo mediante clave, pero solo uno puede mantener el enlace Bluetooth a la vez.</string>
-    <string name="wizard_oura_take_over">Tomar el control de este anillo</string>
-    <string name="wizard_take_over_title">¿Tomar el control de este anillo?</string>
+    <string name="wizard_oura_take_over">Tomar el control</string>
+    <string name="wizard_take_over_title">¿Tomar el control?</string>
     <string name="wizard_take_over_text">NOOP instalará su propia clave en el anillo y pasará a ser su propietario. La app de Oura ya no controlará este anillo. Esto es intencionado y no se puede deshacer desde NOOP.</string>
     <string name="wizard_take_over_confirm">Tomar el control</string>
 
     <!-- AddDeviceWizard - Oura step E, adopting and the honest failure -->
     <string name="wizard_oura_adopting_body">Instalando la clave de NOOP y comprobando que el anillo responde solo a NOOP. Mantén el anillo cerca y no abras la app de Oura.</string>
     <string name="wizard_oura_failed_title">No hemos podido tomar el control de este anillo.</string>
-    <string name="wizard_oura_failed_body">La causa más habitual es que el anillo no se restableciera del todo en la app de Oura, o que la app de Oura siga abierta. Restablece el anillo otra vez, fuerza el cierre de Oura e inténtalo una vez más. Si sigue fallando, puede que tu anillo sea de una generación que NOOP todavía no puede adoptar. Aún puedes usar la importación de archivos.</string>
+    <string name="wizard_oura_failed_body">Lo más habitual es que el anillo no se restableciera del todo en la app de Oura, o que la app siga abierta. Restablece el anillo otra vez, cierra Oura del todo e inténtalo una vez más. Si sigue fallando, puede que tu anillo sea de una generación que NOOP aún no puede adoptar. Aún puedes usar la importación de archivos.</string>
     <string name="wizard_oura_failed_recovery">El anillo no está inutilizado. Para volver al punto de partida, restablécelo de fábrica otra vez y configúralo en la app de Oura.</string>
-    <string name="wizard_try_again">Inténtalo de nuevo</string>
-    <string name="wizard_use_file_import">Usar importación de archivos</string>
+    <string name="wizard_try_again">Reintentar</string>
+    <string name="wizard_use_file_import">Importar archivo</string>
 
     <!-- DevicesScreen -->
     <string name="devices_title">Dispositivos</string>
@@ -129,13 +129,13 @@
 
     <!-- DevicesScreen - sync -->
     <string name="devices_sync">Sincronización</string>
-    <string name="devices_sync_overline">Historial de la banda</string>
+    <string name="devices_sync_overline">Historial</string>
     <string name="devices_sync_connected">Conectado</string>
     <string name="devices_sync_pairing">Vinculando…</string>
     <string name="devices_sync_offline">Sin conexión</string>
     <string name="devices_sync_no_strap">Ninguna banda conectada</string>
     <string name="devices_sync_history_synced">Sincronizado</string>
-    <string name="devices_sync_ready">Listo para sincronizar</string>
+    <string name="devices_sync_ready">Listo para sinc.</string>
     <string name="devices_syncing">Sincronizando…</string>
     <string name="devices_sync_now">Sincronizar</string>
     <string name="devices_sync_a11y_ready">Sincronizar ahora. Descarga de inmediato el historial guardado en tu banda, sin esperar a la siguiente sincronización automática.</string>
@@ -147,7 +147,7 @@
     <string name="devices_sync_help_ready">Sincroniza ahora mismo el historial guardado en tu banda, en lugar de esperar a la siguiente sincronización automática.</string>
 
     <!-- DevicesScreen - device card -->
-    <string name="devices_actions_a11y">Acciones de dispositivo para %1$s</string>
+    <string name="devices_actions_a11y">Acciones para %1$s</string>
     <string name="devices_beta">Beta</string>
     <string name="devices_oura_local_note">Vinculado en local. NOOP es el propietario de este anillo mientras tenga la clave. Si vuelves a restablecerlo o lo configuras en la app de Oura, NOOP deja de serlo y tendrías que volver a añadirlo para tomar el control.</string>
     <string name="devices_battery">Batería</string>
@@ -157,14 +157,14 @@
 
     <!-- DevicesScreen - actions menu -->
     <string name="devices_menu_disconnect">Desconectar</string>
-    <string name="devices_menu_reconnect">Volver a conectar</string>
+    <string name="devices_menu_reconnect">Reconectar</string>
     <string name="devices_make_active">Hacer activo</string>
-    <string name="devices_rename">Cambiar nombre</string>
+    <string name="devices_rename">Renombrar</string>
     <string name="devices_menu_restart">Reiniciar banda…</string>
     <string name="devices_menu_wrist">Muñeca…</string>
     <string name="devices_remove">Quitar</string>
-    <string name="devices_menu_delete_device">Eliminar dispositivo…</string>
-    <string name="devices_toast_reconnecting">Volviendo a conectar…</string>
+    <string name="devices_menu_delete_device">Eliminar…</string>
+    <string name="devices_toast_reconnecting">Reconectando…</string>
     <string name="devices_toast_disconnecting">Desconectando</string>
 
     <!-- DevicesScreen - confirms -->
@@ -176,27 +176,27 @@
     <string name="devices_restart_title">¿Reiniciar esta banda?</string>
     <string name="devices_restart_text">¿Reiniciar %1$s? Se desconecta unos 30 segundos mientras arranca de nuevo y después vuelve a conectarse sola. Tus datos registrados se conservan.</string>
     <string name="devices_restart_confirm">Reiniciar</string>
-    <string name="devices_delete_title">¿Eliminar este dispositivo?</string>
+    <string name="devices_delete_title">¿Eliminar dispositivo?</string>
     <string name="devices_delete_text">Esto elimina de forma permanente %1$s y todos sus datos registrados. No se puede deshacer.</string>
-    <string name="devices_delete_confirm">Eliminar dispositivo</string>
+    <string name="devices_delete_confirm">Eliminar</string>
 
     <!-- DevicesScreen - dialogs -->
     <string name="devices_wrist_title">¿Qué muñeca?</string>
     <string name="devices_wrist_left">Izquierda</string>
     <string name="devices_wrist_right">Derecha</string>
     <string name="devices_wrist_last_sent">"%1$s  ·  último envío"</string>
-    <string name="devices_toast_wrist_left">Muñeca configurada a la izquierda</string>
-    <string name="devices_toast_wrist_right">Muñeca configurada a la derecha</string>
-    <string name="devices_rename_title">Cambiar el nombre del dispositivo</string>
+    <string name="devices_toast_wrist_left">Muñeca: izquierda</string>
+    <string name="devices_toast_wrist_right">Muñeca: derecha</string>
+    <string name="devices_rename_title">Renombrar</string>
     <string name="devices_name_placeholder">Nombre</string>
     <string name="devices_device_name">Nombre del dispositivo</string>
     <string name="devices_save">Guardar</string>
     <string name="devices_pick_active_title">Elige una nueva banda activa</string>
-    <string name="devices_pick_active_body">Has quitado tu banda activa. Elige qué banda vinculada aporta tus datos en vivo, o deja ninguna activa y vincula una más tarde.</string>
-    <string name="devices_pick_active_leave_none">Dejar ninguna activa</string>
+    <string name="devices_pick_active_body">Has quitado tu banda activa. Elige qué banda vinculada aporta tus datos en vivo, o no actives ninguna y vincula una más tarde.</string>
+    <string name="devices_pick_active_leave_none">No activar ninguna</string>
 
     <!-- OnboardingScreen - shell -->
-    <string name="onboarding_cta_begin">Empezar configuración</string>
+    <string name="onboarding_cta_begin">Configurar</string>
     <string name="onboarding_cta_continue">Continuar</string>
     <string name="onboarding_cta_save_continue">Guardar y continuar</string>
     <string name="onboarding_cta_enter">Entrar en NOOP</string>
@@ -204,7 +204,7 @@
     <string name="onboarding_back">Atrás</string>
 
     <!-- OnboardingScreen - Bluetooth -->
-    <string name="onboarding_welcome_title">Te damos la bienvenida a NOOP</string>
+    <string name="onboarding_welcome_title">Bienvenida a NOOP</string>
     <string name="onboarding_welcome_subtitle">Tus wearables. Tus datos.</string>
     <string name="onboarding_bluetooth_card_title">Conecta tu wearable</string>
     <string name="onboarding_bluetooth_card_body">NOOP usa Bluetooth para encontrar tus dispositivos cercanos y conectar con ellos.</string>
@@ -231,7 +231,7 @@
     <!-- OnboardingScreen - Profile -->
     <string name="onboarding_profile_title">Sobre ti</string>
     <string name="onboarding_profile_subtitle">Para que tus zonas, tus calorías y la puntuación en el dispositivo partan de los números correctos.</string>
-    <string name="onboarding_birthday">Fecha de nacimiento</string>
+    <string name="onboarding_birthday">Nacimiento</string>
     <string name="onboarding_birthday_a11y">Fecha de nacimiento, %1$d años</string>
     <string name="onboarding_sex">Sexo</string>
     <string name="onboarding_sex_male">Hombre</string>
@@ -250,9 +250,9 @@
     <string name="onboarding_import_subtitle">Opcional: importa ahora, o sáltalo y vuelve más tarde a Fuentes de datos.</string>
     <string name="onboarding_import_card_title">El historial llena el panel al instante</string>
     <string name="onboarding_import_card_body">Una exportación de WHOOP rellena Recovery, Strain, sueño y entrenamientos. Health Connect puede añadir pasos, FC, HRV, sueño y peso desde fuentes de Android.</string>
-    <string name="onboarding_import_whoop">Importar exportación de WHOOP (.zip)</string>
+    <string name="onboarding_import_whoop">Importar .zip de WHOOP</string>
     <string name="onboarding_import_health_connect">Importar desde Health Connect</string>
-    <string name="onboarding_import_apple_health">Importar exportación de Apple Health</string>
+    <string name="onboarding_import_apple_health">Importar .zip de Apple Health</string>
     <string name="onboarding_importing">Importando…</string>
     <string name="onboarding_health_connect_denied">No se ha concedido el acceso a Health Connect.</string>
     <string name="onboarding_health_connect_unavailable">Health Connect no está disponible en este dispositivo.</string>
@@ -278,9 +278,9 @@
     <!-- OnboardingScreen - Done -->
     <string name="onboarding_done_title">Tu hilo empieza aquí.</string>
     <string name="onboarding_done_body">Cada latido, cada noche, cada día, tejidos en una imagen tranquila de ti. Te damos la bienvenida a NOOP.</string>
-    <string name="onboarding_restore_backup">Restaurar una copia de NOOP (.noopbak)</string>
+    <string name="onboarding_restore_backup">Restaurar copia de seguridad (.noopbak)</string>
     <string name="onboarding_restoring">Restaurando…</string>
-    <string name="onboarding_restore_done">Restauración terminada.</string>
+    <string name="onboarding_restore_done">Restauración lista.</string>
     <string name="import_none_apple_health">No se han encontrado datos de Apple Health compatibles en la exportación.</string>
     <string name="import_none_health_connect">No se han encontrado datos de Health Connect para importar.</string>
     <string name="notif_channel_strap_connection">Conexión de la banda</string>
@@ -354,8 +354,8 @@
     <!-- LabMarkerCsvImport -->
     <string name="import_lab_too_large">Ese archivo es demasiado grande para importar un CSV de marcadores.</string>
     <string name="import_lab_no_rows">No se han encontrado filas utilizables. Comprueba que el archivo tenga columnas de fecha, marcador y valor.</string>
-    <string name="import_lab_summary">Importación de marcadores: %1$s en %2$s.</string>
-    <string name="import_lab_summary_span">Importación de marcadores: %1$s en %2$s (%3$s → %4$s).</string>
+    <string name="import_lab_summary">Importación: %1$s en %2$s.</string>
+    <string name="import_lab_summary_span">Importación: %1$s en %2$s (%3$s → %4$s).</string>
     <plurals name="import_lab_skipped_rows">
         <item quantity="one">%1$d fila omitida.</item>
         <item quantity="other">%1$d filas omitidas.</item>
@@ -368,6 +368,6 @@
     <string name="import_nutrition_no_data_rows">El CSV no contenía filas de datos.</string>
     <string name="import_nutrition_unknown_columns">No se han reconocido las columnas. Se esperaba una columna de fecha y alguna de calorías / proteínas / carbohidratos / grasas / peso.</string>
     <string name="import_nutrition_no_rows">No hay filas de nutrición utilizables (comprueba el formato de la columna de fecha).</string>
-    <string name="import_nutrition_summary">Importación de nutrición: %1$s en %2$s.</string>
-    <string name="import_nutrition_summary_span">Importación de nutrición: %1$s en %2$s (%3$s → %4$s).</string>
+    <string name="import_nutrition_summary">Importación: %1$s en %2$s.</string>
+    <string name="import_nutrition_summary_span">Importación: %1$s en %2$s (%3$s → %4$s).</string>
 </resources>

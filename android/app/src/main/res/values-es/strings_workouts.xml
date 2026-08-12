@@ -46,7 +46,7 @@
     <string name="workouts_search_sport">Buscar deporte</string>
 
     <!-- WorkoutsScreen: merge-sport dialog -->
-    <string name="workouts_merge_title">Ponle nombre a la sesión combinada</string>
+    <string name="workouts_merge_title">Nombra la sesión combinada</string>
     <string name="workouts_merge_body">Estas sesiones aún no tienen etiqueta de deporte. Elige una para la sesión combinada.</string>
     <string name="workouts_merge">Combinar</string>
 
@@ -128,15 +128,15 @@
     <string name="workouts_heart_rate">Frecuencia cardíaca</string>
     <string name="workouts_stat_avg">Prom.</string>
     <string name="workouts_stat_peak">Pico</string>
-    <string name="workouts_stat_low">Mín</string>
+    <string name="workouts_stat_low">Bajo</string>
     <string name="workouts_avg_hr_edited_note">La media de arriba se editó. El gráfico, las zonas y el Effort se mantienen de la sesión grabada.</string>
     <string name="workouts_from_strap_hr">De la FC de la banda</string>
     <string name="workouts_zones_imported_note">El reparto por zonas que WHOOP importó para esta sesión.</string>
     <string name="workouts_zones_derived_note" formatted="false">Tiempo en cada zona de %HRmax, derivado de la frecuencia cardíaca de la banda en esta ventana (aproximado).</string>
 
     <!-- WorkoutsScreen: heart-rate recovery -->
-    <string name="workouts_hrr_title">Recuperación de la frecuencia cardíaca</string>
-    <string name="workouts_hrr_overline">Tras un esfuerzo de alta intensidad</string>
+    <string name="workouts_hrr_title">Recuperación de la FC</string>
+    <string name="workouts_hrr_overline">Tras un esfuerzo intenso</string>
     <string name="workouts_hrr_peak">Pico %1$d bpm</string>
     <string name="workouts_hrr_note">Una caída mayor significa que tu frecuencia cardíaca se asentó más rápido tras el esfuerzo, señal de una recuperación cardiovascular más fuerte.</string>
     <string name="workouts_recovery_stat_cd">Recuperación %1$s, %2$s</string>
@@ -156,7 +156,7 @@
     <string name="workouts_row_actions">Acciones del entrenamiento</string>
     <string name="workouts_relabel_as">Reetiquetar como…</string>
     <string name="workouts_edit_details">Editar detalles…</string>
-    <string name="workouts_dismiss_not_workout">Descartar (no es un entrenamiento)</string>
+    <string name="workouts_dismiss_not_workout">Descartar (no es entrenamiento)</string>
     <string name="workouts_edit">Editar…</string>
     <string name="workouts_delete">Eliminar</string>
     <string name="workouts_duplicate_as_manual">Duplicar como manual…</string>
@@ -178,7 +178,7 @@
     <string name="workouts_gps_tag">· GPS</string>
 
     <!-- WorkoutStart: start-a-workout sheet + the Workouts-screen start control -->
-    <string name="workouts_start_sheet_title">Iniciar un entrenamiento</string>
+    <string name="workouts_start_sheet_title">Iniciar entrenamiento</string>
     <string name="workouts_track_gps">Registrar la ruta GPS</string>
     <string name="workouts_start_named">Iniciar %1$s</string>
     <string name="workouts_active_sport">● %1$s</string>
@@ -190,7 +190,7 @@
     <string name="workouts_nudge_title">Parece un entrenamiento</string>
     <string name="workouts_nudge_dismiss_cd">Descartar esta sugerencia de entrenamiento</string>
     <string name="workouts_nudge_save">Guardarlo</string>
-    <string name="workouts_nudge_not_workout">No es un entrenamiento</string>
+    <string name="workouts_nudge_not_workout">No es entrenamiento</string>
     <string name="workouts_nudge_prompt_today">Parece un entrenamiento en torno a las %1$s - %2$s (FC media %3$d, %4$d min). ¿Lo guardas?</string>
     <string name="workouts_nudge_prompt_yesterday">Parece un entrenamiento ayer en torno a las %1$s - %2$s (FC media %3$d, %4$d min). ¿Lo guardas?</string>
     <string name="workouts_nudge_prompt_on">Parece un entrenamiento el %1$s en torno a las %2$s - %3$s (FC media %4$d, %5$d min). ¿Lo guardas?</string>
@@ -201,7 +201,7 @@
     <string name="live_end_workout">Terminar entrenamiento</string>
     <string name="live_hr_zone">Zona de FC</string>
     <string name="live_zone_with_name">Zona %1$d · %2$s</string>
-    <string name="live_below_zone_1">Por debajo de la Zona 1</string>
+    <string name="live_below_zone_1">Bajo la Zona 1</string>
     <string name="live_zone_band">Zona %1$d: %2$d - %3$d bpm (%4$d - %5$d%% de la FC máx)</string>
     <string name="live_warming_up">Calentando: sigue moviéndote para entrar en la Zona 1.</string>
     <string name="live_zone_recovery">Recuperación</string>
@@ -217,13 +217,13 @@
     <string name="live_guarding">Vigilando tu sesión. El silencio significa que vas bien.</string>
     <string name="live_end_session">Terminar sesión</string>
     <string name="live_state_stale">Señal perdida, coaching en pausa</string>
-    <string name="live_state_above">Por encima de la banda de hoy</string>
-    <string name="live_state_below">Por debajo de la banda de hoy</string>
-    <string name="live_state_in_band">Dentro de la banda de hoy</string>
+    <string name="live_state_above">Sobre la banda de hoy</string>
+    <string name="live_state_below">Bajo la banda de hoy</string>
+    <string name="live_state_in_band">En la banda de hoy</string>
     <string name="live_ring_cd">Anillo de la sesión. %1$s. Mantén pulsado para ver la frecuencia cardíaca.</string>
 
     <!-- LiveSessionScreen: end-of-session summary -->
-    <string name="live_session_summary">Resumen de la sesión</string>
+    <string name="live_session_summary">Resumen de sesión</string>
     <string name="live_auto_ended">La señal de la banda estuvo ausente 10 minutos, así que la sesión se terminó sola.</string>
     <string name="live_guarded_for">Vigilada durante %1$s</string>
     <string name="live_in_band">En banda</string>
@@ -239,11 +239,11 @@
     <string name="live_charge_low">El techo de hoy es más bajo — el Charge es del %1$d%%.</string>
     <string name="live_charge_mid">Un día intermedio — el Charge es del %1$d%%, así que la banda queda en la zona media.</string>
     <string name="live_charge_high">Queda mucho en el depósito — el Charge es del %1$d%%, así que el techo de hoy es más alto.</string>
-    <string name="live_no_buzzes">No se enviaron vibraciones.</string>
-    <string name="live_push_nudge">%1$d aviso para apretar</string>
-    <string name="live_push_nudges">%1$d avisos para apretar</string>
-    <string name="live_ease_off">%1$d aviso para aflojar</string>
-    <string name="live_ease_offs">%1$d avisos para aflojar</string>
+    <string name="live_no_buzzes">Sin vibraciones.</string>
+    <string name="live_push_nudge">%1$d empujón</string>
+    <string name="live_push_nudges">%1$d empujones</string>
+    <string name="live_ease_off">%1$d freno</string>
+    <string name="live_ease_offs">%1$d frenos</string>
     <string name="live_cue_line">%1$s · %2$s</string>
 
 </resources>

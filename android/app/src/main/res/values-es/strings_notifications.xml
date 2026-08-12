@@ -5,10 +5,10 @@
 
     <!-- Foreground connection service -->
     <string name="notif_conn_title_reconnecting">Reconectando con tu WHOOP…</string>
-    <string name="notif_conn_title_syncing">Sincronizando el historial de la banda…</string>
+    <string name="notif_conn_title_syncing">Sincronizando el historial…</string>
     <string name="notif_conn_title_connected">Conectado a tu WHOOP</string>
     <string name="notif_conn_detail_streaming">Transmitiendo en segundo plano</string>
-    <string name="notif_conn_detail_keeping_link">Manteniendo la conexión abierta</string>
+    <string name="notif_conn_detail_keeping_link">Conexión abierta</string>
     <string name="notif_conn_detail_recovery">Recovery %1$d%%</string>
     <string name="notif_conn_detail_strap">Banda %1$d%%</string>
     <string name="notif_conn_action_disconnect">Desconectar</string>
@@ -32,7 +32,7 @@
     <!-- Inactivity nudge -->
     <string name="notif_channel_inactivity">Recordatorio de inactividad</string>
     <string name="notif_channel_inactivity_desc">Un aviso para moverte tras un rato largo sentado.</string>
-    <string name="notif_inactivity_title">Hora de moverte</string>
+    <string name="notif_inactivity_title">Aviso para moverte</string>
     <plurals name="notif_inactivity_body_minutes">
         <item quantity="one">Llevas %1$d minuto sentado. Toca moverse.</item>
         <item quantity="other">Llevas unos %1$d minutos sentado. Toca moverse.</item>
@@ -42,7 +42,7 @@
     <!-- Smart alarm: the strap buzz notifier and the phone wake receiver share one channel -->
     <string name="notif_channel_smart_alarm">Alarma inteligente</string>
     <string name="notif_channel_smart_alarm_desc">Tu alarma inteligente de despertar sonó en la banda.</string>
-    <string name="notif_channel_smart_alarm_phone_desc">La alarma de despertar que NOOP hace sonar en el teléfono dentro de tu ventana de despertar.</string>
+    <string name="notif_channel_smart_alarm_phone_desc">La alarma que NOOP hace sonar en el teléfono dentro de tu ventana de despertar.</string>
     <string name="notif_alarm_good_morning">Buenos días</string>
     <string name="notif_smart_alarm_body">Tu alarma inteligente acaba de sonar.</string>
     <string name="notif_alarm_body_smart">Estás en una fase de sueño ligero. Hora de despertar.</string>
@@ -52,7 +52,7 @@
     <string name="notif_channel_wind_down">Aviso para desconectar</string>
     <string name="notif_channel_wind_down_desc">Un recordatorio opcional por la noche para empezar a desconectar antes de dormir.</string>
     <string name="notif_wind_down_title">Hora de desconectar</string>
-    <string name="notif_wind_down_body">Una hora de calma ahora te ayuda a llegar con energía a tu hora de despertar.</string>
+    <string name="notif_wind_down_body">Una hora de calma ahora te ayuda a despertar descansado.</string>
 
     <!-- Scheduled reports: morning recap + post-workout summary -->
     <string name="notif_channel_daily_reports">Informes diarios</string>

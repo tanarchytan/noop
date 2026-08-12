@@ -40,8 +40,8 @@
     <string name="trends2_metric_sleep_efficiency">Eficiencia del sueño</string>
     <string name="trends2_metric_spo2">SpO₂</string>
     <string name="trends2_metric_respiratory_rate">Frecuencia respiratoria</string>
-    <string name="trends2_metric_avg_hr">Frecuencia cardiaca media</string>
-    <string name="trends2_metric_max_hr">Frecuencia cardiaca máxima</string>
+    <string name="trends2_metric_avg_hr">FC media</string>
+    <string name="trends2_metric_max_hr">FC máxima</string>
     <string name="trends2_metric_calories_in">Calorías ingeridas</string>
     <string name="trends2_metric_protein">Proteínas</string>
     <string name="trends2_metric_carbs">Carbohidratos</string>
@@ -52,13 +52,13 @@
     <string name="trends2_desc_rest">Cuán reparador fue tu sueño: duración, eficiencia, profundo+REM, horarios.</string>
 
     <!-- Deep Timeline: the metric pills, the resolution caption and the band-state read-out -->
-    <string name="trends2_timeline_hr">Frecuencia cardiaca</string>
+    <string name="trends2_timeline_hr">FC</string>
     <string name="trends2_timeline_hrv">rMSSD (5 min)</string>
-    <string name="trends2_timeline_skin_temp">Temp. de la piel</string>
+    <string name="trends2_timeline_skin_temp">Temp. piel</string>
     <string name="trends2_timeline_respiration">Respiración</string>
     <string name="trends2_timeline_motion">Movimiento</string>
-    <string name="trends2_timeline_band_sleep_state">Estado de sueño de la banda</string>
-    <string name="trends2_timeline_raw">Sin procesar · por segundo</string>
+    <string name="trends2_timeline_band_sleep_state">Sueño según la banda</string>
+    <string name="trends2_timeline_raw">En bruto · por segundo</string>
     <string name="trends2_timeline_minute_average">Media de %1$d minutos</string>
     <string name="trends2_timeline_second_average">Media de %1$d segundos</string>
     <string name="trends2_timeline_state_wake">despierto</string>
@@ -82,18 +82,18 @@
     <string name="trends2_report_steady">estable</string>
     <string name="trends2_report_empty_title">Aún no hay datos suficientes en este rango</string>
     <string name="trends2_report_empty_body">No hay lecturas de entrenamiento, estrés, Recovery, sueño, HRV, FC en reposo, Strain, frecuencia respiratoria ni temperatura de la piel dentro de %1$s. Lleva la banda unos días más, o elige un rango más amplio, y vuelve a exportar.</string>
-    <string name="trends2_report_legend">Cómo leer esto: la HRV, la FC en reposo, la duración del sueño, la frecuencia respiratoria y la temperatura de la piel se miden desde la banda (la temperatura de la piel se muestra como la desviación respecto a tu propia línea base). Entrenamientos es el número de actividades que registraste o que se detectaron. Recovery, Strain y Estrés son puntuaciones propias de NOOP calculadas en el dispositivo, no medidas clínicas - Recovery es un compuesto diario de preparación (HRV, FC en reposo, sueño y tendencia de la temperatura de la piel), Strain es la carga cardiovascular derivada de la frecuencia cardiaca, y Estrés es un índice de carga autonómica de 0-3 a partir de la FC en reposo y la HRV.</string>
+    <string name="trends2_report_legend">Cómo leer esto: la HRV, la FC en reposo, la duración del sueño, la frecuencia respiratoria y la temperatura de la piel se miden desde la banda (la temperatura de la piel se muestra como desviación de tu línea base). Entrenamientos es el número de actividades registradas o detectadas. Recovery, Strain y Estrés son puntuaciones propias de NOOP calculadas en el dispositivo, no medidas clínicas - Recovery es un compuesto diario de preparación (HRV, FC en reposo, sueño y tendencia de la temperatura de la piel), Strain es la carga cardiovascular derivada de la frecuencia cardíaca, y Estrés es un índice de carga autonómica de 0-3 a partir de la FC en reposo y la HRV.</string>
     <string name="trends2_report_generated">Generado por NOOP el %1$s · todo en el dispositivo, sin cuenta, sin nube.</string>
     <string name="trends2_report_disclaimer">Solo informativo - no es consejo médico.</string>
     <string name="trends2_report_build_failed">No se pudo generar el informe.</string>
     <string name="trends2_report_share_failed">No se pudo compartir el informe: %1$s</string>
-    <string name="trends2_report_share_subject">Informe de tendencias de NOOP</string>
-    <string name="trends2_report_share_chooser">Compartir informe de tendencias</string>
+    <string name="trends2_report_share_subject">Informe de tendencias NOOP</string>
+    <string name="trends2_report_share_chooser">Compartir informe</string>
 
     <!-- Trends report: the in-app export card -->
     <string name="trends2_export_overline">Exportar</string>
     <string name="trends2_export_title">Informe de tendencias (PDF)</string>
-    <string name="trends2_export_blurb">Un PDF de una página, claro y fácil de compartir, con tu Recovery, sueño, HRV, frecuencia cardiaca en reposo y Strain en un rango de fechas. Se genera y se guarda en tu teléfono - nada sale del dispositivo.</string>
+    <string name="trends2_export_blurb">Un PDF de una página, claro y fácil de compartir, con tu Recovery, sueño, HRV, frecuencia cardíaca en reposo y Strain en un rango de fechas. Se genera y se guarda en tu teléfono - nada sale del dispositivo.</string>
     <string name="trends2_export_range">Rango</string>
     <string name="trends2_export_cta">Exportar PDF</string>
     <string name="trends2_export_footnote">Desde el menú de compartir puedes guardar el PDF en Archivos o enviarlo.</string>
@@ -117,7 +117,7 @@
     <string name="coupled_slept">%1$s de sueño</string>
     <string name="coupled_needed">%1$s necesarias</string>
     <string name="coupled_no_sleep">No se registró sueño anoche</string>
-    <string name="coupled_footer">Una lectura clásica, de un vistazo, de las puntuaciones propias de NOOP. Los mismos datos, otra mirada.</string>
+    <string name="coupled_footer">Un vistazo clásico a las puntuaciones propias de NOOP. Los mismos datos, otra mirada.</string>
 
     <!-- Charts: the spoken summary every chart primitive carries -->
     <string name="charts_series_no_data">%1$s, sin datos</string>
@@ -136,7 +136,7 @@
     <string name="digest_sleep_steadiness">Estabilidad del sueño: Rest varió ±%1$s pts de una noche a otra.</string>
     <string name="digest_disclaimer">Solo informativo, no es consejo médico.</string>
     <string name="digest_a11y_row_no_comparison">%1$s: %2$s esta semana, sin comparación.</string>
-    <string name="digest_a11y_row">%1$s: %2$s esta semana, %3$s %4$s respecto a la semana anterior%5$s.</string>
+    <string name="digest_a11y_row">%1$s: %2$s esta semana, %3$s %4$s semana a semana%5$s.</string>
     <string name="digest_a11y_up">sube</string>
     <string name="digest_a11y_down">baja</string>
     <string name="digest_a11y_unchanged">sin cambios</string>

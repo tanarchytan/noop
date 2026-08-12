@@ -2,25 +2,25 @@
 <resources>
     <!-- Spanish (es). Twin of values/strings_whoopskin.xml, same key order. -->
     <!-- WhoopRecoveryScreen -->
-    <string name="whoopskin_recovery_subtitle_carried">Tu última noche puntuada, que se mantiene hasta que se puntúe la de esta noche.</string>
+    <string name="whoopskin_recovery_subtitle_carried">Tu última noche puntuada, hasta que se puntúe la de hoy.</string>
     <string name="whoopskin_recovery_subtitle">Cuán recuperado está tu cuerpo hoy.</string>
-    <string name="whoopskin_recovery_empty_title">Aún no hay puntuación de Recovery</string>
+    <string name="whoopskin_recovery_empty_title">Aún sin puntuación de Recovery</string>
     <string name="whoopskin_recovery_empty_body">Lleva la banda durante la noche, o importa tu historial de WHOOP, y Recovery se rellenará.</string>
     <string name="whoopskin_recovery_last_scored">Última puntuación · %1$s</string>
     <string name="whoopskin_recovery_readiness">Preparación</string>
     <string name="whoopskin_recovery_driver_verdict">%1$s %2$s.</string>
     <string name="whoopskin_recovery_readiness_detail">Lo que tu Charge de hoy te pide.</string>
-    <string name="whoopskin_recovery_what_shaped_it">Qué le ha dado forma</string>
+    <string name="whoopskin_recovery_what_shaped_it">Qué influyó</string>
     <string name="whoopskin_confidence_solid">SÓLIDA</string>
-    <string name="whoopskin_confidence_building">EN FORMACIÓN</string>
+    <string name="whoopskin_confidence_building">EN PROGRESO</string>
     <string name="whoopskin_confidence_calibrating">CALIBRANDO</string>
     <string name="whoopskin_recovery_driver_point">%1$s pt</string>
     <string name="whoopskin_recovery_driver_points">%1$s pts</string>
     <string name="whoopskin_recovery_drivers_footnote">Cada línea indica cuántos puntos movió esa señal el Recovery frente a tu línea base en el dispositivo. Una estimación de bienestar, no es consejo médico.</string>
-    <string name="whoopskin_recovery_card_hrv">Variabilidad de la frecuencia cardiaca</string>
-    <string name="whoopskin_recovery_series_hrv">Variabilidad de la frecuencia cardiaca</string>
-    <string name="whoopskin_recovery_card_rhr">Frecuencia cardiaca en reposo</string>
-    <string name="whoopskin_recovery_series_rhr">Frecuencia cardiaca en reposo</string>
+    <string name="whoopskin_recovery_card_hrv">Variabilidad cardíaca</string>
+    <string name="whoopskin_recovery_series_hrv">Variabilidad cardíaca</string>
+    <string name="whoopskin_recovery_card_rhr">Frecuencia cardíaca en reposo</string>
+    <string name="whoopskin_recovery_series_rhr">Frecuencia cardíaca en reposo</string>
     <string name="whoopskin_recovery_card_resp">Frecuencia respiratoria</string>
     <string name="whoopskin_recovery_series_resp">Frecuencia respiratoria</string>
     <string name="whoopskin_recovery_card_sleep">Rendimiento del sueño</string>
@@ -35,13 +35,13 @@
     <string name="whoopskin_vital_rhr">FC en reposo</string>
     <string name="whoopskin_vital_rhr_short">FCR</string>
     <string name="whoopskin_vital_hrv">HRV</string>
-    <string name="whoopskin_vital_skin">Temp. de la piel</string>
-    <string name="whoopskin_vital_skin_from_baseline">Temp. de la piel (respecto a la línea base)</string>
+    <string name="whoopskin_vital_skin">Temp. piel</string>
+    <string name="whoopskin_vital_skin_from_baseline">Temp. piel (vs. línea base)</string>
     <string name="whoopskin_vital_skin_short">Temp.</string>
     <string name="whoopskin_vital_no_reading">Aún sin lectura</string>
-    <string name="whoopskin_vital_in_your_range">Dentro de tu rango</string>
+    <string name="whoopskin_vital_in_your_range">En tu rango</string>
     <string name="whoopskin_vital_off_baseline">Fuera de tu línea base</string>
-    <string name="whoopskin_vital_in_typical">Dentro del rango habitual</string>
+    <string name="whoopskin_vital_in_typical">En el rango habitual</string>
     <string name="whoopskin_vital_outside_typical">Fuera del rango habitual</string>
     <string name="whoopskin_vital_spoken">%1$s %2$s, %3$s</string>
     <string name="whoopskin_vital_spoken_empty">%1$s, sin lectura</string>
@@ -55,24 +55,24 @@
 
     <!-- WhoopStressMonitorScreen -->
     <string name="whoopskin_stress_monitor">Monitor de estrés</string>
-    <string name="whoopskin_stress_monitor_subtitle">Carga autonómica a partir de la frecuencia cardiaca y la HRV.</string>
-    <string name="whoopskin_stress_empty_title">Aún no hay historial de estrés</string>
+    <string name="whoopskin_stress_monitor_subtitle">Carga autonómica a partir de la FC y la HRV.</string>
+    <string name="whoopskin_stress_empty_title">Aún sin historial de estrés</string>
     <string name="whoopskin_stress_empty_body">Lleva tu banda durante el día, o importa una exportación de WHOOP en Fuentes de datos, y tu estrés se leerá aquí.</string>
-    <string name="whoopskin_stress_no_score_day">No hay suficiente frecuencia cardiaca en reposo ni HRV para puntuar este día.</string>
+    <string name="whoopskin_stress_no_score_day">Sin suficiente FC en reposo ni HRV para puntuar este día.</string>
     <string name="whoopskin_stress_of_ceiling">de %1$d</string>
     <string name="whoopskin_stress_gauge_a11y">Estrés %1$s de %2$d</string>
-    <string name="whoopskin_stress_hero_footnote">Puntuado según cómo se sitúan tu frecuencia cardiaca en reposo y tu HRV de hoy frente a tu propia línea base reciente. Una estimación de bienestar, no una lectura médica.</string>
+    <string name="whoopskin_stress_hero_footnote">Puntuado según cómo se sitúan tu FC en reposo y tu HRV de hoy frente a tu propia línea base reciente. Una estimación de bienestar, no una lectura médica.</string>
     <string name="whoopskin_stress_through_the_day">A lo largo del día</string>
     <string name="whoopskin_stress_peak">pico %1$s · %2$s</string>
-    <string name="whoopskin_stress_reading_day">Leyendo la frecuencia cardiaca de este día…</string>
-    <string name="whoopskin_stress_not_enough_hours">No hay suficientes horas puntuadas para dibujar este día.</string>
+    <string name="whoopskin_stress_reading_day">Leyendo frecuencia cardíaca del día…</string>
+    <string name="whoopskin_stress_not_enough_hours">No hay horas puntuadas suficientes para este día.</string>
     <string name="whoopskin_stress_day_footnote">Cada punto es una hora de vigilia, puntuada frente a las horas tranquilas del propio día. Las horas sin datos suficientes se dejan fuera en vez de rellenarse.</string>
-    <string name="whoopskin_stress_time_in_band">Tiempo por banda</string>
+    <string name="whoopskin_stress_time_in_band">Tiempo por nivel</string>
     <string name="whoopskin_band_low">Bajo</string>
     <string name="whoopskin_band_medium">Medio</string>
     <string name="whoopskin_band_high">Alto</string>
     <string name="whoopskin_stress_band_a11y">%1$s %2$s</string>
-    <string name="whoopskin_stress_band_footnote">Los minutos proceden de la clasificación por bandas que el propio whoop-rs hace de cada hora puntuada.</string>
+    <string name="whoopskin_stress_band_footnote">Los minutos salen de los niveles que whoop-rs asigna a cada hora puntuada.</string>
     <string name="whoopskin_sessions">Sesiones</string>
     <string name="whoopskin_guided">Guiada</string>
     <string name="whoopskin_increase_relaxation">Aumentar la relajación</string>
@@ -80,29 +80,29 @@
 
     <!-- WhoopHealthMonitorScreen -->
     <string name="whoopskin_health_monitor">Monitor de salud</string>
-    <string name="whoopskin_health_monitor_subtitle">Frecuencia cardiaca en directo y las constantes vitales de tu cuerpo.</string>
-    <string name="whoopskin_vitals_building_title">Las constantes vitales aún se están formando</string>
-    <string name="whoopskin_vitals_building_body">SpO₂, frecuencia respiratoria y temperatura de la piel son lecturas de la ventana de sueño; la FC en reposo y la HRV llegan cuando se analiza una noche.</string>
-    <string name="whoopskin_heart_rate">Frecuencia cardiaca</string>
-    <string name="whoopskin_live">En directo</string>
+    <string name="whoopskin_health_monitor_subtitle">Frecuencia cardíaca en directo y constantes vitales.</string>
+    <string name="whoopskin_vitals_building_title">Constantes vitales en formación</string>
+    <string name="whoopskin_vitals_building_body">SpO₂, frecuencia respiratoria y temp. de la piel son lecturas de la ventana de sueño; la FC en reposo y la HRV llegan al analizar una noche.</string>
+    <string name="whoopskin_heart_rate">Frecuencia cardíaca</string>
+    <string name="whoopskin_live">Directo</string>
     <string name="whoopskin_idle">Inactivo</string>
-    <string name="whoopskin_heart_rate_a11y">Frecuencia cardiaca %1$d pulsaciones por minuto</string>
-    <string name="whoopskin_heart_rate_a11y_none">Frecuencia cardiaca, sin lectura en directo</string>
+    <string name="whoopskin_heart_rate_a11y">Frecuencia cardíaca %1$d pulsaciones por minuto</string>
+    <string name="whoopskin_heart_rate_a11y_none">Frecuencia cardíaca, sin lectura en directo</string>
     <string name="whoopskin_hr_zone">Zona %1$d</string>
-    <string name="whoopskin_hr_below_zone_1">Por debajo de la zona 1</string>
+    <string name="whoopskin_hr_below_zone_1">Debajo de zona 1</string>
     <string name="whoopskin_hr_awaiting_strap">Esperando a la banda</string>
     <string name="whoopskin_hr_trace_live">El trazo conserva los últimos minutos de latidos transmitidos y se reinicia al salir.</string>
     <string name="whoopskin_hr_trace_waiting">El trazo se dibuja cuando la banda empieza a transmitir, y se reinicia al salir.</string>
     <string name="whoopskin_latest_readings">Últimas lecturas</string>
-    <string name="whoopskin_take_hrv_reading">Tomar una lectura de HRV</string>
+    <string name="whoopskin_take_hrv_reading">Tomar lectura de HRV</string>
     <string name="whoopskin_body_signals">Señales del cuerpo</string>
 
     <!-- WhoopHealthScreen -->
-    <string name="whoopskin_health_subtitle">Tus constantes vitales y la carga de estrés de hoy.</string>
+    <string name="whoopskin_health_subtitle">Tus constantes vitales y el estrés de hoy.</string>
     <string name="whoopskin_health_empty_title">Aún no hay biometría</string>
-    <string name="whoopskin_health_empty_body">Lleva tu banda durante la noche, o importa una exportación de WHOOP en Fuentes de datos, y tus constantes vitales aparecerán aquí.</string>
-    <string name="whoopskin_stress_reading_today">Leyendo la frecuencia cardiaca de hoy…</string>
-    <string name="whoopskin_stress_no_score_today">No hay suficiente frecuencia cardiaca en reposo ni HRV para puntuar hoy.</string>
+    <string name="whoopskin_health_empty_body">Lleva la banda de noche o importa una exportación de WHOOP en Fuentes de datos, y aquí verás tus constantes vitales.</string>
+    <string name="whoopskin_stress_reading_today">Leyendo frecuencia cardíaca de hoy…</string>
+    <string name="whoopskin_stress_no_score_today">Sin suficiente FC en reposo ni HRV para puntuar hoy.</string>
     <string name="whoopskin_todays_stress">Estrés de hoy</string>
     <string name="whoopskin_health_disclaimer">El Monitor de salud y el Monitor de estrés no son dispositivos médicos y no pueden diagnosticar ni tratar una afección médica. Ofrecen estimaciones de bienestar, nunca consejo médico. Consulta siempre a tu médico ante cualquier problema de salud, y nunca retrases ni cambies una atención médica por lo que leas aquí.</string>
 
@@ -122,37 +122,37 @@
     <string name="whoopskin_no_readings_yet">Aún sin lecturas</string>
     <string name="whoopskin_home_stress_monitor">Estrés</string>
     <string name="whoopskin_autonomic_load">Carga autonómica</string>
-    <string name="whoopskin_tonights_sleep">El sueño de esta noche</string>
+    <string name="whoopskin_tonights_sleep">Sueño de esta noche</string>
     <string name="whoopskin_wake_alarm">Alarma</string>
     <string name="whoopskin_alarm_off">Apagada</string>
-    <string name="whoopskin_change_alarm">Cambiar la alarma</string>
+    <string name="whoopskin_change_alarm">Cambiar alarma</string>
     <string name="whoopskin_set_alarm">Poner alarma</string>
     <string name="whoopskin_todays_activities">Actividades de hoy</string>
-    <string name="whoopskin_nothing_logged">No hay nada registrado para este día.</string>
+    <string name="whoopskin_nothing_logged">No hay nada registrado este día.</string>
     <string name="whoopskin_my_journal">Mi diario</string>
-    <string name="whoopskin_journal_blurb">Registra los comportamientos que hay detrás de una noche y luego lee qué han movido.</string>
+    <string name="whoopskin_journal_blurb">Registra los comportamientos de una noche y lee luego qué movieron.</string>
     <string name="whoopskin_behaviour_insights">Análisis de comportamiento</string>
 
     <!-- WhoopProfileHighlights -->
     <string name="whoopskin_profile_no_readings">Aún no hay lecturas en este rango</string>
-    <string name="whoopskin_profile_notable_stats">Estadísticas destacadas</string>
-    <string name="whoopskin_profile_peak">Pico de %1$s</string>
-    <string name="whoopskin_profile_max">Máximo de %1$s</string>
-    <string name="whoopskin_profile_lowest">Mínimo de %1$s</string>
-    <string name="whoopskin_profile_highest">Máximo de %1$s</string>
+    <string name="whoopskin_profile_notable_stats">Cifras destacadas</string>
+    <string name="whoopskin_profile_peak">Pico %1$s</string>
+    <string name="whoopskin_profile_max">Máx. %1$s</string>
+    <string name="whoopskin_profile_lowest">Mínimo %1$s</string>
+    <string name="whoopskin_profile_highest">Máximo %1$s</string>
     <string name="whoopskin_profile_longest">%1$s más largo</string>
 
     <!-- WhoopStrainScreen + WhoopStrainCards -->
-    <string name="whoopskin_strain_today_vs_window">Hoy vs. %1$d días</string>
+    <string name="whoopskin_strain_today_vs_window">Hoy vs. últimos %1$d días</string>
     <string name="whoopskin_hr_zones_1_3">Zonas de FC 1-3</string>
     <string name="whoopskin_hr_zones_4_5">Zonas de FC 4-5</string>
-    <string name="whoopskin_strain_zones_1_3">Zonas de frecuencia cardiaca 1-3</string>
-    <string name="whoopskin_strain_zones_4_5">Zonas de frecuencia cardiaca 4-5</string>
+    <string name="whoopskin_strain_zones_1_3">Zonas de frecuencia cardíaca 1-3</string>
+    <string name="whoopskin_strain_zones_4_5">Zonas de frecuencia cardíaca 4-5</string>
     <string name="whoopskin_steps">Pasos</string>
     <string name="whoopskin_calories">Calorías</string>
-    <string name="whoopskin_strain_window_avg">Media de %1$d días %2$s</string>
-    <string name="whoopskin_strain_none_today">Aún no se ha puntuado ningún Effort hoy.</string>
-    <string name="whoopskin_strain_none_this_week">Aún no se ha puntuado ningún Effort esta semana.</string>
+    <string name="whoopskin_strain_window_avg">Media %1$d días %2$s</string>
+    <string name="whoopskin_strain_none_today">Aún sin Effort puntuado hoy.</string>
+    <string name="whoopskin_strain_none_this_week">Aún sin Effort puntuado esta semana.</string>
 
     <!-- WhoopCustomizeSheet + WhoopCustomizeRows -->
     <string name="whoopskin_add_to_my_dashboard">Añadir a mi panel</string>
@@ -165,14 +165,14 @@
     <string name="whoopskin_add_item">Añadir %1$s</string>
     <string name="whoopskin_add_at_least_one">Añade al menos uno para guardar.</string>
     <string name="whoopskin_customise_dashboard">Personalizar el panel</string>
-    <string name="whoopskin_customise_key_metrics">Personalizar las métricas clave</string>
+    <string name="whoopskin_customise_key_metrics">Personalizar métricas clave</string>
 
     <!-- WhoopProfileScreen -->
     <string name="whoopskin_profile_subtitle">Tus máximos y mínimos en todos los días que este teléfono ha registrado.</string>
     <string name="whoopskin_profile_photo">Foto de perfil</string>
     <string name="whoopskin_data_highlights">Datos destacados</string>
     <string name="whoopskin_body_profile_units">Perfil corporal y unidades</string>
-    <string name="whoopskin_body_profile_blurb">Fecha de nacimiento, sexo, peso, altura, frecuencia cardiaca máxima y cómo muestra NOOP las unidades. Todo ello se queda en este teléfono.</string>
+    <string name="whoopskin_body_profile_blurb">Fecha de nacimiento, sexo, peso, altura, FC máxima y cómo muestra NOOP las unidades. Todo se queda en este teléfono.</string>
 
     <!-- WhoopHomeHeader -->
     <string name="whoopskin_strap">Banda</string>

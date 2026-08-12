@@ -12,7 +12,7 @@
     <string name="profile_change_photo">Cambiar foto</string>
     <string name="profile_choose_photo">Elegir foto</string>
     <string name="profile_remove_photo">Quitar foto</string>
-    <string name="profile_body_blurb">Estos datos alimentan tus zonas de frecuencia cardíaca, las estimaciones de calorías y las líneas base de Recovery. Mantenlos exactos.</string>
+    <string name="profile_body_blurb">Estos datos alimentan tus zonas de FC, las estimaciones de calorías y las líneas base de Recovery. Mantenlos exactos.</string>
     <string name="profile_birthday">Fecha de nacimiento</string>
     <string name="profile_birthday_a11y">Fecha de nacimiento, %1$d años</string>
     <string name="profile_sex">Sexo</string>
@@ -28,10 +28,10 @@
     <string name="profile_waist_a11y_unset">Cintura, sin definir. Opcional: añade tu estimación de VO₂ máx.</string>
     <string name="profile_waist_adds_vo2">Añade tu estimación de VO₂ máx.</string>
     <string name="profile_waist_optional_vo2">Opcional · añade tu estimación de VO₂ máx.</string>
-    <string name="profile_max_hr">Frecuencia cardíaca máxima</string>
+    <string name="profile_max_hr">FC máxima</string>
     <string name="profile_auto">Auto</string>
-    <string name="profile_max_hr_a11y_auto">Ajuste manual de la frecuencia cardíaca máxima, automático</string>
-    <string name="profile_max_hr_a11y">Ajuste manual de la frecuencia cardíaca máxima, %1$d bpm</string>
+    <string name="profile_max_hr_a11y_auto">Frecuencia cardíaca máxima manual, automático</string>
+    <string name="profile_max_hr_a11y">Frecuencia cardíaca máxima manual, %1$d bpm</string>
     <string name="profile_max_hr_manual">Ajuste manual</string>
     <string name="profile_max_hr_auto">Auto · %1$d bpm (Tanaka)</string>
     <string name="profile_step_calibration">Calibración de pasos</string>
@@ -52,7 +52,7 @@
     <string name="profile_temperature_match">Auto</string>
     <string name="profile_effort_scale">Escala de Effort</string>
     <string name="profile_language_title">Idioma</string>
-    <string name="profile_language_blurb">El idioma en el que se muestran las pantallas propias de NOOP. Tus datos, tus unidades y los nombres de las métricas no cambian. Las pantallas que todavía no están traducidas se quedan en inglés.</string>
+    <string name="profile_language_blurb">El idioma de las pantallas propias de NOOP. Tus datos, unidades y nombres de métricas no cambian. Las pantallas sin traducir se quedan en inglés.</string>
 
     <!-- StepsCalibrationScreen -->
     <string name="steps_title">Calibra tus pasos</string>
@@ -61,14 +61,14 @@
     <string name="steps_how_this_works">Cómo funciona</string>
     <string name="steps_explainer_body">NOOP estima tus pasos a partir del movimiento de tu WHOOP, calibrado con el recuento de pasos de tu teléfono. Es una estimación, no un podómetro. Una WHOOP 4.0 no transmite pasos.</string>
     <string name="steps_explainer_detail">En los días en que tu teléfono también contó pasos, NOOP aprende cuánto se traduce tu movimiento en pasos, y luego lo aplica a los días en que solo hay banda. Cuantos más días coincidentes tenga, más confía en la estimación.</string>
-    <string name="steps_no_motion_title">Todavía no se ha sincronizado movimiento</string>
+    <string name="steps_no_motion_title">Aún sin movimiento</string>
     <string name="steps_no_motion_body">Todavía no vemos movimiento de tu banda. Los pasos se estiman a partir del historial de movimiento guardado en tu WHOOP, así que tu banda necesita sincronizar ese historial antes de que NOOP tenga algo que contar.</string>
     <string name="steps_no_motion_detail">Abre NOOP cerca de tu banda y déjala ponerse al día (una sincronización completa del historial puede tardar un rato la primera vez). En cuanto lleguen uno o dos días de movimiento, tu estimación de pasos y la calibración de abajo empezarán a rellenarse.</string>
     <string name="steps_current_calibration">Calibración actual</string>
     <string name="steps_per_motion_unit">pasos por unidad de movimiento</string>
     <string name="steps_stat_source">Fuente</string>
     <string name="steps_source_manual">Manual (lo has puesto tú a mano)</string>
-    <string name="steps_stat_fitted_from">Ajustado a partir de</string>
+    <string name="steps_stat_fitted_from">Ajustado con</string>
     <string name="steps_fitted_one_day">%1$d día que tu teléfono también contó</string>
     <string name="steps_fitted_days">%1$d días que tu teléfono también contó</string>
     <string name="steps_stat_confidence">Confianza</string>
@@ -104,9 +104,9 @@
     <string name="intelligence_forecast_trailing">Estimación</string>
     <string name="intelligence_forecast_band">± %1$d</string>
     <string name="intelligence_forecast_body">Es probable que te despiertes con un Charge de en torno a %1$d ± %2$d si duermes alrededor de %3$s esta noche.</string>
-    <string name="intelligence_forecast_note">Estimación a partir del esfuerzo de hoy, de tu sueño habitual y de tu línea base de Recovery de %1$d noches: no es una medición. Tu Charge real se puntúa con la HRV de mañana al despertar.</string>
+    <string name="intelligence_forecast_note">Estimación a partir del Effort de hoy, de tu sueño habitual y de tu línea base de Recovery de %1$d noches: no es una medición. Tu Charge real se puntúa con la HRV de mañana al despertar.</string>
     <string name="intelligence_how_this_works">Cómo funciona</string>
-    <string name="intelligence_explainer">Charge pondera tu variabilidad de la frecuencia cardíaca frente a tu línea base personal (~55%%), la frecuencia cardíaca en reposo (~20%%), la calidad del descanso (~15%%), la respiración (~5%%) y la desviación de la temperatura de la piel (~5%%). Effort es una carga cardiovascular de 0 a %1$s a partir del tiempo pasado en cada zona de frecuencia cardíaca. Rest se determina por fases a partir del movimiento y la frecuencia cardíaca. El recálculo completo en el dispositivo desde los flujos en bruto de la banda llegará más adelante; las puntuaciones de abajo se leen de las métricas guardadas de cada día.</string>
+    <string name="intelligence_explainer">Charge pondera tu variabilidad cardíaca frente a tu línea base personal (~55%%), la FC en reposo (~20%%), la calidad de Rest (~15%%), la respiración (~5%%) y la desviación de la temperatura de la piel (~5%%). Effort es una carga cardiovascular de 0 a %1$s a partir del tiempo en cada zona de FC. Rest se determina por fases a partir del movimiento y la frecuencia cardíaca. El recálculo completo en el dispositivo desde los flujos en bruto de la banda llegará más adelante; las puntuaciones de abajo se leen de las métricas guardadas de cada día.</string>
     <string name="intelligence_empty">Todavía no hay días puntuados. Sincroniza tu banda para recoger los flujos en bruto. El Effort y el Rest se puntúan en cuanto están los datos de un día. Charge necesita unas cuatro noches de sueño para aprender tu línea base (hasta entonces verás \"Calibrando\"), y sigue afinándose durante tus primeras dos semanas. En una WHOOP 5 o MG la banda guarda poco historial, así que ese recuento de noches puede subir despacio o quedarse en 0 de 4 hasta que la hayas llevado varias noches. Es su límite de sincronización, no un fallo. Importa tu exportación de WHOOP para saltarte la espera.</string>
     <string name="intelligence_recent">Reciente</string>
     <string name="intelligence_by_day">Por día</string>
@@ -116,24 +116,24 @@
     <string name="intelligence_charge_model">Modelo de Charge</string>
     <string name="intelligence_weight_hrv">Variabilidad cardíaca</string>
     <string name="intelligence_weight_rhr">FC en reposo</string>
-    <string name="intelligence_weight_rest">Calidad del descanso</string>
+    <string name="intelligence_weight_rest">Calidad de Rest</string>
     <string name="intelligence_weight_respiration">Respiración</string>
-    <string name="intelligence_weight_skin_temp">Desviación de la temperatura de la piel</string>
+    <string name="intelligence_weight_skin_temp">Desviación de temperatura</string>
     <string name="intelligence_effort_scale">escala de 0 a %1$s</string>
     <string name="intelligence_stat_hrv">HRV</string>
     <string name="intelligence_stat_rhr">FC reposo</string>
     <string name="intelligence_no_data">sin datos</string>
 
     <!-- FusedRecordScreen -->
-    <string name="fused_title">Tus datos, unidos</string>
+    <string name="fused_title">Tus datos, unificados</string>
     <string name="fused_this_device">este dispositivo</string>
     <string name="fused_subtitle_multi">%1$s · la mejor señal por métrica, de %2$d fuentes. Todo se queda en %3$s.</string>
     <string name="fused_subtitle_single">%1$s · tu registro, en %2$s.</string>
-    <string name="fused_empty_title">Todavía no hay nada que unir</string>
+    <string name="fused_empty_title">Nada que unificar aún</string>
     <string name="fused_empty_body">Importa una exportación de WHOOP, Health Connect o una segunda banda y aquí se construirá tu registro con las mejores fuentes, en este dispositivo.</string>
     <string name="fused_day_owner">Las puntuaciones de hoy vienen de %1$s</string>
     <string name="fused_day_owner_none">Las puntuaciones siguen calibrándose, todavía no hay una única fuente del día</string>
-    <string name="fused_privacy">Unido en %1$s. Nada sale de ahí: sin cuenta, sin nube.</string>
+    <string name="fused_privacy">Unificado en %1$s. Nada sale de ahí: sin cuenta, sin nube.</string>
     <string name="fused_disclaimer">NOOP elige el número con la mejor fuente y te muestra de dónde viene cada uno. Es para bienestar y curiosidad. No diagnostica ni sustituye el consejo médico.</string>
     <string name="fused_compare_sources">Comparar fuentes</string>
     <string name="fused_from_source">de %1$s</string>
@@ -151,7 +151,7 @@
 
     <!-- CoachScreen -->
     <string name="coach_title">Coach</string>
-    <string name="coach_subtitle">Pregunta sobre tu Recovery, tu Strain, tu sueño y tu HRV, con base en tus propios números.</string>
+    <string name="coach_subtitle">Pregunta sobre tu Recovery, Strain, sueño y HRV, con base en tus propios números.</string>
     <string name="coach_connect_provider">Conectar un proveedor</string>
     <string name="coach_setup_body_custom">Apunta el coach a cualquier servidor compatible con OpenAI: un modelo local (Ollama, LM Studio, llama.cpp) mantiene todo en tu dispositivo; la clave de API es opcional.</string>
     <string name="coach_setup_body_cloud">Trae tu propia clave de API. Se guarda cifrada en este dispositivo y solo se usa para enviar tu pregunta más un resumen corto de tus métricas al proveedor que elijas.</string>
@@ -169,19 +169,19 @@
     <string name="coach_disconnect">Desconectar</string>
     <string name="coach_disconnect_a11y">Desconectar el proveedor</string>
     <string name="coach_consent_title">Permitir que el coach use mis datos</string>
-    <string name="coach_consent_on">Activado: tu Recovery, tu sueño, tu HRV y tus entrenamientos se comparten con el proveedor para un coaching personalizado.</string>
+    <string name="coach_consent_on">Activado: tu Recovery, sueño, HRV y entrenamientos se comparten con el proveedor para un coaching personalizado.</string>
     <string name="coach_consent_off">Desactivado: el coach responde en general y no envía ninguna de tus métricas.</string>
-    <string name="coach_empty_prompt">Pregunta lo que quieras sobre tu Recovery, tu Strain, tu sueño o tu HRV recientes.</string>
+    <string name="coach_empty_prompt">Pregunta lo que quieras sobre tu Recovery, Strain, sueño o HRV recientes.</string>
     <string name="coach_error_a11y">Error del coach: %1$s</string>
     <string name="coach_error_generic">Algo ha salido mal. Inténtalo de nuevo.</string>
     <string name="coach_input_placeholder">Pregunta a tu coach…</string>
     <string name="coach_instructions_title">Instrucciones del coach</string>
-    <string name="coach_instructions_collapse">Plegar las instrucciones del coach</string>
-    <string name="coach_instructions_edit">Editar las instrucciones del coach</string>
+    <string name="coach_instructions_collapse">Plegar instrucciones del coach</string>
+    <string name="coach_instructions_edit">Editar instrucciones del coach</string>
     <string name="coach_instructions_custom">Personalizadas. Tus instrucciones editadas enmarcan cada respuesta.</string>
     <string name="coach_instructions_default">Edita cómo piensa y habla el coach. Se aplica en tu siguiente mensaje.</string>
     <string name="coach_instructions_editor_a11y">Editor de instrucciones del coach</string>
-    <string name="coach_reset_default">Restablecer los valores por defecto</string>
+    <string name="coach_reset_default">Restablecer valores</string>
     <string name="coach_speaker_you">Tú</string>
     <string name="coach_speaker_coach">Coach</string>
     <string name="coach_thinking">Pensando…</string>

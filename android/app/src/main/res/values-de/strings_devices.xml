@@ -69,14 +69,14 @@
     <string name="wizard_oura_lose_cloud">Alles, was Ouras Cloud braucht (Web-Dashboard, Ouras Coaching, geteilte Kreise).</string>
     <string name="wizard_oura_lose_warranty">Wahrscheinlich deine Oura-Garantie und deinen Oura-Support, weil der Ring nicht mehr mit Oura gekoppelt ist. Betrachte das als endgültig.</string>
     <string name="wizard_oura_consent_a11y">Mir ist klar, dass das den Ring von Oura trennt und dass NOOP es nicht für mich rückgängig machen kann.</string>
-    <string name="wizard_oura_consent">Mir ist klar, dass das den Ring von Oura trennt und dass NOOP es nicht für mich rückgängig machen kann. Um zu Oura zurückzukehren, müsste ich den Ring erneut auf Werkseinstellungen zurücksetzen und ihn in der Oura-App einrichten.</string>
+    <string name="wizard_oura_consent">Mir ist klar, dass das den Ring von Oura trennt und dass NOOP es nicht für mich rückgängig machen kann. Zurück zu Oura würde ich den Ring erneut auf Werkszustand setzen und in der Oura-App einrichten.</string>
     <string name="wizard_continue">Weiter</string>
     <string name="wizard_oura_keep_app">Stattdessen die Oura-App behalten (Datei importieren)</string>
     <string name="wizard_oura_advanced_link">Erweitert: Ich habe den Schlüssel meines Rings schon</string>
 
     <!-- AddDeviceWizard - Oura step B-Alt, the advanced key path -->
     <string name="wizard_oura_advanced_title">Für Profis.</string>
-    <string name="wizard_oura_advanced_body">Wenn du den 16-Byte-Schlüssel deines Rings aus einer früheren Oura-Einrichtung ausgelesen hast, kann NOOP mit diesem Schlüssel mit dem Ring sprechen, OHNE ihn zurückzusetzen, die Oura-App funktioniert dann weiterhin. NOOP liest keine Schlüssel für dich aus und kann dir nicht helfen, einen zu finden. Wenn du nicht weißt, was das bedeutet, geh zurück und nutz die Standard-Einrichtung oder den Datei-Import.</string>
+    <string name="wizard_oura_advanced_body">Wenn du den 16-Byte-Schlüssel deines Rings aus einer früheren Oura-Einrichtung ausgelesen hast, kann NOOP mit diesem Schlüssel mit dem Ring sprechen, OHNE ihn zurückzusetzen, die Oura-App läuft dann weiter. NOOP liest keine Schlüssel aus und kann dir nicht helfen, einen zu finden. Wenn du das nicht kennst, geh zurück und nutz die Standard-Einrichtung oder den Datei-Import.</string>
     <string name="wizard_oura_key_label">Ring-Schlüssel (32 Hex-Zeichen)</string>
     <string name="wizard_oura_key_a11y">Ring-Schlüssel, 32 Hex-Zeichen</string>
     <string name="wizard_oura_key_error">Das ist kein Hex-Schlüssel mit 32 Zeichen.</string>
@@ -92,7 +92,7 @@
     <string name="wizard_oura_single_owner_body">Wenn die Oura-App noch läuft, hält sie den Ring fest und die Übernahme schlägt fehl. Beende Oura vollständig und such dann.</string>
 
     <!-- AddDeviceWizard - Oura step C, pick the ring -->
-    <string name="wizard_oura_not_showing">Taucht er nicht auf? Stell sicher, dass du den Ring in der Oura-App zurückgesetzt und die App vollständig beendet hast, und tippe dann auf Erneut suchen. Ein Ring, der noch Oura gehört, erscheint hier nicht.</string>
+    <string name="wizard_oura_not_showing">Nicht zu sehen? Prüfe, ob der Ring zurückgesetzt und die Oura-App ganz beendet ist, dann tippe auf Erneut suchen. Ein Ring, der noch Oura gehört, erscheint hier nicht.</string>
 
     <!-- AddDeviceWizard - Oura step D, confirm and adopt -->
     <string name="wizard_beta">Beta</string>
@@ -107,7 +107,7 @@
     <string name="wizard_cap_oura_score">Oura Readiness / Sleep-Wert</string>
     <string name="wizard_oura_estimate_note">Beta. * ist eine Schätzung auf dem Gerät.</string>
     <string name="wizard_oura_connect">Mit diesem Ring verbinden</string>
-    <string name="wizard_oura_connect_note">Sowohl NOOP als auch die Oura-App können einen Ring nutzen, der dir per Schlüssel gehört, aber nur eine App kann die Bluetooth-Verbindung gleichzeitig halten.</string>
+    <string name="wizard_oura_connect_note">NOOP und die Oura-App können beide einen Ring nutzen, der dir per Schlüssel gehört, aber nur eine hält die Bluetooth-Verbindung.</string>
     <string name="wizard_oura_take_over">Diesen Ring übernehmen</string>
     <string name="wizard_take_over_title">Diesen Ring übernehmen?</string>
     <string name="wizard_take_over_text">NOOP installiert seinen eigenen Schlüssel auf dem Ring und wird sein Besitzer. Die Oura-App steuert diesen Ring dann nicht mehr. Das ist so gewollt und lässt sich aus NOOP heraus nicht rückgängig machen.</string>
@@ -116,9 +116,9 @@
     <!-- AddDeviceWizard - Oura step E, adopting and the honest failure -->
     <string name="wizard_oura_adopting_body">NOOPs Schlüssel wird installiert und geprüft, ob der Ring nur noch NOOP antwortet. Halt den Ring in der Nähe und öffne die Oura-App nicht.</string>
     <string name="wizard_oura_failed_title">Wir konnten diesen Ring nicht übernehmen.</string>
-    <string name="wizard_oura_failed_body">Die häufigste Ursache ist, dass der Ring in der Oura-App nicht vollständig zurückgesetzt wurde oder die Oura-App noch läuft. Setz den Ring erneut zurück, beende Oura vollständig und versuch es noch einmal. Wenn es weiter fehlschlägt, ist dein Ring vielleicht eine Generation, die NOOP noch nicht übernehmen kann. Den Datei-Import kannst du trotzdem nutzen.</string>
+    <string name="wizard_oura_failed_body">Meist wurde der Ring in der Oura-App nicht ganz zurückgesetzt, oder die Oura-App läuft noch. Setz den Ring erneut zurück, beende Oura ganz und versuch es noch einmal. Wenn es weiter fehlschlägt, ist dein Ring vielleicht eine Generation, die NOOP noch nicht übernehmen kann. Den Datei-Import kannst du trotzdem nutzen.</string>
     <string name="wizard_oura_failed_recovery">Der Ring ist nicht kaputt. Um zum Ausgangspunkt zurückzukehren, setz ihn erneut auf Werkseinstellungen zurück und richte ihn in der Oura-App ein.</string>
-    <string name="wizard_try_again">Nochmal versuchen</string>
+    <string name="wizard_try_again">Wiederholen</string>
     <string name="wizard_use_file_import">Datei-Import nutzen</string>
 
     <!-- DevicesScreen -->
@@ -141,7 +141,7 @@
     <string name="devices_sync_a11y_ready">Jetzt syncen. Holt den auf deinem Band gespeicherten Verlauf sofort, ohne auf die nächste automatische Synchronisierung zu warten.</string>
     <string name="devices_sync_a11y_in_progress">Jetzt syncen. Es läuft bereits eine Synchronisierung.</string>
     <string name="devices_sync_a11y_connect_first">Jetzt syncen. Verbinde zuerst dein Band.</string>
-    <string name="devices_sync_help_backfilling">Holt den auf deinem Band gespeicherten Verlauf. Das läuft von den ältesten Daten an; ein tiefer Rückstand wird jetzt automatisch über mehrere Durchläufe weitergeführt, statt zwischen den Synchronisierungen zu warten.</string>
+    <string name="devices_sync_help_backfilling">Holt den auf deinem Band gespeicherten Verlauf. Älteste Daten zuerst; ein tiefer Rückstand läuft jetzt automatisch über mehrere Durchläufe weiter, statt zwischen Syncs zu warten.</string>
     <string name="devices_sync_help_offline">Verbinde dein Band, um seinen gespeicherten Verlauf zu synchronisieren. Bis dahin siehst du hier nur importierte Daten.</string>
     <string name="devices_sync_help_pairing">Der Kopplungs-Handshake wird abgeschlossen. Jetzt syncen wird verfügbar, sobald das Band gekoppelt ist.</string>
     <string name="devices_sync_help_ready">Synchronisiert den auf deinem Band gespeicherten Verlauf sofort, statt auf die nächste automatische Synchronisierung zu warten.</string>
@@ -181,12 +181,12 @@
     <string name="devices_delete_confirm">Gerät löschen</string>
 
     <!-- DevicesScreen - dialogs -->
-    <string name="devices_wrist_title">Welches Handgelenk?</string>
+    <string name="devices_wrist_title">Handgelenk?</string>
     <string name="devices_wrist_left">Links</string>
     <string name="devices_wrist_right">Rechts</string>
     <string name="devices_wrist_last_sent">"%1$s  ·  zuletzt gesendet"</string>
-    <string name="devices_toast_wrist_left">Handgelenk auf links gesetzt</string>
-    <string name="devices_toast_wrist_right">Handgelenk auf rechts gesetzt</string>
+    <string name="devices_toast_wrist_left">Handgelenk: links</string>
+    <string name="devices_toast_wrist_right">Handgelenk: rechts</string>
     <string name="devices_rename_title">Gerät umbenennen</string>
     <string name="devices_name_placeholder">Name</string>
     <string name="devices_device_name">Gerätename</string>
@@ -196,7 +196,7 @@
     <string name="devices_pick_active_leave_none">Keines aktiv lassen</string>
 
     <!-- OnboardingScreen - shell -->
-    <string name="onboarding_cta_begin">Einrichtung starten</string>
+    <string name="onboarding_cta_begin">Einrichten</string>
     <string name="onboarding_cta_continue">Weiter</string>
     <string name="onboarding_cta_save_continue">Speichern &amp; weiter</string>
     <string name="onboarding_cta_enter">NOOP betreten</string>
@@ -280,7 +280,7 @@
     <string name="onboarding_done_body">Jeder Schlag, jede Nacht, jeder Tag, verwoben zu einem ruhigen Bild von dir. Willkommen bei NOOP.</string>
     <string name="onboarding_restore_backup">NOOP-Backup wiederherstellen (.noopbak)</string>
     <string name="onboarding_restoring">Stelle wieder her…</string>
-    <string name="onboarding_restore_done">Wiederherstellung abgeschlossen.</string>
+    <string name="onboarding_restore_done">Wiederherstellung fertig.</string>
     <string name="import_none_apple_health">Keine unterstützten Apple-Health-Daten im Export gefunden.</string>
     <string name="import_none_health_connect">Keine Health-Connect-Daten zum Importieren gefunden.</string>
     <string name="notif_channel_strap_connection">Band-Verbindung</string>
@@ -288,9 +288,9 @@
     <string name="import_hc_unavailable">Health Connect ist auf diesem Gerät nicht verfügbar.</string>
 
     <!-- Importers (com.noop.ingest) - failures -->
-    <string name="import_open_failed">Die ausgewählte Datei konnte nicht geöffnet werden.</string>
-    <string name="import_read_failed">Die Datei konnte nicht gelesen werden: %1$s</string>
-    <string name="import_csv_read_failed">CSV konnte nicht gelesen werden: %1$s</string>
+    <string name="import_open_failed">Konnte die gewählte Datei nicht öffnen.</string>
+    <string name="import_read_failed">Konnte Datei nicht lesen: %1$s</string>
+    <string name="import_csv_read_failed">Konnte CSV nicht lesen: %1$s</string>
     <string name="import_unknown_error">unbekannter Fehler</string>
 
     <!-- Importers - shared count fragments -->

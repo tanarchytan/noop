@@ -41,13 +41,13 @@
     <string name="trends2_metric_spo2">SpO₂</string>
     <string name="trends2_metric_respiratory_rate">Atemfrequenz</string>
     <string name="trends2_metric_avg_hr">Mittlere Herzfrequenz</string>
-    <string name="trends2_metric_max_hr">Maximale Herzfrequenz</string>
-    <string name="trends2_metric_calories_in">Aufgenommene Kalorien</string>
+    <string name="trends2_metric_max_hr">Max. Herzfrequenz</string>
+    <string name="trends2_metric_calories_in">Kalorienzufuhr</string>
     <string name="trends2_metric_protein">Protein</string>
     <string name="trends2_metric_carbs">Kohlenhydrate</string>
     <string name="trends2_metric_fat">Fett</string>
     <string name="trends2_metric_mood">Stimmung</string>
-    <string name="trends2_desc_charge">Wie erholt du bist, geführt von der HRV im Vergleich zu deiner persönlichen Basislinie.</string>
+    <string name="trends2_desc_charge">Wie erholt du bist, geführt von der HRV gegenüber deiner persönlichen Baseline.</string>
     <string name="trends2_desc_effort">Kardiovaskuläre Last des Tages, auf einer Skala von 0-100 (früher 0-21).</string>
     <string name="trends2_desc_rest">Wie erholsam dein Schlaf war: Dauer, Effizienz, Tief+REM, Zeitpunkt.</string>
 
@@ -64,7 +64,7 @@
     <string name="trends2_timeline_state_wake">wach</string>
     <string name="trends2_timeline_state_still">ruhig</string>
     <string name="trends2_timeline_state_asleep">schlafend</string>
-    <string name="trends2_timeline_state_up">auf</string>
+    <string name="trends2_timeline_state_up">aufgestanden</string>
     <string name="trends2_yesterday">Gestern</string>
 
     <!-- Trends report: the exported PDF page -->
@@ -74,7 +74,7 @@
         <item quantity="other">%1$d Tage</item>
     </plurals>
     <string name="trends2_report_summary">ZUSAMMENFASSUNG</string>
-    <string name="trends2_report_what_changed">Was sich verändert hat</string>
+    <string name="trends2_report_what_changed">Veränderungen</string>
     <string name="trends2_report_by_the_numbers">IN ZAHLEN</string>
     <string name="trends2_report_metrics">Metriken</string>
     <string name="trends2_report_single_reading">Nur ein Messwert im Zeitraum</string>
@@ -82,11 +82,11 @@
     <string name="trends2_report_steady">stabil</string>
     <string name="trends2_report_empty_title">Noch nicht genug Daten in diesem Zeitraum</string>
     <string name="trends2_report_empty_body">In %1$s fielen keine Messwerte zu Training, Stress, Recovery, Schlaf, HRV, Ruhepuls, Strain, Atemfrequenz oder Hauttemperatur. Trage dein Band noch ein paar Tage oder wähle einen größeren Zeitraum und exportiere erneut.</string>
-    <string name="trends2_report_legend">So liest du das: HRV, Ruhepuls, Schlafdauer, Atemfrequenz und Hauttemperatur werden vom Band gemessen (die Hauttemperatur wird als Abweichung von deiner eigenen Basislinie gezeigt). Workouts ist die Zahl der Aktivitäten, die du erfasst hast oder die erkannt wurden. Recovery, Strain und Stress sind NOOPs eigene Werte auf dem Gerät, keine klinischen Messungen - Recovery ist ein täglicher Bereitschaftswert (HRV, Ruhepuls, Schlaf und Hauttemperatur-Trend), Strain ist die kardiovaskuläre Last aus der Herzfrequenz, und Stress ist ein Index der autonomen Last von 0-3 aus Ruhepuls und HRV.</string>
+    <string name="trends2_report_legend">So liest du das: HRV, Ruhepuls, Schlafdauer, Atemfrequenz und Hauttemperatur werden vom Band gemessen (die Hauttemperatur wird als Abweichung von deiner eigenen Baseline gezeigt). Workouts ist die Zahl der Aktivitäten, die du erfasst hast oder die erkannt wurden. Recovery, Strain und Stress sind NOOPs eigene Werte auf dem Gerät, keine klinischen Messungen - Recovery ist ein täglicher Bereitschaftswert (HRV, Ruhepuls, Schlaf und Hauttemperatur-Trend), Strain ist die kardiovaskuläre Last aus der Herzfrequenz, und Stress ist ein Index der autonomen Last von 0-3 aus Ruhepuls und HRV.</string>
     <string name="trends2_report_generated">Erstellt von NOOP am %1$s · alles auf dem Gerät, kein Konto, keine Cloud.</string>
     <string name="trends2_report_disclaimer">Nur zur Information - keine medizinische Beratung.</string>
-    <string name="trends2_report_build_failed">Der Bericht konnte nicht erstellt werden.</string>
-    <string name="trends2_report_share_failed">Der Bericht konnte nicht geteilt werden: %1$s</string>
+    <string name="trends2_report_build_failed">Bericht konnte nicht erstellt werden.</string>
+    <string name="trends2_report_share_failed">Bericht konnte nicht geteilt werden: %1$s</string>
     <string name="trends2_report_share_subject">NOOP Trendbericht</string>
     <string name="trends2_report_share_chooser">Trendbericht teilen</string>
 
@@ -96,7 +96,7 @@
     <string name="trends2_export_blurb">Ein klares, einseitiges PDF zum Teilen, mit deiner Recovery, deinem Schlaf, HRV, Ruhepuls und Strain über einen Zeitraum. Wird auf deinem Telefon erstellt und gespeichert - nichts verlässt das Gerät.</string>
     <string name="trends2_export_range">Zeitraum</string>
     <string name="trends2_export_cta">PDF exportieren</string>
-    <string name="trends2_export_footnote">Über das Teilen-Menü kannst du das PDF in Dateien speichern oder weitersenden.</string>
+    <string name="trends2_export_footnote">Im Teilen-Menü kannst du das PDF in Dateien speichern oder weitersenden.</string>
 
     <!-- Coupled view -->
     <string name="coupled_title">Tag</string>
@@ -127,8 +127,8 @@
     <string name="charts_series_timeline">Zeitverlauf</string>
     <string name="charts_series_weekly_bars">Wochenbalken</string>
     <string name="charts_series_weekly_totals">Wochensummen</string>
-    <string name="charts_breakdown_no_data">Aufschlüsselung, keine Daten</string>
-    <string name="charts_breakdown_segments">Aufschlüsselung, %1$d Segmente</string>
+    <string name="charts_breakdown_no_data">Verteilung, keine Daten</string>
+    <string name="charts_breakdown_segments">Verteilung, %1$d Segmente</string>
 
     <!-- Weekly digest -->
     <string name="digest_days_with_data">%1$d/7 Tage</string>

@@ -54,7 +54,7 @@
     <string name="uicore_reboot_probe_menu">Sonda de reinicio (4.0 RE)…</string>
     <string name="uicore_reboot_probe_title">Sonda de reinicio WHOOP 4.0</string>
 
-    <string name="uicore_every_day">Todos los días</string>
+    <string name="uicore_every_day">A diario</string>
     <string name="uicore_weekdays">Entre semana</string>
     <string name="uicore_weekends">Fines de semana</string>
 
