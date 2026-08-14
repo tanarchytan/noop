@@ -103,9 +103,9 @@ class NoopApplication : Application() {
             repository = repository,
             liveSink = { id, hr, rr ->
                 liveSources.publishSample(id, LiveSources.BRAND_OURA, hr, rr)
-                // Phase 1 keeps the existing projection into the strap's LiveState, so the Live
-                // console reads exactly what it read before. Only one source streams at a time.
-                ble.publishExternalLiveHr(hr, rr)
+                // Only the focused device reaches LiveState. A ring streaming in the background keeps
+                // its own entry and stays off the Live console.
+                if (sourceCoordinator.isFocused(id)) ble.publishExternalLiveHr(hr, rr)
             },
             // reconnect on the PERSISTED family, not the WhoopModel.WHOOP4 default - otherwise a
             // 5/MG WHOOP->WHOOP switch rescans the wrong service and misses the 5/MG direct-bond fast
@@ -119,6 +119,9 @@ class NoopApplication : Application() {
             // path — the coordinator only invokes them for a non-legacy WHOOP / a non-null peripheralId.
             setWhoopPreferredAddress = { addr -> ble.preferredAddress = addr },
             setWhoopActiveDeviceId = { id -> ble.setActiveDeviceId(id) },
+            // While a ring holds focus the strap keeps streaming into its own LiveSources entry and
+            // stops writing the displayed one, so two links never fight over a single number.
+            setWhoopFocused = { focused -> ble.liveFocused = focused },
             // The family a lazily-created strap row records, so its skin-temp scale and reconnect
             // service are right from the first connect. Same persisted value startWhoop reconnects on.
             whoopFamily = { persistedWhoopModel() },
@@ -128,7 +131,7 @@ class NoopApplication : Application() {
             // A generic strap's standard battery (0x180F) → the same live battery field the WHOOP uses.
             batterySink = { id, pct ->
                 liveSources.publishBattery(id, LiveSources.BRAND_OURA, pct.toDouble())
-                ble.publishExternalBattery(pct)
+                if (sourceCoordinator.isFocused(id)) ble.publishExternalBattery(pct)
             },
         )
     }

@@ -1046,6 +1046,15 @@ class WhoopBleClient(
         liveSources?.publishSample(deviceId, LiveSources.BRAND_WHOOP, hr, rr)
     }
 
+    /**
+     * Whether this strap's readings reach [state] — true unless another device holds focus. Set by
+     * [SourceCoordinator] on every focus change. Gates ONLY the sampled biometrics (heart rate,
+     * R-R, battery); the link's own connect/disconnect writes are never gated, because the Devices
+     * card asks whether the strap is connected, not whose reading is on screen.
+     */
+    @Volatile
+    var liveFocused: Boolean = true
+
     fun publishExternalLiveHr(hr: Int, rr: List<Int>) {
         if (rr.isNotEmpty()) _state.update { it.withRRIntervals(rr) }
         if (hr in 30..220) {
@@ -3695,7 +3704,7 @@ class WhoopBleClient(
                 // Reject 0 / out-of-range spikes; only accept physiologically plausible HR.
                 (parsed.parsed["heart_rate"] as? Int)?.let { hr ->
                     if (hr in 30..220) {
-                        _state.update { it.copy(heartRate = hr) }
+                        if (liveFocused) _state.update { it.copy(heartRate = hr) }
                         publishOwnLive(hr, emptyList())
                     }
                 }
@@ -3704,7 +3713,7 @@ class WhoopBleClient(
                 // withRRIntervals also feeds the Live console's rolling rrRecent buffer.
                 intArrayValue(parsed.parsed["rr_intervals"])?.let { rr ->
                     if (rr.isNotEmpty()) {
-                        _state.update { it.withRRIntervals(rr) }
+                        if (liveFocused) _state.update { it.withRRIntervals(rr) }
                         publishOwnLive(null, rr)
                     }
                 }
@@ -3976,12 +3985,12 @@ class WhoopBleClient(
         // R-R: the standard profile is the reliable source — surface whenever present. withRRIntervals
         // also feeds the Live console's rolling rrRecent buffer.
         if (rr.isNotEmpty()) {
-            _state.update { it.withRRIntervals(rr) }
+            if (liveFocused) _state.update { it.withRRIntervals(rr) }
             publishOwnLive(null, rr)
         }
         // HR: accept only physiologically plausible values; reject 0/garbage (off-wrist).
         if (hr in 30..220) {
-            _state.update { it.copy(heartRate = hr) }
+            if (liveFocused) _state.update { it.copy(heartRate = hr) }
             publishOwnLive(hr, emptyList())
             // EXPERIMENTAL WHOOP 5.0/MG: there is no confirmed-write bond for a 5/MG strap, so once
             // live HR actually streams over the standard profile we treat the link as established —
@@ -4008,7 +4017,7 @@ class WhoopBleClient(
 
     /** Single funnel for battery readings. */
     private fun setBattery(pct: Double) {
-        _state.update { it.copy(batteryPct = pct) }
+        if (liveFocused) _state.update { it.copy(batteryPct = pct) }
         liveSources?.publishBattery(deviceId, LiveSources.BRAND_WHOOP, pct)
         // Battery test mode: one tagged (t, soc) line per reading, gated zero-cost when off (the gate is a
         // single SharedPreferences bool read; the formatter below only runs when the mode is on). Rides the

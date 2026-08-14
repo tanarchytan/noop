@@ -19,7 +19,11 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
 /**
- * Runs exactly ONE device's live BLE at a time, driven by [DeviceRegistry]'s active device id.
+ * Runs a live BLE link per device, driven by [DeviceRegistry]'s active device id.
+ *
+ * A strap and a ring hold their links AT THE SAME TIME: switching devices brings the new one up
+ * and leaves the other one streaming. The active id is the FOCUS — which device's readings reach
+ * [LiveState] and so the Live console — not which device is allowed a radio.
  *
  * A no-op whenever the active device is WHOOP (id "my-whoop", brand "WHOOP", or an unknown id) — the
  * existing WHOOP flow ([WhoopBleClient.connect] via [AppViewModel.connect]) runs untouched. Only acts
@@ -69,6 +73,15 @@ class SourceCoordinator(
      * compiling.
      */
     private val setWhoopActiveDeviceId: (String) -> Unit = {},
+    /**
+     * Tell the WHOOP link whether its readings currently reach [LiveState] (wraps
+     * [WhoopBleClient.liveFocused]). False while a ring holds focus: the strap keeps its link and
+     * its own readings, and simply stops writing the one displayed number.
+     */
+    private val setWhoopFocused: (Boolean) -> Unit = {},
+    /** Builds the live source for a device. Null uses the real Oura driver; tests inject a fake so
+     *  the coordinator's decisions are assertable with no radio and no Android context. */
+    private val sourceFactory: ((String, PairedDeviceRow) -> LiveHrSource)? = null,
     /** The WHOOP family the link is on, for the registry `model` label a lazily-created strap row
      *  carries. Wired to the persisted family at the composition root; defaults to the 5 series, the
      *  same fallback [com.noop.protocol.DeviceFamily.forRegistryModel] applies to an unknown label. */
@@ -107,19 +120,19 @@ class SourceCoordinator(
      *  nulled on teardown so a forgotten ring never leaks a stale outcome. */
     private var ouraStateJob: kotlinx.coroutines.Job? = null
 
-    /** The single non-WHOOP source currently live — an Oura ring — held behind the [LiveHrSource]
-     *  interface. null while WHOOP is active or nothing else is paired; exactly one non-WHOOP source
-     *  is ever live at a time. Built by [makeSource]; owns its own scanner/GATT and never touches the
-     *  WHOOP BLE client, so the WHOOP path cannot regress. */
-    private var activeSource: LiveHrSource? = null
-    /** The deviceId the active non-WHOOP source ([activeSource]) runs for. */
-    private var activeStrapId: String? = null
+    /** Every non-WHOOP source currently live, by deviceId. More than one may stream at once, and a
+     *  source stays up when focus moves elsewhere. Each owns its own scanner/GATT and never touches
+     *  the WHOOP BLE client, so the WHOOP path cannot regress. */
+    private val liveSourcesById = LinkedHashMap<String, LiveHrSource>()
     /** The WHOOP registry id we last pointed the connection at, so a WHOOP→WHOOP switch is detected
      *  and a repeat activation of the same WHOOP is a no-op. null until the first WHOOP activation. */
     private var activeWhoopId: String? = null
-    /** True once we've transitioned onto a generic strap. While false (the default / WHOOP-active state)
-     *  switching to WHOOP is a pure no-op — we never issue a redundant WHOOP (re)scan. */
-    private var onStrap = false
+    /** True once WHOOP's own BLE has been pointed at a device this session. While false (the fresh
+     *  launch state) switching to WHOOP is a pure no-op — we never issue a redundant (re)scan. */
+    private var whoopPointed = false
+    /** The device whose readings reach [LiveState]. Everything else streams into its own
+     *  [LiveSources] entry only, so two links never fight over one displayed number. */
+    private var focusedId: String? = null
     /** The last active id we reconciled, so a repeated [onActiveDeviceChanged] for the same id is a
      *  no-op. */
     private var lastSeenId: String? = null
@@ -291,25 +304,23 @@ class SourceCoordinator(
      *   • A different WHOOP → drop the current link, re-point (preferred address + deviceId), reconnect.
      */
     private fun switchToWhoop(id: String, devices: List<PairedDeviceRow>) {
-        // Already streaming this exact WHOOP with no strap in between → nothing to do.
-        if (!onStrap && activeWhoopId == id) return
+        focusedId = id
+        setWhoopFocused(true)
+        // Already streaming this exact WHOOP → nothing to do. A ring may still be live; it keeps its
+        // link and simply stops projecting.
+        if (whoopPointed && activeWhoopId == id) return
 
         val peripheralId = devices.firstOrNull { it.id == id }?.peripheralId
 
         when {
-            onStrap -> {
-                // Coming back from a non-WHOOP source (an Oura ring): tear that source down first, then resume.
-                tearDownNonWhoopSource()
-                activeStrapId = null
-                onStrap = false
-                pointWhoop(id, peripheralId)
-                startWhoop()
-            }
             activeWhoopId == null -> {
                 // First WHOOP activation of the session (the normal launch path). Sets the targeting
                 // so the existing WHOOP flow uses it. For the seeded "my-whoop" (peripheralId null)
                 // this is setWhoopPreferredAddress(null) with no setActiveDeviceId / scan / disconnect.
                 pointWhoop(id, peripheralId)
+                // Coming back from a ring that took focus while WHOOP was never pointed: bring the
+                // strap up rather than waiting for a manual reconnect.
+                if (liveSourcesById.isNotEmpty()) startWhoop()
             }
             peripheralId != null && peripheralId.equals(connectedWhoopAddress, ignoreCase = true) -> {
                 // WHOOP → the same physical strap (make-active on the row already connected, e.g. the
@@ -339,6 +350,7 @@ class SourceCoordinator(
             setWhoopActiveDeviceId(id)
         }
         activeWhoopId = id
+        whoopPointed = true
     }
 
     /**
@@ -346,7 +358,9 @@ class SourceCoordinator(
      * and run the isolated source for this device's id. Re-running for the SAME id is a no-op.
      */
     private fun switchToStrap(id: String, devices: List<PairedDeviceRow>) {
-        if (activeStrapId == id) return   // already streaming this source → no churn
+        focusedId = id
+        setWhoopFocused(false)
+        if (liveSourcesById.containsKey(id)) return   // already streaming this source → no churn
 
         val row = devices.firstOrNull { it.id == id }
 
@@ -361,22 +375,29 @@ class SourceCoordinator(
             return
         }
 
-        if (!onStrap) stopWhoop()         // leaving WHOOP for the first non-WHOOP source → pause its BLE
-        tearDownNonWhoopSource()          // source→source: stop the previous source first
-
+        // WHOOP is NOT paused: the strap keeps its link and its own LiveSources entry, it simply
+        // stops projecting into LiveState while a ring holds focus.
         val address = row.peripheralId
 
         // Build the isolated Oura source (the one place mapping a kind to a concrete driver), then
         // bring it up. Adding a brand adds one arm in [makeSource] plus a conforming source.
-        val source = makeSource(id, row)
+        val source = sourceFactory?.invoke(id, row) ?: makeSource(id, row)
         // Connect to the active strap's known BLE address rather than scan. A bare scan discovers and
         // lists the strap but never connects it, so it shows as "found" yet never streams.
         // connect(address) connects directly via getRemoteDevice; a bare scan is the fallback only
         // when the registry row has no address.
         if (!address.isNullOrEmpty()) source.connect(address) else source.scan()
-        activeSource = source
-        activeStrapId = id
-        onStrap = true
+        liveSourcesById[id] = source
+    }
+
+    /** True when [deviceId] is the device whose readings should reach [LiveState]. Everything else
+     *  streams into its own entry only. */
+    fun isFocused(deviceId: String): Boolean = focusedId == deviceId
+
+    /** Stop one device's live source and drop it, for a device the user removes. */
+    fun stopSource(deviceId: String) {
+        liveSourcesById.remove(deviceId)?.stop()
+        if (liveSourcesById.isEmpty()) clearOuraMirrors()
     }
 
     /**
@@ -445,13 +466,17 @@ class SourceCoordinator(
         return source
     }
 
-    /** Stop the live non-WHOOP source (an Oura ring) and drop the reference. Idempotent — exactly one
-     *  source is ever live. */
-    private fun tearDownNonWhoopSource() {
-        activeSource?.stop()
-        activeSource = null
-        // Stop mirroring the (now torn-down) Oura source and clear the mirrors so a stale adopt outcome /
-        // needs-pairing message never outlives the source or drives a later wizard transition.
+    /** Stop every non-WHOOP source. For teardown, not for a device switch — switching leaves the
+     *  other device streaming. */
+    fun stopAllSources() {
+        liveSourcesById.values.forEach { it.stop() }
+        liveSourcesById.clear()
+        clearOuraMirrors()
+    }
+
+    /** Clear the adopt-outcome mirrors so a stale outcome never outlives its source or drives a later
+     *  wizard transition. */
+    private fun clearOuraMirrors() {
         ouraStateJob?.cancel(); ouraStateJob = null
         _ouraAdoptPhase.value = OuraLiveSource.AdoptPhase.Idle
         _ouraNeedsPairing.value = null
