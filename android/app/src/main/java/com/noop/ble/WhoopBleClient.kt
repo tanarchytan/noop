@@ -363,6 +363,10 @@ class WhoopBleClient(
      * exercise the crash-safety teardown without a full GATT mock.
      */
     private val gattOpsFactory: (BluetoothGatt) -> GattOps = ::RealGattOps,
+    /** Per-device live readings this strap mirrors its own HR/R-R/battery into, so a second
+     *  device streaming at the same time cannot overwrite them. Null in tests that only assert
+     *  on [LiveState]. */
+    private val liveSources: LiveSources? = null,
 ) {
 
     companion object {
@@ -1036,6 +1040,12 @@ class WhoopBleClient(
      * HR is range-gated like [parseStandardHr]; R-R rides [LiveState.withRRIntervals]. Persistence stays
      * with the source's own `persist` closure.
      */
+    /** Mirror this strap's own reading under its own device id. Additive to [_state]: the
+     *  strap keeps writing its own live state, and gains an entry no other device can clobber. */
+    private fun publishOwnLive(hr: Int?, rr: List<Int>) {
+        liveSources?.publishSample(deviceId, LiveSources.BRAND_WHOOP, hr, rr)
+    }
+
     fun publishExternalLiveHr(hr: Int, rr: List<Int>) {
         if (rr.isNotEmpty()) _state.update { it.withRRIntervals(rr) }
         if (hr in 30..220) {
@@ -3684,13 +3694,19 @@ class WhoopBleClient(
             "REALTIME_DATA" -> {
                 // Reject 0 / out-of-range spikes; only accept physiologically plausible HR.
                 (parsed.parsed["heart_rate"] as? Int)?.let { hr ->
-                    if (hr in 30..220) _state.update { it.copy(heartRate = hr) }
+                    if (hr in 30..220) {
+                        _state.update { it.copy(heartRate = hr) }
+                        publishOwnLive(hr, emptyList())
+                    }
                 }
                 // The realtime stream usually reports rr_count=0; only update R-R when this frame
                 // actually carries intervals, so we don't wipe R-R sourced from the 0x2A37 profile.
                 // withRRIntervals also feeds the Live console's rolling rrRecent buffer.
                 intArrayValue(parsed.parsed["rr_intervals"])?.let { rr ->
-                    if (rr.isNotEmpty()) _state.update { it.withRRIntervals(rr) }
+                    if (rr.isNotEmpty()) {
+                        _state.update { it.withRRIntervals(rr) }
+                        publishOwnLive(null, rr)
+                    }
                 }
             }
 
@@ -3959,10 +3975,14 @@ class WhoopBleClient(
 
         // R-R: the standard profile is the reliable source — surface whenever present. withRRIntervals
         // also feeds the Live console's rolling rrRecent buffer.
-        if (rr.isNotEmpty()) _state.update { it.withRRIntervals(rr) }
+        if (rr.isNotEmpty()) {
+            _state.update { it.withRRIntervals(rr) }
+            publishOwnLive(null, rr)
+        }
         // HR: accept only physiologically plausible values; reject 0/garbage (off-wrist).
         if (hr in 30..220) {
             _state.update { it.copy(heartRate = hr) }
+            publishOwnLive(hr, emptyList())
             // EXPERIMENTAL WHOOP 5.0/MG: there is no confirmed-write bond for a 5/MG strap, so once
             // live HR actually streams over the standard profile we treat the link as established —
             // otherwise the UI sits on "Connecting…" forever even though data is flowing.
@@ -3989,6 +4009,7 @@ class WhoopBleClient(
     /** Single funnel for battery readings. */
     private fun setBattery(pct: Double) {
         _state.update { it.copy(batteryPct = pct) }
+        liveSources?.publishBattery(deviceId, LiveSources.BRAND_WHOOP, pct)
         // Battery test mode: one tagged (t, soc) line per reading, gated zero-cost when off (the gate is a
         // single SharedPreferences bool read; the formatter below only runs when the mode is on). Rides the
         // redacting log() sink; the Room battery series is the readout + trace source.

@@ -48,8 +48,9 @@ class SourceCoordinator(
     /** The store the strap source persists into. Non-null in production; nullable for the same
      *  JVM-test reason as [context]. */
     private val repository: WhoopRepository?,
-    /** Push a strap's live HR/R-R into whatever the UI observes (e.g. `ble::publishExternalLiveHr`). */
-    private val liveSink: (hr: Int, rr: List<Int>) -> Unit,
+    /** Push a source's live HR/R-R out, tagged with the device that produced it so a second
+     *  device streaming at the same time keeps its own readings. */
+    private val liveSink: (deviceId: String, hr: Int, rr: List<Int>) -> Unit,
     /** Re-trigger WHOOP's EXISTING scan/connect entry point (e.g. `AppViewModel.connect`). */
     private val startWhoop: () -> Unit,
     /** Pause WHOOP via its EXISTING teardown (e.g. `AppViewModel.disconnect` → `ble.disconnect`). */
@@ -87,7 +88,7 @@ class SourceCoordinator(
     /** Push an Oura ring's battery percent into the live state (e.g. `ble::publishExternalBattery`),
      *  so it surfaces where the WHOOP strap battery does. Default no-op keeps existing call sites
      *  and JVM tests compiling. */
-    private val batterySink: (Int) -> Unit = {},
+    private val batterySink: (deviceId: String, pct: Int) -> Unit = { _, _ -> },
 ) {
 
     /** The active Oura source's live adopt outcome, mirrored so the Add-Oura wizard can leave its
@@ -413,7 +414,7 @@ class SourceCoordinator(
             context = ctx,
             deviceId = id,
             ringGen = ringGen,
-            liveSink = { hr, rr -> liveSink(hr, rr) },   // ring HR + R-R → the existing live recorder
+            liveSink = { hr, rr -> liveSink(id, hr, rr) },   // ring HR + R-R, under the RING's id
             // 16-byte application install key, read from the at-rest-encrypted key store keyed by this
             // ring's device id. Injected, never hardcoded; null drives the honest needs-pairing path
             // (no faked data). Read fresh on each connect so a key provisioned mid-session is picked
@@ -423,7 +424,7 @@ class SourceCoordinator(
                 scope.launch { runCatching { repo.insert(batch, deviceId) } }
             },
             log = straplog,           // Oura connect/auth/stream lifecycle → the same exported strap log
-            onBattery = batterySink,  // ring battery → the same live state the WHOOP strap battery uses
+            onBattery = { pct -> batterySink(id, pct) },  // ring battery, under the RING's id
         )
         // Consume the one-shot adopt-intent the wizard armed after its irreversible-consent gate and
         // second "Take over" confirm. True permits the post-factory-reset key install for this session

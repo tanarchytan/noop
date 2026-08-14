@@ -133,7 +133,7 @@ class SourceCoordinatorAdoptionTest {
             context = null,                       // adoption path never reaches switchToStrap
             registry = registryWith(dao),
             repository = null,                    // same
-            liveSink = { _, _ -> },
+            liveSink = { _, _, _ -> },
             startWhoop = {},
             stopWhoop = {},
             setWhoopActiveDeviceId = setWriteId,
@@ -151,7 +151,7 @@ class SourceCoordinatorAdoptionTest {
         context = null,
         registry = registryWith(dao),
         repository = null,
-        liveSink = { _, _ -> },
+        liveSink = { _, _, _ -> },
         startWhoop = starts,
         stopWhoop = stops,
         scope = CoroutineScope(Dispatchers.Unconfined),

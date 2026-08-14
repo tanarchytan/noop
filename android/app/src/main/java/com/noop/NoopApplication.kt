@@ -2,6 +2,7 @@ package com.noop
 
 import android.app.Application
 import android.util.Log
+import com.noop.ble.LiveSources
 import com.noop.ble.SourceCoordinator
 import com.noop.ble.WhoopBleClient
 import com.noop.ble.WhoopModel
@@ -58,9 +59,20 @@ class NoopApplication : Application() {
             .getOrNull() ?: WhoopBleClient.DEFAULT_DEVICE_ID
     }
 
+    /**
+     * Process-wide live readings, one entry per device. Both the strap and a ring write their own
+     * key, which is what lets two links stream at once without overwriting each other.
+     */
+    val liveSources: LiveSources by lazy { LiveSources() }
+
     /** Process-wide BLE client. Owns the GATT connection and outlives any single Activity/ViewModel. */
     val ble: WhoopBleClient by lazy {
-        WhoopBleClient(applicationContext, repository = repository, deviceId = activeDeviceId).apply {
+        WhoopBleClient(
+            applicationContext,
+            repository = repository,
+            deviceId = activeDeviceId,
+            liveSources = liveSources,
+        ).apply {
             // Apply the persisted "Debug logging" preference at the composition root so the low-level
             // client never has to read the UI/prefs layer. Default OFF — see WhoopBleClient.debugLogcat.
             debugLogcat = NoopPrefs.debugLogging(applicationContext)
@@ -89,7 +101,12 @@ class NoopApplication : Application() {
             context = applicationContext,
             registry = deviceRegistry,
             repository = repository,
-            liveSink = { hr, rr -> ble.publishExternalLiveHr(hr, rr) },
+            liveSink = { id, hr, rr ->
+                liveSources.publishSample(id, LiveSources.BRAND_OURA, hr, rr)
+                // Phase 1 keeps the existing projection into the strap's LiveState, so the Live
+                // console reads exactly what it read before. Only one source streams at a time.
+                ble.publishExternalLiveHr(hr, rr)
+            },
             // reconnect on the PERSISTED family, not the WhoopModel.WHOOP4 default - otherwise a
             // 5/MG WHOOP->WHOOP switch rescans the wrong service and misses the 5/MG direct-bond fast
             // path (status=133 on an OS-bonded strap). Mirrors macOS AppModel.scan() reading the persisted
@@ -109,7 +126,10 @@ class NoopApplication : Application() {
             // "connected but no data" report is no longer blind to the Polar/Wahoo/etc path.
             straplog = { ble.externalLog(it) },
             // A generic strap's standard battery (0x180F) → the same live battery field the WHOOP uses.
-            batterySink = { pct -> ble.publishExternalBattery(pct) },
+            batterySink = { id, pct ->
+                liveSources.publishBattery(id, LiveSources.BRAND_OURA, pct.toDouble())
+                ble.publishExternalBattery(pct)
+            },
         )
     }
 
