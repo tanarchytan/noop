@@ -116,7 +116,7 @@ private enum class WizardStep { Type, Prep, Pick, Confirm }
  *   - [Adopting]  Honest key-install progress sub-states (no fake percent).
  *   - [Failed]    An honest dead-end when adoption fails, never a fabricated success.
  */
-private enum class OuraStep { Gate, Prep, Pick, Confirm, Adopting, Failed }
+
 
 @Composable
 fun AddDeviceWizard(
@@ -134,7 +134,10 @@ fun AddDeviceWizard(
 
     // --- Oura factory-reset-and-adopt sub-flow: the Oura type drives its own step machine, and this is
     // inert for every other device type. ---
-    var ouraStep by remember { mutableStateOf(OuraStep.Gate) }
+    /** Inline Confirm state: the key install is running. Not a step — Confirm draws the spinner. */
+    var ouraAdopting by remember { mutableStateOf(false) }
+    /** Inline Confirm state: the adopt failed and Confirm draws the honest reason. */
+    var ouraFailed by remember { mutableStateOf(false) }
     /** The honest, irreversible "this disconnects the ring from Oura" box must be ticked to continue. */
     var ouraConsent by remember { mutableStateOf(false) }
     /** The Advanced (B-Alt) path: the user supplies their own 16-byte key and keeps the Oura app. */
@@ -173,34 +176,20 @@ fun AddDeviceWizard(
     DisposableEffect(Unit) { onDispose { stopAllScans() } }
 
     fun goBack() {
-        // The Oura type runs its own step machine; back walks that, falling out to the type list from Gate.
-        if (type == DeviceType.Oura) {
-            when (ouraStep) {
-                // From the Advanced key field, back returns to the standard consent gate; from the standard
-                // gate, back exits to the device-type list.
-                OuraStep.Gate -> if (ouraAdvanced) { ouraAdvanced = false; ouraKeyDraft = "" }
-                else { type = null; ouraConsent = false }
-                OuraStep.Prep -> ouraStep = OuraStep.Gate
-                // The standard path came from Prep (factory-reset step); the Advanced path came straight
-                // from the Gate key field. Back returns to wherever the scan was launched from.
-                OuraStep.Pick -> { ouraScanner.stop(); pickedOura = null; ouraStep = if (ouraAdvanced) OuraStep.Gate else OuraStep.Prep }
-                OuraStep.Confirm -> {
-                    // Re-enter the pick step and rescan so the user can choose a different ring.
-                    ouraScanner.scan(); pickedOura = null; ouraStep = OuraStep.Pick
-                }
-                // Adopting / Failed have no meaningful back; return to the pick step to try again.
-                OuraStep.Adopting, OuraStep.Failed -> { ouraScanner.scan(); pickedOura = null; ouraStep = OuraStep.Pick }
-            }
-            return
-        }
+        val isOura = type == DeviceType.Oura
         when (step) {
             WizardStep.Type -> Unit
-            WizardStep.Prep -> step = WizardStep.Type
-            WizardStep.Pick -> { stopAllScans(); step = WizardStep.Prep }
+            WizardStep.Prep -> {
+                // Advanced is a disclosure on this step, so leaving Prep clears it with everything else.
+                if (isOura) { ouraConsent = false; ouraAdvanced = false; ouraKeyDraft = "" }
+                type = null
+                step = WizardStep.Type
+            }
+            WizardStep.Pick -> { stopAllScans(); pickedOura = null; step = WizardStep.Prep }
             WizardStep.Confirm -> {
                 // Re-enter the pick step and restart its scan so the user can choose a different device.
-                type?.let { startScan(it) }
-                pickedWhoop = null
+                if (isOura) { ouraScanner.scan(); pickedOura = null; ouraAdopting = false; ouraFailed = false }
+                else { type?.let { startScan(it) }; pickedWhoop = null }
                 step = WizardStep.Pick
             }
         }
@@ -313,17 +302,18 @@ fun AddDeviceWizard(
     // The Adopting->Failed observer (the LaunchedEffect below) reads the SAME value.
     val adoptNeedsPairing by viewModel.ouraNeedsPairing.collectAsStateWithLifecycle()
 
+    // A ring and a strap walk the SAME four steps; this only picks which content each step draws.
+    val isOura = type == DeviceType.Oura
+
     AlertDialog(
         onDismissRequest = { stopAllScans(); onClose() },
         containerColor = Palette.surfaceOverlay,
         title = {
-            // The Oura type drives its own titled step machine; otherwise the generic step titles apply.
-            val isOura = type == DeviceType.Oura
-            val hTitle = if (isOura) ouraHeaderTitle(ouraStep, ouraAdvanced) else headerTitle(step, type)
-            val hSub = if (isOura) ouraHeaderSubtitle(ouraStep, ouraAdvanced) else headerSubtitle(step)
-            // Back is offered on every step except the very first (the type list). The Adopting progress
-            // step hides back so the user can't interrupt the key install mid-flight.
-            val showBack = if (isOura) ouraStep != OuraStep.Adopting else step != WizardStep.Type
+            val hTitle = if (isOura) ouraHeaderTitle(step, ouraAdopting, ouraFailed) else headerTitle(step, type)
+            val hSub = if (isOura) ouraHeaderSubtitle(step, ouraAdopting, ouraFailed) else headerSubtitle(step)
+            // Back is offered on every step except the very first (the type list), and is withheld while
+            // the key install is in flight so the user cannot interrupt it.
+            val showBack = step != WizardStep.Type && !(isOura && ouraAdopting)
             Row(verticalAlignment = Alignment.Top) {
                 if (showBack) {
                     IconButton(onClick = { goBack() }, modifier = Modifier.size(28.dp)) {
@@ -353,66 +343,47 @@ fun AddDeviceWizard(
             // e.g. Oura, were unreachable). The AlertDialog text slot does not scroll its content on its own,
             // so we own the scroll here. Every step renders unchanged inside this scroll container.
             Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
-            // The Oura type runs the factory-reset-and-adopt sub-flow (section 2 of the onboarding UX
-            // spec), NOT the generic Prep/Pick/Confirm. Everything else keeps the generic 4-step shape.
-            if (type == DeviceType.Oura) {
-                OuraFlow(
-                    ouraStep = ouraStep,
-                    advanced = ouraAdvanced,
-                    consent = ouraConsent,
-                    keyDraft = ouraKeyDraft,
-                    scanner = ouraScanner,
-                    gen = ouraGen,
-                    name = nameDraft,
-                    // The live adopt-failure reason, so the honest Failed step shows it (Swift parity).
-                    failureReason = adoptNeedsPairing,
-                    onConsent = { ouraConsent = it },
-                    onKeyDraft = { ouraKeyDraft = it },
-                    onName = { nameDraft = it },
-                    onContinue = { ouraStep = OuraStep.Prep },
-                    onUseFileImport = { stopAllScans(); onUseFileImport() },
-                    // Advanced (B-Alt): the Gate step renders the key field while advanced is set; from the
-                    // key field the user scans straight through to the pick step (no factory-reset prep,
-                    // because the supplied key authenticates without resetting the ring).
-                    onAdvanced = { ouraAdvanced = true; ouraStep = OuraStep.Gate },
-                    onScan = { ouraScanner.scan(); ouraStep = OuraStep.Pick },
-                    onPick = { ring ->
-                        pickedOura = ring
-                        // Confirm the generation from the picked ring's best-effort detection, defaulting to
-                        // gen3 (the verified-corpus generation) when the name carries no generation marker.
-                        ouraGen = ring.detectedGen ?: OuraRingGen.GEN3
-                        nameDraft = "Oura ring"
-                        ouraScanner.stopScan()
-                        ouraStep = OuraStep.Confirm
-                    },
-                    onRescan = { ouraScanner.scan() },
-                    onAdopt = {
-                        // The standard adopt is destructive (it installs NOOP's key on the ring), so it
-                        // gates behind the final "Take over this ring?" alert. The Advanced key path is
-                        // non-destructive (it authenticates with the user's own key, never resets the ring),
-                        // so it connects straight through without the destructive confirm and closes (no
-                        // install runs, so there is no Adopting progress to watch).
-                        if (ouraAdvanced) finishAddOura(closeAfter = true)
-                        else ouraConfirmAdopt = true
-                    },
-                    onTryAgain = { ouraScanner.scan(); pickedOura = null; ouraStep = OuraStep.Pick },
-                )
-            } else {
-                when (step) {
-                    WizardStep.Type -> TypeStep(onPick = { t ->
-                        type = t; nameDraft = ""
-                        // Oura enters its own step machine at the gate, not the generic prep step.
-                        if (t == DeviceType.Oura) {
-                            ouraStep = OuraStep.Gate; ouraConsent = false; ouraAdvanced = false; ouraKeyDraft = ""
-                        } else {
-                            step = WizardStep.Prep
-                        }
-                    })
-                    WizardStep.Prep -> type?.let { t ->
-                        PrepStep(t, onScan = { startScan(t); step = WizardStep.Pick })
-                    }
-                    WizardStep.Pick -> type?.let { t ->
-                        // Only WHOOP types reach the generic Pick step (Oura runs its own flow above).
+            // ONE step machine for every brand: Type -> Prep -> Pick -> Confirm. A ring differs only in
+            // what each step draws, never in how many there are.
+            when (step) {
+                WizardStep.Type -> TypeStep(onPick = { t ->
+                    type = t
+                    nameDraft = ""
+                    if (t == DeviceType.Oura) { ouraConsent = false; ouraAdvanced = false; ouraKeyDraft = "" }
+                    step = WizardStep.Prep
+                })
+
+                WizardStep.Prep -> if (isOura) {
+                    OuraPrepStep(
+                        consent = ouraConsent,
+                        onConsent = { ouraConsent = it },
+                        advanced = ouraAdvanced,
+                        onAdvanced = { ouraAdvanced = it; if (!it) ouraKeyDraft = "" },
+                        keyDraft = ouraKeyDraft,
+                        onKeyDraft = { ouraKeyDraft = it },
+                        onScan = { ouraScanner.scan(); step = WizardStep.Pick },
+                        onUseFileImport = { stopAllScans(); onUseFileImport() },
+                    )
+                } else {
+                    type?.let { t -> PrepStep(t, onScan = { startScan(t); step = WizardStep.Pick }) }
+                }
+
+                WizardStep.Pick -> if (isOura) {
+                    OuraPickStep(
+                        scanner = ouraScanner,
+                        onPick = { ring ->
+                            pickedOura = ring
+                            // Confirm the generation from the picked ring's best-effort detection, defaulting
+                            // to gen3 (the verified-corpus generation) when the name carries no marker.
+                            ouraGen = ring.detectedGen ?: OuraRingGen.GEN3
+                            nameDraft = "Oura ring"
+                            ouraScanner.stopScan()
+                            step = WizardStep.Confirm
+                        },
+                        onRescan = { ouraScanner.scan() },
+                    )
+                } else {
+                    type?.let { t ->
                         WhoopPickStep(
                             viewModel = viewModel,
                             onSelect = { strap ->
@@ -424,7 +395,36 @@ fun AddDeviceWizard(
                             onRescan = { viewModel.presentWhoopScanAll() },
                         )
                     }
-                    WizardStep.Confirm -> ConfirmStep(
+                }
+
+                WizardStep.Confirm -> if (isOura) {
+                    OuraConfirmStep(
+                        advanced = ouraAdvanced,
+                        gen = ouraGen,
+                        name = nameDraft,
+                        onName = { nameDraft = it },
+                        // Adopting and failure are STATES of this step, not destinations.
+                        adopting = ouraAdopting,
+                        failed = ouraFailed,
+                        failureReason = adoptNeedsPairing,
+                        onAdopt = {
+                            // The standard adopt installs NOOP's key on the ring, so it gates behind the
+                            // final "Take over this ring?" alert. The Advanced key path authenticates with
+                            // the user's own key and never resets the ring, so it connects straight through.
+                            if (ouraAdvanced) finishAddOura(closeAfter = true)
+                            else ouraConfirmAdopt = true
+                        },
+                        onTryAgain = {
+                            ouraAdopting = false
+                            ouraFailed = false
+                            ouraScanner.scan()
+                            pickedOura = null
+                            step = WizardStep.Pick
+                        },
+                        onUseFileImport = { stopAllScans(); onUseFileImport() },
+                    )
+                } else {
+                    ConfirmStep(
                         advertisedName = confirmAdvertisedName,
                         brand = confirmBrand,
                         rssi = confirmRssi,
@@ -462,7 +462,7 @@ fun AddDeviceWizard(
             destructive = true,
             onConfirm = {
                 ouraConfirmAdopt = false
-                ouraStep = OuraStep.Adopting
+                ouraAdopting = true
                 finishAddOura(closeAfter = false)
             },
             onDismiss = { ouraConfirmAdopt = false },
@@ -475,14 +475,14 @@ fun AddDeviceWizard(
     // Mirrors the Swift wizard's onChange(of: model.ouraAdoptPhase) / ouraNeedsPairing observers; a
     // LaunchedEffect keeps the state write a side effect of the observed change, not a composition write.
     val adoptPhase by viewModel.ouraAdoptPhase.collectAsStateWithLifecycle()
-    LaunchedEffect(type, ouraStep, adoptPhase, adoptNeedsPairing) {
-        if (type != DeviceType.Oura || ouraStep != OuraStep.Adopting) return@LaunchedEffect
+    LaunchedEffect(type, ouraAdopting, adoptPhase, adoptNeedsPairing) {
+        if (type != DeviceType.Oura || !ouraAdopting) return@LaunchedEffect
         when {
             adoptPhase == com.noop.ble.OuraLiveSource.AdoptPhase.Streaming -> { stopAllScans(); onClose() }
-            adoptPhase == com.noop.ble.OuraLiveSource.AdoptPhase.Failed -> ouraStep = OuraStep.Failed
+            adoptPhase == com.noop.ble.OuraLiveSource.AdoptPhase.Failed -> { ouraAdopting = false; ouraFailed = true }
             // A needs-pairing message during Adopting is an honest failure too (covers the no-ack / ack!=OK
             // paths that surface via needsPairing rather than a phase flip alone).
-            adoptNeedsPairing != null -> ouraStep = OuraStep.Failed
+            adoptNeedsPairing != null -> { ouraAdopting = false; ouraFailed = true }
         }
     }
 }
@@ -501,24 +501,24 @@ private fun headerSubtitle(step: WizardStep): String? = when (step) {
     WizardStep.Confirm -> null
 }
 
-// MARK: - Oura header titles (the adopt sub-flow's own steps)
+// MARK: - Oura header titles (the shared four steps, worded for a ring)
 
-private fun ouraHeaderTitle(step: OuraStep, advanced: Boolean): String = when (step) {
-    OuraStep.Gate -> if (advanced) "Advanced: use your own key" else "Oura ring"
-    OuraStep.Prep -> "Get your ring ready"
-    OuraStep.Pick -> "Pick the ring"
-    OuraStep.Confirm -> "Your ring"
-    OuraStep.Adopting -> "Taking over your ring"
-    OuraStep.Failed -> "Could not take over"
+private fun ouraHeaderTitle(step: WizardStep, adopting: Boolean, failed: Boolean): String = when (step) {
+    WizardStep.Type -> "Add a device"
+    WizardStep.Prep -> "Oura ring"
+    WizardStep.Pick -> "Pick the ring"
+    WizardStep.Confirm -> when {
+        adopting -> "Taking over your ring"
+        failed -> "Could not take over"
+        else -> "Your ring"
+    }
 }
 
-private fun ouraHeaderSubtitle(step: OuraStep, advanced: Boolean): String? = when (step) {
-    OuraStep.Gate -> if (advanced) "Power users only." else "Take it over locally. Beta."
-    OuraStep.Prep -> "Reset it in the Oura app first."
-    OuraStep.Pick -> "Tap the one that's yours."
-    OuraStep.Confirm -> null
-    OuraStep.Adopting -> null
-    OuraStep.Failed -> null
+private fun ouraHeaderSubtitle(step: WizardStep, adopting: Boolean, failed: Boolean): String? = when (step) {
+    WizardStep.Type -> null
+    WizardStep.Prep -> "Take it over locally. Beta."
+    WizardStep.Pick -> "Tap the one that's yours."
+    WizardStep.Confirm -> if (adopting || failed) null else null
 }
 
 // MARK: - Step 1 - type picker
@@ -752,58 +752,31 @@ internal fun WhoopPickStep(
     }
 }
 
-// MARK: - Oura factory-reset-and-adopt flow (section 2 of the onboarding UX spec)
+// MARK: Step 2 - Prep: everything the user must know and do before scanning
 //
-// Faithful Compose port of the macOS Oura adopt flow. The Oura type runs its OWN step machine
-// (gate -> prep -> pick -> confirm -> adopting) plus the Advanced (B-Alt) key path. Every screen is
-// honest: the destructive consent gate, the single-owner warning, the per-gen capability checklist (dash
-// for not-available, * for an on-device estimate), and the honest progress sub-states. No em-dashes.
+// One screen, not three. It carries what the old Gate, Prep and Advanced-key steps each carried:
+// the beta warning, what you get and lose, the reset instructions, the single-owner warning, the
+// irreversible-consent tick, and the Advanced key field as a disclosure. Advanced is a disclosure
+// and not a mode, so opening it never walks the user backwards.
 
 @Composable
-private fun OuraFlow(
-    ouraStep: OuraStep,
+private fun OuraPrepStep(
+    consent: Boolean,
+    onConsent: (Boolean) -> Unit,
     advanced: Boolean,
-    consent: Boolean,
+    onAdvanced: (Boolean) -> Unit,
     keyDraft: String,
-    scanner: OuraLiveSource,
-    gen: OuraRingGen,
-    name: String,
-    failureReason: String?,
-    onConsent: (Boolean) -> Unit,
     onKeyDraft: (String) -> Unit,
-    onName: (String) -> Unit,
-    onContinue: () -> Unit,
-    onUseFileImport: () -> Unit,
-    onAdvanced: () -> Unit,
     onScan: () -> Unit,
-    onPick: (OuraLiveSource.DiscoveredRing) -> Unit,
-    onRescan: () -> Unit,
-    onAdopt: () -> Unit,
-    onTryAgain: () -> Unit,
-) {
-    when (ouraStep) {
-        OuraStep.Gate -> if (advanced) OuraAdvancedKeyStep(keyDraft, onKeyDraft, onScan)
-        else OuraGateStep(consent, onConsent, onContinue, onUseFileImport, onAdvanced)
-        OuraStep.Prep -> OuraPrepStep(advanced, onScan)
-        OuraStep.Pick -> OuraPickStep(scanner, onPick, onRescan)
-        OuraStep.Confirm -> OuraConfirmStep(advanced, gen, name, onName, onAdopt)
-        OuraStep.Adopting -> OuraAdoptingStep()
-        OuraStep.Failed -> OuraFailedStep(failureReason, onTryAgain, onUseFileImport)
-    }
-}
-
-// MARK: Step A - the honest gate ("This replaces Oura")
-
-@Composable
-private fun OuraGateStep(
-    consent: Boolean,
-    onConsent: (Boolean) -> Unit,
-    onContinue: () -> Unit,
     onUseFileImport: () -> Unit,
-    onAdvanced: () -> Unit,
 ) {
+    val parsedKey = parseHexKey(keyDraft)
+    val keyError = advanced && keyDraft.isNotBlank() && parsedKey == null
+    // Standard path needs the consent tick; the Advanced path needs a valid key instead, because it
+    // authenticates with the user's own key and never resets the ring.
+    val canScan = if (advanced) parsedKey != null else consent
+
     Column(verticalArrangement = Arrangement.spacedBy(Metrics.space16)) {
-        // Beta banner (amber heads-up pattern).
         OuraAmberPanel(
             "Beta. Read this first.",
             "Local Oura support is new and we cannot test every ring here. It may not connect on your " +
@@ -811,7 +784,6 @@ private fun OuraGateStep(
                 "not work, it will tell you plainly.",
         )
 
-        // What you get / what you lose, two stacked sections on a frosted card.
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -843,161 +815,134 @@ private fun OuraGateStep(
             )
         }
 
-        // The irreversible consent line, styled critical (red), with a tap-to-tick checkbox.
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(12.dp))
-                .background(Palette.statusCritical.copy(alpha = 0.10f))
-                .clickable { onConsent(!consent) }
-                .semantics {
-                    contentDescription =
-                        "I understand this disconnects the ring from Oura and that NOOP cannot undo it for me."
-                }
-                .padding(12.dp),
-            horizontalArrangement = Arrangement.spacedBy(Metrics.space10),
-            verticalAlignment = Alignment.Top,
-        ) {
-            Icon(
-                if (consent) Icons.Filled.CheckBox else Icons.Filled.CheckBoxOutlineBlank,
-                contentDescription = null,
-                tint = Palette.statusCritical,
-                modifier = Modifier.size(20.dp),
-            )
-            Text(
-                "I understand this disconnects the ring from Oura and that NOOP cannot undo it for me. To " +
-                    "go back to Oura I would factory-reset the ring again and set it up in the Oura app.",
-                style = NoopType.footnote,
-                color = Palette.statusCritical,
-            )
-        }
-
-        // Primary continue (disabled until ticked).
-        TextButton(
-            onClick = onContinue,
-            enabled = consent,
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(12.dp))
-                .background(if (consent) Palette.accent else Palette.surfaceInset)
-                .semantics { contentDescription = "Continue" },
-        ) {
-            Text(
-                "Continue",
-                style = NoopType.headline,
-                color = if (consent) Palette.goldDeepText else Palette.textTertiary,
-            )
-        }
-        // Secondary: keep the Oura app (non-destructive file import) - always one tap away.
-        TextButton(onClick = onUseFileImport, modifier = Modifier.fillMaxWidth()) {
-            Text("Keep the Oura app instead (import a file)", style = NoopType.subhead, color = Palette.accent)
-        }
-        // Tertiary: Advanced power-user key path.
-        TextButton(onClick = onAdvanced, modifier = Modifier.fillMaxWidth()) {
-            Text("Advanced: I already have my ring's key", style = NoopType.footnote, color = Palette.accent)
-        }
-    }
-}
-
-// MARK: Step B-Alt - Advanced: import a 16-byte key (keep the Oura app)
-
-@Composable
-private fun OuraAdvancedKeyStep(
-    keyDraft: String,
-    onKeyDraft: (String) -> Unit,
-    onScan: () -> Unit,
-) {
-    val parsed = parseHexKey(keyDraft)
-    val showError = keyDraft.isNotBlank() && parsed == null
-    Column(verticalArrangement = Arrangement.spacedBy(Metrics.space16)) {
-        OuraAmberPanel(
-            "For power users.",
-            "If you extracted your ring's 16-byte key from a previous Oura setup, NOOP can talk to the " +
-                "ring with that key WITHOUT resetting it, so the Oura app keeps working too. NOOP does not " +
-                "extract keys for you and cannot help you find one. If you do not know what this means, go " +
-                "back and use the standard setup or file import.",
-        )
-        Overline("Ring key (32 hex characters)")
-        OutlinedTextField(
-            value = keyDraft,
-            onValueChange = { onKeyDraft(it) },
-            singleLine = true,
-            isError = showError,
-            placeholder = { Text("0123456789abcdef0123456789abcdef", style = NoopType.body, color = Palette.textTertiary) },
-            keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = KeyboardType.Ascii),
-            visualTransformation = VisualTransformation.None,
-            colors = wizardFieldColors(),
-            modifier = Modifier
-                .fillMaxWidth()
-                .semantics { contentDescription = "Ring key, 32 hex characters" },
-        )
-        if (showError) {
-            Text("That is not a 32-character hex key.", style = NoopType.footnote, color = Palette.statusCritical)
-        }
-        Text(
-            "NOOP stores this key only on this device, in the same place it stores your paired bands.",
-            style = NoopType.footnote,
-            color = Palette.textTertiary,
-        )
-        TextButton(
-            onClick = onScan,
-            enabled = parsed != null,
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(12.dp))
-                .background(if (parsed != null) Palette.accent else Palette.surfaceInset)
-                .semantics { contentDescription = "Scan for your ring" },
-        ) {
-            Text(
-                "Scan for your ring",
-                style = NoopType.headline,
-                color = if (parsed != null) Palette.goldDeepText else Palette.textTertiary,
-            )
-        }
-    }
-}
-
-// MARK: Step B - Prep: factory-reset in the Oura app
-
-@Composable
-private fun OuraPrepStep(advanced: Boolean, onScan: () -> Unit) {
-    Column(verticalArrangement = Arrangement.spacedBy(Metrics.space16)) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(14.dp))
-                .frostedCardSurface(cornerRadius = 14.dp)
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(Metrics.space12),
-        ) {
-            ouraPrepInstructions.forEach { line ->
-                Row(horizontalArrangement = Arrangement.spacedBy(Metrics.space10), verticalAlignment = Alignment.Top) {
-                    Icon(Icons.Filled.Check, contentDescription = null, tint = Palette.accent, modifier = Modifier.size(18.dp))
-                    Text(line, style = NoopType.body, color = Palette.textSecondary)
+        // The reset instructions and the single-owner warning belong to the destructive path only.
+        if (!advanced) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(14.dp))
+                    .frostedCardSurface(cornerRadius = 14.dp)
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(Metrics.space12),
+            ) {
+                Overline("Get your ring ready")
+                ouraPrepInstructions.forEach { line ->
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(Metrics.space10),
+                        verticalAlignment = Alignment.Top,
+                    ) {
+                        Icon(
+                            Icons.Filled.Check,
+                            contentDescription = null,
+                            tint = Palette.accent,
+                            modifier = Modifier.size(18.dp),
+                        )
+                        Text(line, style = NoopType.body, color = Palette.textSecondary)
+                    }
                 }
             }
-        }
-        // The single-owner warning (only meaningful for the destructive adopt path; the Advanced key path
-        // does not reset the ring, so it skips the "force-quit Oura" framing).
-        if (!advanced) {
             OuraAmberPanel(
                 "A ring talks to one owner at a time.",
                 "If the Oura app is still running it will hold the ring and adoption will fail. Force-quit " +
                     "Oura, then scan.",
             )
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(Palette.statusCritical.copy(alpha = 0.10f))
+                    .clickable { onConsent(!consent) }
+                    .semantics {
+                        contentDescription =
+                            "I understand this disconnects the ring from Oura and that NOOP cannot undo it for me."
+                    }
+                    .padding(12.dp),
+                horizontalArrangement = Arrangement.spacedBy(Metrics.space10),
+                verticalAlignment = Alignment.Top,
+            ) {
+                Icon(
+                    if (consent) Icons.Filled.CheckBox else Icons.Filled.CheckBoxOutlineBlank,
+                    contentDescription = null,
+                    tint = Palette.statusCritical,
+                    modifier = Modifier.size(20.dp),
+                )
+                Text(
+                    "I understand this disconnects the ring from Oura and that NOOP cannot undo it for me. To " +
+                        "go back to Oura I would factory-reset the ring again and set it up in the Oura app.",
+                    style = NoopType.footnote,
+                    color = Palette.statusCritical,
+                )
+            }
         }
+
+        // Advanced, disclosed in place: the user's own 16-byte key, which keeps the Oura app working.
+        if (advanced) {
+            OuraAmberPanel(
+                "For power users.",
+                "If you extracted your ring's 16-byte key from a previous Oura setup, NOOP can talk to the " +
+                    "ring with that key WITHOUT resetting it, so the Oura app keeps working too. NOOP does not " +
+                    "extract keys for you and cannot help you find one. If you do not know what this means, " +
+                    "turn this off and use the standard setup or file import.",
+            )
+            Overline("Ring key (32 hex characters)")
+            OutlinedTextField(
+                value = keyDraft,
+                onValueChange = { onKeyDraft(it) },
+                singleLine = true,
+                isError = keyError,
+                placeholder = {
+                    Text(
+                        "0123456789abcdef0123456789abcdef",
+                        style = NoopType.body,
+                        color = Palette.textTertiary,
+                    )
+                },
+                keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = KeyboardType.Ascii),
+                visualTransformation = VisualTransformation.None,
+                colors = wizardFieldColors(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .semantics { contentDescription = "Ring key, 32 hex characters" },
+            )
+            if (keyError) {
+                Text("That is not a 32-character hex key.", style = NoopType.footnote, color = Palette.statusCritical)
+            }
+            Text(
+                "NOOP stores this key only on this device, in the same place it stores your paired bands.",
+                style = NoopType.footnote,
+                color = Palette.textTertiary,
+            )
+        }
+
         TextButton(
             onClick = onScan,
+            enabled = canScan,
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(12.dp))
-                .background(Palette.accent)
+                .background(if (canScan) Palette.accent else Palette.surfaceInset)
                 .semantics { contentDescription = "Scan for your ring" },
         ) {
-            Text("Scan for your ring", style = NoopType.headline, color = Palette.goldDeepText)
+            Text(
+                "Scan for your ring",
+                style = NoopType.headline,
+                color = if (canScan) Palette.goldDeepText else Palette.textTertiary,
+            )
+        }
+        TextButton(onClick = onUseFileImport, modifier = Modifier.fillMaxWidth()) {
+            Text("Keep the Oura app instead (import a file)", style = NoopType.subhead, color = Palette.accent)
+        }
+        TextButton(onClick = { onAdvanced(!advanced) }, modifier = Modifier.fillMaxWidth()) {
+            Text(
+                if (advanced) "Use the standard setup instead" else "Advanced: I already have my ring's key",
+                style = NoopType.footnote,
+                color = Palette.accent,
+            )
         }
     }
 }
+
 
 // MARK: Step C - Pick the ring (live scan)
 
@@ -1063,8 +1008,23 @@ private fun OuraConfirmStep(
     gen: OuraRingGen,
     name: String,
     onName: (String) -> Unit,
+    adopting: Boolean,
+    failed: Boolean,
+    failureReason: String?,
     onAdopt: () -> Unit,
+    onTryAgain: () -> Unit,
+    onUseFileImport: () -> Unit,
 ) {
+    // The key install and its failure are states of this step, not destinations: the user stays
+    // where they were and watches it resolve in place.
+    if (adopting) {
+        OuraAdoptingStep()
+        return
+    }
+    if (failed) {
+        OuraFailedStep(failureReason, onTryAgain, onUseFileImport)
+        return
+    }
     Column(verticalArrangement = Arrangement.spacedBy(Metrics.space16)) {
         // The identified ring: gen name + per-gen capability checklist + a Beta pill.
         Column(
