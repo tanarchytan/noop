@@ -22,13 +22,18 @@ import kotlin.math.roundToInt
  *   - min of the per-session floors -> `DailyMetric.restingHr` (AnalyticsEngine.kt:345 now folds via
  *     [RustScores.dailyRestingHr]).
  *
- * The Kotlin twins are gone, so the reference here is [floorReference]: a self-contained restatement of the
- * stored floor SPEC — the minimum of fixed 5-min tumbling-bin means over `[start, end]` (inclusive), falling
- * back to the whole-segment mean when no bin holds a sample, rounded half-UP. This is exactly the live math
- * that was stored (the #686 win-qualification lived only in the dormant `RecoveryScorer.restingHR` and was
- * NEVER applied to stored data, so the FFI must NOT reproduce it). A drift here is FAIL / BLOCKED, to be
- * reported as a whoop-rs fix request (per-bin rounding / min tie-break / inclusive-window / whole-segment
- * fallback traps), NEVER weakened. Loads the host libwhoop_ffi via JNA (jna.library.path / buildRustHostDll).
+ * The Kotlin twins are gone, so the reference here is [medianReference]: a self-contained restatement of the
+ * shipped spec — the MEDIAN bpm over `[start, end]` (inclusive), even counts averaging the two middles,
+ * rounded half-UP.
+ *
+ * The spec MOVED, deliberately: resting HR used to be the lowest 5-min tumbling-bin mean, and read about
+ * 10 bpm low against WHOOP's own figure. The median matches it (MAE 1.06), so it is what ships. The floor
+ * survives in whoop-rs as `session_resting_hr_floor`, a comparison instrument, and is deliberately NOT
+ * exported — so it cannot be pinned from here. Do not read this as the drift the earlier wording forbade:
+ * a drift is the FFI disagreeing with the spec, and re-pointing at a spec that changed on purpose is not
+ * that. An unexplained disagreement is still FAIL / BLOCKED and is still never weakened.
+ *
+ * Loads the host libwhoop_ffi via JNA (jna.library.path / buildRustHostDll).
  */
 class RustRestingHrParityTest {
 
@@ -50,20 +55,14 @@ class RustRestingHrParityTest {
      * whole-segment mean, rounded half-UP; null on an empty window. Byte-identical to the deleted live
      * `SleepStager.sessionRestingHR`, which is what the FFI [RustScores.sessionRestingHr] must reproduce.
      */
-    private fun floorReference(hr: List<HrSample>, start: Long, end: Long): Int? {
-        val seg = hr.filter { it.ts in start..end }
-        if (seg.isEmpty()) return null
-        val windowS = 5 * 60L
-        val means = ArrayList<Double>()
-        var t = start
-        while (t < end) {
-            val win = seg.filter { it.ts >= t && it.ts < t + windowS }
-            if (win.isNotEmpty()) means.add(win.sumOf { it.bpm }.toDouble() / win.size.toDouble())
-            t += windowS
-        }
-        val m = means.minOrNull()
-        if (m != null) return m.roundToInt()
-        return (seg.sumOf { it.bpm }.toDouble() / seg.size.toDouble()).roundToInt()
+    /** The shipped spec: the median bpm in `[start, end]`, even counts averaging the two middle
+     *  values, rounded half-up. Null on an empty window (the never-fabricate contract). */
+    private fun medianReference(hr: List<HrSample>, start: Long, end: Long): Int? {
+        val bpms = hr.filter { it.ts in start..end }.map { it.bpm }.sorted()
+        if (bpms.isEmpty()) return null
+        val n = bpms.size
+        val mid = if (n % 2 == 1) bpms[n / 2].toDouble() else (bpms[n / 2 - 1] + bpms[n / 2]) / 2.0
+        return mid.roundToInt()
     }
 
     /**
@@ -100,9 +99,9 @@ class RustRestingHrParityTest {
         val rustFloors = ArrayList<Int?>(nights.size)
         for ((idx, n) in nights.withIndex()) {
             // SleepSession.restingHr: the per-session floor (Room-stored Int).
-            val kFloor = floorReference(n.hr, n.onset, n.wake)
+            val kFloor = medianReference(n.hr, n.onset, n.wake)
             val rFloor = RustScores.sessionRestingHr(n.hr, n.onset, n.wake)
-            assertEquals("night $idx session floor (stored SleepSession.restingHr)", kFloor, rFloor)
+            assertEquals("night $idx session median (stored SleepSession.restingHr)", kFloor, rFloor)
             refFloors.add(kFloor)
             rustFloors.add(rFloor)
         }
@@ -116,7 +115,7 @@ class RustRestingHrParityTest {
     @Test
     fun `empty window yields null on both legs`() {
         // No HR samples in window -> null (never-fabricate contract), identical on both paths.
-        val kFloor = floorReference(emptyList(), start = 0L, end = 1_000L)
+        val kFloor = medianReference(emptyList(), start = 0L, end = 1_000L)
         val rFloor = RustScores.sessionRestingHr(emptyList(), start = 0L, end = 1_000L)
         assertEquals("empty-window session floor", null, kFloor)
         assertEquals("empty-window session floor parity", kFloor, rFloor)
@@ -124,18 +123,19 @@ class RustRestingHrParityTest {
 
     @Test
     fun `session floor matches the spec on a crafted multi-bin window`() {
-        // A deterministic in-bed window with distinct 5-min bins (60, 52, 55 bpm) so the floor is the real
-        // 52-bpm bin on both legs — isolates bin anchoring, min selection and half-up rounding from a fixture.
+        // A deterministic in-bed window of three equal 5-min blocks (60, 52, 55 bpm). 900 samples, so the
+        // median is the mean of the two middle values, both in the 55 block — isolates ordering and half-up
+        // rounding from a fixture. The old floor spec answered 52 here; the shipped median answers 55.
         val start = 1_000L
         val hr = ArrayList<HrSample>()
         for (i in 0 until 300) hr.add(HrSample(dev, start + i, 60))
         for (i in 0 until 300) hr.add(HrSample(dev, start + 300 + i, 52))
         for (i in 0 until 300) hr.add(HrSample(dev, start + 600 + i, 55))
         val end = start + 900
-        val kFloor = floorReference(hr, start, end)
+        val kFloor = medianReference(hr, start, end)
         val rFloor = RustScores.sessionRestingHr(hr, start, end)
-        assertEquals("crafted session floor spec", 52, kFloor)
-        assertEquals("crafted session floor parity", kFloor, rFloor)
+        assertEquals("crafted session median spec", 55, kFloor)
+        assertEquals("crafted session median parity", kFloor, rFloor)
     }
 
     @Test
