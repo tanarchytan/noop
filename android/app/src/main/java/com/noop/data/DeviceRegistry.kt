@@ -179,6 +179,67 @@ class DeviceRegistry(
     }
 
     /**
+     * Permanently deletes only the [categories] chosen, for [id], in ONE transaction. The registry
+     * row is left intact, as in [deleteDeviceData]. Passing every category deletes the same rows as
+     * [deleteDeviceData] does, which [com.noop.data.DataRemovalCoverageTest] pins.
+     */
+    suspend fun deleteDeviceData(id: String, categories: Set<DataCategory>) {
+        if (categories.isEmpty()) return
+        transactor.run { categories.forEach { deleteCategoryRows(id, it) } }
+    }
+
+    /** One category's tables. Every deviceId-keyed table appears in exactly one arm. */
+    private suspend fun deleteCategoryRows(id: String, category: DataCategory) {
+        when (category) {
+            DataCategory.HEART -> {
+                dao.deleteHrFor(id)
+                dao.deleteRrFor(id)
+                dao.deletePpgHrFor(id)
+                dao.deletePpgWaveformFor(id)
+            }
+            DataCategory.SLEEP -> {
+                dao.deleteSleepSessionsFor(id)
+                dao.deleteSleepStatesFor(id)
+                dao.deleteDismissedSleepsFor(id)
+            }
+            DataCategory.ACTIVITY -> {
+                dao.deleteStepsFor(id)
+                dao.deleteWorkoutsFor(id)
+                dao.deleteDismissedWorkoutsFor(id)
+                dao.deleteLiveSessionsFor(id)
+                dao.deleteGravityFor(id)
+                dao.deleteImuFeaturesFor(id)
+            }
+            DataCategory.BODY -> {
+                dao.deleteSkinTempFor(id)
+                dao.deleteSpo2For(id)
+                dao.deleteSpo2PctFor(id)
+                dao.deleteRespFor(id)
+            }
+            DataCategory.RHYTHM -> {
+                dao.deleteEcgSessionsFor(id)
+                dao.deleteRhythmScreensFor(id)
+                dao.deleteRhythmMorphologyFor(id)
+            }
+            DataCategory.SCORES -> {
+                dao.deleteDailyMetricsFor(id)
+                dao.deleteMetricSeriesFor(id)
+                dao.deleteAppleDailyFor(id)
+                dao.deleteDayOwnershipFor(id)
+            }
+            DataCategory.DEVICE -> {
+                dao.deleteEventsFor(id)
+                dao.deleteBatteryFor(id)
+            }
+            DataCategory.NOTES -> {
+                dao.deleteJournalFor(id)
+                dao.deleteLabMarkersFor(id)
+            }
+            DataCategory.RAW -> dao.deleteV18For(id)
+        }
+    }
+
+    /**
      * Permanently delete a device ENTIRELY: its registry row AND every recorded sample/derived row, in ONE
      * transaction. Unlike [deleteDeviceData] (which keeps the row per I4), this removes the entry so the
      * device leaves the list for good.
