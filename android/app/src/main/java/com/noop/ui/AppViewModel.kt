@@ -145,6 +145,24 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /** Permanently delete all of a device's recorded data (its registry row is kept). */
     suspend fun deletePairedDeviceData(id: String) = noopApp.deviceRegistry.deleteDeviceData(id)
 
+    /** Delete only the chosen [categories] of a device's data; the registry row stays. */
+    suspend fun deletePairedDeviceData(id: String, categories: Set<com.noop.data.DataCategory>) =
+        noopApp.deviceRegistry.deleteDeviceData(id, categories)
+
+    /**
+     * Every stored-data id a brand owns: each registry row of that brand plus its computed sibling.
+     * A removal pinned to one id leaves other straps' rows behind while claiming the brand is gone,
+     * so removal resolves the same way the read scope does.
+     */
+    suspend fun dataIdsForBrand(brand: String): List<String> {
+        val rows = noopApp.deviceRegistry.all().filter { it.brand.equals(brand, ignoreCase = true) }
+        val ids = rows.map { it.id }.toMutableSet()
+        // The WHOOP import sink is a data bucket rather than a strap, and carries the brand, but a
+        // registry that has not seeded yet would not list it. Name it so a removal never misses it.
+        if (brand.equals("WHOOP", ignoreCase = true)) ids += com.noop.data.WhoopRepository.WHOOP_SOURCE
+        return ids.flatMap { listOf(it, repo.computedDeviceId(it)) }.distinct()
+    }
+
     /** Permanently delete a device: its registry row AND all its recorded data. Removes it from the list. */
     suspend fun deletePairedDevice(id: String) = noopApp.deviceRegistry.delete(id)
 

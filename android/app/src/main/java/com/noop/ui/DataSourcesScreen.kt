@@ -79,6 +79,8 @@ fun DataSourcesScreen(vm: AppViewModel, onOpenAppleHealth: () -> Unit = {}) {
 
     // Cached-store counts, loaded once from the repo (newest data is fine to recount).
     var whoopDays by remember { mutableStateOf<Int?>(null) }
+    var ouraDays by remember { mutableStateOf(0) }
+    var ouraHasHr by remember { mutableStateOf(false) }
     var whoopWorkouts by remember { mutableStateOf<Int?>(null) }
     var whoopHasHr by remember { mutableStateOf(false) }
     // Earliest/latest stored WHOOP day, so the card can read "data from X to Y".
@@ -105,6 +107,10 @@ fun DataSourcesScreen(vm: AppViewModel, onOpenAppleHealth: () -> Unit = {}) {
         appleWorkouts = vm.repo.workoutsCount("apple-health", 0L, nowS)
         hcDays = vm.repo.appleDailyCount("health-connect", "0000-01-01", "9999-12-31")
         hcWorkouts = vm.repo.workoutsCount("health-connect", 0L, nowS)
+        // Oura is registry-resolved: a ring has no fixed id the way the import sinks do.
+        val ouraIds = vm.dataIdsForBrand("Oura")
+        ouraDays = ouraIds.sumOf { vm.repo.daysCount(it) }
+        ouraHasHr = ouraIds.any { vm.repo.latestHrSampleTs(it) != null }
     }
 
     LaunchedEffect(Unit) { refreshCounts() }
@@ -113,8 +119,9 @@ fun DataSourcesScreen(vm: AppViewModel, onOpenAppleHealth: () -> Unit = {}) {
     var busy by remember { mutableStateOf(false) }
     // ah-delete : drives the "Remove Apple Health imported data" confirm dialog.
     var confirmDeleteApple by remember { mutableStateOf(false) }
-    // Drives the "Remove WHOOP history" confirm dialog (wipes every row under the "my-whoop" source).
-    var confirmDeleteWhoop by remember { mutableStateOf(false) }
+    // Which source the shared Remove-data dialog is open for, or null when it is closed. The brand
+    // resolves to registry ids at removal time, so a second strap is never left behind.
+    var removeFor by remember { mutableStateOf<String?>(null) }
 
     // Run an importer off the main thread, refresh the counts, then toast the result.
     fun runImport(block: suspend () -> ImportSummary) {
@@ -281,7 +288,34 @@ fun DataSourcesScreen(vm: AppViewModel, onOpenAppleHealth: () -> Unit = {}) {
                     enabled = !busy,
                     tint = Palette.statusCritical,
                     modifier = Modifier.fillMaxWidth(),
-                ) { confirmDeleteWhoop = true }
+                ) { removeFor = "WHOOP" }
+            }
+        }
+        }
+
+        // --- Oura ring (experimental) ---
+        item {
+        SourceCard(
+            title = "Oura ring",
+            icon = Icons.Filled.MonitorHeart,
+            subtitle = "Read straight off a ring NOOP has taken over: heart rate and beats, sleep, " +
+                "temperature and motion. Experimental, and it never talks to Oura's cloud.",
+        ) {
+            val hasOura = ouraDays > 0 || ouraHasHr
+            StatePill(
+                title = if (hasOura) "Stored on this phone" else "Nothing here yet",
+                tone = if (hasOura) StrandTone.Positive else StrandTone.Neutral,
+                showsDot = true,
+            )
+            CountLine(countDetail(ouraDays, null, "workouts stored"))
+            if (hasOura) {
+                BackupButton(
+                    label = "Remove Oura data",
+                    icon = Icons.Filled.DeleteOutline,
+                    enabled = !busy,
+                    tint = Palette.statusCritical,
+                    modifier = Modifier.fillMaxWidth(),
+                ) { removeFor = "Oura" }
             }
         }
         }
@@ -491,34 +525,33 @@ fun DataSourcesScreen(vm: AppViewModel, onOpenAppleHealth: () -> Unit = {}) {
 
     // Wipes every row stored under the WHOOP source ("my-whoop") in one transaction, re-counts so the card
     // flips back to empty, reloads workouts, and toasts. Other sources are untouched.
-    if (confirmDeleteWhoop) {
-        NoopConfirmDialog(
-            title = "Remove all WHOOP history?",
-            text = "This permanently deletes every day, workout and sample stored under WHOOP on this " +
-                "phone — imported history and anything synced from a strap. Apple Health and Health " +
-                "Connect are untouched. This can't be undone.",
-            confirmLabel = "Remove",
-            destructive = true,
-            onConfirm = {
-                confirmDeleteWhoop = false
+    if (removeFor != null) {
+        val brand = removeFor!!
+        RemoveDataDialog(
+            sourceLabel = brand,
+            onConfirm = { categories ->
+                removeFor = null
                 busy = true
                 scope.launch {
                     runCatching {
                         withContext(Dispatchers.IO) {
-                            // Wipe both the raw import ("my-whoop") and its computed sibling ("my-whoop-noop"), so no
-                            // orphaned scores survive a removal.
-                            vm.deletePairedDeviceData("my-whoop")
-                            vm.deletePairedDeviceData(vm.repo.computedDeviceId("my-whoop"))
+                            // Every id the brand owns, raw and computed. Pinning this to one id is what
+                            // left a second strap's rows behind while reporting the brand removed.
+                            vm.dataIdsForBrand(brand).forEach { id ->
+                                if (categories == null) vm.deletePairedDeviceData(id)
+                                else vm.deletePairedDeviceData(id, categories)
+                            }
                         }
                     }
-                    vm.ble.externalLog("Import my-whoop: stored history removed")
+                    val what = categories?.joinToString(", ") { it.name } ?: "everything"
+                    vm.ble.externalLog("Remove $brand: $what")
                     refreshCounts()
                     vm.loadWorkouts()
                     busy = false
-                    Toast.makeText(context, "Removed stored WHOOP history.", Toast.LENGTH_LONG).show()
+                    Toast.makeText(context, "Removed stored $brand data.", Toast.LENGTH_LONG).show()
                 }
             },
-            onDismiss = { confirmDeleteWhoop = false },
+            onDismiss = { removeFor = null },
         )
     }
 }
