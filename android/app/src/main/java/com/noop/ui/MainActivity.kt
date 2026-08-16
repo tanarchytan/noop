@@ -669,7 +669,16 @@ object NoopPrefs {
 
     /** Whether the one-shot full-history Effort rescore has run. Set true once it completes so the
      *  on-upgrade pass that regenerates deep-history strain on the 0–100 axis never re-runs. */
+    /** Bumped only if the resting-HR definition moves again, so the rebase re-runs. */
+    const val KEY_RESTING_HR_REBASE_DONE = "analytics.restingHrRebase.median.v1"
     const val KEY_EFFORT_RESCORE_DONE = "noop.effortRescore.v313.done"
+
+    fun restingHrRebaseDone(context: Context): Boolean =
+        of(context).getBoolean(KEY_RESTING_HR_REBASE_DONE, false)
+
+    fun setRestingHrRebaseDone(context: Context) {
+        of(context).edit().putBoolean(KEY_RESTING_HR_REBASE_DONE, true).apply()
+    }
 
     fun effortRescoreDone(context: Context): Boolean =
         of(context).getBoolean(KEY_EFFORT_RESCORE_DONE, false)

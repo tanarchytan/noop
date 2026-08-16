@@ -88,7 +88,9 @@ data class DetectedSleep(
     /** asleep / in-bed in [0, 1] (AASM TST/TIB; asleep = in-bed − wake). */
     val efficiency: Double,
     val stages: List<StageSegment>,
-    /** Lowest 5-min rolling-mean HR during the session (bpm), or null. */
+    /** The in-bed MEDIAN heart rate for the session (bpm), or null. Was the lowest 5-min
+     *  rolling mean until 2026-08-08; the floor read about ten bpm low against WHOOP's own
+     *  figure and survives in whoop-rs as a comparison instrument. */
     val restingHR: Int?,
     /** Mean RMSSD over 5-min windows across the session (ms), or null. */
     val avgHRV: Double?,

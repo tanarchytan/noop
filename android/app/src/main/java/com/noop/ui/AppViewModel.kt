@@ -13,6 +13,7 @@ import com.noop.analytics.HrZones
 import com.noop.analytics.IllnessSignalEngine
 import com.noop.analytics.IllnessWatch
 import com.noop.analytics.IntelligenceEngine
+import com.noop.analytics.RestingHrRebase
 import com.noop.analytics.V5HealthSignals
 import com.noop.analytics.RegistryDayOwnerSource
 import com.noop.analytics.RestScorer
@@ -709,6 +710,22 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                     }
                     NoopPrefs.setTsHealDone(appContext)
                     NoopPrefs.setTsHealPending(appContext, false)
+                }
+            }.onFailure { if (it is kotlin.coroutines.cancellation.CancellationException) throw it }
+            // One-shot on-upgrade resting-HR rebase. MUST precede the analytics pass below: the
+            // personal baseline Charge scores against is folded from the very column this repairs,
+            // so folding first would bake the old floors into the baseline for another fortnight.
+            runCatching {
+                val n = RestingHrRebase.runIfNeeded(
+                    repo = repository,
+                    flagGet = { NoopPrefs.restingHrRebaseDone(appContext) },
+                    flagSet = { NoopPrefs.setRestingHrRebaseDone(appContext) },
+                )
+                if (n > 0) {
+                    ble.externalLog(
+                        "Resting HR: re-derived $n night(s) as the in-bed median, so the baseline " +
+                            "stops mixing it with the older 5-minute floor.",
+                    )
                 }
             }.onFailure { if (it is kotlin.coroutines.cancellation.CancellationException) throw it }
             // One-shot on-upgrade Effort rescore: recompute strain from source across the FULL
