@@ -383,6 +383,24 @@ class WhoopBleClient(
          */
         const val DEFAULT_DEVICE_ID = "my-whoop"
 
+        /**
+         * 5/MG haptic body `[revision][effects x8][loopControl u16 LE][overallLoop]`, built from the
+         * 4.0-shaped `[patternId, loops, …]` payload [buzz] sends. overallLoop counts repeats AFTER
+         * the first pulse, so `loops - 1`, clamped 1..8; a payload with no count gives one pulse.
+         */
+        internal fun maverickHapticBody(payload: ByteArray): ByteArray {
+            val loops = if (payload.size >= 2) (payload[1].toInt() and 0xFF).coerceIn(1, 8) else 1
+            return byteArrayOf(
+                0x01,                                   // [0]     revision
+                47, 152.toByte(), 0, 0, 0, 0, 0, 0,     // [1..8]  effects x8 ("notify" preset)
+                0, 0,                                   // [9..10] loopControl u16 LE
+                (loops - 1).toByte(),                   // [11]    overallLoop
+            )
+        }
+
+        /** Maverick haptic opcode; a 5/MG rejects RUN_HAPTICS_PATTERN. */
+        internal const val MAVERICK_HAPTIC_CMD = 0x13
+
         // GATT UUIDs. WHOOP 4.0 custom service + its four characteristics. The shared contract also
         // lists a WHOOP5 service UUID; we scan for both so a v5 strap is discoverable, but the verified
         // characteristic/bond flow is the v4 layout (the only hardware-verified path).
@@ -2045,16 +2063,21 @@ class WhoopBleClient(
         // WHOOP 5/MG haptics differ from 4.0 on opcode AND payload: cmd 0x13 (not 79, which a real MG
         // rejects) + the maverick "notify" preset body. Everything else builds via the generic FFI
         // command builder; the frame bytes are byte-identical to the former Kotlin envelope (test-locked).
+        // [maverickHapticBody] builds that body here because RustCodec.buzzFrame takes no payload and so
+        // carries no repeat count; the generic builder pads the inner body to a 4-byte boundary, which
+        // this 12-byte body already satisfies.
         val isHaptics = cmd == CommandNumber.RUN_HAPTICS_PATTERN
+        val hapticBody = if (gen5 && isHaptics) maverickHapticBody(payload) else payload
         val sent = sendCommand(cmd, withResponse) { s ->
             when {
-                gen5 && isHaptics -> RustCodec.buzzFrame(s)
+                gen5 && isHaptics ->
+                    RustCodec.commandFrame(gen, seq = s, cmd = MAVERICK_HAPTIC_CMD, payload = hapticBody)
                 else -> RustCodec.commandFrame(gen, seq = s, cmd = cmd.rawValue, payload = payload)
             }
         }
         if (sent) {
             val note = if (gen5) (if (isHaptics) " (puffin cmd=0x13)" else " (puffin)") else ""
-            log("→ ${cmd.name} payload=${payload.toHex()}$note")
+            log("→ ${cmd.name} payload=${hapticBody.toHex()}$note")
         }
     }
 

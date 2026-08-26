@@ -24,6 +24,8 @@ class SendFrameParityTest {
     fun `gen4 generic command frame`() =
         assertEquals("aa0800a8230703008a9aa1bd", h(RustCodec.commandFrame(Gen.GEN4, seq, 3, byteArrayOf(0))!!))
 
+    // Off the send path: buzzFrame takes no payload, so WhoopBleClient.maverickHapticBody builds the
+    // body and commandFrame carries it. Locked here as the single-pulse byte reference.
     @Test
     fun `gen5 maverick buzz frame`() =
         assertEquals("aa0114000001e1e1230713012f98000000000000000000006a1f7987", h(RustCodec.buzzFrame(seq)))
