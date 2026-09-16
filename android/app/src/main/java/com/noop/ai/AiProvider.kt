@@ -27,13 +27,21 @@ enum class AiProvider(
     OPENAI(
         displayName = "OpenAI",
         shortName = "OpenAI",
-        defaultModel = "gpt-4o-mini",
+        defaultModel = "gpt-5-mini",
+        // Pinned ids, not aliases: OpenAI publishes no per-tier "-latest", so this seed is bumped by
+        // hand and the live /models fetch is the authority past it. The GPT-5 and o-series tiers
+        // reject `temperature`/`max_tokens`; [AiCoach] retries those on the modern parameters.
         models = listOf(
-            "gpt-4o",
-            "gpt-4o-mini",
+            "gpt-5",
+            "gpt-5-mini",
+            "gpt-5-nano",
             "gpt-4.1",
             "gpt-4.1-mini",
             "gpt-4.1-nano",
+            "gpt-4o",
+            "gpt-4o-mini",
+            "o3",
+            "o4-mini",
         ),
         endpoint = "https://api.openai.com/v1/chat/completions",
         modelsEndpoint = "https://api.openai.com/v1/models",

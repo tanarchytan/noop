@@ -18,6 +18,7 @@ import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONArray
 import org.json.JSONObject
+import java.util.Locale
 import java.util.concurrent.TimeUnit
 import kotlin.math.roundToInt
 
@@ -382,20 +383,35 @@ class AiCoach(private val repo: WhoopRepository) {
             messages.put(JSONObject().put("role", m.role).put("content", m.text))
         }
 
-        val body = JSONObject()
-            .put("model", model)
-            .put("messages", messages)
-            .put("temperature", 0.6)
-            .put("max_tokens", 900)
-            .toString()
+        fun send(modernParams: Boolean): Pair<Int, String> {
+            val body = JSONObject()
+                .put("model", model)
+                .put("messages", messages)
+            if (modernParams) {
+                // Reasoning tiers reject temperature and max_tokens, and charge hidden thinking
+                // tokens against the cap, so 900 starves them into an empty reply. A cap, not a
+                // target: a short answer still costs what it costs.
+                body.put("max_completion_tokens", 4096)
+            } else {
+                body.put("temperature", 0.6).put("max_tokens", 900)
+            }
 
-        val builder = Request.Builder()
-            .url(url)
-            .addHeader("Content-Type", "application/json")
-            .post(body.toRequestBody(JSON))
-        if (!key.isNullOrBlank()) builder.addHeader("Authorization", "Bearer $key")
+            val builder = Request.Builder()
+                .url(url)
+                .addHeader("Content-Type", "application/json")
+                .post(body.toString().toRequestBody(JSON))
+            if (!key.isNullOrBlank()) builder.addHeader("Authorization", "Bearer $key")
+            return execute(builder.build())
+        }
 
-        val (code, text) = execute(builder.build())
+        var (code, text) = send(modernParams = false)
+        // A 400 naming one of the classic parameters means a model that only takes the modern ones.
+        // One extra round trip on the first message to such a model, instead of a per-model table.
+        if (code == 400 && namesAClassicParam(text)) {
+            val retried = send(modernParams = true)
+            code = retried.first
+            text = retried.second
+        }
         if (code !in 200..299) throw httpError(provider, code, text)
 
         val json = parse(text)
@@ -567,10 +583,6 @@ class AiCoach(private val repo: WhoopRepository) {
     // Small numeric formatting helpers
     // ---------------------------------------------------------------------------------------
 
-    private fun fmt1(v: Double): String =
-        if (v == v.roundToInt().toDouble()) v.roundToInt().toString()
-        else String.format("%.1f", v)
-
     private inline fun avgInt(days: List<DailyMetric>, sel: (DailyMetric) -> Double?): String {
         val vals = days.mapNotNull(sel)
         return if (vals.isEmpty()) "-" else RustScores.mean(vals).roundToInt().toString()
@@ -592,6 +604,26 @@ class AiCoach(private val repo: WhoopRepository) {
          * Pure; `internal` so it's unit-testable — the byte-parity reference for Swift
          * `AIProvider.isPrivateLANOrLoopback`. Called unqualified by the instance `guardCustomUrl`.
          */
+        /**
+         * One decimal, or none when the value is whole. `Locale.US`, not the device's: every figure
+         * formatted here goes into a prompt, and a decimal comma reads to the model as two numbers.
+         * `internal` so the locale is unit-testable.
+         */
+        internal fun fmt1(v: Double): String =
+            if (v == v.roundToInt().toDouble()) v.roundToInt().toString()
+            else String.format(Locale.US, "%.1f", v)
+
+        /**
+         * True when a 400 body blames one of the classic chat parameters, which is how a model that
+         * only takes the modern ones refuses. Substring, not a parse: the body is a provider error
+         * of no fixed shape and only the parameter name matters. `internal` so it's unit-testable.
+         */
+        internal fun namesAClassicParam(text: String): Boolean {
+            val detail = text.lowercase()
+            return "max_completion_tokens" in detail || "max_tokens" in detail ||
+                "temperature" in detail || "unsupported" in detail
+        }
+
         internal fun isPrivateLanOrLoopback(host: String): Boolean {
             val raw = host.trim()
             val h = raw.trim('[', ']').lowercase()  // strip IPv6 brackets if present
