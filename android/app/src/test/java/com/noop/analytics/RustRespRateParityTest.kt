@@ -26,10 +26,14 @@ import kotlin.math.roundToInt
  * value bit-for-bit.
  *
  * The Kotlin twin is gone, so the reference here is [respRateReference]: a self-contained restatement of the
- * stored RSA spec — range-filter → cumulative beat times → 4 Hz linear resample → centered-mean detrend →
- * per-5-min findPeaks → `60.0 / median(intervals)` → median across windows → plausible-band clamp. It reuses
- * the surviving primitives ([RustScores.populationSD], [RustScores.rangeFilterRR],
- * [RustScores.median], [SleepStager.respPlausibleRangeBpm]) so it stays byte-identical to the deleted scorer.
+ * scored RSA spec — range-filter → split on R-R dropouts → per run: cumulative beat times → 4 Hz linear
+ * resample → centered-mean detrend → per-5-min findPeaks → `60.0 / median(intervals)` → median across every
+ * window every run produced → plausible-band clamp. It reuses the surviving primitives
+ * ([RustScores.populationSD], [RustScores.median], [SleepStager.respPlausibleRangeBpm]) so it stays
+ * byte-identical to the scorer it mirrors.
+ *
+ * whoop-rs OWNS this formula, so the reference follows it: when the scorer changes, re-freeze the reference
+ * against the new spec here. The gate catches a change nobody meant, never one that was decided.
  *
  * The gate is EXACT (delta 0.0). The pipeline is float-accumulation-order sensitive, and trap #1 (the
  * averaging-of-middles median tie-break in both the per-window `60.0/median` and the across-window median) is
@@ -53,33 +57,58 @@ class RustRespRateParityTest {
     /** Kotlin NaN (no finite estimate) → the FFI's null domain, so the two paths compare like-for-like. */
     private fun kotlinStored(v: Double): Double? = if (v.isFinite()) v else null
 
+    // RSA constants, inlined here as the frozen reference (they were private SleepStager consts).
+    private val rsaResampleHz = 4.0
+    private val rsaDetrendWindowS = 8.0
+    private val rsaMinPeakDistanceS = 2.5
+    private val rsaWindowS = 300.0
+    private val rsaMinBreathIntervalS = 2.5
+    private val rsaMaxBreathIntervalS = 10.0
+
+    /** Clock advance between kept beats above which the stream is a dropout, not a slow heart. */
+    private val rsaGapS = 10.0
+
     /**
      * The stored per-session respiratory-rate SPEC, restated locally now that `SleepStager.respRateFromRR`
-     * is deleted. Byte-identical to that scorer: it inlines the RSA constants and orchestrates the surviving
-     * primitives in the exact same order (so float accumulation matches). Returns NaN on honest no-data.
+     * is deleted. Mirrors whoop-rs `resp_rate_from_rr`: range-filter, split the night where the clock
+     * outran the beats, score each contiguous run, median every window they produced. NaN on no-data.
      */
     private fun respRateReference(rr: List<RrInterval>, start: Long, end: Long): Double {
         val nan = Double.NaN
         if (end <= start) return nan
 
-        // RSA constants (were private SleepStager consts, inlined here as the frozen reference).
-        val rsaResampleHz = 4.0
-        val rsaDetrendWindowS = 8.0
-        val rsaMinPeakDistanceS = 2.5
-        val rsaWindowS = 300.0
-        val rsaMinBreathIntervalS = 2.5
-        val rsaMaxBreathIntervalS = 10.0
-
-        // 1. In-bed RR rows in chronological order, range-filtered.
-        val inBed = rr.asSequence()
-            .filter { it.ts in start..end }
+        // In-bed beats in chronological order, range-filtered. The TIMESTAMP has to survive the filter
+        // here (RustScores.rangeFilterRR drops it) because the split below reads it; the 300..2000 ms
+        // bounds are that primitive's own, and an integer range test carries no accumulation to diverge.
+        val inBed = rr.filter { it.ts in start..end }
             .sortedBy { it.ts }
-            .map { it.rrMs.toDouble() }
-            .toList()
-        val filtered = RustScores.rangeFilterRR(inBed.map { it.toInt() }).map { it.toDouble() }
-        if (filtered.size < 30) return nan
+            .filter { it.rrMs >= 300 && it.rrMs <= 2000 }
+        if (inBed.size < 30) return nan
 
-        // 2. Reconstruct beat times (seconds from session start) by cumulative sum.
+        // Split where the clock advanced further than the beats account for. Cumulative-summing across a
+        // dropout stitches the gap shut and the peak-picker reads the join as one enormous breath; within
+        // a run the cumulative sum still builds the tachogram, since beats share whole-second stamps.
+        val rates = ArrayList<Double>()
+        var runStart = 0
+        for (i in 1..inBed.size) {
+            val split = i == inBed.size || (inBed[i].ts - inBed[i - 1].ts).toDouble() > rsaGapS
+            if (!split) continue
+            windowRates(inBed.subList(runStart, i).map { it.rrMs.toDouble() }, rates)
+            runStart = i
+        }
+        if (rates.isEmpty()) return nan
+        val median = RustScores.median(rates)
+        return if (median in SleepStager.respPlausibleRangeBpm) median else nan
+    }
+
+    /**
+     * Per-window breathing rates for ONE contiguous run of beats, appended to [out]: cumulative beat
+     * times → 4 Hz linear resample → centered-mean detrend → per-5-min findPeaks → `60.0 / median`.
+     * A run too short to hold a window contributes nothing, which is why a gappy night degrades.
+     */
+    private fun windowRates(filtered: List<Double>, out: MutableList<Double>) {
+        if (filtered.size < 8) return
+
         val beatTimes = DoubleArray(filtered.size)
         var acc = 0.0
         for (i in filtered.indices) {
@@ -87,12 +116,11 @@ class RustRespRateParityTest {
             beatTimes[i] = acc
         }
         val totalSpanS = beatTimes[beatTimes.size - 1]
-        if (totalSpanS < rsaWindowS / 2.0) return nan
+        if (totalSpanS < rsaWindowS / 2.0) return
 
-        // 3. Resample onto a uniform grid by linear interpolation.
         val dt = 1.0 / rsaResampleHz
         val nGrid = (totalSpanS / dt).toInt() + 1
-        if (nGrid < 8) return nan
+        if (nGrid < 8) return
         val grid = DoubleArray(nGrid)
         var seg = 0
         for (g in 0 until nGrid) {
@@ -108,23 +136,21 @@ class RustRespRateParityTest {
             }
         }
 
-        // 4. Detrend: subtract a centered moving mean.
+        // Detrend by the centered moving mean, summed through a PREFIX array like the Rust helper, so
+        // the float accumulation order matches and the exact gate stays exact.
         val halfW = maxOf(1, (rsaDetrendWindowS * rsaResampleHz / 2.0).roundToInt())
+        val prefix = DoubleArray(nGrid + 1)
+        for (i in 0 until nGrid) prefix[i + 1] = prefix[i] + grid[i]
         val detrended = DoubleArray(nGrid)
         for (i in 0 until nGrid) {
             val lo = maxOf(0, i - halfW)
             val hi = minOf(nGrid - 1, i + halfW)
-            var sum = 0.0
-            for (j in lo..hi) sum += grid[j]
-            val mean = sum / (hi - lo + 1).toDouble()
-            detrended[i] = grid[i] - mean
+            detrended[i] = grid[i] - (prefix[hi + 1] - prefix[lo]) / (hi - lo + 1).toDouble()
         }
-        if (RustScores.populationSD(detrended.toList()) <= 1e-9) return nan
+        if (RustScores.populationSD(detrended.toList()) <= 1e-9) return
 
-        // 5. Per ~5-min window peak-pick → 60/median(breath interval); median across.
         val minDistSamples = maxOf(2, (rsaMinPeakDistanceS * rsaResampleHz).roundToInt())
         val windowSamples = maxOf(minDistSamples * 3, (rsaWindowS * rsaResampleHz).roundToInt())
-        val perWindowRates = ArrayList<Double>()
         var w = 0
         while (w < nGrid) {
             val wEnd = minOf(nGrid, w + windowSamples)
@@ -140,15 +166,12 @@ class RustRespRateParityTest {
                     }
                     if (intervals.size >= 2) {
                         val med = RustScores.median(intervals)
-                        if (med > 0.0) perWindowRates.add(60.0 / med)
+                        if (med > 0.0) out.add(60.0 / med)
                     }
                 }
             }
             w += windowSamples
         }
-        if (perWindowRates.isEmpty()) return nan
-        val median = RustScores.median(perWindowRates)
-        return if (median in SleepStager.respPlausibleRangeBpm) median else nan
     }
 
     @Test
