@@ -2,6 +2,7 @@ package com.noop.analytics
 
 import com.noop.data.GravitySample
 import com.noop.data.HrSample
+import com.noop.data.RrInterval
 import com.noop.data.SleepSession
 import com.noop.data.WhoopRepository
 import kotlinx.coroutines.runBlocking
@@ -33,6 +34,14 @@ class SleepStageHealTest {
     private fun hrStream(start: Long, durationS: Int, bpm: Int): List<HrSample> =
         (0 until durationS).map { HrSample(deviceId = dev, ts = start + it, bpm = bpm) }
 
+    /** Beats at [bpm] over the same span, so the input clears whoop-rs's cardiac-signal floor. */
+    private fun rrStream(start: Long, durationS: Int, bpm: Int): List<RrInterval> {
+        val ms = 60_000 / bpm
+        return (0 until (durationS * 1000L / ms).toInt()).map {
+            RrInterval(deviceId = dev, ts = start + (it * ms) / 1000L, rrMs = ms + (it % 5) * 4)
+        }
+    }
+
     /** Encode a single-stage span to the on-device `[{...}]` stagesJSON (the encoder under test). */
     private fun encoded(start: Long, end: Long, stage: String): String =
         AnalyticsEngine.encodeStages(listOf(StageSegment(start = start, end = end, stage = stage)))!!
@@ -53,7 +62,7 @@ class SleepStageHealTest {
         val storedDetected = encoded(start, start + 3 * 60 * 60, "light") // a 3h detected block
         val fabricated = SleepWindowReclip.reclip(storedDetected, start, start + 3 * 60 * 60, start, end)!!
 
-        val real = SleepStageHealer.restageFromSamples(start, end, grav, hr, emptyList(), emptyList())
+        val real = SleepStageHealer.restageFromSamples(start, end, grav, hr, rrStream(start, dur, 50), emptyList())
         assertNotNull("dense raw over the locked window must re-derive real stages", real)
         assertNotEquals("real stages must differ from the fabricated reclip block", fabricated, real)
         // Real re-derive is a multi-segment hypnogram, not the 2-segment reclip approximation.
@@ -102,8 +111,8 @@ class SleepStageHealTest {
         val grav = stillGravity(start, dur)
         val hr = hrStream(start, dur, 50)
 
-        val first = SleepStageHealer.restageFromSamples(start, end, grav, hr, emptyList(), emptyList())
-        val second = SleepStageHealer.restageFromSamples(start, end, grav, hr, emptyList(), emptyList())
+        val first = SleepStageHealer.restageFromSamples(start, end, grav, hr, rrStream(start, dur, 50), emptyList())
+        val second = SleepStageHealer.restageFromSamples(start, end, grav, hr, rrStream(start, dur, 50), emptyList())
         assertNotNull(first)
         assertEquals("re-deriving over identical bounds+raw must be byte-identical (equality-skip)", first, second)
     }
@@ -299,6 +308,7 @@ class SleepStageHealTest {
         val freshEnd = start + 6 * 60 * 60
         val grav = stillGravity(start, 6 * 60 * 60)
         val hr = hrStream(start, 6 * 60 * 60, 50)
+        val rr = rrStream(start, 6 * 60 * 60, 50)
         val edited = SleepSession(
             deviceId = "my-whoop-noop", startTs = start, endTs = shortEnd,
             stagesJSON = encoded(start, shortEnd, "wake"), userEdited = true,
@@ -309,7 +319,7 @@ class SleepStageHealTest {
         assertEquals(1, refreshWrites)
         val (afterHeal, healWrites) = runHealLoop(store, afterRefresh) { row ->
             SleepStageHealer.restageFromSamples(
-                row.effectiveStartTs, row.effectiveEndTs, grav, hr, emptyList(), emptyList(),
+                row.effectiveStartTs, row.effectiveEndTs, grav, hr, rr, emptyList(),
             )
         }
         assertEquals("the refreshed night must then re-stage", 1, healWrites)

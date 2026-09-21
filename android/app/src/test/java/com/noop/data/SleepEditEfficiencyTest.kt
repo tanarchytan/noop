@@ -104,7 +104,11 @@ class SleepEditEfficiencyTest {
 
     // ── The nap path seeds the same number from the same owner ───────────────────────────────────────
 
-    private fun nap(gravity: List<GravitySample>): SleepSession {
+    private fun nap(
+        gravity: List<GravitySample>,
+        hr: List<HrSample> = emptyList(),
+        rr: List<RrInterval> = emptyList(),
+    ): SleepSession {
         val written = ArrayList<SleepSession>()
         val dao = Proxy.newProxyInstance(
             WhoopDao::class.java.classLoader,
@@ -112,7 +116,9 @@ class SleepEditEfficiencyTest {
         ) { _, method, args ->
             when (method.name) {
                 "gravitySamples" -> gravity
-                "hrSamples", "rrIntervals", "stepSamples" -> emptyList<Any>()
+                "hrSamples" -> hr
+                "rrIntervals" -> rr
+                "stepSamples" -> emptyList<Any>()
                 "insertSleepSession" -> {
                     written.add(args[0] as SleepSession)
                     1L
@@ -129,7 +135,10 @@ class SleepEditEfficiencyTest {
     fun aStagedNapSeedsAnEfficiencyItsOwnStagesAgreeWith() {
         // Dense gravity (1/min over the hour, floor is 30) so the whoop-rs stager runs for real.
         val grav = (0 until 60).map { GravitySample("whoop-AA:BB", bed + it * 60L, 0.0, 0.0, 1.0) }
-        val row = nap(grav)
+        // Cardiac signal too: whoop-rs refuses to stage a span with no beats behind it.
+        val hr = (0 until 3_600).map { HrSample("whoop-AA:BB", bed + it, 50) }
+        val rr = (0 until 3_000).map { RrInterval("whoop-AA:BB", bed + (it * 1_200L) / 1_000L, 1_200 + (it % 5) * 4) }
+        val row = nap(grav, hr, rr)
         assertNotNull("dense raw must stage asleep time, not fall back to one wake block", row.efficiency)
         assertEquals(selfConsistent(row), row.efficiency)
     }
