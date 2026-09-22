@@ -231,9 +231,21 @@ class WhoopConnectionService : Service() {
                             .mapNotNull { s -> s.soc?.let { s.ts to it } }
                         val rated = if (state.whoop5Detected) BatteryEstimator.ratedLifeHoursWhoop5
                                     else BatteryEstimator.ratedLifeHoursWhoop4
+                        // Battery test mode: the trace twin returns the SAME Estimate plus its lines,
+                        // so the alert reads one number either way and the BATTERY domain's killer
+                        // trace reaches the report instead of always reading MISSING.
+                        val estimate = if (com.noop.testcentre.TestCentre.from(applicationContext)
+                                .active(com.noop.testcentre.TestDomain.BATTERY)
+                        ) {
+                            val (e, lines) = BatteryEstimator.estimateTrace(samples, rated)
+                            lines.forEach { ble.externalLog(it, com.noop.testcentre.TestDomain.BATTERY) }
+                            e
+                        } else {
+                            BatteryEstimator.estimate(samples, rated)
+                        }
                         BatteryAlertNotifier.onRuntimeEstimate(
                             this@WhoopConnectionService,
-                            remainingHours = BatteryEstimator.estimate(samples, rated)?.hoursRemaining,
+                            remainingHours = estimate?.hoursRemaining,
                             charging = state.charging,
                         )
                     }
