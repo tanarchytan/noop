@@ -79,25 +79,8 @@ fun WhatsNewSheet(onClose: () -> Unit) {
 // MARK: - Header ("What's new" + "NOOP <version>" + close X)
 
 @Composable
-private fun Header(onClose: () -> Unit) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(20.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(Metrics.space12),
-    ) {
-        Column(
-            modifier = Modifier.weight(1f),
-            verticalArrangement = Arrangement.spacedBy(Metrics.space4),
-        ) {
-            Overline("What's new", color = Palette.textTertiary)
-            Text("NOOP ${AppChangelog.CURRENT_VERSION}", style = NoopType.display(26f), color = Palette.textPrimary)
-            Text("Release notes", style = NoopType.caption, color = Palette.textSecondary)
-        }
-        CloseButton(onClick = onClose)
-    }
-}
+private fun Header(onClose: () -> Unit) =
+    SheetHeader("What's new", "NOOP ${AppChangelog.CURRENT_VERSION}", "Release notes", onClose)
 
 // MARK: - "WHAT TO EXPECT" card (icon + title + body per expectation)
 

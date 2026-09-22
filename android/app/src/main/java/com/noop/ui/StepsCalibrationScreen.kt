@@ -179,20 +179,8 @@ fun StepsCalibrationScreen(
 // MARK: - Header / footer
 
 @Composable
-private fun Header(onClose: () -> Unit) {
-    Row(
-        modifier = Modifier.fillMaxWidth().padding(Metrics.screenRowSpacing),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(Metrics.space12),
-    ) {
-        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(Metrics.space4)) {
-            Overline("Steps estimate", color = Palette.textTertiary)
-            Text("Calibrate your steps", style = NoopType.display(26f), color = Palette.textPrimary)
-            Text("WHOOP 4.0 · motion → steps", style = NoopType.caption, color = Palette.textSecondary)
-        }
-        CloseButton(onClick = onClose)
-    }
-}
+private fun Header(onClose: () -> Unit) =
+    SheetHeader("Steps estimate", "Calibrate your steps", "WHOOP 4.0 · motion → steps", onClose)
 
 @Composable
 private fun Footer(onClose: () -> Unit) {

@@ -1514,6 +1514,23 @@ fun CloseButton(onClick: () -> Unit, modifier: Modifier = Modifier.size(36.dp)) 
     }
 }
 
+/** The overline + title + caption + close row every full-screen sheet opens with. */
+@Composable
+fun SheetHeader(overline: String, title: String, subtitle: String, onClose: () -> Unit) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(Metrics.screenRowSpacing),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(Metrics.space12),
+    ) {
+        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(Metrics.space4)) {
+            Overline(overline, color = Palette.textTertiary)
+            Text(title, style = NoopType.display(26f), color = Palette.textPrimary)
+            Text(subtitle, style = NoopType.caption, color = Palette.textSecondary)
+        }
+        CloseButton(onClick = onClose)
+    }
+}
+
 /** Hairline divider row used inside settings/automation cards. */
 @Composable
 fun RowDivider() {
