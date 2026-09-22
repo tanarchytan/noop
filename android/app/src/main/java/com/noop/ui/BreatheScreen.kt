@@ -159,6 +159,9 @@ fun BreatheScreen(viewModel: AppViewModel) {
     }
     val tonePlayer = remember { BreathTonePlayer(context) }
     DisposableEffect(Unit) { onDispose { tonePlayer.release() } }
+    // The BPM hero and the R-R readouts are live, and are shown before a session starts, so the want
+    // is unconditional rather than gated on `running`. Ref-counted, so Live holding it too is fine.
+    RealtimeHrWhileVisible(viewModel, RealtimeHrOwner.BREATHE)
     var phase by remember { mutableStateOf(Phase.Inhale) }
     var sessionSeconds by remember { mutableIntStateOf(0) }
     var breathCount by remember { mutableIntStateOf(0) }

@@ -31,6 +31,7 @@ import kotlinx.coroutines.delay
 enum class RealtimeHrOwner(val backgroundEligible: Boolean) {
     HEALTH(backgroundEligible = false),
     HRV_SNAPSHOT(backgroundEligible = false),
+    BREATHE(backgroundEligible = false),
     LIVE_WORKOUT(backgroundEligible = true),
     LIVE_SESSION(backgroundEligible = true),
 }
