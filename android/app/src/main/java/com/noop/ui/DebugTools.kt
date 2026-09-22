@@ -18,7 +18,6 @@ import com.noop.testcentre.TestBundleAssembler
 import com.noop.testcentre.TestBundleMeta
 import com.noop.testcentre.TestDomain
 import java.io.File
-import java.util.Calendar
 
 // MARK: - Debug export
 //
@@ -256,7 +255,7 @@ object DebugExportScheduler {
      * OFF: it clears any persisted enable flag and cancels the unique work, so an install that had it
      * enabled before this cleanup stops firing an export nobody can turn off. The worker + settings stay in
      * the tree as a dormant scaffold; if the feature is ever re-added, restore the enqueue path here (a
-     * PeriodicWorkRequestBuilder + the [delayToNextOccurrenceMs] timing helper are kept for that). (noop-tan)
+     * PeriodicWorkRequestBuilder + [BackupSync.delayToNextBackupMs], which owns that arithmetic). (noop-tan)
      */
     fun reschedule(context: Context, settings: DebugExportSettings = DebugExportSettings.from(context)) {
         if (settings.enabled) settings.enabled = false
@@ -273,22 +272,6 @@ object DebugExportScheduler {
     /** Cancel the daily export entirely. */
     fun cancel(context: Context) {
         WorkManager.getInstance(context.applicationContext).cancelUniqueWork(WORK_NAME)
-    }
-
-    /**
-     * Milliseconds from [nowMs] until the next wall-clock occurrence of [minuteOfDay] (today if it's still
-     * ahead, else tomorrow). Pure + injectable so the unit test pins the arithmetic without a real clock.
-     */
-    fun delayToNextOccurrenceMs(minuteOfDay: Int, nowMs: Long = System.currentTimeMillis()): Long {
-        val next = Calendar.getInstance().apply {
-            timeInMillis = nowMs
-            set(Calendar.HOUR_OF_DAY, minuteOfDay / 60)
-            set(Calendar.MINUTE, minuteOfDay % 60)
-            set(Calendar.SECOND, 0)
-            set(Calendar.MILLISECOND, 0)
-            if (timeInMillis <= nowMs) add(Calendar.DAY_OF_YEAR, 1)
-        }
-        return next.timeInMillis - nowMs
     }
 }
 

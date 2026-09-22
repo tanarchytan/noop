@@ -78,6 +78,43 @@ class BackupSyncTest {
         assertEquals(30, fire.get(java.util.Calendar.MINUTE))
     }
 
+    /** Local midnight today, for building deterministic "now" instants in the device timezone. */
+    private fun midnightToday(): Long = java.util.Calendar.getInstance(java.util.TimeZone.getDefault()).apply {
+        set(java.util.Calendar.HOUR_OF_DAY, 0); set(java.util.Calendar.MINUTE, 0)
+        set(java.util.Calendar.SECOND, 0); set(java.util.Calendar.MILLISECOND, 0)
+    }.timeInMillis
+
+    @Test fun targetLaterTodayDelaysWithinTheSameDay() {
+        // now = 06:00, target = 07:00 → 1h ahead, today.
+        val now = midnightToday() + 6 * 60 * 60 * 1000L
+        assertEquals(60L * 60L * 1000L, BackupSync.delayToNextBackupMs(now, minuteOfDay = 7 * 60))
+    }
+
+    @Test fun targetEarlierTodayRollsToTomorrow() {
+        // now = 09:00, target = 07:00 → already passed → tomorrow 07:00 = 22h ahead.
+        val now = midnightToday() + 9 * 60 * 60 * 1000L
+        assertEquals(22L * 60L * 60L * 1000L, BackupSync.delayToNextBackupMs(now, minuteOfDay = 7 * 60))
+    }
+
+    @Test fun targetEqualToNowRollsToTomorrow() {
+        // now == target (07:00 exactly) → "<=" rolls forward a full day so we never fire instantly.
+        val now = midnightToday() + 7 * 60 * 60 * 1000L
+        assertEquals(24L * 60L * 60L * 1000L, BackupSync.delayToNextBackupMs(now, minuteOfDay = 7 * 60))
+    }
+
+    @Test fun delayIsAlwaysPositiveAndWithinADay() {
+        val midnight = midnightToday()
+        // Any time-of-day, sampled across the day, must yield a delay in (0, 24h].
+        for (minute in intArrayOf(0, 1, 6 * 60, 12 * 60, 23 * 60 + 59)) {
+            for (hourNow in 0..23) {
+                val now = midnight + hourNow * 60 * 60 * 1000L + 137L // odd offset to avoid exact ties
+                val delay = BackupSync.delayToNextBackupMs(now, minute)
+                assertTrue("delay must be > 0", delay > 0L)
+                assertTrue("delay must be <= 24h", delay <= 24L * 60L * 60L * 1000L)
+            }
+        }
+    }
+
     @Test fun catchUpDueOnlyAfterADay() {
         val last = 1_782_000_000_000L
         assertFalse(BackupSync.isCatchUpDue(last, last))                       // same instant
