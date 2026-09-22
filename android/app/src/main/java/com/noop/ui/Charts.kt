@@ -23,6 +23,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -731,6 +732,12 @@ fun TimelineChart(
     val axisColor = Palette.textTertiary
     val gridColor = Palette.hairline.copy(alpha = StrandAlpha.subtleLine)
 
+    // The gesture handler below is keyed on `bounds`, which does not move while the window does, so
+    // the closure outlives the values it reads. These give it the current window without rebuilding
+    // it, which would cancel a pinch mid-gesture.
+    val currentWindowStart by rememberUpdatedState(windowStart)
+    val currentWindowEnd by rememberUpdatedState(windowEnd)
+
     val axSummary = seriesSummary(vis.map { it.value }, "Timeline")
     Box(
         modifier = modifier
@@ -740,7 +747,7 @@ fun TimelineChart(
             .pointerInput(bounds) {
                 detectTransformGestures { centroid, pan, zoom, _ ->
                     val width = size.width.toFloat().coerceAtLeast(1f)
-                    var window = windowStart..windowEnd
+                    var window = currentWindowStart..currentWindowEnd
                     if (zoom != 1f) {
                         val frac = (centroid.x / width).coerceIn(0f, 1f)
                         window = zoomedWindow(window, zoom, frac, bounds)
