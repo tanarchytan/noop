@@ -686,7 +686,7 @@ internal fun vitalHistorySpanDays(points: List<Pair<String, Double>>): Long {
     return (last.toEpochDay() - first.toEpochDay()).coerceAtLeast(0L)
 }
 
-/** Which range chips have anything NEW to show. filterVitalPoints windows off the
+/** Which range chips have anything NEW to show. [filterPointsToWindow] windows off the
  * LATEST reading, so with under a week of history every window returned the identical full point set
  * and all six chips drew the same line (a week of data stretched full-width under a "1Y" label). A
  * range only differs from its predecessor once the data span EXCEEDS the predecessor's window, so the
@@ -744,12 +744,7 @@ internal fun filterPointsToWindow(
     windowDays: Long?,
 ): List<Pair<String, Double>> = filterToDayWindow(points, windowDays) { it.first }
 
-internal fun filterVitalPoints(
-    points: List<Pair<String, Double>>,
-    range: VitalDetailRange,
-): List<Pair<String, Double>> = filterPointsToWindow(points, range.days)
-
-/** [filterVitalPoints] for the source-carrying [VitalReading] list — the SAME latest-relative window,
+/** [filterPointsToWindow] for the source-carrying [VitalReading] list — the SAME latest-relative window,
  * so the readings table and the chart always agree on which readings are in view. */
 internal fun filterVitalReadings(
     readings: List<VitalReading>,

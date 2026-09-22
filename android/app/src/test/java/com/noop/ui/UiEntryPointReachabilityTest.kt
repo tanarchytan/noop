@@ -33,7 +33,7 @@ class UiEntryPointReachabilityTest {
         "buildingHint", "restStageLowConfidence", "dayNavCanGoNewer",
         "recordingStateFor", "dayOwnerSource", "provenanceBadgeLabel",
         // Sleep + Health presentation.
-        "mainSleepReasonText", "filterVitalPoints", "Hypnogram",
+        "mainSleepReasonText", "Hypnogram",
         // Journal + day arithmetic.
         "journalDisplayName", "mergeJournalCatalog", "logicalDayStartEpochSecond",
         // The only writers for two lists whose readers ARE used; the caller was lost in a source scrub,

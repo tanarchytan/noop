@@ -82,7 +82,7 @@ class VitalReadingsTableTest {
     }
 
     @Test fun readingFilterMatchesPointFilterWindowInEveryRange() {
-        // The header counts filterVitalReadings; the chart consumes filterVitalPoints. They must window
+        // The header counts filterVitalReadings; the chart consumes filterPointsToWindow. They must window
         // the SAME days in every range, or the "N readings" header and the table could disagree.
         val readings = (0 until 30).map {
             VitalReading(LocalDate.parse("2026-01-01").plusDays(it.toLong()).toString(), 60.0 + it, strap)
@@ -90,7 +90,7 @@ class VitalReadingsTableTest {
         val points = readings.map { it.day to it.value }
         VitalDetailRange.entries.forEach { range ->
             assertEquals(
-                filterVitalPoints(points, range).map { it.first },
+                filterPointsToWindow(points, range.days).map { it.first },
                 filterVitalReadings(readings, range).map { it.day },
             )
         }

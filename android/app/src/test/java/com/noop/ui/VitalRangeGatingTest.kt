@@ -4,7 +4,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 
 /**
- * Range-chip gating for the Vital Signs detail (#943, ryanbr). filterVitalPoints windows off the
+ * Range-chip gating for the Vital Signs detail (#943, ryanbr). filterPointsToWindow windows off the
  * LATEST reading, so with short history every window returns the same full point set and all six
  * chips drew byte-identical charts. A range only shows something NEW once the data span EXCEEDS the
  * previous range's window, so the unlocked chips form a contiguous prefix with W always available
@@ -95,18 +95,18 @@ class VitalRangeGatingTest {
         val points = dailyPoints(10)
         val unlocked = unlockedVitalRanges(vitalHistorySpanDays(points))
         assertEquals(listOf(VitalDetailRange.WEEK, VitalDetailRange.MONTH, VitalDetailRange.ALL), unlocked)
-        assertEquals(7, filterVitalPoints(points, VitalDetailRange.WEEK).size)
-        assertEquals(10, filterVitalPoints(points, VitalDetailRange.MONTH).size)
+        assertEquals(7, filterPointsToWindow(points, VitalDetailRange.WEEK.days).size)
+        assertEquals(10, filterPointsToWindow(points, VitalDetailRange.MONTH.days).size)
         assertEquals(
-            filterVitalPoints(points, VitalDetailRange.MONTH),
-            filterVitalPoints(points, VitalDetailRange.THREE_MONTH),
+            filterPointsToWindow(points, VitalDetailRange.MONTH.days),
+            filterPointsToWindow(points, VitalDetailRange.THREE_MONTH.days),
         )
     }
 
     @Test fun filterWindowsOffTheLatestReadingInclusive() {
         // The WEEK window is latestDate-6..latestDate, so exactly the last 7 daily points survive.
         val points = dailyPoints(30)
-        val week = filterVitalPoints(points, VitalDetailRange.WEEK)
+        val week = filterPointsToWindow(points, VitalDetailRange.WEEK.days)
         assertEquals(7, week.size)
         assertEquals(points.takeLast(7), week)
     }
