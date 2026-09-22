@@ -154,40 +154,40 @@ internal fun StrainZoneCard(
     }
 }
 
-/** STEPS — the week's daily step totals. Renders nothing when the week holds no count. */
+/** One week-bar card for one count metric. Renders nothing when the week holds no value at all. */
 @Composable
-internal fun StrainStepsCard(
+private fun StrainCountWeekCard(
+    title: String,
+    values: List<Double?>,
+    color: Color,
     week: StrainWeek,
-    modifier: Modifier = Modifier,
-    onOpen: (() -> Unit)? = null,
+    modifier: Modifier,
+    onOpen: (() -> Unit)?,
 ) {
-    if (week.steps.all { it == null }) return
-    StrainWeekCard(title = "Steps", modifier = modifier, onOpen = onOpen) {
+    if (values.all { it == null }) return
+    StrainWeekCard(title = title, modifier = modifier, onOpen = onOpen) {
         WeekBarChart(
-            values = week.steps,
+            values = values,
             dayLabels = week.labels,
-            color = Palette.metricCyan,
+            color = color,
             format = { strainCountText(it) },
             highlightIndex = week.todayIndex,
         )
     }
 }
 
-/** CALORIES — the week's whole-day energy estimate. Renders nothing when the week holds no estimate. */
+/** STEPS — the week's daily step totals. */
+@Composable
+internal fun StrainStepsCard(
+    week: StrainWeek,
+    modifier: Modifier = Modifier,
+    onOpen: (() -> Unit)? = null,
+) = StrainCountWeekCard("Steps", week.steps, Palette.metricCyan, week, modifier, onOpen)
+
+/** CALORIES — the week's whole-day energy estimate. */
 @Composable
 internal fun StrainCaloriesCard(
     week: StrainWeek,
     modifier: Modifier = Modifier,
     onOpen: (() -> Unit)? = null,
-) {
-    if (week.calories.all { it == null }) return
-    StrainWeekCard(title = "Calories", modifier = modifier, onOpen = onOpen) {
-        WeekBarChart(
-            values = week.calories,
-            dayLabels = week.labels,
-            color = Palette.metricAmber,
-            format = { strainCountText(it) },
-            highlightIndex = week.todayIndex,
-        )
-    }
-}
+) = StrainCountWeekCard("Calories", week.calories, Palette.metricAmber, week, modifier, onOpen)
