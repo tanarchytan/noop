@@ -179,19 +179,25 @@ internal fun SleepPerformanceTrendCard(series: List<Double?>, dates: List<String
             axisMax = SLEEP_PERFORMANCE_SCALE_MAX,
             height = Metrics.compactChartHeight,
         )
-        // The footer describes the nights that HAPPENED, so a gap neither averages in nor wins "Latest".
-        ChartCardFooter(
-            listOf(
-                "Latest" to pctValue(read.lastOrNull()),
-                "Week avg" to pctValue(RustScores.mean(read)),
-                "Best" to pctValue(read.maxOrNull()),
-            ),
-        )
+        SleepTrendPctFooter(read)
     }
 }
 
 /** The score's own ceiling, so one 92% bar is the same height on every week. */
 private const val SLEEP_PERFORMANCE_SCALE_MAX = 100.0
+
+/** Latest / week average / best for a percent trend card. Reads only the nights that HAPPENED, so a
+ * gap neither averages in nor wins "Latest". */
+@Composable
+private fun SleepTrendPctFooter(read: List<Double>) {
+    ChartCardFooter(
+        listOf(
+            "Latest" to pctValue(read.lastOrNull()),
+            "Week avg" to pctValue(RustScores.mean(read)),
+            "Best" to pctValue(read.maxOrNull()),
+        ),
+    )
+}
 
 /**
  * SLEEP EFFICIENCY — the trailing week as a line, with the chevron opening the metric's own
@@ -214,14 +220,7 @@ internal fun SleepEfficiencyTrendCard(series: List<Double?>, dates: List<String>
             format = { pctValue(it) },
             height = Metrics.compactChartHeight,
         )
-        // The footer describes the nights that HAPPENED, so a gap neither averages in nor wins "Latest".
-        ChartCardFooter(
-            listOf(
-                "Latest" to pctValue(read.lastOrNull()),
-                "Week avg" to pctValue(RustScores.mean(read)),
-                "Best" to pctValue(read.maxOrNull()),
-            ),
-        )
+        SleepTrendPctFooter(read)
     }
 }
 
