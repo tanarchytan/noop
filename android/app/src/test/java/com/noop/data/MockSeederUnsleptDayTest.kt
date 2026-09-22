@@ -92,8 +92,8 @@ class MockSeederUnsleptDayTest {
      *  outside the seeded run and the evening onset would never be written. */
     @Test
     fun theUnsleptDayLeavesRoomForTheNightThatFollowsIt() {
-        assertTrue(MockSeeder.UNSLEPT_DAY_INDEX in 1 until MockSeeder.DAYS - 1)
-        assertEquals(MockSeeder.DAYS - 1, MockSeeder.UNSLEPT_DAY_INDEX + 1)
+        assertTrue(MockSeeder.UNSLEPT_DAY_INDEX in 1 until MockSeeder.SEED_DAYS - 1)
+        assertEquals(MockSeeder.SEED_DAYS - 1, MockSeeder.UNSLEPT_DAY_INDEX + 1)
     }
 
     /** The onset that follows it is an EVENING one, which is what makes a night whose start day differs

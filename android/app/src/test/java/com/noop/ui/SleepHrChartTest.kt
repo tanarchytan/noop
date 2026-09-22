@@ -197,7 +197,7 @@ class SleepHrChartTest {
      */
     @Test
     fun aDayWithNoSessionHasNoTraceAndStillHasAnAxis() {
-        assertEquals("the fixture is the day before the last", MockSeeder.DAYS - 2, MockSeeder.UNSLEPT_DAY_INDEX)
+        assertEquals("the fixture is the day before the last", MockSeeder.SEED_DAYS - 2, MockSeeder.UNSLEPT_DAY_INDEX)
         val onset = 1_700_000_000L
         val (start, end) = hrChartWindow(onset, onset + 8 * hour)
         val drawable = hrChartSeries(emptyList(), start, end)

@@ -86,7 +86,7 @@ class SleepCardFixturesTest {
      */
     @Test
     fun aDayWithNoSessionKeepsItsColumnAndDrawsNothingInIt() {
-        assertEquals("the fixture is the day before the last", MockSeeder.DAYS - 2, MockSeeder.UNSLEPT_DAY_INDEX)
+        assertEquals("the fixture is the day before the last", MockSeeder.SEED_DAYS - 2, MockSeeder.UNSLEPT_DAY_INDEX)
         val before = span(3, 23, 10, 6, 50)
         val after = span(1, MockSeeder.CRASH_OUT_HOUR, MockSeeder.CRASH_OUT_MINUTE, 5, 12)
         // Day 2 back has no block at all, which is what the seeder writes.

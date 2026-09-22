@@ -153,7 +153,7 @@ object MockScenarios {
             }
             if (onMoved && s.deviceId == MockSeeder.WHOOP) s.copy(deviceId = MockSeeder.SECOND_STRAP) else s
         }
-        val windowStart = today.minusDays((MockSeeder.DAYS - 1).toLong())
+        val windowStart = today.minusDays((MockSeeder.SEED_DAYS - 1).toLong())
 
         return base.copy(
             devices = base.devices + MockDeviceRow(MockSeeder.SECOND_STRAP, "WHOOP 4.0 (mock)"),

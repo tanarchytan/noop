@@ -33,8 +33,8 @@ object MockClaims {
         }
 
     private fun typical(ds: MockDataset, zone: ZoneId) = listOf(
-        count("days with a row", MockSeeder.DAYS, ds.daily.size),
-        count("nights", MockSeeder.DAYS - 1, ds.sleeps.size),
+        count("days with a row", MockSeeder.SEED_DAYS, ds.daily.size),
+        count("nights", MockSeeder.SEED_DAYS - 1, ds.sleeps.size),
         count("days with a row but no night", 1, ds.daily.count { it.totalSleepMin == null }),
         count("sources writing rows", 3, sourceCount(ds)),
         stagesAgree(ds, zone),
@@ -52,7 +52,7 @@ object MockClaims {
         val partial = today.minusDays(MockScenarios.PARTIAL_NIGHT_DAY).toString()
         val partialRow = ds.daily.firstOrNull { it.day == partial }
         return listOf(
-            count("days with a row", MockSeeder.DAYS - absent, ds.daily.size),
+            count("days with a row", MockSeeder.SEED_DAYS - absent, ds.daily.size),
             count("days with a row in the last 7", 7 - 1, ds.daily.count { it.day in week }),
             count("nights in the last 7 days", 4, nightsInWeek),
             claim("the unworn day carries", "no row of any kind", rowsOn(ds, unworn, zone)),
@@ -140,7 +140,7 @@ object MockClaims {
             night != null && night.deviceId != s.deviceId
         }
         return listOf(
-            count("days owned by the second strap", MockSeeder.DAYS - MockScenarios.STRAP_SWAP_DAY.toInt(), second.size),
+            count("days owned by the second strap", MockSeeder.SEED_DAYS - MockScenarios.STRAP_SWAP_DAY.toInt(), second.size),
             count("days owned by the first strap", MockScenarios.STRAP_SWAP_DAY.toInt(), first.size),
             count("days claimed by both straps", 0, (second intersect first).size),
             count("HR samples on a different strap from their night", 0, strayHr),

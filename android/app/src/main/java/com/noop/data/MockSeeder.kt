@@ -33,7 +33,7 @@ object MockSeeder {
     // (fitness_age / vo2max_est / vitality / body_age). The computed UNION resolves these under
     // "my-whoop-noop" for the mock, so seeding here (not under "my-whoop") is required or those cards read empty.
     internal const val WHOOP_NOOP = "$WHOOP-noop"
-    internal const val DAYS = 120
+    internal const val SEED_DAYS = 120
 
     /** The mock's second paired device, an Oura ring, and the second WHOOP strap
      *  [MockScenario.TWO_STRAPS] hands the older half of the window to. */
@@ -42,7 +42,7 @@ object MockSeeder {
 
     /** The one day in the window the wearer did not sleep at all: yesterday, so today carries the night
      *  that follows it and both states are on screen. Fixed, never drawn, so every install matches. */
-    internal const val UNSLEPT_DAY_INDEX = DAYS - 2
+    internal const val UNSLEPT_DAY_INDEX = SEED_DAYS - 2
 
     /** Local bedtime on the evening sleep resumes, earlier than the usual ~23:10 so that night's start
      *  day and end day differ. */
@@ -209,25 +209,25 @@ object MockSeeder {
     }
 
     /**
-     * The default dataset: [DAYS] correlated days ending on [today], one of them unslept. A session
+     * The default dataset: [SEED_DAYS] correlated days ending on [today], one of them unslept. A session
      * that would end after [nowSec] is not written at all: today is in progress, and a completed
      * workout four hours from now is a claim the app cannot make.
      */
     private fun typical(today: LocalDate, zone: ZoneId, nowSec: Long): MockDataset {
         val rng = Random(0xC0FFEE)
-        val startDay = today.minusDays((DAYS - 1).toLong())
+        val startDay = today.minusDays((SEED_DAYS - 1).toLong())
 
-        val daily = ArrayList<DailyMetric>(DAYS)
-        val sleeps = ArrayList<SleepSession>(DAYS)
-        val series = ArrayList<MetricSeriesRow>(DAYS * 2)
-        val apple = ArrayList<AppleDaily>(DAYS)
+        val daily = ArrayList<DailyMetric>(SEED_DAYS)
+        val sleeps = ArrayList<SleepSession>(SEED_DAYS)
+        val series = ArrayList<MetricSeriesRow>(SEED_DAYS * 2)
+        val apple = ArrayList<AppleDaily>(SEED_DAYS)
         val workouts = ArrayList<WorkoutRow>()
         val journal = ArrayList<JournalEntry>()
 
         var weight = 79.5
         var fitness = 0.0 // slow upward drift: HRV rises, resting-HR falls, VO2max climbs
 
-        for (i in 0 until DAYS) {
+        for (i in 0 until SEED_DAYS) {
             val date = startDay.plusDays(i.toLong())
             val day = date.toString() // ISO yyyy-MM-dd
             val weekend = date.dayOfWeek.value >= 6
@@ -387,7 +387,7 @@ object MockSeeder {
             }
 
             // --- journal answers for the recent 40 days ---
-            if (i >= DAYS - 40) {
+            if (i >= SEED_DAYS - 40) {
                 journal.add(JournalEntry(WHOOP, day, "Any alcohol?", rng.nextDouble() < 0.18))
                 journal.add(JournalEntry(WHOOP, day, "Caffeine after 4pm?", rng.nextDouble() < 0.30))
                 journal.add(JournalEntry(WHOOP, day, "Felt stressed?", rng.nextDouble() < 0.28))
@@ -401,7 +401,7 @@ object MockSeeder {
         var vo2 = 44.0
         var vitality = 55.0      // weekly Vitality (0–100) trending up as the mock habits improve
         var bodyAgeMock = 40.0   // Body Age (years) trending down (younger)
-        for (i in 0 until DAYS) {
+        for (i in 0 until SEED_DAYS) {
             val date = startDay.plusDays(i.toLong())
             if (date.dayOfWeek.value != 6) continue // 6 = Saturday
             val day = date.toString()
