@@ -261,9 +261,15 @@ tasks.withType<Test>().configureEach { dependsOn(buildRustHostDll) }
 // milliseconds. The onlyIf covers one case and one only: no sibling whoop-rs checkout at all, as on a
 // CI runner building the app alone. A checkout that IS present with a missing cargo or cargo-ndk fails
 // the build from inside the script, rather than quietly shipping whatever `.so` is lying around.
+// --app-src points the script at THIS module, not its own default. Without it every worktree writes
+// its bindings and `.so` into one fixed checkout, leaving the tree that ran the build holding stale
+// artifacts and another tree holding artifacts it never built.
 val syncRustJniLibs = tasks.register<Exec>("syncRustJniLibs") {
     workingDir = whoopRsDir
-    commandLine("python", whoopRsDir.resolve("tools/sync-jnilibs.py").absolutePath, "--ensure")
+    commandLine(
+        "python", whoopRsDir.resolve("tools/sync-jnilibs.py").absolutePath, "--ensure",
+        "--app-src", projectDir.resolve("src").absolutePath,
+    )
     onlyIf { whoopRsDir.resolve("tools/sync-jnilibs.py").exists() }
 }
 tasks.matching { it.name.startsWith("merge") && it.name.endsWith("JniLibFolders") }
