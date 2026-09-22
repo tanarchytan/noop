@@ -77,13 +77,12 @@ class SleepEndAdjustedMigrationTest {
         assertEquals("the user's wake is what is read", 7_600L, row.effectiveEndTs)
     }
 
-    /** Duration spans the EFFECTIVE bounds, so both halves of an edit reach it. */
+    /** BOTH bounds read their hand-set half, so an edit to either end reaches every reader. */
     @Test
-    fun durationUsesBothEffectiveBounds() {
+    fun bothBoundsReadTheirHandSetHalf() {
         // Hand-set onset 400, hand-set wake 400 + 2 h; the detected 1_000 -> 5_000 must not be read.
         val row = session(endTs = 5_000, endTsAdjusted = 400 + 7_200, startTsAdjusted = 400)
         assertEquals(400L, row.effectiveStartTs)
-        assertEquals(7_600L, row.effectiveEndTs)
-        assertEquals("duration must read effective onset -> effective wake", 2.0, row.durationHours, 1e-9)
+        assertEquals(7_600L, row.effectiveEndTs)
     }
 }

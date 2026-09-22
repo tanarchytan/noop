@@ -339,9 +339,6 @@ data class SleepSession(
     /** The wake time to DISPLAY / sort / re-stage by: the user's hand-set wake when they set one,
      *  else the detected [endTs], which the heal may still refresh. */
     val effectiveEndTs: Long get() = endTsAdjusted ?: endTs
-
-    /** Whole-block duration in hours (effective onset → wake). */
-    val durationHours: Double get() = (effectiveEndTs - effectiveStartTs) / 3600.0
 }
 
 /**
