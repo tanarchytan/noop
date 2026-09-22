@@ -42,6 +42,7 @@ import com.noop.ui.Overline
 import com.noop.ui.GlowRing
 import com.noop.ui.Palette
 import com.noop.ui.ProfileAvatar
+import com.noop.ui.RING_STROKE_FRACTION
 import com.noop.ui.StatePill
 import com.noop.ui.StrandTone
 import com.noop.ui.batteryPillTone
@@ -55,9 +56,6 @@ import kotlin.math.roundToInt
 //
 // The sticky bar (avatar · day pager · strap chip), the three hero rings, and the compact ring row the
 // hero collapses into on scroll. No figure is computed here: every value arrives already scored.
-
-/** Ring stroke as a fraction of the ring diameter — the WHOOP arc weight. */
-private const val RING_STROKE_FRACTION = 0.10f
 
 /** The compact row's ring stroke; a small ring needs a proportionally heavier arc to read. */
 private const val COMPACT_RING_STROKE_FRACTION = 0.16f
