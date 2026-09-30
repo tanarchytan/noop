@@ -287,4 +287,35 @@ class LabMarkerCsvImportTest {
         assertEquals("custom_apo_b", LabMarkerCsvImport.customKey("Apo B"))
         assertEquals("", LabMarkerCsvImport.customKey("  ???  "))
     }
+
+    /** A white-cell differential lists each cell type as a count AND a percentage; both used to slug to
+     *  `custom_lymph`, so on the same day the "%" row overwrote the count row. */
+    @Test fun percentRowDoesNotOverwriteCountRow() {
+        val csv = """
+            date,marker,value,unit
+            2026-05-01,LYMPH,1.9,10^9/L
+            2026-05-01,LYMPH %,31.2,%
+            2026-05-01,BASO,0.03,10^9/L
+            2026-05-01,BASO %,0.5,%
+        """.trimIndent()
+        val result = LabMarkerCsvImport.parse(csv)
+        assertEquals(4, result.importedReadings)
+        assertEquals(
+            listOf("custom_baso", "custom_baso_pct", "custom_lymph", "custom_lymph_pct"),
+            result.customMarkerKeys,
+        )
+        assertEquals(1.9, result.rows.first { it.markerKey == "custom_lymph" }.value, 1e-9)
+        assertEquals(31.2, result.rows.first { it.markerKey == "custom_lymph_pct" }.value, 1e-9)
+    }
+
+    /** Names without "%" keep their pre-"pct" keys; "%" is a token joined to a letter/digit by one "_". */
+    @Test fun customKeyIsPinned() {
+        val names = listOf(
+            "LYMPH", "LYMPH %", "LYMPH%", "Lymph (%)", "BASO", "BASO %", "% Neutrophils", "NEUT  %", "a%%b", "%", "Apo B", "Magnesium", "  ???  ", "A - B", "Vitamin D (25-OH)", "MCHC g/dL", "HbA1c (IFCC)",
+        )
+        val expected = listOf(
+            "custom_lymph", "custom_lymph_pct", "custom_lymph_pct", "custom_lymph_pct", "custom_baso", "custom_baso_pct", "custom_pct_neutrophils", "custom_neut_pct", "custom_a_pctpct_b", "custom_pct", "custom_apo_b", "custom_magnesium", "", "custom_a__b", "custom_vitamin_d_25_oh", "custom_mchc_g_dl", "custom_hba1c_ifcc",
+        )
+        assertEquals(expected, names.map { LabMarkerCsvImport.customKey(it) })
+    }
 }
