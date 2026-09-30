@@ -69,6 +69,32 @@ object ExerciseTypes {
         // Bodybuilding: no dedicated HC type, so it rides on STRENGTH_TRAINING for writeback and keeps
         // "Bodybuilding" on our own rows. No route → GPS off.
         "Bodybuilding" to EX.EXERCISE_TYPE_STRENGTH_TRAINING,
+        // WHOOP-parity batch: sports in WHOOP's activity list with no NOOP entry, so imports and manual
+        // entries stop drifting apart on spelling. A specific HC type only where the activity genuinely
+        // belongs to it; everything else rides OTHER_WORKOUT rather than overstating the match (the type
+        // is invisible in NOOP but is what other health apps read). All keep their own label.
+        // Nordic walking: HC has no pole-walking type, WALKING is what it is (as Treadmill walk above).
+        "Nordic walking" to EX.EXERCISE_TYPE_WALKING,
+        "Ballet" to EX.EXERCISE_TYPE_DANCING,
+        "Billiards" to EX.EXERCISE_TYPE_OTHER_WORKOUT,
+        "Breakdancing" to EX.EXERCISE_TYPE_DANCING,
+        // Cheerleading: tumbling and stunts are the gymnastic half of it.
+        "Cheerleading" to EX.EXERCISE_TYPE_GYMNASTICS,
+        "Darts" to EX.EXERCISE_TYPE_OTHER_WORKOUT,
+        "Disc golf" to EX.EXERCISE_TYPE_FRISBEE_DISC,
+        // Hurling/Camogie: one entry for both codes, as WHOOP lists them.
+        "Hurling/Camogie" to EX.EXERCISE_TYPE_OTHER_WORKOUT,
+        "Jiu jitsu" to EX.EXERCISE_TYPE_MARTIAL_ARTS,
+        "Judo" to EX.EXERCISE_TYPE_MARTIAL_ARTS,
+        // Kiteboarding: board on water; the nearest HC has.
+        "Kiteboarding" to EX.EXERCISE_TYPE_SURFING,
+        "Motocross" to EX.EXERCISE_TYPE_OTHER_WORKOUT,
+        "Muay Thai" to EX.EXERCISE_TYPE_MARTIAL_ARTS,
+        "Paintball" to EX.EXERCISE_TYPE_OTHER_WORKOUT,
+        // Parkour: no close HC type; calisthenics would overstate it.
+        "Parkour" to EX.EXERCISE_TYPE_OTHER_WORKOUT,
+        "Polo" to EX.EXERCISE_TYPE_OTHER_WORKOUT,
+        "Skydiving" to EX.EXERCISE_TYPE_OTHER_WORKOUT,
     )
 
     /** Types where a route makes sense -> GPS defaults on. */

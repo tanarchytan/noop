@@ -2056,10 +2056,11 @@ internal fun sportIcon(sport: String): ImageVector {
         s.contains("row") -> Icons.Filled.Rowing
         s.contains("yoga") || s.contains("pilates") || s.contains("meditat") || s.contains("stretch") -> Icons.Filled.SelfImprovement
         s.contains("strength") || s.contains("weight") || s.contains("lift") -> Icons.Filled.FitnessCenter
-        s.contains("box") || s.contains("martial") || s.contains("jiu") || s.contains("judo") || s.contains("karate") -> Icons.Filled.SportsMartialArts
+        s.contains("box") || s.contains("martial") || s.contains("jiu") || s.contains("judo") || s.contains("karate") || s.contains("muay") -> Icons.Filled.SportsMartialArts
         s.contains("hiit") || s.contains("functional") || s.contains("gymnast") -> Icons.Filled.SportsGymnastics
         s.contains("snowboard") -> Icons.Filled.Snowboarding
-        s.contains("ski") -> Icons.Filled.DownhillSkiing
+        // "skydiving" contains "ski"; it is not a snow sport.
+        s.contains("ski") && !s.contains("skydiv") -> Icons.Filled.DownhillSkiing
         // All racquet sports share the tennis glyph (no dedicated icon for padel/pickleball/squash etc.).
         s.contains("tennis") || s.contains("padel") || s.contains("pickle") || s.contains("squash") || s.contains("racquet") || s.contains("badminton") -> Icons.Filled.SportsTennis
         s.contains("volleyball") -> Icons.Filled.SportsVolleyball

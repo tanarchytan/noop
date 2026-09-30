@@ -20,6 +20,28 @@ class WorkoutSportTest {
         assertFalse(WorkoutSport.all.first { it.name == "Yoga" }.isDistanceSport)
     }
 
+    /** The WHOOP-parity batch. Pins the writeback type per sport: a wrong one is invisible in NOOP and
+     *  only shows up in whatever reads Health Connect afterwards. */
+    @Test fun whoopParitySports_writeBackAsTheTypeTheyBelongTo() {
+        fun typeOf(name: String) = WorkoutSport.all.first { it.name == name }.exerciseType
+        assertEquals(ExerciseSessionRecord.EXERCISE_TYPE_WALKING, typeOf("Nordic walking"))
+        assertEquals(ExerciseSessionRecord.EXERCISE_TYPE_MARTIAL_ARTS, typeOf("Jiu jitsu"))
+        assertEquals(ExerciseSessionRecord.EXERCISE_TYPE_MARTIAL_ARTS, typeOf("Judo"))
+        assertEquals(ExerciseSessionRecord.EXERCISE_TYPE_MARTIAL_ARTS, typeOf("Muay Thai"))
+        assertEquals(ExerciseSessionRecord.EXERCISE_TYPE_DANCING, typeOf("Ballet"))
+        assertEquals(ExerciseSessionRecord.EXERCISE_TYPE_DANCING, typeOf("Breakdancing"))
+        assertEquals(ExerciseSessionRecord.EXERCISE_TYPE_GYMNASTICS, typeOf("Cheerleading"))
+        assertEquals(ExerciseSessionRecord.EXERCISE_TYPE_FRISBEE_DISC, typeOf("Disc golf"))
+        assertEquals(ExerciseSessionRecord.EXERCISE_TYPE_SURFING, typeOf("Kiteboarding"))
+        assertEquals(ExerciseSessionRecord.EXERCISE_TYPE_OTHER_WORKOUT, typeOf("Parkour"))
+        assertEquals(ExerciseSessionRecord.EXERCISE_TYPE_OTHER_WORKOUT, typeOf("Hurling/Camogie"))
+    }
+
+    @Test fun catalogueNamesAreUnique() {
+        val names = WorkoutSport.all.map { it.name }
+        assertEquals(names.size, names.toSet().size)
+    }
+
     @Test fun unknownType_fallsBackToOther() {
         assertEquals("Workout", WorkoutSport.nameFor(Int.MIN_VALUE))
     }
