@@ -1139,7 +1139,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }
         val endMs = System.currentTimeMillis()
         val avg = if (samples.isNotEmpty()) samples.sumOf { it.bpm } / samples.size else null
-        val peak = if (samples.isNotEmpty()) samples.maxOf { it.bpm } else null
+        // `w.peakHr` can exceed every sample: a repeated second's higher reading is folded into it, not recorded.
+        val peak = if (samples.isNotEmpty()) maxOf(samples.maxOf { it.bpm }, w.peakHr) else null
         val strain = if (samples.size >= 2)
             StrainScorer.strain(samples, maxHR = profileStore.hrMax.toDouble(), sex = profileStore.sex) else null
         // Estimate calories from the captured HR window (same Keytel/Harris–Benedict model the
@@ -1193,10 +1194,19 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         // never null. (Fixes the NPE in @maddognik's ADB: captureWorkoutSample -> getValue on null.)
         @Suppress("UNNECESSARY_SAFE_CALL")
         val w = _activeWorkout?.value ?: return
-        val s = w.samples + HrSample(deviceId = deviceId, ts = System.currentTimeMillis() / 1000, bpm = bpm)
+        // One sample a second. This runs on every fresh HR emission, so a second can arrive more than once
+        // with one `ts`, and Effort credits a zero gap with a full second (StrainScorer.sampleDurationsMinutes):
+        // each repeat counted as another second of effort, live and saved. A refused reading still reaches the
+        // peak (it can be that second's high); only the peak is published, with no rescore and no snapshot.
+        val ts = System.currentTimeMillis() / 1000
+        if (w.samples.lastOrNull()?.ts == ts) {
+            if (bpm > w.peakHr) _activeWorkout.value = w.copy(peakHr = bpm)
+            return
+        }
+        val s = w.samples + HrSample(deviceId = deviceId, ts = ts, bpm = bpm)
         val strain = StrainScorer.strain(s, maxHR = profileStore.hrMax.toDouble(), sex = profileStore.sex) ?: 0.0
         val updated = w.copy(
-            samples = s, avgHr = s.sumOf { it.bpm } / s.size, peakHr = s.maxOf { it.bpm }, liveStrain = strain,
+            samples = s, avgHr = s.sumOf { it.bpm } / s.size, peakHr = maxOf(w.peakHr, bpm), liveStrain = strain,
         )
         _activeWorkout.value = updated
         // Re-snapshot the durable non-GPS session so a process kill keeps the latest accumulated HR.
