@@ -37,6 +37,9 @@ class NoopApplication : Application() {
         // live connection or background coroutine that could re-open a torn file mid-swap. No-op normally.
         WhoopDatabase.applyPendingRestore(this)
         RustSleepStager.engineProvider = { NoopPrefs.sleepEngine(this) }
+        // #2556: the stale-battery warning needs a wake that does NOT depend on the BLE link, because the
+        // case it exists for is a strap that stopped talking. KEEP, so this is a no-op once scheduled.
+        com.noop.notif.StaleBatteryWorker.ensureScheduled(this)
     }
 
     /** Process-wide Room-backed store. One instance shared by the UI and the background service. */
