@@ -97,6 +97,7 @@ Byte decode belongs in Rust, and a hardware-verified twin already exists for eac
 | `protocol/Streams.kt` | 297 | skin-temp register → °C affine calibration |
 | `protocol/Framing.kt` | 119 | `framing::decode` already does this reassembly |
 | `protocol/Whoop5RawImu.kt` | 96 | `records::gen5::v21_imu` |
+| `ble/WhoopBleClient.standardProfileRrMs` | 2 | 0x2A37 R-R word to ms (1/1024 s spec unit for 4.0, raw ms for 5/MG, upstream #2195). No FFI export parses the standard HR measurement yet; port to whoop-rs and delete |
 | `protocol/Crc.kt` | 42 | `crc::crc32_zlib`. **Gone from `main/`** — its only callers were fixture builders, which now use `java.util.zip.CRC32` through `test/…/protocol/TestCrc32.kt` |
 
 ---

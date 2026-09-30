@@ -3947,8 +3947,9 @@ class WhoopBleClient(
 
     /**
      * Parse a standard BLE Heart Rate Measurement (0x2A37). byte 0 = flags: bit0 = HR is u16 (else u8),
-     * bit4 = R-R intervals present (each u16 LE, 1/1024 s). The standard profile is the RELIABLE source
-     * for both HR and R-R.
+     * bit4 = R-R intervals present (each u16 LE; 1/1024 s per the spec, but a WHOOP 5/MG sends plain
+     * milliseconds, see [standardProfileRrMs]). The standard profile is the RELIABLE source for both
+     * HR and R-R.
      */
     private fun parseStandardHr(data: ByteArray) {
         if (data.isEmpty()) return
@@ -3976,9 +3977,7 @@ class WhoopBleClient(
             while (idx + 1 < data.size) {
                 val raw = (data[idx].toInt() and 0xFF) or ((data[idx + 1].toInt() and 0xFF) shl 8)
                 idx += 2
-                // Convert 1/1024 s units to milliseconds (matches the WHOOP store's R-R in ms). ROUNDED,
-                // not truncated: plain integer division diverges up to ~0.5 ms per interval into RMSSD/HRV.
-                rr.add(Math.round(raw / 1024.0 * 1000.0).toInt())
+                rr.add(standardProfileRrMs(raw, connectedFamily))
             }
         }
 
@@ -5738,6 +5737,17 @@ internal fun shouldRequestOsBond(bondState: Int): Boolean = bondState == Bluetoo
  */
 internal fun persistsLiveRr(family: DeviceFamily, historyEmpty: Boolean): Boolean =
     family == DeviceFamily.WHOOP5 && historyEmpty
+
+/**
+ * One 0x2A37 R-R word in milliseconds. The BLE spec says 1/1024 s, and a WHOOP 4 follows it (ROUNDED, not
+ * truncated: integer division diverges up to ~0.5 ms per interval into RMSSD/HRV). A WHOOP 5/MG sends
+ * milliseconds on this characteristic (paired capture, fw 50.41.1.0: byte-identical u16 words to its
+ * native channel), so applying 1000/1024 lands 2.3% short. Pure and file-scope so it unit-tests without
+ * the BLE client.
+ * BORDER: this is decode arithmetic and belongs in whoop-rs (docs/ALGORITHMS.md, decode leaks).
+ */
+internal fun standardProfileRrMs(raw: Int, family: DeviceFamily): Int =
+    if (family == DeviceFamily.WHOOP5) raw else Math.round(raw / 1024.0 * 1000.0).toInt()
 
 /** Prefix a compact, parseable domain marker onto an already-redacted strap-log line, or return it
  *  unchanged when no domain is given. The export filters on this "[<id>] " marker. Pure and
