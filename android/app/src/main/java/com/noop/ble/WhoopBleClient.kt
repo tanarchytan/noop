@@ -1173,6 +1173,18 @@ class WhoopBleClient(
     /// thread at discovery, read in send() on main — a stale read would frame a command for the wrong generation.
     @Volatile private var connectedFamily = DeviceFamily.WHOOP4
 
+    /** True once [connectedFamily] was set from THIS connection's service discovery. [connectedFamily]
+     *  defaults to WHOOP4 and survives a disconnect, so before discovery it is a default or the PREVIOUS
+     *  link's family, never evidence about the current strap. Cleared in [reset]. @Volatile and always
+     *  read BEFORE [connectedFamily]: it is the publication edge for the family write at discovery. */
+    @Volatile private var familyEstablished = false
+
+    /** The model established from THIS connection's discovered service, or null before discovery. The
+     *  picker is only a request (scan fallback and easy-connect can establish the other family), so the
+     *  last-device pref must save this, not the pick (#2068). Argument order matters, see [familyEstablished]. */
+    internal val establishedModel: WhoopModel?
+        get() = establishedWhoopModel(familyEstablished, connectedFamily)
+
     /** True while a scan is active, so we never start a second scan (Android scanner is stateful). */
     private var scanning = false
 
@@ -3292,6 +3304,7 @@ class WhoopBleClient(
                 // Do NOT fire the bond write here — Android allows only ONE outstanding GATT op, so writing
                 // it now would race the CCCD writes below and bond while leaving notifications unsubscribed.
                 connectedFamily = DeviceFamily.WHOOP4
+                familyEstablished = true
                 cmdCharacteristic = whoop4.getCharacteristic(CMD_WRITE_CHAR)
                 whoop4.getCharacteristic(CMD_NOTIFY_CHAR)?.let { cccdQueue.add(it) }
                 whoop4.getCharacteristic(EVENT_NOTIFY_CHAR)?.let { cccdQueue.add(it) }
@@ -3300,6 +3313,7 @@ class WhoopBleClient(
                 // EXPERIMENTAL WHOOP 5.0/MG: opens with CLIENT_HELLO (sent in startSession, after the
                 // standard HR/battery notifications are enabled), not the WHOOP4 confirmed-write bond.
                 connectedFamily = DeviceFamily.WHOOP5
+                familyEstablished = true
                 log("WHOOP 5/MG detected — will send CLIENT_HELLO after subscribing (experimental).")
                 _state.update { it.copy(
                     whoop5Detected = true,
@@ -5338,6 +5352,7 @@ class WhoopBleClient(
 
     /** Clear per-connection state. */
     private fun reset() {
+        familyEstablished = false
         didBond = false
         connectHandshakeDone = false
         clockReference.reset()
