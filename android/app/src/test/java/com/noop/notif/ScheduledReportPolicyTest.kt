@@ -19,7 +19,7 @@ class ScheduledReportPolicyTest {
     @Test fun morningFiresWhenEnabledScorePresentAndNotYetToday() {
         assertTrue(
             ScheduledReportPolicy.shouldNotifyMorning(
-                enabled = true, chargeOrRestPresent = true, lastNotifiedDay = "2026-06-20", today = "2026-06-21",
+                enabled = true, chargeOrRestPresent = true, lastNotifiedDay = "2026-06-20", today = "2026-06-21", nowMinuteOfDay = 7 * 60,
             ),
         )
     }
@@ -27,7 +27,7 @@ class ScheduledReportPolicyTest {
     @Test fun morningSuppressedWhenDisabled() {
         assertFalse(
             ScheduledReportPolicy.shouldNotifyMorning(
-                enabled = false, chargeOrRestPresent = true, lastNotifiedDay = null, today = "2026-06-21",
+                enabled = false, chargeOrRestPresent = true, lastNotifiedDay = null, today = "2026-06-21", nowMinuteOfDay = 7 * 60,
             ),
         )
     }
@@ -35,7 +35,7 @@ class ScheduledReportPolicyTest {
     @Test fun morningSuppressedWhenAlreadyFiredToday() {
         assertFalse(
             ScheduledReportPolicy.shouldNotifyMorning(
-                enabled = true, chargeOrRestPresent = true, lastNotifiedDay = "2026-06-21", today = "2026-06-21",
+                enabled = true, chargeOrRestPresent = true, lastNotifiedDay = "2026-06-21", today = "2026-06-21", nowMinuteOfDay = 7 * 60,
             ),
         )
     }
@@ -43,7 +43,36 @@ class ScheduledReportPolicyTest {
     @Test fun morningSuppressedWhenNoScore() {
         assertFalse(
             ScheduledReportPolicy.shouldNotifyMorning(
-                enabled = true, chargeOrRestPresent = false, lastNotifiedDay = null, today = "2026-06-21",
+                enabled = true, chargeOrRestPresent = false, lastNotifiedDay = null, today = "2026-06-21", nowMinuteOfDay = 7 * 60,
+            ),
+        )
+    }
+
+    @Test fun morningHeldBeforeTheFloor() {
+        assertFalse(
+            ScheduledReportPolicy.shouldNotifyMorning(
+                enabled = true, chargeOrRestPresent = true, lastNotifiedDay = null, today = "2026-06-21",
+                nowMinuteOfDay = 40, // 00:40
+            ),
+        )
+    }
+
+    @Test fun morningFiresAtTheFloorAndLater() {
+        for (m in listOf(ScheduledReportPolicy.EARLIEST_MORNING_MINUTE, 7 * 60, 23 * 60)) {
+            assertTrue(
+                ScheduledReportPolicy.shouldNotifyMorning(
+                    enabled = true, chargeOrRestPresent = true, lastNotifiedDay = "2026-06-20", today = "2026-06-21",
+                    nowMinuteOfDay = m,
+                ),
+            )
+        }
+    }
+
+    @Test fun morningFloorDoesNotPostTwice() {
+        assertFalse(
+            ScheduledReportPolicy.shouldNotifyMorning(
+                enabled = true, chargeOrRestPresent = true, lastNotifiedDay = "2026-06-21", today = "2026-06-21",
+                nowMinuteOfDay = 9 * 60,
             ),
         )
     }

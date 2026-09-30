@@ -33,6 +33,13 @@ import kotlin.math.roundToInt
  *  by ScheduledReportPolicyTest independently of the notification plumbing. */
 object ScheduledReportPolicy {
 
+    /**
+     * Earliest local minute-of-day a "Good morning" may be posted. 05:00. The recap fired the moment the
+     * night's row landed, i.e. whenever the strap finished syncing, so a night banked at 00:40 posted to
+     * someone asleep. A floor, not a window: the recap is about LAST night, so a 16:00 open still gets it.
+     */
+    const val EARLIEST_MORNING_MINUTE = 5 * 60
+
     /** Fire the morning recap at most once per local day: only when enabled, a recap value exists, and we
      *  haven't already posted for [today]. */
     fun shouldNotifyMorning(
@@ -40,7 +47,9 @@ object ScheduledReportPolicy {
         chargeOrRestPresent: Boolean,
         lastNotifiedDay: String?,
         today: String,
-    ): Boolean = enabled && chargeOrRestPresent && lastNotifiedDay != today
+        nowMinuteOfDay: Int,
+    ): Boolean = enabled && chargeOrRestPresent && lastNotifiedDay != today &&
+        nowMinuteOfDay >= EARLIEST_MORNING_MINUTE
 
     /** Fire the post-workout summary only for a workout STRICTLY newer than the last one summarised, so a
      *  re-sync of the same backlog never re-notifies. [lastWorkoutTs] is 0 before the first ever. */
@@ -113,6 +122,7 @@ object ScheduledReportNotifier {
                 chargeOrRestPresent = chargePct != null || restPct != null,
                 lastNotifiedDay = NoopPrefs.reportMorningDay(context),
                 today = today,
+                nowMinuteOfDay = java.time.LocalTime.now().let { it.hour * 60 + it.minute },
             )
         ) return
         val copy = ScheduledReportPolicy.morningCopy(chargePct, restPct) ?: return
