@@ -1142,6 +1142,19 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             return
         }
         val endMs = System.currentTimeMillis()
+        // A session under a minute is a start/stop nobody meant to keep. Same floor the manual door
+        // enforces. Discarded at SAVE rather than pruned later: nothing that held training data is removed.
+        val elapsedSeconds = (endMs - w.startMs) / 1000L
+        if (WorkoutEditing.isBelowSessionFloor(elapsedSeconds)) {
+            emitWorkoutsTrace {
+                com.noop.analytics.WorkoutsTrace.sessionLine(
+                    event = "discarded", sportKey = WorkoutEditing.traceSportKey(w.sport.name),
+                    hrSamples = samples.size, durationSec = elapsedSeconds.toInt(),
+                    gpsPoints = if (w.gpsEnabled) track.size else null,
+                )
+            }
+            return
+        }
         val avg = if (samples.isNotEmpty()) samples.sumOf { it.bpm } / samples.size else null
         // `w.peakHr` can exceed every sample: a repeated second's higher reading is folded into it, not recorded.
         val peak = if (samples.isNotEmpty()) maxOf(samples.maxOf { it.bpm }, w.peakHr) else null

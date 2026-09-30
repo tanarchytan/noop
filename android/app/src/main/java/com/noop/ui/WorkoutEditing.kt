@@ -355,6 +355,17 @@ object WorkoutEditing {
     }
 
     /**
+     * Shortest session worth keeping, twin of Swift `WorkoutSource.minManualSpanSeconds`. A 5 to 30
+     * second start/stop is a misfire, not training. The manual door already floors at whole minutes
+     * ([buildManualRow] rejects 0); [isBelowSessionFloor] applies the same floor to a CAPTURED session at
+     * save, so a workout is treated identically whether tracked or typed in. Exactly 60 s is kept.
+     */
+    const val MIN_MANUAL_SPAN_SECONDS: Long = 60L
+
+    /** True when a captured session of [elapsedSeconds] is too short to save. Storage rule, not a score. */
+    fun isBelowSessionFloor(elapsedSeconds: Long): Boolean = elapsedSeconds < MIN_MANUAL_SPAN_SECONDS
+
+    /**
      * Build a retroactive manual workout (source "manual", written under the strap [deviceId] by the
      * caller — where live sessions land). Returns null when the input can't make an honest row.
      * strain/zones stay null: with no captured HR window an APPROXIMATE strain is never fabricated.
