@@ -20,6 +20,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.automirrored.filled.Send
@@ -221,6 +222,7 @@ private fun CoachChat(vm: CoachViewModel) {
     var input by remember { mutableStateOf("") }
     // Corrected key; separate from `input` so a half-typed question survives, cleared on save.
     var keyFix by remember { mutableStateOf("") }
+    var showKeyEditor by remember { mutableStateOf(false) }
 
     Column(verticalArrangement = Arrangement.spacedBy(Metrics.space16)) {
 
@@ -229,6 +231,21 @@ private fun CoachChat(vm: CoachViewModel) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 StatePill(title = "${provider.displayName} · $model", tone = StrandTone.Accent, showsDot = true)
                 Spacer(Modifier.weight(1f))
+                val keyInteraction = remember { MutableInteractionSource() }
+                Icon(
+                    Icons.Filled.Edit,
+                    contentDescription = "Update key",
+                    tint = Palette.textSecondary,
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(50))
+                        .liquidPress(keyInteraction)
+                        .clickable(interactionSource = keyInteraction, indication = null) {
+                            showKeyEditor = !showKeyEditor
+                            if (!showKeyEditor) keyFix = ""
+                        }
+                        .padding(6.dp)
+                        .size(20.dp),
+                )
                 val disconnectInteraction = remember { MutableInteractionSource() }
                 Text(
                     "Disconnect",
@@ -293,20 +310,23 @@ private fun CoachChat(vm: CoachViewModel) {
                 color = Palette.statusCritical,
                 modifier = Modifier.semantics { contentDescription = "Coach error: ${error}" },
             )
-            // Rendered inside the error branch so it cannot outlive the message that justifies it.
-            if (keyRejected) {
-                Column(verticalArrangement = Arrangement.spacedBy(Metrics.space8)) {
-                    Text("Paste the corrected key. Your conversation is kept.", style = NoopType.footnote, color = Palette.textSecondary)
-                    CoachKeyField(
-                        value = keyFix,
-                        onValueChange = { keyFix = it },
-                        placeholder = "Paste your ${provider.displayName} key",
-                    )
-                    CoachPrimaryButton(
-                        label = "Update key",
-                        enabled = keyFix.isNotBlank(),
-                        onClick = { vm.saveKey(context, keyFix); keyFix = "" },
-                    )
+        }
+        // Opens on a rejection, or on demand from the pencil in the provider strip.
+        if (keyRejected || showKeyEditor) {
+            Column(verticalArrangement = Arrangement.spacedBy(Metrics.space8)) {
+                Text("Paste the new key. Your conversation is kept.", style = NoopType.footnote, color = Palette.textSecondary)
+                CoachKeyField(
+                    value = keyFix,
+                    onValueChange = { keyFix = it },
+                    placeholder = "Paste your ${provider.displayName} key",
+                )
+                CoachPrimaryButton(
+                    label = "Update key",
+                    enabled = keyFix.isNotBlank(),
+                    onClick = { vm.saveKey(context, keyFix); keyFix = ""; showKeyEditor = false },
+                )
+                if (showKeyEditor && !keyRejected) {
+                    TextButton(onClick = { showKeyEditor = false; keyFix = "" }) { Text("Cancel") }
                 }
             }
         }
