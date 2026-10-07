@@ -6,6 +6,13 @@ import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
 
 /**
+ * The provider turned the stored key away (HTTP 401 or 403).
+ *
+ * Typed so the UI can offer a key field without matching on message text.
+ */
+class AiKeyRejectedException(message: String) : Exception(message)
+
+/**
  * Secure, at-rest-encrypted storage for the user's AI Coach API key.
  *
  * Backed by Jetpack Security [EncryptedSharedPreferences] — values are encrypted with a

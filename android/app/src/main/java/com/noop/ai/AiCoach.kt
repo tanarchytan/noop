@@ -559,7 +559,8 @@ class AiCoach(private val repo: WhoopRepository) {
             400 -> "The request was rejected by ${provider.displayName} (HTTP 400)."
             else -> "${provider.displayName} returned an error (HTTP $code)."
         }
-        return Exception(if (detail != null) "$base ($detail)" else base)
+        val message = if (detail != null) "$base ($detail)" else base
+        return if (isKeyRejection(code)) AiKeyRejectedException(message) else Exception(message)
     }
 
     /** Pull the provider's error message out of an error JSON body, if present. */
@@ -594,6 +595,9 @@ class AiCoach(private val repo: WhoopRepository) {
     }
 
     companion object {
+        /** Whether an HTTP status means the stored key itself was turned away. */
+        internal fun isKeyRejection(code: Int): Boolean = code == 401 || code == 403
+
         private val JSON = "application/json; charset=utf-8".toMediaType()
 
         /**

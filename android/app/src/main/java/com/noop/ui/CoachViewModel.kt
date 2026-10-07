@@ -5,6 +5,7 @@ import android.content.Context
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.noop.ai.AiCoach
+import com.noop.ai.AiKeyRejectedException
 import com.noop.ai.AiKeyStore
 import com.noop.ai.AiProvider
 import com.noop.ai.ChatMsg
@@ -132,6 +133,10 @@ class CoachViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     // Bumped whenever the stored key changes so the UI recomposes its setup/chat gate.
+    private val _keyRejected = MutableStateFlow(false)
+    /** True when the last failure was the provider rejecting the stored key (typed, not text-matched). */
+    val keyRejected: StateFlow<Boolean> = _keyRejected.asStateFlow()
+
     private val _keyVersion = MutableStateFlow(0)
     /** Increments when the key is saved or cleared; observe to re-read [hasKey]. */
     val keyVersion: StateFlow<Int> = _keyVersion.asStateFlow()
@@ -156,6 +161,8 @@ class CoachViewModel(app: Application) : AndroidViewModel(app) {
      */
     fun selectProvider(ctx: Context, p: AiProvider) {
         if (p == _provider.value) return
+        _error.value = null
+        _keyRejected.value = false
         _provider.value = p
         AiKeyStore.saveProvider(ctx, p)
         val resolved = AiKeyStore.readModel(ctx, p)
@@ -190,6 +197,8 @@ class CoachViewModel(app: Application) : AndroidViewModel(app) {
         val appCtx = ctx.applicationContext
         val p = _provider.value
         val url = _customBaseUrl.value
+        _error.value = null
+        _keyRejected.value = false
         _refreshingModels.value = true
         viewModelScope.launch {
             try {
@@ -202,8 +211,12 @@ class CoachViewModel(app: Application) : AndroidViewModel(app) {
                         selectModel(appCtx, merged.first())
                     }
                 }
-            } catch (_: Exception) {
-                // Best-effort, keep whatever list we already have.
+            } catch (e: Exception) {
+                // Best-effort about the list, but a rejected key is not a list problem: say so.
+                if (e is AiKeyRejectedException) {
+                    _error.value = e.message
+                    _keyRejected.value = true
+                }
             } finally {
                 _refreshingModels.value = false
             }
@@ -229,6 +242,7 @@ class CoachViewModel(app: Application) : AndroidViewModel(app) {
     fun saveKey(ctx: Context, key: String) {
         AiKeyStore.save(ctx, key)
         _error.value = null
+        _keyRejected.value = false
         _keyVersion.value += 1
         // do NOT auto-fetch the provider's model list on key-save. For a cloud provider that GET hits
         // the provider the MOMENT a key is saved (leaking IP + request timing + key-validity) — before the
@@ -247,6 +261,7 @@ class CoachViewModel(app: Application) : AndroidViewModel(app) {
         AiKeyStore.saveCustomConnected(ctx, false)
         _messages.value = emptyList()
         _error.value = null
+        _keyRejected.value = false
         _keyVersion.value += 1
     }
 
@@ -281,6 +296,7 @@ class CoachViewModel(app: Application) : AndroidViewModel(app) {
                 _messages.value = _messages.value + ChatMsg(role = "assistant", text = reply)
             } catch (e: Exception) {
                 _error.value = e.message ?: "Something went wrong. Please try again."
+                _keyRejected.value = e is AiKeyRejectedException
             } finally {
                 _sending.value = false
             }

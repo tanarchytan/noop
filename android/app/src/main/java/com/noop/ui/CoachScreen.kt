@@ -97,6 +97,8 @@ private fun CoachSetup(vm: CoachViewModel) {
     val availableModels by vm.availableModels.collectAsStateWithLifecycle()
     val refreshingModels by vm.refreshingModels.collectAsStateWithLifecycle()
     val customBaseUrl by vm.customBaseUrl.collectAsStateWithLifecycle()
+    // Setup-card failures (Refresh turned away, Connect to a server wanting auth) were silent.
+    val setupError by vm.error.collectAsStateWithLifecycle()
     var keyInput by remember { mutableStateOf("") }
     val isCustom = provider == AiProvider.CUSTOM
 
@@ -195,6 +197,10 @@ private fun CoachSetup(vm: CoachViewModel) {
                 )
             }
 
+            setupError?.let { msg ->
+                Text(msg, style = NoopType.subhead, color = Palette.statusCritical)
+            }
+
             // Privacy note, one line, always visible.
             PrivacyNote(local = isCustom)
         }
@@ -209,9 +215,12 @@ private fun CoachChat(vm: CoachViewModel) {
     val messages by vm.messages.collectAsStateWithLifecycle()
     val sending by vm.sending.collectAsStateWithLifecycle()
     val error by vm.error.collectAsStateWithLifecycle()
+    val keyRejected by vm.keyRejected.collectAsStateWithLifecycle()
     val provider by vm.provider.collectAsStateWithLifecycle()
     val model by vm.model.collectAsStateWithLifecycle()
     var input by remember { mutableStateOf("") }
+    // Corrected key; separate from `input` so a half-typed question survives, cleared on save.
+    var keyFix by remember { mutableStateOf("") }
 
     Column(verticalArrangement = Arrangement.spacedBy(Metrics.space16)) {
 
@@ -284,6 +293,22 @@ private fun CoachChat(vm: CoachViewModel) {
                 color = Palette.statusCritical,
                 modifier = Modifier.semantics { contentDescription = "Coach error: ${error}" },
             )
+            // Rendered inside the error branch so it cannot outlive the message that justifies it.
+            if (keyRejected) {
+                Column(verticalArrangement = Arrangement.spacedBy(Metrics.space8)) {
+                    Text("Paste the corrected key. Your conversation is kept.", style = NoopType.footnote, color = Palette.textSecondary)
+                    CoachKeyField(
+                        value = keyFix,
+                        onValueChange = { keyFix = it },
+                        placeholder = "Paste your ${provider.displayName} key",
+                    )
+                    CoachPrimaryButton(
+                        label = "Update key",
+                        enabled = keyFix.isNotBlank(),
+                        onClick = { vm.saveKey(context, keyFix); keyFix = "" },
+                    )
+                }
+            }
         }
 
         // Input row + Send, a frosted overlay surface so the composer reads as a docked input bar.
