@@ -3,6 +3,7 @@ package com.noop.data
 import android.content.Context
 import android.database.sqlite.SQLiteDatabase
 import android.net.Uri
+import android.provider.DocumentsContract
 import android.util.Log
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
@@ -10,7 +11,9 @@ import androidx.sqlite.db.SupportSQLiteOpenHelper
 import androidx.sqlite.db.framework.FrameworkSQLiteOpenHelperFactory
 import com.noop.ble.WhoopModel
 import java.io.File
+import java.io.FileInputStream
 import java.io.FileOutputStream
+import java.io.InputStream
 import java.io.IOException
 import java.util.zip.ZipEntry
 import java.util.zip.ZipInputStream
@@ -42,12 +45,148 @@ object DataBackup {
     /** Entry name of the optional whitelisted-settings JSON. */
     private const val SETTINGS_ENTRY_NAME = BackupSettingsCodec.ENTRY_NAME
 
+    /** "PK\u0005\u0006", the ZIP End Of Central Directory signature. */
+    private val ZIP_EOCD_SIGNATURE: ByteArray = byteArrayOf(0x50, 0x4B, 0x05, 0x06)
+
+    /** The fixed part of an End Of Central Directory record, before any comment. */
+    private const val ZIP_EOCD_MIN_BYTES: Int = 22
+
+    /** A ZIP comment can push the EOCD record up to 65535 bytes from the end, plus its own fixed part. */
+    private const val ZIP_EOCD_SEARCH_BYTES: Int = 65_535 + ZIP_EOCD_MIN_BYTES
+
     /** First 16 bytes of every SQLite 3 file: "SQLite format 3\0". */
     private val SQLITE_MAGIC: ByteArray =
         byteArrayOf(
             0x53, 0x51, 0x4C, 0x69, 0x74, 0x65, 0x20, 0x66,
             0x6F, 0x72, 0x6D, 0x61, 0x74, 0x20, 0x33, 0x00,
         )
+
+    /**
+     * What a post-write check concluded about the file just produced.
+     *
+     * [UNVERIFIABLE] exists so that failing to READ a backup is never mistaken for evidence against it.
+     * The caller deletes a [TORN] file, and deleting on "we could not look" would mean a provider having
+     * a bad moment could destroy a backup that was perfectly good.
+     */
+    internal enum class BackupWriteVerdict { INTACT, TORN, UNVERIFIABLE }
+
+    /**
+     * The decision itself, separated from the reading of the file so the whole table can be pinned by a
+     * plain JVM test: [tail] is null when the provider would not say how big the file is, and
+     * [entryIntact] is null when it could not be opened for reading at all.
+     */
+    internal fun writeVerdict(tail: ByteArray?, entryIntact: Boolean?): BackupWriteVerdict = when {
+        // A tail we COULD read that holds no end record is positive evidence of a cut-short write.
+        tail != null && !hasEndOfCentralDirectory(tail) -> BackupWriteVerdict.TORN
+        entryIntact == null -> BackupWriteVerdict.UNVERIFIABLE
+        entryIntact -> BackupWriteVerdict.INTACT
+        else -> BackupWriteVerdict.TORN
+    }
+
+    /**
+     * Re-read the JUST-WRITTEN `.noopbak` at [uri] and say what it looks like.
+     *
+     * #1014 (write-side): a torn write, a truncated ZIP or a half-flushed SAF document on a full disk or
+     * a flaky provider, otherwise leaves a `.noopbak` that silently "restores" into an empty store, and
+     * is caught only by the import-side quick_check much later, when the original may be long gone. Fail
+     * HERE at write time instead. Twin of the Apple `writtenBackupIsIntact`.
+     *
+     * The tail is the cheap half and the half that actually catches a torn write; it is SKIPPED, not
+     * failed, when the provider will not report a size, since refusing a good backup because a document
+     * provider is coy would trade a rare corruption for a common false alarm.
+     */
+    internal fun verifyWrittenBackup(context: Context, uri: Uri): BackupWriteVerdict {
+        val resolver = context.contentResolver
+        val tail = readTail(resolver, uri, ZIP_EOCD_SEARCH_BYTES)
+        val entryIntact = runCatching {
+            resolver.openInputStream(uri)?.use { backupStreamIsIntact(it) }
+        }.getOrNull()
+        return writeVerdict(tail, entryIntact)
+    }
+
+    /** The last [limit] bytes of [uri], or null when the provider will not say how big it is. */
+    private fun readTail(resolver: android.content.ContentResolver, uri: Uri, limit: Int): ByteArray? =
+        runCatching {
+            resolver.openFileDescriptor(uri, "r")?.use { pfd ->
+                val len = pfd.statSize
+                if (len <= 0L) return@use null
+                val window = minOf(len, limit.toLong()).toInt()
+                // Deliberately NOT closed: the descriptor belongs to the ParcelFileDescriptor, whose
+                // own `use` closes it. Wrapping this in `use` too would close the same fd twice, and
+                // the second close lands on whatever has since been handed that number.
+                val fis = FileInputStream(pfd.fileDescriptor)
+                fis.channel.position(len - window)
+                val buf = ByteArray(window)
+                var got = 0
+                while (got < window) {
+                    val r = fis.read(buf, got, window - got)
+                    if (r < 0) break
+                    got += r
+                }
+                if (got == window) buf else null
+            }
+        }.getOrNull()
+
+    /**
+     * Whether [tail], the last bytes of a file, contains a ZIP End Of Central Directory record.
+     *
+     * This is the check that catches the #1014 shape. A ZIP's index lives at its END, so a write cut
+     * short by a full disk or a flaky provider loses it. [backupStreamIsIntact] cannot see that at all:
+     * `ZipInputStream` walks LOCAL entry headers front to back and never looks for the central
+     * directory, so a file truncated to a few hundred bytes still presents a DB entry whose first
+     * sixteen bytes are a perfectly good SQLite header, and passes. The Apple twin never had this hole
+     * because opening an `Archive` for reading parses the central directory or fails.
+     *
+     * Scans rather than checking a fixed offset, because the record sits [ZIP_EOCD_MIN_BYTES] from the
+     * end only when the archive carries no comment.
+     *
+     * Finding the signature is NOT enough, and a first pass here that stopped there was wrong: lopping a
+     * single byte off a good archive leaves the signature untouched and only damages the fields behind
+     * it. So the record has to ADD UP. Its trailing comment-length field must account for exactly the
+     * bytes that follow it, which a file cut short cannot do, whether it was cut by a byte or a
+     * megabyte.
+     */
+    internal fun hasEndOfCentralDirectory(tail: ByteArray): Boolean {
+        if (tail.size < ZIP_EOCD_MIN_BYTES) return false
+        // From the end backwards: the LAST complete record is the real one.
+        for (i in tail.size - ZIP_EOCD_MIN_BYTES downTo 0) {
+            var hit = true
+            for (k in ZIP_EOCD_SIGNATURE.indices) {
+                if (tail[i + k] != ZIP_EOCD_SIGNATURE[k]) { hit = false; break }
+            }
+            if (!hit) continue
+            // Comment length is the last field of the record, little-endian.
+            val commentLength = (tail[i + 20].toInt() and 0xFF) or ((tail[i + 21].toInt() and 0xFF) shl 8)
+            if (i + ZIP_EOCD_MIN_BYTES + commentLength == tail.size) return true
+        }
+        return false
+    }
+
+    /**
+     * Whether a `.noopbak` stream carries a DB entry that begins with the SQLite magic header.
+     *
+     * Stream-shaped so it can be driven from a plain JVM test without a Context: [verifyWrittenBackup]
+     * is the Uri-taking wrapper over it.
+     */
+    internal fun backupStreamIsIntact(stream: InputStream): Boolean = runCatching {
+        ZipInputStream(stream).use { zip ->
+            var entry = zip.nextEntry
+            while (entry != null) {
+                if (!entry.isDirectory && entry.name.substringAfterLast('/') == ZIP_ENTRY_NAME) {
+                    val header = ByteArray(SQLITE_MAGIC.size)
+                    var got = 0
+                    while (got < header.size) {
+                        val r = zip.read(header, got, header.size - got)
+                        if (r < 0) break
+                        got += r
+                    }
+                    return@runCatching got == header.size && header.contentEquals(SQLITE_MAGIC)
+                }
+                entry = zip.nextEntry
+            }
+            false
+        }
+    }.getOrDefault(false)
 
     /** First 4 bytes of every ZIP file: "PK\x03\x04". */
     private val ZIP_MAGIC: ByteArray =
@@ -90,9 +229,9 @@ object DataBackup {
         // sits safely beside the open Room connection (WAL allows concurrent readers).
         sqliteQuickCheckFailure(dbFile)?.let { complaint ->
             throw IOException(
-                "Couldn't export: the NOOP database failed its integrity check (SQLite reports: " +
-                    "$complaint). A backup of it would not restore. Export the WHOOP-format CSV " +
-                    "instead to save what's still readable."
+                "Couldn't export: the NOOP database failed its integrity check, so a backup of it " +
+                    "would not restore. Export the WHOOP-format CSV instead to save what's still " +
+                    "readable. (SQLite: ${readableComplaint(complaint)})"
             )
         }
 
@@ -123,6 +262,43 @@ object DataBackup {
                     }
                 }
             }
+        }
+        // #1014 (write-side): the SOURCE was verified before archiving, but the PRODUCED file can still
+        // be torn by a full disk, a dying card, or a provider that drops the tail, and such a .noopbak
+        // "restores" into an empty store, caught only by the import-side quick_check much later, when
+        // the original may be long gone. So check what was just written, here, while it can still be
+        // called a failed export rather than a bad backup.
+        //
+        // This check existed but was wired only into the SCHEDULED sync path, so the manual Settings
+        // export, the one taken deliberately before wiping a phone, never ran it. It belongs inside
+        // exportTo the way Apple's lives inside writeVerifiedBackupZip, so that no caller has to
+        // remember to ask.
+        when (verifyWrittenBackup(appContext, uri)) {
+            BackupWriteVerdict.INTACT -> Unit
+            // Never leave a corrupt file behind masquerading as a good snapshot. Which of the two
+            // outcomes happened changes what the reader should do, so say which.
+            BackupWriteVerdict.TORN -> {
+                val removed = runCatching { DocumentsContract.deleteDocument(resolver, uri) }
+                    .getOrDefault(false)
+                throw IOException(
+                    if (removed) {
+                        "Couldn't finish the backup: the file written was incomplete, so it was " +
+                            "removed rather than left looking like a good backup. The destination may " +
+                            "be out of space. Try again, or choose somewhere else."
+                    } else {
+                        "Couldn't finish the backup: the file written was incomplete, and it could " +
+                            "not be removed either, so delete it yourself rather than trust it. The " +
+                            "destination may be out of space. Try again, or choose somewhere else."
+                    },
+                )
+            }
+            // Failing to READ the file back is not evidence against it, so it is LEFT ALONE. Deleting
+            // here would let a storage provider having a bad moment destroy a good backup.
+            BackupWriteVerdict.UNVERIFIABLE -> throw IOException(
+                "The backup was written, but couldn't be read back to check it, so it has been left " +
+                    "in place rather than deleted on a guess. Open it before you rely on it, or " +
+                    "export again somewhere else.",
+            )
         }
     }
 
@@ -270,8 +446,8 @@ object DataBackup {
             tempSqlite.delete()
             tempSettings.delete()
             return ImportResult.Failed(
-                "This backup file is damaged and can't be restored (SQLite reports: $complaint). " +
-                    "Your current data is untouched. Try an earlier backup file."
+                "This backup file is damaged, so nothing was restored. Your current data is " +
+                    "untouched. Try an earlier backup file. (SQLite: ${readableComplaint(complaint)})"
             )
         }
 
@@ -301,8 +477,8 @@ object DataBackup {
             pending.delete()
             tempSettings.delete()
             return ImportResult.Failed(
-                "This backup file is damaged and can't be restored (SQLite reports: $complaint). " +
-                    "Your current data is untouched. Try an earlier backup file.",
+                "This backup file is damaged, so nothing was restored. Your current data is " +
+                    "untouched. Try an earlier backup file. (SQLite: ${readableComplaint(complaint)})",
             )
         }
 
@@ -564,6 +740,32 @@ object DataBackup {
         if (rows.size == 1 && rows[0].equals("ok", ignoreCase = true)) return null
         return rows.firstOrNull { !it.equals("ok", ignoreCase = true) }
             ?: "quick_check returned no verdict"
+    }
+
+    /** SQLite's banner line: names the database reported on, says nothing about what is wrong with it. */
+    private fun isBanner(line: String): Boolean =
+        line.startsWith("*** in database") && line.endsWith("***")
+
+    /**
+     * The part of a [quickCheckVerdict] worth showing a person, as one line.
+     *
+     * The verdict stays VERBATIM (it is the forensic value); this is a presentation step. quick_check
+     * answers with a banner, a newline, then the diagnosis in ONE row, so shown whole the sentence
+     * spends itself on "*** in database main ***". This drops the banner, joins what is left onto one
+     * line and caps the length. Falls back to the raw verdict, newlines flattened, when stripping
+     * would leave nothing. The cap clamps because take(-1) throws.
+     */
+    fun readableComplaint(verdict: String, limit: Int = 140): String {
+        val kept = verdict.split('\n')
+            .map { it.trim() }
+            .filter { it.isNotEmpty() && !isBanner(it) }
+        val joined = if (kept.isEmpty()) {
+            verdict.replace('\n', ' ').trim()
+        } else {
+            kept.joinToString("; ")
+        }
+        val cap = limit.coerceAtLeast(1)
+        return if (joined.length <= cap) joined else joined.take(cap - 1).trimEnd() + "…"
     }
 
     /**

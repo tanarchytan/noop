@@ -214,6 +214,10 @@ object BackupSync {
         if (!dir.isDirectory) return null
         val file = File(dir, snapshotName(nowMs))
         return runCatching {
+            // #1014 (write-side): exportTo verifies the file it just wrote and throws if it is torn or
+            // unreadable. Deleting below on an UNVERIFIABLE verdict is deliberate here (the manual export
+            // keeps it): an unconfirmed file in this folder would wear the newest timestamp and become the
+            // restore default while older snapshots are intact. The next run writes another.
             DataBackup.exportTo(context, Uri.fromFile(file))
             file
         }.getOrElse {

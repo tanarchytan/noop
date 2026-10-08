@@ -1,5 +1,8 @@
 package com.noop.ui
 
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
@@ -83,6 +86,8 @@ fun BackupSyncScreen(repo: WhoopRepository) {
     // fail silently. `restoring` drives a modal progress dialog; `restoreError` a failure dialog.
     var restoring by remember { mutableStateOf(false) }
     var restoreError by remember { mutableStateOf<String?>(null) }
+    // Export failures carry a next step in their LAST clause (e.g. the CSV route), which a Toast drops.
+    var exportError by remember { mutableStateOf<String?>(null) }
     // How many dated snapshots to keep; pruning deletes the oldest beyond this (BackupSync.snapshotsToPrune).
     var keep by remember { mutableStateOf(BackupSyncPrefs.keepCount(context)) }
     var keepMenu by remember { mutableStateOf(false) }
@@ -195,7 +200,7 @@ fun BackupSyncScreen(repo: WhoopRepository) {
                         Toast.LENGTH_LONG,
                     ).show()
                 },
-                onFailure = { e -> Toast.makeText(context, "Backup problem: ${e.message}", Toast.LENGTH_LONG).show() },
+                onFailure = { e -> exportError = "Backup problem: ${e.message}" },
             )
         }
     }
@@ -556,13 +561,32 @@ fun BackupSyncScreen(repo: WhoopRepository) {
     // Failure popup: a restore that couldn't complete (damaged file, staging error) leaves the current
     // data untouched and says why, instead of failing silently.
     restoreError?.let { msg ->
-        AlertDialog(
-            onDismissRequest = { restoreError = null },
-            confirmButton = { TextButton(onClick = { restoreError = null }) { Text("OK") } },
-            title = { Text("Restore failed") },
-            text = { Text(msg) },
-        )
+        BackupFailureDialog(title = "Restore failed", message = msg, onDismiss = { restoreError = null })
     }
+    exportError?.let { msg ->
+        BackupFailureDialog(title = "Backup failed", message = msg, onDismiss = { exportError = null })
+    }
+}
+
+/** A failed backup/restore ends here: the whole message, plus Copy so a corruption report carries
+ *  SQLite's own words instead of a fragment retyped off a screenshot. Copy also dismisses, since below
+ *  Android 13 there is no system clipboard confirmation. */
+@Composable
+private fun BackupFailureDialog(title: String, message: String, onDismiss: () -> Unit) {
+    val context = LocalContext.current
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        confirmButton = { TextButton(onClick = onDismiss) { Text("OK") } },
+        dismissButton = {
+            TextButton(onClick = {
+                val clip = context.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
+                clip?.setPrimaryClip(ClipData.newPlainText("NOOP backup error", message))
+                onDismiss()
+            }) { Text("Copy") }
+        },
+        title = { Text(title) },
+        text = { Text(message) },
+    )
 }
 
 /** Retention choices for the "Keep last snapshots" menu. Each snapshot is a dated .noopbak; the daily
