@@ -241,9 +241,23 @@ dependencies {
 // CI sets WHOOP_RS_DIR to its whoop-rs checkout (the sibling ../../whoop-rs resolves above the runner workspace).
 val whoopRsDir = System.getenv("WHOOP_RS_DIR")?.let { file(it) } ?: rootProject.projectDir.resolve("../../whoop-rs")
 val buildRustHostDll = tasks.register<Exec>("buildRustHostDll") {
-    workingDir = whoopRsDir
+    val rsDir = whoopRsDir
+    workingDir = rsDir
     commandLine("cargo", "build", "--release", "-p", "whoop-ffi")
-    onlyIf { whoopRsDir.resolve("Cargo.toml").exists() }
+    onlyIf { rsDir.resolve("Cargo.toml").exists() }
+    // cargo is its own freshness oracle (and writes into whoop-rs/target, which the JVM tests load), so
+    // no Gradle inputs/outputs here. What it cannot do is name its own most common failure: on this
+    // laptop rustup's default toolchain is the gnu one, which has no dlltool.
+    isIgnoreExitValue = true
+    doLast {
+        val rc = (this as Exec).executionResult.get().exitValue
+        if (rc != 0) throw GradleException(
+            "`cargo build --release -p whoop-ffi` failed (exit $rc) in $rsDir. If the log above mentions " +
+                "dlltool or a missing linker, the default rustup toolchain is the gnu one: rerun with " +
+                "RUSTUP_TOOLCHAIN=stable-x86_64-pc-windows-msvc (and without CARGO_TARGET_DIR, because the " +
+                "JVM tests load whoop-rs/target/release/whoop_ffi.dll)."
+        )
+    }
 }
 tasks.withType<Test>().configureEach { dependsOn(buildRustHostDll) }
 
@@ -264,13 +278,30 @@ tasks.withType<Test>().configureEach { dependsOn(buildRustHostDll) }
 // --app-src points the script at THIS module, not its own default. Without it every worktree writes
 // its bindings and `.so` into one fixed checkout, leaving the tree that ran the build holding stale
 // artifacts and another tree holding artifacts it never built.
+//
+// Gradle skips the task (UP-TO-DATE) when the whoop-rs sources it fingerprints are unchanged AND its
+// outputs (jniLibs incl. the .fingerprint stamp) are untouched since it last succeeded.
+// The inputs are the same set sync-jnilibs.py hashes, so Gradle can never call it fresh while the
+// script would call it stale; a failed run is never recorded, so a stale tree keeps failing loudly.
 val syncRustJniLibs = tasks.register<Exec>("syncRustJniLibs") {
-    workingDir = whoopRsDir
-    commandLine(
-        "python", whoopRsDir.resolve("tools/sync-jnilibs.py").absolutePath, "--ensure",
-        "--app-src", projectDir.resolve("src").absolutePath,
-    )
-    onlyIf { whoopRsDir.resolve("tools/sync-jnilibs.py").exists() }
+    val rsDir = whoopRsDir
+    val script = rsDir.resolve("tools/sync-jnilibs.py")
+    val src = projectDir.resolve("src")
+    workingDir = rsDir
+    commandLine("python", script.absolutePath, "--ensure", "--app-src", src.absolutePath)
+    onlyIf { script.exists() }
+    inputs.files(
+        fileTree(rsDir.resolve("crates")) { include("**/src/**/*.rs", "**/Cargo.toml") },
+        rsDir.resolve("Cargo.toml"), rsDir.resolve("Cargo.lock"), script,
+    ).withPropertyName("whoopRsSources").withPathSensitivity(PathSensitivity.RELATIVE)
+    // Files, not the directory: the stamp is a dotfile and an edit to it must invalidate the task.
+    outputs.files(
+        src.resolve("main/jniLibs/.fingerprint"),
+        src.resolve("main/jniLibs/arm64-v8a/libwhoop_ffi.so"),
+        src.resolve("main/jniLibs/x86_64/libwhoop_ffi.so"),
+    ).withPropertyName("jniLibs")
+    // Bindings are not declared: the source set is read by ksp/compile tasks that would then need their own
+    // dependsOn, and the script's guard (stamp + libs) never looked at them anyway.
 }
 tasks.matching { it.name.startsWith("merge") && it.name.endsWith("JniLibFolders") }
     .configureEach { dependsOn(syncRustJniLibs) }
