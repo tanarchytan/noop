@@ -227,7 +227,8 @@ interface WhoopDao : DeviceRegistryDao {
      *  sensor `hrSample` is authoritative; the v26 PPG-derived `ppgHrSample` only contributes seconds
      *  the strap NEVER reported a bpm for, so derived HR fills gaps without ever double-counting. */
     @Query(
-        "SELECT (ts / :bucketSeconds) * :bucketSeconds AS bucket, AVG(bpm) AS avgBpm FROM (" +
+        "SELECT (ts / :bucketSeconds) * :bucketSeconds AS bucket, AVG(bpm) AS avgBpm, " +
+            "MIN(bpm) AS minBpm, MAX(bpm) AS maxBpm FROM (" +
             "SELECT ts, bpm FROM hrSample " +
             "WHERE deviceId = :deviceId AND ts >= :from AND ts <= :to " +
             "UNION ALL " +

@@ -249,8 +249,11 @@ internal fun HeartRateTrendCard(
     // TODAY that is the identical full-buckets list, so the default path is byte-for-byte the old one.
     val bpm = remember(winBuckets) { winBuckets.map { it.avgBpm } }
     val latest = bpm.last().roundToInt()
-    val min = RustScores.min(bpm).roundToInt()
-    val max = RustScores.max(bpm).roundToInt()
+    // #2032: the footer Min/Max read the SAMPLES (per-bucket SQL MIN/MAX), not the mean curve, so a hard
+    // interval no longer reads lower here than in the workout that contained it. The y-rail below stays on
+    // the means (the series it labels); Avg stays on the means too (a mean of means needs a weighted avg).
+    val min = RustScores.min(winBuckets.map { it.minBpm }).roundToInt()
+    val max = RustScores.max(winBuckets.map { it.maxBpm }).roundToInt()
     val avg = RustScores.mean(bpm).roundToInt()
 
     // the RENDERED subset: the zoom window narrows which of the loaded buckets draw (the gesture

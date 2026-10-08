@@ -55,6 +55,12 @@ data class PpgHrSample(
 data class HrBucket(
     val bucket: Long,
     val avgBpm: Double,
+    /** The lowest and highest sample IN the bucket, not the bucket's mean. The card plots [avgBpm], but a
+     *  Min/Max readout taken from that series describes the calmest and busiest FIVE MINUTES, not the
+     *  day (a workout's max could exceed the day's, #2032). Required, no default: a default would let a
+     *  bucket's extremes silently equal its mean, which is the shape of that bug. */
+    val minBpm: Double,
+    val maxBpm: Double,
 )
 
 /** Aggregate HR over a time window: sample count + avg/max bpm. Query result of

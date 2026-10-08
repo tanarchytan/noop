@@ -95,8 +95,8 @@ class SeriesExtremesOneOwnerTest {
                 "val minV = RustScores.min(values)",
             ),
             "TodayHeartRate.kt" to listOf(
-                "val min = RustScores.min(bpm).roundToInt()",
-                "val max = RustScores.max(bpm).roundToInt()",
+                "val min = RustScores.min(winBuckets.map { it.minBpm }).roundToInt()",
+                "val max = RustScores.max(winBuckets.map { it.maxBpm }).roundToInt()",
                 "val visMax = RustScores.max(visBpm).roundToInt()",
                 "val visMin = RustScores.min(visBpm).roundToInt()",
             ),

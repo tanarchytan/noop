@@ -28,7 +28,7 @@ class HrReadUnionTest {
     private fun sample(ts: Long, bpm: Int, source: String = canonical) =
         HrSample(deviceId = source, ts = ts, bpm = bpm)
 
-    private fun bucket(start: Long, avg: Double) = HrBucket(bucket = start, avgBpm = avg)
+    private fun bucket(start: Long, avg: Double) = HrBucket(bucket = start, avgBpm = avg, minBpm = avg, maxBpm = avg)
 
     private fun step(ts: Long, activityClass: Int?, source: String = canonical) =
         StepSample(deviceId = source, ts = ts, counter = 0, activityClass = activityClass)
@@ -50,6 +50,15 @@ class HrReadUnionTest {
         val only = listOf(bucket(0, 55.0), bucket(300, 58.0), bucket(600, 61.0))
         val merged = WhoopRepository.mergeHrBucketsByStart(listOf(only))
         assertSame("single-id read must be the same list reference, untouched", only, merged)
+    }
+
+    /** The bucket keeps its sample extremes (#2032): a merge must not replace them with the mean. */
+    @Test
+    fun mergedBucketKeepsItsSampleExtremes() {
+        val hard = HrBucket(bucket = 0, avgBpm = 100.0, minBpm = 60.0, maxBpm = 172.0)
+        val merged = WhoopRepository.mergeHrBucketsByStart(listOf(listOf(hard), listOf(bucket(300, 80.0))))
+        assertEquals(60.0, merged.first().minBpm, 0.0)
+        assertEquals(172.0, merged.first().maxBpm, 0.0)
     }
 
     // --- (b) two id lists merge time-ordered, deduped by ts/bucket, FIRST (active) list wins on a tie ---
