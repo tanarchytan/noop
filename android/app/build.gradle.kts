@@ -222,6 +222,7 @@ dependencies {
 
     // --- Unit / instrumentation tests ---
     testImplementation("junit:junit:4.13.2")
+    testImplementation("org.xerial:sqlite-jdbc:3.41.2.2") // real SQLite on the JVM: runs the migration and DAO SQL, not just reads it
     // Plain JNA jar (not the @aar) so the desktop jnidispatch is on the JVM unit-test classpath — lets
     // the in-JVM RustCodec/FFI parity test load libwhoop_ffi on the host.
     testImplementation("net.java.dev.jna:jna:5.14.0")
