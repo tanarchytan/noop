@@ -8,9 +8,9 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Alarm
-import androidx.compose.material.icons.filled.FitnessCenter
-import androidx.compose.material.icons.filled.Insights
+import com.noop.ui.icons.Alarm
+import com.noop.ui.icons.FitnessCenter
+import com.noop.ui.icons.Insights
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier

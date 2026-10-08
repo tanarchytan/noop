@@ -1,10 +1,10 @@
 package com.noop.ui
 
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.HourglassEmpty
-import androidx.compose.material.icons.outlined.Science
-import androidx.compose.material.icons.outlined.Shield
-import androidx.compose.material.icons.outlined.VerifiedUser
+import com.noop.ui.icons.HourglassEmpty
+import com.noop.ui.icons.Science
+import com.noop.ui.icons.Shield
+import com.noop.ui.icons.VerifiedUser
 import androidx.compose.ui.graphics.vector.ImageVector
 
 // MARK: - AppChangelog

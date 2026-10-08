@@ -2,19 +2,19 @@ package com.noop.ui
 
 import android.content.Context
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.DirectionsRun
-import androidx.compose.material.icons.automirrored.filled.DirectionsWalk
-import androidx.compose.material.icons.filled.Air
-import androidx.compose.material.icons.filled.AutoAwesome
-import androidx.compose.material.icons.filled.Bedtime
-import androidx.compose.material.icons.filled.Bolt
+import com.noop.ui.icons.DirectionsRun
+import com.noop.ui.icons.DirectionsWalk
+import com.noop.ui.icons.Air
+import com.noop.ui.icons.AutoAwesome
+import com.noop.ui.icons.Bedtime
+import com.noop.ui.icons.Bolt
 import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.Hexagon
-import androidx.compose.material.icons.filled.LocalDrink
-import androidx.compose.material.icons.filled.LocalFireDepartment
-import androidx.compose.material.icons.filled.MonitorHeart
-import androidx.compose.material.icons.filled.Thermostat
-import androidx.compose.material.icons.filled.WaterDrop
+import com.noop.ui.icons.Hexagon
+import com.noop.ui.icons.LocalDrink
+import com.noop.ui.icons.LocalFireDepartment
+import com.noop.ui.icons.MonitorHeart
+import com.noop.ui.icons.Thermostat
+import com.noop.ui.icons.WaterDrop
 import androidx.compose.ui.graphics.vector.ImageVector
 import org.json.JSONArray
 

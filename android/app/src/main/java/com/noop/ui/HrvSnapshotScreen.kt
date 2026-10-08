@@ -18,10 +18,10 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Download
-import androidx.compose.material.icons.filled.MonitorHeart
-import androidx.compose.material.icons.filled.Stop
-import androidx.compose.material.icons.filled.WarningAmber
+import com.noop.ui.icons.Download
+import com.noop.ui.icons.MonitorHeart
+import com.noop.ui.icons.Stop
+import com.noop.ui.icons.WarningAmber
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon

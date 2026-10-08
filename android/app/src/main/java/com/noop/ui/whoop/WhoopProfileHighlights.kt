@@ -10,10 +10,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Bedtime
-import androidx.compose.material.icons.filled.GraphicEq
-import androidx.compose.material.icons.filled.Spa
-import androidx.compose.material.icons.outlined.MonitorHeart
+import com.noop.ui.icons.Bedtime
+import com.noop.ui.icons.GraphicEq
+import com.noop.ui.icons.Spa
+import com.noop.ui.icons.MonitorHeart
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment

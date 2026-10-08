@@ -180,7 +180,9 @@ dependencies {
     implementation("androidx.compose.ui:ui-graphics")
     implementation("androidx.compose.ui:ui-tooling-preview")
     implementation("androidx.compose.material3:material3")
-    implementation("androidx.compose.material:material-icons-extended")
+    // The core icon set only. material-icons-extended (~11k icons) is gone: the ~114 we use live in
+    // ui/icons/NoopIcons.kt (copied from it).
+    implementation("androidx.compose.material:material-icons-core")
 
     // --- Home-screen widget ---
     implementation("androidx.glance:glance-appwidget:1.1.1")
