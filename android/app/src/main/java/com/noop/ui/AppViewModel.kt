@@ -753,6 +753,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                     if (NoopPrefs.tsHealPending(appContext)) {
                         val purged = repository.healImplausibleTimestamps()
                         if (purged > 0) {
+                            // The HR fingerprint no longer counts rows, so a purge that spares the newest
+                            // row would not move it: force this tick's rescore explicitly.
+                            NoopPrefs.setAnalyzeWatermark(appContext, "")
                             ble.externalLog(
                                 "Heal: purged $purged row(s) with an implausible timestamp " +
                                     "(bad strap clock detected this sync); rescoring clean days.",

@@ -705,9 +705,12 @@ interface WhoopDao : DeviceRegistryDao {
     suspend fun latestHrSampleTs(deviceId: String): Long?
 
     @Query("SELECT COUNT(*) FROM hrSample") suspend fun countHr(): Int
-    // Max raw-HR timestamp across all devices. Paired with countHr() as a cheap whole-history change
-    // fingerprint, so the 15-min idle rescore can skip when nothing new has landed (COALESCE → 0 when empty).
-    @Query("SELECT COALESCE(MAX(ts), 0) FROM hrSample") suspend fun maxHrTs(): Long
+    // Whole-history raw-HR change fingerprint inputs for the 15-min idle rescore gate. Both are O(log n)
+    // (rightmost rowid b-tree page); the old COUNT(*) + MAX(ts) were two full index scans because ts is not
+    // the leading PK column. Any insert gets a rowid above every existing one, so the max rowid moves.
+    @Query("SELECT COALESCE(MAX(rowid), 0) FROM hrSample") suspend fun maxHrRowid(): Long
+    // ts of the newest-inserted row: separates 'tail deleted then re-inserted' (rowid reused) from no change.
+    @Query("SELECT COALESCE((SELECT ts FROM hrSample ORDER BY rowid DESC LIMIT 1), 0)") suspend fun lastInsertedHrTs(): Long
     @Query("SELECT COUNT(*) FROM rrInterval") suspend fun countRr(): Int
     @Query("SELECT COUNT(*) FROM event") suspend fun countEvents(): Int
     @Query("SELECT COUNT(*) FROM battery") suspend fun countBattery(): Int
