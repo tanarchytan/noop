@@ -733,11 +733,15 @@ internal object IntegrityCheckingUniffiLib {
     ): Int
     external fun uniffi_whoop_ffi_checksum_func_hydration_cfg(
     ): Int
+    external fun uniffi_whoop_ffi_checksum_func_is_rr_fill(
+    ): Int
     external fun uniffi_whoop_ffi_checksum_func_nap_defaults(
     ): Int
     external fun uniffi_whoop_ffi_checksum_func_recovery_cfg(
     ): Int
     external fun uniffi_whoop_ffi_checksum_func_rest_cfg(
+    ): Int
+    external fun uniffi_whoop_ffi_checksum_func_rr_fill_cfg(
     ): Int
     external fun uniffi_whoop_ffi_checksum_func_sleep_debt_cfg(
     ): Int
@@ -1153,11 +1157,15 @@ internal object UniffiLib {
     ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_func_hydration_cfg(uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
+    external fun uniffi_whoop_ffi_fn_func_is_rr_fill(`rrMs`: Short,`hrBpm`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): Byte
     external fun uniffi_whoop_ffi_fn_func_nap_defaults(uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_func_recovery_cfg(uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_func_rest_cfg(uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    external fun uniffi_whoop_ffi_fn_func_rr_fill_cfg(uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_func_sleep_debt_cfg(uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
@@ -1556,6 +1564,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_whoop_ffi_checksum_func_hydration_cfg() != 54310) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_whoop_ffi_checksum_func_is_rr_fill() != 35475) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_whoop_ffi_checksum_func_nap_defaults() != 45829) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
@@ -1563,6 +1574,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_whoop_ffi_checksum_func_rest_cfg() != 4892) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_whoop_ffi_checksum_func_rr_fill_cfg() != 51285) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_whoop_ffi_checksum_func_sleep_debt_cfg() != 2761) {
@@ -6728,6 +6742,47 @@ public object FfiConverterTypeRrBeat: FfiConverterRustBuffer<RrBeat> {
     override fun write(value: RrBeat, buf: ByteBuffer) {
             FfiConverterLong.write(value.`ts`, buf)
             FfiConverterUShort.write(value.`rrMs`, buf)
+    }
+}
+
+
+
+/**
+ * The R-R filler rule: an exact `fill_rr_ms` beat with a same-second HR strictly below `fill_max_hr_bpm`.
+ */
+data class RrFillCfgInfo (
+    var `fillRrMs`: kotlin.UShort
+    , 
+    var `fillMaxHrBpm`: kotlin.UInt
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeRrFillCfgInfo: FfiConverterRustBuffer<RrFillCfgInfo> {
+    override fun read(buf: ByteBuffer): RrFillCfgInfo {
+        return RrFillCfgInfo(
+            FfiConverterUShort.read(buf),
+            FfiConverterUInt.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: RrFillCfgInfo) = (
+            FfiConverterUShort.allocationSize(value.`fillRrMs`) +
+            FfiConverterUInt.allocationSize(value.`fillMaxHrBpm`)
+    )
+
+    override fun write(value: RrFillCfgInfo, buf: ByteBuffer) {
+            FfiConverterUShort.write(value.`fillRrMs`, buf)
+            FfiConverterUInt.write(value.`fillMaxHrBpm`, buf)
     }
 }
 
@@ -13497,6 +13552,22 @@ public object FfiConverterSequenceOptionalDouble: FfiConverterRustBuffer<List<ko
     
 
         /**
+         * True when this beat is the 500 ms filler at a resting HR (`hr_bpm` from the same second, `None` when
+         * the strap stored none: not flagged). Marked suspect by the caller, never deleted.
+         */ fun `isRrFill`(`rrMs`: kotlin.UShort, `hrBpm`: kotlin.UInt?): kotlin.Boolean {
+            return FfiConverterBoolean.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_func_is_rr_fill(
+    
+        
+        FfiConverterUShort.lower(`rrMs`),
+        FfiConverterOptionalUInt.lower(`hrBpm`),_status)
+}
+    )
+    }
+    
+
+        /**
          * The defaults a `NapConfigInfo` starts from before the user tunes it.
          */ fun `napDefaults`(): NapDefaultsInfo {
             return FfiConverterTypeNapDefaultsInfo.lift(
@@ -13528,6 +13599,19 @@ public object FfiConverterSequenceOptionalDouble: FfiConverterRustBuffer<List<ko
             return FfiConverterTypeRestCfgInfo.lift(
     uniffiRustCall() { _status ->
     UniffiLib.uniffi_whoop_ffi_fn_func_rest_cfg(
+    
+        _status)
+}
+    )
+    }
+    
+
+        /**
+         * The filler constants, so a SQL backfill binds them instead of declaring its own copy.
+         */ fun `rrFillCfg`(): RrFillCfgInfo {
+            return FfiConverterTypeRrFillCfgInfo.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_func_rr_fill_cfg(
     
         _status)
 }
