@@ -36,6 +36,11 @@ class NoopApplication : Application() {
         // Apply a staged backup restore before the Room store is opened, so the file swap runs with no
         // live connection or background coroutine that could re-open a torn file mid-swap. No-op normally.
         WhoopDatabase.applyPendingRestore(this)
+        // Resolve the write id off the main thread: the first Room open (and any pending migration) is
+        // inside it. [activeDeviceId] is a synchronized lazy, so a main-thread reader that gets there first
+        // computes it itself exactly as before, and one that arrives later just waits for this thread:
+        // same value, same order, never a second resolve. Failures are swallowed inside the lazy.
+        Thread({ activeDeviceId }, "noop-warm-active-id").start()
         RustSleepStager.engineProvider = { NoopPrefs.sleepEngine(this) }
         // #2556: the stale-battery warning needs a wake that does NOT depend on the BLE link, because the
         // case it exists for is a strap that stopped talking. KEEP, so this is a no-op once scheduled.
