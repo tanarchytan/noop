@@ -88,6 +88,10 @@ data class RrInterval(
      *  read sort so RMSSD sees beats in the order the strap emitted them. NULL on rows written before
      *  the column existed: the order was never recorded, so it cannot be recovered. */
     val ord: Int? = null,
+    /** 1 = the 500 ms filler ([RrFill]). Marked, never deleted; scoring reads skip it. The SQL default
+     *  matches the migration's. */
+    @ColumnInfo(defaultValue = "0")
+    val tsSuspect: Int = 0,
 )
 
 /**

@@ -38,10 +38,10 @@ class V102MigrationTest {
     /** A device already carries v101 with real data, so these additions take their own version instead
      *  of changing v101's identity hash under an installed store. */
     @Test
-    fun theStepIs101To102AndIsTheCurrentSchema() {
+    fun theStepIs101To102() {
         assertEquals(101, WhoopDatabase.MIGRATION_101_102.startVersion)
         assertEquals(102, WhoopDatabase.MIGRATION_101_102.endVersion)
-        assertEquals(102, WhoopDatabase.SCHEMA_VERSION)
+        assertTrue("v102 is no longer the newest; V103MigrationTest pins the current one", WhoopDatabase.SCHEMA_VERSION >= 102)
         assertTrue(
             "the step must be wired into the migration list",
             WhoopDatabase.ALL_MIGRATIONS.any { it.startVersion == 101 && it.endVersion == 102 },
@@ -60,7 +60,7 @@ class V102MigrationTest {
             hops++
         }
         assertEquals(WhoopDatabase.SCHEMA_VERSION, at)
-        assertEquals("v100 must reach it in exactly two additive hops", 2, hops)
+        assertEquals("v100 must reach it in exactly three additive hops (100 -> 101 -> 102 -> 103)", 3, hops)
     }
 
     /** ALTER ADD COLUMN and CREATE are metadata-only in SQLite, so this step costs the same on a

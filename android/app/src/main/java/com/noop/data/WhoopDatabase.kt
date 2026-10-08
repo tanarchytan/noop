@@ -54,7 +54,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         RhythmMorphologyRow::class,
         CoachMessageRow::class,
     ],
-    version = 102,
+    version = 103,
     exportSchema = false,
 )
 abstract class WhoopDatabase : RoomDatabase() {
@@ -64,7 +64,7 @@ abstract class WhoopDatabase : RoomDatabase() {
         const val DB_NAME = "noop_whoop.db"
 
         /** Current Room schema version. Must match [Database.version]. */
-        const val SCHEMA_VERSION = 102
+        const val SCHEMA_VERSION = 103
 
         /**
          * Ordered list of all Room migrations, earliest to latest, used by
@@ -79,7 +79,7 @@ abstract class WhoopDatabase : RoomDatabase() {
             MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14,
             MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18,
             MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21, MIGRATION_21_22,
-            MIGRATION_100_101, MIGRATION_101_102,
+            MIGRATION_100_101, MIGRATION_101_102, MIGRATION_102_103,
             ) + UPSTREAM_CATCHALL_MIGRATIONS
         }
 
@@ -229,6 +229,19 @@ abstract class WhoopDatabase : RoomDatabase() {
                 for (stmt in IMU_FEATURE_MIGRATION_SQL) db.execSQL(stmt)
                 for (stmt in ECG_RHYTHM_MIGRATION_SQL) db.execSQL(stmt)
                 for (stmt in COACH_MESSAGE_MIGRATION_SQL) db.execSQL(stmt)
+            }
+        }
+
+        /** `rrInterval.tsSuspect`, the filler mark ([RrFill]). The default matches the entity's. */
+        internal val RR_TS_SUSPECT_MIGRATION_SQL: List<String> = listOf(
+            "ALTER TABLE `rrInterval` ADD COLUMN `tsSuspect` INTEGER NOT NULL DEFAULT 0",
+        )
+
+        /** v102 -> v103: add the column, then backfill it ([RrFill.MARK_ALL_SQL]). One PK scan, so no index. */
+        internal val MIGRATION_102_103 = object : Migration(102, 103) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                for (stmt in RR_TS_SUSPECT_MIGRATION_SQL) db.execSQL(stmt)
+                db.execSQL(RrFill.MARK_ALL_SQL, RrFill.binds())
             }
         }
 
