@@ -617,14 +617,12 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 val logicalKey = logicalDayKeyNow()       // ISO yyyy-MM-dd, local logical day
                 val localKey = java.time.LocalDate.now().toString()
                 _today.value = resolveTodayRow(days, logicalKey, localKey)
-                val previousAlert = _healthAlert.value
                 _healthAlert.value =
                     if (_illnessWatchEnabled.value) IllnessWatch.evaluate(days) else null
-                // Banner transition (clear → raised) → real system notification; the notifier's
-                // persisted day gate dedupes against the background-service call site.
-                if (previousAlert == null) {
-                    _healthAlert.value?.let { IllnessAlertNotifier.onEvaluated(appContext, it) }
-                }
+                // EVERY evaluation is reported, raised or clear. The clear-to-raised edge lives in the
+                // notifier's PERSISTED state (#2586): `_healthAlert` starts null on every ViewModel
+                // build, so gating here made a cold start look like a transition.
+                IllnessAlertNotifier.onEvaluated(appContext, _healthAlert.value)
                 // Morning recap — opt-in, default OFF. Once today's row carries a banked night
                 // (totalSleepMin != null), post a one-per-day Charge + Rest recap. recovery == Charge;
                 // Rest is recomputed from the night's totals via RestScorer (the same single source of
@@ -1941,6 +1939,12 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         NoopPrefs.setIllnessWatch(appContext, enabled)
         // Recompute now — the recentDays collector only fires on data changes.
         _healthAlert.value = if (enabled) IllnessWatch.evaluate(recentDays.value) else null
+        // Reported like any other evaluation, because the persisted edge (#2586) is only correct if
+        // EVERY change of state reaches it. Switching the watch off while an alert was raised used to
+        // clear the banner here and leave the stored flag raised, so the next genuine transition —
+        // possibly months later, after switching the watch back on — would be read as "already raised"
+        // and silently suppressed.
+        IllnessAlertNotifier.onEvaluated(appContext, _healthAlert.value)
     }
 
     /** Flip cycle awareness (v5 skin-temp suite). Persists and recomputes the v5 signals immediately so

@@ -563,6 +563,17 @@ object NoopPrefs {
         of(context).edit().putString(KEY_ILLNESS_LAST_NOTIFIED_DAY, day).apply()
     }
 
+    /** Whether the illness banner was RAISED at the last evaluation, persisted so the clear-to-raised
+     *  edge survives process death (#2586). */
+    const val KEY_ILLNESS_WAS_RAISED = "noop.illnessWasRaised"
+
+    fun illnessWasRaised(context: Context): Boolean =
+        of(context).getBoolean(KEY_ILLNESS_WAS_RAISED, false)
+
+    fun setIllnessWasRaised(context: Context, raised: Boolean) {
+        of(context).edit().putBoolean(KEY_ILLNESS_WAS_RAISED, raised).apply()
+    }
+
     /** Battery alerts, low (≤15%) + charge-complete (100%) strap notifications (thanks @ujix).
      *  Default ON; gated here and behind the OS notification permission. */
     const val KEY_BATTERY_ALERTS = "noop.batteryAlerts"

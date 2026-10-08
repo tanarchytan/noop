@@ -90,11 +90,6 @@ class WhoopConnectionService : Service() {
     /** Platform-GPS wrapper (no Google Play Services). Lazily built — the service holds a Context. */
     private val locationTracker by lazy { LocationTracker(this) }
 
-    /** Last illness-watch evaluation seen by the collector — clear→raised is the notify edge.
-     *  In-memory on purpose: the persisted once-a-day gate (NoopPrefs) handles dedupe across
-     *  process restarts and the AppViewModel call site. */
-    private var lastIllnessAlert: String? = null
-
     /** Last battery % the predictive runtime alert was evaluated at. The live-state flow emits far
      *  more often than the strap's ~8-min battery cadence; gating the Room read + estimator fit on an
      *  actual SoC change keeps the predictive path as cheap as the SoC-only alert beside it. */
@@ -206,12 +201,11 @@ class WhoopConnectionService : Service() {
                 // Honest-null: the notification's Recovery line reads the naive today row, never the
                 // carried anchor, so it stays blank until tonight's recovery actually lands.
                 postNotification(state, todayRow?.recovery)
-                // Banner transition (clear → raised) → real system notification; the notifier's
-                // persisted day gate dedupes against the app-open (AppViewModel) call site.
-                if (lastIllnessAlert == null && illness != null) {
-                    IllnessAlertNotifier.onEvaluated(this@WhoopConnectionService, illness)
-                }
-                lastIllnessAlert = illness
+                // EVERY evaluation is reported, raised or clear. The clear-to-raised edge lives in the
+                // notifier's PERSISTED state (#2586): gating on an in-memory field meant a service
+                // restart re-armed the edge and the day gate let a fresh notification through for an
+                // alert that never transitioned.
+                IllnessAlertNotifier.onEvaluated(this@WhoopConnectionService, illness)
                 // Battery alerts — low (≤15%) and charge-complete (100%). The once-per-crossing
                 // dedupe is persisted in NoopPrefs (BatteryAlertPolicy), so no in-memory pct tracking.
                 BatteryAlertNotifier.onBatteryUpdate(
