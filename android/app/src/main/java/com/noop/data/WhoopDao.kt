@@ -267,10 +267,22 @@ interface WhoopDao : DeviceRegistryDao {
         // differences, so order WITHIN a second is the whole input. `ord` carries true emission
         // order; `seq` can't (assignRrSeq keys on (ts, rrMs), so every beat in a second holds 0).
         // Legacy rows hold a NULL ord (SQLite sorts it first), falling through to (rrMs, seq).
-        "SELECT * FROM rrInterval WHERE deviceId = :deviceId AND ts >= :from AND ts <= :to " +
+        // Scoring read: `tsSuspect = 0` skips the filler. The unfiltered twin is [rrIntervalsAll].
+        "SELECT * FROM rrInterval WHERE deviceId = :deviceId AND ts >= :from AND ts <= :to AND tsSuspect = 0 " +
             "ORDER BY ts ASC, ord ASC, rrMs ASC, seq ASC LIMIT :limit"
     )
     suspend fun rrIntervals(deviceId: String, from: Long, to: Long, limit: Int): List<RrInterval>
+
+    /** Every beat, marked ones included. Raw export only, never a score input. */
+    @Query(
+        "SELECT * FROM rrInterval WHERE deviceId = :deviceId AND ts >= :from AND ts <= :to " +
+            "ORDER BY ts ASC, ord ASC, rrMs ASC, seq ASC LIMIT :limit"
+    )
+    suspend fun rrIntervalsAll(deviceId: String, from: Long, to: Long, limit: Int): List<RrInterval>
+
+    /** Mark the filler in [from, to] for one device; [fill]/[maxHr] are [RrFill]'s. Returns rows newly marked. */
+    @Query("UPDATE rrInterval SET tsSuspect = 1 WHERE deviceId = :deviceId AND ts >= :from AND ts <= :to AND " + RR_FILL_MARK_WHERE)
+    suspend fun markRrFill(deviceId: String, from: Long, to: Long, fill: Int, maxHr: Int): Int
 
     @Query(
         "SELECT * FROM event WHERE deviceId = :deviceId AND ts >= :from AND ts <= :to " +

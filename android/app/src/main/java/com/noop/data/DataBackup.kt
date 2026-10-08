@@ -918,6 +918,9 @@ object DataBackup {
                 val left = SchemaShape.plan(target.shape, SchemaShape.read { db.query(it) })
                 if (!left.isClean) return@runCatching refusal(currentVersion, left)
 
+                // A shape repair adds `tsSuspect` at the default 0, so mark the filler. Idempotent.
+                db.execSQL(RrFill.MARK_ALL_SQL, RrFill.binds())
+
                 db.execSQL("PRAGMA user_version = $targetVersion")
                 // Manual migration updates SCHEMA + user_version but not Room's identity bookkeeping
                 // (room_master_table), which Room only rewrites on its own migration — left stale, the
@@ -1190,6 +1193,8 @@ object DataBackup {
             db.beginTransaction()
             try {
                 for (s in plan.statements) db.execSQL(s)
+                // Rows from a backup without `tsSuspect` arrive at the default 0, so mark the filler.
+                db.execSQL(RrFill.MARK_ALL_SQL, RrFill.binds())
                 db.setTransactionSuccessful()
             } finally {
                 db.endTransaction()

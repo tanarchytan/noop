@@ -269,6 +269,7 @@ class WhoopRepository(private val dao: WhoopDao) {
             dao.insertHr(streams.hr.map { HrSample(deviceId, it.ts, it.bpm) })
         val rrIds = if (streams.rr.isEmpty()) emptyList() else
             dao.insertRr(assignRrSeq(deviceId, streams.rr))
+        markRrFillFor(deviceId, streams)
         val evIds = if (streams.events.isEmpty()) emptyList() else
             dao.insertEvents(streams.events.map { EventRow(deviceId, it.ts, it.kind, it.payloadJSON) })
         val batIds = if (streams.battery.isEmpty()) emptyList() else
@@ -707,6 +708,19 @@ class WhoopRepository(private val dao: WhoopDao) {
 
     suspend fun rrIntervals(deviceId: String, from: Long, to: Long, limit: Int = DEFAULT_LIMIT) =
         dao.rrIntervals(deviceId, from, to, limit)
+
+    /** Every beat, marked ones included; for the raw sensor export. */
+    suspend fun rrIntervalsAll(deviceId: String, from: Long, to: Long, limit: Int = DEFAULT_LIMIT) =
+        dao.rrIntervalsAll(deviceId, from, to, limit)
+
+    /**
+     * Marks the batch's filler ([RrFill]) over its R-R second range, a bounded PK-range UPDATE. An HR that
+     * lands in a later batch than its R-R is only seen by the next backfill (ponytail: add an HR-side pass).
+     */
+    private suspend fun markRrFillFor(deviceId: String, streams: StreamBatch) {
+        if (streams.rr.isEmpty()) return
+        dao.markRrFill(deviceId, streams.rr.minOf { it.ts }, streams.rr.maxOf { it.ts }, RrFill.fillMs, RrFill.maxHrBpm)
+    }
 
     /**
      * R-R over the registry read scope, PICKING ONE source for the window rather than merging: the id
