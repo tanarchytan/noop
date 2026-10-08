@@ -464,7 +464,13 @@ object IntelligenceEngine {
             // scored from exactly one (active strap > other live straps > imports, or a locked override).
             val owner = resolveDayOwner(repo, ownerSource, candidatePriorities, day, from, to, importedDeviceId)
 
-            val hr = repo.hrSamples(owner, from, to, STREAM_LIMIT)
+            // Calendar-day window for the additive daily totals (see dayHr below); hoisted so the night and
+            // day HR/gravity ranges, which overlap, are each read from storage ONCE and sliced.
+            val dayMidnight = midnightLocal(dayStart, tzOffsetSeconds)
+            val dayEnd = dayMidnight + CalendarDay.SECONDS_PER_DAY - 1
+            val (hr, dayHr) = StreamWindows.readTwo(from..to, dayMidnight..dayEnd, STREAM_LIMIT, { it.ts }) { f, t, l ->
+                repo.hrSamples(owner, f, t, l)
+            }
             // CAPTURE-B: capture this day's resolved read owner + HR-row count so pass 2 can emit the
             // verbatim universal `dayOwner …` line per SCORED day. Only when the universal sink is on;
             // a day skipped below for too few rows is never scored, so it emits no line.
@@ -474,7 +480,9 @@ object IntelligenceEngine {
                 continue // need real raw data, not a stray sample
             }
             val rr = repo.rrIntervals(owner, from, to, STREAM_LIMIT)
-            val grav = repo.gravitySamples(owner, from, to, STREAM_LIMIT)
+            val (grav, dayGrav) = StreamWindows.readTwo(from..to, dayMidnight..dayEnd, STREAM_LIMIT, { it.ts }) { f, t, l ->
+                repo.gravitySamples(owner, f, t, l)
+            }
             val steps = repo.stepSamples(owner, from, to, STREAM_LIMIT)
             val skin = repo.skinTempSamples(owner, from, to, STREAM_LIMIT)
             // WHOOP 4.0 raw SpO2 PPG samples for the night; analyzeDay banks the nightly red/IR ADC means
@@ -510,16 +518,12 @@ object IntelligenceEngine {
             // Calendar-day window for the additive daily totals (steps + calories): the night window
             // above ends at dayStart+12h and would undercount a past day's late hours, so this reads
             // [localMidnight(day), +86400) instead, feeding dayHr/daySteps; MIN_HR_SAMPLES stays gated on the night window.
-            val dayMidnight = midnightLocal(dayStart, tzOffsetSeconds)
-            val dayEnd = dayMidnight + CalendarDay.SECONDS_PER_DAY - 1
             // Same [owner] as the night window above (I2): the additive day totals must come from the one
-            // device that owns the day, never a mix.
-            val dayHr = repo.hrSamples(owner, dayMidnight, dayEnd, STREAM_LIMIT)
+            // device that owns the day, never a mix. (dayHr / dayGrav are sliced from the reads above.)
             val daySteps = repo.stepSamples(owner, dayMidnight, dayEnd, STREAM_LIMIT)
             // Full calendar-day gravity for workout detection. The night window above ends at
             // dayStart+12h (~noon), so this reads [localMidnight, +24h) instead (clamped to now for
             // today) so the detector sees the whole day, including an afternoon/evening workout.
-            val dayGrav = repo.gravitySamples(owner, dayMidnight, dayEnd, STREAM_LIMIT)
 
             // The strap's own band sleep_state for the night window as (ts, state) samples, read from
             // [owner] so the H7 morning-stillness guard confirms against the real offload and analyzeDay
