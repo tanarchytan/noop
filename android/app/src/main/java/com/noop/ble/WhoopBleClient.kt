@@ -2411,7 +2411,10 @@ class WhoopBleClient(
             RustCodec.advertisingNameFrame(s, name)
         }
         val outcome = renameOutcome(queued)
-        log("Strap rename: advertising name=$clamped ${if (queued) "written" else "NOT written, link refused it"}")
+        // #2337: through [logSafeDeviceName], never raw. This name is USER-CHOSEN, so it is the one string
+        // in the rename path that can carry a person's name, and strap logs get attached to public issues.
+        // [redactStrapLogPii] masks MACs, WHOOP serials and hex dumps, none of which this is.
+        log("Strap rename: advertising name=${logSafeDeviceName(clamped)} ${if (queued) "written" else "NOT written, link refused it"}")
         _state.update { it.copy(renameStatus = outcome.message) }
         return outcome
     }
@@ -2743,10 +2746,10 @@ class WhoopBleClient(
             // discovered" path below is byte-for-byte unchanged.
             val preferred = preferredAddress
             if (preferred != null && !device.address.equals(preferred, ignoreCase = true)) {
-                log("Discovered $name (${device.address}) — not the preferred strap; ignoring")
+                log("Discovered ${logSafeDeviceName(name)} (${device.address}) — not the preferred strap; ignoring")
                 return
             }
-            log("Discovered $name (rssi ${result.rssi}) — connecting")
+            log("Discovered ${logSafeDeviceName(name)} (rssi ${result.rssi}) — connecting")
             // Found it: cancel the not-found timeout AND the family-rotation fallback, then reflect
             // progress in the UI.
             handler.removeCallbacks(scanTimeoutRunnable)
@@ -5734,6 +5737,54 @@ internal fun whoop4ReadbackReportsNoAlarm(frame: ByteArray): Boolean {
 internal fun alarmReadbackLocalTime(epochSec: Long): String =
     java.text.SimpleDateFormat("EEE HH:mm zzz", java.util.Locale.US)
         .format(java.util.Date(epochSec * 1000L))
+
+/**
+ * Tokens that identify a MODEL rather than a person, for [logSafeDeviceName].
+ *
+ * Two shapes only, both EXACT: a known vendor, product or model word, and a version number ("4.0").
+ *
+ * There is deliberately no letters-plus-digits pattern for model codes. One was tried and it defeated
+ * the whole design: "[a-z]{1,4}\\d{1,3}" matches "Ryan1" and "Sam99" as readily as "H10", so a first
+ * name with a digit passed through untouched. A pattern cannot be an allowlist - the moment a rule
+ * describes a SHAPE rather than a known value, it admits everything else of that shape. Model codes are
+ * therefore listed one by one.
+ *
+ * The cost is that an unlisted device logs as "<name>" until its code is added here, which is the right
+ * direction to fail: a missing model is an inconvenience, a leaked name is not.
+ *
+ * Anything not on this list is DROPPED, which is the point: a naming shape nobody anticipated loses by
+ * default. Extend it when a device logs as "<name>" and its model is worth having. Swift twin:
+ * `LiveState.safeDeviceNameToken`.
+ */
+private val SAFE_DEVICE_NAME_TOKEN_RE =
+    Regex("(?i)(whoop|mg|polar|verity|sense|wahoo|tickr|garmin|hrm|forerunner|fenix|vantage|ignite|amazfit|huami|zepp|xiaomi|mi|band|coospo|magene|suunto|scosche|rhythm|kickr|tacx|elite|cateye|decathlon|kalenji|geonaute|h6|h7|h9|h10|h64|h808s|oh1|dual|\\d+(\\.\\d+)?)")
+
+/**
+ * A device name reduced to what is safe to put in a shared log: the MODEL, never the person.
+ *
+ * WHOOP seeds a strap's name from the account holder ("<FirstName>'s Whoop") and people rename straps
+ * to anything at all. [redactStrapLogPii] can only GUESS which words in a line are a name; here the
+ * whole string IS the advertised name, so the safe move is an ALLOWLIST - keep the tokens known to name
+ * a model and drop everything else. A naming shape nobody anticipated is then dropped by default rather
+ * than needing a rule to catch it: "Ryan B's WHOOP 4.0" keeps only "WHOOP 4.0", and "Dad's spare" keeps
+ * nothing.
+ *
+ * The "no name advertised" sentinel survives, because "we saw no name" and "we removed a name" are
+ * different facts to whoever reads the log. Swift twin: `LiveState.logSafeDeviceName`.
+ */
+internal fun logSafeDeviceName(name: String?): String {
+    val n = name?.trim().orEmpty()
+    if (n.isEmpty() || n == "unknown") return "unknown"
+    val tokens = n.split(Regex("\\s+"))
+    val safe = tokens.filter { SAFE_DEVICE_NAME_TOKEN_RE.matches(it) }
+    // Say "<name>" only when something was actually removed. An unrenamed "WHOOP 4.0" or "Polar H10"
+    // carries nothing personal, and prefixing it would claim a redaction that never happened.
+    return when {
+        safe.size == tokens.size -> n
+        safe.isEmpty() -> "<name>"
+        else -> "<name> " + safe.joinToString(" ")
+    }
+}
 
 /** Mask MAC addresses and WHOOP serials in a strap-log line before it's shown/exported.
  *  TOTAL - never throws: a redaction failure returns a safe placeholder rather than leaking the
