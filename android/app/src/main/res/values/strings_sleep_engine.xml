@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="sleep_engine_title">Sleep engine</string>
+    <string name="sleep_engine_original">Original</string>
+    <string name="sleep_engine_experimental">Experimental</string>
+    <string name="sleep_engine_detail">Experimental leaves the least certain 20% of each night unscored and shows those stretches as gaps. Totals are unchanged. A wellness estimate, not medical. Recent nights are re-scored when you switch.</string>
+    <string name="sleep_unscored_note">Hatched gaps were left unscored.</string>
+</resources>

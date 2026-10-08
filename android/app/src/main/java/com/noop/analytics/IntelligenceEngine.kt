@@ -786,7 +786,7 @@ object IntelligenceEngine {
                         efficiency = s.efficiency,
                         restingHr = s.restingHR,
                         avgHrv = s.avgHRV,
-                        stagesJSON = AnalyticsEngine.encodeStages(s.stages),
+                        stagesJSON = AnalyticsEngine.encodeStages(s.stages, s.unscored),
                     ),
                 )
             }

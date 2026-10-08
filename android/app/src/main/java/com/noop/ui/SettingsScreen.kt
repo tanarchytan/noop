@@ -28,6 +28,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material.icons.filled.BatteryStd
 import androidx.compose.ui.res.stringResource
 import com.noop.R
+import uniffi.whoop_ffi.SleepEngine
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
@@ -396,6 +397,7 @@ fun SettingsScreen(
     var stressCheckIn by remember { mutableStateOf(BiofeedbackPrefs.checkInEnabled(context)) }
     var stressAutoNudge by remember { mutableStateOf(BiofeedbackPrefs.autoNudge(context)) }
     var coachSignals by remember { mutableStateOf(NoopPrefs.coachSignals(context)) }
+    var sleepEngine by remember { mutableStateOf(NoopPrefs.sleepEngine(context)) }
     var autoDetectWorkouts by remember { mutableStateOf(NoopPrefs.autoDetectWorkouts(context)) }
     // Keep the screen on during a manual workout recording , default OFF. The live-workout
     // screen reads this same "workoutKeepScreenOn" key. String shared verbatim with the iOS/Mac twin
@@ -556,6 +558,26 @@ fun SettingsScreen(
                         NoopPrefs.setCoachSignals(context, it)
                     },
                 )
+                RowDivider()
+                val originalLabel = stringResource(R.string.sleep_engine_original)
+                val experimentalLabel = stringResource(R.string.sleep_engine_experimental)
+                Column(verticalArrangement = Arrangement.spacedBy(Metrics.space8)) {
+                    Text(stringResource(R.string.sleep_engine_title), style = NoopType.body, color = Palette.textPrimary)
+                    SegmentedPillControl(
+                        items = SleepEngine.entries.toList(),
+                        selection = sleepEngine,
+                        label = { if (it == SleepEngine.EXPERIMENTAL) experimentalLabel else originalLabel },
+                        onSelect = {
+                            sleepEngine = it
+                            NoopPrefs.setSleepEngine(context, it)
+                        },
+                    )
+                    Text(
+                        stringResource(R.string.sleep_engine_detail),
+                        style = NoopType.footnote,
+                        color = Palette.textTertiary,
+                    )
+                }
             }
         }
 

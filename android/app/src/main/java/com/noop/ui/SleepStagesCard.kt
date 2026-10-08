@@ -32,9 +32,11 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipRect
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import com.noop.R
 import com.noop.analytics.RustScores
 import java.util.Locale
 import kotlin.math.roundToInt
@@ -75,6 +77,7 @@ internal fun SleepStagesCard(
     wakeTs: Long?,
     motionEpochs: List<Double>,
     hrPoints: List<TimelinePoint>,
+    unscored: List<Pair<Long, Long>> = emptyList(),
 ) {
     // Real per-epoch runs only when there are transitions to draw; a single run has none, and an
     // invented architecture has no genuine timeline to band the heart rate against.
@@ -119,6 +122,7 @@ internal fun SleepStagesCard(
                 onsetTs = onsetTs,
                 wakeTs = wakeTs,
                 motionEpochs = motionEpochs,
+                unscored = unscored,
                 selectedStage = selectedStage,
                 onSelectStage = { selectedStage = it },
             )
@@ -152,10 +156,12 @@ private fun SleepStageRows(
     onsetTs: Long?,
     wakeTs: Long?,
     motionEpochs: List<Double>,
+    unscored: List<Pair<Long, Long>>,
     selectedStage: String?,
     onSelectStage: (String?) -> Unit,
 ) {
     val spanSec = nightSpanSec(realSegments.orEmpty(), onsetTs, wakeTs)
+    val gaps = remember(unscored, onsetTs, spanSec) { unscoredFractions(unscored, onsetTs, spanSec) }
     val intervals = remember(realSegments, spanSec) {
         nightStageIntervals(realSegments.orEmpty(), spanSec)
     }
@@ -183,11 +189,19 @@ private fun SleepStageRows(
                 total = stages.total,
                 color = stageRowColor(label),
                 spans = spans,
+                gaps = gaps,
                 drawnMin = drawnMin,
                 typicalMin = typicalByStage[label],
                 selected = selectedStage == label,
                 dimmed = selectedStage != null && selectedStage != label,
                 onTap = { onSelectStage(if (selectedStage == label) null else label) },
+            )
+        }
+        if (gaps.isNotEmpty()) {
+            Text(
+                stringResource(R.string.sleep_unscored_note),
+                style = NoopType.footnote,
+                color = Palette.textTertiary,
             )
         }
         Box(modifier = Modifier.padding(horizontal = Metrics.stageRowPadH)) {
@@ -217,6 +231,7 @@ private fun SleepStageRow(
     total: Double,
     color: Color,
     spans: List<Pair<Float, Float>>,
+    gaps: List<Pair<Float, Float>>,
     drawnMin: Double?,
     typicalMin: Double?,
     selected: Boolean,
@@ -268,7 +283,7 @@ private fun SleepStageRow(
                 maxLines = 1,
             )
         }
-        SleepStageTrack(spans = spans, color = segColor, typicalFrac = typicalFrac)
+        SleepStageTrack(spans = spans, gaps = gaps, color = segColor, typicalFrac = typicalFrac)
         // An empty-looking track beside a real figure is the two sources disagreeing, so the row says so
         // rather than reading as a stage the night never had.
         if (drawnMin != null && drawnMin.roundToInt() < minutes.roundToInt()) {
@@ -299,7 +314,12 @@ private fun SleepStageDot(color: Color, filled: Boolean) {
  * "elsewhere in the night"), the stage's solid runs, then a dashed mark at the personal typical.
  */
 @Composable
-private fun SleepStageTrack(spans: List<Pair<Float, Float>>, color: Color, typicalFrac: Float?) {
+private fun SleepStageTrack(
+    spans: List<Pair<Float, Float>>,
+    gaps: List<Pair<Float, Float>>,
+    color: Color,
+    typicalFrac: Float?,
+) {
     val hatch = Palette.hairline
     val base = Palette.surfaceInset
     val markColor = Palette.textPrimary
@@ -331,6 +351,20 @@ private fun SleepStageTrack(spans: List<Pair<Float, Float>>, color: Color, typic
                 size = Size(segW, h),
                 cornerRadius = segRadius,
             )
+        }
+
+        // Unscored stretches: the track's base showing through, hatched denser, over any run beneath.
+        gaps.forEach { (fracStart, fracWidth) ->
+            val gx = w * fracStart
+            val gw = w * fracWidth
+            drawRect(color = base, topLeft = Offset(gx, 0f), size = Size(gw, h))
+            clipRect(gx, 0f, gx + gw, h) {
+                var x = gx - h
+                while (x < gx + gw) {
+                    drawLine(color = hatch, start = Offset(x, h), end = Offset(x + h, 0f), strokeWidth = 1f)
+                    x += 3.dp.toPx()
+                }
+            }
         }
 
         // The marker only says something where there is track on both sides of it. Pinned to an end it

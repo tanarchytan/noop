@@ -68,7 +68,7 @@ object SleepStageHealer {
 
     /**
      * Pure re-stage: gate on gravity density, then run the whoop-rs stager over the LOCKED
-     * `[start, end]` bounds (via [RustSleepStager.stage] → V2 staging + motion-aware wake refinement)
+     * `[start, end]` bounds (via [RustSleepStager.stage] → the chosen engine's staging + motion-aware wake refinement)
      * and encode deterministically via [AnalyticsEngine.encodeStages]. Returns `null` when the raw
      * isn't dense (caller keeps the stored stages). No I/O — the test feeds raw sample lists directly.
      * `grav` is the SAME ±1h-padded read [restageFromRaw] fetched; the Rust stager clips each stream to
@@ -87,7 +87,7 @@ object SleepStageHealer {
         if (!isDense(grav, start, end)) return null
         // Staging + motion-aware wake refinement both run in whoop-rs (V2 staging + motion-refine).
         val refined = RustSleepStager.stage(start, end, grav, hr, rr, steps)
-        return AnalyticsEngine.encodeStages(refined)
+        return AnalyticsEngine.encodeStages(refined.stages, refined.unscored)
     }
 
     /**

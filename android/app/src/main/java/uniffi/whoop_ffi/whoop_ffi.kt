@@ -843,6 +843,8 @@ internal object IntegrityCheckingUniffiLib {
     ): Int
     external fun uniffi_whoop_ffi_checksum_func_analyze_sleep(
     ): Int
+    external fun uniffi_whoop_ffi_checksum_func_analyze_sleep_with(
+    ): Int
     external fun uniffi_whoop_ffi_checksum_func_bridged_night_groups(
     ): Int
     external fun uniffi_whoop_ffi_checksum_func_habitual_midsleep_sec(
@@ -872,6 +874,8 @@ internal object IntegrityCheckingUniffiLib {
     external fun uniffi_whoop_ffi_checksum_func_sleep_regularity_index(
     ): Int
     external fun uniffi_whoop_ffi_checksum_func_stage_sleep_refined(
+    ): Int
+    external fun uniffi_whoop_ffi_checksum_func_stage_sleep_refined_with(
     ): Int
     external fun uniffi_whoop_ffi_checksum_func_nightly_spo2_raw_means(
     ): Int
@@ -1259,6 +1263,8 @@ internal object UniffiLib {
     ): Double
     external fun uniffi_whoop_ffi_fn_func_analyze_sleep(`streams`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
+    external fun uniffi_whoop_ffi_fn_func_analyze_sleep_with(`streams`: RustBuffer.ByValue,`engine`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_func_bridged_night_groups(`blocks`: RustBuffer.ByValue,`offsetS`: Long,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_func_habitual_midsleep_sec(`history`: RustBuffer.ByValue,`offsetS`: Long,`minDays`: Int,uniffi_out_err: UniffiRustCallStatus, 
@@ -1288,6 +1294,8 @@ internal object UniffiLib {
     external fun uniffi_whoop_ffi_fn_func_sleep_regularity_index(`firstLocalMidnight`: Long,`days`: Int,`asleep`: RustBuffer.ByValue,`covered`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_func_stage_sleep_refined(`input`: RustBuffer.ByValue,`steps`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    external fun uniffi_whoop_ffi_fn_func_stage_sleep_refined_with(`input`: RustBuffer.ByValue,`steps`: RustBuffer.ByValue,`engine`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_func_nightly_spo2_raw_means(`spans`: RustBuffer.ByValue,`samples`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
@@ -1713,6 +1721,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_whoop_ffi_checksum_func_analyze_sleep() != 40400) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_whoop_ffi_checksum_func_analyze_sleep_with() != 25397) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_whoop_ffi_checksum_func_bridged_night_groups() != 11274) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
@@ -1756,6 +1767,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_whoop_ffi_checksum_func_stage_sleep_refined() != 47589) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_whoop_ffi_checksum_func_stage_sleep_refined_with() != 56005) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_whoop_ffi_checksum_func_nightly_spo2_raw_means() != 907) {
@@ -6460,6 +6474,47 @@ public object FfiConverterTypeRecoveryDrivers: FfiConverterRustBuffer<RecoveryDr
 
 
 /**
+ * A re-staged span: motion-refined hypnogram plus the spans the engine declines to score.
+ */
+data class RefinedStaging (
+    var `segments`: List<SleepSegment>
+    , 
+    var `unscored`: List<SleepSpan>
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeRefinedStaging: FfiConverterRustBuffer<RefinedStaging> {
+    override fun read(buf: ByteBuffer): RefinedStaging {
+        return RefinedStaging(
+            FfiConverterSequenceTypeSleepSegment.read(buf),
+            FfiConverterSequenceTypeSleepSpan.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: RefinedStaging) = (
+            FfiConverterSequenceTypeSleepSegment.allocationSize(value.`segments`) +
+            FfiConverterSequenceTypeSleepSpan.allocationSize(value.`unscored`)
+    )
+
+    override fun write(value: RefinedStaging, buf: ByteBuffer) {
+            FfiConverterSequenceTypeSleepSegment.write(value.`segments`, buf)
+            FfiConverterSequenceTypeSleepSpan.write(value.`unscored`, buf)
+    }
+}
+
+
+
+/**
  * Rest (sleep performance) weights and the duration / restorative shape.
  */
 data class RestCfgInfo (
@@ -7287,6 +7342,11 @@ data class SleepSession (
     var `motionGrid`: List<kotlin.Double>
     , 
     var `sleepStateGrid`: List<kotlin.Int>
+    , 
+    /**
+     * Spans the engine declines to score, ascending; empty for the original engine.
+     */
+    var `unscored`: List<SleepSpan>
     
 ){
     
@@ -7311,6 +7371,7 @@ public object FfiConverterTypeSleepSession: FfiConverterRustBuffer<SleepSession>
             FfiConverterSequenceTypeSleepSegment.read(buf),
             FfiConverterSequenceDouble.read(buf),
             FfiConverterSequenceInt.read(buf),
+            FfiConverterSequenceTypeSleepSpan.read(buf),
         )
     }
 
@@ -7322,7 +7383,8 @@ public object FfiConverterTypeSleepSession: FfiConverterRustBuffer<SleepSession>
             FfiConverterOptionalDouble.allocationSize(value.`avgHrv`) +
             FfiConverterSequenceTypeSleepSegment.allocationSize(value.`segments`) +
             FfiConverterSequenceDouble.allocationSize(value.`motionGrid`) +
-            FfiConverterSequenceInt.allocationSize(value.`sleepStateGrid`)
+            FfiConverterSequenceInt.allocationSize(value.`sleepStateGrid`) +
+            FfiConverterSequenceTypeSleepSpan.allocationSize(value.`unscored`)
     )
 
     override fun write(value: SleepSession, buf: ByteBuffer) {
@@ -7334,6 +7396,48 @@ public object FfiConverterTypeSleepSession: FfiConverterRustBuffer<SleepSession>
             FfiConverterSequenceTypeSleepSegment.write(value.`segments`, buf)
             FfiConverterSequenceDouble.write(value.`motionGrid`, buf)
             FfiConverterSequenceInt.write(value.`sleepStateGrid`, buf)
+            FfiConverterSequenceTypeSleepSpan.write(value.`unscored`, buf)
+    }
+}
+
+
+
+/**
+ * A `[start, end)` span in unix seconds.
+ */
+data class SleepSpan (
+    var `start`: kotlin.Long
+    , 
+    var `end`: kotlin.Long
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeSleepSpan: FfiConverterRustBuffer<SleepSpan> {
+    override fun read(buf: ByteBuffer): SleepSpan {
+        return SleepSpan(
+            FfiConverterLong.read(buf),
+            FfiConverterLong.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: SleepSpan) = (
+            FfiConverterLong.allocationSize(value.`start`) +
+            FfiConverterLong.allocationSize(value.`end`)
+    )
+
+    override fun write(value: SleepSpan, buf: ByteBuffer) {
+            FfiConverterLong.write(value.`start`, buf)
+            FfiConverterLong.write(value.`end`, buf)
     }
 }
 
@@ -9769,6 +9873,43 @@ public object FfiConverterTypeSexInput: FfiConverterRustBuffer<SexInput> {
     override fun allocationSize(value: SexInput) = 4UL
 
     override fun write(value: SexInput, buf: ByteBuffer) {
+        buf.putInt(value.ordinal + 1)
+    }
+}
+
+
+
+
+
+/**
+ * Which staging engine to run: the shipped recipe, or the experimental one (abstention holes).
+ */
+
+enum class SleepEngine {
+    
+    ORIGINAL,
+    EXPERIMENTAL;
+
+    
+
+
+    companion object
+}
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeSleepEngine: FfiConverterRustBuffer<SleepEngine> {
+    override fun read(buf: ByteBuffer) = try {
+        SleepEngine.values()[buf.getInt() - 1]
+    } catch (e: IndexOutOfBoundsException) {
+        throw RuntimeException("invalid enum value, something is very wrong!!", e)
+    }
+
+    override fun allocationSize(value: SleepEngine) = 4UL
+
+    override fun write(value: SleepEngine, buf: ByteBuffer) {
         buf.putInt(value.ordinal + 1)
     }
 }
@@ -12448,6 +12589,34 @@ public object FfiConverterSequenceTypeSleepSession: FfiConverterRustBuffer<List<
 /**
  * @suppress
  */
+public object FfiConverterSequenceTypeSleepSpan: FfiConverterRustBuffer<List<SleepSpan>> {
+    override fun read(buf: ByteBuffer): List<SleepSpan> {
+        val len = buf.getInt()
+        return List<SleepSpan>(len) {
+            FfiConverterTypeSleepSpan.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<SleepSpan>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeSleepSpan.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<SleepSpan>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeSleepSpan.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterSequenceTypeSleepSpanMsInfo: FfiConverterRustBuffer<List<SleepSpanMsInfo>> {
     override fun read(buf: ByteBuffer): List<SleepSpanMsInfo> {
         val len = buf.getInt()
@@ -14150,6 +14319,21 @@ public object FfiConverterSequenceOptionalDouble: FfiConverterRustBuffer<List<ko
     )
     }
     
+
+        /**
+         * [`analyze_sleep`] with a choice of engine; `Original` is identical to `analyze_sleep`.
+         */ fun `analyzeSleepWith`(`streams`: SleepStreams, `engine`: SleepEngine): List<SleepSession> {
+            return FfiConverterSequenceTypeSleepSession.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_func_analyze_sleep_with(
+    
+        
+        FfiConverterTypeSleepStreams.lower(`streams`),
+        FfiConverterTypeSleepEngine.lower(`engine`),_status)
+}
+    )
+    }
+    
  fun `bridgedNightGroups`(`blocks`: List<MainNightBlock>, `offsetS`: kotlin.Long): List<SleepBridgedGroup> {
             return FfiConverterSequenceTypeSleepBridgedGroup.lift(
     uniffiRustCall() { _status ->
@@ -14378,6 +14562,22 @@ public object FfiConverterSequenceOptionalDouble: FfiConverterRustBuffer<List<ko
         
         FfiConverterTypeSleepInput.lower(`input`),
         FfiConverterSequenceTypeSleepStepSample.lower(`steps`),_status)
+}
+    )
+    }
+    
+
+        /**
+         * [`stage_sleep_refined`] with a choice of engine, plus the spans the engine declines to score.
+         */ fun `stageSleepRefinedWith`(`input`: SleepInput, `steps`: List<SleepStepSample>, `engine`: SleepEngine): RefinedStaging {
+            return FfiConverterTypeRefinedStaging.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_func_stage_sleep_refined_with(
+    
+        
+        FfiConverterTypeSleepInput.lower(`input`),
+        FfiConverterSequenceTypeSleepStepSample.lower(`steps`),
+        FfiConverterTypeSleepEngine.lower(`engine`),_status)
 }
     )
     }

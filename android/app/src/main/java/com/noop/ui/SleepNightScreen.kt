@@ -459,6 +459,7 @@ fun SleepNightScreen(
                         wakeTs = night?.heroWakeTs ?: night?.session?.effectiveEndTs,
                         motionEpochs = night?.groupMotion ?: emptyList(),
                         hrPoints = nightHr,
+                        unscored = night?.unscored.orEmpty(),
                     )
                 }
             }

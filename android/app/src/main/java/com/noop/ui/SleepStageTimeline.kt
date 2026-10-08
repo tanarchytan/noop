@@ -33,6 +33,37 @@ internal fun parsePersistedSegments(json: String?): List<PersistedSegment>? {
     }.getOrNull()
 }
 
+/** The `[start, end]` unix-second stretches the engine left unscored, stored on the first segment; empty when absent. */
+internal fun unscoredSpans(json: String?): List<Pair<Long, Long>> {
+    if (json.isNullOrBlank() || !json.trimStart().startsWith("[")) return emptyList()
+    return runCatching {
+        val spans = JSONArray(json).optJSONObject(0)?.optJSONArray("unscored") ?: return@runCatching emptyList()
+        (0 until spans.length()).mapNotNull { i ->
+            val p = spans.optJSONArray(i) ?: return@mapNotNull null
+            val s = p.optLong(0, Long.MIN_VALUE)
+            val e = p.optLong(1, Long.MIN_VALUE)
+            if (s == Long.MIN_VALUE || e <= s) null else s to e
+        }
+    }.getOrDefault(emptyList())
+}
+
+/**
+ * Maps unscored stretches onto the night's axis as (startFraction, widthFraction) of [spanSec] from
+ * [onsetTs], clipped to the night. Position only; nothing is derived from the spans.
+ */
+internal fun unscoredFractions(
+    spans: List<Pair<Long, Long>>,
+    onsetTs: Long?,
+    spanSec: Double,
+): List<Pair<Float, Float>> {
+    if (onsetTs == null || !spanSec.isFinite() || spanSec <= 0.0) return emptyList()
+    return spans.mapNotNull { (s, e) ->
+        val lo = ((s - onsetTs) / spanSec).coerceIn(0.0, 1.0)
+        val hi = ((e - onsetTs) / spanSec).coerceIn(0.0, 1.0)
+        if (hi > lo) lo.toFloat() to (hi - lo).toFloat() else null
+    }
+}
+
 /** One contiguous run of a single sleep stage, in seconds from the night's onset. */
 internal data class StageInterval(val stage: String, val startSec: Double, val endSec: Double) {
     val durationSec: Double get() = endSec - startSec

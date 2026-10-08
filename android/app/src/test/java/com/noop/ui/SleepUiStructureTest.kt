@@ -60,7 +60,7 @@ class SleepUiStructureTest {
             "SleepStageTimeline.kt" to setOf(
                 "STAGE_ROW_SMOOTH_SEC", "PersistedSegment", "parsePersistedSegments",
                 "StageInterval", "stageIntervalsFromWeights", "displaySmoothed", "canonicalStage",
-                "stageRowSpans", "nightSpanSec", "nightStageIntervals",
+                "stageRowSpans", "nightSpanSec", "nightStageIntervals", "unscoredSpans", "unscoredFractions",
             ),
             "SleepStagesCard.kt" to setOf(
                 "STAGE_ORDER", "NO_SHARE", "stagePercentByLabel",

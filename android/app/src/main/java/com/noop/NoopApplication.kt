@@ -2,6 +2,7 @@ package com.noop
 
 import android.app.Application
 import android.util.Log
+import com.noop.analytics.RustSleepStager
 import com.noop.ble.LiveSources
 import com.noop.ble.SourceCoordinator
 import com.noop.ble.WhoopBleClient
@@ -35,6 +36,7 @@ class NoopApplication : Application() {
         // Apply a staged backup restore before the Room store is opened, so the file swap runs with no
         // live connection or background coroutine that could re-open a torn file mid-swap. No-op normally.
         WhoopDatabase.applyPendingRestore(this)
+        RustSleepStager.engineProvider = { NoopPrefs.sleepEngine(this) }
     }
 
     /** Process-wide Room-backed store. One instance shared by the UI and the background service. */

@@ -98,6 +98,8 @@ data class DetectedSleep(
     val motionGrid: List<Double> = emptyList(),
     /** Per-30 s-epoch band sleep_state (0 wake/1 still/2 asleep/3 up), from the whoop-rs analyze; empty when absent. */
     val sleepStateGrid: List<Int> = emptyList(),
+    /** Stretches (start, end unix seconds) the experimental engine leaves unscored; empty for the original engine. */
+    val unscored: List<Pair<Long, Long>> = emptyList(),
 )
 
 /** AASM-style metrics from a session's stage segments. */

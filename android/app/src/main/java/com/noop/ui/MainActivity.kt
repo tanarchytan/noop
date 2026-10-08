@@ -34,6 +34,7 @@ import com.noop.data.WhoopRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import uniffi.whoop_ffi.SleepEngine
 
 /**
  * Single-activity host. Requests the runtime BLE permissions the strap connection
@@ -270,6 +271,25 @@ object NoopPrefs {
     fun setAnalyzeWatermark(context: Context, fingerprint: String) {
         of(context).edit().putString(KEY_ANALYZE_WATERMARK, fingerprint).apply()
     }
+
+    /** Sleep engine: [SLEEP_ENGINE_ORIGINAL] (default) or [SLEEP_ENGINE_EXPERIMENTAL]. */
+    const val KEY_SLEEP_ENGINE = "noop.sleepEngine"
+    const val SLEEP_ENGINE_ORIGINAL = "original"
+    const val SLEEP_ENGINE_EXPERIMENTAL = "experimental"
+
+    fun sleepEngine(context: Context): SleepEngine = sleepEngineOf(of(context).getString(KEY_SLEEP_ENGINE, null))
+
+    /** Stores the choice and clears the analyze watermark, so the next pass re-scores recent nights with it. */
+    fun setSleepEngine(context: Context, engine: SleepEngine) {
+        of(context).edit()
+            .putString(KEY_SLEEP_ENGINE, if (engine == SleepEngine.EXPERIMENTAL) SLEEP_ENGINE_EXPERIMENTAL else SLEEP_ENGINE_ORIGINAL)
+            .remove(KEY_ANALYZE_WATERMARK)
+            .apply()
+    }
+
+    /** The stored value's engine; anything but "experimental" (absent, unknown) is the original. */
+    fun sleepEngineOf(stored: String?): SleepEngine =
+        if (stored == SLEEP_ENGINE_EXPERIMENTAL) SleepEngine.EXPERIMENTAL else SleepEngine.ORIGINAL
 
     /** Whether NOOP should hold the strap connection open via a foreground service. Default true. */
     fun backgroundConnection(context: Context): Boolean =

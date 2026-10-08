@@ -110,6 +110,8 @@ internal data class HeroNight(
     // split night `session` (the edit anchor) can end mid-night, so reading ITS endTs contradicted the pill.
     val heroOnsetTs: Long? = null,
     val heroWakeTs: Long? = null,
+    // Stretches the experimental engine left unscored, across the hero fragments; drawn as gaps only.
+    val unscored: List<Pair<Long, Long>> = emptyList(),
 )
 
 /** What the hero card draws for the selected night — null means no usable stage data (renders the honest
@@ -205,7 +207,8 @@ internal fun selectNight(
         heroGroup.sumOf { (it.effectiveEndTs - it.effectiveStartTs).coerceAtLeast(0L) } / 60.0
     } else null
     return HeroNight(session, dayKey, segments, clockLabelFor(heroOnsetTs, heroWakeTs), napBlocks, groupStages,
-        groupSegments, groupMotion, groupInBedMin, heroOnsetTs, heroWakeTs)
+        groupSegments, groupMotion, groupInBedMin, heroOnsetTs, heroWakeTs,
+        heroGroup.flatMap { unscoredSpans(it.stagesJSON) })
 }
 
 /**

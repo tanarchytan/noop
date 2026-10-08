@@ -90,7 +90,7 @@ object AnalyticsEngine {
      * emitted in a FIXED alphabetical order (end, stage, start) built by hand, since JSONObject's
      * HashMap-backed store has no stable order and drift would break [SleepStageHealer]'s equality check.
      */
-    fun encodeStages(stages: List<StageSegment>): String? {
+    fun encodeStages(stages: List<StageSegment>, unscored: List<Pair<Long, Long>> = emptyList()): String? {
         return try {
             val sb = StringBuilder()
             sb.append('[')
@@ -100,7 +100,11 @@ object AnalyticsEngine {
                 sb.append("{\"end\":").append(s.end)
                     .append(",\"stage\":").append(JSONObject.quote(s.stage))
                     .append(",\"start\":").append(s.start)
-                    .append('}')
+                // The unscored stretches ride on the first segment; every reader of a segment ignores the key.
+                if (i == 0 && unscored.isNotEmpty()) {
+                    sb.append(",\"unscored\":").append(unscored.joinToString(",", "[", "]") { "[${it.first},${it.second}]" })
+                }
+                sb.append('}')
             }
             sb.append(']')
             sb.toString()
