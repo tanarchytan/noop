@@ -30,10 +30,6 @@ android {
         vectorDrawables {
             useSupportLibrary = true
         }
-        // The Rust whoop-ffi .so ships for these two ABIs only (arm64 phones, x86_64 emulator).
-        ndk {
-            abiFilters += listOf("arm64-v8a", "x86_64")
-        }
     }
 
     signingConfigs {
@@ -69,6 +65,9 @@ android {
             isMinifyEnabled = false
             applicationIdSuffix = ".debug"
             versionNameSuffix = "-debug"
+            // The Rust whoop-ffi .so ships for arm64 phones and, in DEBUG ONLY, the x86_64 emulator.
+            // abiFilters from defaultConfig and a build type are UNIONED, so each type sets its own.
+            ndk { abiFilters += listOf("arm64-v8a", "x86_64") }
         }
         release {
             // Shipped UNMINIFIED for reliability. R8 minification crashes this app at runtime: full-mode
@@ -88,6 +87,8 @@ android {
                 signingConfigs.getByName("release")
             else
                 signingConfigs.getByName("debug")
+            // Phones are arm64; x86_64 is the emulator, which runs debug. `rc` inherits this via initWith.
+            ndk { abiFilters += "arm64-v8a" }
         }
         // Release candidate: byte-for-byte the release build plus debuggability. No id or version
         // suffix on purpose — it must land on top of an installed release and keep its data, which
