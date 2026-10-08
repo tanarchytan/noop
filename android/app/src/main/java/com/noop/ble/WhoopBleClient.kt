@@ -1211,6 +1211,11 @@ class WhoopBleClient(
      *  writes here (under [logBuffer]'s monitor); logcat mirroring is opt-in via [debugLogcat] since
      *  Android's `Log.d` isn't reachable by a normal user. */
     private val logBuffer = ArrayDeque<String>()
+    // Every line also goes to disk (twin of iOS's), so an export carries the runs before a restart.
+    // Opened at the first line or export of the process.
+    private val strapLogArchive: com.noop.ui.StrapLogArchive by lazy {
+        com.noop.ui.StrapLogArchive(java.io.File(context.filesDir, "strap-log"))
+    }
     // PII scrubbers for the shareable strap log live at file scope as [redactStrapLogPii], unit-testable
     // without constructing this client.
 
@@ -5593,9 +5598,13 @@ class WhoopBleClient(
             if (debugLogcat) Log.d(TAG, safe)
             // Mirror into the in-app ring buffer (format under the lock — SimpleDateFormat isn't
             // thread-safe, created per-call so no field is shared across threads).
+            // The same (already redacted) line also goes onto disk under the lock, so the file keeps the
+            // buffer's order. One ~100-byte write per line.
             synchronized(logBuffer) {
-                logBuffer.addLast("${java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.US).format(System.currentTimeMillis())}  $safe")
+                val line = "${java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.US).format(System.currentTimeMillis())}  $safe"
+                logBuffer.addLast(line)
                 while (logBuffer.size > LOG_BUFFER_MAX) logBuffer.removeFirst()
+                strapLogArchive.append(line)
             }
         } catch (t: Throwable) {
             // Last resort: note that a log line failed, without risking another throw. Never rethrow.
@@ -5631,8 +5640,13 @@ class WhoopBleClient(
         log("bondState $detail", com.noop.testcentre.TestDomain.CONNECTION)
     }
 
-    /** Snapshot of the recent strap log, newest last, for the "Share strap log" diagnostics export. */
-    fun exportLogText(): String = synchronized(logBuffer) { logBuffer.joinToString("\n") }
+    /**
+     * The strap log for the "Share strap log" diagnostics export: earlier runs oldest-first under their own
+     * headers, then a "===== current app session =====" marker and the whole of this run, from disk
+     * ([com.noop.ui.StrapLogArchive]). Survives a restart and is not cut to the [LOG_BUFFER_MAX] lines the
+     * in-memory buffer holds.
+     */
+    fun exportLogText(): String = strapLogArchive.exportText()
 }
 
 // PII scrubbers for the shareable strap log. Kept at FILE scope (not inside WhoopBleClient) so
