@@ -189,7 +189,7 @@ class RustHrZonesParityTest {
     // ── real captured night (skips when the local fixture is absent) ──────────
 
     private val rrFixture: String = System.getProperty("noop.rrRealFixture")
-        ?: "C:/Users/DavidGillot/Projects/whoop/whoop-data/harnesses/rr-real-fixture.json"
+        ?: "${System.getProperty("noop.whoopDataDir")}/harnesses/rr-real-fixture.json"
 
     /**
      * Real WHOOP capture: the R-R nights in `rr-real-fixture.json` become an HR stream (bpm = 60000/rrMs

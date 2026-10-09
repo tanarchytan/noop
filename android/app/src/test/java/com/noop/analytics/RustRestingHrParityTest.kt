@@ -42,7 +42,7 @@ class RustRestingHrParityTest {
     /** Real captured-night R-R fixtures (nights[]: onset/wake + rr[[ts,ms]]). Not committed (personal). */
     private val candidates: List<String> = listOfNotNull(
         System.getProperty("noop.restingHrFixture"),
-        "C:/Users/DavidGillot/Projects/whoop/whoop-data/harnesses/rr-real-fixture.json",
+        "${System.getProperty("noop.whoopDataDir")}/harnesses/rr-real-fixture.json",
     )
 
     private fun fixture(): File? = candidates.map { File(it) }.firstOrNull { it.exists() }

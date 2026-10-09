@@ -27,7 +27,7 @@ import kotlin.math.abs
 class RealDataRundownTest {
 
     private val fixturePath: String =
-        System.getProperty("noop.rrFixture") ?: "C:/Users/DavidGillot/Projects/whoop/whoop-data/harnesses/rr-real-fixture.json"
+        System.getProperty("noop.rrFixture") ?: "${System.getProperty("noop.whoopDataDir")}/harnesses/rr-real-fixture.json"
 
     /** Mean of per-5-min-bucket RMSSD across a night. [gapAware] false reproduces the un-gapped ancestor
      *  (plain RMSSD over the cleaned bucket); true is the SHIPPED path, the whoop-rs windowed avgHrv. */

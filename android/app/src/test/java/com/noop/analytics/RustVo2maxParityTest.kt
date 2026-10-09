@@ -185,10 +185,10 @@ class RustVo2maxParityTest {
     // Feeds a REAL resting-HR series derived from the local rr-real-fixture (per-night 60000/median(RR),
     // rounded to the Int the restingHr column stores) into the same VO2max/Fitness-Age store path, so the
     // parity is proven on real device numbers, not only crafted ones. The fixture holds personal
-    // biometrics, so it is NOT committed — the test reads an absolute path (override -Dnoop.rrFixture=...)
+    // biometrics, so it is NOT committed — the test reads it from whoop-data (override -Dnoop.rrFixture=...)
     // and SKIPS when absent, exactly like the agreement suite, so it never runs in CI.
     private val rrFixturePath: String =
-        System.getProperty("noop.rrFixture") ?: "C:/Users/DavidGillot/Projects/whoop/whoop-data/harnesses/rr-real-fixture.json"
+        System.getProperty("noop.rrFixture") ?: "${System.getProperty("noop.whoopDataDir")}/harnesses/rr-real-fixture.json"
 
     @Test
     fun `rust matches reference on resting-HR derived from real captured nights`() {

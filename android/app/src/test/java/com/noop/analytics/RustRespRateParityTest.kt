@@ -52,7 +52,7 @@ import kotlin.math.roundToInt
 class RustRespRateParityTest {
 
     private val fixturePath: String = System.getProperty("noop.rrFixture")
-        ?: "C:/Users/DavidGillot/Projects/whoop/whoop-data/harnesses/rr-real-fixture.json"
+        ?: "${System.getProperty("noop.whoopDataDir")}/harnesses/rr-real-fixture.json"
 
     /** Kotlin NaN (no finite estimate) → the FFI's null domain, so the two paths compare like-for-like. */
     private fun kotlinStored(v: Double): Double? = if (v.isFinite()) v else null

@@ -152,6 +152,12 @@ android {
                     ?: rootProject.projectDir.resolve("../../whoop-rs"))
                     .resolve("target/release").absolutePath,
             )
+            // Local-only fixtures live in the sibling whoop-data folder; tests self-skip when absent.
+            it.systemProperty(
+                "noop.whoopDataDir",
+                (System.getenv("WHOOP_DATA_DIR")?.let { d -> file(d) }
+                    ?: rootProject.projectDir.resolve("../../whoop-data")).normalize().absolutePath,
+            )
             // Forward any -Dnoop.* fixture-path override from the gradle CLI into the forked test JVM,
             // so a local run with -Dnoop.hrvGoldFixtures=<dir> (or -Dnoop.rrFixture=<file>) actually
             // reaches the agreement/gold tests (Gradle does not propagate system properties to the
