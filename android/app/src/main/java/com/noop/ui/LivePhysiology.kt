@@ -19,7 +19,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import kotlin.math.roundToInt
-import kotlin.math.sqrt
 import com.noop.ble.LiveState
 
 /**
@@ -197,12 +196,10 @@ private fun connectionModeDetail(live: LiveState, activeConnection: Boolean): St
     else -> "No live stream."
 }
 
-/** A "feel" RMSSD over the recent R-R buffer — time-gap-unaware on purpose (a live indicator, not a
- *  clinical figure; blanked on disconnect by clearedBiometrics). null until ≥3 intervals land. */
+/** A "feel" RMSSD over the last 12 R-R values — time-gap-unaware on purpose (a live indicator, not a
+ *  clinical figure; blanked on disconnect by clearedBiometrics). null until ≥3 intervals land. whoop-rs computes it. */
 private fun rollingRMSSD(rrRecent: List<Int>): Double? {
     val values = rrRecent.takeLast(12)
     if (values.size < 3) return null
-    val diffs = values.zipWithNext { a, b -> (b - a).toDouble() }
-    val meanSquare = diffs.sumOf { it * it } / diffs.size
-    return sqrt(meanSquare)
+    return com.noop.analytics.RustScores.rmssdRaw(values.map { it.toDouble() })
 }
