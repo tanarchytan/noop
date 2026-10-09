@@ -27,6 +27,27 @@
 >   `rc/X.Y.Z-tan` = release candidate (bug fixes only), `stable` = latest release (protected). Never
 >   push directly to `stable`. Never cut a release without an rc branch. Never merge features into an rc.
 >
+> ### noop-tan working state (2026-10-09; the session-level picture is `../dev-notes/STATE-20261009.md`)
+>
+> - **Clone:** work in `C:\work\whoop\noop`; `P:\whoop\noop` is a NAS mirror, never committed in. The active
+>   line is `feat/rr-filler-v103` (held, see below); `noop-tan` on origin is the last pushed dev state.
+> - **The border:** every number the user sees is computed in whoop-rs and reached through uniffi
+>   (`analytics/RustScores.kt`, `protocol/RustCodec.kt` and the other direct callers). What Kotlin still computes
+>   is listed in `docs/ALGORITHMS.md`; `../dev-notes/noop-tan/audit_kotlin_algorithms.py` (takes `NOOP_DIR`) measures it.
+> - **Room v103** (on `feat/rr-filler-v103` only): `rrInterval.tsSuspect` marks the strap's 500 ms R-R filler
+>   (predicate whoop-rs `isRrFill`). `MIGRATION_102_103` only adds the column; the backfill runs once after open
+>   (pref `noop.rrFillBackfilled103`, logged and retried on failure). Live 0x2A37 beats are flagged at parse time.
+>   Scoring reads go through `WhoopDao.rrIntervals` (`tsSuspect = 0`); the raw export reads every row. Held until
+>   installed over a device's v102 store: a schema version is free only while no device carries it.
+> - **Sleep engine:** pref `noop.sleepEngine`, Original (v2, default) or Experimental (tanv1). Experimental's
+>   holes ride as an optional `"unscored"` key on segment 0 of `stagesJSON`; drawn only, no total changes
+>   (`android/SLEEP-BORDER.md`).
+> - **Buzz pulses:** pref `noop.buzzCount`, 1 to 5, 5/MG only; the frame comes from whoop-rs `buzz_frame_with`.
+> - **JVM tests:** the FFI parity tests load the host `whoop_ffi` library from `$WHOOP_RS_DIR/target/release`
+>   (default: the sibling `whoop-rs`) and fail loudly without it; fixtures resolve from the `noop.whoopDataDir`
+>   system property (`WHOOP_DATA_DIR`, default the sibling `whoop-data`) and self-skip when absent, so check
+>   `skipped=0` in `app/build/test-results/**/*.xml`. Last full run: 2988 / 0 skipped / 0 failed at `80388f64d`.
+>
 > ### Comments (strict — noop-tan house rule, overrides the upstream "heavy" style below)
 >
 > Match whoop-rs. A comment is at most **3 lines**, only when it earns its place (a file/class-overview
