@@ -297,6 +297,8 @@ abstract class WhoopDatabase : RoomDatabase() {
                     runCatching { pending.delete() }
                 }
             }
+            // The restored store can carry the old HR fingerprint; force the next rescore.
+            com.noop.ui.NoopPrefs.setAnalyzeWatermark(context, "")
         }
 
         /**

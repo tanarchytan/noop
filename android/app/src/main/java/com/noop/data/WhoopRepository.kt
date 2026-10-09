@@ -353,7 +353,7 @@ class WhoopRepository(private val dao: WhoopDao) {
 
     /** Cheap whole-history raw-HR change fingerprint `"maxRowid:lastInsertedTs"` (both O(log n)). The idle
      *  15-min rescore backstop skips when this is unchanged since the last completed run. Any insert moves
-     *  it. A delete that leaves the newest row alone does not: the heal purge clears the watermark itself. */
+     *  it. A delete that leaves the newest row alone does not: every delete path clears the watermark itself. */
     suspend fun hrFingerprint(): String = "${dao.maxHrRowid()}:${dao.lastInsertedHrTs()}"
 
     // MARK: - Server-derived caches (latest value wins on conflict)

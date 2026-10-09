@@ -144,11 +144,19 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     /** Permanently delete all of a device's recorded data (its registry row is kept). */
-    suspend fun deletePairedDeviceData(id: String) = noopApp.deviceRegistry.deleteDeviceData(id)
+    suspend fun deletePairedDeviceData(id: String) {
+        noopApp.deviceRegistry.deleteDeviceData(id)
+        forgetAnalyzeWatermark()
+    }
 
     /** Delete only the chosen [categories] of a device's data; the registry row stays. */
-    suspend fun deletePairedDeviceData(id: String, categories: Set<com.noop.data.DataCategory>) =
+    suspend fun deletePairedDeviceData(id: String, categories: Set<com.noop.data.DataCategory>) {
         noopApp.deviceRegistry.deleteDeviceData(id, categories)
+        forgetAnalyzeWatermark()
+    }
+
+    /** A delete below the newest HR row leaves [WhoopRepository.hrFingerprint] unmoved, so force the next rescore. */
+    private fun forgetAnalyzeWatermark() = NoopPrefs.setAnalyzeWatermark(appContext, "")
 
     /**
      * Every stored-data id a brand owns: each registry row of that brand plus its computed sibling.
@@ -165,7 +173,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     /** Permanently delete a device: its registry row AND all its recorded data. Removes it from the list. */
-    suspend fun deletePairedDevice(id: String) = noopApp.deviceRegistry.delete(id)
+    suspend fun deletePairedDevice(id: String) {
+        noopApp.deviceRegistry.delete(id)
+        forgetAnalyzeWatermark()
+    }
 
     /**
      * A DISCOVERY-ONLY EXPERIMENTAL [com.noop.ble.OuraLiveSource] for the Add-Oura wizard. Runs its OWN

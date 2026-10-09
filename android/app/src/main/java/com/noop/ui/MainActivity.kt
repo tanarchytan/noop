@@ -262,9 +262,9 @@ object NoopPrefs {
         of(context).edit().putInt(KEY_POWER_SAVING_BATTERY_PCT, pct).apply()
     }
 
-    /** the raw-HR fingerprint ("count:maxTs") the last COMPLETED idle rescore scored against. The
-     *  15-min backstop tick skips when the current fingerprint equals this; cleared implicitly by any HR
-     *  insert/delete (the fingerprint moves). Mirrors the Swift `analyzeWatermark` UserDefaults key. */
+    /** the raw-HR fingerprint ("maxRowid:lastTs") the last COMPLETED idle rescore scored against. The
+     *  15-min backstop tick skips when the current fingerprint equals this. Any insert moves it; deletes
+     *  and a restore clear it explicitly. Mirrors the Swift `analyzeWatermark` UserDefaults key. */
     fun analyzeWatermark(context: Context): String? =
         of(context).getString(KEY_ANALYZE_WATERMARK, null)
 
