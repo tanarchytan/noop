@@ -747,6 +747,8 @@ internal object IntegrityCheckingUniffiLib {
     ): Int
     external fun uniffi_whoop_ffi_checksum_func_sleep_window_cfg(
     ): Int
+    external fun uniffi_whoop_ffi_checksum_func_standard_rr_ms(
+    ): Int
     external fun uniffi_whoop_ffi_checksum_func_strain_cfg(
     ): Int
     external fun uniffi_whoop_ffi_checksum_func_vitality_cfg(
@@ -845,8 +847,6 @@ internal object IntegrityCheckingUniffiLib {
     ): Int
     external fun uniffi_whoop_ffi_checksum_func_vo2max_estimate(
     ): Int
-    external fun uniffi_whoop_ffi_checksum_func_analyze_sleep(
-    ): Int
     external fun uniffi_whoop_ffi_checksum_func_analyze_sleep_with(
     ): Int
     external fun uniffi_whoop_ffi_checksum_func_bridged_night_groups(
@@ -876,8 +876,6 @@ internal object IntegrityCheckingUniffiLib {
     external fun uniffi_whoop_ffi_checksum_func_sleep_efficiency(
     ): Int
     external fun uniffi_whoop_ffi_checksum_func_sleep_regularity_index(
-    ): Int
-    external fun uniffi_whoop_ffi_checksum_func_stage_sleep_refined(
     ): Int
     external fun uniffi_whoop_ffi_checksum_func_stage_sleep_refined_with(
     ): Int
@@ -1171,6 +1169,8 @@ internal object UniffiLib {
     ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_func_sleep_window_cfg(uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
+    external fun uniffi_whoop_ffi_fn_func_standard_rr_ms(`raw`: Short,`plainMs`: Byte,uniffi_out_err: UniffiRustCallStatus, 
+    ): Int
     external fun uniffi_whoop_ffi_fn_func_strain_cfg(uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_func_vitality_cfg(uniffi_out_err: UniffiRustCallStatus, 
@@ -1269,8 +1269,6 @@ internal object UniffiLib {
     ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_func_vo2max_estimate(`age`: Double,`sex`: RustBuffer.ByValue,`waistCm`: Double,`restingHr`: Double,`paIndex`: Double,uniffi_out_err: UniffiRustCallStatus, 
     ): Double
-    external fun uniffi_whoop_ffi_fn_func_analyze_sleep(`streams`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
-    ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_func_analyze_sleep_with(`streams`: RustBuffer.ByValue,`engine`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_func_bridged_night_groups(`blocks`: RustBuffer.ByValue,`offsetS`: Long,uniffi_out_err: UniffiRustCallStatus, 
@@ -1300,8 +1298,6 @@ internal object UniffiLib {
     external fun uniffi_whoop_ffi_fn_func_sleep_efficiency(`start`: Long,`end`: Long,`stages`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_func_sleep_regularity_index(`firstLocalMidnight`: Long,`days`: Int,`asleep`: RustBuffer.ByValue,`covered`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
-    ): RustBuffer.ByValue
-    external fun uniffi_whoop_ffi_fn_func_stage_sleep_refined(`input`: RustBuffer.ByValue,`steps`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_func_stage_sleep_refined_with(`input`: RustBuffer.ByValue,`steps`: RustBuffer.ByValue,`engine`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
@@ -1585,6 +1581,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_whoop_ffi_checksum_func_sleep_window_cfg() != 9173) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_whoop_ffi_checksum_func_standard_rr_ms() != 4684) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_whoop_ffi_checksum_func_strain_cfg() != 53822) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
@@ -1732,10 +1731,7 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_whoop_ffi_checksum_func_vo2max_estimate() != 36719) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_whoop_ffi_checksum_func_analyze_sleep() != 40400) {
-        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
-    }
-    if (lib.uniffi_whoop_ffi_checksum_func_analyze_sleep_with() != 25397) {
+    if (lib.uniffi_whoop_ffi_checksum_func_analyze_sleep_with() != 60292) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_whoop_ffi_checksum_func_bridged_night_groups() != 11274) {
@@ -1780,10 +1776,7 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_whoop_ffi_checksum_func_sleep_regularity_index() != 52338) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_whoop_ffi_checksum_func_stage_sleep_refined() != 47589) {
-        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
-    }
-    if (lib.uniffi_whoop_ffi_checksum_func_stage_sleep_refined_with() != 56005) {
+    if (lib.uniffi_whoop_ffi_checksum_func_stage_sleep_refined_with() != 32762) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_whoop_ffi_checksum_func_nightly_spo2_raw_means() != 907) {
@@ -7587,7 +7580,7 @@ public object FfiConverterTypeSleepStepSample: FfiConverterRustBuffer<SleepStepS
 
 /**
  * The full night-window stream bundle for detection + staging (raw signals + off-wrist / band-state /
- * tz-offset). `analyze_sleep` carves the in-bed spans and stages each behind this one border call.
+ * tz-offset). `analyze_sleep_with` carves the in-bed spans and stages each behind this one border call.
  */
 data class SleepStreams (
     var `hr`: List<SleepHrSample>
@@ -13646,6 +13639,22 @@ public object FfiConverterSequenceOptionalDouble: FfiConverterRustBuffer<List<ko
     
 
         /**
+         * A standard BLE heart-rate (0x2A37) R-R word in ms: 1/1024 s per the spec, or plain ms when
+         * `plain_ms` (a strap family that sends milliseconds on that characteristic).
+         */ fun `standardRrMs`(`raw`: kotlin.UShort, `plainMs`: kotlin.Boolean): kotlin.UShort {
+            return FfiConverterUShort.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_func_standard_rr_ms(
+    
+        
+        FfiConverterUShort.lower(`raw`),
+        FfiConverterBoolean.lower(`plainMs`),_status)
+}
+    )
+    }
+    
+
+        /**
          * The Effort tuning behind `strain_score`.
          */ fun `strainCfg`(): StrainCfgInfo {
             return FfiConverterTypeStrainCfgInfo.lift(
@@ -14391,21 +14400,8 @@ public object FfiConverterSequenceOptionalDouble: FfiConverterRustBuffer<List<ko
     
 
         /**
-         * Detect + stage a night's streams: one call carves the in-bed spans and returns one session each.
-         */ fun `analyzeSleep`(`streams`: SleepStreams): List<SleepSession> {
-            return FfiConverterSequenceTypeSleepSession.lift(
-    uniffiRustCall() { _status ->
-    UniffiLib.uniffi_whoop_ffi_fn_func_analyze_sleep(
-    
-        
-        FfiConverterTypeSleepStreams.lower(`streams`),_status)
-}
-    )
-    }
-    
-
-        /**
-         * [`analyze_sleep`] with a choice of engine; `Original` is identical to `analyze_sleep`.
+         * Detect + stage a night's streams: one call carves the in-bed spans and returns one session each,
+         * staged by `engine` (`Original` is the v2 recipe, `Experimental` adds abstention holes).
          */ fun `analyzeSleepWith`(`streams`: SleepStreams, `engine`: SleepEngine): List<SleepSession> {
             return FfiConverterSequenceTypeSleepSession.lift(
     uniffiRustCall() { _status ->
@@ -14636,23 +14632,8 @@ public object FfiConverterSequenceOptionalDouble: FfiConverterRustBuffer<List<ko
     
 
         /**
-         * Stage one already-detected in-bed span with the V2 recipe + motion-aware wake refinement (the
-         * single-span edit self-heal path). Per-30 s-epoch stage segments over `[start, end]`.
-         */ fun `stageSleepRefined`(`input`: SleepInput, `steps`: List<SleepStepSample>): List<SleepSegment> {
-            return FfiConverterSequenceTypeSleepSegment.lift(
-    uniffiRustCall() { _status ->
-    UniffiLib.uniffi_whoop_ffi_fn_func_stage_sleep_refined(
-    
-        
-        FfiConverterTypeSleepInput.lower(`input`),
-        FfiConverterSequenceTypeSleepStepSample.lower(`steps`),_status)
-}
-    )
-    }
-    
-
-        /**
-         * [`stage_sleep_refined`] with a choice of engine, plus the spans the engine declines to score.
+         * Stage one already-detected in-bed span with `engine` + motion-aware wake refinement (the single-span
+         * edit self-heal path): per-30 s-epoch segments over `[start, end]`, plus the spans declined to score.
          */ fun `stageSleepRefinedWith`(`input`: SleepInput, `steps`: List<SleepStepSample>, `engine`: SleepEngine): RefinedStaging {
             return FfiConverterTypeRefinedStaging.lift(
     uniffiRustCall() { _status ->
