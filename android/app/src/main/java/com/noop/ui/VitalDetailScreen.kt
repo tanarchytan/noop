@@ -510,6 +510,13 @@ fun VitalDetailScreen(vm: AppViewModel, key: String) {
                         color = Palette.textTertiary,
                     )
                 }
+                if (detail.key == "hrv") {
+                    Text(
+                        "Overnight, from deep-sleep windows.",
+                        style = NoopType.footnote,
+                        color = Palette.textTertiary,
+                    )
+                }
             }
         }
 
