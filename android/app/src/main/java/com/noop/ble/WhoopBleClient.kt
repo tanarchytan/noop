@@ -2093,7 +2093,7 @@ class WhoopBleClient(
         val isHaptics = cmd == CommandNumber.RUN_HAPTICS_PATTERN
         val sent = sendCommand(cmd, withResponse) { s ->
             when {
-                gen5 && isHaptics -> RustCodec.buzzFrame(s)
+                gen5 && isHaptics -> RustCodec.buzzFrame(s, payload.getOrNull(1)?.toInt()?.and(0xFF) ?: 1)
                 else -> RustCodec.commandFrame(gen, seq = s, cmd = cmd.rawValue, payload = payload)
             }
         }
@@ -2153,22 +2153,26 @@ class WhoopBleClient(
      * uses. Used by scheduled cues (intervals, Breathe, notification mirrors); for a user-facing
      * "buzz the strap now" action use [buzzStrapOnce] instead.
      */
-    fun buzz(loops: Int = 2) {
-        val n = loops.coerceIn(0, 255)
+    fun buzz(loops: Int = 2, useBuzzSetting: Boolean = true) {
+        val n = if (useBuzzSetting && connectedFamily.gen == Gen.GEN5) buzzCountSetting() else loops.coerceIn(0, 255)
         send(CommandNumber.RUN_HAPTICS_PATTERN, byteArrayOf(2, n.toByte(), 0, 0, 0))
         log("Buzz: patternId=2 loops=$n")
     }
+
+    /** The 5/MG pulse count the user picked in Settings (1..5). */
+    private fun buzzCountSetting(): Int = NoopPrefs.buzzCount(context)
 
     /**
      * One-shot user buzz: the on-device-confirmed "vibrate the strap now" sequence. RUN_HAPTICS_PATTERN
      * (79) `[patternId=2, loops=3, 0, 0, 0]` followed by RUN_ALARM(68) `[0x01]` as a belt-and-suspenders
      * (a bare pattern write alone was reported ignored on some 4.0 straps). Both writes are ACKNOWLEDGED
      * (withResponse=true): a busy link can silently drop an unacked write with no vibration. 5/MG: [send]
-     * remaps cmd 79 to the maverick 0x13 notify buzz; RUN_ALARM isn't allow-listed there, so the
-     * follow-up is WHOOP 4.0 only — the maverick buzz alone is the confirmed 5/MG one-shot.
+     * remaps cmd 79 to the maverick 0x13 buzz with the Settings pulse count; RUN_ALARM isn't
+     * allow-listed there, so the follow-up is WHOOP 4.0 only.
      */
     fun buzzStrapOnce() {
-        send(CommandNumber.RUN_HAPTICS_PATTERN, byteArrayOf(2, 3, 0, 0, 0), withResponse = true)
+        val loops = if (connectedFamily.gen == Gen.GEN5) buzzCountSetting() else 3
+        send(CommandNumber.RUN_HAPTICS_PATTERN, byteArrayOf(2, loops.toByte(), 0, 0, 0), withResponse = true)
         if (connectedFamily == DeviceFamily.WHOOP5) {
             log("Buzz: one-shot fired (5/MG maverick buzz, acked)")
             return
@@ -2219,7 +2223,7 @@ class WhoopBleClient(
         var offsetMs = 0L
         for (pulse in pulses) {
             val loops = if (pulse.isLong) 2 else 1
-            handler.postDelayed({ buzz(loops) }, offsetMs)
+            handler.postDelayed({ buzz(loops, useBuzzSetting = false) }, offsetMs)
             offsetMs += (pulse.durationMs + pulse.gapMs).toLong()
         }
     }

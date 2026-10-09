@@ -419,6 +419,7 @@ fun SettingsScreen(
     // Power saving: battery-adaptive strap-sync cadence + optional HRV-capture pause. Local mirrors.
     var powerSaving by remember { mutableStateOf(NoopPrefs.powerSaving(context)) }
     var powerSavingBatteryPct by remember { mutableStateOf(NoopPrefs.powerSavingBatteryPct(context)) }
+    var buzzCount by remember { mutableStateOf(NoopPrefs.buzzCount(context)) }
 
     ScreenScaffold(
         title = "Settings",
@@ -578,6 +579,24 @@ fun SettingsScreen(
                         color = Palette.textTertiary,
                     )
                 }
+            }
+        }
+
+        if (showFiveMGControls) {
+            NoopSettingsSection(
+                icon = Icons.Filled.Bolt,
+                title = stringResource(R.string.buzz_count_title),
+                blurb = stringResource(R.string.buzz_count_blurb),
+            ) {
+                SegmentedPillControl(
+                    items = (1..5).toList(),
+                    selection = buzzCount,
+                    label = { it.toString() },
+                    onSelect = {
+                        buzzCount = it
+                        NoopPrefs.setBuzzCount(context, it)
+                    },
+                )
             }
         }
 

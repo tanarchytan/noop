@@ -241,6 +241,8 @@ object NoopPrefs {
      *  Benign — the strap banks to flash meanwhile, so sync just batches; no data loss, no link risk.
      *  Default OFF. Drives [com.noop.ble.WhoopBleClient.setLowBatteryOffloadThrottle] via [AppViewModel]. */
     const val KEY_POWER_SAVING = "noop.powerSaving"
+    /** WHOOP 5/MG buzz pulse count (1..5). Default 1. */
+    const val KEY_BUZZ_COUNT = "noop.buzzCount"
     /** Battery-% threshold for [KEY_POWER_SAVING] (10/15/20/25/30). Default 20. */
     const val KEY_POWER_SAVING_BATTERY_PCT = "noop.powerSavingBatteryPct"
     fun of(context: Context): SharedPreferences =
@@ -252,6 +254,12 @@ object NoopPrefs {
 
     fun setPowerSaving(context: Context, enabled: Boolean) {
         of(context).edit().putBoolean(KEY_POWER_SAVING, enabled).apply()
+    }
+
+    fun buzzCount(context: Context): Int = of(context).getInt(KEY_BUZZ_COUNT, 1).coerceIn(1, 5)
+
+    fun setBuzzCount(context: Context, count: Int) {
+        of(context).edit().putInt(KEY_BUZZ_COUNT, count.coerceIn(1, 5)).apply()
     }
 
     /** Battery-% threshold for power saving (default 20). */
