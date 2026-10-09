@@ -1149,9 +1149,9 @@ object IntelligenceEngine {
     /**
      * Re-scores under-sampled manual workouts. Conservative and idempotent: only `manual` rows that
      * look under-scored (negligible calories), and only when the recompute from denser HR is a genuine
-     * improvement, so a well-scored workout is never touched. Manual + offloaded HR both live under [deviceId].
+     * improvement, so a well-scored workout is never touched. Reads manual rows and HR across the registry scope.
      */
-    private suspend fun rescoreManualWorkouts(
+    internal suspend fun rescoreManualWorkouts(
         repo: WhoopRepository,
         profile: UserProfile,
         deviceId: String,
@@ -1159,7 +1159,11 @@ object IntelligenceEngine {
         nowSeconds: Long,
     ) {
         val since = nowSeconds - 14L * 86_400L
-        val rows = runCatching { repo.workouts(deviceId, since, nowSeconds) }.getOrNull() ?: return
+        val rows = runCatching {
+            // Manual rows are saved under the canonical id; the strap's HR sits under its own registry id.
+            (listOf(deviceId, WhoopRepository.WHOOP_SOURCE) + repo.importedSourceIds()).distinct()
+                .flatMap { repo.workouts(it, since, nowSeconds) }
+        }.getOrNull() ?: return
         val hrMax = maxHROverride ?: (208.0 - 0.7 * profile.age)   // Tanaka, matching endWorkout
         val updated = ArrayList<WorkoutRow>()
         for (row in rows) {
@@ -1168,7 +1172,7 @@ object IntelligenceEngine {
             // workout case, where kcal is the sum of inputs so it never looks under-scored yet strain
             // stays blank). improves() then accepts a strain-only gain for the latter.
             if (!ManualWorkoutRescore.looksUnderScored(row.energyKcal) && row.strain != null) continue
-            val samples = runCatching { repo.hrSamples(deviceId, row.startTs, row.endTs, 20_000) }
+            val samples = runCatching { repo.hrSamplesUnion(row.startTs, row.endTs, 20_000) }
                 .getOrNull() ?: continue
             val s = ManualWorkoutRescore.scored(samples, profile, hrMax) ?: continue
             if (!ManualWorkoutRescore.improves(s, row.energyKcal, row.strain, allowStrainOnlyFill = true)) continue

@@ -663,6 +663,11 @@ class WhoopRepository(private val dao: WhoopDao) {
             importedSourceIds().map { dao.hrBuckets(it, from, to, bucketSeconds) },
         )
 
+    /** Window HR stats from the registry-scope id with the most samples (one aggregate query per id). */
+    private suspend fun hrWindowStatsUnion(from: Long, to: Long): HrWindowStats =
+        importedSourceIds().map { dao.hrWindowStats(it, from, to) }.maxByOrNull { it.n }
+            ?: HrWindowStats(0L, null, null)
+
     /**
      * DISPLAY-ONLY: reconcile a workout's shown HR with the strap trace that drives its graph / zones /
      * effort. The stored `avgHr` and the strap's ~1 Hz trace over [startTs, endTs] can DIVERGE (a
@@ -674,7 +679,6 @@ class WhoopRepository(private val dao: WhoopDao) {
      */
     suspend fun fillWorkoutHrFromStrap(
         rows: List<WorkoutRow>,
-        strapDeviceId: String = "my-whoop",
         minSamples: Long = 60,
         cap: Int = 300,
         // The user's HRmax + sex. When supplied, a strap-native row whose Effort (strain) is null gets one
@@ -696,13 +700,13 @@ class WhoopRepository(private val dao: WhoopDao) {
             val needsStrainFill = strapNative && row.strain == null && strainMaxHR != null
             if (!strapNative && row.avgHr != null && !needsStrainFill) return@map row
             budget -= 1
-            val stats = dao.hrWindowStats(strapDeviceId, row.startTs, row.endTs)
+            val stats = hrWindowStatsUnion(row.startTs, row.endTs)
             if (stats.n < minSamples || stats.avg == null || stats.max == null) return@map row
             // Recompute Effort from the SAME samples the graph/zones use. Read the raw window ONLY when
             // this row actually needs a strain (keeps the common no-fill path a single aggregate query),
             // and let StrainScorer return null on a still-too-thin window (never a fabricated number).
             val filledStrain = if (needsStrainFill && strainMaxHR != null) {
-                val samples = dao.hrSamples(strapDeviceId, row.startTs, row.endTs, 8000)
+                val samples = hrSamplesUnion(row.startTs, row.endTs, 8000)
                 com.noop.analytics.StrainScorer.strain(samples, maxHR = strainMaxHR, sex = strainSex)
             } else null
             if (strapNative) {
