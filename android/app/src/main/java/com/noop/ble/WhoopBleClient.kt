@@ -35,6 +35,7 @@ import com.noop.data.StreamPersistence
 import com.noop.data.WhoopRepository
 import com.noop.data.LIVE_FLUSH_ROWS
 import com.noop.data.liveFlushCutoff
+import com.noop.data.standardRrRows
 import com.noop.protocol.BackfillCaptureJsonl
 import com.noop.protocol.BackfillCaptureRecord
 import com.noop.protocol.BackfillCaptureSummary
@@ -4570,7 +4571,7 @@ class WhoopBleClient(
     private fun ingestStandardHr(hr: Int, rr: List<Int>, ts: Long) {
         val shouldFlush = synchronized(collectorLock) {
             if (hr in 30..220) stdHr.add(HrRow(ts, hr))
-            for (r in rr) if (r in 250..3000) stdRr.add(RrRow(ts, r))
+            stdRr.addAll(standardRrRows(ts, hr.takeIf { it in 30..220 }, rr))
             stdHr.size + stdRr.size >= LIVE_FLUSH_ROWS
         }
         if (shouldFlush) ioScope.launch { flushStandardHr() }

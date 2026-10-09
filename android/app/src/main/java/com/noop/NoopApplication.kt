@@ -9,7 +9,9 @@ import com.noop.ble.WhoopBleClient
 import com.noop.ble.WhoopModel
 import com.noop.data.DeviceRegistry
 import com.noop.data.WhoopDatabase
+import com.noop.data.RR_FILL_BACKFILL_KEY
 import com.noop.data.WhoopRepository
+import com.noop.data.runRrFillBackfillOnce
 import com.noop.ui.NoopPrefs
 import kotlinx.coroutines.runBlocking
 
@@ -41,6 +43,18 @@ class NoopApplication : Application() {
         // computes it itself exactly as before, and one that arrives later just waits for this thread:
         // same value, same order, never a second resolve. Failures are swallowed inside the lazy.
         Thread({ activeDeviceId }, "noop-warm-active-id").start()
+        // v103 filler backfill, after the open and off the main thread; a failure retries next launch.
+        Thread({
+            val prefs = NoopPrefs.of(this)
+            runBlocking {
+                runRrFillBackfillOnce(
+                    isDone = { prefs.getBoolean(RR_FILL_BACKFILL_KEY, false) },
+                    setDone = { prefs.edit().putBoolean(RR_FILL_BACKFILL_KEY, true).apply() },
+                    mark = { repository.markAllRrFill() },
+                    log = { Log.w("NoopApplication", "rr filler backfill failed; retrying next launch", it) },
+                )
+            }
+        }, "noop-rr-fill-backfill").start()
         RustSleepStager.engineProvider = { NoopPrefs.sleepEngine(this) }
         // #2556: the stale-battery warning needs a wake that does NOT depend on the BLE link, because the
         // case it exists for is a strap that stopped talking. KEEP, so this is a no-op once scheduled.

@@ -1,5 +1,6 @@
 package com.noop.data
 
+import androidx.sqlite.db.SupportSQLiteDatabase
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -50,6 +51,7 @@ class V103MigrationTest {
 
     private fun one(sql: String): Long = db.createStatement().use { s -> s.executeQuery(sql).use { it.next(); it.getLong(1) } }
 
+    /** Column step, then the post-open backfill ([WhoopRepository.markAllRrFill]'s SQL). */
     private fun migrate(): Int {
         db.createStatement().use { s -> WhoopDatabase.RR_TS_SUSPECT_MIGRATION_SQL.forEach { s.execute(it) } }
         return mark()
@@ -101,6 +103,18 @@ class V103MigrationTest {
         val entities = listOf("src", "app/src", "android/app/src").map { File(dir, "$it/main/java/com/noop/data/Entities.kt") }
             .first { it.exists() }.readText().filterNot { it.isWhitespace() }
         assertTrue(entities.contains("""@ColumnInfo(defaultValue="0")valtsSuspect:Int=0"""))
+    }
+
+    @Test fun theMigrationOnlyAddsTheColumnAndNeedsNoFfi() {
+        val executed = mutableListOf<String>()
+        val fake = Proxy.newProxyInstance(
+            SupportSQLiteDatabase::class.java.classLoader, arrayOf(SupportSQLiteDatabase::class.java),
+        ) { _, m, a ->
+            if (m.name == "execSQL" && a.size == 1) { executed += a[0] as String; null }
+            else error("migration may only run plain execSQL(sql): ${m.name}")
+        } as SupportSQLiteDatabase
+        WhoopDatabase.MIGRATION_102_103.migrate(fake)
+        assertEquals(WhoopDatabase.RR_TS_SUSPECT_MIGRATION_SQL, executed)
     }
 
     @Test fun noMigrationStatementCanLoseARow() {
@@ -181,7 +195,14 @@ class V103MigrationTest {
         @Suppress("UNCHECKED_CAST")
         when (m.name) {
             "insertHr" -> (a[0] as List<HrSample>).map { hr(it.deviceId, it.ts, it.bpm).toLong() }
-            "insertRr" -> (a[0] as List<RrInterval>).map { rr(it.deviceId, it.ts, it.rrMs, it.seq).toLong() }
+            "insertRr" -> (a[0] as List<RrInterval>).map { r ->
+                val inserted = rr(r.deviceId, r.ts, r.rrMs, r.seq)
+                // The test DDL gains the column only at migrate(), so carry the entity's mark by hand.
+                if (inserted == 1 && r.tsSuspect == 1) db.createStatement().use {
+                    it.executeUpdate("UPDATE rrInterval SET tsSuspect = 1 WHERE deviceId='${r.deviceId}' AND ts=${r.ts} AND rrMs=${r.rrMs} AND seq=${r.seq}")
+                }
+                inserted.toLong()
+            }
             "markRrFill" -> db.prepareStatement(daoSql("markRrFill")).use {
                 it.setString(1, a[0] as String); it.setLong(2, a[1] as Long); it.setLong(3, a[2] as Long)
                 it.setInt(4, a[3] as Int); it.setInt(5, a[4] as Int); it.executeUpdate()
@@ -203,6 +224,53 @@ class V103MigrationTest {
         assertEquals(1, one("SELECT COUNT(*) FROM rrInterval WHERE tsSuspect = 1"))
         assertEquals(1, one("SELECT COUNT(*) FROM rrInterval WHERE tsSuspect = 1 AND ts = 100 AND rrMs = 500"))
         assertEquals("marked, never deleted", 4, one("SELECT COUNT(*) FROM rrInterval"))
+    }
+
+    // -- live 0x2A37 beats: flagged at parse time, from the HR of the same notification -------------------
+
+    @Test fun aLiveFillerBeatAtRestingHrIsFlaggedAtParseTime() {
+        val rows = standardRrRows(100, 70, listOf(500, 812))
+        assertEquals(listOf(true, false), rows.map { it.suspect })
+        assertEquals(listOf(1, 0), assignRrSeq("A", rows).map { it.tsSuspect })
+    }
+
+    @Test fun aLiveFiveHundredAtHighHrOrNoHrIsNotFlagged() {
+        assertEquals(listOf(false), standardRrRows(100, 120, listOf(500)).map { it.suspect })
+        assertEquals(listOf(false), standardRrRows(100, null, listOf(500)).map { it.suspect })
+        assertEquals("out-of-range beats are still dropped", emptyList<RrRow>(), standardRrRows(100, 70, listOf(249, 3001)))
+    }
+
+    @Test fun aFlaggedLiveRowIsStoredFlaggedWithoutAnHrSampleInTheBatch() = runBlocking {
+        migrate()
+        // R-R only batch (the HR row of that second is stored later): the insert-time join sees no HR.
+        WhoopRepository(sqlDao()).insert(StreamBatch(rr = standardRrRows(100, 70, listOf(500, 640))), "A")
+        assertEquals(1, one("SELECT COUNT(*) FROM rrInterval WHERE tsSuspect = 1 AND rrMs = 500"))
+        assertEquals(2, one("SELECT COUNT(*) FROM rrInterval"))
+    }
+
+    // -- the post-open backfill (never inside the migration) ---------------------------------------------
+
+    @Test fun postOpenBackfillMarksTheExpectedRowsOnceAndSetsTheFlag() = runBlocking {
+        hr("A", 10, 60); rr("A", 10, 500); hr("A", 11, 130); rr("A", 11, 500)
+        db.createStatement().use { s -> WhoopDatabase.RR_TS_SUSPECT_MIGRATION_SQL.forEach { s.execute(it) } }
+        var done = false
+        val run = { runBlocking { runRrFillBackfillOnce({ done }, { done = true }, { mark() }, { throw it }) } }
+        run()
+        assertEquals(1, one("SELECT COUNT(*) FROM rrInterval WHERE tsSuspect = 1 AND ts = 10"))
+        assertTrue(done)
+        hr("A", 12, 60); rr("A", 12, 500)
+        run()
+        assertEquals("a finished one-shot does not run again", 0, one("SELECT COUNT(*) FROM rrInterval WHERE ts = 12 AND tsSuspect = 1"))
+    }
+
+    @Test fun aFailingBackfillIsSwallowedLeavesTheFlagUnsetAndRetries() = runBlocking {
+        var done = false
+        var logged: Throwable? = null
+        runRrFillBackfillOnce({ done }, { done = true }, { throw UnsatisfiedLinkError("no lib") }, { logged = it })
+        assertFalse(done)
+        assertTrue(logged is UnsatisfiedLinkError)
+        runRrFillBackfillOnce({ done }, { done = true }, { 0 }, { logged = it })
+        assertTrue("next launch retries and completes", done)
     }
 
     @Test fun anHrOnlyBatchTouchesNothing() = runBlocking {

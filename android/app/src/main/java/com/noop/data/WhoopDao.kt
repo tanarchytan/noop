@@ -281,6 +281,10 @@ interface WhoopDao : DeviceRegistryDao {
     suspend fun rrIntervalsAll(deviceId: String, from: Long, to: Long, limit: Int): List<RrInterval>
 
     /** Mark the filler in [from, to] for one device; [fill]/[maxHr] are [RrFill]'s. Returns rows newly marked. */
+    /** Whole-table twin of [markRrFill], run once after open (never inside the migration). */
+    @Query("UPDATE rrInterval SET tsSuspect = 1 WHERE " + RR_FILL_MARK_WHERE)
+    suspend fun markAllRrFill(fill: Int, maxHr: Int): Int
+
     @Query("UPDATE rrInterval SET tsSuspect = 1 WHERE deviceId = :deviceId AND ts >= :from AND ts <= :to AND " + RR_FILL_MARK_WHERE)
     suspend fun markRrFill(deviceId: String, from: Long, to: Long, fill: Int, maxHr: Int): Int
 

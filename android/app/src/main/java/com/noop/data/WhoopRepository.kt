@@ -8,6 +8,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
+import uniffi.whoop_ffi.isRrFill
 import kotlin.math.roundToInt
 
 /**
@@ -78,7 +79,8 @@ data class StreamBatch(
 
 // Device-agnostic decoded rows; deviceId is attached when inserted.
 data class HrRow(val ts: Long, val bpm: Int)
-data class RrRow(val ts: Long, val rrMs: Int)
+/** [suspect] = already known to be the 500 ms filler at parse time ([standardRrRows]); stored as `tsSuspect = 1`. */
+data class RrRow(val ts: Long, val rrMs: Int, val suspect: Boolean = false)
 
 /**
  * Attach a tiebreaker `seq` to each R-R interval before insert. Beats sharing one whole-second `ts`
@@ -98,9 +100,18 @@ internal fun assignRrSeq(deviceId: String, rows: List<RrRow>): List<RrInterval> 
         // [rows] arrives in wire order, so the running count within a second IS the emission order.
         val o = ordByTs.getOrDefault(row.ts, 0)
         ordByTs[row.ts] = o + 1
-        RrInterval(deviceId = deviceId, ts = row.ts, rrMs = row.rrMs, seq = s, ord = o)
+        RrInterval(deviceId = deviceId, ts = row.ts, rrMs = row.rrMs, seq = s, ord = o, tsSuspect = if (row.suspect) 1 else 0)
     }
 }
+
+/**
+ * The live 0x2A37 beats of one notification as rows, each flagged by the whoop-rs filler rule against the
+ * HR of the SAME notification. The HR is in hand here, so the mark does not wait on an hrSample row that
+ * is stored later than the beat ([WhoopRepository.markRrFillFor] only sees an HR from the same batch).
+ * [hr] is null when this notification carried no plausible HR.
+ */
+internal fun standardRrRows(ts: Long, hr: Int?, rr: List<Int>): List<RrRow> =
+    rr.filter { it in 250..3000 }.map { RrRow(ts, it, isRrFill(it.toUShort(), hr?.toUInt())) }
 
 /** Buffered live rows (HR and R-R together) that arm a flush of the standard-profile stream. */
 internal const val LIVE_FLUSH_ROWS = 30
@@ -717,6 +728,9 @@ class WhoopRepository(private val dao: WhoopDao) {
      * Marks the batch's filler ([RrFill]) over its R-R second range, a bounded PK-range UPDATE. An HR that
      * lands in a later batch than its R-R is only seen by the next backfill (ponytail: add an HR-side pass).
      */
+    /** One-shot post-open backfill of the v103 column ([runRrFillBackfillOnce]). Returns rows newly marked. */
+    suspend fun markAllRrFill(): Int = dao.markAllRrFill(RrFill.fillMs, RrFill.maxHrBpm)
+
     private suspend fun markRrFillFor(deviceId: String, streams: StreamBatch) {
         if (streams.rr.isEmpty()) return
         dao.markRrFill(deviceId, streams.rr.minOf { it.ts }, streams.rr.maxOf { it.ts }, RrFill.fillMs, RrFill.maxHrBpm)

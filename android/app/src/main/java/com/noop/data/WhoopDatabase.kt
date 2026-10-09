@@ -237,11 +237,11 @@ abstract class WhoopDatabase : RoomDatabase() {
             "ALTER TABLE `rrInterval` ADD COLUMN `tsSuspect` INTEGER NOT NULL DEFAULT 0",
         )
 
-        /** v102 -> v103: add the column, then backfill it ([RrFill.MARK_ALL_SQL]). One PK scan, so no index. */
+        /** v102 -> v103: add the column only (metadata-only, no FFI at open). The backfill is a one-shot
+         *  after open ([runRrFillBackfillOnce]); a bindings/library mismatch must never make the store unopenable. */
         internal val MIGRATION_102_103 = object : Migration(102, 103) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 for (stmt in RR_TS_SUSPECT_MIGRATION_SQL) db.execSQL(stmt)
-                db.execSQL(RrFill.MARK_ALL_SQL, RrFill.binds())
             }
         }
 
