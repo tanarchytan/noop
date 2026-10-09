@@ -54,7 +54,21 @@ object SleepWindowReclip {
         if (out.length() == 0 && newEnd > newStart) {
             out.put(JSONObject().put("start", newStart).put("end", newEnd).put("stage", "wake"))
         }
+        carryUnscored(arr, out, newStart, newEnd)
         return if (out.length() > 0) out.toString() else null
+    }
+
+    /** Keeps the engine's unscored stretches (riding on segment 0) across the edit, clipped to the new window. */
+    private fun carryUnscored(from: JSONArray, to: JSONArray, newStart: Long, newEnd: Long) {
+        val spans = from.optJSONObject(0)?.optJSONArray("unscored") ?: return
+        val kept = JSONArray()
+        for (i in 0 until spans.length()) {
+            val p = spans.optJSONArray(i) ?: continue
+            val s = maxOf(p.optLong(0, Long.MAX_VALUE), newStart)
+            val e = minOf(p.optLong(1, Long.MIN_VALUE), newEnd)
+            if (e > s) kept.put(JSONArray().put(s).put(e))
+        }
+        if (kept.length() > 0) to.optJSONObject(0)?.put("unscored", kept)
     }
 
     private fun reclipMinutes(dict: JSONObject, deltaSeconds: Long): String? {

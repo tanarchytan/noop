@@ -31,6 +31,19 @@ class SleepWindowReclipTest {
     // ── segment array (computed nights) ──────────────────────────────────────────────────────────
 
     @Test
+    fun anEditKeepsTheUnscoredStretchesClippedToTheNewWindow() {
+        val json = """
+            [{"start":1000,"end":2000,"stage":"light","unscored":[[1100,1300],[1900,2100],[3500,3900]]},
+             {"start":2000,"end":3000,"stage":"deep"},
+             {"start":3000,"end":4000,"stage":"wake"}]
+        """.trimIndent()
+        val out = SleepWindowReclip.reclip(json, 1000, 4000, 1200, 3600)!!
+        assertEquals(listOf(1200L to 1300L, 1900L to 2100L, 3500L to 3600L), com.noop.ui.unscoredSpans(out))
+        val noHoles = SleepWindowReclip.reclip(json, 1000, 4000, 1400, 1800)!!
+        assertEquals(emptyList<Pair<Long, Long>>(), com.noop.ui.unscoredSpans(noHoles))
+    }
+
+    @Test
     fun segmentTrimDropsAndClips() {
         val json = """
             [{"start":1000,"end":2000,"stage":"light"},
