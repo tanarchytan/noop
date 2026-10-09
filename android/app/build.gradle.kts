@@ -145,7 +145,7 @@ android {
         unitTests.all {
             // The RustCodec (FFI) parity test loads the host build of libwhoop_ffi via JNA. The desktop
             // library (whoop_ffi.dll on Windows) lives in the sibling whoop-rs checkout's release dir;
-            // point jna.library.path at it. When absent (CI / no sibling), the parity test self-skips.
+            // point jna.library.path at it. Without it the parity test fails at class init (never skips).
             it.systemProperty(
                 "jna.library.path",
                 (System.getenv("WHOOP_RS_DIR")?.let { d -> file(d) }
@@ -240,8 +240,8 @@ dependencies {
 
 // --- Host cdylib for the JVM unit tests (see jna.library.path in testOptions) ---
 // The decode-pipeline tests load the host build of libwhoop_ffi via JNA. Build it from the sibling
-// whoop-rs checkout before unit tests run so they exercise the real Rust decode. Skips cleanly when
-// the sibling checkout (or cargo) is absent, in which case the FFI test self-skips as before.
+// whoop-rs checkout before unit tests run so they exercise the real Rust decode. The task is skipped when
+// the sibling checkout is absent, and the FFI tests then fail loudly on the missing library.
 // CI sets WHOOP_RS_DIR to its whoop-rs checkout (the sibling ../../whoop-rs resolves above the runner workspace).
 val whoopRsDir = System.getenv("WHOOP_RS_DIR")?.let { file(it) } ?: rootProject.projectDir.resolve("../../whoop-rs")
 val buildRustHostDll = tasks.register<Exec>("buildRustHostDll") {
