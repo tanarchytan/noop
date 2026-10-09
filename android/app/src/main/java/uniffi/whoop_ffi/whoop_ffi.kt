@@ -943,6 +943,8 @@ internal object IntegrityCheckingUniffiLib {
     ): Int
     external fun uniffi_whoop_ffi_checksum_method_whoopcodec_buzz_frame(
     ): Int
+    external fun uniffi_whoop_ffi_checksum_method_whoopcodec_buzz_frame_with(
+    ): Int
     external fun uniffi_whoop_ffi_checksum_method_whoopcodec_client_hello(
     ): Int
     external fun uniffi_whoop_ffi_checksum_method_whoopcodec_command_frame(
@@ -1036,6 +1038,8 @@ internal object UniffiLib {
     external fun uniffi_whoop_ffi_fn_method_whoopcodec_broadcast_hr_frame(`ptr`: Long,`seq`: Byte,`on`: Byte,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_method_whoopcodec_buzz_frame(`ptr`: Long,`seq`: Byte,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    external fun uniffi_whoop_ffi_fn_method_whoopcodec_buzz_frame_with(`ptr`: Long,`seq`: Byte,`loops`: Byte,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_method_whoopcodec_client_hello(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
@@ -1873,6 +1877,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_whoop_ffi_checksum_method_whoopcodec_buzz_frame() != 50754) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_whoop_ffi_checksum_method_whoopcodec_buzz_frame_with() != 37508) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_whoop_ffi_checksum_method_whoopcodec_client_hello() != 41293) {
@@ -2901,6 +2908,11 @@ public interface WhoopCodecInterface {
     fun `buzzFrame`(`seq`: kotlin.UByte): kotlin.ByteArray
     
     /**
+     * 5/MG buzz of `loops` pulses (0 and 1 are one pulse; more than 8 is clamped to 8).
+     */
+    fun `buzzFrameWith`(`seq`: kotlin.UByte, `loops`: kotlin.UByte): kotlin.ByteArray
+    
+    /**
      * The GEN5 bond-open frame — write it (confirmed) after connecting to trigger the just-works bond.
      */
     fun `clientHello`(): kotlin.ByteArray
@@ -3265,6 +3277,24 @@ open class WhoopCodec: Disposable, AutoCloseable, WhoopCodecInterface
         it,
         
         FfiConverterUByte.lower(`seq`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * 5/MG buzz of `loops` pulses (0 and 1 are one pulse; more than 8 is clamped to 8).
+     */override fun `buzzFrameWith`(`seq`: kotlin.UByte, `loops`: kotlin.UByte): kotlin.ByteArray {
+            return FfiConverterByteArray.lift(
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_method_whoopcodec_buzz_frame_with(
+        it,
+        
+        FfiConverterUByte.lower(`seq`),
+        FfiConverterUByte.lower(`loops`),_status)
 }
     }
     )
