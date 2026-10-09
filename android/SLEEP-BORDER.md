@@ -7,13 +7,16 @@ Kotlin (and why).
 ## The one call
 
 `SleepStager.detectSleep(hr, rr, resp, gravity, steps, tz, wristOff, bandSleepState)` →
-`RustSleepStager.analyze(...)` → the `analyzeSleep(SleepStreams)` uniffi FFI. Rust returns one
+`RustSleepStager.analyze(...)` → the `analyzeSleepWith(SleepStreams, SleepEngine)` uniffi FFI. The engine
+(Original or Experimental) is the `noop.sleepEngine` pref (`MainActivity.KEY_SLEEP_ENGINE`). Rust returns one
 `SleepSession` per detected in-bed span (span + hypnogram + efficiency + resting HR + windowed avg HRV +
 the per-30 s-epoch motion & band-sleep-state grids), mapped back to `DetectedSleep`. `detectSleep` keeps a
 bounded LRU (`detectCache`) in front — a memo that only ever skips a recompute, never changes the result.
 
 The edit self-heal (`SleepStageHealer`) re-stages one edited span via `RustSleepStager.stage` →
-`stageSleepRefined(input, steps)` (V2 staging + motion-aware wake refinement in Rust).
+`stageSleepRefinedWith(input, steps, engine)` (V2 staging + motion-aware wake refinement in Rust). Under the
+Experimental engine Rust also returns the epochs it declines to call; Kotlin carries them on segment 0 under
+the `"unscored"` key, draws them (`SleepStagesCard`) and derives no number from them, so totals are unchanged.
 
 ## What stays Kotlin (frontend / storage / display — not algorithm)
 

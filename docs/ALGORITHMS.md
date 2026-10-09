@@ -29,7 +29,9 @@ motion spine.
 
 **One thing `SleepStageTotals` did NOT take across:** `minutes()` and `dailyAggregate()` still SUM the
 stored `stagesJSON` in Kotlin. That sum is the definition of a night's asleep/deep/REM totals, so it is a
-decode and belongs in Rust; the audit still lists the file as a candidate for that reason. Until it moves,
+decode and belongs in Rust; the audit still lists the file as a candidate for that reason. **`SleepWindowReclip.reclipMinutes` is the
+same class, still Kotlin and still to port:** it re-sums the stage minutes (`awake += deltaMin`, the `cut`
+ladder) when an edit moves the window, so it should move with `minutes()` in one Rust `stage_totals` unit. Until it moves,
 the invariant it encodes is the store's: **the per-epoch segment array is the primitive and the
 `DailyMetric` sleep columns are its aggregate.** A producer that writes the two from different arithmetic
 puts two nights in the store under one date, and the screens split five to one over which is the night.
