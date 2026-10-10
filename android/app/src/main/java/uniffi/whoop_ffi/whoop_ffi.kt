@@ -775,6 +775,8 @@ internal object IntegrityCheckingUniffiLib {
     ): Int
     external fun uniffi_whoop_ffi_checksum_func_hrv_nightly(
     ): Int
+    external fun uniffi_whoop_ffi_checksum_func_hrv_nightly_checked(
+    ): Int
     external fun uniffi_whoop_ffi_checksum_func_hrv_overlapping_reports(
     ): Int
     external fun uniffi_whoop_ffi_checksum_func_hrv_pnn50_plain(
@@ -1201,6 +1203,8 @@ internal object UniffiLib {
     ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_func_hrv_nightly(`start`: Int,`end`: Int,`reports`: RustBuffer.ByValue,`segments`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
+    external fun uniffi_whoop_ffi_fn_func_hrv_nightly_checked(`start`: Int,`end`: Int,`reports`: RustBuffer.ByValue,`segments`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_func_hrv_overlapping_reports(`runs`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     external fun uniffi_whoop_ffi_fn_func_hrv_pnn50_plain(`rrMs`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
@@ -1625,6 +1629,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_whoop_ffi_checksum_func_hrv_nightly() != 46829) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_whoop_ffi_checksum_func_hrv_nightly_checked() != 62712) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_whoop_ffi_checksum_func_hrv_overlapping_reports() != 46557) {
@@ -5101,6 +5108,53 @@ public object FfiConverterTypeHrvCleanCountsInfo: FfiConverterRustBuffer<HrvClea
             FfiConverterUInt.write(value.`nInput`, buf)
             FfiConverterUInt.write(value.`nRanged`, buf)
             FfiConverterUInt.write(value.`nClean`, buf)
+    }
+}
+
+
+
+/**
+ * [`hrv_nightly`] behind the R-R coverage gate. `duplicated_beats` means the night's stored beats
+ * outnumber its covered time, so `value` is withheld; `coverage` is the measured beat-time ratio.
+ */
+data class HrvNightlyChecked (
+    var `value`: kotlin.Double?
+    , 
+    var `duplicatedBeats`: kotlin.Boolean
+    , 
+    var `coverage`: kotlin.Double
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeHrvNightlyChecked: FfiConverterRustBuffer<HrvNightlyChecked> {
+    override fun read(buf: ByteBuffer): HrvNightlyChecked {
+        return HrvNightlyChecked(
+            FfiConverterOptionalDouble.read(buf),
+            FfiConverterBoolean.read(buf),
+            FfiConverterDouble.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: HrvNightlyChecked) = (
+            FfiConverterOptionalDouble.allocationSize(value.`value`) +
+            FfiConverterBoolean.allocationSize(value.`duplicatedBeats`) +
+            FfiConverterDouble.allocationSize(value.`coverage`)
+    )
+
+    override fun write(value: HrvNightlyChecked, buf: ByteBuffer) {
+            FfiConverterOptionalDouble.write(value.`value`, buf)
+            FfiConverterBoolean.write(value.`duplicatedBeats`, buf)
+            FfiConverterDouble.write(value.`coverage`, buf)
     }
 }
 
@@ -13869,6 +13923,20 @@ public object FfiConverterSequenceOptionalDouble: FfiConverterRustBuffer<List<ko
             return FfiConverterOptionalDouble.lift(
     uniffiRustCall() { _status ->
     UniffiLib.uniffi_whoop_ffi_fn_func_hrv_nightly(
+    
+        
+        FfiConverterUInt.lower(`start`),
+        FfiConverterUInt.lower(`end`),
+        FfiConverterSequenceTypeRrReport.lower(`reports`),
+        FfiConverterSequenceTypeSleepSegment.lower(`segments`),_status)
+}
+    )
+    }
+    
+ fun `hrvNightlyChecked`(`start`: kotlin.UInt, `end`: kotlin.UInt, `reports`: List<RrReport>, `segments`: List<SleepSegment>): HrvNightlyChecked {
+            return FfiConverterTypeHrvNightlyChecked.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_whoop_ffi_fn_func_hrv_nightly_checked(
     
         
         FfiConverterUInt.lower(`start`),
