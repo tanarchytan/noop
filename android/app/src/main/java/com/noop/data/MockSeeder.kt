@@ -462,7 +462,7 @@ object MockSeeder {
      */
     internal fun withoutSleep(d: DailyMetric): DailyMetric = d.copy(
         totalSleepMin = null, efficiency = null, deepMin = null, remMin = null, lightMin = null,
-        disturbances = null, restingHr = null, avgHrv = null, recovery = null,
+        disturbances = null, restingHr = null, avgHrv = null, hrvDupCoverage = null, recovery = null,
         spo2Pct = null, skinTempDevC = null, skinTempAbsC = null, respRateBpm = null,
         spo2Red = null, spo2Ir = null, recoveryIndexSlope = null,
     )

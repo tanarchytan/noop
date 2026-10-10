@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="hrv_not_shown_status">Not shown</string>
+    <string name="hrv_not_shown_detail">Heartbeats on this night were recorded twice, so the HRV would not be reliable.</string>
+</resources>

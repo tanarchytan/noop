@@ -578,7 +578,7 @@ interface WhoopDao : DeviceRegistryDao {
                 "AND zone1to3Min IS NULL AND zone4to5Min IS NULL " +
                 "AND spo2Red IS NULL AND spo2Ir IS NULL " +
                 "AND sleepNeedHours IS NULL AND sleepConsistency IS NULL " +
-                "AND recoveryIndexSlope IS NULL AND priorDayEffort IS NULL"
+                "AND recoveryIndexSlope IS NULL AND priorDayEffort IS NULL AND hrvDupCoverage IS NULL"
 
         /** The complement of [HC_DAILY_FOREIGN_COLUMNS_NULL]: the columns Health Connect does write.
          *  Requiring one to be present keeps the repair off an all-null row, which proves nothing. */

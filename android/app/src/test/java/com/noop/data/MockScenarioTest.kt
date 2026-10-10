@@ -41,7 +41,7 @@ class MockScenarioTest {
      * rows are covered here rather than left out, because a digest that does not cover a table cannot
      * notice that table changing.
      */
-    private val typicalDigest = "f3b409446cf84a6d3d38e8e2f6c28f91cb939de020b451208d394b16e2f201d9"
+    private val typicalDigest = "a56a919c471a41d65241621cc9c6cc1b9fa97eaf788dc543ed4c15c26ce4789f"
 
     /** The instant the dataset is "as of". Fixed, because "now" decides which of today's sessions have
      *  finished, and an unpinned clock would rebuild a different dataset every hour. */

@@ -12,6 +12,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Refresh
 import android.widget.Toast
+import androidx.compose.ui.res.stringResource
+import com.noop.R
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -528,9 +530,27 @@ fun VitalDetailScreen(vm: AppViewModel, key: String) {
         val readingRows = remember(filteredReadings, detail, strapId) {
             vitalReadingRows(filteredReadings, detail.unit, strapId, detail.format)
         }
-        if (detail.key == "hrv") HrvReadinessCard(days)
+        if (detail.key == "hrv") {
+            HrvRefusedCard(days)
+            HrvReadinessCard(days)
+        }
         VitalReadingsTable(rows = readingRows)
     }
+}
+
+/** Says why the latest night has no HRV when whoop-rs refused it. Nothing is drawn for any other night. */
+@Composable
+private fun HrvRefusedCard(days: List<DailyMetric>) {
+    val latest = days.maxByOrNull { it.day } ?: return
+    if (latest.avgHrv != null || latest.hrvDupCoverage == null) return
+    InsightCard(
+        modifier = Modifier.fillMaxWidth(),
+        category = "HRV",
+        status = stringResource(R.string.hrv_not_shown_status),
+        detail = stringResource(R.string.hrv_not_shown_detail),
+        statusColor = Palette.textSecondary,
+        tint = null,
+    )
 }
 
 /**

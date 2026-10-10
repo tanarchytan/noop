@@ -22,7 +22,7 @@ class MockSeederUnsleptDayTest {
         exerciseCount = 1, spo2Pct = 96.5, skinTempDevC = 0.1, skinTempAbsC = 34.1,
         respRateBpm = 14.6, steps = 8500, activeKcalEst = 2049.8, zone1to3Min = 120.0,
         zone4to5Min = 12.0, spo2Red = 567, spo2Ir = 608, sleepNeedHours = 9.0,
-        sleepConsistency = 0.81, recoveryIndexSlope = -0.17, priorDayEffort = 47.9,
+        sleepConsistency = 0.81, recoveryIndexSlope = -0.17, priorDayEffort = 47.9, hrvDupCoverage = 1.7,
     )
 
     /** Every metric column on the entity, off its backing fields — the natural key is not a metric. */

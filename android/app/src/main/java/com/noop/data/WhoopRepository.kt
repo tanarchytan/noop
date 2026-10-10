@@ -1916,6 +1916,7 @@ class WhoopRepository(private val dao: WhoopDao) {
                 // Independent columns: each stands alone, so a plain per-column fill is safe.
                 restingHr = winner.restingHr ?: filler.restingHr,
                 avgHrv = winner.avgHrv ?: filler.avgHrv,
+                hrvDupCoverage = if (winner.avgHrv == null && filler.avgHrv == null) winner.hrvDupCoverage ?: filler.hrvDupCoverage else null,
                 strain = winner.strain ?: filler.strain,
                 exerciseCount = winner.exerciseCount ?: filler.exerciseCount,
                 spo2Pct = winner.spo2Pct ?: filler.spo2Pct,

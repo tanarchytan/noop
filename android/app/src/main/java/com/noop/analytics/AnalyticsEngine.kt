@@ -258,17 +258,21 @@ object AnalyticsEngine {
         // Daily avg HRV: pool RMSSD over DEEP-stage 5-min windows only (slow-wave sleep), computed in
         // whoop-rs, per session then meaned across sessions. null when no session has a deep bucket —
         // the caller shows calibrating, never a fabricated number.
-        val avgHRVDaily: Double? = run {
-            val deepVals = matched.mapNotNull { s ->
-                val ffiSegments = s.stages.map { seg ->
-                    uniffi.whoop_ffi.SleepSegment(
-                        start = seg.start, end = seg.end, stage = SleepStageTotals.ffiStage(seg.stage),
-                    )
-                }
-                RustScores.nightlyHrv(s.start, s.end, rr, ffiSegments)
+        val nightlyHrvBySession = matched.map { s ->
+            val ffiSegments = s.stages.map { seg ->
+                uniffi.whoop_ffi.SleepSegment(
+                    start = seg.start, end = seg.end, stage = SleepStageTotals.ffiStage(seg.stage),
+                )
             }
+            RustScores.nightlyHrvChecked(s.start, s.end, rr, ffiSegments)
+        }
+        val avgHRVDaily: Double? = run {
+            val deepVals = nightlyHrvBySession.mapNotNull { it.value }
             if (deepVals.isEmpty()) null else deepVals.sum() / deepVals.size
         }
+        // A refused night (beats stored twice) carries whoop-rs's coverage so the UI can say why.
+        val hrvDupCoverage: Double? =
+            if (avgHRVDaily == null) nightlyHrvBySession.firstOrNull { it.duplicatedBeats }?.coverage else null
 
         // ── HRV & Autonomic nightly trace ─────────────────────────────────────
         // Calls SleepStager.sessionHrvWindows for the stage-tagged diagnostic breakdown (per-5-min-window
@@ -507,6 +511,7 @@ object AnalyticsEngine {
             disturbances = if (matched.isEmpty()) null else disturbances,
             restingHr = restingHRDaily,
             avgHrv = avgHRVDaily,
+            hrvDupCoverage = hrvDupCoverage,
             recovery = recovery,
             strain = strain,
             exerciseCount = workouts.size,

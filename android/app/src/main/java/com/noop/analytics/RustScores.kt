@@ -404,6 +404,13 @@ internal object RustScores {
     fun nightlyHrv(start: Long, end: Long, rr: List<RrInterval>, segments: List<SleepSegment>): Double? =
         uniffi.whoop_ffi.hrvNightly(start.toUInt(), end.toUInt(), groupReports(rr.sortedBy { it.ts }), segments)
 
+    /** [nightlyHrv] behind the coverage gate: `value` is null and `duplicatedBeats` true when the night's
+     *  stored beats outnumber its elapsed time. The decision is whoop-rs's. */
+    fun nightlyHrvChecked(
+        start: Long, end: Long, rr: List<RrInterval>, segments: List<SleepSegment>,
+    ): uniffi.whoop_ffi.HrvNightlyChecked =
+        uniffi.whoop_ffi.hrvNightlyChecked(start.toUInt(), end.toUInt(), groupReports(rr.sortedBy { it.ts }), segments)
+
     // ── Sleep efficiency ─────────────────────────────────────────────────────
 
     /** THE sleep efficiency in [0,1] of the in-bed window [start]..[end]: asleep / in-bed, asleep =

@@ -114,7 +114,7 @@ class V103MigrationTest {
             else error("migration may only run plain execSQL(sql): ${m.name}")
         } as SupportSQLiteDatabase
         WhoopDatabase.MIGRATION_102_103.migrate(fake)
-        assertEquals(WhoopDatabase.RR_TS_SUSPECT_MIGRATION_SQL, executed)
+        assertEquals(WhoopDatabase.RR_TS_SUSPECT_MIGRATION_SQL + WhoopDatabase.HRV_DUP_COVERAGE_MIGRATION_SQL, executed)
     }
 
     @Test fun noMigrationStatementCanLoseARow() {

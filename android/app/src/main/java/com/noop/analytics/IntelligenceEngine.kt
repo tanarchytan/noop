@@ -759,7 +759,8 @@ object IntelligenceEngine {
             // One line per scored night with the computed HRV value. `avgHrv=nil` when the night has no
             // detected deep sleep, so the deep window forms no bucket. Rounded ms only, PII-free.
             val hrvLog = daily.avgHrv?.let { String.format(java.util.Locale.US, "%.1f", it) } ?: "nil"
-            diag("hrv day=${daily.day} window=deep avgHrv=$hrvLog")
+            val hrvRefused = daily.hrvDupCoverage?.let { " refused=duplicatedBeats coverage=${String.format(java.util.Locale.US, "%.2f", it)}" } ?: ""
+            diag("hrv day=${daily.day} window=deep avgHrv=$hrvLog$hrvRefused")
             // ── CAPTURE-B: universal dayOwner self-diagnostic ──
             // One line per scored day, tagged .universal, regardless of which test mode is on: readId is
             // the owner the day was read+scored from, writeActiveId is the registry's active id — a

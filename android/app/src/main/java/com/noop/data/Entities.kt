@@ -299,6 +299,9 @@ data class DailyMetric(
     // fed this day's Charge. Null drops the matching term.
     val recoveryIndexSlope: Double? = null,
     val priorDayEffort: Double? = null,
+    // R-R beat-time over elapsed time of a night whose nightly HRV was refused (beats stored more than
+    // once); null when HRV was not refused. avgHrv is null on such a night.
+    val hrvDupCoverage: Double? = null,
 )
 
 /**
