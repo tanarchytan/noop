@@ -38,7 +38,7 @@ object AppChangelog {
         Release(
             version = "10.0.0",
             title = "Spanish and German, Rhythm Age, and four numbers that finally read true",
-            date = "August 2026",
+            date = "October 2026",
             items = listOf(
                 "**Nothing breaks in this one.** The version jumps to 10 because of how much changed underneath, not because anything about your data or your setup does. Your history upgrades in place — no re-pair, no re-import, no restore.",
                 "**NOOP speaks Spanish and German, and you pick the language in the app.** Profile → Language switches the whole interface without touching your phone's settings, and a phone already set to Spanish or German gets it on first launch with nothing to change. Every screen is translated. The names NOOP invented for its own metrics — Charge, Effort, Rest — stay as they are in all three languages, because they are names rather than words.",
