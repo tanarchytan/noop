@@ -61,8 +61,12 @@ object UpdateCheck {
             val y = b.getOrElse(i) { 0 }
             if (x != y) return x > y
         }
-        return false
+        // Same numeric core: the stable that promotes a candidate (10.0.0 over 10.0.0-rc2) is newer; a
+        // -demo/-mock sibling of the same release is not.
+        return isCandidate(current) && !isCandidate(latest)
     }
+
+    private fun isCandidate(s: String): Boolean = s.contains("-rc", ignoreCase = true)
 
     private fun segments(s: String): List<Int> =
         s.trim().removePrefix("v").removePrefix("V")

@@ -18,6 +18,7 @@ class UpdateCheckTest {
         assertTrue(UpdateCheck.isNewer("2.0", "1.39"))
         assertTrue(UpdateCheck.isNewer("1.39.1", "1.39")) // extra patch segment
         assertTrue(UpdateCheck.isNewer("v1.40", "1.39"))  // tolerant of the tag's "v"
+        assertTrue(UpdateCheck.isNewer("10.0.0", "10.0.0-rc2")) // the stable that promotes a candidate
     }
 
     @Test
@@ -27,5 +28,8 @@ class UpdateCheckTest {
         assertFalse(UpdateCheck.isNewer("1.9", "1.10"))
         assertFalse(UpdateCheck.isNewer("1.39-demo", "1.39")) // demo flavour vs the same release
         assertFalse(UpdateCheck.isNewer("garbage", "1.39"))   // unparseable → not newer (no false alarm)
+        assertFalse(UpdateCheck.isNewer("10.0.0-rc2", "10.0.0-rc2")) // the candidate itself
+        assertFalse(UpdateCheck.isNewer("10.0.0-rc2", "10.0.0"))     // never back to a candidate
+        assertFalse(UpdateCheck.isNewer("10.0.0", "10.0.0-mock"))    // the mock sibling of the same release
     }
 }
