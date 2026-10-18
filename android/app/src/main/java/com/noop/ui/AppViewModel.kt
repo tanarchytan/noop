@@ -2102,7 +2102,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     /** Fire a haptic buzz on the strap (requires a bonded connection). Scheduled cues only; for a
      *  user-facing "buzz the strap now" action use [buzzStrapOnce] instead. */
-    fun buzz(loops: Int = 2) = ble.buzz(loops)
+    fun buzz(loops: Int? = null) = ble.buzz(loops)
 
     /** One-shot user buzz: the confirmed pattern + RUN_ALARM sequence, written acknowledged
      *  (RUN_ALARM only where the family gate allows it). Drives the Live-screen Buzz button. */

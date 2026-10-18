@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="buzz_count_title">Buzz pulses</string>
-    <string name="buzz_count_blurb">How many times a WHOOP 5/MG strap buzzes for a cue, a nudge or the Live buzz button. WHOOP 4.0 is not affected.</string>
+    <string name="buzz_count_blurb">How many times a WHOOP 5/MG strap buzzes for the Live buzz button. Notification, call, Breathe and interval cues keep their own count. WHOOP 4.0 is not affected.</string>
 </resources>

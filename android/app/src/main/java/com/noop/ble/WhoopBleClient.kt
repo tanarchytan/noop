@@ -2150,11 +2150,12 @@ class WhoopBleClient(
     /**
      * Fire a preset haptic buzz on the strap: RUN_HAPTICS_PATTERN(79) with payload
      * `[patternId=2, loops, 0, 0, 0]`. patternId=2 is the graduated alarm buzz the official WHOOP app
-     * uses. Used by scheduled cues (intervals, Breathe, notification mirrors); for a user-facing
-     * "buzz the strap now" action use [buzzStrapOnce] instead.
+     * uses. Used by scheduled cues (intervals, Breathe, notification mirrors), which pass their own
+     * count so a Double stays distinct from a Triple; a caller with no count gets the Settings pulse
+     * count on a 5/MG (2 on a 4.0). For a user-facing "buzz the strap now" action use [buzzStrapOnce].
      */
-    fun buzz(loops: Int = 2, useBuzzSetting: Boolean = true) {
-        val n = if (useBuzzSetting && connectedFamily.gen == Gen.GEN5) buzzCountSetting() else loops.coerceIn(0, 255)
+    fun buzz(loops: Int? = null) {
+        val n = loops?.coerceIn(0, 255) ?: if (connectedFamily.gen == Gen.GEN5) buzzCountSetting() else 2
         send(CommandNumber.RUN_HAPTICS_PATTERN, byteArrayOf(2, n.toByte(), 0, 0, 0))
         log("Buzz: patternId=2 loops=$n")
     }
@@ -2223,7 +2224,7 @@ class WhoopBleClient(
         var offsetMs = 0L
         for (pulse in pulses) {
             val loops = if (pulse.isLong) 2 else 1
-            handler.postDelayed({ buzz(loops, useBuzzSetting = false) }, offsetMs)
+            handler.postDelayed({ buzz(loops) }, offsetMs)
             offsetMs += (pulse.durationMs + pulse.gapMs).toLong()
         }
     }
