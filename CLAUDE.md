@@ -30,11 +30,12 @@
 > ### noop-tan working state (2026-10-09; the session-level picture is `../dev-notes/STATE-20261009.md`)
 >
 > - **Clone:** work in `C:\work\whoop\noop`; `P:\whoop\noop` is a NAS mirror, never committed in. The active
->   line is `feat/rr-filler-v103` (held, see below); `noop-tan` on origin is the last pushed dev state.
+>   line is `noop-tan` (dev, `10.0.0-dev`); `feat/rr-filler-v103` was fast-forwarded into it on 2026-10-18 after the
+>   v103 device check passed. `rc/10.0.0` is the live release line (rc3 published 2026-10-17; merge-back owed).
 > - **The border:** every number the user sees is computed in whoop-rs and reached through uniffi
 >   (`analytics/RustScores.kt`, `protocol/RustCodec.kt` and the other direct callers). What Kotlin still computes
 >   is listed in `docs/ALGORITHMS.md`; `../dev-notes/noop-tan/audit_kotlin_algorithms.py` (takes `NOOP_DIR`) measures it.
-> - **Room v103** (on `feat/rr-filler-v103` only): `rrInterval.tsSuspect` marks the strap's 500 ms R-R filler
+> - **Room v103** (on `noop-tan` since 2026-10-18; carried by the S21+ on 2026-10-17): `rrInterval.tsSuspect` marks the strap's 500 ms R-R filler
 >   (predicate whoop-rs `isRrFill`); `dailyMetric.hrvDupCoverage` holds the coverage of a night whose HRV whoop-rs
 >   refused (beats stored twice; `avgHrv` is null then). `MIGRATION_102_103` only adds the columns; the backfill runs once after open
 >   (pref `noop.rrFillBackfilled103`, logged and retried on failure). Live 0x2A37 beats are flagged at parse time.
