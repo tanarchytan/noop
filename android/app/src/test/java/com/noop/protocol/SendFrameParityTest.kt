@@ -29,6 +29,12 @@ class SendFrameParityTest {
         assertEquals("aa0114000001e1e1230713012f98000000000000000000006a1f7987", h(RustCodec.buzzFrame(seq)))
 
     @Test
+    fun `gen5 maverick buzz frame with a loop count`() {
+        assertEquals(h(RustCodec.buzzFrame(seq)), h(RustCodec.buzzFrame(seq, 1)))
+        assertEquals("aa0114000001e1e1230713012f9800000000000000000200e87d4fb5", h(RustCodec.buzzFrame(seq, 3)))
+    }
+
+    @Test
     fun `gen4 get-battery bond frame`() =
         assertEquals("aa0800a823071a009233a126", h(RustCodec.getBatteryFrame(Gen.GEN4, seq)))
 

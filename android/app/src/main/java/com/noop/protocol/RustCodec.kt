@@ -79,8 +79,9 @@ object RustCodec {
     fun commandFrame(gen: Gen, seq: Int, cmd: Int, payload: ByteArray): ByteArray? =
         codec(gen).commandFrame(seq.toUByte(), cmd.toUByte(), payload)
 
-    /** 5/MG one-shot maverick buzz (the notify preset). */
-    fun buzzFrame(seq: Int): ByteArray = gen5.buzzFrame(seq.toUByte())
+    /** 5/MG maverick buzz repeating [loops] times (the notify preset; 1 is a single pulse). */
+    fun buzzFrame(seq: Int, loops: Int = 1): ByteArray =
+        gen5.buzzFrameWith(seq.toUByte(), loops.coerceIn(0, 255).toUByte())
 
     /** GET_BATTERY_LEVEL (also the 4.0 bond-establishing write). */
     fun getBatteryFrame(gen: Gen, seq: Int): ByteArray = codec(gen).getBatteryFrame(seq.toUByte())

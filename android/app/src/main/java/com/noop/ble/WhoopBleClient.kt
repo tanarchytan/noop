@@ -2048,7 +2048,7 @@ class WhoopBleClient(
         val isHaptics = cmd == CommandNumber.RUN_HAPTICS_PATTERN
         val sent = sendCommand(cmd, withResponse) { s ->
             when {
-                gen5 && isHaptics -> RustCodec.buzzFrame(s)
+                gen5 && isHaptics -> RustCodec.buzzFrame(s, payload.getOrNull(1)?.toInt()?.and(0xFF) ?: 1)
                 else -> RustCodec.commandFrame(gen, seq = s, cmd = cmd.rawValue, payload = payload)
             }
         }
@@ -2119,11 +2119,12 @@ class WhoopBleClient(
      * (79) `[patternId=2, loops=3, 0, 0, 0]` followed by RUN_ALARM(68) `[0x01]` as a belt-and-suspenders
      * (a bare pattern write alone was reported ignored on some 4.0 straps). Both writes are ACKNOWLEDGED
      * (withResponse=true): a busy link can silently drop an unacked write with no vibration. 5/MG: [send]
-     * remaps cmd 79 to the maverick 0x13 notify buzz; RUN_ALARM isn't allow-listed there, so the
-     * follow-up is WHOOP 4.0 only — the maverick buzz alone is the confirmed 5/MG one-shot.
+     * remaps cmd 79 to the maverick 0x13 notify buzz, one pulse; RUN_ALARM isn't allow-listed there, so
+     * the follow-up is WHOOP 4.0 only — the maverick buzz alone is the confirmed 5/MG one-shot.
      */
     fun buzzStrapOnce() {
-        send(CommandNumber.RUN_HAPTICS_PATTERN, byteArrayOf(2, 3, 0, 0, 0), withResponse = true)
+        val loops: Byte = if (connectedFamily.gen == Gen.GEN5) 1 else 3
+        send(CommandNumber.RUN_HAPTICS_PATTERN, byteArrayOf(2, loops, 0, 0, 0), withResponse = true)
         if (connectedFamily == DeviceFamily.WHOOP5) {
             log("Buzz: one-shot fired (5/MG maverick buzz, acked)")
             return
